@@ -6,20 +6,14 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
+#include "basic_types.hpp"
+#include "deserialization.hpp"
 
 using namespace std;
 using namespace boost::asio;
 
 constexpr auto HOSTNAME = "localhost"sv;
 constexpr auto PORT = "3306"sv;
-
-
-inline std::uint32_t getint3(unsigned char* from)
-{
-	std::uint32_t res {};
-	memcpy(&res, from, 3);
-	return boost::endian::little_to_native(res);
-}
 
 int main()
 {
@@ -49,13 +43,14 @@ int main()
 
 	// Read packet header
 	boost::asio::read(sock, mutable_buffer{char_buffer, 4});
-	uint32_t packet_size = getint3(char_buffer);
+	mysql::int3 packet_size;
+	deserialize(char_buffer, char_buffer+4, packet_size);
 	uint8_t sequence_number = char_buffer[3];
 
 	// Read the rest of the packet
-	std::unique_ptr<unsigned char[]> packet_buffer { new unsigned char[packet_size] };
-	boost::asio::read(sock, mutable_buffer{packet_buffer.get(), packet_size});
-
+	std::unique_ptr<unsigned char[]> packet_buffer { new unsigned char[packet_size.value] };
+	boost::asio::read(sock, mutable_buffer{packet_buffer.get(), packet_size.value});
+	// TODO: handling the case where the packet is bigger than X bytes
 
 	//   Either ERR
 	//   Or Handshake

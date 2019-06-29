@@ -11,10 +11,36 @@ add_executable(
 	main.cpp
 )
 
-
 target_link_libraries(
 	main
 	PRIVATE
 	Boost::system
 	Threads::Threads
+)
+
+target_include_directories(
+	main
+	PUBLIC
+	include
+)
+
+# testing
+set(GTEST_ROOT /opt/gtest)
+find_package(GTest REQUIRED)
+enable_testing()
+include(GoogleTest)
+add_executable(
+	unittests
+	test/deserialization.cpp
+)
+target_link_libraries(
+	unittests
+	PUBLIC
+	GTest::GTest
+	GTest::Main
+)
+target_include_directories(
+	unittests
+	PUBLIC
+	${CMAKE_CURRENT_SOURCE_DIR}/include
 )
