@@ -64,7 +64,18 @@ struct Handshake
 	string_null auth_plugin_name;
 };
 
-
+struct HandshakeResponse
+{
+	int4 client_flag; // capabilities
+	int4 max_packet_size;
+	int1 character_set;
+	// string[23] 	filler 	filler to the size of the handhshake response packet. All 0s.
+	string_null username;
+	string_lenenc auth_response; // we should set CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
+	string_null database; // we should set CLIENT_CONNECT_WITH_DB
+	string_null client_plugin_name; // we should set CLIENT_PLUGIN_AUTH
+	// TODO: CLIENT_CONNECT_ATTRS
+};
 
 }
 

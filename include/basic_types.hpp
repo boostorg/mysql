@@ -19,8 +19,8 @@ using int8 = std::uint64_t;
 struct int_lenenc { std::uint64_t value; };
 template <std::size_t size> using string_fixed = char[size];
 struct string_null { std::string_view value; };
-struct string_lenenc { std::string_view value; };
 struct string_eof { std::string_view value; };
+struct string_lenenc { std::string_view value; };
 
 }
 

@@ -2,7 +2,10 @@
 #define DESERIALIZATION_H_
 
 #include <boost/endian/conversion.hpp>
+#include <vector>
+#include <type_traits>
 #include "basic_types.hpp"
+#include "messages.hpp"
 
 namespace mysql
 {
@@ -29,6 +32,8 @@ template <typename T> constexpr std::size_t get_size_v = get_size<T>::value;
 template <typename T> constexpr bool is_fixed_size_v = get_size_v<T> != std::size_t(-1);
 
 template <typename T> void little_to_native(T& value) { boost::endian::little_to_native_inplace(value); }
+template <> void little_to_native(int3& value) { boost::endian::little_to_native_inplace(value.value); }
+template <> void little_to_native(int6& value) { boost::endian::little_to_native_inplace(value.value); }
 template <std::size_t size> void little_to_native(string_fixed<size>&) {}
 
 // Deserialization functions
@@ -50,6 +55,96 @@ inline ReadIterator deserialize(ReadIterator from, ReadIterator last, string_eof
 	output.value = get_string(from, last-from);
 	return last;
 }
+
+inline ReadIterator deserialize(ReadIterator from, ReadIterator last, std::string_view& output, std::size_t size)
+{
+	check_size(from, last, size);
+	output = get_string(from, size);
+	return from + size;
+}
+
+inline ReadIterator deserialize(ReadIterator from, ReadIterator last, void* output, std::size_t size)
+{
+	check_size(from, last, size);
+	memcpy(output, from, size);
+	return from + size;
+}
+
+inline ReadIterator deserialize(ReadIterator from, ReadIterator last, string_lenenc& output)
+{
+	int_lenenc length;
+	from = deserialize(from, last, length);
+	from = deserialize(from, last, output.value, length.value);
+	return from;
+}
+
+ReadIterator deserialize(ReadIterator from, ReadIterator last, OkPacket& output);
+ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output);
+ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);
+
+// SERIALIZATION
+
+class DynamicBuffer
+{
+	std::vector<std::uint8_t> buffer_;
+public:
+	void add(const void* data, std::size_t size)
+	{
+		auto current_size = buffer_.size();
+		buffer_.resize(current_size+size);
+		memcpy(buffer_.data() + current_size, data, size);
+	}
+	void add(std::uint8_t value) { buffer_.push_back(value); }
+};
+
+template <typename T> void native_to_little(T& value) { boost::endian::native_to_little_inplace(value); }
+template <> void native_to_little(int3& value) { boost::endian::native_to_little_inplace(value.value); }
+template <> void native_to_little(int6& value) { boost::endian::native_to_little_inplace(value.value); }
+
+
+
+template <typename T>
+std::enable_if_t<is_fixed_size_v<T>>
+serialize(DynamicBuffer& buffer, T value)
+{
+	boost::endian::native_to_little_inplace(value);
+	buffer.add(&value, get_size_v<T>);
+}
+
+template <>
+inline void serialize<int1>(DynamicBuffer& buffer, int1 value) { buffer.add(value); }
+
+template <std::size_t size>
+void serialize(DynamicBuffer& buffer, const string_fixed<size>& value)
+{
+	buffer.add(value, sizeof(value));
+}
+
+void serialize(DynamicBuffer& buffer, int_lenenc value);
+
+inline void serialize(DynamicBuffer& buffer, const std::string_view& value)
+{
+	buffer.add(value.data(), value.size());
+}
+
+inline void serialize(DynamicBuffer& buffer, const string_null& value)
+{
+	serialize(buffer, value.value);
+	serialize(buffer, int1(0));
+}
+
+inline void serialize(DynamicBuffer& buffer, const string_eof& value)
+{
+	serialize(buffer, value.value);
+}
+
+inline void serialize(DynamicBuffer& buffer, const string_lenenc& value)
+{
+	serialize(buffer, int_lenenc {value.value.size()});
+	serialize(buffer, value.value);
+}
+
+
 
 
 }
