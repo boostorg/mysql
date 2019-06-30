@@ -78,16 +78,13 @@ inline ReadIterator deserialize(ReadIterator from, ReadIterator last, string_len
 	return from;
 }
 
-ReadIterator deserialize(ReadIterator from, ReadIterator last, OkPacket& output);
-ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output);
-ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);
-
 // SERIALIZATION
 
 class DynamicBuffer
 {
 	std::vector<std::uint8_t> buffer_;
 public:
+	DynamicBuffer(int1 sequence_number): buffer_ { 0, 0, 0, sequence_number } {};
 	void add(const void* data, std::size_t size)
 	{
 		auto current_size = buffer_.size();
@@ -95,6 +92,14 @@ public:
 		memcpy(buffer_.data() + current_size, data, size);
 	}
 	void add(std::uint8_t value) { buffer_.push_back(value); }
+	void set_size()
+	{
+		int3 packet_length { static_cast<std::uint32_t>(buffer_.size() - 4) };
+		boost::endian::native_to_little_inplace(packet_length.value);
+		memcpy(buffer_.data(), &packet_length.value, 3);
+	}
+	const void* data() const { return buffer_.data(); }
+	std::size_t size() const { return buffer_.size(); }
 };
 
 template <typename T> void native_to_little(T& value) { boost::endian::native_to_little_inplace(value); }
@@ -107,7 +112,7 @@ template <typename T>
 std::enable_if_t<is_fixed_size_v<T>>
 serialize(DynamicBuffer& buffer, T value)
 {
-	boost::endian::native_to_little_inplace(value);
+	native_to_little(value);
 	buffer.add(&value, get_size_v<T>);
 }
 
@@ -145,6 +150,11 @@ inline void serialize(DynamicBuffer& buffer, const string_lenenc& value)
 }
 
 
+// Packet serialization and deserialization
+ReadIterator deserialize(ReadIterator from, ReadIterator last, OkPacket& output);
+ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output);
+ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);
+void serialize(DynamicBuffer& buffer, const HandshakeResponse& value);
 
 
 }

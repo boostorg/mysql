@@ -7,11 +7,15 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
+#include <cassert>
 #include "basic_types.hpp"
 #include "deserialization.hpp"
+#include "auth.hpp"
 
 using namespace std;
 using namespace boost::asio;
+using namespace mysql;
 
 constexpr auto HOSTNAME = "localhost"sv;
 constexpr auto PORT = "3306"sv;
@@ -70,7 +74,28 @@ int main()
 				"character_set=" << handshake.character_set << ",\n" <<
 				"status_flags=" << std::bitset<16>{handshake.status_flags} << ",\n" <<
 				"auth_plugin_name=" << handshake.auth_plugin_name.value << endl;
+		mysql::HandshakeResponse handshake_response;
+		assert(handshake.auth_plugin_data.size() == mysql_native_password::challenge_length);
+		mysql_native_password::response_buffer auth_response;
+		mysql_native_password::compute_auth_string("root", handshake.auth_plugin_data.data(), auth_response);
+		handshake_response.client_flag =
+				CLIENT_CONNECT_WITH_DB |
+				CLIENT_PROTOCOL_41 |
+				CLIENT_PLUGIN_AUTH |
+				CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+				CLIENT_DEPRECATE_EOF;
+		handshake_response.max_packet_size = 0xffff;
+		handshake_response.character_set = 33; // utf8
+		handshake_response.username.value = "root";
+		handshake_response.auth_response.value = string_view {(const char*)auth_response, sizeof(auth_response)};
+		handshake_response.database.value = "mysql";
+		handshake_response.client_plugin_name.value = "mysql_native_password";
 
+		// Serialize and send
+		DynamicBuffer response_buffer { ++sequence_number };
+		serialize(response_buffer, handshake_response);
+		response_buffer.set_size();
+		boost::asio::write(sock, boost::asio::buffer(response_buffer.data(), response_buffer.size()));
 	}
 	else
 	{

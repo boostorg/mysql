@@ -7,6 +7,36 @@
 namespace mysql
 {
 
+constexpr int4 CLIENT_LONG_PASSWORD = 1; // Use the improved version of Old Password Authentication
+constexpr int4 CLIENT_FOUND_ROWS = 2; // Send found rows instead of affected rows in EOF_Packet
+constexpr int4 CLIENT_LONG_FLAG = 4; // Get all column flags
+constexpr int4 CLIENT_CONNECT_WITH_DB = 8; // Database (schema) name can be specified on connect in Handshake Response Packet
+constexpr int4 CLIENT_NO_SCHEMA = 16; // Don't allow database.table.column
+constexpr int4 CLIENT_COMPRESS = 32; // Compression protocol supported
+constexpr int4 CLIENT_ODBC = 64; // Special handling of ODBC behavior
+constexpr int4 CLIENT_LOCAL_FILES = 128; // Can use LOAD DATA LOCAL
+constexpr int4 CLIENT_IGNORE_SPACE = 256; // Ignore spaces before '('
+constexpr int4 CLIENT_PROTOCOL_41 = 512; // New 4.1 protocol
+constexpr int4 CLIENT_INTERACTIVE = 1024; // This is an interactive client
+constexpr int4 CLIENT_SSL = 2048; // Use SSL encryption for the session
+constexpr int4 CLIENT_IGNORE_SIGPIPE = 4096; // Client only flag
+constexpr int4 CLIENT_TRANSACTIONS = 8192; // Client knows about transactions
+constexpr int4 CLIENT_RESERVED = 16384; // DEPRECATED: Old flag for 4.1 protocol
+constexpr int4 CLIENT_RESERVED2 = 32768; // DEPRECATED: Old flag for 4.1 authentication \ CLIENT_SECURE_CONNECTION
+constexpr int4 CLIENT_MULTI_STATEMENTS = (1UL << 16); // Enable/disable multi-stmt support
+constexpr int4 CLIENT_MULTI_RESULTS = (1UL << 17); // Enable/disable multi-results
+constexpr int4 CLIENT_PS_MULTI_RESULTS = (1UL << 18); // Multi-results and OUT parameters in PS-protocol
+constexpr int4 CLIENT_PLUGIN_AUTH = (1UL << 19); // Client supports plugin authentication
+constexpr int4 CLIENT_CONNECT_ATTRS = (1UL << 20); // Client supports connection attributes
+constexpr int4 CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA = (1UL << 21); // Enable authentication response packet to be larger than 255 bytes
+constexpr int4 CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS = (1UL << 22); // Don't close the connection for a user account with expired password
+constexpr int4 CLIENT_SESSION_TRACK = (1UL << 23); // Capable of handling server state change information
+constexpr int4 CLIENT_DEPRECATE_EOF = (1UL << 24); // Client no longer needs EOF_Packet and will use OK_Packet instead
+constexpr int4 CLIENT_SSL_VERIFY_SERVER_CERT = (1UL << 30); // Verify server certificate
+constexpr int4 CLIENT_OPTIONAL_RESULTSET_METADATA = (1UL << 25); // The client can handle optional metadata information in the resultset
+constexpr int4 CLIENT_REMEMBER_OPTIONS = (1UL << 31); // Don't reset the options after an unsuccessful connect
+
+
 enum server_status_flags
 {
 	SERVER_STATUS_IN_TRANS = 1 << 0,

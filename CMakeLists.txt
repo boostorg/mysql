@@ -5,18 +5,21 @@ project(mysql-asio)
 set(BOOST_ROOT /opt/boost_1_70_0 CACHE STRING "Path to boost installation")
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Library
 add_library(
 	mysql_asio
 	SHARED
 	src/deserialization.cpp
+	src/auth.cpp
 )
 target_link_libraries(
 	mysql_asio
 	PUBLIC
 	Boost::system
 	Threads::Threads
+	OpenSSL::Crypto
 )
 target_include_directories(
 	mysql_asio

@@ -53,6 +53,30 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, str
 	return string_end + 1; // skip the null terminator
 }
 
+void mysql::serialize(DynamicBuffer& buffer, int_lenenc value)
+{
+	if (value.value < 251)
+	{
+		serialize(buffer, static_cast<int1>(value.value));
+	}
+	else if (value.value < 0x10000)
+	{
+		serialize(buffer, int1(0xfc));
+		serialize(buffer, static_cast<int2>(value.value));
+	}
+	else if (value.value < 0x1000000)
+	{
+		serialize(buffer, int1(0xfd));
+		serialize(buffer, int3 {static_cast<uint32_t>(value.value)});
+	}
+	else
+	{
+		serialize(buffer, int1(0xfe));
+		serialize(buffer, static_cast<int8>(value.value));
+	}
+}
+
+// Packet serialization and deserialization
 mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, OkPacket& output)
 {
 	// TODO: is packet header to be deserialized as part of this?
@@ -97,29 +121,21 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Han
 	from = deserialize(from, last, output.auth_plugin_name);
 	output.auth_plugin_data = auth_plugin_data_part_1;
 	output.auth_plugin_data += auth_plugin_data_part_2;
+	output.auth_plugin_data.pop_back(); // includes a null byte at the end
 	boost::endian::little_to_native_inplace(output.capability_falgs);
 	return from;
 }
 
-void mysql::serialize(DynamicBuffer& buffer, int_lenenc value)
+void mysql::serialize(DynamicBuffer& buffer, const HandshakeResponse& value)
 {
-	if (value.value < 251)
-	{
-		serialize(buffer, static_cast<int1>(value.value));
-	}
-	else if (value.value < 0x10000)
-	{
-		serialize(buffer, int1(0xfc));
-		serialize(buffer, static_cast<int2>(value.value));
-	}
-	else if (value.value < 0x1000000)
-	{
-		serialize(buffer, int1(0xfd));
-		serialize(buffer, int3 {static_cast<uint32_t>(value.value)});
-	}
-	else
-	{
-		serialize(buffer, int1(0xfe));
-		serialize(buffer, static_cast<int8>(value.value));
-	}
+	serialize(buffer, value.client_flag);
+	serialize(buffer, value.max_packet_size);
+	serialize(buffer, value.character_set);
+	serialize(buffer, string_fixed<23>{}); // filler
+	serialize(buffer, value.username);
+	serialize(buffer, value.auth_response);
+	serialize(buffer, value.database);
+	serialize(buffer, value.client_plugin_name);
 }
+
+
