@@ -6,29 +6,40 @@ set(BOOST_ROOT /opt/boost_1_70_0 CACHE STRING "Path to boost installation")
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 
-add_executable(
-	main
-	main.cpp
+# Library
+add_library(
+	mysql_asio
+	SHARED
+	src/deserialization.cpp
 )
-
 target_link_libraries(
-	main
-	PRIVATE
+	mysql_asio
+	PUBLIC
 	Boost::system
 	Threads::Threads
 )
-
 target_include_directories(
-	main
+	mysql_asio
 	PUBLIC
 	include
 )
 
-# testing
+# Main
+add_executable(
+	main
+	main.cpp
+)
+target_link_libraries(
+	main
+	PRIVATE
+	mysql_asio
+)
+
+# Unit testing
 set(GTEST_ROOT /opt/gtest)
+include(GoogleTest)
 find_package(GTest REQUIRED)
 enable_testing()
-include(GoogleTest)
 add_executable(
 	unittests
 	test/deserialization.cpp
@@ -38,9 +49,6 @@ target_link_libraries(
 	PUBLIC
 	GTest::GTest
 	GTest::Main
+	mysql_asio
 )
-target_include_directories(
-	unittests
-	PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+gtest_discover_tests(unittests)
