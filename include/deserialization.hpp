@@ -151,6 +151,7 @@ inline void serialize(DynamicBuffer& buffer, const string_lenenc& value)
 
 
 // Packet serialization and deserialization
+ReadIterator deserialize(ReadIterator from, ReadIterator last, PacketHeader& output);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, OkPacket& output);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);

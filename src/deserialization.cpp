@@ -77,6 +77,13 @@ void mysql::serialize(DynamicBuffer& buffer, int_lenenc value)
 }
 
 // Packet serialization and deserialization
+mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, PacketHeader& output)
+{
+	from = deserialize(from, last, output.packet_size);
+	from = deserialize(from, last, output.sequence_number);
+	return from;
+}
+
 mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, OkPacket& output)
 {
 	// TODO: is packet header to be deserialized as part of this?

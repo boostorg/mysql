@@ -9,6 +9,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <cassert>
+#include <stdexcept>
 #include "basic_types.hpp"
 #include "deserialization.hpp"
 #include "auth.hpp"
@@ -19,6 +20,38 @@ using namespace mysql;
 
 constexpr auto HOSTNAME = "localhost"sv;
 constexpr auto PORT = "3306"sv;
+
+struct RawPacket
+{
+	PacketHeader header;
+	std::unique_ptr<std::uint8_t[]> buffer;
+
+	ReadIterator begin() const { return buffer.get(); }
+	ReadIterator end() const { return buffer.get() + header.packet_size.value; }
+	ReadIterator body_begin() const { return begin() + 1; } // past message type, if any
+	std::uint8_t message_type() const { std::uint8_t res; mysql::deserialize(begin(), end(), res); return res; }
+
+	template <typename PacketType>
+	void deserialize(PacketType& output)
+	{
+		ReadIterator last = mysql::deserialize(body_begin(), end(), output);
+		if (last != end())
+			throw std::out_of_range { "Additional data after packet end" };
+	}
+};
+
+void read_packet(ip::tcp::socket& sock, RawPacket& output)
+{
+	// Connection phase
+	uint8_t header_buffer [4];
+	boost::asio::read(sock, boost::asio::buffer(header_buffer));
+	deserialize(header_buffer, end(header_buffer), output.header);
+
+	// Read the rest of the packet
+	output.buffer.reset(new uint8_t[output.header.packet_size.value]);
+	boost::asio::read(sock, mutable_buffer{output.buffer.get(), output.header.packet_size.value});
+	// TODO: handling the case where the packet is bigger than X bytes
+}
 
 int main()
 {
@@ -41,31 +74,16 @@ int main()
 	// TCP connection
 	ip::tcp::socket sock {ctx};
 	sock.connect(endpoint);
-	unsigned char char_buffer [1024];
-	mutable_buffer buffer {char_buffer, sizeof(char_buffer)};
 
 	// Connection phase
+	RawPacket packet;
+	read_packet(sock, packet);
+	uint8_t msg_type = packet.message_type();
 
-	// Read packet header
-	boost::asio::read(sock, mutable_buffer{char_buffer, 4});
-	mysql::int3 packet_size;
-	deserialize(char_buffer, char_buffer+4, packet_size); // TODO: redundant size check
-	uint8_t sequence_number = char_buffer[3];
-
-	// Read the rest of the packet
-	std::unique_ptr<unsigned char[]> packet_buffer { new unsigned char[packet_size.value] };
-	boost::asio::read(sock, mutable_buffer{packet_buffer.get(), packet_size.value});
-	// TODO: handling the case where the packet is bigger than X bytes
-
-	uint8_t msg_type = packet_buffer[0];
-	if (msg_type == 10) // handshake
+	if (msg_type == handshake_protocol_version_10) // handshake
 	{
 		mysql::Handshake handshake;
-		auto last = mysql::deserialize(packet_buffer.get() + 1, packet_buffer.get() + packet_size.value, handshake);
-		if (last != packet_buffer.get() + packet_size.value)
-		{
-			std::cerr << "Additional bytes at the end of packet" << endl;
-		}
+		packet.deserialize(handshake);
 		std::cout <<
 				"server_version=" << handshake.server_version.value << ",\n" <<
 				"connection_id="  << handshake.connection_id  << ",\n" <<
@@ -73,7 +91,7 @@ int main()
 				"capability_falgs=" << std::bitset<32>{handshake.capability_falgs} << ",\n" <<
 				"character_set=" << handshake.character_set << ",\n" <<
 				"status_flags=" << std::bitset<16>{handshake.status_flags} << ",\n" <<
-				"auth_plugin_name=" << handshake.auth_plugin_name.value << endl;
+				"auth_plugin_name=" << handshake.auth_plugin_name.value << "\n\n";
 		mysql::HandshakeResponse handshake_response;
 		assert(handshake.auth_plugin_data.size() == mysql_native_password::challenge_length);
 		mysql_native_password::response_buffer auth_response;
@@ -85,17 +103,39 @@ int main()
 				CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
 				CLIENT_DEPRECATE_EOF;
 		handshake_response.max_packet_size = 0xffff;
-		handshake_response.character_set = 33; // utf8
+		handshake_response.character_set = static_cast<int1>(character_set::utf8_general_ci);
 		handshake_response.username.value = "root";
 		handshake_response.auth_response.value = string_view {(const char*)auth_response, sizeof(auth_response)};
 		handshake_response.database.value = "mysql";
 		handshake_response.client_plugin_name.value = "mysql_native_password";
 
 		// Serialize and send
-		DynamicBuffer response_buffer { ++sequence_number };
+		DynamicBuffer response_buffer { ++packet.header.sequence_number };
 		serialize(response_buffer, handshake_response);
 		response_buffer.set_size();
 		boost::asio::write(sock, boost::asio::buffer(response_buffer.data(), response_buffer.size()));
+
+		// Read the OK/ERR
+		read_packet(sock, packet);
+		msg_type = packet.message_type();
+		if (msg_type == ok_packet_header || msg_type == eof_packet_header)
+		{
+			cout << "Successfully connected to server\n";
+			// TODO
+		}
+		else if (msg_type == error_packet_header)
+		{
+			ErrPacket error_packet;
+			packet.deserialize(error_packet);
+			std::cerr << "Handshake resulted in error: " << error_packet.error_code
+					  << ": " << error_packet.error_message.value << endl;
+		}
+		else
+		{
+			cout << "Message type is: " << hex << msg_type << endl;
+		}
+
+
 	}
 	else
 	{

@@ -7,6 +7,7 @@
 namespace mysql
 {
 
+// Server/client capabilities
 constexpr int4 CLIENT_LONG_PASSWORD = 1; // Use the improved version of Old Password Authentication
 constexpr int4 CLIENT_FOUND_ROWS = 2; // Send found rows instead of affected rows in EOF_Packet
 constexpr int4 CLIENT_LONG_FLAG = 4; // Get all column flags
@@ -36,23 +37,39 @@ constexpr int4 CLIENT_SSL_VERIFY_SERVER_CERT = (1UL << 30); // Verify server cer
 constexpr int4 CLIENT_OPTIONAL_RESULTSET_METADATA = (1UL << 25); // The client can handle optional metadata information in the resultset
 constexpr int4 CLIENT_REMEMBER_OPTIONS = (1UL << 31); // Don't reset the options after an unsuccessful connect
 
+// Server status flags
+constexpr int4 SERVER_STATUS_IN_TRANS = 1;
+constexpr int4 SERVER_STATUS_AUTOCOMMIT = 2;
+constexpr int4 SERVER_MORE_RESULTS_EXISTS = 8;
+constexpr int4 SERVER_QUERY_NO_GOOD_INDEX_USED = 16;
+constexpr int4 SERVER_QUERY_NO_INDEX_USED = 32;
+constexpr int4 SERVER_STATUS_CURSOR_EXISTS = 64;
+constexpr int4 SERVER_STATUS_LAST_ROW_SENT = 128;
+constexpr int4 SERVER_STATUS_DB_DROPPED = 256;
+constexpr int4 SERVER_STATUS_NO_BACKSLASH_ESCAPES = 512;
+constexpr int4 SERVER_STATUS_METADATA_CHANGED = 1024;
+constexpr int4 SERVER_QUERY_WAS_SLOW = 2048;
+constexpr int4 SERVER_PS_OUT_PARAMS = 4096;
+constexpr int4 SERVER_STATUS_IN_TRANS_READONLY = 8192;
+constexpr int4 SERVER_SESSION_STATE_CHANGED = (1UL << 14) ;
 
-enum server_status_flags
+enum class character_set : int1
 {
-	SERVER_STATUS_IN_TRANS = 1 << 0,
-	SERVER_STATUS_AUTOCOMMIT = 1 << 1,
-	SERVER_MORE_RESULTS_EXISTS = 1 << 3,
-	SERVER_QUERY_NO_GOOD_INDEX_USED = 1 << 4,
-	SERVER_QUERY_NO_INDEX_USED = 1 << 5,
-	SERVER_STATUS_CURSOR_EXISTS = 1 << 6,
-	SERVER_STATUS_LAST_ROW_SENT = 1 << 7,
-	SERVER_STATUS_DB_DROPPED = 1 << 8,
-	SERVER_STATUS_NO_BACKSLASH_ESCAPES = 1 << 9,
-	SERVER_STATUS_METADATA_CHANGED = 1 << 10,
-	SERVER_QUERY_WAS_SLOW = 1 << 11,
-	SERVER_PS_OUT_PARAMS = 1 << 12,
-	SERVER_STATUS_IN_TRANS_READONLY = 1 << 13,
-	SERVER_SESSION_STATE_CHANGED = 1 << 14
+	latin1_swedish_ci = 0x08,
+	utf8_general_ci = 0x21,
+	binary = 0x3f
+};
+
+// Packet type constants
+constexpr int1 handshake_protocol_version_10 = 10;
+constexpr int1 error_packet_header = 0xff;
+constexpr int1 ok_packet_header = 0x00;
+constexpr int1 eof_packet_header = 0xfe;
+
+struct PacketHeader
+{
+	int3 packet_size;
+	int1 sequence_number;
 };
 
 struct OkPacket
