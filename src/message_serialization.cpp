@@ -9,7 +9,7 @@
 
 using namespace std;
 
-// Packet serialization and deserialization
+// General
 mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, PacketHeader& output)
 {
 	from = deserialize(from, last, output.packet_size);
@@ -38,6 +38,7 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Err
 	return from;
 }
 
+// Connection phase
 mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Handshake& output)
 {
 	// TODO: is protocol version (seems similar to packet header) to be deserialized as part of this?
@@ -78,5 +79,41 @@ void mysql::serialize(DynamicBuffer& buffer, const HandshakeResponse& value)
 	serialize(buffer, value.client_plugin_name);
 }
 
+// Command phase, general
+mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, ColumnDefinition& output)
+{
+	int_lenenc length_fixed_length_fields;
+	from = deserialize(from, last, output.catalog);
+	from = deserialize(from, last, output.schema);
+	from = deserialize(from, last, output.table);
+	from = deserialize(from, last, output.org_table);
+	from = deserialize(from, last, output.name);
+	from = deserialize(from, last, output.org_name);
+	from = deserialize(from, last, length_fixed_length_fields);
+	from = deserialize(from, last, output.character_set);
+	from = deserialize(from, last, output.column_length);
+	from = deserialize(from, last, output.type);
+	from = deserialize(from, last, output.flags);
+	from = deserialize(from, last, output.decimals);
+	return from;
+}
 
+// Prepared statements
+void mysql::serialize(DynamicBuffer& buffer, const StmtPrepare& value)
+{
+	serialize(buffer, Command::COM_STMT_PREPARE);
+	serialize(buffer, value.statement);
+}
+
+mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, StmtPrepareResponseHeader& output)
+{
+	// TODO: int1 status: must be 0 to be deserialized as part of this?
+	int1 reserved;
+	from = deserialize(from, last, output.statement_id);
+	from = deserialize(from, last, output.num_columns);
+	from = deserialize(from, last, output.num_params);
+	from = deserialize(from, last, reserved);
+	from = deserialize(from, last, output.warning_count);
+	return from;
+}
 

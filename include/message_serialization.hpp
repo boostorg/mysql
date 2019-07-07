@@ -17,9 +17,12 @@ ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output
 ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);
 void serialize(DynamicBuffer& buffer, const HandshakeResponse& value);
 
+// Command phase, general
+ReadIterator deserialize(ReadIterator from, ReadIterator last, ColumnDefinition& output);
+
 // Prepared statements
-void serialize(DynamicBuffer& buffer, const StmtPreparePacket& value);
-ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtPrepareResponsePacket& output);
+void serialize(DynamicBuffer& buffer, const StmtPrepare& value);
+ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtPrepareResponseHeader& output);
 
 }
 

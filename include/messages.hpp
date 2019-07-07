@@ -125,7 +125,7 @@ struct HandshakeResponse
 	// TODO: CLIENT_CONNECT_ATTRS
 };
 
-enum class Command
+enum class Command : int1
 {
 	COM_QUIT = 1,
 	COM_INIT_DB = 2,
@@ -193,12 +193,12 @@ struct ColumnDefinition
 };
 
 // Prepared statements
-struct StmtPreparePacket
+struct StmtPrepare
 {
 	string_eof statement;
 };
 
-struct StmtPrepareResponsePacket
+struct StmtPrepareResponseHeader
 {
 	// int1 status: must be 0
 	int4 statement_id;
@@ -207,7 +207,6 @@ struct StmtPrepareResponsePacket
 	// int1 reserved_1: must be 0
 	int2 warning_count; // only if (packet_length > 12)
 	// TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
-	std::vector<ColumnDefinition> params;
 };
 
 
