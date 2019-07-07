@@ -158,6 +158,12 @@ inline void serialize(DynamicBuffer& buffer, const string_lenenc& value)
 	serialize(buffer, value.value);
 }
 
+template <typename T>
+std::enable_if_t<std::is_enum_v<T>>
+serialize(DynamicBuffer& buffer, T value)
+{
+	serialize(buffer, static_cast<std::underlying_type_t<T>>(value));
+}
 
 
 
