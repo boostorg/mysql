@@ -41,6 +41,7 @@ std::enable_if_t<is_fixed_size_v<T>, ReadIterator>
 deserialize(ReadIterator from, ReadIterator last, T& output)
 {
 	check_size(from, last, get_size_v<T>);
+	memset(&output, 0, sizeof(T));
 	memcpy(&output, from, get_size_v<T>);
 	little_to_native(output);
 	return from + get_size_v<T>;
