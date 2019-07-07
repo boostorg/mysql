@@ -2,6 +2,7 @@
 #define MESSAGES_H_
 
 #include <string>
+#include <vector>
 #include "basic_types.hpp"
 
 namespace mysql
@@ -123,6 +124,93 @@ struct HandshakeResponse
 	string_null client_plugin_name; // we should set CLIENT_PLUGIN_AUTH
 	// TODO: CLIENT_CONNECT_ATTRS
 };
+
+enum class Command
+{
+	COM_QUIT = 1,
+	COM_INIT_DB = 2,
+	COM_QUERY = 3,
+	COM_STATISTICS = 8,
+	COM_DEBUG = 0x0d,
+	COM_PING = 0x0e,
+	COM_CHANGE_USER = 0x11,
+	COM_BINLOG_DUMP = 0x12,
+	COM_STMT_PREPARE = 0x16,
+	COM_STMT_EXECUTE = 0x17,
+	COM_STMT_SEND_LONG_DATA = 0x18,
+	COM_STMT_CLOSE = 0x19,
+	COM_STMT_RESET = 0x1a,
+	COM_SET_OPTION = 0x1b,
+	COM_STMT_FETCH = 0x1c,
+	COM_RESET_CONNECTION = 0x1f
+};
+
+// Column definitions
+enum class FieldType : int1
+{
+	DECIMAL = 0x00,
+	TINY = 0x01,
+	SHORT = 0x02,
+	LONG = 0x03,
+	FLOAT = 0x04,
+	DOUBLE = 0x05,
+	NULL_ = 0x06,
+	TIMESTAMP = 0x07,
+	LONGLONG = 0x08,
+	INT24 = 0x09,
+	DATE = 0x0a,
+	TIME = 0x0b,
+	DATETIME = 0x0c,
+	YEAR = 0x0d,
+	VARCHAR = 0x0f,
+	BIT = 0x10,
+	NEWDECIMAL = 0xf6,
+	ENUM = 0xf7,
+	SET = 0xf8,
+	TINY_BLOB = 0xf9,
+	MEDIUM_BLOB = 0xfa,
+	LONG_BLOB = 0xfb,
+	BLOB = 0xfc,
+	VAR_STRING = 0xfd,
+	STRING = 0xfe,
+	GEOMETRY = 0xff
+};
+
+struct ColumnDefinition
+{
+	string_lenenc catalog; // always "def"
+	string_lenenc schema;
+	string_lenenc table; // virtual table
+	string_lenenc org_table; // physical table
+	string_lenenc name; // virtual column name
+	string_lenenc org_name; // physical column name
+	// int<lenenc> 	length of fixed length fields 	[0x0c]
+	int2 character_set; // TODO: enum-erize this
+	int4 column_length; // maximum length of the field
+	FieldType type; // type of the column as defined in enum_field_types
+	int2 flags; // Flags as defined in Column Definition Flags
+	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
+};
+
+// Prepared statements
+struct StmtPreparePacket
+{
+	string_eof statement;
+};
+
+struct StmtPrepareResponsePacket
+{
+	// int1 status: must be 0
+	int4 statement_id;
+	int2 num_columns;
+	int2 num_params;
+	// int1 reserved_1: must be 0
+	int2 warning_count; // only if (packet_length > 12)
+	// TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
+	std::vector<ColumnDefinition> params;
+};
+
+
 
 }
 

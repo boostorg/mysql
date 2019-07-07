@@ -11,8 +11,8 @@
 #include <cassert>
 #include <stdexcept>
 #include "basic_types.hpp"
-#include "deserialization.hpp"
 #include "auth.hpp"
+#include "message_serialization.hpp"
 
 using namespace std;
 using namespace boost::asio;

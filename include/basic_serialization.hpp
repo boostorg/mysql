@@ -5,7 +5,6 @@
 #include <vector>
 #include <type_traits>
 #include "basic_types.hpp"
-#include "messages.hpp"
 
 namespace mysql
 {
@@ -32,8 +31,8 @@ template <typename T> constexpr std::size_t get_size_v = get_size<T>::value;
 template <typename T> constexpr bool is_fixed_size_v = get_size_v<T> != std::size_t(-1);
 
 template <typename T> void little_to_native(T& value) { boost::endian::little_to_native_inplace(value); }
-template <> void little_to_native(int3& value) { boost::endian::little_to_native_inplace(value.value); }
-template <> void little_to_native(int6& value) { boost::endian::little_to_native_inplace(value.value); }
+template <> inline void little_to_native(int3& value) { boost::endian::little_to_native_inplace(value.value); }
+template <> inline void little_to_native(int6& value) { boost::endian::little_to_native_inplace(value.value); }
 template <std::size_t size> void little_to_native(string_fixed<size>&) {}
 
 // Deserialization functions
@@ -113,8 +112,8 @@ public:
 };
 
 template <typename T> void native_to_little(T& value) { boost::endian::native_to_little_inplace(value); }
-template <> void native_to_little(int3& value) { boost::endian::native_to_little_inplace(value.value); }
-template <> void native_to_little(int6& value) { boost::endian::native_to_little_inplace(value.value); }
+template <> inline void native_to_little(int3& value) { boost::endian::native_to_little_inplace(value.value); }
+template <> inline void native_to_little(int6& value) { boost::endian::native_to_little_inplace(value.value); }
 
 
 
@@ -160,12 +159,7 @@ inline void serialize(DynamicBuffer& buffer, const string_lenenc& value)
 }
 
 
-// Packet serialization and deserialization
-ReadIterator deserialize(ReadIterator from, ReadIterator last, PacketHeader& output);
-ReadIterator deserialize(ReadIterator from, ReadIterator last, OkPacket& output);
-ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output);
-ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);
-void serialize(DynamicBuffer& buffer, const HandshakeResponse& value);
+
 
 
 }

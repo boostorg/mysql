@@ -11,7 +11,8 @@ find_package(OpenSSL REQUIRED)
 add_library(
 	mysql_asio
 	SHARED
-	src/deserialization.cpp
+	src/basic_serialization.cpp
+	src/message_serialization.cpp
 	src/auth.cpp
 )
 target_link_libraries(
@@ -45,7 +46,7 @@ find_package(GTest REQUIRED)
 enable_testing()
 add_executable(
 	unittests
-	test/deserialization.cpp
+	test/basic_serialization.cpp
 )
 target_link_libraries(
 	unittests
