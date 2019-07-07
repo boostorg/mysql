@@ -78,6 +78,16 @@ inline ReadIterator deserialize(ReadIterator from, ReadIterator last, string_len
 	return from;
 }
 
+template <typename T>
+std::enable_if_t<std::is_enum_v<T>, ReadIterator>
+deserialize(ReadIterator from, ReadIterator last, T& to)
+{
+	std::underlying_type_t<T> value;
+	ReadIterator res = deserialize(from, last, value);
+	to = static_cast<T>(value);
+	return res;
+}
+
 // SERIALIZATION
 
 class DynamicBuffer

@@ -102,5 +102,166 @@ INSTANTIATE_TEST_SUITE_P(Default, DeserializeLengthEncodedInt, ::testing::Values
 	LengthEncodedIntTestParams{0xfc, 0xfeff,             3},
 	LengthEncodedIntTestParams{0xfd, 0xfdfeff,           4},
 	LengthEncodedIntTestParams{0xfe, 0xf8f9fafbfcfdfeff, 9}
-), [](auto v) { return "first_byte_" + to_string(v.param.first_byte); });
+), [](const auto& v) { return "first_byte_" + to_string(v.param.first_byte); });
 
+// Fixed size string
+struct DeserializeFixedSizeString : public testing::Test
+{
+	uint8_t buffer [6] { 'a', 'b', '\0', 'd', 'e', 'f' };
+	string_fixed<5> value;
+};
+
+TEST_F(DeserializeFixedSizeString, ExactSize_CopiesValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(begin(buffer), begin(buffer) + 5, value);
+	EXPECT_EQ(value, string_view {"ab\0de"});
+	EXPECT_EQ(res, begin(buffer) + 5);
+}
+
+TEST_F(DeserializeFixedSizeString, ExtraSize_CopiesValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
+	EXPECT_EQ(value, string_view {"ab\0de"});
+	EXPECT_EQ(res, begin(buffer) + 5);
+}
+
+TEST_F(DeserializeFixedSizeString, Overflow_ThrowsOutOfRange)
+{
+	EXPECT_THROW(deserialize(begin(buffer), begin(buffer) + 4, value), out_of_range);
+}
+
+// Null-terminated string
+struct DeserializeNullTerminatedString : public testing::Test
+{
+	uint8_t buffer [4] { 'a', 'b', '\0', 'd' };
+	string_null value;
+};
+
+TEST_F(DeserializeNullTerminatedString, ExactSize_GetsValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(begin(buffer), begin(buffer) + 3, value);
+	EXPECT_EQ(value.value, "ab");
+	EXPECT_EQ(res, begin(buffer) + 3);
+}
+
+TEST_F(DeserializeNullTerminatedString, ExtraSize_GetsValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
+	EXPECT_EQ(value.value, "ab");
+	EXPECT_EQ(res, begin(buffer) + 3);
+}
+
+TEST_F(DeserializeNullTerminatedString, Overflow_ThrowsOutOfRange)
+{
+	EXPECT_THROW(deserialize(begin(buffer), begin(buffer) + 2, value), out_of_range);
+}
+
+// Length-encoded string
+struct LengthEncodedStringParams
+{
+	uint64_t string_length;
+	std::vector<uint8_t> length_prefix;
+};
+
+struct DeserializeLengthEncodedString : public ::testing::TestWithParam<LengthEncodedStringParams>
+{
+	std::vector<uint8_t> buffer;
+	string_lenenc value;
+	DeserializeLengthEncodedString()
+	{
+		const auto& prefix = GetParam().length_prefix;
+		copy(prefix.begin(), prefix.end(), back_inserter(buffer));
+		buffer.resize(buffer.size() + GetParam().string_length + 8, 'a');
+	}
+	ReadIterator exact_end() const { return buffer.data() + buffer.size() - 8; };
+	ReadIterator extra_end() const { return buffer.data() + buffer.size(); }
+	ReadIterator overflow_string_end() const { return buffer.data() + buffer.size() - 9; }
+	ReadIterator overflow_int_end() const { return buffer.data() + GetParam().length_prefix.size() - 1; }
+	string expected_value() const { return string(GetParam().string_length, 'a'); }
+};
+
+TEST_P(DeserializeLengthEncodedString, ExactSize_GetsValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(buffer.data(), exact_end(), value);
+	EXPECT_EQ(res, exact_end());
+	EXPECT_EQ(value.value, expected_value());
+}
+
+TEST_P(DeserializeLengthEncodedString, ExtraSize_GetsValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(buffer.data(), extra_end(), value);
+	EXPECT_EQ(res, exact_end());
+	EXPECT_EQ(value.value, expected_value());
+}
+
+TEST_P(DeserializeLengthEncodedString, OverflowInString_ThrowsOutOfRange)
+{
+	EXPECT_THROW(deserialize(buffer.data(), overflow_string_end(), value), out_of_range);
+}
+
+TEST_P(DeserializeLengthEncodedString, OverflowInInt_ThrowsOutOfRange)
+{
+	EXPECT_THROW(deserialize(buffer.data(), overflow_int_end(), value), out_of_range);
+	EXPECT_THROW(deserialize(buffer.data(), buffer.data(), value), out_of_range);
+}
+
+INSTANTIATE_TEST_SUITE_P(Default, DeserializeLengthEncodedString, ::testing::Values(
+	LengthEncodedStringParams{0x10,        {0x10}},
+	LengthEncodedStringParams{0xfeff,      {0xfc, 0xff, 0xfe}},
+	LengthEncodedStringParams{0xfdfeff,    {0xfd, 0xff, 0xfe, 0xfd}}
+	// Allocating strings as long as 0x100000000 can cause bad_alloc
+), [](const auto& v) { return "string_length_" + to_string(v.param.string_length); });
+
+// EOF string
+struct DeserializeEofString : public testing::Test
+{
+	uint8_t buffer [4] { 'a', 'b', '\0', 'd' };
+	string_eof value;
+};
+
+TEST_F(DeserializeEofString, Trivial_GetsValueIncrementsIterator)
+{
+	string_view expected {"ab\0d", 4};
+	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
+	EXPECT_EQ(value.value, expected);
+	EXPECT_EQ(res, end(buffer));
+}
+
+TEST_F(DeserializeEofString, EmptyBuffer_GetsEmptyValue)
+{
+	ReadIterator res = deserialize(begin(buffer), begin(buffer), value);
+	EXPECT_EQ(value.value, "");
+	EXPECT_EQ(res, begin(buffer));
+}
+
+// Enums
+enum class TestEnum : int2
+{
+	value0 = 0,
+	value1 = 0xfeff
+};
+
+struct DeserializeEnum : public testing::Test
+{
+	uint8_t buffer [3] { 0xff, 0xfe, 0xaa };
+	TestEnum value;
+};
+
+TEST_F(DeserializeEnum, ExactSize_GetsValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(begin(buffer), begin(buffer) + 2, value);
+	EXPECT_EQ(res, begin(buffer) + 2);
+	EXPECT_EQ(value, TestEnum::value1);
+}
+
+TEST_F(DeserializeEnum, ExtraSize_GetsValueIncrementsIterator)
+{
+	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
+	EXPECT_EQ(res, begin(buffer) + 2);
+	EXPECT_EQ(value, TestEnum::value1);
+}
+
+TEST_F(DeserializeEnum, Overflow_ThrowsOutOfRange)
+{
+	EXPECT_THROW(deserialize(begin(buffer), begin(buffer) + 1, value), out_of_range);
+}

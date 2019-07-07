@@ -48,7 +48,7 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, str
 {
 	ReadIterator string_end = std::find(from, last, 0);
 	if (string_end == last)
-		throw std::runtime_error {"Overflow (null-terminated string)"};
+		throw std::out_of_range {"Overflow (null-terminated string)"};
 	output.value = get_string(from, string_end-from);
 	return string_end + 1; // skip the null terminator
 }
