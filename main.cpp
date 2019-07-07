@@ -89,7 +89,7 @@ int main()
 				"connection_id="  << handshake.connection_id  << ",\n" <<
 				"auth_plugin_data=" << handshake.auth_plugin_data << ",\n" <<
 				"capability_falgs=" << std::bitset<32>{handshake.capability_falgs} << ",\n" <<
-				"character_set=" << handshake.character_set << ",\n" <<
+				"character_set=" << static_cast<int1>(handshake.character_set) << ",\n" <<
 				"status_flags=" << std::bitset<16>{handshake.status_flags} << ",\n" <<
 				"auth_plugin_name=" << handshake.auth_plugin_name.value << "\n\n";
 		mysql::HandshakeResponse handshake_response;
@@ -103,7 +103,7 @@ int main()
 				CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
 				CLIENT_DEPRECATE_EOF;
 		handshake_response.max_packet_size = 0xffff;
-		handshake_response.character_set = static_cast<int1>(character_set::utf8_general_ci);
+		handshake_response.character_set = CharacterSetLowerByte::utf8_general_ci;
 		handshake_response.username.value = "root";
 		handshake_response.auth_response.value = string_view {(const char*)auth_response, sizeof(auth_response)};
 		handshake_response.database.value = "mysql";

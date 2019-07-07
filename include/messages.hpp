@@ -54,7 +54,7 @@ constexpr int4 SERVER_PS_OUT_PARAMS = 4096;
 constexpr int4 SERVER_STATUS_IN_TRANS_READONLY = 8192;
 constexpr int4 SERVER_SESSION_STATE_CHANGED = (1UL << 14) ;
 
-enum class character_set : int1
+enum class CharacterSetLowerByte : int1
 {
 	latin1_swedish_ci = 0x08,
 	utf8_general_ci = 0x21,
@@ -103,7 +103,7 @@ struct Handshake
 	// string[8] 	auth-plugin-data-part-1 	first 8 bytes of the plugin provided data (scramble)
 	// int<1> 	filler 	0x00 byte, terminating the first part of a scramble
 	// int<2> 	capability_flags_1 	The lower 2 bytes of the Capabilities Flags
-	int1 character_set; // default server a_protocol_character_set, only the lower 8-bits
+	CharacterSetLowerByte character_set; // default server a_protocol_character_set, only the lower 8-bits
 	int2 status_flags; // server_status_flags
 	// int<2> 	capability_flags_2 	The upper 2 bytes of the Capabilities Flags
 	// int<1> 	auth_plugin_data_len
@@ -116,7 +116,7 @@ struct HandshakeResponse
 {
 	int4 client_flag; // capabilities
 	int4 max_packet_size;
-	int1 character_set;
+	CharacterSetLowerByte character_set;
 	// string[23] 	filler 	filler to the size of the handhshake response packet. All 0s.
 	string_null username;
 	string_lenenc auth_response; // we should set CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
