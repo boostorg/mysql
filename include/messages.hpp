@@ -62,6 +62,7 @@ enum class CharacterSetLowerByte : int1
 };
 
 // Packet type constants
+constexpr int1 handshake_protocol_version_9 = 9;
 constexpr int1 handshake_protocol_version_10 = 10;
 constexpr int1 error_packet_header = 0xff;
 constexpr int1 ok_packet_header = 0x00;

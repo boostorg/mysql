@@ -4,6 +4,7 @@
 #include "basic_types.hpp"
 #include "messages.hpp"
 #include "basic_serialization.hpp"
+#include <iosfwd>
 
 namespace mysql
 {
@@ -23,6 +24,10 @@ ReadIterator deserialize(ReadIterator from, ReadIterator last, ColumnDefinition&
 // Prepared statements
 void serialize(DynamicBuffer& buffer, const StmtPrepare& value);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtPrepareResponseHeader& output);
+
+// Text serialization
+std::ostream& operator<<(std::ostream& os, const Handshake& value);
+std::ostream& operator<<(std::ostream& os, const HandshakeResponse& value);
 
 }
 

@@ -94,7 +94,7 @@ class DynamicBuffer
 {
 	std::vector<std::uint8_t> buffer_;
 public:
-	DynamicBuffer(int1 sequence_number): buffer_ { 0, 0, 0, sequence_number } {};
+	DynamicBuffer() = default;
 	void add(const void* data, std::size_t size)
 	{
 		auto current_size = buffer_.size();
@@ -102,13 +102,8 @@ public:
 		memcpy(buffer_.data() + current_size, data, size);
 	}
 	void add(std::uint8_t value) { buffer_.push_back(value); }
-	void set_size()
-	{
-		int3 packet_length { static_cast<std::uint32_t>(buffer_.size() - 4) };
-		boost::endian::native_to_little_inplace(packet_length.value);
-		memcpy(buffer_.data(), &packet_length.value, 3);
-	}
 	const void* data() const { return buffer_.data(); }
+	void* data() { return buffer_.data(); }
 	std::size_t size() const { return buffer_.size(); }
 };
 

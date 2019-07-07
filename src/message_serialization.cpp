@@ -6,6 +6,8 @@
  */
 
 #include "message_serialization.hpp"
+#include <bitset>
+#include <ostream>
 
 using namespace std;
 
@@ -117,3 +119,27 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Stm
 	return from;
 }
 
+// Text serialization
+std::ostream& mysql::operator<<(std::ostream& os, const Handshake& value)
+{
+	return os << "mysql::Handshake(\n"
+			"  server_version=" << value.server_version.value << ",\n"
+			"  connection_id="  << value.connection_id  << ",\n"
+			"  auth_plugin_data=" << value.auth_plugin_data << ",\n"
+			"  capability_falgs=" << std::bitset<32>{value.capability_falgs} << ",\n"
+			"  character_set=" << static_cast<int1>(value.character_set) << ",\n"
+			"  status_flags=" << std::bitset<16>{value.status_flags} << ",\n"
+			"  auth_plugin_name=" << value.auth_plugin_name.value << "\n)";
+}
+
+std::ostream& mysql::operator<<(std::ostream& os, const HandshakeResponse& value)
+{
+	return os << "mysql::HandshakeResponse(\n"
+			"  client_flag(capabilities)=" << std::bitset<32>(value.client_flag) << ",\n"
+			"  max_packet_size="  << value.max_packet_size  << ",\n"
+			"  character_set="  << static_cast<int1>(value.character_set) << ",\n"
+			"  username=" << value.username.value << ",\n"
+			"  auth_response=" << value.auth_response.value << ",\n"
+			"  database=" << value.database.value << ",\n"
+			"  client_plugin_name=" << value.client_plugin_name.value << "\n)";
+}
