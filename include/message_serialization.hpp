@@ -11,6 +11,7 @@ namespace mysql
 
 // general
 ReadIterator deserialize(ReadIterator from, ReadIterator last, PacketHeader& output);
+void serialize(DynamicBuffer& buffer, const PacketHeader& value);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, OkPacket& output);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output);
 

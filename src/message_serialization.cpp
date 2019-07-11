@@ -19,6 +19,12 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Pac
 	return from;
 }
 
+void mysql::serialize(DynamicBuffer& buffer, const PacketHeader& value)
+{
+	serialize(buffer, value.packet_size);
+	serialize(buffer, value.sequence_number);
+}
+
 mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, OkPacket& output)
 {
 	// TODO: is packet header to be deserialized as part of this?
@@ -115,6 +121,7 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Stm
 	from = deserialize(from, last, output.num_columns);
 	from = deserialize(from, last, output.num_params);
 	from = deserialize(from, last, reserved);
+	// TODO: warning_count appears to be optional but we are always requiring it
 	from = deserialize(from, last, output.warning_count);
 	return from;
 }

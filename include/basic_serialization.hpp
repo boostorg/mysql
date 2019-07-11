@@ -88,6 +88,12 @@ deserialize(ReadIterator from, ReadIterator last, T& to)
 	return res;
 }
 
+template <typename T>
+ReadIterator deserialize(const std::vector<std::uint8_t>& from, T& to)
+{
+	return deserialize(from.data(), from.data() + from.size(), to);
+}
+
 // SERIALIZATION
 
 class DynamicBuffer
@@ -105,6 +111,7 @@ public:
 	const void* data() const { return buffer_.data(); }
 	void* data() { return buffer_.data(); }
 	std::size_t size() const { return buffer_.size(); }
+	const std::vector<std::uint8_t>& get() const { return buffer_; }
 };
 
 template <typename T> void native_to_little(T& value) { boost::endian::native_to_little_inplace(value); }

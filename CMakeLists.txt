@@ -15,6 +15,7 @@ add_library(
 	src/message_serialization.cpp
 	src/mysql_stream.cpp
 	src/auth.cpp
+	src/prepared_statement.cpp
 )
 target_link_libraries(
 	mysql_asio

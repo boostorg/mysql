@@ -50,51 +50,22 @@ constexpr mysql::int4 BASIC_CAPABILITIES_FLAGS =
 		mysql::CLIENT_DEPRECATE_EOF |
 		mysql::CLIENT_CONNECT_WITH_DB;
 
-void mysql::AnyPacketReader::read(boost::asio::ip::tcp::socket& stream)
+mysql::int1 mysql::get_message_type(const std::vector<std::uint8_t>& buffer, bool check_err)
 {
-	// Connection phase
-	uint8_t header_buffer [4];
-	boost::asio::read(stream, boost::asio::buffer(header_buffer));
-	deserialize(header_buffer, std::end(header_buffer), header_);
-
-	// Read the rest of the packet
-	buffer_.reset(new uint8_t[header_.packet_size.value]);
-	boost::asio::read(stream, boost::asio::mutable_buffer{buffer_.get(), header_.packet_size.value});
-
-	deserialize(buffer_.get(), end(), message_type_);
-}
-
-void mysql::AnyPacketReader::check_error() const
-{
-	if (is_error())
+	mysql::int1 res;
+	ReadIterator current = mysql::deserialize(buffer, res);
+	if (check_err && res == error_packet_header)
 	{
 		ErrPacket error_packet;
-		deserialize_message(error_packet);
+		deserialize(current, buffer.data() + buffer.size(), error_packet);
 		std::ostringstream ss;
 		ss << "SQL error: " << error_packet.error_message.value
 		   << " (" << error_packet.error_code << ")";
 		throw std::runtime_error { ss.str() };
 	}
+	return res;
 }
 
-mysql::AnyPacketWriter::AnyPacketWriter(int1 sequence_number)
-{
-	std::uint8_t initial_content [] = {0, 0, 0, sequence_number};
-	buffer_.add(initial_content, sizeof(initial_content));
-}
-
-void mysql::AnyPacketWriter::set_length()
-{
-	assert(buffer_.size() <= 0xffffff); // TODO: handle the case where this does not hold
-	int3 packet_length { static_cast<std::uint32_t>(buffer_.size() - 4) };
-	boost::endian::native_to_little_inplace(packet_length.value);
-	memcpy(buffer_.data(), &packet_length.value, 3);
-}
-
-void mysql::AnyPacketWriter::write(boost::asio::ip::tcp::socket& stream)
-{
-	boost::asio::write(stream, boost::asio::buffer(buffer_.data(), buffer_.size()));
-}
 
 void mysql::MysqlStream::process_sequence_number(int1 got)
 {
@@ -102,28 +73,61 @@ void mysql::MysqlStream::process_sequence_number(int1 got)
 		throw std::runtime_error { "Mismatched sequence number" };
 }
 
-void mysql::MysqlStream::read_packet(AnyPacketReader& packet)
+void mysql::MysqlStream::read(std::vector<std::uint8_t>& buffer)
 {
-	packet.read(next_layer_);
-	process_sequence_number(packet.header().sequence_number);
+	PacketHeader header;
+	uint8_t header_buffer [4];
+	std::size_t current_size = 0;
+	do
+	{
+		boost::asio::read(next_layer_, boost::asio::buffer(header_buffer));
+		deserialize(std::begin(header_buffer), std::end(header_buffer), header);
+		process_sequence_number(header.sequence_number);
+		buffer.resize(current_size + header.packet_size.value);
+		boost::asio::read(next_layer_, boost::asio::buffer(buffer.data() + current_size, header.packet_size.value));
+		current_size += header.packet_size.value;
+	} while (header.packet_size.value == 0xffffff);
+}
+
+void mysql::MysqlStream::write(const std::vector<std::uint8_t>& buffer)
+{
+	PacketHeader header;
+	DynamicBuffer header_buffer; // TODO: change to a plain uint8_t when we generalize this
+	std::size_t current_size = 0;
+	while (current_size < buffer.size())
+	{
+		auto size_to_write = static_cast<std::uint32_t>(std::min(
+				std::vector<std::uint8_t>::size_type(0xffffff),
+				buffer.size() - current_size
+		));
+		header.packet_size.value = size_to_write;
+		header.sequence_number = sequence_number_++;
+		serialize(header_buffer, header);
+		boost::asio::write(next_layer_, boost::asio::buffer(header_buffer.data(), header_buffer.size()));
+		boost::asio::write(next_layer_, boost::asio::buffer(buffer.data() + current_size, size_to_write));
+		current_size += size_to_write;
+	}
 }
 
 void mysql::MysqlStream::handshake(const HandshakeParams& params)
 {
-	AnyPacketReader reader;
-	read_packet(reader);
+	std::vector<std::uint8_t> read_buffer;
+	DynamicBuffer write_buffer;
 
-	if (reader.message_type() != handshake_protocol_version_10)
+	// Read handshake
+	read(read_buffer);
+	auto msg_type = get_message_type(read_buffer);
+	if (msg_type != handshake_protocol_version_10)
 	{
-		const char* reason = reader.message_type() == handshake_protocol_version_9 ?
+		const char* reason = msg_type == handshake_protocol_version_9 ?
 				"Unsupported protocol version 9" :
 				"Unknown message type";
 		throw std::runtime_error {reason};
 	}
+	mysql::Handshake handshake;
+	deserialize(read_buffer.data()+1, read_buffer.data() + read_buffer.size(), handshake);
 
 	// Process the handshake
-	mysql::Handshake handshake;
-	reader.deserialize_message(handshake);
 	check_capabilities(handshake.capability_falgs);
 	check_authentication_method(handshake);
 	cout << handshake << "\n\n";
@@ -142,16 +146,16 @@ void mysql::MysqlStream::handshake(const HandshakeParams& params)
 	cout << handshake_response << "\n\n";
 
 	// Serialize and send
-	AnyPacketWriter writer { sequence_number_++ };
-	writer.serialize_message(handshake_response);
-	writer.write(next_layer_);
+	serialize(write_buffer, handshake_response);
+	write(write_buffer.get());
 
 	// TODO: support auth mismatch
 	// TODO: support SSL
 
 	// Read the OK/ERR
-	read_packet(reader);
-	if (!reader.is_ok() && !reader.is_eof())
+	read(read_buffer);
+	msg_type = get_message_type(read_buffer);
+	if (msg_type != ok_packet_header && msg_type != eof_packet_header)
 	{
 		throw std::runtime_error { "Unknown message type" };
 	}

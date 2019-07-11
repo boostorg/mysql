@@ -2,6 +2,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include "mysql_stream.hpp"
+#include "prepared_statement.hpp"
 
 using namespace std;
 using namespace boost::asio;
@@ -41,6 +42,11 @@ int main()
 		"root",
 		"mysql"
 	});
+
+	// Prepare a statement
+
+	mysql::PreparedStatement stmt { mysql::PreparedStatement::prepare(
+			stream, "SELECT host FROM user WHERE user = ?") };
 
 
 }
