@@ -6,8 +6,10 @@
  */
 
 #include "message_serialization.hpp"
+#include "null_bitmap.hpp"
 #include <bitset>
 #include <ostream>
+#include <memory>
 
 using namespace std;
 
@@ -124,6 +126,52 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Stm
 	// TODO: warning_count appears to be optional but we are always requiring it
 	from = deserialize(from, last, output.warning_count);
 	return from;
+}
+
+void mysql::serialize(DynamicBuffer& buffer, const BinaryValue& value)
+{
+	std::visit([&buffer](auto v) {
+		mysql::serialize(buffer, v);
+	}, value);
+}
+
+void mysql::serialize(DynamicBuffer& buffer, const StmtExecute& value)
+{
+	serialize(buffer, Command::COM_STMT_EXECUTE);
+	serialize(buffer, value.statement_id);
+	serialize(buffer, value.flags);
+	serialize(buffer, int4(1)); // iteration_count
+
+	// NULL bitmap
+	if (!value.param_values.empty())
+	{
+		StmtExecuteNullBitmapTraits traits { value.param_values.size() };
+		std::vector<std::uint8_t> null_bitmap (traits.byte_count(), 0);
+		for (std::size_t i = 0; i < value.param_values.size(); ++i)
+		{
+			if (value.param_values[i].field_type == FieldType::NULL_)
+			{
+				null_bitmap[traits.byte_pos(i)] |= (1 << traits.bit_pos(i));
+			}
+		}
+		buffer.add(null_bitmap.data(), null_bitmap.size());
+
+		serialize(buffer, value.new_params_bind_flag);
+
+		if (value.new_params_bind_flag)
+		{
+			for (const auto& param: value.param_values)
+			{
+				serialize(buffer, param.field_type);
+				serialize(buffer, int1(param.is_signed ? 0 : 0x80));
+			}
+
+			for (const auto& param: value.param_values)
+			{
+				serialize(buffer, param.value);
+			}
+		}
+	}
 }
 
 // Text serialization

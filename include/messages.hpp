@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <variant>
 #include "basic_types.hpp"
 
 namespace mysql
@@ -210,6 +211,32 @@ struct StmtPrepareResponseHeader
 	// TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
 };
 
+using BinaryValue = std::variant<
+	string_lenenc,
+	int8,
+	int4,
+	int2,
+	int1,
+	// TODO: double, float, dates/times
+	nullptr_t // aka NULL
+>;
+
+struct StmtParamValue
+{
+	FieldType field_type;
+	bool is_signed;
+	BinaryValue value;
+};
+
+struct StmtExecute
+{
+	//int1 message_type: COM_STMT_EXECUTE
+	int4 statement_id;
+	int1 flags;
+	// int4 iteration_count: always 1
+	int1 new_params_bind_flag;
+	std::vector<StmtParamValue> param_values;
+};
 
 
 }

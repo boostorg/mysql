@@ -38,3 +38,48 @@ mysql::PreparedStatement mysql::PreparedStatement::prepare(MysqlStream& stream, 
 
 	return PreparedStatement {stream, response.statement_id, move(params), move(columns)};
 }
+
+void mysql::PreparedStatement::do_execute(const StmtExecute& message)
+{
+	DynamicBuffer write_buffer;
+	serialize(write_buffer, message);
+	stream_->reset_sequence_number();
+	stream_->write(write_buffer.get());
+	std::vector<std::uint8_t> read_buffer;
+	stream_->read(read_buffer);
+	// TODO: do sth with response
+}
+
+std::size_t mysql::detail::field_type_to_variant_index(FieldType value)
+{
+	switch (value)
+	{
+	case FieldType::STRING:
+	case FieldType::VARCHAR:
+	case FieldType::VAR_STRING:
+    case FieldType::ENUM:
+    case FieldType::SET:
+    case FieldType::LONG_BLOB:
+    case FieldType::MEDIUM_BLOB:
+    case FieldType::BLOB:
+    case FieldType::TINY_BLOB:
+    case FieldType::GEOMETRY:
+    case FieldType::BIT:
+    case FieldType::DECIMAL:
+    case FieldType::NEWDECIMAL:
+		return 0; // TODO: this is not very good
+    case FieldType::LONGLONG:
+    	return 1;
+    case FieldType::LONG:
+    case FieldType::INT24:
+    	return 2;
+    case FieldType::SHORT:
+    case FieldType::YEAR:
+    	return 3;
+    case FieldType::TINY:
+    	return 4;
+    case FieldType::NULL_:
+    	return 5;
+    default: throw std::logic_error {"Not implemented"};
+	}
+}

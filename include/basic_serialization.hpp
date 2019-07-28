@@ -88,6 +88,8 @@ deserialize(ReadIterator from, ReadIterator last, T& to)
 	return res;
 }
 
+inline ReadIterator deserialize(ReadIterator from, ReadIterator last, nullptr_t&) { return from; }
+
 template <typename T>
 ReadIterator deserialize(const std::vector<std::uint8_t>& from, T& to)
 {
@@ -168,7 +170,7 @@ serialize(DynamicBuffer& buffer, T value)
 	serialize(buffer, static_cast<std::underlying_type_t<T>>(value));
 }
 
-
+inline void serialize(DynamicBuffer&, nullptr_t) {};
 
 
 }

@@ -40,13 +40,14 @@ int main()
 		CharacterSetLowerByte::utf8_general_ci,
 		"root",
 		"root",
-		"mysql"
+		"awesome"
 	});
 
 	// Prepare a statement
 
 	mysql::PreparedStatement stmt { mysql::PreparedStatement::prepare(
-			stream, "SELECT host FROM user WHERE user = ?") };
+			stream, "SELECT first_name, age FROM users WHERE last_name = ?") };
+	stmt.execute(string_lenenc {"user"});
 
 
 }

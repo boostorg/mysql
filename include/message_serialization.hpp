@@ -25,6 +25,8 @@ ReadIterator deserialize(ReadIterator from, ReadIterator last, ColumnDefinition&
 // Prepared statements
 void serialize(DynamicBuffer& buffer, const StmtPrepare& value);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtPrepareResponseHeader& output);
+void serialize(DynamicBuffer& buffer, const BinaryValue& value);
+void serialize(DynamicBuffer& buffer, const StmtExecute& value);
 
 // Text serialization
 std::ostream& operator<<(std::ostream& os, const Handshake& value);
