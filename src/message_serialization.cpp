@@ -89,7 +89,7 @@ void mysql::serialize(DynamicBuffer& buffer, const HandshakeResponse& value)
 	serialize(buffer, value.client_plugin_name);
 }
 
-// Command phase, general
+// Resultsets
 mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, ColumnDefinition& output)
 {
 	int_lenenc length_fixed_length_fields;
@@ -106,6 +106,13 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Col
 	from = deserialize(from, last, output.flags);
 	from = deserialize(from, last, output.decimals);
 	return from;
+}
+
+void mysql::serialize_binary_value(DynamicBuffer& buffer, const BinaryValue& value)
+{
+	std::visit([&buffer](auto v) {
+		mysql::serialize(buffer, v);
+	}, value);
 }
 
 // Prepared statements
@@ -128,13 +135,6 @@ mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, Stm
 	return from;
 }
 
-void mysql::serialize(DynamicBuffer& buffer, const BinaryValue& value)
-{
-	std::visit([&buffer](auto v) {
-		mysql::serialize(buffer, v);
-	}, value);
-}
-
 void mysql::serialize(DynamicBuffer& buffer, const StmtExecute& value)
 {
 	serialize(buffer, Command::COM_STMT_EXECUTE);
@@ -149,7 +149,7 @@ void mysql::serialize(DynamicBuffer& buffer, const StmtExecute& value)
 		std::vector<std::uint8_t> null_bitmap (traits.byte_count(), 0);
 		for (std::size_t i = 0; i < value.param_values.size(); ++i)
 		{
-			if (value.param_values[i].field_type == FieldType::NULL_)
+			if (std::holds_alternative<std::nullptr_t>(value.param_values[i]))
 			{
 				null_bitmap[traits.byte_pos(i)] |= (1 << traits.bit_pos(i));
 			}
@@ -162,16 +162,49 @@ void mysql::serialize(DynamicBuffer& buffer, const StmtExecute& value)
 		{
 			for (const auto& param: value.param_values)
 			{
-				serialize(buffer, param.field_type);
-				serialize(buffer, int1(param.is_signed ? 0 : 0x80));
+				auto type = compute_field_type(param);
+				serialize(buffer, type.first);
+				serialize(buffer, int1(type.second ? 0 : 0x80));
 			}
 
 			for (const auto& param: value.param_values)
 			{
-				serialize(buffer, param.value);
+				serialize_binary_value(buffer, param);
 			}
 		}
 	}
+}
+
+mysql::ReadIterator mysql::deserialize(ReadIterator from, ReadIterator last, StmtExecuteResponseHeader& output)
+{
+	// TODO: int1 status: must be 0 to be deserialized as part of this?
+	return deserialize(from, last, output.num_fields);
+}
+
+
+// TODO: refactor this
+#define MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(type, typenum, issigned) \
+		template <> \
+		constexpr std::pair<mysql::FieldType, bool> \
+		compute_field_type_impl<type>() { return { mysql::FieldType::typenum, issigned }; };
+
+template <typename T> constexpr std::pair<mysql::FieldType, bool> compute_field_type_impl();
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::int8_t, TINY, true);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::uint8_t, TINY, false);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::int16_t, SHORT, true);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::uint16_t, SHORT, false);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::int32_t, LONG, true);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::uint32_t, LONG, false);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::int64_t, LONGLONG, true);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::uint64_t, LONGLONG, false);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(mysql::string_lenenc, STRING, true);
+MYSQL_COMPUTE_FIELD_TYPE_IMPL_ENTRY(std::nullptr_t, NULL_, true);
+
+std::pair<mysql::FieldType, bool> mysql::compute_field_type(const BinaryValue& v)
+{
+	return std::visit([](auto elm) {
+		return compute_field_type_impl<decltype(elm)>();
+	}, v);
 }
 
 // Text serialization

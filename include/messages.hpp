@@ -212,21 +212,18 @@ struct StmtPrepareResponseHeader
 };
 
 using BinaryValue = std::variant<
+	std::int8_t,
+	std::int16_t,
+	std::int32_t,
+	std::int64_t,
+	std::uint8_t,
+	std::uint16_t,
+	std::uint32_t,
+	std::uint64_t,
 	string_lenenc,
-	int8,
-	int4,
-	int2,
-	int1,
+	std::nullptr_t // NULL
 	// TODO: double, float, dates/times
-	nullptr_t // aka NULL
 >;
-
-struct StmtParamValue
-{
-	FieldType field_type;
-	bool is_signed;
-	BinaryValue value;
-};
 
 struct StmtExecute
 {
@@ -235,7 +232,12 @@ struct StmtExecute
 	int1 flags;
 	// int4 iteration_count: always 1
 	int1 new_params_bind_flag;
-	std::vector<StmtParamValue> param_values;
+	std::vector<BinaryValue> param_values;
+};
+
+struct StmtExecuteResponseHeader
+{
+	int1 num_fields;
 };
 
 

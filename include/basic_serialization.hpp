@@ -25,6 +25,10 @@ template <> struct get_size<int3> { static constexpr std::size_t value = 3; };
 template <> struct get_size<int4> { static constexpr std::size_t value = 4; };
 template <> struct get_size<int6> { static constexpr std::size_t value = 6; };
 template <> struct get_size<int8> { static constexpr std::size_t value = 8; };
+template <> struct get_size<std::int8_t> { static constexpr std::size_t value = 1; };
+template <> struct get_size<std::int16_t> { static constexpr std::size_t value = 2; };
+template <> struct get_size<std::int32_t> { static constexpr std::size_t value = 4; };
+template <> struct get_size<std::int64_t> { static constexpr std::size_t value = 8; };
 template <std::size_t size> struct get_size<string_fixed<size>> { static constexpr std::size_t value = size; };
 
 template <typename T> constexpr std::size_t get_size_v = get_size<T>::value;

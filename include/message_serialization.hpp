@@ -19,14 +19,16 @@ ReadIterator deserialize(ReadIterator from, ReadIterator last, ErrPacket& output
 ReadIterator deserialize(ReadIterator from, ReadIterator last, Handshake& output);
 void serialize(DynamicBuffer& buffer, const HandshakeResponse& value);
 
-// Command phase, general
+// Resultsets
 ReadIterator deserialize(ReadIterator from, ReadIterator last, ColumnDefinition& output);
+void serialize_binary_value(DynamicBuffer& buffer, const BinaryValue& value);
 
 // Prepared statements
 void serialize(DynamicBuffer& buffer, const StmtPrepare& value);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtPrepareResponseHeader& output);
-void serialize(DynamicBuffer& buffer, const BinaryValue& value);
 void serialize(DynamicBuffer& buffer, const StmtExecute& value);
+ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtExecuteResponseHeader& output);
+std::pair<FieldType, bool> compute_field_type(const BinaryValue&);
 
 // Text serialization
 std::ostream& operator<<(std::ostream& os, const Handshake& value);
