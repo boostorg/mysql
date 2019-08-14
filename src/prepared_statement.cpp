@@ -82,7 +82,7 @@ mysql::BinaryResultsetRow::BinaryResultsetRow(
 	packet_ {std::move(packet)}
 {
 	values_.reserve(fields_.size());
-	StmtExecuteNullBitmapTraits traits {fields_.size()};
+	ResultsetRowNullBitmapTraits traits {fields_.size()};
 	ReadIterator null_bitmap_first = packet_.data() + 1; // Skip header
 	ReadIterator first = null_bitmap_first + traits.byte_count();
 	ReadIterator last = packet_.data() + packet_.size();

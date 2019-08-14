@@ -61,7 +61,7 @@ int main()
 
 	mysql::PreparedStatement stmt { mysql::PreparedStatement::prepare(
 			stream, "SELECT * from users WHERE age < ? and first_name <> ?") };
-	auto res = stmt.execute(22, string_lenenc{"hola"});
+	auto res = stmt.execute(40, string_lenenc{"hola"});
 	for (const auto& row: res)
 	{
 		for (const auto& field: row.values())
