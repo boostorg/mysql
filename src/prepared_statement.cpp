@@ -2,13 +2,22 @@
 #include "prepared_statement.hpp"
 #include "message_serialization.hpp"
 #include "null_bitmap.hpp"
+#include <cassert>
 
 using namespace std;
 
-static void read_param(mysql::MysqlStream& stream, mysql::ParamDefinition& output)
+static std::vector<mysql::ParamDefinition> read_fields(
+	mysql::MysqlStream& stream,
+	std::size_t quantity
+)
 {
-	stream.read(output.packet);
-	mysql::deserialize(output.packet, output.value);
+	std::vector<mysql::ParamDefinition> res (quantity);
+	for (auto& elm: res)
+	{
+		stream.read(elm.packet);
+		mysql::deserialize(elm.packet, elm.value);
+	}
+	return res;
 }
 
 template <typename T>
@@ -74,27 +83,27 @@ static mysql::BinaryValue deserialize_field(
 	}
 }
 
-mysql::BinaryResultsetRow::BinaryResultsetRow(
-	const std::vector<ParamDefinition>& fields,
-	std::vector<std::uint8_t>&& packet
-) :
-	fields_ {fields},
-	packet_ {std::move(packet)}
+static void deserialize_binary_row(
+	const std::vector<std::uint8_t>& packet,
+	const std::vector<mysql::ParamDefinition>& fields,
+	std::vector<mysql::BinaryValue>& output
+)
 {
-	values_.reserve(fields_.size());
-	ResultsetRowNullBitmapTraits traits {fields_.size()};
-	ReadIterator null_bitmap_first = packet_.data() + 1; // Skip header
-	ReadIterator first = null_bitmap_first + traits.byte_count();
-	ReadIterator last = packet_.data() + packet_.size();
+	output.clear();
+	output.reserve(fields.size());
+	mysql::ResultsetRowNullBitmapTraits traits {fields.size()};
+	mysql::ReadIterator null_bitmap_first = packet.data() + 1; // skip header
+	mysql::ReadIterator current = null_bitmap_first + traits.byte_count();
+	mysql::ReadIterator last = packet.data() + packet.size();
 
-	for (std::size_t i = 0; i < fields_.size(); ++i)
+	for (std::size_t i = 0; i < fields.size(); ++i)
 	{
 		if (traits.is_null(null_bitmap_first, i))
-			values_.emplace_back(nullptr);
+			output.emplace_back(nullptr);
 		else
-			values_.push_back(deserialize_field(fields_[i].value.type, first, last));
+			output.push_back(deserialize_field(fields[i].value.type, current, last));
 	}
-	if (first != last)
+	if (current != last)
 	{
 		throw std::out_of_range {"Leftover data after binary row"};
 	}
@@ -132,46 +141,87 @@ mysql::PreparedStatement mysql::PreparedStatement::prepare(MysqlStream& stream, 
 	deserialize(read_buffer.data() + 1, read_buffer.data() + read_buffer.size(), response);
 
 	// Read the parameters and columns if any
-	std::vector<ParamDefinition> params (response.num_params);
-	for (int2 i = 0; i < response.num_params; ++i)
-		read_param(stream, params[i]);
-	std::vector<ParamDefinition> columns (response.num_columns);
-	for (int2 i = 0; i < response.num_columns; ++i)
-		read_param(stream, columns[i]);
+	auto params = read_fields(stream, response.num_params);
+	auto fields = read_fields(stream, response.num_columns);
 
-	return PreparedStatement {stream, response.statement_id, move(params), move(columns)};
+	return PreparedStatement {stream, response.statement_id, move(params), move(fields)};
 }
 
-std::vector<mysql::BinaryResultsetRow> mysql::PreparedStatement::do_execute(const StmtExecute& message)
+void mysql::BinaryResultset::read_metadata()
 {
+	stream_->read(current_packet_);
+	if (get_message_type(current_packet_) == ok_packet_header) // Implicitly checks for errors
+	{
+		process_ok();
+	}
+	else
+	{
+		// Header containing number of fields
+		StmtExecuteResponseHeader response_header;
+		deserialize(current_packet_, response_header);
+
+		// Fields
+		fields_ = read_fields(*stream_, response_header.num_fields);
+
+		// First row
+		retrieve_next();
+	}
+}
+
+void mysql::BinaryResultset::process_ok()
+{
+	deserialize(current_packet_.data() + 1,
+			current_packet_.data() + current_packet_.size(),
+			ok_packet_);
+	if (ok_packet_.status_flags & SERVER_STATUS_CURSOR_EXISTS)
+	{
+		// TODO: handle cursor semantics
+	}
+	state_ = State::exhausted;
+}
+
+bool mysql::BinaryResultset::retrieve_next()
+{
+	if (state_ == State::exhausted)
+		return false;
+
+	stream_->read(current_packet_);
+	auto msg_type = get_message_type(current_packet_);
+	if (msg_type == eof_packet_header)
+	{
+		process_ok();
+	}
+	else
+	{
+		deserialize_binary_row(current_packet_, fields_, current_values_);
+		state_ = State::data_available;
+	}
+	return more_data();
+}
+
+const mysql::OkPacket& mysql::BinaryResultset::ok_packet() const
+{
+	assert(state_ == State::exhausted);
+	return ok_packet_;
+}
+
+const std::vector<mysql::BinaryValue>& mysql::BinaryResultset::values() const
+{
+	assert(state_ == State::data_available);
+	return current_values_;
+}
+
+mysql::BinaryResultset mysql::PreparedStatement::do_execute(const StmtExecute& message)
+{
+	std::vector<std::uint8_t> read_buffer;
+
 	// TODO: other cursor types
 	DynamicBuffer write_buffer;
 	serialize(write_buffer, message);
 	stream_->reset_sequence_number();
 	stream_->write(write_buffer.get());
 
-	// Execute response header
-	std::vector<std::uint8_t> read_buffer;
-	stream_->read(read_buffer);
-	StmtExecuteResponseHeader response_header;
-	deserialize(read_buffer, response_header);
-
-	// Read the parameters. Ignore the packets
-	for (int1 i = 0; i < response_header.num_fields; ++i)
-		stream_->read(read_buffer);
-
-	// Read the result
-	std::vector<mysql::BinaryResultsetRow> res;
-
-	while (true)
-	{
-		read_buffer.clear();
-		stream_->read(read_buffer);
-		auto msg_type = get_message_type(read_buffer);
-		if (msg_type == eof_packet_header)
-			break;
-		res.emplace_back(columns_, std::move(read_buffer));
-	}
-
-	return res;
+	return mysql::BinaryResultset {*stream_};
 }
+
+

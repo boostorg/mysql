@@ -13,17 +13,35 @@ struct ParamDefinition
 {
 	std::vector<std::uint8_t> packet;
 	ColumnDefinition value;
+	// TODO: copies should be disallowed
 };
 
-class BinaryResultsetRow
+class BinaryResultset
 {
-	const std::vector<ParamDefinition>& fields_;
-	std::vector<std::uint8_t> packet_;
-	std::vector<BinaryValue> values_;
+	enum class State { initial, data_available, exhausted };
+
+	MysqlStream* stream_;
+	std::vector<ParamDefinition> fields_;
+	std::vector<std::uint8_t> current_packet_;
+	std::vector<BinaryValue> current_values_;
+	OkPacket ok_packet_;
+	State state_;
+
+	void read_metadata();
+	void process_ok();
 public:
-	BinaryResultsetRow(const std::vector<ParamDefinition>& fields, std::vector<std::uint8_t>&& packet);
+	BinaryResultset(MysqlStream& stream):
+		stream_ {&stream}, ok_packet_ {},
+		state_ {State::initial} { read_metadata(); };
+	BinaryResultset(const BinaryResultset&) = delete;
+	BinaryResultset(BinaryResultset&&) = default;
+	BinaryResultset& operator=(const BinaryResultset&) = delete;
+	BinaryResultset& operator=(BinaryResultset&&) = default;
+	bool retrieve_next();
 	const std::vector<ParamDefinition>& fields() const { return fields_; }
-	const std::vector<BinaryValue>& values() const { return values_; }
+	const std::vector<BinaryValue>& values() const;
+	const OkPacket& ok_packet() const; // Can only be called after exhausted
+	bool more_data() const { return state_ != State::exhausted; }
 };
 
 class PreparedStatement
@@ -33,7 +51,7 @@ class PreparedStatement
 	std::vector<ParamDefinition> params_;
 	std::vector<ParamDefinition> columns_;
 
-	std::vector<BinaryResultsetRow> do_execute(const StmtExecute& message);
+	BinaryResultset do_execute(const StmtExecute& message);
 public:
 	PreparedStatement(MysqlStream& stream, int4 statement_id,
 			std::vector<ParamDefinition>&& params, std::vector<ParamDefinition>&& columns);
@@ -49,9 +67,7 @@ public:
 	const std::vector<ParamDefinition>& columns() const { return columns_; }
 
 	template <typename... Params>
-	std::vector<BinaryResultsetRow> execute(Params&&... params);
-	// execute(Something&&... params): StatementResponse
-	// execute() // uses already-bound params
+	BinaryResultset execute(Params&&... params);
 	// close(Connection)
 	// Destructor should try to auto-close
 
@@ -86,6 +102,7 @@ void fill_execute_msg(StmtExecute& output, std::size_t num_params, Args&&... arg
 	{
 		throw std::out_of_range {"Wrong number of parameters passed to prepared statement"};
 	}
+	output.num_params = static_cast<int1>(num_params);
 	output.new_params_bind_flag = 1;
 	output.param_values.resize(num_params);
 	fill_execute_msg_impl(output.param_values.begin(), std::forward<Args>(args)...);
@@ -97,7 +114,7 @@ void fill_execute_msg(StmtExecute& output, std::size_t num_params, Args&&... arg
 
 
 template <typename... Params>
-std::vector<mysql::BinaryResultsetRow> mysql::PreparedStatement::execute(Params&&... actual_params)
+mysql::BinaryResultset mysql::PreparedStatement::execute(Params&&... actual_params)
 {
 	StmtExecute message
 	{

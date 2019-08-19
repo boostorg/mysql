@@ -20,6 +20,23 @@ struct VariantPrinter
 	void operator()(std::nullptr_t) const { (*this)("NULL"); }
 };
 
+void print(mysql::BinaryResultset& res)
+{
+	for (bool ok = res.more_data(); ok; ok = res.retrieve_next())
+	{
+		for (const auto& field: res.values())
+		{
+			std::visit(VariantPrinter(), field);
+		}
+		std::cout << "\n";
+	}
+	const auto& ok = res.ok_packet();
+	std::cout << "affected_rows=" << ok.affected_rows.value
+			  << ", last_insert_id=" << ok.last_insert_id.value
+			  << ", warnings=" << ok.warnings
+			  << ", info=" << ok.info.value << endl;
+}
+
 int main()
 {
 	// Basic
@@ -53,22 +70,14 @@ int main()
 	});
 
 	// Prepare a statement
-
-	/*mysql::PreparedStatement stmt { mysql::PreparedStatement::prepare(
-			stream, "SELECT first_name, age FROM users WHERE last_name = ?") };
-	stmt.execute(string_lenenc {"user"});*/
-
-
-	mysql::PreparedStatement stmt { mysql::PreparedStatement::prepare(
-			stream, "SELECT * from users WHERE age < ? and first_name <> ?") };
+	auto stmt = mysql::PreparedStatement::prepare(
+			stream, "SELECT * from users WHERE age < ? and first_name <> ?");
 	auto res = stmt.execute(40, string_lenenc{"hola"});
-	for (const auto& row: res)
-	{
-		for (const auto& field: row.values())
-		{
-			std::visit(VariantPrinter(), field);
-		}
-		std::cout << "\n";
-	}
-
+	print(res);
+	auto make_older = mysql::PreparedStatement::prepare(stream, "UPDATE users SET age = age + 1");
+	res = make_older.execute();
+	print(res);
+	res = stmt.execute(40, string_lenenc{"hola"});
+	cout << "\n\n";
+	print(res);
 }

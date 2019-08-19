@@ -142,16 +142,19 @@ void mysql::serialize(DynamicBuffer& buffer, const StmtExecute& value)
 	serialize(buffer, value.flags);
 	serialize(buffer, int4(1)); // iteration_count
 
-	// NULL bitmap
-	if (!value.param_values.empty())
+	if (value.num_params > 0)
 	{
-		StmtExecuteNullBitmapTraits traits { value.param_values.size() };
+		// NULL bitmap
+		StmtExecuteNullBitmapTraits traits { value.num_params };
 		std::vector<std::uint8_t> null_bitmap (traits.byte_count(), 0);
-		for (std::size_t i = 0; i < value.param_values.size(); ++i)
+		if (value.new_params_bind_flag)
 		{
-			if (std::holds_alternative<std::nullptr_t>(value.param_values[i]))
+			for (std::size_t i = 0; i < value.param_values.size(); ++i)
 			{
-				null_bitmap[traits.byte_pos(i)] |= (1 << traits.bit_pos(i));
+				if (std::holds_alternative<std::nullptr_t>(value.param_values[i]))
+				{
+					traits.set_null(null_bitmap.data(), i);
+				}
 			}
 		}
 		buffer.add(null_bitmap.data(), null_bitmap.size());

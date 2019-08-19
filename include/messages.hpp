@@ -231,8 +231,9 @@ struct StmtExecute
 	int4 statement_id;
 	int1 flags;
 	// int4 iteration_count: always 1
+	int1 num_params;
 	int1 new_params_bind_flag;
-	std::vector<BinaryValue> param_values;
+	std::vector<BinaryValue> param_values; // empty if !new_params_bind_flag
 };
 
 struct StmtExecuteResponseHeader
