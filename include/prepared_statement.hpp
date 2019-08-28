@@ -5,6 +5,7 @@
 #include "mysql_stream.hpp"
 #include <stdexcept>
 #include <vector>
+#include <limits>
 
 namespace mysql
 {
@@ -21,6 +22,8 @@ class BinaryResultset
 	enum class State { initial, data_available, exhausted };
 
 	MysqlStream* stream_;
+	int4 statement_id_;
+	int4 fetch_count_;
 	std::vector<ParamDefinition> fields_;
 	std::vector<std::uint8_t> current_packet_;
 	std::vector<BinaryValue> current_values_;
@@ -29,9 +32,11 @@ class BinaryResultset
 
 	void read_metadata();
 	void process_ok();
+	void send_fetch();
+	bool cursor_exists() const { return ok_packet_.status_flags & SERVER_STATUS_CURSOR_EXISTS; }
 public:
-	BinaryResultset(MysqlStream& stream):
-		stream_ {&stream}, ok_packet_ {},
+	BinaryResultset(MysqlStream& stream, int4 stmt_id, int4 fetch_count):
+		stream_ {&stream}, statement_id_ {stmt_id}, fetch_count_ {fetch_count}, ok_packet_ {},
 		state_ {State::initial} { read_metadata(); };
 	BinaryResultset(const BinaryResultset&) = delete;
 	BinaryResultset(BinaryResultset&&) = default;
@@ -51,8 +56,10 @@ class PreparedStatement
 	std::vector<ParamDefinition> params_;
 	std::vector<ParamDefinition> columns_;
 
-	BinaryResultset do_execute(const StmtExecute& message);
+	BinaryResultset do_execute(const StmtExecute& message, int4 fetch_count);
 public:
+	static constexpr int4 MAX_FETCH_COUNT = std::numeric_limits<int4>::max();
+
 	PreparedStatement(MysqlStream& stream, int4 statement_id,
 			std::vector<ParamDefinition>&& params, std::vector<ParamDefinition>&& columns);
 	PreparedStatement(const PreparedStatement&) = delete;
@@ -67,7 +74,10 @@ public:
 	const std::vector<ParamDefinition>& columns() const { return columns_; }
 
 	template <typename... Params>
-	BinaryResultset execute(Params&&... params);
+	BinaryResultset execute(Params&&... params) { return execute_with_cursor(MAX_FETCH_COUNT, std::forward<Params>(params)...); }
+
+	template <typename... Params>
+	BinaryResultset execute_with_cursor(int4 fetch_count, Params&&... params);
 	// close(Connection)
 	// Destructor should try to auto-close
 
@@ -114,15 +124,19 @@ void fill_execute_msg(StmtExecute& output, std::size_t num_params, Args&&... arg
 
 
 template <typename... Params>
-mysql::BinaryResultset mysql::PreparedStatement::execute(Params&&... actual_params)
+mysql::BinaryResultset mysql::PreparedStatement::execute_with_cursor(
+	int4 fetch_count,
+	Params&&... actual_params
+)
 {
+	int1 flags = fetch_count == MAX_FETCH_COUNT ? CURSOR_TYPE_NO_CURSOR : CURSOR_TYPE_READ_ONLY;
 	StmtExecute message
 	{
 		statement_id_,
-		0 // Cursor type: no cursor. TODO: allow execution with different cursor types
+		flags
 	};
 	detail::fill_execute_msg(message, params_.size(), std::forward<Params>(actual_params)...);
-	return do_execute(message);
+	return do_execute(message, fetch_count);
 }
 
 

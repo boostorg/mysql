@@ -195,6 +195,11 @@ struct ColumnDefinition
 };
 
 // Prepared statements
+constexpr int1 CURSOR_TYPE_NO_CURSOR = 0;
+constexpr int1 CURSOR_TYPE_READ_ONLY = 1;
+constexpr int1 CURSOR_TYPE_FOR_UPDATE = 2;
+constexpr int1 CURSOR_TYPE_SCROLLABLE = 4;
+
 struct StmtPrepare
 {
 	string_eof statement;
@@ -239,6 +244,13 @@ struct StmtExecute
 struct StmtExecuteResponseHeader
 {
 	int1 num_fields;
+};
+
+struct StmtFetch
+{
+	// int1 message_type: COM_STMT_FETCH
+	int4 statement_id;
+	int4 rows_to_fetch;
 };
 
 

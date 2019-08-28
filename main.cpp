@@ -72,12 +72,12 @@ int main()
 	// Prepare a statement
 	auto stmt = mysql::PreparedStatement::prepare(
 			stream, "SELECT * from users WHERE age < ? and first_name <> ?");
-	auto res = stmt.execute(40, string_lenenc{"hola"});
+	auto res = stmt.execute_with_cursor(2, 200, string_lenenc{"hola"});
 	print(res);
-	auto make_older = mysql::PreparedStatement::prepare(stream, "UPDATE users SET age = age + 1");
+	/*auto make_older = mysql::PreparedStatement::prepare(stream, "UPDATE users SET age = age + 1");
 	res = make_older.execute();
 	print(res);
-	res = stmt.execute(40, string_lenenc{"hola"});
+	res = stmt.execute_with_cursor(2, 40, string_lenenc{"hola"});
 	cout << "\n\n";
-	print(res);
+	print(res);*/
 }

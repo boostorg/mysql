@@ -173,11 +173,25 @@ void mysql::BinaryResultset::process_ok()
 	deserialize(current_packet_.data() + 1,
 			current_packet_.data() + current_packet_.size(),
 			ok_packet_);
-	if (ok_packet_.status_flags & SERVER_STATUS_CURSOR_EXISTS)
+	if (cursor_exists() &&
+		!(ok_packet_.status_flags & SERVER_STATUS_LAST_ROW_SENT))
 	{
-		// TODO: handle cursor semantics
+		send_fetch();
+		retrieve_next();
 	}
-	state_ = State::exhausted;
+	else
+	{
+		state_ = State::exhausted;
+	}
+}
+
+void mysql::BinaryResultset::send_fetch()
+{
+	mysql::StmtFetch msg { statement_id_, fetch_count_ };
+	DynamicBuffer buffer;
+	serialize(buffer, msg);
+	stream_->reset_sequence_number();
+	stream_->write(buffer.get());
 }
 
 bool mysql::BinaryResultset::retrieve_next()
@@ -201,7 +215,9 @@ bool mysql::BinaryResultset::retrieve_next()
 
 const mysql::OkPacket& mysql::BinaryResultset::ok_packet() const
 {
-	assert(state_ == State::exhausted);
+	// TODO: fetch semantics are not aligned with this assertion
+	assert(state_ == State::exhausted ||
+			(state_ == State::data_available && cursor_exists()));
 	return ok_packet_;
 }
 
@@ -211,7 +227,10 @@ const std::vector<mysql::BinaryValue>& mysql::BinaryResultset::values() const
 	return current_values_;
 }
 
-mysql::BinaryResultset mysql::PreparedStatement::do_execute(const StmtExecute& message)
+mysql::BinaryResultset mysql::PreparedStatement::do_execute(
+	const StmtExecute& message,
+	int4 fetch_count
+)
 {
 	std::vector<std::uint8_t> read_buffer;
 
@@ -221,7 +240,7 @@ mysql::BinaryResultset mysql::PreparedStatement::do_execute(const StmtExecute& m
 	stream_->reset_sequence_number();
 	stream_->write(write_buffer.get());
 
-	return mysql::BinaryResultset {*stream_};
+	return mysql::BinaryResultset {*stream_, statement_id_, fetch_count};
 }
 
 

@@ -210,6 +210,13 @@ std::pair<mysql::FieldType, bool> mysql::compute_field_type(const BinaryValue& v
 	}, v);
 }
 
+void mysql::serialize(DynamicBuffer& buffer, const StmtFetch& value)
+{
+	serialize(buffer, Command::COM_STMT_FETCH);
+	serialize(buffer, value.statement_id);
+	serialize(buffer, value.rows_to_fetch);
+}
+
 // Text serialization
 std::ostream& mysql::operator<<(std::ostream& os, const Handshake& value)
 {

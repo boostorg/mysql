@@ -29,6 +29,7 @@ ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtPrepareRespon
 void serialize(DynamicBuffer& buffer, const StmtExecute& value);
 ReadIterator deserialize(ReadIterator from, ReadIterator last, StmtExecuteResponseHeader& output);
 std::pair<FieldType, bool> compute_field_type(const BinaryValue&);
+void serialize(DynamicBuffer& buffer, const StmtFetch& value);
 
 // Text serialization
 std::ostream& operator<<(std::ostream& os, const Handshake& value);
