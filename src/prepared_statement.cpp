@@ -215,7 +215,6 @@ bool mysql::BinaryResultset::retrieve_next()
 
 const mysql::OkPacket& mysql::BinaryResultset::ok_packet() const
 {
-	// TODO: fetch semantics are not aligned with this assertion
 	assert(state_ == State::exhausted ||
 			(state_ == State::data_available && cursor_exists()));
 	return ok_packet_;
@@ -234,7 +233,6 @@ mysql::BinaryResultset mysql::PreparedStatement::do_execute(
 {
 	std::vector<std::uint8_t> read_buffer;
 
-	// TODO: other cursor types
 	DynamicBuffer write_buffer;
 	serialize(write_buffer, message);
 	stream_->reset_sequence_number();
@@ -243,4 +241,14 @@ mysql::BinaryResultset mysql::PreparedStatement::do_execute(
 	return mysql::BinaryResultset {*stream_, statement_id_, fetch_count};
 }
 
+void mysql::PreparedStatement::close()
+{
+	assert(statement_id_ != 0);
+	StmtClose msg { statement_id_ };
+
+	DynamicBuffer write_buffer;
+	serialize(write_buffer, msg);
+	stream_->reset_sequence_number();
+	stream_->write(write_buffer.get());
+}
 

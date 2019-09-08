@@ -217,6 +217,12 @@ void mysql::serialize(DynamicBuffer& buffer, const StmtFetch& value)
 	serialize(buffer, value.rows_to_fetch);
 }
 
+void mysql::serialize(DynamicBuffer& buffer, const StmtClose& value)
+{
+	serialize(buffer, Command::COM_STMT_CLOSE);
+	serialize(buffer, value.statement_id);
+}
+
 // Text serialization
 std::ostream& mysql::operator<<(std::ostream& os, const Handshake& value)
 {

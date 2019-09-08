@@ -78,7 +78,8 @@ public:
 
 	template <typename... Params>
 	BinaryResultset execute_with_cursor(int4 fetch_count, Params&&... params);
-	// close(Connection)
+
+	void close();
 	// Destructor should try to auto-close
 
 	static PreparedStatement prepare(MysqlStream& stream, std::string_view query);

@@ -253,6 +253,11 @@ struct StmtFetch
 	int4 rows_to_fetch;
 };
 
+struct StmtClose
+{
+	int4 statement_id;
+};
+
 
 }
 
