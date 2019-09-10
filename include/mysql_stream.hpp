@@ -1,7 +1,6 @@
 #ifndef INCLUDE_MYSQL_STREAM_HPP_
 #define INCLUDE_MYSQL_STREAM_HPP_
 
-#include <boost/asio/ip/tcp.hpp>
 #include <memory>
 #include <stdexcept>
 #include "basic_types.hpp"
@@ -20,11 +19,13 @@ struct HandshakeParams
 	std::string_view database;
 };
 
-int1 get_message_type(const std::vector<std::uint8_t>& buffer, bool check_err=true);
+inline int1 get_message_type(const std::vector<std::uint8_t>& buffer, bool check_err=true);
 
+template <typename AsyncStream>
 class MysqlStream
 {
-	boost::asio::ip::tcp::socket next_layer_; // to be converted to an async stream
+	// TODO: static asserts
+	AsyncStream next_layer_; // to be converted to an async stream
 	int1 sequence_number_ {0};
 
 	void process_sequence_number(int1 got);
@@ -34,12 +35,17 @@ public:
 	void handshake(const HandshakeParams&);
 
 	void read(std::vector<std::uint8_t>& buffer);
+
 	void write(const std::vector<std::uint8_t>& buffer);
+
+	template <typename ConstBufferSequence>
+	void write(ConstBufferSequence&& buffers);
+
 	void reset_sequence_number() { sequence_number_ = 0; }
 };
 
 }
 
-
+#include "impl/mysql_stream_impl.hpp"
 
 #endif /* INCLUDE_MYSQL_STREAM_HPP_ */

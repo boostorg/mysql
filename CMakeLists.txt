@@ -13,9 +13,7 @@ add_library(
 	SHARED
 	src/basic_serialization.cpp
 	src/message_serialization.cpp
-	src/mysql_stream.cpp
 	src/auth.cpp
-	src/prepared_statement.cpp
 )
 target_link_libraries(
 	mysql_asio

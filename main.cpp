@@ -20,7 +20,8 @@ struct VariantPrinter
 	void operator()(std::nullptr_t) const { (*this)("NULL"); }
 };
 
-void print(mysql::BinaryResultset& res)
+template <typename AsyncStream>
+void print(mysql::BinaryResultset<AsyncStream>& res)
 {
 	for (bool ok = res.more_data(); ok; ok = res.retrieve_next())
 	{
@@ -56,7 +57,7 @@ int main()
 	cout << "Connecting to: " << endpoint << endl;
 
 	// MYSQL stream
-	MysqlStream stream {ctx};
+	MysqlStream<boost::asio::ip::tcp::socket> stream {ctx};
 
 	// TCP connection
 	stream.next_layer().connect(endpoint);
@@ -70,11 +71,12 @@ int main()
 	});
 
 	// Prepare a statement
-	auto stmt = mysql::PreparedStatement::prepare(
+	auto stmt = mysql::PreparedStatement<boost::asio::ip::tcp::socket>::prepare(
 			stream, "SELECT * from users WHERE age < ? and first_name <> ?");
 	auto res = stmt.execute_with_cursor(2, 200, string_lenenc{"hola"});
 	print(res);
-	auto make_older = mysql::PreparedStatement::prepare(stream, "UPDATE users SET age = age + 1");
+	auto make_older = mysql::PreparedStatement<boost::asio::ip::tcp::socket>::prepare(
+			stream, "UPDATE users SET age = age + 1");
 	res = make_older.execute();
 	print(res);
 	make_older.close();

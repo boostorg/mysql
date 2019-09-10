@@ -118,6 +118,7 @@ public:
 	void* data() { return buffer_.data(); }
 	std::size_t size() const { return buffer_.size(); }
 	const std::vector<std::uint8_t>& get() const { return buffer_; }
+	void clear() { buffer_.clear(); }
 };
 
 template <typename T> void native_to_little(T& value) { boost::endian::native_to_little_inplace(value); }
