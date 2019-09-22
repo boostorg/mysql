@@ -38,7 +38,7 @@ void print(mysql::BinaryResultset<AsyncStream>& res)
 			  << ", info=" << ok.info.value << endl;
 }
 
-int main()
+int main_sync()
 {
 	// Basic
 	io_context ctx;
@@ -83,4 +83,49 @@ int main()
 	res = stmt.execute_with_cursor(8, 70, string_lenenc{"hola"});
 	cout << "\n\n";
 	print(res);
+
+	return 0;
+}
+
+int main()
+{
+	// Basic
+	io_context ctx;
+	auto guard = make_work_guard(ctx);
+	boost::system::error_code errc;
+
+	// DNS resolution
+	ip::tcp::resolver resolver {ctx};
+	auto results = resolver.resolve(ip::tcp::v4(), HOSTNAME, PORT);
+	if (results.size() != 1)
+	{
+		cout << "Found endpoints: " << results.size() << ", exiting" << endl;
+		exit(1);
+	}
+	auto endpoint = results.begin()->endpoint();
+	cout << "Connecting to: " << endpoint << endl;
+
+	// MYSQL stream
+	MysqlStream<boost::asio::ip::tcp::socket> stream {ctx};
+
+	// TCP connection
+	stream.next_layer().connect(endpoint);
+
+	// Handshake
+	mysql::HandshakeParams handshake_params {
+			CharacterSetLowerByte::utf8_general_ci,
+			"root",
+			"root",
+			"awesome"
+	};
+
+	stream.async_handshake(
+			handshake_params,
+			[&guard] { cout << "Connected to server in async mode" << endl; guard.reset(); }
+	);
+
+	ctx.run();
+
+	std::cout << "Finished, returning" << endl;
+
 }
