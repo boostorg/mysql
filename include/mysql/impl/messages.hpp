@@ -1,0 +1,170 @@
+#ifndef MESSAGES_H_
+#define MESSAGES_H_
+
+#include <string>
+#include <vector>
+#include <variant>
+#include <tuple>
+#include "mysql/impl/basic_types.hpp"
+#include "mysql/impl/constants.hpp"
+
+namespace mysql
+{
+namespace detail
+{
+
+// Fields
+namespace fields
+{
+struct packet_size : int3 {};
+struct sequence_number: int1 {};
+struct message_header : int1 {};
+struct error_code : int2 {};
+struct sql_state_marker : string_fixed<1> {};
+struct sql_state : string_fixed<5> {};
+struct error_message : string_eof {};
+}
+
+using packet_header = std::tuple<
+	fields::packet_size,
+	fields::sequence_number
+>;
+
+struct OkPacket
+{
+	// header: int<1> 	header 	0x00 or 0xFE the OK packet header
+	int_lenenc affected_rows;
+	int_lenenc last_insert_id;
+	int2 status_flags; // server_status_flags
+	int2 warnings;
+	// TODO: CLIENT_SESSION_TRACK
+	string_eof info;
+};
+
+using err_packet = std::tuple<
+	fields::message_header, // int<1> 	header 	0xFF ERR packet header
+	fields::error_code,
+	fields::sql_state_marker,
+	fields::sql_state,
+	fields::error_message
+>;
+
+
+struct Handshake
+{
+	// int<1> 	protocol version 	Always 10
+	string_null server_version;
+	int4 connection_id;
+	std::string auth_plugin_data; // merge of the two parts - not an actual field
+	int4 capability_falgs; // merge of the two parts - not an actual field
+	// string[8] 	auth-plugin-data-part-1 	first 8 bytes of the plugin provided data (scramble)
+	// int<1> 	filler 	0x00 byte, terminating the first part of a scramble
+	// int<2> 	capability_flags_1 	The lower 2 bytes of the Capabilities Flags
+	CharacterSetLowerByte character_set; // default server a_protocol_character_set, only the lower 8-bits
+	int2 status_flags; // server_status_flags
+	// int<2> 	capability_flags_2 	The upper 2 bytes of the Capabilities Flags
+	// int<1> 	auth_plugin_data_len
+	// string[10] 	reserved 	reserved. All 0s.
+	// $length 	auth-plugin-data-part-2
+	string_null auth_plugin_name;
+};
+
+struct HandshakeResponse
+{
+	int4 client_flag; // capabilities
+	int4 max_packet_size;
+	CharacterSetLowerByte character_set;
+	// string[23] 	filler 	filler to the size of the handhshake response packet. All 0s.
+	string_null username;
+	string_lenenc auth_response; // we should set CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
+	string_null database; // we should set CLIENT_CONNECT_WITH_DB
+	string_null client_plugin_name; // we should set CLIENT_PLUGIN_AUTH
+	// TODO: CLIENT_CONNECT_ATTRS
+};
+
+
+
+struct ColumnDefinition
+{
+	string_lenenc catalog; // always "def"
+	string_lenenc schema;
+	string_lenenc table; // virtual table
+	string_lenenc org_table; // physical table
+	string_lenenc name; // virtual column name
+	string_lenenc org_name; // physical column name
+	// int<lenenc> 	length of fixed length fields 	[0x0c]
+	int2 character_set; // TODO: enum-erize this
+	int4 column_length; // maximum length of the field
+	FieldType type; // type of the column as defined in enum_field_types
+	int2 flags; // Flags as defined in Column Definition Flags
+	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
+};
+
+
+
+struct StmtPrepare
+{
+	string_eof statement;
+};
+
+struct StmtPrepareResponseHeader
+{
+	// int1 status: must be 0
+	int4 statement_id;
+	int2 num_columns;
+	int2 num_params;
+	// int1 reserved_1: must be 0
+	int2 warning_count; // only if (packet_length > 12)
+	// TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
+};
+
+using BinaryValue = std::variant<
+	std::int8_t,
+	std::int16_t,
+	std::int32_t,
+	std::int64_t,
+	std::uint8_t,
+	std::uint16_t,
+	std::uint32_t,
+	std::uint64_t,
+	string_lenenc,
+	std::nullptr_t // NULL
+	// TODO: double, float, dates/times
+>;
+
+struct StmtExecute
+{
+	//int1 message_type: COM_STMT_EXECUTE
+	int4 statement_id;
+	int1 flags;
+	// int4 iteration_count: always 1
+	int1 num_params;
+	int1 new_params_bind_flag;
+	std::vector<BinaryValue> param_values; // empty if !new_params_bind_flag
+};
+
+struct StmtExecuteResponseHeader
+{
+	int1 num_fields;
+};
+
+struct StmtFetch
+{
+	// int1 message_type: COM_STMT_FETCH
+	int4 statement_id;
+	int4 rows_to_fetch;
+};
+
+struct StmtClose
+{
+	int4 statement_id;
+};
+
+
+} // detail
+} // mysql
+
+
+
+
+#endif /* MESSAGES_H_ */

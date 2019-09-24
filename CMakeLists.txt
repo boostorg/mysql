@@ -8,36 +8,41 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # Library
+#add_library(
+#	mysql_asio
+#	SHARED
+#	src/basic_serialization.cpp
+#	src/message_serialization.cpp
+#	src/auth.cpp
+#)
 add_library(
-	mysql_asio
-	SHARED
-	src/basic_serialization.cpp
-	src/message_serialization.cpp
-	src/auth.cpp
+    mysql_asio
+    INTERFACE
 )
+
 target_link_libraries(
-	mysql_asio
-	PUBLIC
+    mysql_asio
+	INTERFACE
 	Boost::system
 	Threads::Threads
 	OpenSSL::Crypto
 )
 target_include_directories(
 	mysql_asio
-	PUBLIC
+	INTERFACE
 	include
 )
 
 # Main
-add_executable(
-	main
-	main.cpp
-)
-target_link_libraries(
-	main
-	PRIVATE
-	mysql_asio
-)
+#add_executable(
+#	main
+#	main.cpp
+#)
+#target_link_libraries(
+#	main
+#	PRIVATE
+#	mysql_asio
+#)
 
 # Unit testing
 set(GTEST_ROOT /opt/gtest)

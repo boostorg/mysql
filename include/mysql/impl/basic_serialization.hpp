@@ -1,0 +1,381 @@
+#ifndef DESERIALIZATION_H_
+#define DESERIALIZATION_H_
+
+#include <boost/endian/conversion.hpp>
+#include <vector>
+#include <type_traits>
+#include <cassert>
+#include <algorithm>
+#include "mysql/impl/basic_types.hpp"
+#include "mysql/error.hpp"
+
+namespace mysql
+{
+namespace detail
+{
+
+class DeserializationContext
+{
+	ReadIterator first_;
+	ReadIterator last_;
+	const std::uint32_t capabilities_;
+public:
+	DeserializationContext(ReadIterator first, ReadIterator last, std::uint32_t capabilities) noexcept:
+		first_(first), last_(last), capabilities_(capabilities) { assert(last_ >= first_); };
+	ReadIterator first() const noexcept { return first_; }
+	ReadIterator last() const noexcept { return last_; }
+	void set_first(ReadIterator new_first) noexcept { first_ = new_first; assert(last_ >= first_); }
+	void advance(std::size_t sz) noexcept { first_ += sz; assert(last_ >= first_); }
+	std::size_t size() const noexcept { return last_ - first_; }
+	bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
+	std::uint32_t capabilities() const noexcept { return capabilities_; }
+};
+
+class SerializationContext
+{
+	WriteIterator first_;
+	const std::uint32_t capabilities_;
+public:
+	SerializationContext(std::uint32_t capabilities, WriteIterator first = nullptr) noexcept:
+		first_(first), capabilities_(capabilities) {};
+	WriteIterator first() const noexcept { return first_; }
+	void set_first(WriteIterator new_first) noexcept { first_ = new_first; }
+	void advance(std::size_t size) noexcept { first_ += size; }
+	std::uint32_t capabilities() const noexcept { return capabilities_; }
+	void write(const void* buffer, std::size_t size) noexcept { memcpy(first_, buffer, size); advance(size); }
+	void write(std::uint8_t elm) noexcept { *first_ = elm; ++first_; }
+};
+
+/**
+ * Base forms:
+ *  Error deserialize(T& output, DeserializationContext&) noexcept
+ *  void  serialize(const T& input, SerializationContext&) noexcept
+ *  std::size_t get_size(const T& input, const SerializationContext&) noexcept
+ */
+
+// Fixed-size types
+struct get_value_type_helper
+{
+    struct no_value_type {};
+
+    template <typename T>
+    static constexpr typename T::value_type get(typename T::value_type*);
+
+    template <typename T>
+    static constexpr no_value_type get(...);
+};
+
+template <typename T>
+struct get_value_type
+{
+    using type = decltype(get_value_type_helper().get<T>(nullptr));
+    using no_value_type = get_value_type_helper::no_value_type;
+};
+
+template <typename T>
+struct is_fixed_size
+{
+private:
+	using value_type = typename get_value_type<T>::type;
+public:
+	static constexpr bool value =
+			std::is_integral_v<value_type> &&
+			std::is_base_of_v<ValueHolder<value_type>, T>;
+};
+
+
+template <> struct is_fixed_size<int_lenenc> : std::false_type {};
+template <std::size_t N> struct is_fixed_size<string_fixed<N>>: std::true_type {};
+
+template <typename T> constexpr bool is_fixed_size_v = is_fixed_size<T>::value;
+
+template <typename T>
+struct get_fixed_size
+{
+	static_assert(is_fixed_size_v<T>);
+	static constexpr std::size_t value = sizeof(T::value);
+};
+
+template <> struct get_fixed_size<int3> { static constexpr std::size_t value = 3; };
+template <> struct get_fixed_size<int6> { static constexpr std::size_t value = 6; };
+template <std::size_t N> struct get_fixed_size<string_fixed<N>> { static constexpr std::size_t value = N; };
+
+template <typename T> void little_to_native_inplace(ValueHolder<T>& value) noexcept { boost::endian::little_to_native_inplace(value.value); }
+template <std::size_t size> void little_to_native_inplace(string_fixed<size>&) noexcept {}
+
+template <typename T> void native_to_little_inplace(ValueHolder<T>& value) noexcept { boost::endian::native_to_little_inplace(value.value); }
+template <std::size_t size> void native_to_little_inplace(string_fixed<size>&) noexcept {}
+
+
+template <typename T>
+std::enable_if_t<is_fixed_size_v<T>, Error>
+deserialize(T& output, DeserializationContext& ctx) noexcept
+{
+	static_assert(std::is_standard_layout_v<decltype(T::value)>);
+
+	constexpr auto size = get_fixed_size<T>::value;
+	if (!ctx.enough_size(size))
+	{
+		return Error::incomplete_message;
+	}
+
+	memset(&output.value, 0, sizeof(output.value));
+	memcpy(&output.value, ctx.first(), size);
+	little_to_native_inplace(output);
+	ctx.advance(size);
+
+	return Error::ok;
+}
+
+template <typename T>
+std::enable_if_t<is_fixed_size_v<T>>
+serialize(T input, SerializationContext& ctx) noexcept
+{
+	native_to_little_inplace(input);
+	ctx.write(&input.value, get_fixed_size<T>::value);
+}
+
+template <typename T>
+constexpr std::enable_if_t<is_fixed_size_v<T>, std::size_t>
+get_size(T input, const SerializationContext&) noexcept
+{
+	return get_fixed_size<T>::value;
+}
+
+// int_lenenc
+inline Error deserialize(int_lenenc& output, DeserializationContext& ctx) noexcept
+{
+	int1 first_byte;
+	Error err = deserialize(first_byte, ctx);
+	if (err != Error::ok)
+	{
+		return err;
+	}
+
+	if (first_byte.value == 0xFC)
+	{
+		int2 value;
+		err = deserialize(value, ctx);
+		output.value = value.value;
+	}
+	else if (first_byte.value == 0xFD)
+	{
+		int3 value;
+		err = deserialize(value, ctx);
+		output.value = value.value;
+	}
+	else if (first_byte.value == 0xFE)
+	{
+		int8 value;
+		err = deserialize(value, ctx);
+		output.value = value.value;
+	}
+	else
+	{
+		err = Error::ok;
+		output.value = first_byte.value;
+	}
+	return err;
+}
+inline void serialize(int_lenenc input, SerializationContext& ctx) noexcept
+{
+	if (input.value < 251)
+	{
+		serialize(int1{static_cast<std::uint8_t>(input.value)}, ctx);
+	}
+	else if (input.value < 0x10000)
+	{
+		ctx.write(0xfc);
+		serialize(int2{static_cast<std::uint16_t>(input.value)}, ctx);
+	}
+	else if (input.value < 0x1000000)
+	{
+		ctx.write(0xfd);
+		serialize(int3{static_cast<std::uint32_t>(input.value)}, ctx);
+	}
+	else
+	{
+		ctx.write(0xfe);
+		serialize(int8{static_cast<std::uint64_t>(input.value)}, ctx);
+	}
+}
+inline std::size_t get_size(int_lenenc input, const SerializationContext&) noexcept
+{
+	if (input.value < 251) return 1;
+	else if (input.value < 0x10000) return 3;
+	else if (input.value < 0x1000000) return 4;
+	else return 9;
+}
+
+// Helper for strings
+inline std::string_view get_string(ReadIterator from, std::size_t size)
+{
+	return std::string_view (reinterpret_cast<const char*>(from), size);
+}
+
+// string_null
+inline Error deserialize(string_null& output, DeserializationContext& ctx) noexcept
+{
+	ReadIterator string_end = std::find(ctx.first(), ctx.last(), 0);
+	if (string_end == ctx.last())
+	{
+		return Error::incomplete_message;
+	}
+	output.value = get_string(ctx.first(), string_end-ctx.first());
+	ctx.set_first(string_end + 1); // skip the null terminator
+	return Error::ok;
+}
+inline void serialize(string_null input, SerializationContext& ctx) noexcept
+{
+	ctx.write(input.value.data(), input.value.size());
+	ctx.write(0); // null terminator
+}
+inline std::size_t get_size(string_null input, const SerializationContext&) noexcept
+{
+	return input.value.size() + 1;
+}
+
+// string_eof
+inline Error deserialize(string_eof& output, DeserializationContext& ctx) noexcept
+{
+	output.value = get_string(ctx.first(), ctx.last()-ctx.first());
+	ctx.set_first(ctx.last());
+	return Error::ok;
+}
+inline void serialize(string_eof input, SerializationContext& ctx) noexcept
+{
+	ctx.write(input.value.data(), input.value.size());
+}
+inline std::size_t get_size(string_eof input, const SerializationContext&) noexcept
+{
+	return input.value.size();
+}
+
+// string_lenenc
+inline Error deserialize(string_lenenc& output, DeserializationContext& ctx) noexcept
+{
+	int_lenenc length;
+	Error err = deserialize(length, ctx);
+	if (err != Error::ok)
+	{
+		return err;
+	}
+	if (!ctx.enough_size(length.value))
+	{
+		return Error::incomplete_message;
+	}
+
+	output.value = get_string(ctx.first(), length.value);
+	ctx.advance(length.value);
+	return Error::ok;
+}
+inline void serialize(string_lenenc input, SerializationContext& ctx) noexcept
+{
+	int_lenenc length;
+	length.value = input.value.size();
+	serialize(length, ctx);
+	ctx.write(input.value.data(), input.value.size());
+}
+inline std::size_t get_size(string_lenenc input, const SerializationContext& ctx) noexcept
+{
+	int_lenenc length;
+	length.value = input.value.size();
+	return get_size(length, ctx) + input.value.size();
+}
+
+// Enums
+template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
+Error deserialize(T& output, DeserializationContext& ctx) noexcept
+{
+	ValueHolder<std::underlying_type_t<T>> value;
+	Error err = deserialize(value, ctx);
+	if (err != Error::ok)
+	{
+		return err;
+	}
+	output = static_cast<T>(value.value);
+	return Error::ok;
+}
+
+template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
+void serialize(T input, SerializationContext& ctx) noexcept
+{
+	ValueHolder<std::underlying_type_t<T>> value {static_cast<std::underlying_type_t<T>>(input)};
+	serialize(value, ctx);
+}
+
+template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
+std::size_t get_size(T input, const SerializationContext&) noexcept
+{
+	return get_fixed_size<std::underlying_type_t<T>>::value;
+}
+
+// Tuple-like messages
+template <std::size_t index, typename... Types>
+Error deserialize_tuple(std::tuple<Types...>& output, DeserializationContext& ctx) noexcept
+{
+	if constexpr (index == std::tuple_size_v<decltype(output)>)
+	{
+		return Error::ok;
+	}
+	else
+	{
+		Error err = deserialize(std::get<index>(output), ctx);
+		if (err != Error::ok)
+		{
+			return err;
+		}
+		else
+		{
+			return deserialize_tuple<index+1>(output, ctx);
+		}
+	}
+}
+
+template <typename... Types>
+Error deserialize(std::tuple<Types...>& output, DeserializationContext& ctx) noexcept
+{
+	return deserialize_tuple<0>(output, ctx);
+}
+
+template <std::size_t index, typename... Types>
+void serialize_tuple(const std::tuple<Types...>& input, SerializationContext& ctx) noexcept
+{
+	if constexpr (index < std::tuple_size_v<decltype(input)>)
+	{
+		serialize(std::get<index>(input), ctx);
+		serialize_tuple<index+1>(input, ctx);
+	}
+}
+
+template <typename... Types>
+void serialize(const std::tuple<Types...>& input, SerializationContext& ctx) noexcept
+{
+	serialize_tuple<0>(input, ctx);
+}
+
+template <std::size_t index, typename... Types>
+std::size_t get_size_tuple(const std::tuple<Types...>& input, const SerializationContext& ctx) noexcept
+{
+	if constexpr (index == std::tuple_size_v<decltype(input)>)
+	{
+		return 0;
+	}
+	else
+	{
+		return get_size_tuple<index+1>(input, ctx) +
+		       get_size(std::get<index>(input), ctx);
+	}
+}
+
+template <typename... Types>
+std::size_t get_size(const std::tuple<Types...>& input, const SerializationContext& ctx) noexcept
+{
+	return get_size_tuple<0>(input, ctx);
+}
+
+}
+}
+
+
+#endif /* DESERIALIZATION_H_ */

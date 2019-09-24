@@ -1,8 +1,8 @@
 #include <iostream>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include "mysql_stream.hpp"
-#include "prepared_statement.hpp"
+#include "mysql/mysql_stream.hpp"
+#include "mysql/prepared_statement.hpp"
 
 using namespace std;
 using namespace boost::asio;
