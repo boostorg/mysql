@@ -34,16 +34,16 @@ template <> constexpr int2_signed expected_int_value<int2_signed>() { return int
 template <> constexpr int4_signed expected_int_value<int4_signed>() { return int4_signed{-0x3020101}; };
 template <> constexpr int8_signed expected_int_value<int8_signed>() { return int8_signed{-0x0706050403020101}; };
 
-// TODO: signed integers
+uint8_t fixed_size_int_buffer [16] { 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7 };
 
 template <typename T>
 struct DeserializeFixedSizeInt : public ::testing::Test {
 	uint8_t buffer [16];
 	T value;
 
-	DeserializeFixedSizeInt():
-		buffer { 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7 }
+	DeserializeFixedSizeInt()
 	{
+		memcpy(buffer, fixed_size_int_buffer, sizeof(buffer));
 		memset(&value, 1, sizeof(value)); // catch unititialized memory errors
 	};
 };
@@ -91,6 +91,58 @@ TYPED_TEST(DeserializeFixedSizeInt, Overflow_ReturnsError)
 	EXPECT_EQ(err, Error::incomplete_message);
 }
 
+template <typename T>
+struct GetSizeFixedSizeInt : public testing::Test
+{
+	T value = expected_int_value<T>();
+	SerializationContext ctx {0};
+};
+
+TYPED_TEST_SUITE(GetSizeFixedSizeInt, FixedSizeIntTypes);
+
+TYPED_TEST(GetSizeFixedSizeInt, Trivial_ReturnsSizeOf)
+{
+	EXPECT_EQ(get_size(this->value, this->ctx), int_size<TypeParam>);
+}
+
+template <typename T>
+struct SerializeFixedSizeInt : public testing::Test
+{
+	uint8_t buffer [16];
+	T value = expected_int_value<T>();
+	SerializationContext ctx {0, begin(buffer)};
+
+	SerializeFixedSizeInt()
+	{
+		memset(buffer, 1, sizeof(buffer)); // catch buffer overflow errors
+	}
+};
+
+TYPED_TEST_SUITE(SerializeFixedSizeInt, FixedSizeIntTypes);
+
+string_view buffer_to_view(const uint8_t* buffer, size_t size)
+{
+	return string_view(reinterpret_cast<const char*>(buffer), size);
+}
+
+TYPED_TEST(SerializeFixedSizeInt, Trivial_WritesBytesToBufferAdvancesIteratorNoOverflow)
+{
+	auto intsz = int_size<TypeParam>;
+	serialize(this->value, this->ctx);
+
+	EXPECT_EQ(this->ctx.first(), begin(this->buffer) + intsz);
+
+	string_view written_buffer = buffer_to_view(this->buffer, intsz);
+	string_view expected_written_buffer = buffer_to_view(fixed_size_int_buffer, intsz);
+	EXPECT_EQ(written_buffer, expected_written_buffer);
+
+	auto clean_buffer_size = sizeof(this->buffer) - intsz;
+	string_view clean_buffer = buffer_to_view(this->buffer + intsz, clean_buffer_size);
+	string expected_clean_buffer (clean_buffer_size, '\1');
+	EXPECT_EQ(clean_buffer, expected_clean_buffer);
+}
+
+
 // Length-encoded integer
 struct DeserializeLengthEncodedIntParams
 {
@@ -102,13 +154,11 @@ struct DeserializeLengthEncodedInt : public ::testing::TestWithParam<Deserialize
 {
 	uint8_t buffer [10];
 	int_lenenc value;
-	int_lenenc initial_value;
 
 	DeserializeLengthEncodedInt():
 		buffer { GetParam().first_byte, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8 }
 	{
 		memset(&value, 1, sizeof(value));
-		initial_value = value;
 	}
 };
 
