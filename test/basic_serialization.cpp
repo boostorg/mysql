@@ -8,6 +8,7 @@
 #include "mysql/impl/basic_serialization.hpp"
 #include <gtest/gtest.h>
 #include <string>
+#include <boost/type_index.hpp>
 
 using namespace testing;
 using namespace std;
@@ -17,357 +18,296 @@ using namespace mysql::detail;
 namespace
 {
 
-// Fixed size integers
-template <typename T> constexpr std::size_t int_size = sizeof(T::value);
-template <> constexpr std::size_t int_size<int3> = 3;
-template <> constexpr std::size_t int_size<int6> = 6;
+class TypeErasedValue
+{
+public:
+	virtual ~TypeErasedValue() {}
+	virtual void serialize(SerializationContext& ctx) const = 0;
+	virtual std::size_t get_size(const SerializationContext& ctx) const = 0;
+	virtual Error deserialize(DeserializationContext& ctx) = 0;
+	virtual string get_type_name() const = 0;
+	virtual shared_ptr<TypeErasedValue> default_construct() const = 0;
+	virtual bool equals(const TypeErasedValue& rhs) const = 0;
 
-template <typename T> constexpr T expected_int_value();
-template <> constexpr int1 expected_int_value<int1>() { return int1{0xff}; };
-template <> constexpr int2 expected_int_value<int2>() { return int2{0xfeff}; };
-template <> constexpr int3 expected_int_value<int3>() { return int3{0xfdfeff}; };
-template <> constexpr int4 expected_int_value<int4>() { return int4{0xfcfdfeff}; };
-template <> constexpr int6 expected_int_value<int6>() { return int6{0xfafbfcfdfeff}; };
-template <> constexpr int8 expected_int_value<int8>() { return int8{0xf8f9fafbfcfdfeff}; };
-template <> constexpr int1_signed expected_int_value<int1_signed>() { return int1_signed{-1}; };
-template <> constexpr int2_signed expected_int_value<int2_signed>() { return int2_signed{-0x101}; };
-template <> constexpr int4_signed expected_int_value<int4_signed>() { return int4_signed{-0x3020101}; };
-template <> constexpr int8_signed expected_int_value<int8_signed>() { return int8_signed{-0x0706050403020101}; };
-
-uint8_t fixed_size_int_buffer [16] { 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7 };
+	bool operator==(const TypeErasedValue& rhs) const { return equals(rhs); }
+};
 
 template <typename T>
-struct DeserializeFixedSizeInt : public ::testing::Test {
-	uint8_t buffer [16];
-	T value;
-
-	DeserializeFixedSizeInt()
+class TypeErasedValueImpl : public TypeErasedValue
+{
+	T value_;
+public:
+	TypeErasedValueImpl(const T& v): value_(v) {};
+	void serialize(SerializationContext& ctx) const override { ::mysql::detail::serialize(value_, ctx); }
+	std::size_t get_size(const SerializationContext& ctx) const override { return ::mysql::detail::get_size(value_, ctx); }
+	Error deserialize(DeserializationContext& ctx) override { return ::mysql::detail::deserialize(value_, ctx); }
+	string get_type_name() const override
 	{
-		memcpy(buffer, fixed_size_int_buffer, sizeof(buffer));
-		memset(&value, 1, sizeof(value)); // catch unititialized memory errors
-	};
-};
-
-using FixedSizeIntTypes = ::testing::Types<
-	int1,
-	int2,
-	int3,
-	int4,
-	int6,
-	int8,
-	int1_signed,
-	int2_signed,
-	int4_signed,
-	int8_signed
->;
-TYPED_TEST_SUITE(DeserializeFixedSizeInt, FixedSizeIntTypes);
-
-TYPED_TEST(DeserializeFixedSizeInt, ExactSize_GetsValueIncrementsIterator)
-{
-	DeserializationContext ctx (this->buffer, this->buffer + int_size<TypeParam>, 0);
-
-	auto err = deserialize(this->value, ctx);
-
-	EXPECT_EQ(ctx.first(), this->buffer+int_size<TypeParam>);
-	EXPECT_EQ(this->value.value, expected_int_value<TypeParam>().value);
-	EXPECT_EQ(err, Error::ok);
-}
-
-TYPED_TEST(DeserializeFixedSizeInt, ExtraSize_GetsValueIncrementsIterator)
-{
-	DeserializationContext ctx (this->buffer, this->buffer + 1 + int_size<TypeParam>, 0);
-
-	auto err = deserialize(this->value, ctx);
-
-	EXPECT_EQ(ctx.first(), this->buffer+int_size<TypeParam>);
-	EXPECT_EQ(this->value.value, expected_int_value<TypeParam>().value);
-	EXPECT_EQ(err, Error::ok);
-}
-
-TYPED_TEST(DeserializeFixedSizeInt, Overflow_ReturnsError)
-{
-	DeserializationContext ctx (this->buffer, this->buffer - 1 + int_size<TypeParam>, 0);
-	auto err = deserialize(this->value, ctx);
-	EXPECT_EQ(err, Error::incomplete_message);
-}
-
-template <typename T>
-struct GetSizeFixedSizeInt : public testing::Test
-{
-	T value = expected_int_value<T>();
-	SerializationContext ctx {0};
-};
-
-TYPED_TEST_SUITE(GetSizeFixedSizeInt, FixedSizeIntTypes);
-
-TYPED_TEST(GetSizeFixedSizeInt, Trivial_ReturnsSizeOf)
-{
-	EXPECT_EQ(get_size(this->value, this->ctx), int_size<TypeParam>);
-}
-
-template <typename T>
-struct SerializeFixedSizeInt : public testing::Test
-{
-	uint8_t buffer [16];
-	T value = expected_int_value<T>();
-	SerializationContext ctx {0, begin(buffer)};
-
-	SerializeFixedSizeInt()
+		return boost::typeindex::type_id<T>().pretty_name();
+	}
+	shared_ptr<TypeErasedValue> default_construct() const override
 	{
-		memset(buffer, 1, sizeof(buffer)); // catch buffer overflow errors
+		T res; // intentionally not value-initializing it
+		return make_shared<TypeErasedValueImpl<T>>(res);
+	}
+	bool equals(const TypeErasedValue& rhs) const
+	{
+		auto typed_value = dynamic_cast<const TypeErasedValueImpl<T>*>(&rhs);
+		return typed_value && (typed_value->value_ == value_);
 	}
 };
 
-TYPED_TEST_SUITE(SerializeFixedSizeInt, FixedSizeIntTypes);
-
-string_view buffer_to_view(const uint8_t* buffer, size_t size)
+struct SerializeParams
 {
-	return string_view(reinterpret_cast<const char*>(buffer), size);
-}
+	shared_ptr<TypeErasedValue> value;
+	vector<uint8_t> expected_buffer;
+	string test_name;
+	bool is_space_sensitive;
 
-TYPED_TEST(SerializeFixedSizeInt, Trivial_WritesBytesToBufferAdvancesIteratorNoOverflow)
-{
-	auto intsz = int_size<TypeParam>;
-	serialize(this->value, this->ctx);
-
-	EXPECT_EQ(this->ctx.first(), begin(this->buffer) + intsz);
-
-	string_view written_buffer = buffer_to_view(this->buffer, intsz);
-	string_view expected_written_buffer = buffer_to_view(fixed_size_int_buffer, intsz);
-	EXPECT_EQ(written_buffer, expected_written_buffer);
-
-	auto clean_buffer_size = sizeof(this->buffer) - intsz;
-	string_view clean_buffer = buffer_to_view(this->buffer + intsz, clean_buffer_size);
-	string expected_clean_buffer (clean_buffer_size, '\1');
-	EXPECT_EQ(clean_buffer, expected_clean_buffer);
-}
-
-
-// Length-encoded integer
-struct DeserializeLengthEncodedIntParams
-{
-	uint8_t first_byte;
-	uint64_t expected;
-	size_t buffer_size;
-};
-struct DeserializeLengthEncodedInt : public ::testing::TestWithParam<DeserializeLengthEncodedIntParams>
-{
-	uint8_t buffer [10];
-	int_lenenc value;
-
-	DeserializeLengthEncodedInt():
-		buffer { GetParam().first_byte, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8 }
+	template <typename T>
+	SerializeParams(const T& v, vector<uint8_t>&& buff, string&& name="default", bool is_space_sensitive=true):
+		value(std::make_shared<TypeErasedValueImpl<T>>(v)),
+		expected_buffer(move(buff)),
+		test_name(move(name)),
+		is_space_sensitive(is_space_sensitive)
 	{
-		memset(&value, 1, sizeof(value));
 	}
 };
 
-TEST_P(DeserializeLengthEncodedInt, ExactSize_GetsValueIncrementsIterator)
+ostream& operator<<(ostream& os, const SerializeParams& params)
 {
-	DeserializationContext ctx (buffer, buffer + GetParam().buffer_size, 0);
-	auto err = deserialize(value, ctx);
-	EXPECT_EQ(ctx.first(), buffer + GetParam().buffer_size);
-	EXPECT_EQ(value.value, GetParam().expected);
-	EXPECT_EQ(err, Error::ok);
+	return os << params.value->get_type_name() << " - " << params.test_name;
 }
 
-TEST_P(DeserializeLengthEncodedInt, ExtraSize_GetsValueIncrementsIterator)
+vector<uint8_t> concat(vector<uint8_t>&& lhs, const vector<uint8_t>& rhs)
 {
-	DeserializationContext ctx (buffer, end(buffer), 0);
-	auto err = deserialize(value, ctx);
-	EXPECT_EQ(ctx.first(), buffer + GetParam().buffer_size);
-	EXPECT_EQ(value.value, GetParam().expected);
-	EXPECT_EQ(err, Error::ok);
+	size_t lhs_size = lhs.size();
+	vector<uint8_t> res (move(lhs));
+	res.resize(lhs_size + rhs.size());
+	memcpy(res.data() + lhs_size, rhs.data(), rhs.size());
+	return res;
 }
 
-TEST_P(DeserializeLengthEncodedInt, Overflow_ReturnsError)
+struct SerializeTest : public testing::TestWithParam<SerializeParams>
 {
-	DeserializationContext ctx (buffer, buffer + GetParam().buffer_size - 1, 0);
-	auto err = deserialize(value, ctx);
-	EXPECT_EQ(err, Error::incomplete_message);
-}
-
-INSTANTIATE_TEST_SUITE_P(Default, DeserializeLengthEncodedInt, ::testing::Values(
-		DeserializeLengthEncodedIntParams{0x0a, 0x0a,               1},
-		DeserializeLengthEncodedIntParams{0xfc, 0xfeff,             3},
-		DeserializeLengthEncodedIntParams{0xfd, 0xfdfeff,           4},
-		DeserializeLengthEncodedIntParams{0xfe, 0xf8f9fafbfcfdfeff, 9}
-), [](const auto& v) { return "first_byte_" + to_string(v.param.first_byte); });
-
-// Fixed size string
-struct DeserializeFixedSizeString : public testing::Test
-{
-	uint8_t buffer [6] { 'a', 'b', '\0', 'd', 'e', 'f' };
-	string_fixed<5> value;
-
-	DeserializeFixedSizeString()
+	static string_view make_buffer_view(const uint8_t* buff, size_t sz)
 	{
-		memset(value.value.data(), 1, value.value.size());
+		return string_view(reinterpret_cast<const char*>(buff), sz);
 	}
-
-	string_view value_as_view() const { return string_view(value.value.data(), value.value.size()); }
 };
 
-TEST_F(DeserializeFixedSizeString, ExactSize_CopiesValueIncrementsIterator)
+TEST_P(SerializeTest, GetSize_Trivial_ReturnsExpectedBufferSize)
 {
-	DeserializationContext ctx (begin(buffer), begin(buffer) + 5, 0);
-	auto err = deserialize(value, ctx);
-	EXPECT_EQ(ctx.first(), begin(buffer) + 5);
-	EXPECT_EQ(value_as_view(), string_view("ab\0de", 5));
+	SerializationContext ctx (0, nullptr);
+	auto size = GetParam().value->get_size(ctx);
+	EXPECT_EQ(size, GetParam().expected_buffer.size());
+}
+
+TEST_P(SerializeTest, Serialize_Trivial_AdvancesIteratorPopulatesBuffer)
+{
+	auto expected_size = GetParam().expected_buffer.size();
+	vector<uint8_t> buffer (expected_size + 8, 0xaa); // buffer overrun detector
+	SerializationContext ctx (0, buffer.data());
+	GetParam().value->serialize(ctx);
+
+	// Iterator
+	EXPECT_EQ(ctx.first(), buffer.data() + expected_size) << "Iterator not updated correctly";
+
+	// Buffer
+	string_view expected_populated = make_buffer_view(GetParam().expected_buffer.data(), expected_size);
+	string_view actual_populated = make_buffer_view(buffer.data(), expected_size);
+	EXPECT_EQ(expected_populated, actual_populated) << "Buffer contents incorrect";
+
+	// Check for buffer overruns
+	string expected_clean (8, 0xaa);
+	string_view actual_clean = make_buffer_view(buffer.data() + expected_size, 8);
+	EXPECT_EQ(expected_clean, actual_clean) << "Buffer overrun";
+}
+
+TEST_P(SerializeTest, Deserialize_ExactSpace_AdvancesIteratorPopulatesValue)
+{
+	auto first = GetParam().expected_buffer.data();
+	auto size = GetParam().expected_buffer.size();
+	DeserializationContext ctx (first, first + size, 0);
+	auto actual_value = GetParam().value->default_construct();
+	auto err = actual_value->deserialize(ctx);
+
+	// No error
 	EXPECT_EQ(err, Error::ok);
+
+	// Iterator advanced
+	EXPECT_EQ(ctx.first(), first + size);
+
+	// Actual value
+	EXPECT_EQ(*actual_value, *GetParam().value);
 }
 
-TEST_F(DeserializeFixedSizeString, ExtraSize_CopiesValueIncrementsIterator)
+TEST_P(SerializeTest, Deserialize_ExtraSpace_AdvancesIteratorPopulatesValue)
 {
-	DeserializationContext ctx (begin(buffer), end(buffer), 0);
-	auto err = deserialize(value, ctx);
-	EXPECT_EQ(ctx.first(), begin(buffer) + 5);
-	EXPECT_EQ(value_as_view(), string_view("ab\0de", 5));
-	EXPECT_EQ(err, Error::ok);
-}
-
-TEST_F(DeserializeFixedSizeString, Overflow_ReturnsError)
-{
-	DeserializationContext ctx (begin(buffer), begin(buffer) + 4, 0);
-	auto err = deserialize(value, ctx);
-	EXPECT_EQ(err, Error::incomplete_message);
-}
-
-// Null-terminated string
-/*struct DeserializeNullTerminatedString : public testing::Test
-{
-	uint8_t buffer [4] { 'a', 'b', '\0', 'd' };
-	string_null value;
-};
-
-TEST_F(DeserializeNullTerminatedString, ExactSize_GetsValueIncrementsIterator)
-{
-	ReadIterator res = deserialize(begin(buffer), begin(buffer) + 3, value);
-	EXPECT_EQ(value.value, "ab");
-	EXPECT_EQ(res, begin(buffer) + 3);
-}
-
-TEST_F(DeserializeNullTerminatedString, ExtraSize_GetsValueIncrementsIterator)
-{
-	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
-	EXPECT_EQ(value.value, "ab");
-	EXPECT_EQ(res, begin(buffer) + 3);
-}
-
-TEST_F(DeserializeNullTerminatedString, Overflow_ThrowsOutOfRange)
-{
-	EXPECT_THROW(deserialize(begin(buffer), begin(buffer) + 2, value), out_of_range);
-}
-
-// Length-encoded string
-struct LengthEncodedStringParams
-{
-	uint64_t string_length;
-	std::vector<uint8_t> length_prefix;
-};
-
-struct DeserializeLengthEncodedString : public ::testing::TestWithParam<LengthEncodedStringParams>
-{
-	std::vector<uint8_t> buffer;
-	string_lenenc value;
-	DeserializeLengthEncodedString()
+	if (GetParam().is_space_sensitive)
 	{
-		const auto& prefix = GetParam().length_prefix;
-		copy(prefix.begin(), prefix.end(), back_inserter(buffer));
-		buffer.resize(buffer.size() + GetParam().string_length + 8, 'a');
+		vector<uint8_t> buffer (GetParam().expected_buffer);
+		buffer.push_back(0xff);
+		auto first = buffer.data();
+		DeserializationContext ctx (first, first + buffer.size(), 0);
+		auto actual_value = GetParam().value->default_construct();
+		auto err = actual_value->deserialize(ctx);
+
+		// No error
+		EXPECT_EQ(err, Error::ok);
+
+		// Iterator advanced
+		EXPECT_EQ(ctx.first(), first + GetParam().expected_buffer.size());
+
+		// Actual value
+		EXPECT_EQ(*actual_value, *GetParam().value);
 	}
-	ReadIterator exact_end() const { return buffer.data() + buffer.size() - 8; };
-	ReadIterator extra_end() const { return buffer.data() + buffer.size(); }
-	ReadIterator overflow_string_end() const { return buffer.data() + buffer.size() - 9; }
-	ReadIterator overflow_int_end() const { return buffer.data() + GetParam().length_prefix.size() - 1; }
-	string expected_value() const { return string(GetParam().string_length, 'a'); }
+}
+
+TEST_P(SerializeTest, Deserialize_NotEnoughSpace_ReturnsError)
+{
+	if (GetParam().is_space_sensitive)
+	{
+		vector<uint8_t> buffer (GetParam().expected_buffer);
+		buffer.back() = 0xaa; // try to detect any overruns
+		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size() - 1, 0);
+		auto actual_value = GetParam().value->default_construct();
+		auto err = actual_value->deserialize(ctx);
+		EXPECT_EQ(err, Error::incomplete_message);
+	}
+}
+
+struct DeserializeErrorParams
+{
+	shared_ptr<TypeErasedValue> value;
+	vector<uint8_t> buffer;
+	string test_name;
+	Error expected_error;
+
+	template <typename T>
+	DeserializeErrorParams create(vector<uint8_t>&& buffer, string&& test_name, Error err = Error::incomplete_message)
+	{
+		return DeserializeErrorParams {
+			make_shared<TypeErasedValueImpl<T>>(T{}),
+			move(buffer),
+			move(test_name),
+			err
+		};
+	}
 };
 
-TEST_P(DeserializeLengthEncodedString, ExactSize_GetsValueIncrementsIterator)
+ostream& operator<<(ostream& os, const DeserializeErrorParams& params)
 {
-	ReadIterator res = deserialize(buffer.data(), exact_end(), value);
-	EXPECT_EQ(res, exact_end());
-	EXPECT_EQ(value.value, expected_value());
+	return os << params.value->get_type_name() << " - " << params.test_name;
 }
 
-TEST_P(DeserializeLengthEncodedString, ExtraSize_GetsValueIncrementsIterator)
+// Special error conditions
+struct DeserializeErrorTest : testing::TestWithParam<DeserializeErrorParams>
 {
-	ReadIterator res = deserialize(buffer.data(), extra_end(), value);
-	EXPECT_EQ(res, exact_end());
-	EXPECT_EQ(value.value, expected_value());
-}
-
-TEST_P(DeserializeLengthEncodedString, OverflowInString_ThrowsOutOfRange)
-{
-	EXPECT_THROW(deserialize(buffer.data(), overflow_string_end(), value), out_of_range);
-}
-
-TEST_P(DeserializeLengthEncodedString, OverflowInInt_ThrowsOutOfRange)
-{
-	EXPECT_THROW(deserialize(buffer.data(), overflow_int_end(), value), out_of_range);
-	EXPECT_THROW(deserialize(buffer.data(), buffer.data(), value), out_of_range);
-}
-
-INSTANTIATE_TEST_SUITE_P(Default, DeserializeLengthEncodedString, ::testing::Values(
-	LengthEncodedStringParams{0x10,        {0x10}},
-	LengthEncodedStringParams{0xfeff,      {0xfc, 0xff, 0xfe}},
-	LengthEncodedStringParams{0xfdfeff,    {0xfd, 0xff, 0xfe, 0xfd}}
-	// Allocating strings as long as 0x100000000 can cause bad_alloc
-), [](const auto& v) { return "string_length_" + to_string(v.param.string_length); });
-
-// EOF string
-struct DeserializeEofString : public testing::Test
-{
-	uint8_t buffer [4] { 'a', 'b', '\0', 'd' };
-	string_eof value;
 };
 
-TEST_F(DeserializeEofString, Trivial_GetsValueIncrementsIterator)
+TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
 {
-	string_view expected {"ab\0d", 4};
-	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
-	EXPECT_EQ(value.value, expected);
-	EXPECT_EQ(res, end(buffer));
+	auto first = GetParam().buffer.data();
+	auto last = GetParam().buffer.data() + GetParam().buffer.size();
+	DeserializationContext ctx (first, last, 0);
+	auto value = GetParam().value->default_construct();
+	auto err = value->deserialize(ctx);
+	EXPECT_EQ(err, GetParam().expected_error);
 }
 
-TEST_F(DeserializeEofString, EmptyBuffer_GetsEmptyValue)
-{
-	ReadIterator res = deserialize(begin(buffer), begin(buffer), value);
-	EXPECT_EQ(value.value, "");
-	EXPECT_EQ(res, begin(buffer));
-}
+// Definitions for the parameterized tests
+string string_250 (250, 'a');
+string string_251 (251, 'a');
+string string_ffff (0xffff, 'a');
+string string_10000 (0x10000, 'a');
 
-// Enums
-enum class TestEnum : int2
+enum class EnumInt1 : uint8_t
 {
 	value0 = 0,
-	value1 = 0xfeff
+	value1 = 3,
+	value2 = 0xff
 };
 
-struct DeserializeEnum : public testing::Test
+enum class EnumInt2 : uint16_t
 {
-	uint8_t buffer [3] { 0xff, 0xfe, 0xaa };
-	TestEnum value;
+	value0 = 0,
+	value1 = 3,
+	value2 = 0xfeff
 };
 
-TEST_F(DeserializeEnum, ExactSize_GetsValueIncrementsIterator)
+enum class EnumInt4 : uint32_t
 {
-	ReadIterator res = deserialize(begin(buffer), begin(buffer) + 2, value);
-	EXPECT_EQ(res, begin(buffer) + 2);
-	EXPECT_EQ(value, TestEnum::value1);
-}
+	value0 = 0,
+	value1 = 3,
+	value2 = 0xfcfdfeff
+};
 
-TEST_F(DeserializeEnum, ExtraSize_GetsValueIncrementsIterator)
-{
-	ReadIterator res = deserialize(begin(buffer), end(buffer), value);
-	EXPECT_EQ(res, begin(buffer) + 2);
-	EXPECT_EQ(value, TestEnum::value1);
-}
+INSTANTIATE_TEST_SUITE_P(Default, SerializeTest, ::testing::Values(
+	// Unsigned fixed size ints
+	SerializeParams(int1{0xff}, {0xff}),
+	SerializeParams(int2{0xfeff}, {0xff, 0xfe}),
+	SerializeParams(int3{0xfdfeff}, {0xff, 0xfe, 0xfd}),
+	SerializeParams(int4{0xfcfdfeff}, {0xff, 0xfe, 0xfd, 0xfc}),
+	SerializeParams(int6{0xfafbfcfdfeff}, {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa}),
+	SerializeParams(int8{0xf8f9fafbfcfdfeff}, {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}),
 
-TEST_F(DeserializeEnum, Overflow_ThrowsOutOfRange)
-{
-	EXPECT_THROW(deserialize(begin(buffer), begin(buffer) + 1, value), out_of_range);
-}*/
+	// Signed, fixed size ints
+	SerializeParams(int1_signed{-1}, {0xff}, "Negative"),
+	SerializeParams(int2_signed{-0x101}, {0xff, 0xfe}, "Negative"),
+	SerializeParams(int4_signed{-0x3020101}, {0xff, 0xfe, 0xfd, 0xfc}, "Negative"),
+	SerializeParams(int8_signed{-0x0706050403020101}, {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "Negative"),
+	SerializeParams(int1_signed{0x01}, {0x01}, "Positive"),
+	SerializeParams(int2_signed{0x0201}, {0x01, 0x02}, "Positive"),
+	SerializeParams(int4_signed{0x04030201}, {0x01, 0x02, 0x03, 0x04}, "Positive"),
+	SerializeParams(int8_signed{0x0807060504030201}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "Positive"),
+
+	// int_lenenc
+	SerializeParams(int_lenenc{1}, {0x01}, "1 byte (regular value)"),
+	SerializeParams(int_lenenc{250}, {0xfa}, "1 byte (max value)"),
+	SerializeParams(int_lenenc{0xfeb7}, {0xfc, 0xb7, 0xfe}, "2 bytes (regular value)"),
+	SerializeParams(int_lenenc{0xffff}, {0xfc, 0xff, 0xff}, "2 bytes (max value)"),
+	SerializeParams(int_lenenc{0xa0feff}, {0xfd, 0xff, 0xfe, 0xa0}, "3 bytes (regular value)"),
+	SerializeParams(int_lenenc{0xffffff}, {0xfd, 0xff, 0xff, 0xff}, "3 bytes (max value)"),
+	SerializeParams(int_lenenc{0xf8f9fafbfcfdfeff},
+			{0xfe, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "8 bytes (regular value)"),
+	SerializeParams(int_lenenc{0xffffffffffffffff},
+			{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, "8 bytes (max value)"),
+
+	// fixed-size string
+	SerializeParams(string_fixed<4>{'a', 'b', 'd', 'e'}, {0x61, 0x62, 0x64, 0x65}, "Regular characters"),
+	SerializeParams(string_fixed<3>{'\0', '\1', 'a'}, {0x00, 0x01, 0x61}, "Null characters"),
+	SerializeParams(string_fixed<3>{char(0xc3), char(0xb1), 'a'}, {0xc3, 0xb1, 0x61}, "UTF-8 characters"),
+	SerializeParams(string_fixed<1>{'a'}, {0x61}, "Size 1 string"),
+
+	// null-terminated string
+	SerializeParams(string_null{"abc"}, {0x61, 0x62, 0x63, 0x00}, "Regular characters"),
+	SerializeParams(string_null{"\xc3\xb1"}, {0xc3, 0xb1, 0x00}, "UTF-8 characters"),
+	SerializeParams(string_null{""}, {0x00}, "Empty string"),
+
+	// length-encoded string
+	SerializeParams(string_lenenc{""}, {0x00}, "Empty string"),
+	SerializeParams(string_lenenc{"abc"}, {0x03, 0x61, 0x62, 0x63}, "1 byte size, regular characters"),
+	SerializeParams(string_lenenc{string_view("a\0b", 3)}, {0x03, 0x61, 0x00, 0x62}, "1 byte size, null characters"),
+	SerializeParams(string_lenenc{string_250}, concat({250}, vector<uint8_t>(250, 0x61)), "1 byte size, max"),
+	SerializeParams(string_lenenc{string_251}, concat({0xfc, 251, 0}, vector<uint8_t>(251, 0x61)), "2 byte size, min"),
+	SerializeParams(string_lenenc{string_ffff}, concat({0xfc, 0xff, 0xff}, vector<uint8_t>(0xffff, 0x61)), "2 byte size, max"),
+	SerializeParams(string_lenenc{string_10000}, concat({0xfd, 0x00, 0x00, 0x01}, vector<uint8_t>(0x10000, 0x61)), "3 byte size, max"),
+
+	// string eof
+	SerializeParams(string_eof{"abc"}, {0x61, 0x62, 0x63}, "Regular characters", false),
+	SerializeParams(string_eof{string_view("a\0b", 3)}, {0x61, 0x00, 0x62}, "Null characters", false),
+	SerializeParams(string_eof{""}, {}, "Empty string", false),
+
+	// enums
+	SerializeParams(EnumInt1::value1, {0x03}, "low value"),
+	SerializeParams(EnumInt1::value2, {0xff}, "high value"),
+	SerializeParams(EnumInt2::value1, {0x03, 0x00}, "low value"),
+	SerializeParams(EnumInt2::value2, {0xff, 0xfe}, "high value"),
+	SerializeParams(EnumInt4::value1, {0x03, 0x00, 0x00, 0x00}, "low value"),
+	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "high value")
+));
+
 
 
 } // anon namespace

@@ -19,6 +19,9 @@ struct ValueHolder
 	using value_type = T;
 
 	value_type value;
+
+	bool operator==(const ValueHolder<T>& rhs) const { return value == rhs.value; }
+	bool operator!=(const ValueHolder<T>& rhs) const { return value != rhs.value; }
 };
 
 struct int1 : ValueHolder<std::uint8_t> {};

@@ -307,7 +307,7 @@ void serialize(T input, SerializationContext& ctx) noexcept
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
 std::size_t get_size(T input, const SerializationContext&) noexcept
 {
-	return get_fixed_size<std::underlying_type_t<T>>::value;
+	return get_fixed_size<ValueHolder<std::underlying_type_t<T>>>::value;
 }
 
 // Tuple-like messages
