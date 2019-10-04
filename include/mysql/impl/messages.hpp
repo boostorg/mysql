@@ -13,22 +13,21 @@ namespace mysql
 namespace detail
 {
 
-// Fields
-namespace fields
+namespace msgs
 {
-struct packet_size : int3 {};
-struct sequence_number: int1 {};
-struct message_header : int1 {};
-struct error_code : int2 {};
-struct sql_state_marker : string_fixed<1> {};
-struct sql_state : string_fixed<5> {};
-struct error_message : string_eof {};
-}
 
-using packet_header = std::tuple<
-	fields::packet_size,
-	fields::sequence_number
->;
+struct packet_header
+{
+	int3 packet_size;
+	int1 sequence_number;
+
+	static constexpr auto fields = std::make_tuple(
+		&packet_header::packet_size,
+		&packet_header::sequence_number
+	);
+};
+
+}
 
 struct OkPacket
 {
@@ -41,13 +40,13 @@ struct OkPacket
 	string_eof info;
 };
 
-using err_packet = std::tuple<
+/*using err_packet = std::tuple<
 	fields::message_header, // int<1> 	header 	0xFF ERR packet header
 	fields::error_code,
 	fields::sql_state_marker,
 	fields::sql_state,
 	fields::error_message
->;
+>;*/
 
 
 struct Handshake

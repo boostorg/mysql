@@ -6,6 +6,7 @@
  */
 
 #include "mysql/impl/basic_serialization.hpp"
+#include "mysql/impl/messages.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <boost/type_index.hpp>
@@ -14,6 +15,28 @@ using namespace testing;
 using namespace std;
 using namespace mysql;
 using namespace mysql::detail;
+
+// Operator == for structs
+template <std::size_t index, typename T>
+bool equals_struct(const T& lhs, const T& rhs)
+{
+	if constexpr (index == std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	{
+		return true;
+	}
+	else
+	{
+		constexpr auto pmem = std::get<index>(T::fields);
+		return (rhs.*pmem == lhs.*pmem) && equals_struct<index+1>(lhs, rhs);
+	}
+}
+
+template <typename T>
+enable_if_t<is_struct_with_fields<T>::value, bool>
+operator==(const T& lhs, const T& rhs)
+{
+	return equals_struct<0>(lhs, rhs);
+}
 
 namespace
 {
@@ -243,7 +266,7 @@ enum class EnumInt4 : uint32_t
 	value2 = 0xfcfdfeff
 };
 
-INSTANTIATE_TEST_SUITE_P(Default, SerializeTest, ::testing::Values(
+INSTANTIATE_TEST_SUITE_P(BasicTypes, SerializeTest, ::testing::Values(
 	// Unsigned fixed size ints
 	SerializeParams(int1{0xff}, {0xff}),
 	SerializeParams(int2{0xfeff}, {0xff, 0xfe}),
@@ -308,6 +331,12 @@ INSTANTIATE_TEST_SUITE_P(Default, SerializeTest, ::testing::Values(
 	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "high value")
 ));
 
+INSTANTIATE_TEST_SUITE_P(Messages, SerializeTest, ::testing::Values(
+	SerializeParams(msgs::packet_header{{3}, {0}}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
+	SerializeParams(msgs::packet_header{{9}, {2}}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
+	SerializeParams(msgs::packet_header{{0xcacbcc}, {0xfa}}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
+	SerializeParams(msgs::packet_header{{0xffffff}, {0xff}}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
+));
 
 
 } // anon namespace

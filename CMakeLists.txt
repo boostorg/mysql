@@ -51,7 +51,7 @@ find_package(GTest REQUIRED)
 enable_testing()
 add_executable(
 	unittests
-	test/basic_serialization.cpp
+	test/serialization.cpp
 )
 target_link_libraries(
 	unittests

@@ -310,68 +310,88 @@ std::size_t get_size(T input, const SerializationContext&) noexcept
 	return get_fixed_size<ValueHolder<std::underlying_type_t<T>>>::value;
 }
 
-// Tuple-like messages
-template <std::size_t index, typename... Types>
-Error deserialize_tuple(std::tuple<Types...>& output, DeserializationContext& ctx) noexcept
+// Structs
+struct is_struct_with_fields_helper
 {
-	if constexpr (index == std::tuple_size_v<decltype(output)>)
+    template <typename T>
+    static constexpr std::true_type get(decltype(T::fields)*);
+
+    template <typename T>
+    static constexpr std::false_type get(...);
+};
+
+template <typename T>
+struct is_struct_with_fields : decltype(is_struct_with_fields_helper::get<T>(nullptr))
+{
+};
+
+template <std::size_t index, typename T>
+Error deserialize_struct(T& output, DeserializationContext& ctx) noexcept
+{
+	if constexpr (index == std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
 	{
 		return Error::ok;
 	}
 	else
 	{
-		Error err = deserialize(std::get<index>(output), ctx);
+		constexpr auto pmem = std::get<index>(T::fields);
+		Error err = deserialize(output.*pmem, ctx);
 		if (err != Error::ok)
 		{
 			return err;
 		}
 		else
 		{
-			return deserialize_tuple<index+1>(output, ctx);
+			return deserialize_struct<index+1>(output, ctx);
 		}
 	}
 }
 
-template <typename... Types>
-Error deserialize(std::tuple<Types...>& output, DeserializationContext& ctx) noexcept
+template <typename T>
+std::enable_if_t<is_struct_with_fields<T>::value, Error>
+deserialize(T& output, DeserializationContext& ctx) noexcept
 {
-	return deserialize_tuple<0>(output, ctx);
+	return deserialize_struct<0>(output, ctx);
 }
 
-template <std::size_t index, typename... Types>
-void serialize_tuple(const std::tuple<Types...>& input, SerializationContext& ctx) noexcept
+template <std::size_t index, typename T>
+void serialize_struct(const T& value, SerializationContext& ctx) noexcept
 {
-	if constexpr (index < std::tuple_size_v<decltype(input)>)
+	if constexpr (index < std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
 	{
-		serialize(std::get<index>(input), ctx);
-		serialize_tuple<index+1>(input, ctx);
+		auto pmem = std::get<index>(T::fields);
+		serialize(value.*pmem, ctx);
+		serialize_struct<index+1>(value, ctx);
 	}
 }
 
-template <typename... Types>
-void serialize(const std::tuple<Types...>& input, SerializationContext& ctx) noexcept
+template <typename T>
+std::enable_if_t<is_struct_with_fields<T>::value>
+serialize(const T& input, SerializationContext& ctx) noexcept
 {
-	serialize_tuple<0>(input, ctx);
+	serialize_struct<0>(input, ctx);
 }
 
-template <std::size_t index, typename... Types>
-std::size_t get_size_tuple(const std::tuple<Types...>& input, const SerializationContext& ctx) noexcept
+template <std::size_t index, typename T>
+std::size_t get_size_struct(const T& input, const SerializationContext& ctx) noexcept
 {
-	if constexpr (index == std::tuple_size_v<decltype(input)>)
+	if constexpr (index == std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
 	{
 		return 0;
 	}
 	else
 	{
-		return get_size_tuple<index+1>(input, ctx) +
-		       get_size(std::get<index>(input), ctx);
+		constexpr auto pmem = std::get<index>(T::fields);
+		return get_size_struct<index+1>(input, ctx) +
+		       get_size(input.*pmem, ctx);
 	}
 }
 
-template <typename... Types>
-std::size_t get_size(const std::tuple<Types...>& input, const SerializationContext& ctx) noexcept
+template <typename T>
+std::enable_if_t<is_struct_with_fields<T>::value, std::size_t>
+get_size(const T& input, const SerializationContext& ctx) noexcept
 {
-	return get_size_tuple<0>(input, ctx);
+	return get_size_struct<0>(input, ctx);
 }
 
 }
