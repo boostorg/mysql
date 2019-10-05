@@ -60,7 +60,6 @@ struct err_packet
 		&err_packet::sql_state,
 		&err_packet::error_message
 	);
-	// TODO: test serialization
 };
 
 
