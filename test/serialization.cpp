@@ -7,6 +7,7 @@
 
 #include "mysql/impl/basic_serialization.hpp"
 #include "mysql/impl/messages.hpp"
+#include "mysql/impl/constants.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <boost/type_index.hpp>
@@ -331,11 +332,37 @@ INSTANTIATE_TEST_SUITE_P(BasicTypes, SerializeTest, ::testing::Values(
 	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "high value")
 ));
 
-INSTANTIATE_TEST_SUITE_P(Messages, SerializeTest, ::testing::Values(
+INSTANTIATE_TEST_SUITE_P(PacketHeader, SerializeTest, ::testing::Values(
+	// packet header
 	SerializeParams(msgs::packet_header{{3}, {0}}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
 	SerializeParams(msgs::packet_header{{9}, {2}}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
 	SerializeParams(msgs::packet_header{{0xcacbcc}, {0xfa}}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
 	SerializeParams(msgs::packet_header{{0xffffff}, {0xff}}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
+));
+
+INSTANTIATE_TEST_SUITE_P(OkPacket, SerializeTest, ::testing::Values(
+	SerializeParams(msgs::ok_packet{
+		{4}, // affected rows
+		{0}, // last insert ID
+		{SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED}, // server status
+		{0}, // warnings
+		string_lenenc{"Rows matched: 5  Changed: 4  Warnings: 0"}
+	}, {
+		0x04, 0x00, 0x22, 0x00, 0x00, 0x00, 0x28, 0x52, 0x6f, 0x77, 0x73,
+		0x20, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x3a, 0x20, 0x35, 0x20, 0x20, 0x43, 0x68, 0x61,
+		0x6e, 0x67, 0x65, 0x64, 0x3a, 0x20, 0x34, 0x20, 0x20, 0x57, 0x61, 0x72, 0x6e, 0x69, 0x6e, 0x67,
+		0x73, 0x3a, 0x20, 0x30
+	}, "successful UPDATE", false),
+
+	SerializeParams(msgs::ok_packet{
+		{1}, // affected rows
+		{6}, // last insert ID
+		{SERVER_STATUS_AUTOCOMMIT}, // server status
+		{0}, // warnings
+		{}  // no message
+	},{
+		0x01, 0x06, 0x02, 0x00, 0x00, 0x00
+	}, "successful INSERT", false)
 ));
 
 

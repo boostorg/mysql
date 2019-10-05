@@ -27,26 +27,45 @@ struct packet_header
 	);
 };
 
-}
-
-struct OkPacket
+struct ok_packet
 {
 	// header: int<1> 	header 	0x00 or 0xFE the OK packet header
 	int_lenenc affected_rows;
 	int_lenenc last_insert_id;
 	int2 status_flags; // server_status_flags
 	int2 warnings;
-	// TODO: CLIENT_SESSION_TRACK
-	string_eof info;
+	// TODO: CLIENT_SESSION_TRACK. This may require separate serialization functions
+	std::optional<string_lenenc> info;
+
+	static constexpr auto fields = std::make_tuple(
+		&ok_packet::affected_rows,
+		&ok_packet::last_insert_id,
+		&ok_packet::status_flags,
+		&ok_packet::warnings,
+		&ok_packet::info
+	);
 };
 
-/*using err_packet = std::tuple<
-	fields::message_header, // int<1> 	header 	0xFF ERR packet header
-	fields::error_code,
-	fields::sql_state_marker,
-	fields::sql_state,
-	fields::error_message
->;*/
+struct err_packet
+{
+	// int<1> 	header 	0xFF ERR packet header
+	int2 error_code;
+	string_fixed<1> sql_state_marker;
+	string_fixed<5> sql_state;
+	string_eof error_message;
+
+	static constexpr auto fields = std::make_tuple(
+		&err_packet::error_code,
+		&err_packet::sql_state_marker,
+		&err_packet::sql_state,
+		&err_packet::error_message
+	);
+	// TODO: test serialization
+};
+
+
+}
+
 
 
 struct Handshake

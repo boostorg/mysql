@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <cassert>
 #include <algorithm>
+#include <optional>
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/error.hpp"
 
@@ -393,6 +394,37 @@ get_size(const T& input, const SerializationContext& ctx) noexcept
 {
 	return get_size_struct<0>(input, ctx);
 }
+
+// Optionals
+template <typename T>
+Error deserialize(std::optional<T>& output, DeserializationContext& ctx) noexcept
+{
+	if (ctx.enough_size(1))
+	{
+		output.emplace();
+		return deserialize(*output, ctx);
+	}
+	else
+	{
+		return Error::ok;
+	}
+}
+
+template <typename T>
+void serialize(const std::optional<T>& input, SerializationContext& ctx) noexcept
+{
+	if (input)
+	{
+		serialize(*input, ctx);
+	}
+}
+
+template <typename T>
+std::size_t get_size(const std::optional<T>& input, const SerializationContext& ctx) noexcept
+{
+	return input ? get_size(*input, ctx) : 0;
+}
+
 
 }
 }
