@@ -35,7 +35,7 @@ struct ok_packet
 	int2 status_flags; // server_status_flags
 	int2 warnings;
 	// TODO: CLIENT_SESSION_TRACK. This may require separate serialization functions
-	std::optional<string_lenenc> info;
+	string_lenenc info;
 
 	static constexpr auto fields = std::make_tuple(
 		&ok_packet::affected_rows,
@@ -63,8 +63,10 @@ struct err_packet
 };
 
 
-}
+} // msgs
 
+// serialization functions
+inline Error deserialize(msgs::ok_packet& output, DeserializationContext& ctx) noexcept;
 
 
 struct Handshake
@@ -181,7 +183,7 @@ struct StmtClose
 } // detail
 } // mysql
 
-
+#include "mysql/impl/messages_impl.hpp"
 
 
 #endif /* MESSAGES_H_ */
