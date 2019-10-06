@@ -8,6 +8,8 @@ namespace mysql
 namespace detail
 {
 
+constexpr std::size_t MAX_PACKET_SIZE = 0xffffff;
+
 // Server/client capabilities
 constexpr std::uint32_t CLIENT_LONG_PASSWORD = 1; // Use the improved version of Old Password Authentication
 constexpr std::uint32_t CLIENT_FOUND_ROWS = 2; // Send found rows instead of affected rows in EOF_Packet

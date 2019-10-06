@@ -29,6 +29,7 @@ inline const char* error_to_string(Error error) noexcept
 	{
 	case Error::ok: return "no error";
 	case Error::incomplete_message: return "The message read was incomplete (not enough bytes to fully decode it)";
+	case Error::sequence_number_mismatch: return "Mismatched sequence numbers";
 	default: return "<unknown error>";
 	}
 }

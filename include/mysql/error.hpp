@@ -9,8 +9,11 @@ namespace mysql
 enum class Error : int
 {
 	ok = 0,
-	incomplete_message
+	incomplete_message,
+	sequence_number_mismatch
 };
+
+using error_code = boost::system::error_code;
 
 }
 

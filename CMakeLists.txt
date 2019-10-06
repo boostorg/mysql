@@ -48,16 +48,19 @@ target_include_directories(
 set(GTEST_ROOT /opt/gtest)
 include(GoogleTest)
 find_package(GTest REQUIRED)
+find_library(GMOCK_LIBRARY gmock PATHS ${GTEST_ROOT}/lib) 
 enable_testing()
 add_executable(
 	unittests
 	test/serialization.cpp
+	test/mysql_channel.cpp
 )
 target_link_libraries(
 	unittests
 	PUBLIC
 	GTest::GTest
 	GTest::Main
+	${GMOCK_LIBRARY}
 	mysql_asio
 )
 gtest_discover_tests(unittests)

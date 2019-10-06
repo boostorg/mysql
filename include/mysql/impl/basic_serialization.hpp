@@ -2,6 +2,7 @@
 #define DESERIALIZATION_H_
 
 #include <boost/endian/conversion.hpp>
+#include <boost/asio/buffer.hpp>
 #include <vector>
 #include <type_traits>
 #include <cassert>
@@ -22,6 +23,12 @@ class DeserializationContext
 public:
 	DeserializationContext(ReadIterator first, ReadIterator last, std::uint32_t capabilities) noexcept:
 		first_(first), last_(last), capabilities_(capabilities) { assert(last_ >= first_); };
+	DeserializationContext(boost::asio::const_buffer buff, std::uint32_t capabilities) noexcept:
+		DeserializationContext(
+				static_cast<const std::uint8_t*>(buff.data()),
+				static_cast<const std::uint8_t*>(buff.data()) + buff.size(),
+				capabilities
+		) {};
 	ReadIterator first() const noexcept { return first_; }
 	ReadIterator last() const noexcept { return last_; }
 	void set_first(ReadIterator new_first) noexcept { first_ = new_first; assert(last_ >= first_); }

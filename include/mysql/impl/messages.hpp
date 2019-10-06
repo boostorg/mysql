@@ -7,6 +7,7 @@
 #include <tuple>
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/impl/constants.hpp"
+#include "mysql/impl/basic_serialization.hpp"
 
 namespace mysql
 {
