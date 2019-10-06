@@ -151,8 +151,6 @@ TEST_F(MysqlChannelReadTest, SyncRead_AllReadsSuccessful_ReadHeaderPopulatesBuff
 	verify_buffer({0xfe, 0x03, 0x02});
 }
 
-// TODO: test with existing seqnum, resetting seqnum, wrapping seqnum
-
 TEST_F(MysqlChannelReadTest, SyncRead_MoreThan16M_JoinsPackets)
 {
 	EXPECT_CALL(stream, read_buffer)
@@ -205,6 +203,31 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateE
 	channel.read(buffer, errc);
 	EXPECT_EQ(errc, make_error_code(Error::sequence_number_mismatch));
 }
+
+TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSequenceNumber)
+{
+	channel.reset_sequence_number(0x21);
+	EXPECT_CALL(stream, read_buffer)
+		.WillOnce(Invoke(buffer_copier({0x03, 0x00, 0x00, 0x21})))
+		.WillOnce(Invoke(buffer_copier({0xfe, 0x03, 0x02})));
+	channel.read(buffer, errc);
+	EXPECT_EQ(errc, error_code());
+	verify_buffer({0xfe, 0x03, 0x02});
+	EXPECT_EQ(channel.sequence_number(), 0x22);
+}
+
+TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberFF_SequenceNumberWraps)
+{
+	channel.reset_sequence_number(0xff);
+	EXPECT_CALL(stream, read_buffer)
+		.WillOnce(Invoke(buffer_copier({0x03, 0x00, 0x00, 0xff})))
+		.WillOnce(Invoke(buffer_copier({0xfe, 0x03, 0x02})));
+	channel.read(buffer, errc);
+	EXPECT_EQ(errc, error_code());
+	verify_buffer({0xfe, 0x03, 0x02});
+	EXPECT_EQ(channel.sequence_number(), 0);
+}
+
 
 struct MysqlChannelWriteTest : public MysqlChannelFixture
 {
@@ -290,6 +313,33 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInPacket_ReturnsErrorCode)
 	EXPECT_EQ(errc, errc::make_error_code(errc::broken_pipe));
 }
 
+TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceNumberNotZero_RespectsSequenceNumber)
+{
+	channel.reset_sequence_number(0xab);
+	ON_CALL(stream, write_buffer)
+		.WillByDefault(Invoke(make_write_handler()));
+	channel.write(buffer(std::vector<uint8_t>{0xaa, 0xab, 0xac}), errc);
+	verify_buffer({
+		0x03, 0x00, 0x00, 0xab, // header
+		0xaa, 0xab, 0xac // body
+	});
+	EXPECT_EQ(errc, error_code());
+	EXPECT_EQ(channel.sequence_number(), 0xac);
+}
+
+TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceIsFF_WrapsSequenceNumber)
+{
+	channel.reset_sequence_number(0xff);
+	ON_CALL(stream, write_buffer)
+		.WillByDefault(Invoke(make_write_handler()));
+	channel.write(buffer(std::vector<uint8_t>{0xaa, 0xab, 0xac}), errc);
+	verify_buffer({
+		0x03, 0x00, 0x00, 0xff, // header
+		0xaa, 0xab, 0xac // body
+	});
+	EXPECT_EQ(errc, error_code());
+	EXPECT_EQ(channel.sequence_number(), 0);
+}
 
 } // anon namespace
 

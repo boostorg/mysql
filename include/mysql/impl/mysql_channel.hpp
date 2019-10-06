@@ -42,7 +42,7 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 	async_write(boost::asio::const_buffer buffer, CompletionToken&& token);
 
-	void reset_sequence_number() { sequence_number_ = 0; }
+	void reset_sequence_number(std::uint8_t value = 0) { sequence_number_ = value; }
 	std::uint8_t sequence_number() const { return sequence_number_; }
 };
 
