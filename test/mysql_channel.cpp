@@ -15,6 +15,7 @@ using namespace testing;
 using namespace mysql;
 using namespace mysql::detail;
 using namespace boost::asio;
+namespace errc = boost::system::errc;
 
 namespace
 {
@@ -71,6 +72,14 @@ struct MysqlChannelTest : public Test
 			return buffer.size();
 		};
 	}
+
+	static auto read_failer(error_code error)
+	{
+		return [error](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+			ec = error;
+			return size_t(0);
+		};
+	}
 };
 
 TEST_F(MysqlChannelTest, SyncRead_AllReadsSuccessful_ReadHeaderPopulatesBuffer)
@@ -107,6 +116,33 @@ TEST_F(MysqlChannelTest, SyncRead_ShortReads_InvokesReadAgain)
 	channel.read(buffer, errc);
 	EXPECT_EQ(errc, error_code());
 	verify_buffer({0x01, 0x02, 0x03, 0x04});
+}
+
+TEST_F(MysqlChannelTest, SyncRead_ReadErrorInHeader_ReturnsFailureErrorCode)
+{
+	auto expected_error = errc::make_error_code(errc::not_supported);
+	EXPECT_CALL(stream, read_buffer)
+		.WillOnce(Invoke(read_failer(expected_error)));
+	channel.read(buffer, errc);
+	EXPECT_EQ(errc, expected_error);
+}
+
+TEST_F(MysqlChannelTest, SyncRead_ReadErrorInPacket_ReturnsFailureErrorCode)
+{
+	auto expected_error = errc::make_error_code(errc::not_supported);
+	EXPECT_CALL(stream, read_buffer)
+		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x00})))
+		.WillOnce(Invoke(read_failer(expected_error)));
+	channel.read(buffer, errc);
+	EXPECT_EQ(errc, expected_error);
+}
+
+TEST_F(MysqlChannelTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateErrorCode)
+{
+	EXPECT_CALL(stream, read_buffer)
+		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x05})));
+	channel.read(buffer, errc);
+	EXPECT_EQ(errc, make_error_code(Error::sequence_number_mismatch));
 }
 
 

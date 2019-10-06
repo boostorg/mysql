@@ -5,6 +5,7 @@
 #include <boost/asio/write.hpp>
 #include <boost/asio/yield.hpp>
 #include <boost/beast/core/async_base.hpp>
+#include <cassert>
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/constants.hpp"
 
@@ -50,11 +51,8 @@ mysql::error_code mysql::detail::MysqlChannel<AsyncStream>::process_header_read(
 {
 	msgs::packet_header header;
 	DeserializationContext ctx (boost::asio::buffer(header_buffer_), 0); // unaffected by capabilities
-	Error err = deserialize(header, ctx);
-	if (err != Error::ok)
-	{
-		return make_error_code(err);
-	}
+	[[maybe_unused]] Error err = deserialize(header, ctx);
+	assert(err == Error::ok); // this should always succeed
 	if (!process_sequence_number(header.sequence_number.value))
 	{
 		return make_error_code(Error::sequence_number_mismatch);
