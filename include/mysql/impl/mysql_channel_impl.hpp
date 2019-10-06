@@ -68,7 +68,7 @@ void mysql::detail::MysqlChannel<AsyncStream>::process_header_write(
 {
 	msgs::packet_header header;
 	header.packet_size.value = size_to_write;
-	header.sequence_number = next_sequence_number();
+	header.sequence_number.value = next_sequence_number();
 	SerializationContext ctx (0, header_buffer_.data()); // capabilities not relevant here
 	serialize(header, ctx);
 }
@@ -114,6 +114,7 @@ void mysql::detail::MysqlChannel<AsyncStream>::write(
 {
 	std::size_t transferred_size = 0;
 	auto bufsize = buffer.size();
+	auto first = static_cast<ReadIterator>(buffer.data());
 
 	while (transferred_size < bufsize)
 	{
@@ -123,7 +124,7 @@ void mysql::detail::MysqlChannel<AsyncStream>::write(
 			next_layer_,
 			std::array<boost::asio::const_buffer, 2> {
 				boost::asio::buffer(header_buffer_),
-				boost::asio::buffer(buffer + transferred_size, size_to_write)
+				boost::asio::buffer(first + transferred_size, size_to_write)
 			},
 			errc
 		);
