@@ -13,7 +13,7 @@ enum class Error : int
 	extra_bytes,
 	sequence_number_mismatch,
 	server_returned_error,
-	unsupported_protocol_v9,
+	server_unsupported,
 	protocol_value_error
 };
 

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <algorithm>
 #include "mysql/impl/basic_types.hpp"
+#include "mysql/impl/capabilities.hpp"
 #include "mysql/error.hpp"
 
 namespace mysql
@@ -19,7 +20,7 @@ class DeserializationContext
 {
 	ReadIterator first_;
 	ReadIterator last_;
-	const std::uint32_t capabilities_;
+	const capabilities capabilities_;
 public:
 	DeserializationContext(ReadIterator first, ReadIterator last, std::uint32_t capabilities) noexcept:
 		first_(first), last_(last), capabilities_(capabilities) { assert(last_ >= first_); };
@@ -36,7 +37,7 @@ public:
 	std::size_t size() const noexcept { return last_ - first_; }
 	bool empty() const noexcept { return last_ == first_; }
 	bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
-	std::uint32_t capabilities() const noexcept { return capabilities_; }
+	capabilities get_capabilities() const noexcept { return capabilities_; }
 	Error copy(void* to, std::size_t sz) noexcept
 	{
 		if (!enough_size(sz)) return Error::incomplete_message;

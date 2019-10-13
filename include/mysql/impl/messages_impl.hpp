@@ -41,11 +41,27 @@ inline mysql::Error mysql::detail::deserialize(
 		output.server_version,
 		output.connection_id,
 		auth_plugin_data_part_1,
-		filler,
+		filler, // TODO: docs state fields below the filler are optional
 		capability_flags_low,
 		output.character_set,
 		output.status_flags,
-		capability_flags_high,
+		capability_flags_high
+	);
+	if (err != Error::ok) return err;
+
+	// Compose capabilities
+	auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&output.capability_falgs.value);
+	memcpy(capabilities_begin, capability_flags_low.value.data(), 2);
+	memcpy(capabilities_begin + 2, capability_flags_high.value.data(), 2);
+	boost::endian::little_to_native_inplace(output.capability_falgs.value);
+
+	// Check minimum server capabilities to deserialize this frame
+	capabilities cap (output.capability_falgs.value);
+	if (!cap.has(CLIENT_PLUGIN_AUTH)) return Error::server_unsupported;
+
+	// Deserialize the rest of the frame
+	err = deserialize_fields(
+		ctx,
 		auth_plugin_data_len,
 		reserved
 	);
@@ -66,12 +82,6 @@ inline mysql::Error mysql::detail::deserialize(
 		output.auth_plugin_data_buffer.data(),
 		auth1_length + auth2_length - 1 // discard trailing null byte
 	);
-
-	// Compose capabilities
-	auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&output.capability_falgs.value);
-	memcpy(capabilities_begin, capability_flags_low.value.data(), 2);
-	memcpy(capabilities_begin + 2, capability_flags_high.value.data(), 2);
-	boost::endian::little_to_native_inplace(output.capability_falgs.value);
 
 	return Error::ok;
 }
