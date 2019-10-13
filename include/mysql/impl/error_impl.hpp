@@ -29,7 +29,11 @@ inline const char* error_to_string(Error error) noexcept
 	{
 	case Error::ok: return "no error";
 	case Error::incomplete_message: return "The message read was incomplete (not enough bytes to fully decode it)";
+	case Error::extra_bytes: return "Extra bytes at the end of the message";
 	case Error::sequence_number_mismatch: return "Mismatched sequence numbers";
+	case Error::server_returned_error: return "The server returned an ERR_Packet";
+	case Error::unsupported_protocol_v9: return "The server requires v9 protocol, which is not supported";
+	case Error::protocol_value_error: return "A field in a message had an unexpected value";
 	default: return "<unknown error>";
 	}
 }

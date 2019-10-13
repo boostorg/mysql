@@ -34,8 +34,16 @@ public:
 	void set_first(ReadIterator new_first) noexcept { first_ = new_first; assert(last_ >= first_); }
 	void advance(std::size_t sz) noexcept { first_ += sz; assert(last_ >= first_); }
 	std::size_t size() const noexcept { return last_ - first_; }
+	bool empty() const noexcept { return last_ == first_; }
 	bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
 	std::uint32_t capabilities() const noexcept { return capabilities_; }
+	Error copy(void* to, std::size_t sz) noexcept
+	{
+		if (!enough_size(sz)) return Error::incomplete_message;
+		memcpy(to, first_, sz);
+		advance(sz);
+		return Error::ok;
+	}
 };
 
 class SerializationContext
@@ -399,6 +407,21 @@ std::enable_if_t<is_struct_with_fields<T>::value, std::size_t>
 get_size(const T& input, const SerializationContext& ctx) noexcept
 {
 	return get_size_struct<0>(input, ctx);
+}
+
+// Helper to write custom struct deserialize()
+template <typename FirstType>
+Error deserialize_fields(DeserializationContext& ctx, FirstType& field) { return deserialize(field, ctx); }
+
+template <typename FirstType, typename... Types>
+Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&... fields_tail)
+{
+	Error err = deserialize(field, ctx);
+	if (err == Error::ok)
+	{
+		err = deserialize_fields(ctx, fields_tail...);
+	}
+	return err;
 }
 
 }

@@ -63,31 +63,37 @@ struct err_packet
 	);
 };
 
+struct handshake
+{
+	// int<1> 	protocol version 	Always 10
+	string_null server_version;
+	int4 connection_id;
+	string_lenenc auth_plugin_data; // not an actual protocol field, the merge of two fields
+	int4 capability_falgs; // merge of the two parts - not an actual field
+	CharacterSetLowerByte character_set; // default server a_protocol_character_set, only the lower 8-bits
+	int2 status_flags; // server_status_flags
+	string_null auth_plugin_name;
+
+	std::array<char, 8 + 0xff> auth_plugin_data_buffer; // not an actual protocol field, the merge of two fields
+
+	static constexpr auto fields = std::make_tuple(
+		&handshake::server_version,
+		&handshake::connection_id,
+		&handshake::auth_plugin_data,
+		&handshake::capability_falgs,
+		&handshake::character_set,
+		&handshake::status_flags,
+		&handshake::auth_plugin_name
+	);
+};
 
 } // msgs
 
 // serialization functions
 inline Error deserialize(msgs::ok_packet& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(msgs::handshake& output, DeserializationContext& ctx) noexcept;
 
 
-struct Handshake
-{
-	// int<1> 	protocol version 	Always 10
-	string_null server_version;
-	int4 connection_id;
-	std::string auth_plugin_data; // merge of the two parts - not an actual field
-	int4 capability_falgs; // merge of the two parts - not an actual field
-	// string[8] 	auth-plugin-data-part-1 	first 8 bytes of the plugin provided data (scramble)
-	// int<1> 	filler 	0x00 byte, terminating the first part of a scramble
-	// int<2> 	capability_flags_1 	The lower 2 bytes of the Capabilities Flags
-	CharacterSetLowerByte character_set; // default server a_protocol_character_set, only the lower 8-bits
-	int2 status_flags; // server_status_flags
-	// int<2> 	capability_flags_2 	The upper 2 bytes of the Capabilities Flags
-	// int<1> 	auth_plugin_data_len
-	// string[10] 	reserved 	reserved. All 0s.
-	// $length 	auth-plugin-data-part-2
-	string_null auth_plugin_name;
-};
 
 struct HandshakeResponse
 {

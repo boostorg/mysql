@@ -35,6 +35,55 @@ operator==(const T& lhs, const T& rhs)
 	return equals_struct<0>(lhs, rhs);
 }
 
+// Operator << for ValueHolder's
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const ValueHolder<T>& value)
+{
+	return os << value.value;
+}
+
+// Operator << for structs
+template <std::size_t index, typename T>
+void print_struct(std::ostream& os, const T& value)
+{
+	if constexpr (index < std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	{
+		constexpr auto pmem = std::get<index>(T::fields);
+		os << "    " << (value.*pmem) << ",\n";
+		print_struct<index+1>(os, value);
+	}
+}
+
+template <typename T>
+std::enable_if_t<is_struct_with_fields<T>::value, std::ostream&>
+operator<<(std::ostream& os, const T& value)
+{
+	os << boost::typeindex::type_id<T>().pretty_name() << "(\n";
+	print_struct<0>(os, value);
+	os << ")\n";
+	return os;
+}
+
+// Operator << for some basic types
+template <std::size_t N>
+std::ostream& operator<<(std::ostream& os, const std::array<char, N>& v)
+{
+	return os << v.data();
+}
+
+template <typename T>
+std::enable_if_t<std::is_enum_v<T>, std::ostream&>
+operator<<(std::ostream& os, T value)
+{
+	return os << boost::typeindex::type_id<T>().pretty_name() << "(" <<
+			static_cast<std::underlying_type_t<T>>(value) << ")";
+}
+
+inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
+{
+	return os << +value;
+}
+
 
 class TypeErasedValue
 {
@@ -46,9 +95,15 @@ public:
 	virtual std::string get_type_name() const = 0;
 	virtual std::shared_ptr<TypeErasedValue> default_construct() const = 0;
 	virtual bool equals(const TypeErasedValue& rhs) const = 0;
+	virtual void print(std::ostream& os) const = 0;
 
 	bool operator==(const TypeErasedValue& rhs) const { return equals(rhs); }
 };
+inline std::ostream& operator<<(std::ostream& os, const TypeErasedValue& value)
+{
+	value.print(os);
+	return os;
+}
 
 template <typename T>
 class TypeErasedValueImpl : public TypeErasedValue
@@ -72,6 +127,10 @@ public:
 	{
 		auto typed_value = dynamic_cast<const TypeErasedValueImpl<T>*>(&rhs);
 		return typed_value && (typed_value->value_ == value_);
+	}
+	void print(std::ostream& os) const override
+	{
+		os << value_;
 	}
 };
 

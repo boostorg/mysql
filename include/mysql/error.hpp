@@ -10,7 +10,11 @@ enum class Error : int
 {
 	ok = 0,
 	incomplete_message,
-	sequence_number_mismatch
+	extra_bytes,
+	sequence_number_mismatch,
+	server_returned_error,
+	unsupported_protocol_v9,
+	protocol_value_error
 };
 
 using error_code = boost::system::error_code;
