@@ -86,5 +86,44 @@ inline mysql::Error mysql::detail::deserialize(
 	return Error::ok;
 }
 
+std::size_t mysql::detail::get_size(
+	const msgs::handshake_response& value,
+	const SerializationContext& ctx
+) noexcept
+{
+	std::size_t res =
+		get_size(value.client_flag, ctx) +
+		get_size(value.max_packet_size, ctx) +
+		get_size(value.character_set, ctx) +
+		23 + // filler
+		get_size(value.username, ctx) +
+		get_size(value.auth_response, ctx);
+	if (ctx.get_capabilities().has(CLIENT_CONNECT_WITH_DB))
+	{
+		res += get_size(value.database, ctx);
+	}
+	res += get_size(value.client_plugin_name, ctx);
+	return res;
+}
+
+inline void mysql::detail::serialize(
+	const msgs::handshake_response& value,
+	SerializationContext& ctx
+) noexcept
+{
+	serialize(value.client_flag, ctx);
+	serialize(value.max_packet_size, ctx);
+	serialize(value.character_set, ctx);
+	std::uint8_t buffer [23] {};
+	ctx.write(buffer, sizeof(buffer));
+	serialize(value.username, ctx);
+	serialize(value.auth_response, ctx);
+	if (ctx.get_capabilities().has(CLIENT_CONNECT_WITH_DB))
+	{
+		serialize(value.database, ctx);
+	}
+	serialize(value.client_plugin_name, ctx);
+}
+
 
 #endif /* INCLUDE_MYSQL_IMPL_MESSAGES_IMPL_HPP_ */

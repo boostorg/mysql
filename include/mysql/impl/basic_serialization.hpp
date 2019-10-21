@@ -50,14 +50,14 @@ public:
 class SerializationContext
 {
 	WriteIterator first_;
-	const std::uint32_t capabilities_;
+	const capabilities capabilities_;
 public:
 	SerializationContext(std::uint32_t capabilities, WriteIterator first = nullptr) noexcept:
 		first_(first), capabilities_(capabilities) {};
 	WriteIterator first() const noexcept { return first_; }
 	void set_first(WriteIterator new_first) noexcept { first_ = new_first; }
 	void advance(std::size_t size) noexcept { first_ += size; }
-	std::uint32_t capabilities() const noexcept { return capabilities_; }
+	capabilities get_capabilities() const noexcept { return capabilities_; }
 	void write(const void* buffer, std::size_t size) noexcept { memcpy(first_, buffer, size); advance(size); }
 	void write(std::uint8_t elm) noexcept { *first_ = elm; ++first_; }
 };

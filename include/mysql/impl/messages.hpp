@@ -87,26 +87,37 @@ struct handshake
 	);
 };
 
-} // msgs
-
-// serialization functions
-inline Error deserialize(msgs::ok_packet& output, DeserializationContext& ctx) noexcept;
-inline Error deserialize(msgs::handshake& output, DeserializationContext& ctx) noexcept;
-
-
-
-struct HandshakeResponse
+struct handshake_response
 {
 	int4 client_flag; // capabilities
 	int4 max_packet_size;
 	CharacterSetLowerByte character_set;
 	// string[23] 	filler 	filler to the size of the handhshake response packet. All 0s.
 	string_null username;
-	string_lenenc auth_response; // we should set CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
-	string_null database; // we should set CLIENT_CONNECT_WITH_DB
-	string_null client_plugin_name; // we should set CLIENT_PLUGIN_AUTH
+	string_lenenc auth_response; // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
+	string_null database; // only to be serialized if CLIENT_CONNECT_WITH_DB
+	string_null client_plugin_name; // we require CLIENT_PLUGIN_AUTH
 	// TODO: CLIENT_CONNECT_ATTRS
+
+	static constexpr auto fields = std::make_tuple(
+		&handshake_response::client_flag,
+		&handshake_response::max_packet_size,
+		&handshake_response::character_set,
+		&handshake_response::username,
+		&handshake_response::auth_response,
+		&handshake_response::database,
+		&handshake_response::client_plugin_name
+	);
 };
+
+} // msgs
+
+// serialization functions
+inline Error deserialize(msgs::ok_packet& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(msgs::handshake& output, DeserializationContext& ctx) noexcept;
+inline std::size_t get_size(const msgs::handshake_response& value, const SerializationContext& ctx) noexcept;
+inline void serialize(const msgs::handshake_response& value, SerializationContext& ctx) noexcept;
+
 
 
 

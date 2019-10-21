@@ -15,6 +15,12 @@ using namespace mysql::detail;
 namespace
 {
 
+template <std::size_t N>
+inline std::string_view buffer_to_sv(const std::uint8_t (&buff)[N])
+{
+	return std::string_view (reinterpret_cast<const char*>(buff), N);
+}
+
 struct DeserializeErrorParams
 {
 	shared_ptr<TypeErasedValue> value;
@@ -212,48 +218,45 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 	}, "Unknown table")
 ));
 
-uint8_t auth_plugin_data [] = {
+constexpr std::uint8_t handshake_auth_plugin_data [] = {
 	0x52, 0x1a, 0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f,
 	0x03, 0x5a, 0x74, 0x05, 0x28, 0x2b, 0x7f, 0x21,
 	0x43, 0x4a, 0x21, 0x62
 };
 
+constexpr std::uint32_t hanshake_caps =
+		CLIENT_LONG_PASSWORD |
+		CLIENT_FOUND_ROWS |
+		CLIENT_LONG_FLAG |
+		CLIENT_CONNECT_WITH_DB |
+		CLIENT_NO_SCHEMA |
+		CLIENT_COMPRESS |
+		CLIENT_ODBC |
+		CLIENT_LOCAL_FILES |
+		CLIENT_IGNORE_SPACE |
+		CLIENT_PROTOCOL_41 |
+		CLIENT_INTERACTIVE |
+		CLIENT_IGNORE_SIGPIPE |
+		CLIENT_TRANSACTIONS |
+		CLIENT_RESERVED | // old flag, but set in this frame
+		CLIENT_RESERVED2 | // old flag, but set in this frame
+		CLIENT_MULTI_STATEMENTS |
+		CLIENT_MULTI_RESULTS |
+		CLIENT_PS_MULTI_RESULTS |
+		CLIENT_PLUGIN_AUTH |
+		CLIENT_CONNECT_ATTRS |
+		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+		CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS |
+		CLIENT_SESSION_TRACK |
+		CLIENT_DEPRECATE_EOF |
+		CLIENT_REMEMBER_OPTIONS;
 
 INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
 	SerializeParams(msgs::handshake{
 		{"5.7.27-0ubuntu0.19.04.1"}, // server version
 		{2}, // connection ID
-		{std::string_view(
-			reinterpret_cast<const char*>(begin(auth_plugin_data)),
-			sizeof(auth_plugin_data)
-		)},
-		{
-			CLIENT_LONG_PASSWORD |
-			CLIENT_FOUND_ROWS |
-			CLIENT_LONG_FLAG |
-			CLIENT_CONNECT_WITH_DB |
-			CLIENT_NO_SCHEMA |
-			CLIENT_COMPRESS |
-			CLIENT_ODBC |
-			CLIENT_LOCAL_FILES |
-			CLIENT_IGNORE_SPACE |
-			CLIENT_PROTOCOL_41 |
-			CLIENT_INTERACTIVE |
-			CLIENT_IGNORE_SIGPIPE |
-			CLIENT_TRANSACTIONS |
-			CLIENT_RESERVED | // old flag, but set in this frame
-			CLIENT_RESERVED2 | // old flag, but set in this frame
-			CLIENT_MULTI_STATEMENTS |
-			CLIENT_MULTI_RESULTS |
-			CLIENT_PS_MULTI_RESULTS |
-			CLIENT_PLUGIN_AUTH |
-			CLIENT_CONNECT_ATTRS |
-			CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-			CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS |
-			CLIENT_SESSION_TRACK |
-			CLIENT_DEPRECATE_EOF |
-			CLIENT_REMEMBER_OPTIONS
-		},
+		{buffer_to_sv(handshake_auth_plugin_data)},
+		{hanshake_caps},
 		CharacterSetLowerByte::latin1_swedish_ci,
 		{ SERVER_STATUS_AUTOCOMMIT },
 		{ "mysql_native_password" }
@@ -272,5 +275,80 @@ INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
 	  0x64, 0x00
 	})
 ));
+
+constexpr std::uint8_t handshake_response_auth_data [] = {
+	0xfe, 0xc6, 0x2c, 0x9f, 0xab, 0x43, 0x69, 0x46,
+	0xc5, 0x51, 0x35, 0xa5, 0xff, 0xdb, 0x3f, 0x48,
+	0xe6, 0xfc, 0x34, 0xc9
+};
+
+constexpr std::uint32_t handshake_response_caps =
+		CLIENT_LONG_PASSWORD |
+		CLIENT_LONG_FLAG |
+		CLIENT_LOCAL_FILES |
+		CLIENT_PROTOCOL_41 |
+		CLIENT_INTERACTIVE |
+		CLIENT_TRANSACTIONS |
+		CLIENT_RESERVED2 |
+		CLIENT_MULTI_STATEMENTS |
+		CLIENT_MULTI_RESULTS |
+		CLIENT_PS_MULTI_RESULTS |
+		CLIENT_PLUGIN_AUTH |
+		CLIENT_CONNECT_ATTRS |
+		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+		CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS |
+		CLIENT_SESSION_TRACK |
+		CLIENT_DEPRECATE_EOF;
+
+INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
+	SerializeParams(msgs::handshake_response{
+		{ handshake_response_caps },
+		{ 16777216 }, // max packet size
+		CharacterSetLowerByte::utf8_general_ci,
+		{ "root" },
+		{ buffer_to_sv(handshake_response_auth_data) },
+		{ "" }, // Irrelevant, not using connect with DB
+		{ "mysql_native_password" } // auth plugin name
+	}, {
+		0x85, 0xa6, 0xff, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x72, 0x6f, 0x6f, 0x74, 0x00, 0x14, 0xfe, 0xc6,
+		0x2c, 0x9f, 0xab, 0x43, 0x69, 0x46, 0xc5, 0x51,
+		0x35, 0xa5, 0xff, 0xdb, 0x3f, 0x48, 0xe6, 0xfc,
+		0x34, 0xc9, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f,
+		0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70,
+		0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
+	}, "without database", handshake_response_caps),
+
+	SerializeParams(msgs::handshake_response{
+		{ handshake_response_caps | CLIENT_CONNECT_WITH_DB },
+		{ 16777216 }, // max packet size
+		CharacterSetLowerByte::utf8_general_ci,
+		{ "root" },
+		{ buffer_to_sv(handshake_response_auth_data) },
+		{ "database" }, // database name
+		{ "mysql_native_password" } // auth plugin name
+	}, {
+		0x8d, 0xa6, 0xff, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x72, 0x6f, 0x6f, 0x74, 0x00, 0x14, 0xfe, 0xc6,
+		0x2c, 0x9f, 0xab, 0x43, 0x69, 0x46, 0xc5, 0x51,
+		0x35, 0xa5, 0xff, 0xdb, 0x3f, 0x48, 0xe6, 0xfc,
+		0x34, 0xc9, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61,
+		0x73, 0x65, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c,
+		0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f,
+		0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64,
+		0x00
+	}, "with database", handshake_response_caps | CLIENT_CONNECT_WITH_DB)
+));
+
+
+/*
+ *
+ */
 
 } // anon namespace

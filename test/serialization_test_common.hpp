@@ -139,13 +139,15 @@ struct SerializeParams
 	std::shared_ptr<TypeErasedValue> value;
 	std::vector<uint8_t> expected_buffer;
 	std::string test_name;
+	std::uint32_t caps;
 
 	template <typename T>
 	SerializeParams(const T& v, std::vector<uint8_t>&& buff,
-			        std::string&& name="default"):
+			        std::string&& name="default", std::uint32_t caps=0):
 		value(std::make_shared<TypeErasedValueImpl<T>>(v)),
 		expected_buffer(move(buff)),
-		test_name(move(name))
+		test_name(move(name)),
+		caps(caps)
 	{
 	}
 };
@@ -175,7 +177,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	// get_size
 	void get_size_test()
 	{
-		SerializationContext ctx (0, nullptr);
+		SerializationContext ctx (GetParam().caps, nullptr);
 		auto size = GetParam().value->get_size(ctx);
 		EXPECT_EQ(size, GetParam().expected_buffer.size());
 	}
@@ -185,7 +187,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	{
 		auto expected_size = GetParam().expected_buffer.size();
 		std::vector<uint8_t> buffer (expected_size + 8, 0xaa); // buffer overrun detector
-		SerializationContext ctx (0, buffer.data());
+		SerializationContext ctx (GetParam().caps, buffer.data());
 		GetParam().value->serialize(ctx);
 
 		// Iterator
@@ -207,7 +209,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	{
 		auto first = GetParam().expected_buffer.data();
 		auto size = GetParam().expected_buffer.size();
-		DeserializationContext ctx (first, first + size, 0);
+		DeserializationContext ctx (first, first + size, GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
 
@@ -226,7 +228,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		std::vector<uint8_t> buffer (GetParam().expected_buffer);
 		buffer.push_back(0xff);
 		auto first = buffer.data();
-		DeserializationContext ctx (first, first + buffer.size(), 0);
+		DeserializationContext ctx (first, first + buffer.size(), GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
 
@@ -244,7 +246,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	{
 		std::vector<uint8_t> buffer (GetParam().expected_buffer);
 		buffer.back() = 0xaa; // try to detect any overruns
-		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size() - 1, 0);
+		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size() - 1, GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
 		EXPECT_EQ(err, Error::incomplete_message);
