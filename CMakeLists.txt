@@ -54,6 +54,7 @@ add_executable(
 	unittests
 	test/serialization.cpp
 	test/mysql_channel.cpp
+	test/capabilities.cpp
 )
 target_link_libraries(
 	unittests
