@@ -3,27 +3,31 @@
 
 #include <cstdint>
 #include <string_view>
+#include <array>
 
 namespace mysql
+{
+namespace detail
 {
 
 namespace mysql_native_password
 {
 
+constexpr const char* plugin_name = "mysql_native_password";
 constexpr std::size_t challenge_length = 20;
 constexpr std::size_t response_length = 20;
-using response_buffer = std::uint8_t [response_length];
 
 // challenge must point to challenge_length bytes of data
-void compute_auth_string(std::string_view password, const void* challenge, response_buffer& output);
+// output must point to response_length bytes of data
+inline void compute_auth_string(std::string_view password, const void* challenge, void* output);
 
-}
-
-
-
-
-}
+} // mysql_native_password
 
 
+
+} // detail
+} // mysql
+
+#include "mysql/impl/auth_impl.hpp"
 
 #endif /* INCLUDE_AUTH_HPP_ */

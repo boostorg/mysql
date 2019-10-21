@@ -1,19 +1,14 @@
-/*
- * auth.cpp
- *
- *  Created on: Jun 30, 2019
- *      Author: ruben
- */
+#ifndef INCLUDE_MYSQL_IMPL_AUTH_IMPL_HPP_
+#define INCLUDE_MYSQL_IMPL_AUTH_IMPL_HPP_
 
-#include "auth.hpp"
 #include <openssl/sha.h>
 #include <cstring>
 
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-void mysql::mysql_native_password::compute_auth_string(
+inline void mysql::detail::mysql_native_password::compute_auth_string(
 	std::string_view password,
 	const void* challenge,
-	response_buffer& output
+	void* output
 )
 {
 	// SHA1 (password)
@@ -29,8 +24,15 @@ void mysql::mysql_native_password::compute_auth_string(
 	SHA1(salted_buffer, sizeof(salted_buffer), salted_sha1);
 
 	// XOR
-	static_assert(sizeof(output) == SHA_DIGEST_LENGTH);
+	static_assert(response_length == SHA_DIGEST_LENGTH);
 	for (std::size_t i = 0; i < SHA_DIGEST_LENGTH; ++i)
-		output[i] = password_sha1[i] ^ salted_sha1[i];
+	{
+		static_cast<std::uint8_t*>(output)[i] = password_sha1[i] ^ salted_sha1[i];
+	}
 }
 
+
+
+
+
+#endif /* INCLUDE_MYSQL_IMPL_AUTH_IMPL_HPP_ */
