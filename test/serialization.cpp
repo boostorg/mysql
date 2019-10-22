@@ -54,7 +54,7 @@ TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
 {
 	auto first = GetParam().buffer.data();
 	auto last = GetParam().buffer.data() + GetParam().buffer.size();
-	DeserializationContext ctx (first, last, 0);
+	DeserializationContext ctx (first, last, capabilities(0));
 	auto value = GetParam().value->default_construct();
 	auto err = value->deserialize(ctx);
 	EXPECT_EQ(err, GetParam().expected_error);

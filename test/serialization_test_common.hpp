@@ -139,7 +139,7 @@ struct SerializeParams
 	std::shared_ptr<TypeErasedValue> value;
 	std::vector<uint8_t> expected_buffer;
 	std::string test_name;
-	std::uint32_t caps;
+	capabilities caps;
 
 	template <typename T>
 	SerializeParams(const T& v, std::vector<uint8_t>&& buff,

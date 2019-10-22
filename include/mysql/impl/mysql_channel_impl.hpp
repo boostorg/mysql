@@ -50,7 +50,7 @@ mysql::error_code mysql::detail::MysqlChannel<AsyncStream>::process_header_read(
 )
 {
 	msgs::packet_header header;
-	DeserializationContext ctx (boost::asio::buffer(header_buffer_), 0); // unaffected by capabilities
+	DeserializationContext ctx (boost::asio::buffer(header_buffer_), capabilities(0)); // unaffected by capabilities
 	[[maybe_unused]] Error err = deserialize(header, ctx);
 	assert(err == Error::ok); // this should always succeed
 	if (!process_sequence_number(header.sequence_number.value))
@@ -69,7 +69,7 @@ void mysql::detail::MysqlChannel<AsyncStream>::process_header_write(
 	msgs::packet_header header;
 	header.packet_size.value = size_to_write;
 	header.sequence_number.value = next_sequence_number();
-	SerializationContext ctx (0, header_buffer_.data()); // capabilities not relevant here
+	SerializationContext ctx (capabilities(0), header_buffer_.data()); // capabilities not relevant here
 	serialize(header, ctx);
 }
 

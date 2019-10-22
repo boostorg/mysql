@@ -22,13 +22,13 @@ class DeserializationContext
 	ReadIterator last_;
 	const capabilities capabilities_;
 public:
-	DeserializationContext(ReadIterator first, ReadIterator last, std::uint32_t capabilities) noexcept:
-		first_(first), last_(last), capabilities_(capabilities) { assert(last_ >= first_); };
-	DeserializationContext(boost::asio::const_buffer buff, std::uint32_t capabilities) noexcept:
+	DeserializationContext(ReadIterator first, ReadIterator last, capabilities caps) noexcept:
+		first_(first), last_(last), capabilities_(caps) { assert(last_ >= first_); };
+	DeserializationContext(boost::asio::const_buffer buff, capabilities caps) noexcept:
 		DeserializationContext(
 				static_cast<const std::uint8_t*>(buff.data()),
 				static_cast<const std::uint8_t*>(buff.data()) + buff.size(),
-				capabilities
+				caps
 		) {};
 	ReadIterator first() const noexcept { return first_; }
 	ReadIterator last() const noexcept { return last_; }
@@ -52,8 +52,8 @@ class SerializationContext
 	WriteIterator first_;
 	const capabilities capabilities_;
 public:
-	SerializationContext(std::uint32_t capabilities, WriteIterator first = nullptr) noexcept:
-		first_(first), capabilities_(capabilities) {};
+	SerializationContext(capabilities caps, WriteIterator first = nullptr) noexcept:
+		first_(first), capabilities_(caps) {};
 	WriteIterator first() const noexcept { return first_; }
 	void set_first(WriteIterator new_first) noexcept { first_ = new_first; }
 	void advance(std::size_t size) noexcept { first_ += size; }
