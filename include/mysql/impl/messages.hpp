@@ -121,6 +121,15 @@ struct auth_switch_request
 	);
 };
 
+struct auth_switch_response
+{
+	string_eof auth_plugin_data;
+
+	static constexpr auto fields = std::make_tuple(
+		&auth_switch_response::auth_plugin_data
+	);
+};
+
 } // msgs
 
 // serialization functions
