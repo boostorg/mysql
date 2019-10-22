@@ -110,6 +110,17 @@ struct handshake_response
 	);
 };
 
+struct auth_switch_request
+{
+	string_null plugin_name;
+	string_eof auth_plugin_data;
+
+	static constexpr auto fields = std::make_tuple(
+		&auth_switch_request::plugin_name,
+		&auth_switch_request::auth_plugin_data
+	);
+};
+
 } // msgs
 
 // serialization functions
@@ -117,6 +128,7 @@ inline Error deserialize(msgs::ok_packet& output, DeserializationContext& ctx) n
 inline Error deserialize(msgs::handshake& output, DeserializationContext& ctx) noexcept;
 inline std::size_t get_size(const msgs::handshake_response& value, const SerializationContext& ctx) noexcept;
 inline void serialize(const msgs::handshake_response& value, SerializationContext& ctx) noexcept;
+inline Error deserialize(msgs::auth_switch_request& output, DeserializationContext& ctx) noexcept;
 
 
 

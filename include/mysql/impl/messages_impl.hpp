@@ -2,6 +2,7 @@
 #define INCLUDE_MYSQL_IMPL_MESSAGES_IMPL_HPP_
 
 #include "mysql/impl/basic_serialization.hpp"
+#include <cassert>
 
 inline mysql::Error mysql::detail::deserialize(
 	msgs::ok_packet& output,
@@ -123,6 +124,22 @@ inline void mysql::detail::serialize(
 		serialize(value.database, ctx);
 	}
 	serialize(value.client_plugin_name, ctx);
+}
+
+inline mysql::Error mysql::detail::deserialize(
+	msgs::auth_switch_request& output,
+	DeserializationContext& ctx
+) noexcept
+{
+	auto err = deserialize_fields(ctx, output.plugin_name, output.auth_plugin_data);
+	auto& auth_data = output.auth_plugin_data.value;
+	// Discard an additional NULL at the end of auth data
+	if (!auth_data.empty())
+	{
+		assert(auth_data.back() == 0);
+		auth_data = auth_data.substr(0, auth_data.size() - 1);
+	}
+	return err;
 }
 
 
