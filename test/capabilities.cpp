@@ -40,85 +40,37 @@ TEST(Capabilities, Has_MultipleBitsSet_ReturnsTrueForSetBits)
 	}
 }
 
-TEST(Capabilities, HasMandatoryCapabilities_MissingMandatoryCapability_ReturnsFalse)
+struct CapabilitiesHasAllTest : public Test
 {
-	EXPECT_FALSE(has_mandatory_capabilities(capabilities(0)));
-	EXPECT_FALSE(has_mandatory_capabilities(capabilities(CLIENT_PROTOCOL_41)));
-	EXPECT_FALSE(has_mandatory_capabilities(capabilities(
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
-	)));
-	EXPECT_FALSE(has_mandatory_capabilities(capabilities(
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_SSL |
-		CLIENT_COMPRESS
-	)));
+	capabilities rhs {CLIENT_CONNECT_WITH_DB | CLIENT_SSL | CLIENT_COMPRESS};
+};
+
+TEST_F(CapabilitiesHasAllTest, HasAll_HasNone_ReturnsFalse)
+{
+	capabilities lhs (0);
+	EXPECT_FALSE(lhs.has_all(rhs));
 }
 
-TEST(Capabilities, HasMandatoryCapabilities_HasAllMandatoryCapabilities_ReturnsTrue)
+TEST_F(CapabilitiesHasAllTest, HasAll_HasSomeButNotAll_ReturnsFalse)
 {
-	EXPECT_TRUE(has_mandatory_capabilities(capabilities(
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_DEPRECATE_EOF
-	)));
-	EXPECT_TRUE(has_mandatory_capabilities(capabilities(
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_DEPRECATE_EOF |
-		CLIENT_SSL |
-		CLIENT_COMPRESS
-	)));
+	capabilities lhs (CLIENT_CONNECT_WITH_DB | CLIENT_COMPRESS);
+	EXPECT_FALSE(lhs.has_all(rhs));
 }
 
-TEST(Capabilities, CalculateCapabilities_OnlyMandatory_ReturnsMandatory)
+TEST_F(CapabilitiesHasAllTest, HasAll_HasSomeButNotAllPlusUnrelated_ReturnsFalse)
 {
-	capabilities server_caps (
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_DEPRECATE_EOF
-	);
-	auto client_caps = calculate_capabilities(server_caps);
-	EXPECT_EQ(server_caps, client_caps);
+	capabilities lhs (CLIENT_CONNECT_WITH_DB | CLIENT_COMPRESS | CLIENT_TRANSACTIONS);
+	EXPECT_FALSE(lhs.has_all(rhs));
 }
 
-TEST(Capabilities, CalculateCapabilities_MandatoryOptional_ReturnsMandatoryAndOptional)
+TEST_F(CapabilitiesHasAllTest, HasAll_HasOnlyTheRequestedOnes_ReturnsTrue)
 {
-	capabilities server_caps (
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_DEPRECATE_EOF |
-		CLIENT_CONNECT_WITH_DB
-	);
-	auto client_caps = calculate_capabilities(server_caps);
-	EXPECT_EQ(server_caps, client_caps);
+	capabilities lhs (rhs);
+	EXPECT_TRUE(lhs.has_all(rhs));
 }
 
-TEST(Capabilities, CalculateCapabilities_MandatoryOptionalUnknown_ReturnsMandatoryAndOptional)
+TEST_F(CapabilitiesHasAllTest, HasAll_HasTheRequestedOnesAndOthers_ReturnsTrue)
 {
-	capabilities server_caps (
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_DEPRECATE_EOF |
-		CLIENT_CONNECT_WITH_DB |
-		CLIENT_LOCAL_FILES
-	);
-	capabilities expected (
-		CLIENT_PROTOCOL_41 |
-		CLIENT_PLUGIN_AUTH |
-		CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-		CLIENT_DEPRECATE_EOF |
-		CLIENT_CONNECT_WITH_DB
-	);
-	auto client_caps = calculate_capabilities(server_caps);
-	EXPECT_EQ(expected, client_caps);
+	capabilities lhs = rhs | capabilities(CLIENT_TRANSACTIONS);
+	EXPECT_TRUE(lhs.has_all(rhs));
 }
-

@@ -46,6 +46,9 @@ public:
 	constexpr std::uint32_t get() const noexcept { return value_; }
 	constexpr void set(std::uint32_t value) noexcept { value_ = value; }
 	constexpr bool has(std::uint32_t cap) const noexcept { return value_ & cap; }
+	constexpr bool has_all(capabilities other) const noexcept { return (value_ & other.get()) == other.get(); }
+	constexpr capabilities operator|(capabilities rhs) const noexcept { return capabilities(value_ | rhs.value_); }
+	constexpr capabilities operator&(capabilities rhs) const noexcept { return capabilities(value_ & rhs.value_); }
 	constexpr bool operator==(const capabilities& rhs) const noexcept { return value_ == rhs.value_; }
 	constexpr bool operator!=(const capabilities& rhs) const noexcept { return value_ != rhs.value_; }
 };
@@ -88,41 +91,14 @@ public:
 * CLIENT_DEPRECATE_EOF: mandatory //  Client no longer needs EOF_Packet and will use OK_Packet instead
  */
 
-constexpr std::uint32_t mandatory_capabilities [] = {
-	CLIENT_PROTOCOL_41,
-	CLIENT_PLUGIN_AUTH,
-	CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA,
+constexpr capabilities mandatory_capabilities {
+	CLIENT_PROTOCOL_41 |
+	CLIENT_PLUGIN_AUTH |
+	CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
 	CLIENT_DEPRECATE_EOF
 };
 
-constexpr std::uint32_t optional_capabilities [] = {
-	CLIENT_CONNECT_WITH_DB
-};
-
-inline bool has_mandatory_capabilities(capabilities server_caps)
-{
-	// TODO: we can improve efficiency here
-	bool res = true;
-	for (const auto cap: mandatory_capabilities)
-		res &= server_caps.has(cap);
-	return res;
-}
-
-inline capabilities calculate_capabilities(capabilities server_caps)
-{
-	// TODO: we can improve efficiency here
-	std::uint32_t res = 0;
-	for (const auto cap: mandatory_capabilities)
-		res |= cap;
-	for (const auto cap: optional_capabilities)
-	{
-		if (server_caps.has(cap))
-		{
-			res |= cap;
-		}
-	}
-	return capabilities(res);
-}
+constexpr capabilities optional_capabilities {0};
 
 }
 }
