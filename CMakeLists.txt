@@ -53,7 +53,7 @@ enable_testing()
 add_executable(
 	unittests
 	test/serialization.cpp
-	test/mysql_channel.cpp
+	test/channel.cpp
 	test/capabilities.cpp
 	test/auth.cpp
 )

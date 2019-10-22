@@ -13,7 +13,7 @@ namespace detail
 {
 
 template <typename AsyncStream>
-class MysqlChannel
+class channel
 {
 	// TODO: static asserts for AsyncStream concept
 	// TODO: actually we also require it to be SyncStream, name misleading
@@ -27,7 +27,7 @@ class MysqlChannel
 	error_code process_header_read(std::uint32_t& size_to_read); // reads from header_buffer_
 	void process_header_write(std::uint32_t size_to_write); // writes to header_buffer_
 public:
-	MysqlChannel(AsyncStream& stream): next_layer_ {stream} {};
+	channel(AsyncStream& stream): next_layer_ {stream} {};
 
 	template <typename DynamicBuffer>
 	void read(DynamicBuffer& buffer, error_code& errc);
@@ -49,6 +49,6 @@ public:
 }
 }
 
-#include <mysql/impl/mysql_channel_impl.hpp>
+#include "mysql/impl/channel_impl.hpp"
 
 #endif /* INCLUDE_MYSQL_STREAM_HPP_ */
