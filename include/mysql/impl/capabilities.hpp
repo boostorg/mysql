@@ -42,7 +42,7 @@ class capabilities
 {
 	std::uint32_t value_;
 public:
-	constexpr explicit capabilities(std::uint32_t value) noexcept : value_(value) {};
+	constexpr explicit capabilities(std::uint32_t value=0) noexcept : value_(value) {};
 	constexpr std::uint32_t get() const noexcept { return value_; }
 	constexpr void set(std::uint32_t value) noexcept { value_ = value; }
 	constexpr bool has(std::uint32_t cap) const noexcept { return value_ & cap; }

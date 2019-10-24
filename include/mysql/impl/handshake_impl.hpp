@@ -2,66 +2,31 @@
 #define INCLUDE_MYSQL_IMPL_HANDSHAKE_IMPL_HPP_
 
 #include "mysql/impl/basic_serialization.hpp"
+#include "mysql/impl/capabilities.hpp"
+#include "mysql/impl/auth.hpp"
 #include "mysql/error.hpp"
 
-/*
-* CLIENT_LONG_PASSWORD: unset //  Use the improved version of Old Password Authentication
-* CLIENT_FOUND_ROWS: unset //  Send found rows instead of affected rows in EOF_Packet
-* CLIENT_LONG_FLAG: unset //  Get all column flags
-* CLIENT_CONNECT_WITH_DB: optional //  Database (schema) name can be specified on connect in Handshake Response Packet
-* CLIENT_NO_SCHEMA: unset //  Don't allow database.table.column
-* CLIENT_COMPRESS: unset //  Compression protocol supported
-* CLIENT_ODBC: unset //  Special handling of ODBC behavior
-* CLIENT_LOCAL_FILES: unset //  Can use LOAD DATA LOCAL
-* CLIENT_IGNORE_SPACE: unset //  Ignore spaces before '('
-* CLIENT_PROTOCOL_41: mandatory //  New 4.1 protocol
-* CLIENT_INTERACTIVE: unset //  This is an interactive client
-* CLIENT_SSL: unset //  Use SSL encryption for the session
-* CLIENT_IGNORE_SIGPIPE: unset //  Client only flag
-* CLIENT_TRANSACTIONS: unset //  Client knows about transactions
-* CLIENT_RESERVED: unset //  DEPRECATED: Old flag for 4.1 protocol
-* CLIENT_RESERVED2: unset //  DEPRECATED: Old flag for 4.1 authentication \ CLIENT_SECURE_CONNECTION
-* CLIENT_MULTI_STATEMENTS: unset //  Enable/disable multi-stmt support
-* CLIENT_MULTI_RESULTS: unset //  Enable/disable multi-results
-* CLIENT_PS_MULTI_RESULTS: unset //  Multi-results and OUT parameters in PS-protocol
-* CLIENT_PLUGIN_AUTH: mandatory //  Client supports plugin authentication
-* CLIENT_CONNECT_ATTRS: unset //  Client supports connection attributes
-* CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA: mandatory //  Enable authentication response packet to be larger than 255 bytes
-* CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS: unset //  Don't close the connection for a user account with expired password
-* CLIENT_SESSION_TRACK: unset //  Capable of handling server state change information
-* CLIENT_DEPRECATE_EOF: mandatory //  Client no longer needs EOF_Packet and will use OK_Packet instead
-* CLIENT_SSL_VERIFY_SERVER_CERT: unset //  Verify server certificate
-* CLIENT_OPTIONAL_RESULTSET_METADATA: unset //  The client can handle optional metadata information in the resultset
-* CLIENT_REMEMBER_OPTIONS: unset //  Don't reset the options after an unsuccessful connect
-*
-* We pay attention to:
-* CLIENT_CONNECT_WITH_DB: optional //  Database (schema) name can be specified on connect in Handshake Response Packet
-* CLIENT_PROTOCOL_41: mandatory //  New 4.1 protocol
-* CLIENT_PLUGIN_AUTH: mandatory //  Client supports plugin authentication
-* CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA: mandatory //  Enable authentication response packet to be larger than 255 bytes
-* CLIENT_DEPRECATE_EOF: mandatory //  Client no longer needs EOF_Packet and will use OK_Packet instead
- */
-
-template <typename ChannelType, typename DynamicBuffer>
+// TODO: support compression, SSL, more authentication methods
+template <typename ChannelType, typename Allocator>
 void mysql::detail::hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
-	DynamicBuffer& buffer,
+	std::vector<std::uint8_t, Allocator>& buffer,
+	capabilities& output_capabilities,
 	error_code& err
 )
 {
-	buffer.shrink(buffer.size()); // clear
+	buffer.clear();
 
 	// Read server greeting
 	channel.read(buffer, err);
 	if (err) return;
 
 	// Deserialize server greeting
-	boost::asio::const_buffer buffer_view = buffer.data(); // TODO: generalize this (really required?)
-	auto first = static_cast<ReadIterator>(buffer_view.data());
-	DeserializationContext ctx (first, first + buffer_view.size(), 0);
+	msgs::handshake handshake;
+	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities(0));
 	int1 msg_type;
-	err = deserialize(msg_type, ctx);
+	err = make_error_code(deserialize(msg_type, ctx));
 	if (err) return;
 	if (msg_type.value == error_packet_header)
 	{
@@ -78,46 +43,148 @@ void mysql::detail::hanshake(
 		err = make_error_code(Error::protocol_value_error);
 		return;
 	}
+	err = make_error_code(deserialize(handshake, ctx));
+	if (err) return;
 	if (!ctx.empty())
 	{
 		err = make_error_code(Error::extra_bytes);
 		return;
 	}
 
-
-	// Process the handshake
-	detail::check_capabilities(handshake.capability_falgs);
-	detail::check_authentication_method(handshake);
-	std::cout << handshake << "\n\n";
-
-	// Response
-	mysql::HandshakeResponse handshake_response;
-	mysql_native_password::response_buffer auth_response;
-	mysql_native_password::compute_auth_string(params.password, handshake.auth_plugin_data.data(), auth_response);
-	handshake_response.client_flag = detail::BASIC_CAPABILITIES_FLAGS;
-	handshake_response.max_packet_size = 0xffff;
-	handshake_response.character_set = params.character_set;
-	handshake_response.username.value = params.username;
-	handshake_response.auth_response.value = std::string_view {(const char*)auth_response, sizeof(auth_response)};
-	handshake_response.client_plugin_name.value = "mysql_native_password";
-	handshake_response.database.value = params.database;
-	std::cout << handshake_response << "\n\n";
-
-	// Serialize and send
-	serialize(write_buffer, handshake_response);
-	write(write_buffer.get());
-
-	// TODO: support auth mismatch
-	// TODO: support SSL
-
-	// Read the OK/ERR
-	read(read_buffer);
-	msg_type = get_message_type(read_buffer);
-	if (msg_type != ok_packet_header && msg_type != eof_packet_header)
+	// Check capabilities
+	capabilities server_caps (handshake.capability_falgs.value);
+	capabilities required_caps =
+			params.database.empty() ?
+			mandatory_capabilities :
+			mandatory_capabilities | capabilities(CLIENT_CONNECT_WITH_DB);
+	if (!server_caps.has_all(required_caps))
 	{
-		throw std::runtime_error { "Unknown message type" };
+		err = make_error_code(Error::server_unsupported);
+		return;
 	}
-	std::cout << "Connected to server\n";
+	auto final_caps = server_caps & (required_caps | optional_capabilities);
+	output_capabilities = final_caps;
+
+	// Authentication
+	std::array<std::uint8_t, mysql_native_password::response_length> auth_response_buffer {};
+	std::string_view auth_response;
+	if (handshake.auth_plugin_name.value == mysql_native_password::plugin_name)
+	{
+		if (handshake.auth_plugin_data.value.size() != mysql_native_password::challenge_length)
+		{
+			err = make_error_code(Error::protocol_value_error);
+			return;
+		}
+		mysql_native_password::compute_auth_string(
+			params.password,
+			handshake.auth_plugin_data.value.data(),
+			auth_response_buffer.data()
+		);
+		auth_response = std::string_view(reinterpret_cast<const char*>(auth_response.data()), auth_response.size());
+	}
+
+	// Compose response
+	msgs::handshake_response response;
+	response.client_flag.value = final_caps.get();
+	response.max_packet_size.value = MAX_PACKET_SIZE;
+	response.character_set = params.character_set;
+	response.username.value = params.username;
+	response.auth_response.value = auth_response;
+	response.database.value = params.database;
+	response.client_plugin_name.value = mysql_native_password::plugin_name;
+
+	// Serialize
+	serialize_message(response, final_caps, buffer);
+
+	// Send
+	channel.write(boost::asio::buffer(buffer), err);
+	if (err) return;
+
+	// Receive response
+	buffer.clear();
+	channel.read(buffer, err);
+	if (err) return;
+
+	// Deserialize it
+	ctx = DeserializationContext(buffer.data(), buffer.data() + buffer.size(), final_caps);
+	err = make_error_code(deserialize(msg_type, ctx));
+	if (err) return;
+	if (msg_type.value == ok_packet_header)
+	{
+		// Auth success via fast auth path
+		// TODO: is this OK_Packet useful for anything?
+		err.clear();
+		return;
+	}
+	else if (msg_type.value == error_packet_header)
+	{
+		// TODO: provide more information here
+		err = make_error_code(Error::auth_error);
+		return;
+	}
+	else if (msg_type.value != auth_switch_request_header)
+	{
+		err = make_error_code(Error::protocol_value_error);
+		return;
+	}
+
+	// We have received an auth switch request. Deserialize it
+	msgs::auth_switch_request auth_sw;
+	err = make_error_code(deserialize(auth_sw, ctx));
+	if (err) return;
+	if (!ctx.empty())
+	{
+		err = make_error_code(Error::extra_bytes);
+		return;
+	}
+
+	// Compute response
+	msgs::auth_switch_response auth_sw_res;
+	if (auth_sw.plugin_name.value != mysql_native_password::plugin_name)
+	{
+		err = make_error_code(Error::unknown_auth_plugin);
+		return;
+	}
+	if (auth_sw.auth_plugin_data.value.size() != mysql_native_password::challenge_length)
+	{
+		err = make_error_code(Error::protocol_value_error);
+		return;
+	}
+	mysql_native_password::compute_auth_string(
+		params.password,
+		handshake.auth_plugin_data.value.data(),
+		auth_response_buffer.data()
+	);
+	auth_sw_res.auth_plugin_data.value = std::string_view(
+		reinterpret_cast<const char*>(auth_response_buffer.data()),
+		auth_response_buffer.size()
+	);
+
+	// Serialize
+	serialize_message(auth_sw_res, final_caps, buffer);
+
+	// Send
+	channel.write(boost::asio::buffer(buffer), err);
+	if (err) return;
+
+	// Receive response
+	channel.read(buffer, err);
+	if (err) return;
+	ctx = DeserializationContext(buffer.data(), buffer.data() + buffer.size(), final_caps);
+	err = make_error_code(deserialize(msg_type, ctx));
+	if (err) return;
+	if (msg_type.value == ok_packet_header)
+	{
+		err.clear();
+	}
+	else if (msg_type.value == error_packet_header)
+	{
+		err = make_error_code(Error::auth_error);
+	}
+	else
+	{
+		err = make_error_code(Error::protocol_value_error);
+	}
 }
 
 

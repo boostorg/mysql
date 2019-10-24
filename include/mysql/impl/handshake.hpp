@@ -3,8 +3,9 @@
 
 #include <string_view>
 #include <boost/asio/async_result.hpp>
+#include "mysql/impl/channel.hpp"
+#include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/constants.hpp"
-#include "mysql/impl/mysql_channel.hpp"
 
 namespace mysql
 {
@@ -19,14 +20,14 @@ struct handshake_params
 	std::string_view database;
 };
 
-template <typename ChannelType, typename DynamicBuffer>
+template <typename ChannelType, typename Allocator>
 void hanshake(ChannelType& channel, const handshake_params& params,
-		DynamicBuffer& buffer, error_code& err);
+		std::vector<std::uint8_t, Allocator>& buffer, capabilities& output_capabilities, error_code& err);
 
-template <typename ChannelType, typename DynamicBuffer, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+template <typename ChannelType, typename Allocator, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, capabilities))
 async_handshake(ChannelType& channel, const handshake_params& params,
-		DynamicBuffer& buffer, CompletionToken&& token);
+		std::vector<std::uint8_t, Allocator>& buffer, CompletionToken&& token);
 
 }
 }

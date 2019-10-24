@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <cassert>
 #include <algorithm>
+#include <optional>
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/error.hpp"
@@ -20,7 +21,7 @@ class DeserializationContext
 {
 	ReadIterator first_;
 	ReadIterator last_;
-	const capabilities capabilities_;
+	capabilities capabilities_;
 public:
 	DeserializationContext(ReadIterator first, ReadIterator last, capabilities caps) noexcept:
 		first_(first), last_(last), capabilities_(caps) { assert(last_ >= first_); };
@@ -50,12 +51,13 @@ public:
 class SerializationContext
 {
 	WriteIterator first_;
-	const capabilities capabilities_;
+	capabilities capabilities_;
 public:
 	SerializationContext(capabilities caps, WriteIterator first = nullptr) noexcept:
 		first_(first), capabilities_(caps) {};
 	WriteIterator first() const noexcept { return first_; }
 	void set_first(WriteIterator new_first) noexcept { first_ = new_first; }
+	void set_first(boost::asio::mutable_buffer buff) noexcept { first_ = static_cast<std::uint8_t*>(buff.data()); }
 	void advance(std::size_t size) noexcept { first_ += size; }
 	capabilities get_capabilities() const noexcept { return capabilities_; }
 	void write(const void* buffer, std::size_t size) noexcept { memcpy(first_, buffer, size); advance(size); }
@@ -423,6 +425,22 @@ Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&..
 		err = deserialize_fields(ctx, fields_tail...);
 	}
 	return err;
+}
+
+// Helper to serialize top-level messages
+template <typename Serializable, typename Allocator>
+void serialize_message(
+	const Serializable& input,
+	capabilities caps,
+	std::vector<std::uint8_t, Allocator>& buffer
+)
+{
+	SerializationContext ctx (caps);
+	std::size_t size = get_size(input, ctx);
+	buffer.resize(size);
+	ctx.set_first(buffer.data());
+	serialize(input, ctx);
+	assert(ctx.first() == buffer.data() + buffer.size());
 }
 
 }

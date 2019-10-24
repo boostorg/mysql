@@ -74,15 +74,15 @@ void mysql::detail::channel<AsyncStream>::process_header_write(
 }
 
 template <typename AsyncStream>
-template <typename DynamicBuffer>
+template <typename Allocator>
 void mysql::detail::channel<AsyncStream>::read(
-	DynamicBuffer& buffer,
+	std::vector<std::uint8_t, Allocator>& buffer,
 	error_code& errc
 )
 {
 	std::size_t transferred_size = 0;
 	std::uint32_t size_to_read = 0;
-	buffer.shrink(buffer.size()); // clear
+	buffer.clear();
 	errc.clear();
 
 	do
@@ -95,10 +95,10 @@ void mysql::detail::channel<AsyncStream>::read(
 		if (errc) return;
 		errc = process_header_read(size_to_read);
 		if (errc) return;
-		buffer.grow(size_to_read);
+		buffer.resize(buffer.size() + size_to_read);
 		boost::asio::read(
 			next_layer_,
-			buffer.data(transferred_size, size_to_read),
+			boost::asio::buffer(buffer.data() + transferred_size, size_to_read),
 			errc
 		);
 		if (errc) return;
@@ -135,10 +135,10 @@ void mysql::detail::channel<AsyncStream>::write(
 
 
 template <typename AsyncStream>
-template <typename DynamicBuffer, typename CompletionToken>
+template <typename Allocator, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
 mysql::detail::channel<AsyncStream>::async_read(
-	DynamicBuffer& buffer,
+	std::vector<std::uint8_t, Allocator>& buffer,
 	CompletionToken&& token
 )
 {
@@ -151,13 +151,13 @@ mysql::detail::channel<AsyncStream>::async_read(
 	struct Op: BaseType, boost::asio::coroutine
 	{
 		channel<AsyncStream>& stream_;
-		DynamicBuffer& buffer_;
+		std::vector<std::uint8_t, Allocator>& buffer_;
 		std::size_t total_transferred_size_ = 0;
 
 		Op(
 			HandlerType&& handler,
 			channel<AsyncStream>& stream,
-			DynamicBuffer& buffer
+			std::vector<std::uint8_t, Allocator>& buffer
 		):
 			BaseType(std::move(handler), stream.next_layer_.get_executor()),
 			stream_(stream),
@@ -197,11 +197,11 @@ mysql::detail::channel<AsyncStream>::async_read(
 						yield break;
 					}
 
-					buffer_.grow(size_to_read);
+					buffer_.resize(buffer_.data() + size_to_read);
 
 					yield boost::asio::async_read(
 						stream_.next_layer_,
-						buffer_.data(total_transferred_size_, size_to_read),
+						boost::asio::buffer(buffer_.data() + total_transferred_size_, size_to_read),
 						std::move(*this)
 					);
 

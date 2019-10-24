@@ -39,6 +39,7 @@ constexpr std::uint8_t handshake_protocol_version_10 = 10;
 constexpr std::uint8_t error_packet_header = 0xff;
 constexpr std::uint8_t ok_packet_header = 0x00;
 constexpr std::uint8_t eof_packet_header = 0xfe;
+constexpr std::uint8_t auth_switch_request_header = 0xfe;
 
 enum class Command : std::uint8_t
 {

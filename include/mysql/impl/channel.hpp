@@ -29,14 +29,14 @@ class channel
 public:
 	channel(AsyncStream& stream): next_layer_ {stream} {};
 
-	template <typename DynamicBuffer>
-	void read(DynamicBuffer& buffer, error_code& errc);
+	template <typename Allocator>
+	void read(std::vector<std::uint8_t, Allocator>& buffer, error_code& errc);
 
 	void write(boost::asio::const_buffer buffer, error_code& errc);
 
-	template <typename DynamicBuffer, typename CompletionToken>
+	template <typename Allocator, typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
-	async_read(DynamicBuffer& buffer, CompletionToken&& token);
+	async_read(std::vector<std::uint8_t, Allocator>& buffer, CompletionToken&& token);
 
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))

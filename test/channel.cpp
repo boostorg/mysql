@@ -114,13 +114,11 @@ struct MysqlChannelFixture : public Test
 
 struct MysqlChannelReadTest : public MysqlChannelFixture
 {
-	std::vector<uint8_t> mem;
-	dynamic_vector_buffer<std::uint8_t, std::allocator<uint8_t>> buffer {mem};
+	std::vector<uint8_t> buffer;
 
 	void verify_buffer(const std::vector<uint8_t>& expected)
 	{
-		std::vector<uint8_t> actual (mem.data(), mem.data() + buffer.size());
-		EXPECT_EQ(actual, expected);
+		EXPECT_EQ(buffer, expected);
 	}
 
 	static auto buffer_copier(const std::vector<uint8_t>& buffer)

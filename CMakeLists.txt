@@ -66,3 +66,17 @@ target_link_libraries(
 	mysql_asio
 )
 gtest_discover_tests(unittests)
+
+# Integration testing
+add_executable(
+	integrationtests
+	test/integration/handshake.cpp
+)
+target_link_libraries(
+	integrationtests
+	PRIVATE
+	GTest::GTest
+	GTest::Main
+	mysql_asio
+)
+gtest_discover_tests(integrationtests)

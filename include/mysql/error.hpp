@@ -14,7 +14,9 @@ enum class Error : int
 	sequence_number_mismatch,
 	server_returned_error,
 	server_unsupported,
-	protocol_value_error
+	protocol_value_error,
+	auth_error,
+	unknown_auth_plugin
 };
 
 using error_code = boost::system::error_code;
