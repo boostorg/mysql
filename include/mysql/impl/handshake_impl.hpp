@@ -16,8 +16,6 @@ void mysql::detail::hanshake(
 	error_code& err
 )
 {
-	buffer.clear();
-
 	// Read server greeting
 	channel.read(buffer, err);
 	if (err) return;
@@ -30,7 +28,10 @@ void mysql::detail::hanshake(
 	if (err) return;
 	if (msg_type.value == error_packet_header)
 	{
-		err = make_error_code(Error::server_returned_error);
+		msgs::err_packet error_packet;
+		err = make_error_code(deserialize(error_packet, ctx));
+		if (err) return;
+		err = make_error_code(static_cast<Error>(error_packet.error_code.value));
 		return;
 	}
 	else if (msg_type.value == handshake_protocol_version_9)
@@ -80,7 +81,10 @@ void mysql::detail::hanshake(
 			handshake.auth_plugin_data.value.data(),
 			auth_response_buffer.data()
 		);
-		auth_response = std::string_view(reinterpret_cast<const char*>(auth_response.data()), auth_response.size());
+		auth_response = std::string_view(
+			reinterpret_cast<const char*>(auth_response_buffer.data()),
+			auth_response_buffer.size()
+		);
 	}
 
 	// Compose response
@@ -118,8 +122,10 @@ void mysql::detail::hanshake(
 	}
 	else if (msg_type.value == error_packet_header)
 	{
-		// TODO: provide more information here
-		err = make_error_code(Error::auth_error);
+		msgs::err_packet error_packet;
+		err = make_error_code(deserialize(error_packet, ctx));
+		if (err) return;
+		err = make_error_code(static_cast<Error>(error_packet.error_code.value));
 		return;
 	}
 	else if (msg_type.value != auth_switch_request_header)
@@ -179,7 +185,11 @@ void mysql::detail::hanshake(
 	}
 	else if (msg_type.value == error_packet_header)
 	{
-		err = make_error_code(Error::auth_error);
+		msgs::err_packet error_packet;
+		err = make_error_code(deserialize(error_packet, ctx));
+		if (err) return;
+		err = make_error_code(static_cast<Error>(error_packet.error_code.value));
+		return;
 	}
 	else
 	{

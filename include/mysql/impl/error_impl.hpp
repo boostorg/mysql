@@ -25,16 +25,15 @@ namespace detail
 
 inline const char* error_to_string(Error error) noexcept
 {
+	// TODO: add server errors
 	switch (error)
 	{
 	case Error::ok: return "no error";
 	case Error::incomplete_message: return "The message read was incomplete (not enough bytes to fully decode it)";
 	case Error::extra_bytes: return "Extra bytes at the end of the message";
 	case Error::sequence_number_mismatch: return "Mismatched sequence numbers";
-	case Error::server_returned_error: return "The server returned an ERR_Packet";
 	case Error::server_unsupported: return "The server does not implement the minimum features to be supported";
 	case Error::protocol_value_error: return "A field in a message had an unexpected value";
-	case Error::auth_error: return "Authentication failure";
 	case Error::unknown_auth_plugin: return "The user employs an authentication plugin unknown to the client";
 	default: return "<unknown error>";
 	}
