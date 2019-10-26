@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <cassert>
 #include <algorithm>
-#include <optional>
+#include <variant>
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/error.hpp"
@@ -425,22 +425,6 @@ Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&..
 		err = deserialize_fields(ctx, fields_tail...);
 	}
 	return err;
-}
-
-// Helper to serialize top-level messages
-template <typename Serializable, typename Allocator>
-void serialize_message(
-	const Serializable& input,
-	capabilities caps,
-	std::vector<std::uint8_t, Allocator>& buffer
-)
-{
-	SerializationContext ctx (caps);
-	std::size_t size = get_size(input, ctx);
-	buffer.resize(size);
-	ctx.set_first(buffer.data());
-	serialize(input, ctx);
-	assert(ctx.first() == buffer.data() + buffer.size());
 }
 
 }

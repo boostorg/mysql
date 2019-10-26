@@ -6,6 +6,7 @@
 #include "mysql/impl/channel.hpp"
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/constants.hpp"
+#include "mysql/impl/basic_types.hpp"
 
 namespace mysql
 {
@@ -22,12 +23,12 @@ struct handshake_params
 
 template <typename ChannelType, typename Allocator>
 void hanshake(ChannelType& channel, const handshake_params& params,
-		std::vector<std::uint8_t, Allocator>& buffer, capabilities& output_capabilities, error_code& err);
+		bytestring<Allocator>& buffer, capabilities& output_capabilities, error_code& err);
 
 template <typename ChannelType, typename Allocator, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, capabilities))
 async_handshake(ChannelType& channel, const handshake_params& params,
-		std::vector<std::uint8_t, Allocator>& buffer, CompletionToken&& token);
+		bytestring<Allocator>& buffer, CompletionToken&& token);
 
 }
 }

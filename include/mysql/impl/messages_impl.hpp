@@ -142,5 +142,55 @@ inline mysql::Error mysql::detail::deserialize(
 	return err;
 }
 
+template <typename Serializable, typename Allocator>
+void mysql::detail::serialize_message(
+	const Serializable& input,
+	capabilities caps,
+	std::vector<std::uint8_t, Allocator>& buffer
+)
+{
+	SerializationContext ctx (caps);
+	std::size_t size = get_size(input, ctx);
+	buffer.resize(size);
+	ctx.set_first(buffer.data());
+	serialize(input, ctx);
+	assert(ctx.first() == buffer.data() + buffer.size());
+}
+
+template <typename Deserializable>
+mysql::error_code mysql::detail::deserialize_message(
+	Deserializable& output,
+	DeserializationContext& ctx
+)
+{
+	auto err = deserialize(output, ctx);
+	if (err != Error::ok) return make_error_code(err);
+	if (!ctx.empty()) return make_error_code(Error::extra_bytes);
+	return error_code();
+}
+
+
+inline mysql::error_code mysql::detail::deserialize_message_type(
+	std::uint8_t& output,
+	DeserializationContext& ctx
+)
+{
+	int1 msg_type;
+	auto err = deserialize(msg_type, ctx);
+	if (err != Error::ok) return make_error_code(err);
+	output = msg_type.value;
+	return error_code();
+}
+
+inline mysql::error_code mysql::detail::process_error_packet(
+	DeserializationContext& ctx
+)
+{
+	msgs::err_packet error_packet;
+	auto errc = deserialize_message(error_packet, ctx);
+	if (errc) return errc;
+	return make_error_code(static_cast<Error>(error_packet.error_code.value));
+}
+
 
 #endif /* INCLUDE_MYSQL_IMPL_MESSAGES_IMPL_HPP_ */

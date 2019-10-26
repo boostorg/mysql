@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string_view>
 #include <array>
+#include <vector>
 
 namespace mysql
 {
@@ -39,6 +40,9 @@ template <std::size_t size> struct string_fixed : ValueHolder<std::array<char, s
 struct string_null : ValueHolder<std::string_view> {};
 struct string_eof : ValueHolder<std::string_view> {};
 struct string_lenenc : ValueHolder<std::string_view> {};
+
+template <typename Allocator>
+using bytestring = std::vector<std::uint8_t, Allocator>;
 
 }
 }

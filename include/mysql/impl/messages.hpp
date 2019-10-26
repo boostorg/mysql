@@ -139,7 +139,26 @@ inline std::size_t get_size(const msgs::handshake_response& value, const Seriali
 inline void serialize(const msgs::handshake_response& value, SerializationContext& ctx) noexcept;
 inline Error deserialize(msgs::auth_switch_request& output, DeserializationContext& ctx) noexcept;
 
+// Helper to serialize top-level messages
+template <typename Serializable, typename Allocator>
+void serialize_message(
+	const Serializable& input,
+	capabilities caps,
+	std::vector<std::uint8_t, Allocator>& buffer
+);
 
+template <typename Deserializable>
+error_code deserialize_message(
+	Deserializable& output,
+	DeserializationContext& ctx
+);
+
+inline error_code deserialize_message_type(
+	std::uint8_t& output,
+	DeserializationContext& ctx
+);
+
+inline error_code process_error_packet(DeserializationContext& ctx);
 
 
 struct ColumnDefinition

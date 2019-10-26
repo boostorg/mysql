@@ -44,6 +44,8 @@ public:
 
 	void reset_sequence_number(std::uint8_t value = 0) { sequence_number_ = value; }
 	std::uint8_t sequence_number() const { return sequence_number_; }
+
+	using stream_type = AsyncStream;
 };
 
 }
