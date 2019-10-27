@@ -161,6 +161,17 @@ struct column_definition
 	);
 };
 
+// Commands
+struct com_query
+{
+	string_eof query;
+
+	static constexpr std::uint8_t command_id = 3;
+	static constexpr auto fields = std::make_tuple(
+		&com_query::query
+	);
+};
+
 } // msgs
 
 // serialization functions

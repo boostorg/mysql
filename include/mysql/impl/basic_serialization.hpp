@@ -343,6 +343,20 @@ struct is_struct_with_fields : decltype(is_struct_with_fields_helper::get<T>(nul
 {
 };
 
+struct is_command_helper
+{
+    template <typename T>
+    static constexpr std::true_type get(decltype(T::command_id)*);
+
+    template <typename T>
+    static constexpr std::false_type get(...);
+};
+
+template <typename T>
+struct is_command : decltype(is_command_helper::get<T>(nullptr))
+{
+};
+
 template <std::size_t index, typename T>
 Error deserialize_struct(T& output, DeserializationContext& ctx) noexcept
 {
@@ -387,6 +401,12 @@ template <typename T>
 std::enable_if_t<is_struct_with_fields<T>::value>
 serialize(const T& input, SerializationContext& ctx) noexcept
 {
+	// For commands, add the command ID. Commands are only sent by the client,
+	// so this is not considered in the deserialization functions.
+	if constexpr (is_command<T>::value)
+	{
+		serialize(int1{T::command_id}, ctx);
+	}
 	serialize_struct<0>(input, ctx);
 }
 
@@ -409,7 +429,9 @@ template <typename T>
 std::enable_if_t<is_struct_with_fields<T>::value, std::size_t>
 get_size(const T& input, const SerializationContext& ctx) noexcept
 {
-	return get_size_struct<0>(input, ctx);
+	std::size_t res = is_command<T>::value ? 1 : 0;
+	res += get_size_struct<0>(input, ctx);
+	return res;
 }
 
 // Helper to write custom struct deserialize()

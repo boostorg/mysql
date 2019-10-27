@@ -55,26 +55,6 @@ constexpr std::uint16_t part_key = 16384;     // Intern; Part of some key.
 constexpr std::uint16_t num = 32768;     // Field is num (for clients)
 }
 
-enum class Command : std::uint8_t
-{
-	COM_QUIT = 1,
-	COM_INIT_DB = 2,
-	COM_QUERY = 3,
-	COM_STATISTICS = 8,
-	COM_DEBUG = 0x0d,
-	COM_PING = 0x0e,
-	COM_CHANGE_USER = 0x11,
-	COM_BINLOG_DUMP = 0x12,
-	COM_STMT_PREPARE = 0x16,
-	COM_STMT_EXECUTE = 0x17,
-	COM_STMT_SEND_LONG_DATA = 0x18,
-	COM_STMT_CLOSE = 0x19,
-	COM_STMT_RESET = 0x1a,
-	COM_SET_OPTION = 0x1b,
-	COM_STMT_FETCH = 0x1c,
-	COM_RESET_CONNECTION = 0x1f
-};
-
 // Prepared statements
 constexpr std::uint8_t CURSOR_TYPE_NO_CURSOR = 0;
 constexpr std::uint8_t CURSOR_TYPE_READ_ONLY = 1;
