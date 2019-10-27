@@ -7,6 +7,7 @@
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/constants.hpp"
 #include "mysql/impl/basic_types.hpp"
+#include "mysql/collation.hpp"
 
 namespace mysql
 {
@@ -15,7 +16,7 @@ namespace detail
 
 struct handshake_params
 {
-	CharacterSetLowerByte character_set;
+	collation connection_collation;
 	std::string_view username;
 	std::string_view password;
 	std::string_view database;

@@ -9,6 +9,7 @@
 #include "mysql/impl/constants.hpp"
 #include "mysql/impl/basic_serialization.hpp"
 #include "mysql/field_type.hpp"
+#include "mysql/collation.hpp"
 
 namespace mysql
 {
@@ -71,7 +72,7 @@ struct handshake
 	int4 connection_id;
 	string_lenenc auth_plugin_data; // not an actual protocol field, the merge of two fields
 	int4 capability_falgs; // merge of the two parts - not an actual field
-	CharacterSetLowerByte character_set; // default server a_protocol_character_set, only the lower 8-bits
+	int1 character_set; // default server a_protocol_character_set, only the lower 8-bits
 	int2 status_flags; // server_status_flags
 	string_null auth_plugin_name;
 
@@ -92,7 +93,7 @@ struct handshake_response
 {
 	int4 client_flag; // capabilities
 	int4 max_packet_size;
-	CharacterSetLowerByte character_set;
+	int1 character_set;
 	// string[23] 	filler 	filler to the size of the handhshake response packet. All 0s.
 	string_null username;
 	string_lenenc auth_response; // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
@@ -139,7 +140,7 @@ struct column_definition
 	string_lenenc org_table; // physical table
 	string_lenenc name; // virtual column name
 	string_lenenc org_name; // physical column name
-	int2 character_set; // TODO: enum-erize this
+	collation character_set;
 	int4 column_length; // maximum length of the field
 	field_type type; // type of the column as defined in enum_field_types
 	int2 flags; // Flags as defined in Column Definition Flags

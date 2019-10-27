@@ -26,13 +26,6 @@ constexpr std::uint32_t SERVER_PS_OUT_PARAMS = 4096;
 constexpr std::uint32_t SERVER_STATUS_IN_TRANS_READONLY = 8192;
 constexpr std::uint32_t SERVER_SESSION_STATE_CHANGED = (1UL << 14) ;
 
-enum class CharacterSetLowerByte : std::uint8_t
-{
-	latin1_swedish_ci = 0x08,
-	utf8_general_ci = 0x21,
-	binary = 0x3f
-};
-
 // Packet type constants
 constexpr std::uint8_t handshake_protocol_version_9 = 9;
 constexpr std::uint8_t handshake_protocol_version_10 = 10;

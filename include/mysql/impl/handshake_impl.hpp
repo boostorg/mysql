@@ -14,6 +14,11 @@ namespace mysql
 namespace detail
 {
 
+inline std::uint8_t get_collation_first_byte(collation value)
+{
+	return static_cast<std::uint16_t>(value) % 0xff;
+}
+
 inline error_code deserialize_handshake(
 	boost::asio::const_buffer buffer,
 	msgs::handshake& output
@@ -100,7 +105,7 @@ public:
 	{
 		output.client_flag.value = negotiated_caps_.get();
 		output.max_packet_size.value = MAX_PACKET_SIZE;
-		output.character_set = params_.character_set;
+		output.character_set.value = get_collation_first_byte(params_.connection_collation);
 		output.username.value = params_.username;
 		output.auth_response.value = auth_response;
 		output.database.value = params_.database;

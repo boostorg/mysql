@@ -22,7 +22,7 @@ namespace
 struct HandshakeTest : public Test
 {
 	mysql::connection_params connection_params {
-		mysql::detail::CharacterSetLowerByte::utf8_general_ci,
+		mysql::collation::utf8_general_ci,
 		"root",
 		"root",
 		"awesome"

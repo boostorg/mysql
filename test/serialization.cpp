@@ -284,7 +284,7 @@ INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
 		{2}, // connection ID
 		{buffer_to_sv(handshake_auth_plugin_data)},
 		{hanshake_caps},
-		CharacterSetLowerByte::latin1_swedish_ci,
+		static_cast<std::uint8_t>(collation::latin1_swedish_ci),
 		{ SERVER_STATUS_AUTOCOMMIT },
 		{ "mysql_native_password" }
 	}, {
@@ -331,7 +331,7 @@ INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 	SerializeParams(msgs::handshake_response{
 		{ handshake_response_caps },
 		{ 16777216 }, // max packet size
-		CharacterSetLowerByte::utf8_general_ci,
+		static_cast<std::uint8_t>(collation::utf8_general_ci),
 		{ "root" },
 		{ buffer_to_sv(handshake_response_auth_data) },
 		{ "" }, // Irrelevant, not using connect with DB
@@ -352,7 +352,7 @@ INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 	SerializeParams(msgs::handshake_response{
 		{ handshake_response_caps | CLIENT_CONNECT_WITH_DB },
 		{ 16777216 }, // max packet size
-		CharacterSetLowerByte::utf8_general_ci,
+		static_cast<std::uint8_t>(collation::utf8_general_ci),
 		{ "root" },
 		{ buffer_to_sv(handshake_response_auth_data) },
 		{ "database" }, // database name
@@ -418,7 +418,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		{"test_table"}, // physical table
 		{"id"}, // field name
 		{"id"}, // physical field name
-		{63}, // binary collation
+		collation::binary,
 		{11}, // length
 		field_type::long_,
 		{
@@ -444,7 +444,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		{"child_table"}, // physical table
 		{"field_alias"}, // field name
 		{"field_varchar"}, // physical field name
-		{33}, // UTF8 general ci
+		collation::utf8_general_ci,
 		{765}, // length
 		field_type::var_string,
 		{}, // no column flags
@@ -468,7 +468,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		{"test_table"}, // physical table
 		{"field_float"}, // field name
 		{"field_float"}, // physical field name
-		{63}, // UTF8 general ci
+		collation::binary, // binary
 		{12}, // length
 		field_type::float_,
 		{}, // no column flags
