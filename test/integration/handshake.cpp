@@ -16,6 +16,9 @@ using namespace testing;
 
 using mysql::detail::make_error_code;
 
+namespace
+{
+
 struct HandshakeTest : public Test
 {
 	mysql::connection_params connection_params {
@@ -56,6 +59,13 @@ struct HandshakeTest : public Test
 // Sync with error codes
 TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLogin)
 {
+	conn.handshake(connection_params, errc);
+	EXPECT_EQ(errc, mysql::error_code());
+}
+
+TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLoginNoDatabase)
+{
+	connection_params.database = "";
 	conn.handshake(connection_params, errc);
 	EXPECT_EQ(errc, mysql::error_code());
 }
@@ -101,6 +111,14 @@ TEST_F(HandshakeTest, Async_FastAuthSuccessfulLogin)
 	EXPECT_NO_THROW(fut.get());
 }
 
+TEST_F(HandshakeTest, Async_FastAuthSuccessfulLoginNoDatabase)
+{
+	connection_params.database = "";
+	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
+	ctx.run();
+	EXPECT_NO_THROW(fut.get());
+}
+
 TEST_F(HandshakeTest, Async_FastAuthBadUser)
 {
 	connection_params.username = "bad_user";
@@ -124,3 +142,5 @@ TEST_F(HandshakeTest, Async_FastAuthBadDatabase)
 	ctx.run();
 	validate_exception(fut, make_error_code(mysql::Error::bad_db_error));
 }
+
+} // anon namespace
