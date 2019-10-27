@@ -4,7 +4,7 @@ CREATE DATABASE awesome;
 USE awesome;
 
 -- Tables
-CREATE TABLE IF NOT EXISTS test_table (
+CREATE TABLE test_table (
     id INT AUTO_INCREMENT PRIMARY KEY,
     field_varchar VARCHAR(255) NOT NULL,
     field_date DATE,
@@ -12,6 +12,13 @@ CREATE TABLE IF NOT EXISTS test_table (
     field_text TEXT,
     field_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=INNODB;
+
+CREATE TABLE child_table (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	parent_id INT NOT NULL,
+	field_varchar VARCHAR(255),
+	FOREIGN KEY (parent_id) REFERENCES test_table(id)
+);
 
 -- Users
 DROP USER IF EXISTS empty_password_user;
