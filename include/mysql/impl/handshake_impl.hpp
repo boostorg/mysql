@@ -5,7 +5,8 @@
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/auth.hpp"
 #include "mysql/error.hpp"
-//#include <boost/asio/yield.hpp>
+#include <boost/asio/coroutine.hpp>
+#include <boost/asio/yield.hpp>
 #include <boost/beast/core/async_base.hpp>
 
 namespace mysql
@@ -267,15 +268,16 @@ void mysql::detail::hanshake(
 }
 
 template <typename ChannelType, typename Allocator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::detail::capabilities))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
 mysql::detail::async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring<Allocator>& buffer,
+	capabilities& output_capabilities,
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(mysql::error_code, mysql::detail::capabilities);
+	using HandlerSignature = void(mysql::error_code);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using StreamType = typename ChannelType::stream_type;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
@@ -285,40 +287,120 @@ mysql::detail::async_handshake(
 	struct Op: BaseType, boost::asio::coroutine
 	{
 		ChannelType& channel_;
-		bytestring<Allocator> buffer_;
+		bytestring<Allocator>& buffer_;
 		handshake_processor processor_;
+		capabilities* output_capabilities_;
 
 		Op(
 			HandlerType&& handler,
 			ChannelType& channel,
 			bytestring<Allocator>& buffer,
-			const handshake_params& params
+			const handshake_params& params,
+			capabilities* output_capabilities
 		):
-			BaseType(std::move(handler), channel.next_later().get_executor()),
+			BaseType(std::move(handler), channel.next_layer().get_executor()),
 			channel_(channel),
 			buffer_(buffer),
-			processor_(params)
+			processor_(params),
+			output_capabilities_(output_capabilities)
 		{
+		}
+
+		void complete(bool cont, error_code errc)
+		{
+			*output_capabilities_ = processor_.negotiated_capabilities();
+			BaseType::complete(cont, errc);
 		}
 
 		void operator()(
-			error_code errc,
-			capabilities caps,
+			error_code err,
 			bool cont=true
 		)
 		{
-			/*reenter(*this)
+			bool auth_complete = false;
+			reenter(*this)
 			{
-				this->complete(cont, error_code(), caps);
-			}*/
+				// Read server greeting
+				yield channel_.async_read(buffer_, std::move(*this));
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// Process server greeting
+				err = processor_.process_handshake(buffer_);
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// Send
+				yield channel_.async_write(boost::asio::buffer(buffer_), std::move(*this));
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// Receive response
+				yield channel_.async_read(buffer_, std::move(*this));
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// Process it
+				err = processor_.process_handshake_server_response(buffer_, auth_complete);
+				if (auth_complete) err.clear();
+				if (err || auth_complete)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// We received an auth switch response and we have the response ready to be sent
+				yield channel_.async_write(boost::asio::buffer(buffer_), std::move(*this));
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// Receive response
+				yield channel_.async_read(buffer_, std::move(*this));
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// Process it
+				err = processor_.process_auth_switch_response(boost::asio::buffer(buffer_));
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				complete(cont, error_code());
+			}
 		}
 	};
 
-	Op(std::move(initiator.completion_handler), channel, buffer, params)(
-			error_code(), capabilities(), false);
+	Op(
+		std::move(initiator.completion_handler),
+		channel,
+		buffer,
+		params,
+		&output_capabilities
+	)(error_code(), false);
 	return initiator.result.get();
 }
 
+#include <boost/asio/unyield.hpp>
 
 
 #endif /* INCLUDE_MYSQL_IMPL_HANDSHAKE_IMPL_HPP_ */

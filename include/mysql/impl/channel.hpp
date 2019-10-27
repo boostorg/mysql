@@ -46,6 +46,7 @@ public:
 	std::uint8_t sequence_number() const { return sequence_number_; }
 
 	using stream_type = AsyncStream;
+	stream_type& next_layer() { return next_layer_; }
 };
 
 }

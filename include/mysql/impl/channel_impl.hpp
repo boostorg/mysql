@@ -197,7 +197,7 @@ mysql::detail::channel<AsyncStream>::async_read(
 						yield break;
 					}
 
-					buffer_.resize(buffer_.data() + size_to_read);
+					buffer_.resize(buffer_.size() + size_to_read);
 
 					yield boost::asio::async_read(
 						stream_.next_layer_,

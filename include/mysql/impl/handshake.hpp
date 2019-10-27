@@ -22,13 +22,23 @@ struct handshake_params
 };
 
 template <typename ChannelType, typename Allocator>
-void hanshake(ChannelType& channel, const handshake_params& params,
-		bytestring<Allocator>& buffer, capabilities& output_capabilities, error_code& err);
+void hanshake(
+	ChannelType& channel,
+	const handshake_params& params,
+	bytestring<Allocator>& buffer,
+	capabilities& output_capabilities,
+	error_code& err
+);
 
 template <typename ChannelType, typename Allocator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, capabilities))
-async_handshake(ChannelType& channel, const handshake_params& params,
-		bytestring<Allocator>& buffer, CompletionToken&& token);
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+async_handshake(
+	ChannelType& channel,
+	const handshake_params& params,
+	bytestring<Allocator>& buffer,
+	capabilities& output_capabilities,
+	CompletionToken&& token
+);
 
 }
 }

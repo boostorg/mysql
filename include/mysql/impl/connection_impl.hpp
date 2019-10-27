@@ -11,7 +11,24 @@ void mysql::connection<Stream>::handshake(
 )
 {
 	detail::hanshake(channel_, params, buffer_, caps_, errc);
-	// TODO: should we close() the stream?
+	// TODO: should we close() the stream in case of error?
+}
+
+template <typename Stream>
+template <typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
+mysql::connection<Stream>::async_handshake(
+	const connection_params& params,
+	CompletionToken&& token
+)
+{
+	return detail::async_handshake(
+		channel_,
+		params,
+		buffer_,
+		caps_,
+		std::forward<CompletionToken>(token)
+	);
 }
 
 

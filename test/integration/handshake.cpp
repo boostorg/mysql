@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/use_future.hpp>
 
 namespace net = boost::asio;
 using namespace testing;
@@ -37,8 +38,22 @@ struct HandshakeTest : public Test
 	{
 		conn.next_level().close(errc);
 	}
+
+	void validate_exception(std::future<void>& fut, mysql::error_code expected_errc)
+	{
+		try
+		{
+			fut.get();
+			FAIL() << "Expected asynchronous operation to fail";
+		}
+		catch (const boost::system::system_error& exc)
+		{
+			EXPECT_EQ(exc.code(), expected_errc);
+		}
+	}
 };
 
+// Sync with error codes
 TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLogin)
 {
 	conn.handshake(connection_params, errc);
@@ -66,4 +81,34 @@ TEST_F(HandshakeTest, SyncErrc_FastAuthBadDatabase)
 	ASSERT_EQ(errc, make_error_code(mysql::Error::bad_db_error));
 }
 
+// Async
+TEST_F(HandshakeTest, Async_FastAuthSuccessfulLogin)
+{
+	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
+	ctx.run();
+	EXPECT_NO_THROW(fut.get());
+}
 
+TEST_F(HandshakeTest, Async_FastAuthBadUser)
+{
+	connection_params.username = "bad_user";
+	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
+	ctx.run();
+	validate_exception(fut, make_error_code(mysql::Error::access_denied_error));
+}
+
+TEST_F(HandshakeTest, Async_FastAuthBadPassword)
+{
+	connection_params.password = "bad_password";
+	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
+	ctx.run();
+	validate_exception(fut, make_error_code(mysql::Error::access_denied_error));
+}
+
+TEST_F(HandshakeTest, Async_FastAuthBadDatabase)
+{
+	connection_params.database = "bad_db";
+	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
+	ctx.run();
+	validate_exception(fut, make_error_code(mysql::Error::bad_db_error));
+}
