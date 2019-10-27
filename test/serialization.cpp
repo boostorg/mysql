@@ -409,5 +409,34 @@ INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
 	})
 ));
 
+// Column definition
+INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values(
+	SerializeParams(msgs::column_definition{
+		{"def"}, //catalog
+		{"awesome"}, // schema (database)
+		{"test_table"}, // table
+		{"test_table"}, // physical table
+		{"id"}, // field name
+		{"id"}, // physical field name
+		{63}, // binary collation
+		{11}, // length
+		FieldType::LONG,
+		{
+			column_flags::not_null |
+			column_flags::pri_key |
+			column_flags::auto_increment |
+			column_flags::part_key
+		},
+		{0} // decimals
+	}, {
+		0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
+		0x73, 0x6f, 0x6d, 0x65, 0x0a, 0x74, 0x65, 0x73,
+		0x74, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x0a,
+		0x74, 0x65, 0x73, 0x74, 0x5f, 0x74, 0x61, 0x62,
+		0x6c, 0x65, 0x02, 0x69, 0x64, 0x02, 0x69, 0x64,
+		0x0c, 0x3f, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x03,
+		0x03, 0x42, 0x00, 0x00, 0x00
+	}, "Numeric, auto-increment primary key")
+));
 
 } // anon namespace

@@ -130,6 +130,35 @@ struct auth_switch_response
 	);
 };
 
+struct column_definition
+{
+	string_lenenc catalog; // always "def"
+	string_lenenc schema;
+	string_lenenc table; // virtual table
+	string_lenenc org_table; // physical table
+	string_lenenc name; // virtual column name
+	string_lenenc org_name; // physical column name
+	int2 character_set; // TODO: enum-erize this
+	int4 column_length; // maximum length of the field
+	FieldType type; // type of the column as defined in enum_field_types
+	int2 flags; // Flags as defined in Column Definition Flags
+	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
+
+	static constexpr auto fields = std::make_tuple(
+		&column_definition::catalog,
+		&column_definition::schema,
+		&column_definition::table,
+		&column_definition::org_table,
+		&column_definition::name,
+		&column_definition::org_name,
+		&column_definition::character_set,
+		&column_definition::column_length,
+		&column_definition::type,
+		&column_definition::flags,
+		&column_definition::decimals
+	);
+};
+
 } // msgs
 
 // serialization functions
@@ -138,6 +167,7 @@ inline Error deserialize(msgs::handshake& output, DeserializationContext& ctx) n
 inline std::size_t get_size(const msgs::handshake_response& value, const SerializationContext& ctx) noexcept;
 inline void serialize(const msgs::handshake_response& value, SerializationContext& ctx) noexcept;
 inline Error deserialize(msgs::auth_switch_request& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(msgs::column_definition& output, DeserializationContext& ctx) noexcept;
 
 // Helper to serialize top-level messages
 template <typename Serializable, typename Allocator>
@@ -159,24 +189,6 @@ inline error_code deserialize_message_type(
 );
 
 inline error_code process_error_packet(DeserializationContext& ctx);
-
-
-struct ColumnDefinition
-{
-	string_lenenc catalog; // always "def"
-	string_lenenc schema;
-	string_lenenc table; // virtual table
-	string_lenenc org_table; // physical table
-	string_lenenc name; // virtual column name
-	string_lenenc org_name; // physical column name
-	// int<lenenc> 	length of fixed length fields 	[0x0c]
-	int2 character_set; // TODO: enum-erize this
-	int4 column_length; // maximum length of the field
-	FieldType type; // type of the column as defined in enum_field_types
-	int2 flags; // Flags as defined in Column Definition Flags
-	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
-};
-
 
 
 struct StmtPrepare

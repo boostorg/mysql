@@ -41,6 +41,27 @@ constexpr std::uint8_t ok_packet_header = 0x00;
 constexpr std::uint8_t eof_packet_header = 0xfe;
 constexpr std::uint8_t auth_switch_request_header = 0xfe;
 
+// Column flags
+namespace column_flags
+{
+constexpr std::uint16_t not_null = 1;     // Field can't be NULL.
+constexpr std::uint16_t pri_key = 2;     // Field is part of a primary key.
+constexpr std::uint16_t unique_key = 4;     // Field is part of a unique key.
+constexpr std::uint16_t multiple_key = 8;     // Field is part of a key.
+constexpr std::uint16_t blob = 16;     // Field is a blob.
+constexpr std::uint16_t unsigned_ = 32;     // Field is unsigned.
+constexpr std::uint16_t zerofill = 64;     // Field is zerofill.
+constexpr std::uint16_t binary = 128;     // Field is binary.
+constexpr std::uint16_t enum_ = 256;     // field is an enum
+constexpr std::uint16_t auto_increment = 512;     // field is a autoincrement field
+constexpr std::uint16_t timestamp = 1024;     // Field is a timestamp.
+constexpr std::uint16_t set = 2048;     // field is a set
+constexpr std::uint16_t no_default_value = 4096;     // Field doesn't have default value.
+constexpr std::uint16_t on_update_now = 8192;     // Field is set to NOW on UPDATE.
+constexpr std::uint16_t part_key = 16384;     // Intern; Part of some key.
+constexpr std::uint16_t num = 32768;     // Field is num (for clients)
+}
+
 enum class Command : std::uint8_t
 {
 	COM_QUIT = 1,

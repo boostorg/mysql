@@ -142,6 +142,31 @@ inline mysql::Error mysql::detail::deserialize(
 	return err;
 }
 
+inline mysql::Error mysql::detail::deserialize(
+	msgs::column_definition& output,
+	DeserializationContext& ctx
+) noexcept
+{
+	int_lenenc length_of_fixed_fields;
+	int2 final_padding;
+	return deserialize_fields(
+		ctx,
+		output.catalog,
+		output.schema,
+		output.table,
+		output.org_table,
+		output.name,
+		output.org_name,
+		length_of_fixed_fields,
+		output.character_set,
+		output.column_length,
+		output.type,
+		output.flags,
+		output.decimals,
+		final_padding
+	);
+}
+
 template <typename Serializable, typename Allocator>
 void mysql::detail::serialize_message(
 	const Serializable& input,
