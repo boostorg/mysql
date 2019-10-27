@@ -49,6 +49,14 @@ public:
 	bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
 };
 
+template <typename Allocator>
+class dataset_metadata
+{
+	std::vector<field_metadata<Allocator>> fields_;
+public:
+	const auto& fields() const noexcept { return fields_; }
+};
+
 }
 
 
