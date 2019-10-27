@@ -420,7 +420,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		{"id"}, // physical field name
 		{63}, // binary collation
 		{11}, // length
-		FieldType::LONG,
+		field_type::long_,
 		{
 			column_flags::not_null |
 			column_flags::pri_key |
@@ -446,7 +446,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		{"field_varchar"}, // physical field name
 		{33}, // UTF8 general ci
 		{765}, // length
-		FieldType::VAR_STRING,
+		field_type::var_string,
 		{}, // no column flags
 		{0} // decimals
 	}, {
@@ -470,7 +470,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		{"field_float"}, // physical field name
 		{63}, // UTF8 general ci
 		{12}, // length
-		FieldType::FLOAT,
+		field_type::float_,
 		{}, // no column flags
 		{31} // decimals
 	}, {

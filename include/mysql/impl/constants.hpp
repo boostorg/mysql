@@ -82,37 +82,6 @@ enum class Command : std::uint8_t
 	COM_RESET_CONNECTION = 0x1f
 };
 
-// Column definitions
-enum class FieldType : std::uint8_t
-{
-	DECIMAL = 0x00,
-	TINY = 0x01,
-	SHORT = 0x02,
-	LONG = 0x03,
-	FLOAT = 0x04,
-	DOUBLE = 0x05,
-	NULL_ = 0x06,
-	TIMESTAMP = 0x07,
-	LONGLONG = 0x08,
-	INT24 = 0x09,
-	DATE = 0x0a,
-	TIME = 0x0b,
-	DATETIME = 0x0c,
-	YEAR = 0x0d,
-	VARCHAR = 0x0f,
-	BIT = 0x10,
-	NEWDECIMAL = 0xf6,
-	ENUM = 0xf7,
-	SET = 0xf8,
-	TINY_BLOB = 0xf9,
-	MEDIUM_BLOB = 0xfa,
-	LONG_BLOB = 0xfb,
-	BLOB = 0xfc,
-	VAR_STRING = 0xfd,
-	STRING = 0xfe,
-	GEOMETRY = 0xff
-};
-
 // Prepared statements
 constexpr std::uint8_t CURSOR_TYPE_NO_CURSOR = 0;
 constexpr std::uint8_t CURSOR_TYPE_READ_ONLY = 1;
