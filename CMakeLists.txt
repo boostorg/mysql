@@ -56,6 +56,7 @@ add_executable(
 	test/channel.cpp
 	test/capabilities.cpp
 	test/auth.cpp
+	test/metadata.cpp
 )
 target_link_libraries(
 	unittests
