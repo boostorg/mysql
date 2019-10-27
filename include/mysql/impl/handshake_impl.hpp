@@ -44,10 +44,20 @@ class auth_response_calculator
 public:
 	error_code calculate(std::string_view password, std::string_view challenge, std::string_view& output)
 	{
+		// Blank password: we should just return an empty auth string
+		if (password.empty())
+		{
+			output = std::string_view();
+			return error_code();
+		}
+
+		// Check challenge size
 		if (challenge.size() != mysql_native_password::challenge_length)
 		{
 			return make_error_code(Error::protocol_value_error);
 		}
+
+		// Do the calculation
 		mysql_native_password::compute_auth_string(
 			password,
 			challenge.data(),
