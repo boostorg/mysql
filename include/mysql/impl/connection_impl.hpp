@@ -15,6 +15,16 @@ void mysql::connection<Stream>::handshake(
 }
 
 template <typename Stream>
+void mysql::connection<Stream>::handshake(
+	const connection_params& params
+)
+{
+	error_code errc;
+	handshake(params, errc);
+	detail::check_error_code(errc);
+}
+
+template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
 mysql::connection<Stream>::async_handshake(

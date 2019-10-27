@@ -57,28 +57,40 @@ struct HandshakeTest : public Test
 TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLogin)
 {
 	conn.handshake(connection_params, errc);
-	ASSERT_EQ(errc, mysql::error_code());
+	EXPECT_EQ(errc, mysql::error_code());
 }
 
 TEST_F(HandshakeTest, SyncErrc_FastAuthBadUser)
 {
 	connection_params.username = "non_existing_user";
 	conn.handshake(connection_params, errc);
-	ASSERT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
+	EXPECT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
 }
 
 TEST_F(HandshakeTest, SyncErrc_FastAuthBadPassword)
 {
 	connection_params.password = "bad_password";
 	conn.handshake(connection_params, errc);
-	ASSERT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
+	EXPECT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
 }
 
 TEST_F(HandshakeTest, SyncErrc_FastAuthBadDatabase)
 {
 	connection_params.database = "bad_database";
 	conn.handshake(connection_params, errc);
-	ASSERT_EQ(errc, make_error_code(mysql::Error::bad_db_error));
+	EXPECT_EQ(errc, make_error_code(mysql::Error::bad_db_error));
+}
+
+// Sync with exceptions
+TEST_F(HandshakeTest, SyncExc_FastAuthSuccessfulLogin)
+{
+	EXPECT_NO_THROW(conn.handshake(connection_params));
+}
+
+TEST_F(HandshakeTest, SyncExc_FastAuthBadPassword)
+{
+	connection_params.password = "bad_password";
+	EXPECT_THROW(conn.handshake(connection_params), boost::system::system_error);
 }
 
 // Async
