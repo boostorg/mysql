@@ -10,7 +10,7 @@ void mysql::connection<Stream>::handshake(
 	error_code& errc
 )
 {
-	detail::hanshake(channel_, params, buffer_, caps_, errc);
+	detail::hanshake(channel_, params, buffer_, errc);
 	// TODO: should we close() the stream in case of error?
 }
 
@@ -36,7 +36,6 @@ mysql::connection<Stream>::async_handshake(
 		channel_,
 		params,
 		buffer_,
-		caps_,
 		std::forward<CompletionToken>(token)
 	);
 }

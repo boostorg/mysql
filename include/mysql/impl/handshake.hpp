@@ -4,7 +4,6 @@
 #include <string_view>
 #include <boost/asio/async_result.hpp>
 #include "mysql/impl/channel.hpp"
-#include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/constants.hpp"
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/collation.hpp"
@@ -27,7 +26,6 @@ void hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring<Allocator>& buffer,
-	capabilities& output_capabilities,
 	error_code& err
 );
 
@@ -37,7 +35,6 @@ async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring<Allocator>& buffer,
-	capabilities& output_capabilities,
 	CompletionToken&& token
 );
 

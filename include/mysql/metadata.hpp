@@ -50,7 +50,7 @@ public:
 };
 
 template <typename Allocator>
-class dataset_metadata
+class resultset_metadata
 {
 	std::vector<field_metadata<Allocator>> fields_;
 public:

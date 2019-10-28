@@ -234,7 +234,6 @@ void mysql::detail::hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring<Allocator>& buffer,
-	capabilities& output_capabilities,
 	error_code& err
 )
 {
@@ -279,7 +278,7 @@ void mysql::detail::hanshake(
 	err = processor.process_auth_switch_response(boost::asio::buffer(buffer));
 	if (err) return;
 
-	output_capabilities = processor.negotiated_capabilities();
+	channel.set_current_capabilities(processor.negotiated_capabilities());
 }
 
 template <typename ChannelType, typename Allocator, typename CompletionToken>
@@ -288,7 +287,6 @@ mysql::detail::async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring<Allocator>& buffer,
-	capabilities& output_capabilities,
 	CompletionToken&& token
 )
 {
@@ -304,26 +302,23 @@ mysql::detail::async_handshake(
 		ChannelType& channel_;
 		bytestring<Allocator>& buffer_;
 		handshake_processor processor_;
-		capabilities* output_capabilities_;
 
 		Op(
 			HandlerType&& handler,
 			ChannelType& channel,
 			bytestring<Allocator>& buffer,
-			const handshake_params& params,
-			capabilities* output_capabilities
+			const handshake_params& params
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
 			channel_(channel),
 			buffer_(buffer),
-			processor_(params),
-			output_capabilities_(output_capabilities)
+			processor_(params)
 		{
 		}
 
 		void complete(bool cont, error_code errc)
 		{
-			*output_capabilities_ = processor_.negotiated_capabilities();
+			channel_.set_current_capabilities(processor_.negotiated_capabilities());
 			BaseType::complete(cont, errc);
 		}
 
@@ -409,8 +404,7 @@ mysql::detail::async_handshake(
 		std::move(initiator.completion_handler),
 		channel,
 		buffer,
-		params,
-		&output_capabilities
+		params
 	)(error_code(), false);
 	return initiator.result.get();
 }

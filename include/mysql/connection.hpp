@@ -3,7 +3,6 @@
 
 #include "mysql/impl/channel.hpp"
 #include "mysql/impl/handshake.hpp"
-#include "mysql/impl/capabilities.hpp"
 #include "mysql/error.hpp"
 #include <vector>
 
@@ -17,7 +16,6 @@ class connection
 {
 	Stream next_level_;
 	detail::channel<Stream> channel_;
-	detail::capabilities caps_;
 	std::vector<std::uint8_t> buffer_;
 public:
 	template <typename... Args>

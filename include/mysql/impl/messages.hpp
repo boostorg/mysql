@@ -37,7 +37,7 @@ struct ok_packet
 	int_lenenc last_insert_id;
 	int2 status_flags; // server_status_flags
 	int2 warnings;
-	// TODO: CLIENT_SESSION_TRACK. This may require separate serialization functions
+	// TODO: CLIENT_SESSION_TRACK
 	string_lenenc info;
 
 	static constexpr auto fields = std::make_tuple(

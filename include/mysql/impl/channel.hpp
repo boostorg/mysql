@@ -3,6 +3,7 @@
 
 #include "mysql/error.hpp"
 #include "mysql/impl/basic_types.hpp"
+#include "mysql/impl/capabilities.hpp"
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/async_result.hpp>
 #include <array>
@@ -20,6 +21,7 @@ class channel
 	AsyncStream& next_layer_;
 	std::uint8_t sequence_number_ {0};
 	std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
+	capabilities current_caps_;
 
 	bool process_sequence_number(std::uint8_t got);
 	std::uint8_t next_sequence_number() { return sequence_number_++; }
@@ -47,6 +49,9 @@ public:
 
 	using stream_type = AsyncStream;
 	stream_type& next_layer() { return next_layer_; }
+
+	capabilities current_capabilities() const noexcept { return current_caps_; }
+	void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 };
 
 }
