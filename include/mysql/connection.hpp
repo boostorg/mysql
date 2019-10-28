@@ -3,20 +3,20 @@
 
 #include "mysql/impl/channel.hpp"
 #include "mysql/impl/handshake.hpp"
+#include "mysql/impl/basic_types.hpp"
 #include "mysql/error.hpp"
-#include <vector>
 
 namespace mysql
 {
 
 using connection_params = detail::handshake_params; // TODO: do we think this interface is good enough?
 
-template <typename Stream>
+template <typename Stream, typename Allocator=std::allocator<std::uint8_t>>
 class connection
 {
 	Stream next_level_;
 	detail::channel<Stream> channel_;
-	std::vector<std::uint8_t> buffer_;
+	detail::bytestring<Allocator> buffer_;
 public:
 	template <typename... Args>
 	connection(Args&&... args) :
@@ -34,6 +34,8 @@ public:
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 	async_handshake(const connection_params& params, CompletionToken&& token);
+
+
 };
 
 }

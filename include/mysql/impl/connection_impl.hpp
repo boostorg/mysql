@@ -4,8 +4,8 @@
 #include "mysql/impl/handshake.hpp"
 #include <boost/asio/buffer.hpp>
 
-template <typename Stream>
-void mysql::connection<Stream>::handshake(
+template <typename Stream, typename Allocator>
+void mysql::connection<Stream, Allocator>::handshake(
 	const connection_params& params,
 	error_code& errc
 )
@@ -14,8 +14,8 @@ void mysql::connection<Stream>::handshake(
 	// TODO: should we close() the stream in case of error?
 }
 
-template <typename Stream>
-void mysql::connection<Stream>::handshake(
+template <typename Stream, typename Allocator>
+void mysql::connection<Stream, Allocator>::handshake(
 	const connection_params& params
 )
 {
@@ -24,10 +24,10 @@ void mysql::connection<Stream>::handshake(
 	detail::check_error_code(errc);
 }
 
-template <typename Stream>
+template <typename Stream, typename Allocator>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
-mysql::connection<Stream>::async_handshake(
+mysql::connection<Stream, Allocator>::async_handshake(
 	const connection_params& params,
 	CompletionToken&& token
 )
