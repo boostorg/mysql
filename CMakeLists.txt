@@ -1,11 +1,27 @@
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.11.0)
 set(CMAKE_CXX_STANDARD 17)
 project(mysql-asio)
+
+include(FetchContent)
 
 set(BOOST_ROOT /opt/boost_1_70_0 CACHE STRING "Path to boost installation")
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+
+# Date
+FetchContent_Declare(
+    date
+    GIT_REPOSITORY https://github.com/HowardHinnant/date.git
+    GIT_TAG        v2.4.1
+)
+
+FetchContent_GetProperties(date)
+if(NOT date_POPULATED)
+    FetchContent_Populate(date)
+    # TODO: Building the project requires CMake 3.14
+    # add_subdirectory(${date_SOURCE_DIR} ${date_BINARY_DIR})
+endif()
 
 # Library
 #add_library(
@@ -31,6 +47,7 @@ target_include_directories(
 	mysql_asio
 	INTERFACE
 	include
+	${date_SOURCE_DIR}/include
 )
 
 # Main
@@ -57,6 +74,7 @@ add_executable(
 	test/capabilities.cpp
 	test/auth.cpp
 	test/metadata.cpp
+	test/datetime.cpp
 )
 target_link_libraries(
 	unittests
