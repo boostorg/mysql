@@ -11,26 +11,32 @@ namespace mysql
 template <typename Allocator>
 class row
 {
-	detail::bytestring<Allocator> buffer_;
 	std::vector<value> values_;
 	const resultset_metadata<Allocator>* metadata_;
 public:
 	row(): metadata_(nullptr) {};
-	row(detail::bytestring<Allocator>&& buffer, std::vector<value>&& values,
-			const resultset_metadata<Allocator>& meta):
-		buffer_(std::move(buffer)), values_(std::move(values)), metadata_(&meta) {};
-	row(const row&) = delete;
-	row(row&&) = default;
-	row& operator=(const row&) = delete;
-	row& operator=(row&&) = default;
-	~row() = default;
+	row(std::vector<value>&& values, const resultset_metadata<Allocator>& meta):
+		values_(std::move(values)), metadata_(&meta) {};
 
 	const std::vector<value>& values() const noexcept { return values_; }
+	std::vector<value>& values() noexcept { return values_; }
 	const auto& metadata() const noexcept { return *metadata_; }
+};
 
-	// TODO: can we make these private? accessed by resultset
-	auto& buffer() { return buffer_; }
-	auto& values() { return values_; }
+template <typename Allocator>
+class owning_row : public row<Allocator>
+{
+	detail::bytestring<Allocator> buffer_;
+public:
+	owning_row() = default;
+	owning_row(std::vector<value>&& values, const resultset_metadata<Allocator>& meta,
+			detail::bytestring<Allocator>&& buffer) :
+			row<Allocator>(std::move(values), meta), buffer_(std::move(buffer)) {};
+	owning_row(const owning_row&) = delete;
+	owning_row(owning_row&&) = default;
+	owning_row& operator=(const owning_row&) = delete;
+	owning_row& operator=(owning_row&&) = default;
+	~owning_row() = default;
 };
 
 }

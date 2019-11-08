@@ -20,7 +20,7 @@ namespace
 // for column_definition
 struct FieldMetadataTest : public Test
 {
-	using metadata_type = field_metadata<std::allocator<std::uint8_t>>;
+	using metadata_type = owning_field_metadata<std::allocator<std::uint8_t>>;
 
 	metadata_type make_metadata(std::vector<std::uint8_t>&& buffer) const
 	{

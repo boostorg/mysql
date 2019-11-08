@@ -74,7 +74,6 @@ add_executable(
 	test/capabilities.cpp
 	test/auth.cpp
 	test/metadata.cpp
-	test/datetime.cpp
 )
 target_link_libraries(
 	unittests

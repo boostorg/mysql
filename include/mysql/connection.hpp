@@ -5,6 +5,7 @@
 #include "mysql/impl/handshake.hpp"
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/error.hpp"
+#include "mysql/resultset.hpp"
 
 namespace mysql
 {
@@ -14,8 +15,10 @@ using connection_params = detail::handshake_params; // TODO: do we think this in
 template <typename Stream, typename Allocator=std::allocator<std::uint8_t>>
 class connection
 {
+	using channel_type = detail::channel<Stream>;
+
 	Stream next_level_;
-	detail::channel<Stream> channel_;
+	channel_type channel_;
 	detail::bytestring<Allocator> buffer_;
 public:
 	template <typename... Args>
@@ -35,7 +38,12 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 	async_handshake(const connection_params& params, CompletionToken&& token);
 
+	resultset<channel_type, Allocator> query(std::string_view query_string, error_code&);
+	resultset<channel_type, Allocator> query(std::string_view query_string);
 
+	template <typename CompletionToken>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<channel_type, Allocator>))
+	async_query(std::string_view query_string, CompletionToken&& token);
 };
 
 }

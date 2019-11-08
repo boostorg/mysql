@@ -4,30 +4,15 @@
 #include <variant>
 #include <cstdint>
 #include <string_view>
+#include <date/date.h>
+#include <chrono>
 
 namespace mysql
 {
 
-// TODO: decide a better interface for these types
-struct datetime // DATETIME, DATE, TIMESTAMP
-{
-	std::uint16_t year;
-	std::uint8_t month;
-	std::uint8_t day;
-	std::uint8_t hour;
-	std::uint8_t minutes;
-	std::uint32_t microseconds;
-};
-
-struct time // TIME
-{
-	bool is_negative;
-	std::uint32_t days;
-	std::uint8_t hours;
-	std::uint8_t minutes;
-	std::uint8_t seconds;
-	std::uint32_t microseconds;
-};
+using date = ::date::sys_days;
+using datetime = ::date::sys_time<std::chrono::microseconds>;
+using time = std::chrono::microseconds;
 
 /**
  * field_type::decimal: string_view
@@ -42,16 +27,16 @@ struct time // TIME
  * field_type::var_string: string_view
  * field_type::geometry: string_view
  * field_type::string: string_view
- * field_type::tiny: uint8_t/int8_t
- * field_type::short: uint16_t/int8_t
+ * field_type::tiny: (u)int8_t
+ * field_type::short: (u)int16_t
  * field_type::year: uint16_t
- * field_type::int24: uint32_t/int8_t
- * field_type::long_: uint32_t/int8_t
- * field_type::longlong: uint64_t/int8_t
+ * field_type::int24: (u)int32_t
+ * field_type::long_: (u)int32_t
+ * field_type::longlong: (u)int64_t
  * field_type::float_: float
  * field_type::double_: double
  * field_type::timestamp: datetime
- * field_type::date: datetime
+ * field_type::date: date
  * field_type::datetime: datetime
  * field_type::time: time
  * field_type::null: nullptr_t
@@ -68,6 +53,7 @@ using value = std::variant<
 	std::string_view,
 	float,
 	double,
+	date,
 	datetime,
 	time,
 	std::nullptr_t
@@ -75,6 +61,27 @@ using value = std::variant<
 
 }
 
+// Range checks
+namespace mysql
+{
+namespace detail
+{
 
+constexpr date min_date = ::date::day(1)/::date::January/::date::year(1000);
+constexpr date max_date = ::date::day(31)/::date::December/::date::year(9999);
+constexpr datetime min_datetime = min_date;
+constexpr datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
+constexpr time min_time = -std::chrono::hours(839);
+constexpr time max_time = std::chrono::hours(839);
+
+static_assert(date::min() <= min_date);
+static_assert(date::max() >= max_date);
+static_assert(datetime::min() <= min_datetime);
+static_assert(datetime::max() >= max_datetime);
+static_assert(time::min() <= min_time);
+static_assert(time::max() >= max_time);
+
+}
+}
 
 #endif /* INCLUDE_MYSQL_VALUE_HPP_ */

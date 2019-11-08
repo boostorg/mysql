@@ -7,22 +7,14 @@
 namespace mysql
 {
 
-template <typename Allocator>
 class field_metadata
 {
-	detail::bytestring<Allocator> msg_buffer_;
-	detail::msgs::column_definition msg_; // holds pointers into the message buffer
+	detail::msgs::column_definition msg_;
 
 	bool flag_set(std::uint16_t flag) const noexcept { return msg_.flags.value & flag; }
 public:
 	field_metadata() = default;
-	field_metadata(detail::bytestring<Allocator>&& buffer, const detail::msgs::column_definition& msg):
-		msg_buffer_(std::move(buffer)), msg_(msg) {};
-	field_metadata(const field_metadata&) = delete;
-	field_metadata(field_metadata&&) = default;
-	field_metadata& operator=(const field_metadata&) = delete;
-	field_metadata& operator=(field_metadata&&) = default;
-	~field_metadata() = default;
+	field_metadata(const detail::msgs::column_definition& msg) noexcept: msg_(msg) {};
 
 	std::string_view database() const noexcept { return msg_.schema.value; }
 	std::string_view table() const noexcept { return msg_.table.value; }
@@ -50,9 +42,26 @@ public:
 };
 
 template <typename Allocator>
+class owning_field_metadata : public field_metadata
+{
+	detail::bytestring<Allocator> msg_buffer_;
+
+	bool flag_set(std::uint16_t flag) const noexcept { return msg_.flags.value & flag; }
+public:
+	owning_field_metadata() = default;
+	owning_field_metadata(detail::bytestring<Allocator>&& buffer, const detail::msgs::column_definition& msg):
+		field_metadata(msg), msg_buffer_(std::move(buffer)) {};
+	owning_field_metadata(const owning_field_metadata&) = delete;
+	owning_field_metadata(owning_field_metadata&&) = default;
+	owning_field_metadata& operator=(const owning_field_metadata&) = delete;
+	owning_field_metadata& operator=(owning_field_metadata&&) = default;
+	~owning_field_metadata() = default;
+};
+
+template <typename Allocator>
 class resultset_metadata
 {
-	std::vector<field_metadata<Allocator>> fields_;
+	std::vector<owning_field_metadata<Allocator>> fields_;
 public:
 	const auto& fields() const noexcept { return fields_; }
 };
