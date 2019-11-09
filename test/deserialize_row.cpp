@@ -97,6 +97,13 @@ INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, Values(
 	TextValueParam("usigned max", "16777215", std::uint32_t(16777215), field_type::int24, true)
 ));
 
+INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
+	TextValueParam("regular value", "1999", year(1999), field_type::year),
+	TextValueParam("min", "1901", year(1901), field_type::year),
+	TextValueParam("max", "2155", year(2155), field_type::year),
+	TextValueParam("zero", "0000", year(0), field_type::year)
+));
+
 }
 
 

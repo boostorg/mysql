@@ -119,6 +119,15 @@ Error deserialize_text_value_impl(std::string_view from, std::nullptr_t& to)
 	return Error::ok;
 }
 
+Error deserialize_text_value_impl(std::string_view from, year& to)
+{
+	int value;
+	auto err = deserialize_text_value_impl(from, value);
+	if (err != Error::ok) return err;
+	to = year(value);
+	return to.ok() ? Error::ok : Error::protocol_value_error;
+}
+
 template <typename T, typename... Args>
 Error deserialize_text_value_to_variant(std::string_view from, value& to, Args&&... args)
 {
@@ -160,7 +169,6 @@ inline mysql::Error mysql::detail::deserialize_text_value(
     case field_type::short_:
     case field_type::int24:
     case field_type::long_:
-    case field_type::year:
     	return meta.is_unsigned() ?
     			deserialize_text_value_to_variant<std::uint32_t>(from, output) :
 				deserialize_text_value_to_variant<std::int32_t>(from, output);
@@ -181,6 +189,8 @@ inline mysql::Error mysql::detail::deserialize_text_value(
     	return deserialize_text_value_to_variant<date>(from, output);
     case field_type::time:
     	return deserialize_text_value_to_variant<time>(from, output, meta.decimals());
+    case field_type::year:
+    	return deserialize_text_value_to_variant<year>(from, output);
     default:
     	return Error::protocol_value_error;
 	}

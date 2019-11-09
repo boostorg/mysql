@@ -13,6 +13,7 @@ namespace mysql
 using date = ::date::sys_days;
 using datetime = ::date::sys_time<std::chrono::microseconds>;
 using time = std::chrono::microseconds;
+using year = ::date::year;
 
 /**
  * field_type::decimal: string_view
@@ -52,6 +53,7 @@ using value = std::variant<
 	date,
 	datetime,
 	time,
+	year,
 	std::nullptr_t
 >;
 
