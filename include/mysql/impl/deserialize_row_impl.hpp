@@ -157,13 +157,7 @@ inline mysql::Error mysql::detail::deserialize_text_value(
     case field_type::geometry:
     	return deserialize_text_value_to_variant<std::string_view>(from, output);
     case field_type::tiny:
-    	return meta.is_unsigned() ?
-    			deserialize_text_value_to_variant<std::uint8_t>(from, output) :
-				deserialize_text_value_to_variant<std::int8_t>(from, output);
     case field_type::short_:
-    	return meta.is_unsigned() ?
-    			deserialize_text_value_to_variant<std::uint16_t>(from, output) :
-				deserialize_text_value_to_variant<std::int16_t>(from, output);
     case field_type::int24:
     case field_type::long_:
     case field_type::year:

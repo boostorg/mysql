@@ -6,34 +6,35 @@
 namespace mysql
 {
 
+// TODO: investigate how to create unsigned types
 enum class field_type : std::uint8_t
 {
-	decimal = 0x00,
-	tiny = 0x01,
-	short_ = 0x02,
+	decimal = 0x00, // DECIMAL
+	tiny = 0x01, // TINYINT
+	short_ = 0x02, // SMALLINT
 	long_ = 0x03,
 	float_ = 0x04,
 	double_ = 0x05,
 	null = 0x06,
 	timestamp = 0x07,
 	longlong = 0x08,
-	int24 = 0x09,
+	int24 = 0x09, // MEDIUMINT
 	date = 0x0a,
 	time = 0x0b,
 	datetime = 0x0c,
 	year = 0x0d,
-	varchar = 0x0f,
+	varchar = 0x0f, // TODO: is this sent? what is sent for TEXT?
 	bit = 0x10,
-	newdecimal = 0xf6,
+	newdecimal = 0xf6, // TODO: is this sent?
 	enum_ = 0xf7,
-	set = 0xf8,
-	tiny_blob = 0xf9,
-	medium_blob = 0xfa,
-	long_blob = 0xfb,
+	set = 0xf8, // TODO: investigate
+	tiny_blob = 0xf9, // TODO: investigate
+	medium_blob = 0xfa, // TODO: investigate
+	long_blob = 0xfb, // TODO: investigate
 	blob = 0xfc,
 	var_string = 0xfd,
-	string = 0xfe,
-	geometry = 0xff
+	string = 0xfe, // TODO: is this sent?
+	geometry = 0xff // TODO: investigate
 };
 
 

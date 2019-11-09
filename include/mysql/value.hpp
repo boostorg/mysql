@@ -42,12 +42,8 @@ using time = std::chrono::microseconds;
  * field_type::null: nullptr_t
  */
 using value = std::variant<
-	std::int8_t,
-	std::int16_t,
 	std::int32_t,
 	std::int64_t,
-	std::uint8_t,
-	std::uint16_t,
 	std::uint32_t,
 	std::uint64_t,
 	std::string_view,

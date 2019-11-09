@@ -74,6 +74,7 @@ add_executable(
 	test/capabilities.cpp
 	test/auth.cpp
 	test/metadata.cpp
+	test/deserialize_row.cpp
 )
 target_link_libraries(
 	unittests

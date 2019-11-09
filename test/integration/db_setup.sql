@@ -6,20 +6,48 @@ USE awesome;
 -- Tables
 CREATE TABLE test_table (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    
     field_decimal DECIMAL (6,2),
     field_varchar VARCHAR(255) NOT NULL,
-    field_bit BIT(8),
-    field_float FLOAT(20),
-    field_tiny TINYINT,
+    field_bit BIT(32),
+    field_enum ENUM('value0', 'value1'),
+    field_blob BLOB,
     field_text TEXT,
+    
+    field_float FLOAT(20),
+    field_double DOUBLE,
+    
+    field_tiny TINYINT,
+    
     field_date DATE,
     field_datetime DATETIME (3),
     field_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     field_time TIME (2)
 ) ENGINE=INNODB;
 
-INSERT INTO test_table (field_varchar, field_date, field_datetime, field_time)
-VALUES ('record_zero', '1999-08-01', '2010-11-30 21:10:11.987', '30:10:15');
+INSERT INTO test_table (
+    field_decimal,
+    field_varchar,
+    field_bit,
+    field_enum,
+    field_blob,
+    field_text,
+    field_float,
+    field_double,
+    field_tiny
+)
+VALUES (
+	2.234,
+	"varchar_value",
+	"7",
+	"value0",
+	"adf\0k",
+	"text_value",
+	3.14,
+	5.14,
+	42
+);
+	
 
 CREATE TABLE child_table (
 	id INT AUTO_INCREMENT PRIMARY KEY,
