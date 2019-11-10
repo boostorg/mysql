@@ -26,6 +26,8 @@ struct ValuePrinter
 
 	void print(nullptr_t) const { os << "NULL"; }
 	void print(mysql::date v) const { ::date::operator<<(os, v); }
+	void print(mysql::datetime v) const { print(std::chrono::time_point_cast<::date::days>(v)); }
+	void print(mysql::time v) const { ::date::operator<<(os, v); }
 
 	template <typename T>
 	void operator()(T content) const
@@ -38,11 +40,8 @@ struct ValuePrinter
 
 std::ostream& operator<<(std::ostream& os, const value& v)
 {
-	if (v.index() != std::variant_npos)
-	{
-		os << "mysql::value";
-		std::visit(ValuePrinter{os}, v);
-	}
+	os << "mysql::value";
+	std::visit(ValuePrinter{os}, v);
 	return os;
 }
 
@@ -192,6 +191,56 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueTest, Values(
 	TextValueParam("max", "9999-12-31", mysql::date(9999_y/12/31), field_type::date),
 	TextValueParam("unofficial min", "0100-01-01", mysql::date(100_y/1/1), field_type::date)
 ));
+
+datetime makedt(int years, int months, int days, int hours=0, int mins=0, int secs=0, int micros=0)
+{
+	return mysql::date(::date::year(years)/months/days) +
+		   std::chrono::hours(hours) + std::chrono::minutes(mins) +
+		   std::chrono::seconds(secs) + std::chrono::microseconds(micros);
+}
+
+INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, Values(
+	TextValueParam("0 decimals, only date", "2010-02-15 00:00:00", makedt(2010, 2, 15), field_type::datetime),
+	TextValueParam("0 decimals, date, h", "2010-02-15 02:00:00", makedt(2010, 2, 15, 2), field_type::datetime),
+	TextValueParam("0 decimals, date, hm", "2010-02-15 02:05:00", makedt(2010, 2, 15, 2, 5), field_type::datetime),
+	TextValueParam("0 decimals, date, hms", "2010-02-15 02:05:30", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime),
+	TextValueParam("0 decimals, min", "1000-01-01 00:00:00", makedt(1000, 1, 1), field_type::datetime),
+	TextValueParam("0 decimals, max", "9999-12-31 23:59:59", makedt(9999, 12, 31, 23, 59, 59), field_type::datetime),
+
+	TextValueParam("1 decimals, only date", "2010-02-15 00:00:00.0", makedt(2010, 2, 15), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, date, h", "2010-02-15 02:00:00.0", makedt(2010, 2, 15, 2), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, date, hm", "2010-02-15 02:05:00.0", makedt(2010, 2, 15, 2, 5), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, date, hms", "2010-02-15 02:05:30.0", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, date, hmsu", "2010-02-15 02:05:30.5", makedt(2010, 2, 15, 2, 5, 30, 500000), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, min", "1000-01-01 00:00:00.0", makedt(1000, 1, 1), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, max", "9999-12-31 23:59:59.9", makedt(9999, 12, 31, 23, 59, 59, 900000), field_type::datetime, false, 1),
+
+	TextValueParam("2 decimals, date, hms", "2010-02-15 02:05:30.00", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 2),
+	TextValueParam("2 decimals, date, hmsu", "2010-02-15 02:05:30.05", makedt(2010, 2, 15, 2, 5, 30, 50000), field_type::datetime, false, 2),
+	TextValueParam("2 decimals, min", "1000-01-01 00:00:00.00", makedt(1000, 1, 1), field_type::datetime, false, 2),
+	TextValueParam("2 decimals, max", "9999-12-31 23:59:59.99", makedt(9999, 12, 31, 23, 59, 59, 990000), field_type::datetime, false, 2),
+
+	TextValueParam("3 decimals, date, hms", "2010-02-15 02:05:30.000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 3),
+	TextValueParam("3 decimals, date, hmsu", "2010-02-15 02:05:30.420", makedt(2010, 2, 15, 2, 5, 30, 420000), field_type::datetime, false, 3),
+	TextValueParam("3 decimals, min", "1000-01-01 00:00:00.000", makedt(1000, 1, 1), field_type::datetime, false, 3),
+	TextValueParam("3 decimals, max", "9999-12-31 23:59:59.999", makedt(9999, 12, 31, 23, 59, 59, 999000), field_type::datetime, false, 3),
+
+	TextValueParam("4 decimals, date, hms", "2010-02-15 02:05:30.0000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 4),
+	TextValueParam("4 decimals, date, hmsu", "2010-02-15 02:05:30.4267", makedt(2010, 2, 15, 2, 5, 30, 426700), field_type::datetime, false, 4),
+	TextValueParam("4 decimals, min", "1000-01-01 00:00:00.0000", makedt(1000, 1, 1), field_type::datetime, false, 4),
+	TextValueParam("4 decimals, max", "9999-12-31 23:59:59.9999", makedt(9999, 12, 31, 23, 59, 59, 999900), field_type::datetime, false, 4),
+
+	TextValueParam("5 decimals, date, hms", "2010-02-15 02:05:30.00000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 5),
+	TextValueParam("5 decimals, date, hmsu", "2010-02-15 02:05:30.00239", makedt(2010, 2, 15, 2, 5, 30, 2390), field_type::datetime, false, 5),
+	TextValueParam("5 decimals, min", "1000-01-01 00:00:00.00000", makedt(1000, 1, 1), field_type::datetime, false, 5),
+	TextValueParam("5 decimals, max", "9999-12-31 23:59:59.99999", makedt(9999, 12, 31, 23, 59, 59, 999990), field_type::datetime, false, 5),
+
+	TextValueParam("6 decimals, date, hms", "2010-02-15 02:05:30.000000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 6),
+	TextValueParam("6 decimals, date, hmsu", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), field_type::datetime, false, 6),
+	TextValueParam("6 decimals, min", "1000-01-01 00:00:00.000000", makedt(1000, 1, 1), field_type::datetime, false, 6),
+	TextValueParam("6 decimals, max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, false, 6)
+));
+
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
 	TextValueParam("regular value", "1999", year(1999), field_type::year),

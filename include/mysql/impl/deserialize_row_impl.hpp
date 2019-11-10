@@ -49,7 +49,7 @@ inline Error deserialize_text_value_impl(
 	memcpy(buffer, from.data(), from.size());
 	int parsed = decimals ? sscanf(buffer, "%3d:%2u:%2u.%6u", &hours, &minutes, &seconds, &micros) :
 			                sscanf(buffer, "%3d:%2u:%2u", &hours, &minutes, &seconds);
-	if ((decimals && parsed != 4) || parsed != 3) return Error::protocol_value_error;
+	if ((decimals && parsed != 4) || (!decimals && parsed != 3)) return Error::protocol_value_error;
 	micros *= std::pow(10, 6 - decimals);
 	bool is_negative = hours < 0;
 	hours = std::abs(hours);
