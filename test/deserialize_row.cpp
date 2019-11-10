@@ -122,6 +122,38 @@ INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueTest, Values(
 	TextValueParam("usigned max", "000615", std::uint64_t(615), field_type::longlong, true)
 ));
 
+INSTANTIATE_TEST_SUITE_P(FLOAT, DeserializeTextValueTest, Values(
+	TextValueParam("zero", "0", 0.0f, field_type::float_),
+	TextValueParam("integer positive", "4", 4.0f, field_type::float_),
+	TextValueParam("integer negative", "-5", -5.0f, field_type::float_),
+	TextValueParam("fractional positive", "3.147", 3.147f, field_type::float_),
+	TextValueParam("fractional negative", "-3.147", -3.147f, field_type::float_),
+	TextValueParam("positive exponent positive integer", "3e20", 3e20f, field_type::float_),
+	TextValueParam("positive exponent negative integer", "-3e20", -3e20f, field_type::float_),
+	TextValueParam("positive exponent positive fractional", "3.14e20", 3.14e20f, field_type::float_),
+	TextValueParam("positive exponent negative fractional", "-3.45e20", -3.45e20f, field_type::float_),
+	TextValueParam("negative exponent positive integer", "3e-20", 3e-20f, field_type::float_),
+	TextValueParam("negative exponent negative integer", "-3e-20", -3e-20f, field_type::float_),
+	TextValueParam("negative exponent positive fractional", "3.14e-20", 3.14e-20f, field_type::float_),
+	TextValueParam("negative exponent negative fractional", "-3.45e-20", -3.45e-20f, field_type::float_)
+));
+
+INSTANTIATE_TEST_SUITE_P(DOUBLE, DeserializeTextValueTest, Values(
+	TextValueParam("zero", "0", 0.0, field_type::double_),
+	TextValueParam("integer positive", "4", 4.0, field_type::double_),
+	TextValueParam("integer negative", "-5", -5.0, field_type::double_),
+	TextValueParam("fractional positive", "3.147", 3.147, field_type::double_),
+	TextValueParam("fractional negative", "-3.147", -3.147, field_type::double_),
+	TextValueParam("positive exponent positive integer", "3e20", 3e20, field_type::double_),
+	TextValueParam("positive exponent negative integer", "-3e20", -3e20, field_type::double_),
+	TextValueParam("positive exponent positive fractional", "3.14e20", 3.14e20, field_type::double_),
+	TextValueParam("positive exponent negative fractional", "-3.45e20", -3.45e20, field_type::double_),
+	TextValueParam("negative exponent positive integer", "3e-20", 3e-20, field_type::double_),
+	TextValueParam("negative exponent negative integer", "-3e-20", -3e-20, field_type::double_),
+	TextValueParam("negative exponent positive fractional", "3.14e-20", 3.14e-20, field_type::double_),
+	TextValueParam("negative exponent negative fractional", "-3.45e-20", -3.45e-20, field_type::double_)
+));
+
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
 	TextValueParam("regular value", "1999", year(1999), field_type::year),
 	TextValueParam("min", "1901", year(1901), field_type::year),
