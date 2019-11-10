@@ -41,32 +41,28 @@ public:
 	bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
 };
 
-template <typename Allocator>
-class owning_field_metadata : public field_metadata
+namespace detail
 {
-	detail::bytestring<Allocator> msg_buffer_;
-
-	bool flag_set(std::uint16_t flag) const noexcept { return msg_.flags.value & flag; }
-public:
-	owning_field_metadata() = default;
-	owning_field_metadata(detail::bytestring<Allocator>&& buffer, const detail::msgs::column_definition& msg):
-		field_metadata(msg), msg_buffer_(std::move(buffer)) {};
-	owning_field_metadata(const owning_field_metadata&) = delete;
-	owning_field_metadata(owning_field_metadata&&) = default;
-	owning_field_metadata& operator=(const owning_field_metadata&) = delete;
-	owning_field_metadata& operator=(owning_field_metadata&&) = default;
-	~owning_field_metadata() = default;
-};
 
 template <typename Allocator>
 class resultset_metadata
 {
-	std::vector<owning_field_metadata<Allocator>> fields_;
+	std::vector<bytestring<Allocator>> buffers_;
+	std::vector<field_metadata> fields_;
 public:
+	resultset_metadata() = default;
+	resultset_metadata(std::vector<bytestring<Allocator>>&& buffers, std::vector<field_metadata>&& fields):
+		buffers_(std::move(buffers)), fields_(std::move(fields)) {};
+	resultset_metadata(const resultset_metadata&) = delete;
+	resultset_metadata(resultset_metadata&&) = default;
+	resultset_metadata& operator=(const resultset_metadata&) = delete;
+	resultset_metadata& operator=(resultset_metadata&&) = default;
+	~resultset_metadata() = default;
 	const auto& fields() const noexcept { return fields_; }
 };
 
-}
+} // detail
+} // mysql
 
 
 

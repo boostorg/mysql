@@ -60,8 +60,10 @@ void mysql::detail::execute_query(
 	err = deserialize_message(num_fields, ctx);
 	if (err) return;
 
-	std::vector<owning_field_metadata<Allocator>> fields;
+	std::vector<field_metadata> fields;
+	std::vector<bytestring<Allocator>> field_buffers;
 	fields.reserve(num_fields.value);
+	field_buffers.reserve(num_fields.value);
 
 	// Read all of the field definitions
 	for (std::uint64_t i = 0; i < num_fields.value; ++i)
@@ -78,7 +80,8 @@ void mysql::detail::execute_query(
 		if (err) return;
 
 		// Add it to our array
-		fields.emplace_back(std::move(field_definition_buffer), field_definition);
+		fields.push_back(field_definition);
+		field_buffers.push_back(std::move(field_definition_buffer));
 	}
 
 	// No EOF packet is expected here, as we require deprecate EOF capabilities

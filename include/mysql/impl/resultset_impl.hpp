@@ -5,7 +5,7 @@
 #include <cassert>
 
 template <typename ChannelType, typename Allocator>
-const mysql::row<Allocator>* mysql::resultset<ChannelType, Allocator>::fetch_one(
+const mysql::row* mysql::resultset<ChannelType, Allocator>::fetch_one(
 	error_code& err
 )
 {

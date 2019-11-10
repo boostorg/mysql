@@ -19,10 +19,9 @@ inline Error deserialize_text_value(
 	value& output
 );
 
-template <typename Allocator>
-error_code deserialize_text_row(
+inline error_code deserialize_text_row(
 	DeserializationContext& ctx,
-	const resultset_metadata<Allocator>& meta,
+	const std::vector<field_metadata>& meta,
 	std::vector<value>& output
 );
 

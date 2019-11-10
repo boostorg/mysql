@@ -8,14 +8,13 @@
 namespace mysql
 {
 
-template <typename Allocator>
 class row
 {
 	std::vector<value> values_;
-	const resultset_metadata<Allocator>* metadata_;
+	const std::vector<field_metadata>* metadata_;
 public:
 	row(): metadata_(nullptr) {};
-	row(std::vector<value>&& values, const resultset_metadata<Allocator>& meta):
+	row(std::vector<value>&& values, const std::vector<field_metadata>& meta):
 		values_(std::move(values)), metadata_(&meta) {};
 
 	const std::vector<value>& values() const noexcept { return values_; }
@@ -24,14 +23,14 @@ public:
 };
 
 template <typename Allocator>
-class owning_row : public row<Allocator>
+class owning_row : public row
 {
 	detail::bytestring<Allocator> buffer_;
 public:
 	owning_row() = default;
-	owning_row(std::vector<value>&& values, const resultset_metadata<Allocator>& meta,
+	owning_row(std::vector<value>&& values, const std::vector<field_metadata>& meta,
 			detail::bytestring<Allocator>&& buffer) :
-			row<Allocator>(std::move(values), meta), buffer_(std::move(buffer)) {};
+			row(std::move(values), meta), buffer_(std::move(buffer)) {};
 	owning_row(const owning_row&) = delete;
 	owning_row(owning_row&&) = default;
 	owning_row& operator=(const owning_row&) = delete;

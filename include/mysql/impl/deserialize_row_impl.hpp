@@ -135,6 +135,23 @@ Error deserialize_text_value_to_variant(std::string_view from, value& to, Args&&
 	return err;
 }
 
+inline bool is_next_field_null(
+	DeserializationContext& ctx
+)
+{
+	int1 type_byte;
+	Error err = deserialize(type_byte, ctx);
+	if (err == Error::ok)
+	{
+		if (type_byte.value == 0xfb)
+		{
+			return true; // it was null, do not rewind
+		}
+		ctx.set_first(ctx.first() - 1); // it was not null, rewind
+	}
+	return false;
+}
+
 }
 }
 
@@ -191,21 +208,28 @@ inline mysql::Error mysql::detail::deserialize_text_value(
 }
 
 
-template <typename Allocator>
 mysql::error_code mysql::detail::deserialize_text_row(
 	DeserializationContext& ctx,
-	const resultset_metadata<Allocator>& meta,
+	const std::vector<field_metadata>& fields,
 	std::vector<value>& output
 )
 {
-	output.resize(meta.fields().size());
-	for (std::vector<value>::size_type i = 0; i < meta.fields().size(); ++i)
+	output.resize(fields.size());
+	for (std::vector<value>::size_type i = 0; i < fields.size(); ++i)
 	{
-		string_lenenc value_str;
-		Error err = deserialize(value_str, ctx);
-		if (err) return make_error_code(err);
-		err = parse_text_value(value_str.value, meta.fields()[i], output[i]);
-		if (err) return make_error_code(err);
+		bool is_null = is_next_field_null(ctx);
+		if (is_null)
+		{
+			output[i] = nullptr;
+		}
+		else
+		{
+			string_lenenc value_str;
+			Error err = deserialize(value_str, ctx);
+			if (err != Error::ok) return make_error_code(err);
+			err = deserialize_text_value(value_str.value, fields[i], output[i]);
+			if (err != Error::ok) return make_error_code(err);
+		}
 	}
 	if (!ctx.empty()) return make_error_code(Error::extra_bytes);
 	return error_code();
