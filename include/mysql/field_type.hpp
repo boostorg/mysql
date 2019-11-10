@@ -6,7 +6,6 @@
 namespace mysql
 {
 
-// TODO: investigate how to create unsigned types
 enum class field_type : std::uint8_t
 {
 	decimal = 0x00, // DECIMAL

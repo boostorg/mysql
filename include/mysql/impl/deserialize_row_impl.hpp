@@ -114,11 +114,6 @@ Error deserialize_text_value_impl(std::string_view from, std::string_view& to)
 	return Error::ok;
 }
 
-Error deserialize_text_value_impl(std::string_view from, std::nullptr_t& to)
-{
-	return Error::ok;
-}
-
 Error deserialize_text_value_impl(std::string_view from, year& to)
 {
 	int value;
@@ -151,20 +146,6 @@ inline mysql::Error mysql::detail::deserialize_text_value(
 {
 	switch (meta.type())
 	{
-    case field_type::decimal:
-    case field_type::varchar:
-    case field_type::bit:
-    case field_type::newdecimal:
-    case field_type::enum_:
-    case field_type::set:
-    case field_type::tiny_blob:
-    case field_type::medium_blob:
-    case field_type::long_blob:
-    case field_type::blob:
-    case field_type::var_string:
-    case field_type::string:
-    case field_type::geometry:
-    	return deserialize_text_value_to_variant<std::string_view>(from, output);
     case field_type::tiny:
     case field_type::short_:
     case field_type::int24:
@@ -180,8 +161,6 @@ inline mysql::Error mysql::detail::deserialize_text_value(
     	return deserialize_text_value_to_variant<float>(from, output);
     case field_type::double_:
     	return deserialize_text_value_to_variant<double>(from, output);
-    case field_type::null:
-    	return deserialize_text_value_to_variant<nullptr_t>(from, output);
     case field_type::timestamp:
     case field_type::datetime:
     	return deserialize_text_value_to_variant<datetime>(from, output, meta.decimals());
@@ -191,8 +170,23 @@ inline mysql::Error mysql::detail::deserialize_text_value(
     	return deserialize_text_value_to_variant<time>(from, output, meta.decimals());
     case field_type::year:
     	return deserialize_text_value_to_variant<year>(from, output);
+    // True string types
+    case field_type::varchar:
+    case field_type::var_string:
+    case field_type::string:
+    case field_type::tiny_blob:
+    case field_type::medium_blob:
+    case field_type::long_blob:
+    case field_type::blob:
+    case field_type::enum_:
+    case field_type::set:
+    // Anything else that we do not know how to interpret, we return as a binary string
+    case field_type::decimal:
+    case field_type::bit:
+    case field_type::newdecimal:
+    case field_type::geometry:
     default:
-    	return Error::protocol_value_error;
+    	return deserialize_text_value_to_variant<std::string_view>(from, output);
 	}
 }
 
