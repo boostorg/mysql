@@ -241,6 +241,71 @@ INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, Values(
 	TextValueParam("6 decimals, max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, false, 6)
 ));
 
+mysql::time maket(int hours, int mins, int secs, int micros=0)
+{
+	return std::chrono::hours(hours) + std::chrono::minutes(mins)
+	     + std::chrono::seconds(secs) + std::chrono::microseconds(micros);
+}
+
+INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
+	TextValueParam("0 decimals, positive h", "01:00:00", maket(1, 0, 0), field_type::time),
+	TextValueParam("0 decimals, positive hm", "12:03:00", maket(12, 3, 0), field_type::time),
+	TextValueParam("0 decimals, positive hms", "14:51:23", maket(14, 51, 23), field_type::time),
+	TextValueParam("0 decimals, max", "838:59:59", maket(838, 59, 59), field_type::time),
+	TextValueParam("0 decimals, negative h", "-06:00:00", -maket(6, 0, 0), field_type::time),
+	TextValueParam("0 decimals, negative hm", "-12:03:00", -maket(12, 3, 0), field_type::time),
+	TextValueParam("0 decimals, negative hms", "-14:51:23", -maket(14, 51, 23), field_type::time),
+	TextValueParam("0 decimals, min", "-838:59:59", -maket(838, 59, 59), field_type::time),
+	TextValueParam("0 decimals, zero", "00:00:00", maket(0, 0, 0), field_type::time),
+
+	TextValueParam("1 decimals, positive hms", "14:51:23.0", maket(14, 51, 23), field_type::time, false, 1),
+	TextValueParam("1 decimals, positive hmsu", "14:51:23.5", maket(14, 51, 23, 500000), field_type::time, false, 1),
+	TextValueParam("1 decimals, max", "838:59:58.9", maket(838, 59, 58, 900000), field_type::time, false, 1),
+	TextValueParam("1 decimals, negative hms", "-14:51:23.0", -maket(14, 51, 23), field_type::time, false, 1),
+	TextValueParam("1 decimals, negative hmsu", "-14:51:23.5", -maket(14, 51, 23, 500000), field_type::time, false, 1),
+	TextValueParam("1 decimals, min", "-838:59:58.9", -maket(838, 59, 58, 900000), field_type::time, false, 1),
+	TextValueParam("1 decimals, zero", "00:00:00.0", maket(0, 0, 0), field_type::time, false, 1),
+
+	TextValueParam("2 decimals, positive hms", "14:51:23.00", maket(14, 51, 23), field_type::time, false, 2),
+	TextValueParam("2 decimals, positive hmsu", "14:51:23.52", maket(14, 51, 23, 520000), field_type::time, false, 2),
+	TextValueParam("2 decimals, max", "838:59:58.99", maket(838, 59, 58, 990000), field_type::time, false, 2),
+	TextValueParam("2 decimals, negative hms", "-14:51:23.00", -maket(14, 51, 23), field_type::time, false, 2),
+	TextValueParam("2 decimals, negative hmsu", "-14:51:23.50", -maket(14, 51, 23, 500000), field_type::time, false, 2),
+	TextValueParam("2 decimals, min", "-838:59:58.99", -maket(838, 59, 58, 990000), field_type::time, false, 2),
+	TextValueParam("2 decimals, zero", "00:00:00.00", maket(0, 0, 0), field_type::time, false, 2),
+
+	TextValueParam("3 decimals, positive hms", "14:51:23.000", maket(14, 51, 23), field_type::time, false, 3),
+	TextValueParam("3 decimals, positive hmsu", "14:51:23.501", maket(14, 51, 23, 501000), field_type::time, false, 3),
+	TextValueParam("3 decimals, max", "838:59:58.999", maket(838, 59, 58, 999000), field_type::time, false, 3),
+	TextValueParam("3 decimals, negative hms", "-14:51:23.000", -maket(14, 51, 23), field_type::time, false, 3),
+	TextValueParam("3 decimals, negative hmsu", "-14:51:23.003", -maket(14, 51, 23, 3000), field_type::time, false, 3),
+	TextValueParam("3 decimals, min", "-838:59:58.999", -maket(838, 59, 58, 999000), field_type::time, false, 3),
+	TextValueParam("3 decimals, zero", "00:00:00.000", maket(0, 0, 0), field_type::time, false, 3),
+
+	TextValueParam("4 decimals, positive hms", "14:51:23.0000", maket(14, 51, 23), field_type::time, false, 4),
+	TextValueParam("4 decimals, positive hmsu", "14:51:23.5017", maket(14, 51, 23, 501700), field_type::time, false, 4),
+	TextValueParam("4 decimals, max", "838:59:58.9999", maket(838, 59, 58, 999900), field_type::time, false, 4),
+	TextValueParam("4 decimals, negative hms", "-14:51:23.0000", -maket(14, 51, 23), field_type::time, false, 4),
+	TextValueParam("4 decimals, negative hmsu", "-14:51:23.0038", -maket(14, 51, 23, 3800), field_type::time, false, 4),
+	TextValueParam("4 decimals, min", "-838:59:58.9999", -maket(838, 59, 58, 999900), field_type::time, false, 4),
+	TextValueParam("4 decimals, zero", "00:00:00.0000", maket(0, 0, 0), field_type::time, false, 4),
+
+	TextValueParam("5 decimals, positive hms", "14:51:23.00000", maket(14, 51, 23), field_type::time, false, 5),
+	TextValueParam("5 decimals, positive hmsu", "14:51:23.50171", maket(14, 51, 23, 501710), field_type::time, false, 5),
+	TextValueParam("5 decimals, max", "838:59:58.99999", maket(838, 59, 58, 999990), field_type::time, false, 5),
+	TextValueParam("5 decimals, negative hms", "-14:51:23.00000", -maket(14, 51, 23), field_type::time, false, 5),
+	TextValueParam("5 decimals, negative hmsu", "-14:51:23.00009", -maket(14, 51, 23, 90), field_type::time, false, 5),
+	TextValueParam("5 decimals, min", "-838:59:58.99999", -maket(838, 59, 58, 999990), field_type::time, false, 5),
+	TextValueParam("5 decimals, zero", "00:00:00.00000", maket(0, 0, 0), field_type::time, false, 5),
+
+	TextValueParam("6 decimals, positive hms", "14:51:23.000000", maket(14, 51, 23), field_type::time, false, 6),
+	TextValueParam("6 decimals, positive hmsu", "14:51:23.501717", maket(14, 51, 23, 501717), field_type::time, false, 6),
+	TextValueParam("6 decimals, max", "838:59:58.999999", maket(838, 59, 58, 999999), field_type::time, false, 6),
+	TextValueParam("6 decimals, negative hms", "-14:51:23.000000", -maket(14, 51, 23), field_type::time, false, 6),
+	TextValueParam("6 decimals, negative hmsu", "-14:51:23.900000", -maket(14, 51, 23, 900000), field_type::time, false, 6),
+	TextValueParam("6 decimals, min", "-838:59:58.999999", -maket(838, 59, 58, 999999), field_type::time, false, 6),
+	TextValueParam("6 decimals, zero", "00:00:00.000000", maket(0, 0, 0), field_type::time, false, 6)
+));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
 	TextValueParam("regular value", "1999", year(1999), field_type::year),

@@ -38,7 +38,7 @@ inline Error deserialize_text_value_impl(
 {
 	// size check
 	constexpr std::size_t min_size = 2 + 2 + 2 + 2; // hours, mins, seconds, no micros
-	constexpr std::size_t max_size = min_size + 1 + 7; // hour extra character and micros
+	constexpr std::size_t max_size = min_size + 1 + 1 + 7; // hour extra character, sign and micros
 	decimals = std::min(decimals, 6u);
 	if (from.size() < min_size || from.size() > max_size) return Error::protocol_value_error;
 
@@ -47,8 +47,8 @@ inline Error deserialize_text_value_impl(
 	unsigned minutes, seconds, micros = 0;
 	char buffer [max_size + 1] {};
 	memcpy(buffer, from.data(), from.size());
-	int parsed = decimals ? sscanf(buffer, "%3d:%2u:%2u.%6u", &hours, &minutes, &seconds, &micros) :
-			                sscanf(buffer, "%3d:%2u:%2u", &hours, &minutes, &seconds);
+	int parsed = decimals ? sscanf(buffer, "%4d:%2u:%2u.%6u", &hours, &minutes, &seconds, &micros) : // sign adds 1 char
+			                sscanf(buffer, "%4d:%2u:%2u", &hours, &minutes, &seconds);
 	if ((decimals && parsed != 4) || (!decimals && parsed != 3)) return Error::protocol_value_error;
 	micros *= std::pow(10, 6 - decimals);
 	bool is_negative = hours < 0;
