@@ -6,14 +6,45 @@
  */
 
 #include <gtest/gtest.h>
+#include <boost/type_index.hpp>
 #include "mysql/impl/deserialize_row.hpp"
 
 using namespace mysql;
 using namespace mysql::detail;
 using namespace testing;
+using namespace ::date::literals;
 
 namespace
 {
+
+struct ValuePrinter
+{
+	std::ostream& os;
+
+	template <typename T>
+	void print(T value) const { os << value; }
+
+	void print(nullptr_t) const { os << "NULL"; }
+	void print(mysql::date v) const { ::date::operator<<(os, v); }
+
+	template <typename T>
+	void operator()(T content) const
+	{
+		os << "<" << boost::typeindex::type_id<decltype(content)>().pretty_name() << ">(";
+		print(content);
+		os << ")";
+	}
+};
+
+std::ostream& operator<<(std::ostream& os, const value& v)
+{
+	if (v.index() != std::variant_npos)
+	{
+		os << "mysql::value";
+		std::visit(ValuePrinter{os}, v);
+	}
+	return os;
+}
 
 struct TextValueParam
 {
@@ -152,6 +183,14 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, DeserializeTextValueTest, Values(
 	TextValueParam("negative exponent negative integer", "-3e-20", -3e-20, field_type::double_),
 	TextValueParam("negative exponent positive fractional", "3.14e-20", 3.14e-20, field_type::double_),
 	TextValueParam("negative exponent negative fractional", "-3.45e-20", -3.45e-20, field_type::double_)
+));
+
+INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueTest, Values(
+	TextValueParam("regular date", "2019-02-28", mysql::date(2019_y/2/28), field_type::date),
+	TextValueParam("leap year", "1788-02-29", mysql::date(1788_y/2/29), field_type::date),
+	TextValueParam("min", "1000-01-01", mysql::date(1000_y/1/1), field_type::date),
+	TextValueParam("max", "9999-12-31", mysql::date(9999_y/12/31), field_type::date),
+	TextValueParam("unofficial min", "0100-01-01", mysql::date(100_y/1/1), field_type::date)
 ));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(

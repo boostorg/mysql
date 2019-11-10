@@ -65,7 +65,7 @@ namespace mysql
 namespace detail
 {
 
-constexpr date min_date = ::date::day(1)/::date::January/::date::year(1000);
+constexpr date min_date = ::date::day(1)/::date::January/::date::year(100); // some implementations support less than the official
 constexpr date max_date = ::date::day(31)/::date::December/::date::year(9999);
 constexpr datetime min_datetime = min_date;
 constexpr datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
