@@ -52,7 +52,7 @@ struct TextValueParam
 	value expected;
 	field_type type;
 	unsigned decimals;
-	bool unsign;
+	std::uint16_t flags;
 
 	template <typename T>
 	TextValueParam(
@@ -60,7 +60,7 @@ struct TextValueParam
 		std::string_view from,
 		T&& expected_value,
 		field_type type,
-		bool unsign=false,
+		std::uint16_t flags=0,
 		unsigned decimals=0
 	):
 		name(std::move(name)),
@@ -68,7 +68,7 @@ struct TextValueParam
 		expected(std::forward<T>(expected_value)),
 		type(type),
 		decimals(decimals),
-		unsign(unsign)
+		flags(flags)
 	{
 	};
 };
@@ -84,7 +84,7 @@ TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	msgs::column_definition coldef;
 	coldef.type = GetParam().type;
 	coldef.decimals.value = static_cast<std::uint8_t>(GetParam().decimals);
-	coldef.flags.value = GetParam().unsign ? column_flags::unsigned_ : 0;
+	coldef.flags.value = GetParam().flags;
 	field_metadata meta (coldef);
 	value actual_value;
 	auto err = deserialize_text_value(GetParam().from, meta, actual_value);
@@ -92,20 +92,32 @@ TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	EXPECT_EQ(actual_value, GetParam().expected);
 }
 
-INSTANTIATE_TEST_SUITE_P(VARCHAR, DeserializeTextValueTest, Values(
-	TextValueParam("non-empty", "string", "string", field_type::var_string),
-	TextValueParam("empty", "", "", field_type::var_string)
+INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeTextValueTest, Values(
+	TextValueParam("VARCHAR non-empty", "string", "string", field_type::var_string),
+	TextValueParam("VARCHAR empty", "", "", field_type::var_string),
+	TextValueParam("CHAR", "", "", field_type::string),
+	TextValueParam("VARBINARY", "value", "value", field_type::var_string, column_flags::binary),
+	TextValueParam("BINARY", "value", "value", field_type::string, column_flags::binary),
+	TextValueParam("TEXT and BLOB", "value", "value", field_type::blob, column_flags::blob),
+	TextValueParam("ENUM", "value", "value", field_type::string, column_flags::enum_),
+	TextValueParam("SET", "value1,value2", "value1,value2", field_type::string, column_flags::set),
+
+	TextValueParam("BIT", "\1", "\1", field_type::bit),
+	TextValueParam("DECIMAL", "\1", "\1", field_type::bit),
+	TextValueParam("GEOMTRY", "\1", "\1", field_type::geometry, column_flags::binary | column_flags::blob)
 ));
+
+// Types BIT,
 
 INSTANTIATE_TEST_SUITE_P(TINYINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed", "20", std::int32_t(20), field_type::tiny),
 	TextValueParam("signed max", "127", std::int32_t(127), field_type::tiny),
 	TextValueParam("signed negative", "-20", std::int32_t(-20), field_type::tiny),
 	TextValueParam("signed negative max", "-128", std::int32_t(-128), field_type::tiny),
-	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::tiny, true),
-	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::tiny, true),
-	TextValueParam("usigned max", "255", std::uint32_t(255), field_type::tiny, true),
-	TextValueParam("usigned zerofill", "010", std::uint32_t(10), field_type::tiny, true)
+	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::tiny, column_flags::unsigned_),
+	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::tiny, column_flags::unsigned_),
+	TextValueParam("usigned max", "255", std::uint32_t(255), field_type::tiny, column_flags::unsigned_),
+	TextValueParam("usigned zerofill", "010", std::uint32_t(10), field_type::tiny, column_flags::unsigned_)
 ));
 
 INSTANTIATE_TEST_SUITE_P(SMALLINT, DeserializeTextValueTest, Values(
@@ -113,10 +125,10 @@ INSTANTIATE_TEST_SUITE_P(SMALLINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed max", "32767", std::int32_t(32767), field_type::short_),
 	TextValueParam("signed negative", "-20", std::int32_t(-20), field_type::short_),
 	TextValueParam("signed negative max", "-32768", std::int32_t(-32768), field_type::short_),
-	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::short_, true),
-	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::short_, true),
-	TextValueParam("usigned max", "65535", std::uint32_t(65535), field_type::short_, true),
-	TextValueParam("usigned zerofill", "00535", std::uint32_t(535), field_type::short_, true)
+	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::short_, column_flags::unsigned_),
+	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::short_, column_flags::unsigned_),
+	TextValueParam("usigned max", "65535", std::uint32_t(65535), field_type::short_, column_flags::unsigned_),
+	TextValueParam("usigned zerofill", "00535", std::uint32_t(535), field_type::short_, column_flags::unsigned_)
 ));
 
 INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, Values(
@@ -124,10 +136,10 @@ INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed max", "8388607", std::int32_t(8388607), field_type::int24),
 	TextValueParam("signed negative", "-20", std::int32_t(-20), field_type::int24),
 	TextValueParam("signed negative max", "-8388607", std::int32_t(-8388607), field_type::int24),
-	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::int24, true),
-	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::int24, true),
-	TextValueParam("usigned max", "16777215", std::uint32_t(16777215), field_type::int24, true),
-	TextValueParam("usigned zerofill", "00007215", std::uint32_t(7215), field_type::int24, true)
+	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::int24, column_flags::unsigned_),
+	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::int24, column_flags::unsigned_),
+	TextValueParam("usigned max", "16777215", std::uint32_t(16777215), field_type::int24, column_flags::unsigned_),
+	TextValueParam("usigned zerofill", "00007215", std::uint32_t(7215), field_type::int24, column_flags::unsigned_)
 ));
 
 INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueTest, Values(
@@ -135,10 +147,10 @@ INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueTest, Values(
 	TextValueParam("signed max", "2147483647", std::int32_t(2147483647), field_type::long_),
 	TextValueParam("signed negative", "-20", std::int32_t(-20), field_type::long_),
 	TextValueParam("signed negative max", "-2147483648", std::int32_t(-2147483648), field_type::long_),
-	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::long_, true),
-	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::long_, true),
-	TextValueParam("usigned max", "4294967295", std::uint32_t(4294967295), field_type::long_, true),
-	TextValueParam("usigned zerofill", "0000067295", std::uint32_t(67295), field_type::long_, true)
+	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::long_, column_flags::unsigned_),
+	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::long_, column_flags::unsigned_),
+	TextValueParam("usigned max", "4294967295", std::uint32_t(4294967295), field_type::long_, column_flags::unsigned_),
+	TextValueParam("usigned zerofill", "0000067295", std::uint32_t(67295), field_type::long_, column_flags::unsigned_)
 ));
 
 INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueTest, Values(
@@ -146,10 +158,10 @@ INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed max", "9223372036854775807", std::int64_t(9223372036854775807), field_type::longlong),
 	TextValueParam("signed negative", "-20", std::int64_t(-20), field_type::longlong),
 	TextValueParam("signed negative max", "-9223372036854775808", std::numeric_limits<std::int64_t>::min(), field_type::longlong),
-	TextValueParam("unsigned", "20", std::uint64_t(20), field_type::longlong, true),
-	TextValueParam("usigned min", "0", std::uint64_t(0), field_type::longlong, true),
-	TextValueParam("usigned max", "18446744073709551615", std::uint64_t(18446744073709551615ULL), field_type::longlong, true),
-	TextValueParam("usigned max", "000615", std::uint64_t(615), field_type::longlong, true)
+	TextValueParam("unsigned", "20", std::uint64_t(20), field_type::longlong, column_flags::unsigned_),
+	TextValueParam("usigned min", "0", std::uint64_t(0), field_type::longlong, column_flags::unsigned_),
+	TextValueParam("usigned max", "18446744073709551615", std::uint64_t(18446744073709551615ULL), field_type::longlong, column_flags::unsigned_),
+	TextValueParam("usigned max", "000615", std::uint64_t(615), field_type::longlong, column_flags::unsigned_)
 ));
 
 INSTANTIATE_TEST_SUITE_P(FLOAT, DeserializeTextValueTest, Values(
@@ -207,38 +219,46 @@ INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, Values(
 	TextValueParam("0 decimals, min", "1000-01-01 00:00:00", makedt(1000, 1, 1), field_type::datetime),
 	TextValueParam("0 decimals, max", "9999-12-31 23:59:59", makedt(9999, 12, 31, 23, 59, 59), field_type::datetime),
 
-	TextValueParam("1 decimals, only date", "2010-02-15 00:00:00.0", makedt(2010, 2, 15), field_type::datetime, false, 1),
-	TextValueParam("1 decimals, date, h", "2010-02-15 02:00:00.0", makedt(2010, 2, 15, 2), field_type::datetime, false, 1),
-	TextValueParam("1 decimals, date, hm", "2010-02-15 02:05:00.0", makedt(2010, 2, 15, 2, 5), field_type::datetime, false, 1),
-	TextValueParam("1 decimals, date, hms", "2010-02-15 02:05:30.0", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 1),
-	TextValueParam("1 decimals, date, hmsu", "2010-02-15 02:05:30.5", makedt(2010, 2, 15, 2, 5, 30, 500000), field_type::datetime, false, 1),
-	TextValueParam("1 decimals, min", "1000-01-01 00:00:00.0", makedt(1000, 1, 1), field_type::datetime, false, 1),
-	TextValueParam("1 decimals, max", "9999-12-31 23:59:59.9", makedt(9999, 12, 31, 23, 59, 59, 900000), field_type::datetime, false, 1),
+	TextValueParam("1 decimals, only date", "2010-02-15 00:00:00.0", makedt(2010, 2, 15), field_type::datetime, 0, 1),
+	TextValueParam("1 decimals, date, h", "2010-02-15 02:00:00.0", makedt(2010, 2, 15, 2), field_type::datetime, 0, 1),
+	TextValueParam("1 decimals, date, hm", "2010-02-15 02:05:00.0", makedt(2010, 2, 15, 2, 5), field_type::datetime, 0, 1),
+	TextValueParam("1 decimals, date, hms", "2010-02-15 02:05:30.0", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, 0, 1),
+	TextValueParam("1 decimals, date, hmsu", "2010-02-15 02:05:30.5", makedt(2010, 2, 15, 2, 5, 30, 500000), field_type::datetime, 0, 1),
+	TextValueParam("1 decimals, min", "1000-01-01 00:00:00.0", makedt(1000, 1, 1), field_type::datetime, 0, 1),
+	TextValueParam("1 decimals, max", "9999-12-31 23:59:59.9", makedt(9999, 12, 31, 23, 59, 59, 900000), field_type::datetime, 0, 1),
 
-	TextValueParam("2 decimals, date, hms", "2010-02-15 02:05:30.00", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 2),
-	TextValueParam("2 decimals, date, hmsu", "2010-02-15 02:05:30.05", makedt(2010, 2, 15, 2, 5, 30, 50000), field_type::datetime, false, 2),
-	TextValueParam("2 decimals, min", "1000-01-01 00:00:00.00", makedt(1000, 1, 1), field_type::datetime, false, 2),
-	TextValueParam("2 decimals, max", "9999-12-31 23:59:59.99", makedt(9999, 12, 31, 23, 59, 59, 990000), field_type::datetime, false, 2),
+	TextValueParam("2 decimals, date, hms", "2010-02-15 02:05:30.00", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, 0, 2),
+	TextValueParam("2 decimals, date, hmsu", "2010-02-15 02:05:30.05", makedt(2010, 2, 15, 2, 5, 30, 50000), field_type::datetime, 0, 2),
+	TextValueParam("2 decimals, min", "1000-01-01 00:00:00.00", makedt(1000, 1, 1), field_type::datetime, 0, 2),
+	TextValueParam("2 decimals, max", "9999-12-31 23:59:59.99", makedt(9999, 12, 31, 23, 59, 59, 990000), field_type::datetime, 0, 2),
 
-	TextValueParam("3 decimals, date, hms", "2010-02-15 02:05:30.000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 3),
-	TextValueParam("3 decimals, date, hmsu", "2010-02-15 02:05:30.420", makedt(2010, 2, 15, 2, 5, 30, 420000), field_type::datetime, false, 3),
-	TextValueParam("3 decimals, min", "1000-01-01 00:00:00.000", makedt(1000, 1, 1), field_type::datetime, false, 3),
-	TextValueParam("3 decimals, max", "9999-12-31 23:59:59.999", makedt(9999, 12, 31, 23, 59, 59, 999000), field_type::datetime, false, 3),
+	TextValueParam("3 decimals, date, hms", "2010-02-15 02:05:30.000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, 0, 3),
+	TextValueParam("3 decimals, date, hmsu", "2010-02-15 02:05:30.420", makedt(2010, 2, 15, 2, 5, 30, 420000), field_type::datetime, 0, 3),
+	TextValueParam("3 decimals, min", "1000-01-01 00:00:00.000", makedt(1000, 1, 1), field_type::datetime, 0, 3),
+	TextValueParam("3 decimals, max", "9999-12-31 23:59:59.999", makedt(9999, 12, 31, 23, 59, 59, 999000), field_type::datetime, 0, 3),
 
-	TextValueParam("4 decimals, date, hms", "2010-02-15 02:05:30.0000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 4),
-	TextValueParam("4 decimals, date, hmsu", "2010-02-15 02:05:30.4267", makedt(2010, 2, 15, 2, 5, 30, 426700), field_type::datetime, false, 4),
-	TextValueParam("4 decimals, min", "1000-01-01 00:00:00.0000", makedt(1000, 1, 1), field_type::datetime, false, 4),
-	TextValueParam("4 decimals, max", "9999-12-31 23:59:59.9999", makedt(9999, 12, 31, 23, 59, 59, 999900), field_type::datetime, false, 4),
+	TextValueParam("4 decimals, date, hms", "2010-02-15 02:05:30.0000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, 0, 4),
+	TextValueParam("4 decimals, date, hmsu", "2010-02-15 02:05:30.4267", makedt(2010, 2, 15, 2, 5, 30, 426700), field_type::datetime, 0, 4),
+	TextValueParam("4 decimals, min", "1000-01-01 00:00:00.0000", makedt(1000, 1, 1), field_type::datetime, 0, 4),
+	TextValueParam("4 decimals, max", "9999-12-31 23:59:59.9999", makedt(9999, 12, 31, 23, 59, 59, 999900), field_type::datetime, 0, 4),
 
-	TextValueParam("5 decimals, date, hms", "2010-02-15 02:05:30.00000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 5),
-	TextValueParam("5 decimals, date, hmsu", "2010-02-15 02:05:30.00239", makedt(2010, 2, 15, 2, 5, 30, 2390), field_type::datetime, false, 5),
-	TextValueParam("5 decimals, min", "1000-01-01 00:00:00.00000", makedt(1000, 1, 1), field_type::datetime, false, 5),
-	TextValueParam("5 decimals, max", "9999-12-31 23:59:59.99999", makedt(9999, 12, 31, 23, 59, 59, 999990), field_type::datetime, false, 5),
+	TextValueParam("5 decimals, date, hms", "2010-02-15 02:05:30.00000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, 0, 5),
+	TextValueParam("5 decimals, date, hmsu", "2010-02-15 02:05:30.00239", makedt(2010, 2, 15, 2, 5, 30, 2390), field_type::datetime, 0, 5),
+	TextValueParam("5 decimals, min", "1000-01-01 00:00:00.00000", makedt(1000, 1, 1), field_type::datetime, 0, 5),
+	TextValueParam("5 decimals, max", "9999-12-31 23:59:59.99999", makedt(9999, 12, 31, 23, 59, 59, 999990), field_type::datetime, 0, 5),
 
-	TextValueParam("6 decimals, date, hms", "2010-02-15 02:05:30.000000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, false, 6),
-	TextValueParam("6 decimals, date, hmsu", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), field_type::datetime, false, 6),
-	TextValueParam("6 decimals, min", "1000-01-01 00:00:00.000000", makedt(1000, 1, 1), field_type::datetime, false, 6),
-	TextValueParam("6 decimals, max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, false, 6)
+	TextValueParam("6 decimals, date, hms", "2010-02-15 02:05:30.000000", makedt(2010, 2, 15, 2, 5, 30), field_type::datetime, 0, 6),
+	TextValueParam("6 decimals, date, hmsu", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), field_type::datetime, 0, 6),
+	TextValueParam("6 decimals, min", "1000-01-01 00:00:00.000000", makedt(1000, 1, 1), field_type::datetime, 0, 6),
+	TextValueParam("6 decimals, max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, 0, 6)
+));
+
+// Right now, timestamps are deserialized as DATETIMEs. TODO: update this when we consider time zones
+INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DeserializeTextValueTest, Values(
+	TextValueParam("0 decimals", "2010-02-15 02:05:30", makedt(2010, 2, 15, 2, 5, 30), field_type::timestamp),
+	TextValueParam("6 decimals", "2010-02-15 02:05:30.085670", makedt(2010, 2, 15, 2, 5, 30, 85670), field_type::timestamp, 0, 6),
+	TextValueParam("6 decimals, min", "1970-01-01 00:00:01.000000", makedt(1970, 1, 1, 0, 0, 1), field_type::timestamp, 0, 6),
+	TextValueParam("6 decimals, max", "2038-01-19 03:14:07.999999", makedt(2038, 1, 19, 3, 14, 7, 999999), field_type::timestamp, 0, 6)
 ));
 
 mysql::time maket(int hours, int mins, int secs, int micros=0)
@@ -258,53 +278,53 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
 	TextValueParam("0 decimals, min", "-838:59:59", -maket(838, 59, 59), field_type::time),
 	TextValueParam("0 decimals, zero", "00:00:00", maket(0, 0, 0), field_type::time),
 
-	TextValueParam("1 decimals, positive hms", "14:51:23.0", maket(14, 51, 23), field_type::time, false, 1),
-	TextValueParam("1 decimals, positive hmsu", "14:51:23.5", maket(14, 51, 23, 500000), field_type::time, false, 1),
-	TextValueParam("1 decimals, max", "838:59:58.9", maket(838, 59, 58, 900000), field_type::time, false, 1),
-	TextValueParam("1 decimals, negative hms", "-14:51:23.0", -maket(14, 51, 23), field_type::time, false, 1),
-	TextValueParam("1 decimals, negative hmsu", "-14:51:23.5", -maket(14, 51, 23, 500000), field_type::time, false, 1),
-	TextValueParam("1 decimals, min", "-838:59:58.9", -maket(838, 59, 58, 900000), field_type::time, false, 1),
-	TextValueParam("1 decimals, zero", "00:00:00.0", maket(0, 0, 0), field_type::time, false, 1),
+	TextValueParam("1 decimals, positive hms", "14:51:23.0", maket(14, 51, 23), field_type::time, 0, 1),
+	TextValueParam("1 decimals, positive hmsu", "14:51:23.5", maket(14, 51, 23, 500000), field_type::time, 0, 1),
+	TextValueParam("1 decimals, max", "838:59:58.9", maket(838, 59, 58, 900000), field_type::time, 0, 1),
+	TextValueParam("1 decimals, negative hms", "-14:51:23.0", -maket(14, 51, 23), field_type::time, 0, 1),
+	TextValueParam("1 decimals, negative hmsu", "-14:51:23.5", -maket(14, 51, 23, 500000), field_type::time, 0, 1),
+	TextValueParam("1 decimals, min", "-838:59:58.9", -maket(838, 59, 58, 900000), field_type::time, 0, 1),
+	TextValueParam("1 decimals, zero", "00:00:00.0", maket(0, 0, 0), field_type::time, 0, 1),
 
-	TextValueParam("2 decimals, positive hms", "14:51:23.00", maket(14, 51, 23), field_type::time, false, 2),
-	TextValueParam("2 decimals, positive hmsu", "14:51:23.52", maket(14, 51, 23, 520000), field_type::time, false, 2),
-	TextValueParam("2 decimals, max", "838:59:58.99", maket(838, 59, 58, 990000), field_type::time, false, 2),
-	TextValueParam("2 decimals, negative hms", "-14:51:23.00", -maket(14, 51, 23), field_type::time, false, 2),
-	TextValueParam("2 decimals, negative hmsu", "-14:51:23.50", -maket(14, 51, 23, 500000), field_type::time, false, 2),
-	TextValueParam("2 decimals, min", "-838:59:58.99", -maket(838, 59, 58, 990000), field_type::time, false, 2),
-	TextValueParam("2 decimals, zero", "00:00:00.00", maket(0, 0, 0), field_type::time, false, 2),
+	TextValueParam("2 decimals, positive hms", "14:51:23.00", maket(14, 51, 23), field_type::time, 0, 2),
+	TextValueParam("2 decimals, positive hmsu", "14:51:23.52", maket(14, 51, 23, 520000), field_type::time, 0, 2),
+	TextValueParam("2 decimals, max", "838:59:58.99", maket(838, 59, 58, 990000), field_type::time, 0, 2),
+	TextValueParam("2 decimals, negative hms", "-14:51:23.00", -maket(14, 51, 23), field_type::time, 0, 2),
+	TextValueParam("2 decimals, negative hmsu", "-14:51:23.50", -maket(14, 51, 23, 500000), field_type::time, 0, 2),
+	TextValueParam("2 decimals, min", "-838:59:58.99", -maket(838, 59, 58, 990000), field_type::time, 0, 2),
+	TextValueParam("2 decimals, zero", "00:00:00.00", maket(0, 0, 0), field_type::time, 0, 2),
 
-	TextValueParam("3 decimals, positive hms", "14:51:23.000", maket(14, 51, 23), field_type::time, false, 3),
-	TextValueParam("3 decimals, positive hmsu", "14:51:23.501", maket(14, 51, 23, 501000), field_type::time, false, 3),
-	TextValueParam("3 decimals, max", "838:59:58.999", maket(838, 59, 58, 999000), field_type::time, false, 3),
-	TextValueParam("3 decimals, negative hms", "-14:51:23.000", -maket(14, 51, 23), field_type::time, false, 3),
-	TextValueParam("3 decimals, negative hmsu", "-14:51:23.003", -maket(14, 51, 23, 3000), field_type::time, false, 3),
-	TextValueParam("3 decimals, min", "-838:59:58.999", -maket(838, 59, 58, 999000), field_type::time, false, 3),
-	TextValueParam("3 decimals, zero", "00:00:00.000", maket(0, 0, 0), field_type::time, false, 3),
+	TextValueParam("3 decimals, positive hms", "14:51:23.000", maket(14, 51, 23), field_type::time, 0, 3),
+	TextValueParam("3 decimals, positive hmsu", "14:51:23.501", maket(14, 51, 23, 501000), field_type::time, 0, 3),
+	TextValueParam("3 decimals, max", "838:59:58.999", maket(838, 59, 58, 999000), field_type::time, 0, 3),
+	TextValueParam("3 decimals, negative hms", "-14:51:23.000", -maket(14, 51, 23), field_type::time, 0, 3),
+	TextValueParam("3 decimals, negative hmsu", "-14:51:23.003", -maket(14, 51, 23, 3000), field_type::time, 0, 3),
+	TextValueParam("3 decimals, min", "-838:59:58.999", -maket(838, 59, 58, 999000), field_type::time, 0, 3),
+	TextValueParam("3 decimals, zero", "00:00:00.000", maket(0, 0, 0), field_type::time, 0, 3),
 
-	TextValueParam("4 decimals, positive hms", "14:51:23.0000", maket(14, 51, 23), field_type::time, false, 4),
-	TextValueParam("4 decimals, positive hmsu", "14:51:23.5017", maket(14, 51, 23, 501700), field_type::time, false, 4),
-	TextValueParam("4 decimals, max", "838:59:58.9999", maket(838, 59, 58, 999900), field_type::time, false, 4),
-	TextValueParam("4 decimals, negative hms", "-14:51:23.0000", -maket(14, 51, 23), field_type::time, false, 4),
-	TextValueParam("4 decimals, negative hmsu", "-14:51:23.0038", -maket(14, 51, 23, 3800), field_type::time, false, 4),
-	TextValueParam("4 decimals, min", "-838:59:58.9999", -maket(838, 59, 58, 999900), field_type::time, false, 4),
-	TextValueParam("4 decimals, zero", "00:00:00.0000", maket(0, 0, 0), field_type::time, false, 4),
+	TextValueParam("4 decimals, positive hms", "14:51:23.0000", maket(14, 51, 23), field_type::time, 0, 4),
+	TextValueParam("4 decimals, positive hmsu", "14:51:23.5017", maket(14, 51, 23, 501700), field_type::time, 0, 4),
+	TextValueParam("4 decimals, max", "838:59:58.9999", maket(838, 59, 58, 999900), field_type::time, 0, 4),
+	TextValueParam("4 decimals, negative hms", "-14:51:23.0000", -maket(14, 51, 23), field_type::time, 0, 4),
+	TextValueParam("4 decimals, negative hmsu", "-14:51:23.0038", -maket(14, 51, 23, 3800), field_type::time, 0, 4),
+	TextValueParam("4 decimals, min", "-838:59:58.9999", -maket(838, 59, 58, 999900), field_type::time, 0, 4),
+	TextValueParam("4 decimals, zero", "00:00:00.0000", maket(0, 0, 0), field_type::time, 0, 4),
 
-	TextValueParam("5 decimals, positive hms", "14:51:23.00000", maket(14, 51, 23), field_type::time, false, 5),
-	TextValueParam("5 decimals, positive hmsu", "14:51:23.50171", maket(14, 51, 23, 501710), field_type::time, false, 5),
-	TextValueParam("5 decimals, max", "838:59:58.99999", maket(838, 59, 58, 999990), field_type::time, false, 5),
-	TextValueParam("5 decimals, negative hms", "-14:51:23.00000", -maket(14, 51, 23), field_type::time, false, 5),
-	TextValueParam("5 decimals, negative hmsu", "-14:51:23.00009", -maket(14, 51, 23, 90), field_type::time, false, 5),
-	TextValueParam("5 decimals, min", "-838:59:58.99999", -maket(838, 59, 58, 999990), field_type::time, false, 5),
-	TextValueParam("5 decimals, zero", "00:00:00.00000", maket(0, 0, 0), field_type::time, false, 5),
+	TextValueParam("5 decimals, positive hms", "14:51:23.00000", maket(14, 51, 23), field_type::time, 0, 5),
+	TextValueParam("5 decimals, positive hmsu", "14:51:23.50171", maket(14, 51, 23, 501710), field_type::time, 0, 5),
+	TextValueParam("5 decimals, max", "838:59:58.99999", maket(838, 59, 58, 999990), field_type::time, 0, 5),
+	TextValueParam("5 decimals, negative hms", "-14:51:23.00000", -maket(14, 51, 23), field_type::time, 0, 5),
+	TextValueParam("5 decimals, negative hmsu", "-14:51:23.00009", -maket(14, 51, 23, 90), field_type::time, 0, 5),
+	TextValueParam("5 decimals, min", "-838:59:58.99999", -maket(838, 59, 58, 999990), field_type::time, 0, 5),
+	TextValueParam("5 decimals, zero", "00:00:00.00000", maket(0, 0, 0), field_type::time, 0, 5),
 
-	TextValueParam("6 decimals, positive hms", "14:51:23.000000", maket(14, 51, 23), field_type::time, false, 6),
-	TextValueParam("6 decimals, positive hmsu", "14:51:23.501717", maket(14, 51, 23, 501717), field_type::time, false, 6),
-	TextValueParam("6 decimals, max", "838:59:58.999999", maket(838, 59, 58, 999999), field_type::time, false, 6),
-	TextValueParam("6 decimals, negative hms", "-14:51:23.000000", -maket(14, 51, 23), field_type::time, false, 6),
-	TextValueParam("6 decimals, negative hmsu", "-14:51:23.900000", -maket(14, 51, 23, 900000), field_type::time, false, 6),
-	TextValueParam("6 decimals, min", "-838:59:58.999999", -maket(838, 59, 58, 999999), field_type::time, false, 6),
-	TextValueParam("6 decimals, zero", "00:00:00.000000", maket(0, 0, 0), field_type::time, false, 6)
+	TextValueParam("6 decimals, positive hms", "14:51:23.000000", maket(14, 51, 23), field_type::time, 0, 6),
+	TextValueParam("6 decimals, positive hmsu", "14:51:23.501717", maket(14, 51, 23, 501717), field_type::time, 0, 6),
+	TextValueParam("6 decimals, max", "838:59:58.999999", maket(838, 59, 58, 999999), field_type::time, 0, 6),
+	TextValueParam("6 decimals, negative hms", "-14:51:23.000000", -maket(14, 51, 23), field_type::time, 0, 6),
+	TextValueParam("6 decimals, negative hmsu", "-14:51:23.900000", -maket(14, 51, 23, 900000), field_type::time, 0, 6),
+	TextValueParam("6 decimals, min", "-838:59:58.999999", -maket(838, 59, 58, 999999), field_type::time, 0, 6),
+	TextValueParam("6 decimals, zero", "00:00:00.000000", maket(0, 0, 0), field_type::time, 0, 6)
 ));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(

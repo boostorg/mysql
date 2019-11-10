@@ -17,7 +17,7 @@ using year = ::date::year;
 
 /**
  * field_type::decimal: string_view
- * field_type::varchar: string_view
+ * field_type::varchar: string_view (apparently not sent)
  * field_type::bit: string_view
  * field_type::newdecimal: string_view
  * field_type::enum_: string_view
@@ -25,9 +25,9 @@ using year = ::date::year;
  * field_type::tiny_blob: string_view
  * field_type::medium_blob: string_view
  * field_type::blob: string_view
- * field_type::var_string: string_view
+ * field_type::var_string: string_view (VARCHAR or VARBINARY; binary has binary flag set)
  * field_type::geometry: string_view
- * field_type::string: string_view
+ * field_type::string: string_view (CHAR or BINARY; binary has binary flag set)
  * field_type::tiny: (u)int8_t
  * field_type::short: (u)int16_t
  * field_type::year: uint16_t
@@ -36,11 +36,10 @@ using year = ::date::year;
  * field_type::longlong: (u)int64_t
  * field_type::float_: float
  * field_type::double_: double
- * field_type::timestamp: datetime
+ * field_type::timestamp: datetime (TODO: time zones?)
  * field_type::date: date
  * field_type::datetime: datetime
  * field_type::time: time
- * field_type::null: nullptr_t
  */
 using value = std::variant<
 	std::int32_t,
