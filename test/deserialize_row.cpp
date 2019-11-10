@@ -107,8 +107,6 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeTextValueTest, Values(
 	TextValueParam("GEOMTRY", "\1", "\1", field_type::geometry, column_flags::binary | column_flags::blob)
 ));
 
-// Types BIT,
-
 INSTANTIATE_TEST_SUITE_P(TINYINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed", "20", std::int32_t(20), field_type::tiny),
 	TextValueParam("signed max", "127", std::int32_t(127), field_type::tiny),
@@ -333,6 +331,124 @@ INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
 	TextValueParam("max", "2155", year(2155), field_type::year),
 	TextValueParam("zero", "0000", year(0), field_type::year)
 ));
+
+struct DeserializeTextRowTest : public Test
+{
+	std::vector<field_metadata> meta {
+		msgs::column_definition {
+			{"def"},
+			{"awesome"},
+			{"test_table"},
+			{"test_table"},
+			{"f0"},
+			{"f0"},
+			collation::utf8_general_ci,
+			{300},
+			field_type::var_string,
+			{0},
+			{0}
+		},
+		msgs::column_definition {
+			{"def"},
+			{"awesome"},
+			{"test_table"},
+			{"test_table"},
+			{"f1"},
+			{"f1"},
+			collation::binary,
+			{11},
+			field_type::long_,
+			{0},
+			{0}
+		},
+		msgs::column_definition {
+			{"def"},
+			{"awesome"},
+			{"test_table"},
+			{"test_table"},
+			{"f2"},
+			{"f2"},
+			collation::binary,
+			{22},
+			field_type::datetime,
+			{column_flags::binary},
+			{2}
+		}
+	};
+	std::vector<value> values;
+
+	error_code deserialize(const std::vector<std::uint8_t>& buffer)
+	{
+		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+		return deserialize_text_row(ctx, meta, values);
+	}
+};
+
+TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsNonNulls_DeserializesReturnsOk)
+{
+	std::vector<value> expected_values {value("val"), value(std::int32_t(21)), value(makedt(2010, 10, 1))};
+	std::vector<std::uint8_t> buffer {
+		0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x16,
+		0x32, 0x30, 0x31, 0x30, 0x2d, 0x31, 0x30, 0x2d,
+		0x30, 0x31, 0x20, 0x30, 0x30, 0x3a, 0x30, 0x30,
+		0x3a, 0x30, 0x30, 0x2e, 0x30, 0x30
+	};
+	auto err = deserialize(buffer);
+	EXPECT_EQ(err, error_code());
+	EXPECT_EQ(values, expected_values);
+}
+
+TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsOneNull_DeserializesReturnsOk)
+{
+	std::vector<value> expected_values {value("val"), value(nullptr), value(makedt(2010, 10, 1))};
+	std::vector<std::uint8_t> buffer {
+		0x03, 0x76, 0x61, 0x6c, 0xfb, 0x16, 0x32, 0x30,
+		0x31, 0x30, 0x2d, 0x31, 0x30, 0x2d, 0x30, 0x31,
+		0x20, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x3a, 0x30,
+		0x30, 0x2e, 0x30, 0x30
+	};
+	auto err = deserialize(buffer);
+	EXPECT_EQ(err, error_code());
+	EXPECT_EQ(values, expected_values);
+}
+
+TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsAllNull_DeserializesReturnsOk)
+{
+	std::vector<value> expected_values {value(nullptr), value(nullptr), value(nullptr)};
+	auto err = deserialize({0xfb, 0xfb, 0xfb});
+	EXPECT_EQ(err, error_code());
+	EXPECT_EQ(values, expected_values);
+}
+
+TEST_F(DeserializeTextRowTest, TooFewValues_ReturnsError)
+{
+	auto err = deserialize({0xfb, 0xfb});
+	EXPECT_EQ(err, make_error_code(Error::incomplete_message));
+}
+
+TEST_F(DeserializeTextRowTest, TooManyValues_ReturnsError)
+{
+	auto err = deserialize({0xfb, 0xfb, 0xfb, 0xfb});
+	EXPECT_EQ(err, make_error_code(Error::extra_bytes));
+}
+
+TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerStringValue_ReturnsError)
+{
+	auto err = deserialize({0x03, 0xaa, 0xab, 0xfb, 0xfb});
+	EXPECT_EQ(err, make_error_code(Error::incomplete_message));
+}
+
+TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerValue_ReturnsError)
+{
+	std::vector<std::uint8_t> buffer {
+		0x03, 0x76, 0x61, 0x6c, 0xfb, 0x16, 0x32, 0x30,
+		0x31, 0x30, 0x2d, 0x31, 0x30, 0x2d, 0x30, 0x31,
+		0x20, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x3a, 0x30,
+		0x30, 0x2f, 0x30, 0x30
+	};
+	auto err = deserialize(buffer);
+	EXPECT_EQ(err, make_error_code(Error::protocol_value_error));
+}
 
 }
 
