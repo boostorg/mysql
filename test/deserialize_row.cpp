@@ -74,7 +74,8 @@ INSTANTIATE_TEST_SUITE_P(TINYINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed negative max", "-128", std::int32_t(-128), field_type::tiny),
 	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::tiny, true),
 	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::tiny, true),
-	TextValueParam("usigned max", "255", std::uint32_t(255), field_type::tiny, true)
+	TextValueParam("usigned max", "255", std::uint32_t(255), field_type::tiny, true),
+	TextValueParam("usigned zerofill", "010", std::uint32_t(10), field_type::tiny, true)
 ));
 
 INSTANTIATE_TEST_SUITE_P(SMALLINT, DeserializeTextValueTest, Values(
@@ -84,7 +85,8 @@ INSTANTIATE_TEST_SUITE_P(SMALLINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed negative max", "-32768", std::int32_t(-32768), field_type::short_),
 	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::short_, true),
 	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::short_, true),
-	TextValueParam("usigned max", "65535", std::uint32_t(65535), field_type::short_, true)
+	TextValueParam("usigned max", "65535", std::uint32_t(65535), field_type::short_, true),
+	TextValueParam("usigned zerofill", "00535", std::uint32_t(535), field_type::short_, true)
 ));
 
 INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, Values(
@@ -94,7 +96,8 @@ INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed negative max", "-8388607", std::int32_t(-8388607), field_type::int24),
 	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::int24, true),
 	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::int24, true),
-	TextValueParam("usigned max", "16777215", std::uint32_t(16777215), field_type::int24, true)
+	TextValueParam("usigned max", "16777215", std::uint32_t(16777215), field_type::int24, true),
+	TextValueParam("usigned zerofill", "00007215", std::uint32_t(7215), field_type::int24, true)
 ));
 
 INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueTest, Values(
@@ -104,17 +107,19 @@ INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueTest, Values(
 	TextValueParam("signed negative max", "-2147483648", std::int32_t(-2147483648), field_type::long_),
 	TextValueParam("unsigned", "20", std::uint32_t(20), field_type::long_, true),
 	TextValueParam("usigned min", "0", std::uint32_t(0), field_type::long_, true),
-	TextValueParam("usigned max", "4294967295", std::uint32_t(4294967295), field_type::long_, true)
+	TextValueParam("usigned max", "4294967295", std::uint32_t(4294967295), field_type::long_, true),
+	TextValueParam("usigned zerofill", "0000067295", std::uint32_t(67295), field_type::long_, true)
 ));
 
 INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueTest, Values(
 	TextValueParam("signed", "20", std::int64_t(20), field_type::longlong),
 	TextValueParam("signed max", "9223372036854775807", std::int64_t(9223372036854775807), field_type::longlong),
 	TextValueParam("signed negative", "-20", std::int64_t(-20), field_type::longlong),
-	TextValueParam("signed negative max", "-9223372036854775808", std::int64_t(-9223372036854775808), field_type::longlong),
+	TextValueParam("signed negative max", "-9223372036854775808", std::numeric_limits<std::int64_t>::min(), field_type::longlong),
 	TextValueParam("unsigned", "20", std::uint64_t(20), field_type::longlong, true),
 	TextValueParam("usigned min", "0", std::uint64_t(0), field_type::longlong, true),
-	TextValueParam("usigned max", "18446744073709551615", std::uint64_t(18446744073709551615), field_type::longlong, true)
+	TextValueParam("usigned max", "18446744073709551615", std::uint64_t(18446744073709551615ULL), field_type::longlong, true),
+	TextValueParam("usigned max", "000615", std::uint64_t(615), field_type::longlong, true)
 ));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
