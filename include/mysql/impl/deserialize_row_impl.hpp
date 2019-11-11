@@ -108,13 +108,13 @@ deserialize_text_value_impl(std::string_view from, T& to)
 	return ok ? Error::ok : Error::protocol_value_error;
 }
 
-Error deserialize_text_value_impl(std::string_view from, std::string_view& to)
+inline Error deserialize_text_value_impl(std::string_view from, std::string_view& to)
 {
 	to = from;
 	return Error::ok;
 }
 
-Error deserialize_text_value_impl(std::string_view from, year& to)
+inline Error deserialize_text_value_impl(std::string_view from, year& to)
 {
 	int value;
 	auto err = deserialize_text_value_impl(from, value);

@@ -90,6 +90,7 @@ gtest_discover_tests(unittests)
 add_executable(
 	integrationtests
 	test/integration/handshake.cpp
+	test/integration/query.cpp
 )
 target_link_libraries(
 	integrationtests

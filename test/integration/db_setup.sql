@@ -4,56 +4,24 @@ CREATE DATABASE awesome;
 USE awesome;
 
 -- Tables
-CREATE TABLE test_table (
+CREATE TABLE inserts_table (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    
-    field_decimal DECIMAL (6,2),
     field_varchar VARCHAR(255) NOT NULL,
-    field_bit BIT(32),
-    field_enum ENUM('value0', 'value1'),
-    field_blob BLOB,
-    field_text TEXT,
-    
-    field_float FLOAT(20),
-    field_double DOUBLE,
-    
-    field_tiny TINYINT,
-    
-    field_date DATE,
-    field_datetime DATETIME (3),
-    field_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    field_time TIME (2)
+    field_date DATE
 ) ENGINE=INNODB;
 
-INSERT INTO test_table (
-    field_decimal,
-    field_varchar,
-    field_bit,
-    field_enum,
-    field_blob,
-    field_text,
-    field_float,
-    field_double,
-    field_tiny
-)
-VALUES (
-	2.234,
-	"varchar_value",
-	"7",
-	"value0",
-	"adf\0k",
-	"text_value",
-	3.14,
-	5.14,
-	42
-);
-	
-
-CREATE TABLE child_table (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	parent_id INT NOT NULL,
-	field_varchar VARCHAR(255),
-	FOREIGN KEY (parent_id) REFERENCES test_table(id)
+CREATE TABLE ints_table(
+	signed_tiny TINYINT,
+	unsigned_tiny TINYINT UNSIGNED,
+	signed_small SMALLINT,
+	unsigned_small SMALLINT UNSIGNED,
+	signed_medium MEDIUMINT,
+	unsigned_medium MEDIUMINT UNSIGNED,
+	signed_int INT,
+	unsigned_int INT UNSIGNED,
+	signed_big BIGINT,
+	unsigned_big BIGINT UNSIGNED,
+	zerof INT(8) ZEROFILL
 );
 
 CREATE TABLE test_times(

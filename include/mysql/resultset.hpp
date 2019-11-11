@@ -4,16 +4,18 @@
 #include "mysql/row.hpp"
 #include "mysql/metadata.hpp"
 #include "mysql/impl/messages.hpp"
+#include "mysql/impl/channel.hpp"
 #include <cassert>
 
 namespace mysql
 {
 
-// TODO: provide a wrapper so ChannelType does not have to be specified directly
-template <typename ChannelType, typename Allocator>
+template <typename StreamType, typename Allocator=std::allocator<std::uint8_t>>
 class resultset
 {
-	ChannelType* channel_;
+	using channel_type = detail::channel<StreamType>;
+
+	channel_type* channel_;
 	detail::resultset_metadata<Allocator> fields_;
 	row current_row_;
 	detail::bytestring<Allocator> buffer_;
@@ -21,9 +23,9 @@ class resultset
 	bool eof_received_ {false};
 public:
 	resultset(): channel_(nullptr) {};
-	resultset(ChannelType& channel, detail::resultset_metadata<Allocator>&& fields):
+	resultset(channel_type& channel, detail::resultset_metadata<Allocator>&& fields):
 		channel_(&channel), fields_(std::move(fields)) {};
-	resultset(ChannelType& channel, detail::bytestring<Allocator>&& buffer, const detail::msgs::ok_packet& ok_pack):
+	resultset(channel_type& channel, detail::bytestring<Allocator>&& buffer, const detail::msgs::ok_packet& ok_pack):
 		channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 
 	const row* fetch_one(error_code& err);

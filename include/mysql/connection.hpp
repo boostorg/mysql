@@ -38,11 +38,11 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 	async_handshake(const connection_params& params, CompletionToken&& token);
 
-	resultset<channel_type, Allocator> query(std::string_view query_string, error_code&);
-	resultset<channel_type, Allocator> query(std::string_view query_string);
+	resultset<Stream, Allocator> query(std::string_view query_string, error_code&);
+	resultset<Stream, Allocator> query(std::string_view query_string);
 
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<channel_type, Allocator>))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream, Allocator>))
 	async_query(std::string_view query_string, CompletionToken&& token);
 };
 

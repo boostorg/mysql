@@ -5,11 +5,22 @@
 #include "mysql/impl/basic_serialization.hpp"
 #include "mysql/impl/deserialize_row.hpp"
 
+namespace mysql
+{
+namespace detail
+{
+
+template <typename ChannelType>
+using channel_stream_type = typename ChannelType::stream_type;
+
+}
+}
+
 template <typename ChannelType, typename Allocator>
 void mysql::detail::execute_query(
 	ChannelType& channel,
 	std::string_view query,
-	resultset<ChannelType, Allocator>& output,
+	resultset<channel_stream_type<ChannelType>, Allocator>& output,
 	error_code& err
 )
 {
@@ -23,6 +34,7 @@ void mysql::detail::execute_query(
 	serialize_message(query_msg, caps, buffer);
 
 	// Send it
+	channel.reset_sequence_number();
 	channel.write(boost::asio::buffer(buffer), err);
 	if (err) return;
 
@@ -42,7 +54,7 @@ void mysql::detail::execute_query(
 		msgs::ok_packet ok_packet;
 		err = deserialize_message(ok_packet, ctx);
 		if (err) return;
-		output = resultset<ChannelType, Allocator>(channel, std::move(buffer), ok_packet);
+		output = resultset<channel_stream_type<ChannelType>, Allocator>(channel, std::move(buffer), ok_packet);
 		err.clear();
 		return;
 	}
@@ -76,7 +88,7 @@ void mysql::detail::execute_query(
 		// Deserialize the message
 		msgs::column_definition field_definition;
 		ctx = DeserializationContext(boost::asio::buffer(field_definition_buffer), caps);
-		err = deserialize_message(field_definition, field_definition_buffer);
+		err = deserialize_message(field_definition, ctx);
 		if (err) return;
 
 		// Add it to our array
@@ -85,7 +97,10 @@ void mysql::detail::execute_query(
 	}
 
 	// No EOF packet is expected here, as we require deprecate EOF capabilities
-	output = resultset<ChannelType, Allocator>(channel, std::move(fields));
+	output = resultset<channel_stream_type<ChannelType>, Allocator>(
+		channel,
+		resultset_metadata<Allocator>(std::move(field_buffers), std::move(fields))
+	);
 	err.clear();
 }
 

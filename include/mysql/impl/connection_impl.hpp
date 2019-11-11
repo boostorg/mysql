@@ -44,24 +44,22 @@ mysql::connection<Stream, Allocator>::async_handshake(
 
 // Query
 template <typename Stream, typename Allocator>
-mysql::resultset<typename mysql::connection<Stream, Allocator>::channel_type, Allocator>
-mysql::connection<Stream, Allocator>::query(
+mysql::resultset<Stream, Allocator> mysql::connection<Stream, Allocator>::query(
 	std::string_view query_string,
 	error_code& err
 )
 {
-	resultset<channel_type, Allocator> res;
+	resultset<Stream, Allocator> res;
 	detail::execute_query(channel_, query_string, res, err);
 	return res;
 }
 
 template <typename Stream, typename Allocator>
-mysql::resultset<typename mysql::connection<Stream, Allocator>::channel_type, Allocator>
-mysql::connection<Stream, Allocator>::query(
+mysql::resultset<Stream, Allocator> mysql::connection<Stream, Allocator>::query(
 	std::string_view query_string
 )
 {
-	resultset<channel_type, Allocator> res;
+	resultset<Stream, Allocator> res;
 	error_code err;
 	detail::execute_query(channel_, query_string, res, err);
 	detail::check_error_code(err);
