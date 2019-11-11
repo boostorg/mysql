@@ -33,7 +33,7 @@ CREATE TABLE two_rows_table (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	field_varchar VARCHAR(255) NOT NULL
 );
-INSERT INTO one_row_table (field_varchar) VALUES ('f0', 'f1');
+INSERT INTO two_rows_table (field_varchar) VALUES ('f0'), ('f1');
 
 CREATE TABLE ints_table(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,

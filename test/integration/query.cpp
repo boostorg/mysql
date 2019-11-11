@@ -154,6 +154,43 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkOneRow)
 	ValidateEof(result);
 }
 
+TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+	EXPECT_TRUE(result.valid());
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(result.fields().size(), 2);
+
+	// Fetch first row
+	const mysql::row* row = result.fetch_one(errc);
+	ASSERT_EQ(errc, mysql::error_code());
+	ASSERT_NE(row, nullptr);
+	// TODO: validate metadata
+	EXPECT_EQ(row->values(), makevalues(1, "f0"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next row
+	row = result.fetch_one(errc);
+	ASSERT_EQ(errc, mysql::error_code());
+	ASSERT_NE(row, nullptr);
+	// TODO: validate metadata
+	EXPECT_EQ(row->values(), makevalues(2, "f1"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next: end of resultset
+	row = result.fetch_one(errc);
+	ASSERT_EQ(errc, mysql::error_code());
+	ASSERT_EQ(row, nullptr);
+	ValidateEof(result);
+}
+
+TEST_F(QueryTest, QuerySyncErrc_SelectQueryFailed)
+{
+	auto result = conn.query("SELECT field_varchar, field_bad FROM one_row_table", errc);
+	ASSERT_EQ(errc, make_error_code(mysql::Error::bad_field_error));
+	EXPECT_FALSE(result.valid());
+}
+
 // Query for INT types
 
 
