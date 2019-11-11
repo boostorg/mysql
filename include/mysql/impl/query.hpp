@@ -28,7 +28,7 @@ void execute_query(
 template <typename ChannelType, typename Allocator>
 fetch_result fetch_text_row(
 	ChannelType& channel,
-	const resultset_metadata<Allocator>& meta,
+	const std::vector<field_metadata>& meta,
 	bytestring<Allocator>& buffer,
 	std::vector<value>& output_values,
 	msgs::ok_packet& output_ok_packet,

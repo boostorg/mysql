@@ -107,7 +107,7 @@ void mysql::detail::execute_query(
 template <typename ChannelType, typename Allocator>
 mysql::detail::fetch_result mysql::detail::fetch_text_row(
 	ChannelType& channel,
-	const resultset_metadata<Allocator>& meta,
+	const std::vector<field_metadata>& meta,
 	bytestring<Allocator>& buffer,
 	std::vector<value>& output_values,
 	msgs::ok_packet& output_ok_packet,
@@ -139,6 +139,7 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 	else
 	{
 		// An actual row
+		ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
 		err = deserialize_text_row(ctx, meta, output_values);
 		if (err) return fetch_result::error;
 		return fetch_result::row;

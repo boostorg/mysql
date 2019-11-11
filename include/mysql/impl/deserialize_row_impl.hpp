@@ -147,7 +147,7 @@ inline bool is_next_field_null(
 		{
 			return true; // it was null, do not rewind
 		}
-		ctx.set_first(ctx.first() - 1); // it was not null, rewind
+		ctx.rewind(1); // it was not null, rewind (this byte is part of the actual message)
 	}
 	return false;
 }

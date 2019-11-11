@@ -19,7 +19,7 @@ public:
 
 	const std::vector<value>& values() const noexcept { return values_; }
 	std::vector<value>& values() noexcept { return values_; }
-	const auto& metadata() const noexcept { return *metadata_; }
+	const std::vector<field_metadata>& metadata() const noexcept { return *metadata_; }
 };
 
 template <typename Allocator>

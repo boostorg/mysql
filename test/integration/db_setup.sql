@@ -18,7 +18,25 @@ CREATE TABLE updates_table (
 INSERT INTO updates_table (field_varchar, field_int)
 VALUES ('f0', 42), ('f1', 43);
 
+CREATE TABLE empty_table (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	field_varchar VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE one_row_table (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	field_varchar VARCHAR(255) NOT NULL
+);
+INSERT INTO one_row_table (field_varchar) VALUES ('f0');
+
+CREATE TABLE two_rows_table (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	field_varchar VARCHAR(255) NOT NULL
+);
+INSERT INTO one_row_table (field_varchar) VALUES ('f0', 'f1');
+
 CREATE TABLE ints_table(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
 	signed_tiny TINYINT,
 	unsigned_tiny TINYINT UNSIGNED,
 	signed_small SMALLINT,
@@ -31,6 +49,13 @@ CREATE TABLE ints_table(
 	unsigned_big BIGINT UNSIGNED,
 	zerof INT(8) ZEROFILL
 );
+INSERT INTO ints_table VALUES
+	("regular",   20,   20,   20,      20,      20,       20,        20,         20,          20,                 20,                 20),
+	("negative", -20,   NULL, -20,     NULL,   -20,       NULL,     -20,         NULL,       -20,                 NULL,               NULL),
+	("min",      -0x80, 0,    -0x8000, 0,      -0x800000, 0,        -0x80000000, 0,          -0x8000000000000000, 0,                  0),
+	("max",       0x7f, 0xff,  0x7fff, 0xffff,  0x7fffff, 0xffffff,  0x7fffffff, 0xffffffff,  0x7fffffffffffffff, 0xffffffffffffffff, NULL)
+;
+	
 
 CREATE TABLE test_times(
 	id INT AUTO_INCREMENT PRIMARY KEY,

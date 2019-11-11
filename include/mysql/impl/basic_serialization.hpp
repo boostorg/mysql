@@ -35,6 +35,7 @@ public:
 	ReadIterator last() const noexcept { return last_; }
 	void set_first(ReadIterator new_first) noexcept { first_ = new_first; assert(last_ >= first_); }
 	void advance(std::size_t sz) noexcept { first_ += sz; assert(last_ >= first_); }
+	void rewind(std::size_t sz) noexcept { first_ -= sz; }
 	std::size_t size() const noexcept { return last_ - first_; }
 	bool empty() const noexcept { return last_ == first_; }
 	bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }

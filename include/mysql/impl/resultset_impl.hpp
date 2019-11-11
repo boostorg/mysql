@@ -9,11 +9,15 @@ const mysql::row* mysql::resultset<ChannelType, Allocator>::fetch_one(
 	error_code& err
 )
 {
-	assert(channel_);
-	assert(!complete());
+	assert(valid());
+	if (complete())
+	{
+		err.clear();
+		return nullptr;
+	}
 	auto result = detail::fetch_text_row(
 		*channel_,
-		fields_,
+		meta_.fields(),
 		buffer_,
 		current_row_.values(),
 		ok_packet_,
