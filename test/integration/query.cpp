@@ -7,6 +7,7 @@
 
 #include "mysql/connection.hpp"
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/use_future.hpp>
@@ -57,6 +58,19 @@ TEST_F(QueryTest, SyncErrc_InsertQueryOk)
 	EXPECT_EQ(result.warning_count(), 0);
 	EXPECT_GT(result.last_insert_id(), 0);
 	EXPECT_EQ(result.info(), "");
+}
+
+TEST_F(QueryTest, SyncErrc_UpdateQueryOk)
+{
+	auto result = conn.query(
+			"UPDATE updates_table SET field_int = 50", errc);
+	ASSERT_EQ(errc, mysql::error_code());
+	EXPECT_TRUE(result.complete());
+	EXPECT_TRUE(result.fields().empty());
+	EXPECT_EQ(result.affected_rows(), 2);
+	EXPECT_EQ(result.warning_count(), 0);
+	EXPECT_EQ(result.last_insert_id(), 0);
+	EXPECT_THAT(std::string(result.info()), HasSubstr("Rows matched"));
 }
 
 

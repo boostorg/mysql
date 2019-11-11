@@ -10,6 +10,14 @@ CREATE TABLE inserts_table (
     field_date DATE
 ) ENGINE=INNODB;
 
+CREATE TABLE updates_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    field_varchar VARCHAR(255) NOT NULL,
+    field_int INT
+) ENGINE=INNODB;
+INSERT INTO updates_table (field_varchar, field_int)
+VALUES ('f0', 42), ('f1', 43);
+
 CREATE TABLE ints_table(
 	signed_tiny TINYINT,
 	unsigned_tiny TINYINT UNSIGNED,
