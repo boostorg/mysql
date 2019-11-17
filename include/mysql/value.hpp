@@ -15,45 +15,19 @@ using datetime = ::date::sys_time<std::chrono::microseconds>;
 using time = std::chrono::microseconds;
 using year = ::date::year;
 
-/**
- * field_type::decimal: string_view
- * field_type::varchar: string_view (apparently not sent)
- * field_type::bit: string_view
- * field_type::newdecimal: string_view
- * field_type::enum_: string_view
- * field_type::set: string_view
- * field_type::tiny_blob: string_view
- * field_type::medium_blob: string_view
- * field_type::blob: string_view
- * field_type::var_string: string_view (VARCHAR or VARBINARY; binary has binary flag set)
- * field_type::geometry: string_view
- * field_type::string: string_view (CHAR or BINARY; binary has binary flag set)
- * field_type::tiny: (u)int8_t
- * field_type::short: (u)int16_t
- * field_type::year: uint16_t
- * field_type::int24: (u)int32_t
- * field_type::long_: (u)int32_t
- * field_type::longlong: (u)int64_t
- * field_type::float_: float
- * field_type::double_: double
- * field_type::timestamp: datetime (TODO: time zones?)
- * field_type::date: date
- * field_type::datetime: datetime
- * field_type::time: time
- */
 using value = std::variant<
-	std::int32_t,
-	std::int64_t,
-	std::uint32_t,
-	std::uint64_t,
-	std::string_view,
-	float,
-	double,
-	date,
-	datetime,
-	time,
-	year,
-	std::nullptr_t
+	std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
+	std::int64_t,      // signed BIGINT
+	std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT
+	std::uint64_t,     // unsigned BIGINT
+	std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+	float,             // FLOAT
+	double,            // DOUBLE
+	date,              // DATE
+	datetime,          // DATETIME, TIMESTAMP
+	time,              // TIME
+	year,              // YEAR
+	std::nullptr_t     // Any of the above when the value is NULL
 >;
 
 }

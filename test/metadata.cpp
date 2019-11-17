@@ -27,7 +27,7 @@ TEST(FieldMetadata, IntPrimaryKey)
 		{"id"},
 		collation::binary,
 		{11},
-		field_type::long_,
+		protocol_field_type::long_,
 		{column_flags::pri_key | column_flags::auto_increment | column_flags::not_null},
 		{0}
 	};
@@ -40,20 +40,16 @@ TEST(FieldMetadata, IntPrimaryKey)
 	EXPECT_EQ(meta.original_field_name(), "id");
 	EXPECT_EQ(meta.field_collation(), collation::binary);
 	EXPECT_EQ(meta.column_length(), 11);
-	EXPECT_EQ(meta.type(), field_type::long_);
+	EXPECT_EQ(meta.type(), field_type::int_);
+	EXPECT_EQ(meta.protocol_type(), protocol_field_type::long_);
 	EXPECT_EQ(meta.decimals(), 0);
     EXPECT_TRUE(meta.is_not_null());
     EXPECT_TRUE(meta.is_primary_key());
     EXPECT_FALSE(meta.is_unique_key());
     EXPECT_FALSE(meta.is_multiple_key());
-    EXPECT_FALSE(meta.is_blob());
     EXPECT_FALSE(meta.is_unsigned());
     EXPECT_FALSE(meta.is_zerofill());
-    EXPECT_FALSE(meta.is_binary());
-    EXPECT_FALSE(meta.is_enum());
     EXPECT_TRUE(meta.is_auto_increment());
-    EXPECT_FALSE(meta.is_timestamp());
-    EXPECT_FALSE(meta.is_set());
     EXPECT_FALSE(meta.has_no_default_value());
     EXPECT_FALSE(meta.is_set_to_now_on_update());
 }
@@ -69,7 +65,7 @@ TEST(FieldMetadata, VarcharWithAlias)
 		{"field_varchar"},
 		collation::utf8_general_ci,
 		{765},
-		field_type::var_string,
+		protocol_field_type::var_string,
 		{0},
 		{0}
 	};
@@ -82,20 +78,16 @@ TEST(FieldMetadata, VarcharWithAlias)
 	EXPECT_EQ(meta.original_field_name(), "field_varchar");
 	EXPECT_EQ(meta.field_collation(), collation::utf8_general_ci);
 	EXPECT_EQ(meta.column_length(), 765);
-	EXPECT_EQ(meta.type(), field_type::var_string);
+	EXPECT_EQ(meta.protocol_type(), protocol_field_type::var_string);
+	EXPECT_EQ(meta.type(), field_type::varchar);
 	EXPECT_EQ(meta.decimals(), 0);
 	EXPECT_FALSE(meta.is_not_null());
 	EXPECT_FALSE(meta.is_primary_key());
 	EXPECT_FALSE(meta.is_unique_key());
 	EXPECT_FALSE(meta.is_multiple_key());
-	EXPECT_FALSE(meta.is_blob());
 	EXPECT_FALSE(meta.is_unsigned());
 	EXPECT_FALSE(meta.is_zerofill());
-	EXPECT_FALSE(meta.is_binary());
-	EXPECT_FALSE(meta.is_enum());
 	EXPECT_FALSE(meta.is_auto_increment());
-	EXPECT_FALSE(meta.is_timestamp());
-	EXPECT_FALSE(meta.is_set());
 	EXPECT_FALSE(meta.has_no_default_value());
 	EXPECT_FALSE(meta.is_set_to_now_on_update());
 }
@@ -111,7 +103,7 @@ TEST(FieldMetadata, FloatField)
 		{"field_float"},
 		collation::binary,
 		{12},
-		field_type::float_,
+		protocol_field_type::float_,
 		{0},
 		{31}
 	};
@@ -124,20 +116,16 @@ TEST(FieldMetadata, FloatField)
 	EXPECT_EQ(meta.original_field_name(), "field_float");
 	EXPECT_EQ(meta.field_collation(), collation::binary);
 	EXPECT_EQ(meta.column_length(), 12);
+	EXPECT_EQ(meta.protocol_type(), protocol_field_type::float_);
 	EXPECT_EQ(meta.type(), field_type::float_);
 	EXPECT_EQ(meta.decimals(), 31);
     EXPECT_FALSE(meta.is_not_null());
     EXPECT_FALSE(meta.is_primary_key());
     EXPECT_FALSE(meta.is_unique_key());
     EXPECT_FALSE(meta.is_multiple_key());
-    EXPECT_FALSE(meta.is_blob());
     EXPECT_FALSE(meta.is_unsigned());
     EXPECT_FALSE(meta.is_zerofill());
-    EXPECT_FALSE(meta.is_binary());
-    EXPECT_FALSE(meta.is_enum());
     EXPECT_FALSE(meta.is_auto_increment());
-    EXPECT_FALSE(meta.is_timestamp());
-    EXPECT_FALSE(meta.is_set());
     EXPECT_FALSE(meta.has_no_default_value());
     EXPECT_FALSE(meta.is_set_to_now_on_update());
 

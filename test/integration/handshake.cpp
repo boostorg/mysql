@@ -138,7 +138,7 @@ TEST_F(HandshakeTest, Async_FastAuthSuccessfulLoginNoDatabase)
 
 TEST_F(HandshakeTest, Async_FastAuthBadUser)
 {
-	connection_params.username = "bad_user";
+	connection_params.username = "non_existing_user";
 	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
 	ctx.run();
 	validate_exception(fut, make_error_code(mysql::Error::access_denied_error));

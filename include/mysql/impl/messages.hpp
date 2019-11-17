@@ -8,7 +8,6 @@
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/impl/constants.hpp"
 #include "mysql/impl/basic_serialization.hpp"
-#include "mysql/field_type.hpp"
 #include "mysql/collation.hpp"
 
 namespace mysql
@@ -142,7 +141,7 @@ struct column_definition
 	string_lenenc org_name; // physical column name
 	collation character_set;
 	int4 column_length; // maximum length of the field
-	field_type type; // type of the column as defined in enum_field_types
+	protocol_field_type type; // type of the column as defined in enum_field_types
 	int2 flags; // Flags as defined in Column Definition Flags
 	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
 

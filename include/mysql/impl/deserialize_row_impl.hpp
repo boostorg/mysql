@@ -161,47 +161,47 @@ inline mysql::Error mysql::detail::deserialize_text_value(
 	value& output
 )
 {
-	switch (meta.type())
+	switch (meta.protocol_type())
 	{
-    case field_type::tiny:
-    case field_type::short_:
-    case field_type::int24:
-    case field_type::long_:
+    case protocol_field_type::tiny:
+    case protocol_field_type::short_:
+    case protocol_field_type::int24:
+    case protocol_field_type::long_:
     	return meta.is_unsigned() ?
     			deserialize_text_value_to_variant<std::uint32_t>(from, output) :
 				deserialize_text_value_to_variant<std::int32_t>(from, output);
-    case field_type::longlong:
+    case protocol_field_type::longlong:
     	return meta.is_unsigned() ?
     			deserialize_text_value_to_variant<std::uint64_t>(from, output) :
 				deserialize_text_value_to_variant<std::int64_t>(from, output);
-    case field_type::float_:
+    case protocol_field_type::float_:
     	return deserialize_text_value_to_variant<float>(from, output);
-    case field_type::double_:
+    case protocol_field_type::double_:
     	return deserialize_text_value_to_variant<double>(from, output);
-    case field_type::timestamp:
-    case field_type::datetime:
+    case protocol_field_type::timestamp:
+    case protocol_field_type::datetime:
     	return deserialize_text_value_to_variant<datetime>(from, output, meta.decimals());
-    case field_type::date:
+    case protocol_field_type::date:
     	return deserialize_text_value_to_variant<date>(from, output);
-    case field_type::time:
+    case protocol_field_type::time:
     	return deserialize_text_value_to_variant<time>(from, output, meta.decimals());
-    case field_type::year:
+    case protocol_field_type::year:
     	return deserialize_text_value_to_variant<year>(from, output);
     // True string types
-    case field_type::varchar:
-    case field_type::var_string:
-    case field_type::string:
-    case field_type::tiny_blob:
-    case field_type::medium_blob:
-    case field_type::long_blob:
-    case field_type::blob:
-    case field_type::enum_:
-    case field_type::set:
+    case protocol_field_type::varchar:
+    case protocol_field_type::var_string:
+    case protocol_field_type::string:
+    case protocol_field_type::tiny_blob:
+    case protocol_field_type::medium_blob:
+    case protocol_field_type::long_blob:
+    case protocol_field_type::blob:
+    case protocol_field_type::enum_:
+    case protocol_field_type::set:
     // Anything else that we do not know how to interpret, we return as a binary string
-    case field_type::decimal:
-    case field_type::bit:
-    case field_type::newdecimal:
-    case field_type::geometry:
+    case protocol_field_type::decimal:
+    case protocol_field_type::bit:
+    case protocol_field_type::newdecimal:
+    case protocol_field_type::geometry:
     default:
     	return deserialize_text_value_to_variant<std::string_view>(from, output);
 	}
