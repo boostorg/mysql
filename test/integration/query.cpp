@@ -11,11 +11,15 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/use_future.hpp>
+#include "metadata_validator.hpp"
 
 namespace net = boost::asio;
 using namespace testing;
+using namespace mysql;
 
 using mysql::detail::make_error_code;
+using mysql::test::meta_validator;
+using mysql::test::validate_meta;
 
 namespace
 {
@@ -46,7 +50,7 @@ struct QueryTest : public Test
 		conn.next_level().close(errc);
 	}
 
-	void ValidateEof(const resultset_type& result, int affected_rows=0,
+	void validate_eof(const resultset_type& result, int affected_rows=0,
 			int warnings=0, int last_insert=0, std::string_view info="")
 	{
 		EXPECT_TRUE(result.valid());
@@ -56,6 +60,15 @@ struct QueryTest : public Test
 		EXPECT_EQ(result.last_insert_id(), last_insert);
 		EXPECT_EQ(result.info(), info);
 	}
+
+	void validate_2fields_meta(const resultset_type& result, const std::string& table) const
+	{
+		validate_meta(result.fields(), {
+			meta_validator(table, "id", field_type::int_),
+			meta_validator(table, "field_varchar", field_type::varchar, collation::utf8_general_ci)
+		});
+	}
+
 };
 
 template <typename... Types>
@@ -107,8 +120,7 @@ TEST_F(QueryTest, QuerySyncErrc_SelectOk)
 	ASSERT_EQ(errc, mysql::error_code());
 	EXPECT_TRUE(result.valid());
 	EXPECT_FALSE(result.complete());
-	EXPECT_EQ(result.fields().size(), 2);
-	// TODO: validate these metadata
+	validate_2fields_meta(result, "empty_table");
 }
 
 TEST_F(QueryTest, FetchOneSyncErrc_SelectOkNoResults)
@@ -122,14 +134,14 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkNoResults)
 	const mysql::row* row = result.fetch_one(errc);
 	EXPECT_EQ(errc, mysql::error_code());
 	EXPECT_EQ(row, nullptr);
-	// TODO: validate metadata
-	ValidateEof(result);
+	validate_2fields_meta(result, "empty_table");
+	validate_eof(result);
 
 	// Fetching again just returns null
 	row = result.fetch_one(errc);
 	EXPECT_EQ(errc, mysql::error_code());
 	EXPECT_EQ(row, nullptr);
-	ValidateEof(result);
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, FetchOneSyncErrc_SelectOkOneRow)
@@ -143,7 +155,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkOneRow)
 	const mysql::row* row = result.fetch_one(errc);
 	ASSERT_EQ(errc, mysql::error_code());
 	ASSERT_NE(row, nullptr);
-	// TODO: validate metadata
+	validate_2fields_meta(result, "one_row_table");
 	EXPECT_EQ(row->values(), makevalues(1, "f0"));
 	EXPECT_FALSE(result.complete());
 
@@ -151,7 +163,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkOneRow)
 	row = result.fetch_one(errc);
 	ASSERT_EQ(errc, mysql::error_code());
 	ASSERT_EQ(row, nullptr);
-	ValidateEof(result);
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
@@ -165,7 +177,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
 	const mysql::row* row = result.fetch_one(errc);
 	ASSERT_EQ(errc, mysql::error_code());
 	ASSERT_NE(row, nullptr);
-	// TODO: validate metadata
+	validate_2fields_meta(result, "two_rows_table");
 	EXPECT_EQ(row->values(), makevalues(1, "f0"));
 	EXPECT_FALSE(result.complete());
 
@@ -173,7 +185,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
 	row = result.fetch_one(errc);
 	ASSERT_EQ(errc, mysql::error_code());
 	ASSERT_NE(row, nullptr);
-	// TODO: validate metadata
+	validate_2fields_meta(result, "two_rows_table");
 	EXPECT_EQ(row->values(), makevalues(2, "f1"));
 	EXPECT_FALSE(result.complete());
 
@@ -181,7 +193,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
 	row = result.fetch_one(errc);
 	ASSERT_EQ(errc, mysql::error_code());
 	ASSERT_EQ(row, nullptr);
-	ValidateEof(result);
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, QuerySyncErrc_SelectQueryFailed)

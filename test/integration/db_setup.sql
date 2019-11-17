@@ -19,21 +19,21 @@ INSERT INTO updates_table (field_varchar, field_int)
 VALUES ('f0', 42), ('f1', 43);
 
 CREATE TABLE empty_table (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	field_varchar VARCHAR(255) NOT NULL
+	id INT,
+	field_varchar VARCHAR(255)
 );
 
 CREATE TABLE one_row_table (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	field_varchar VARCHAR(255) NOT NULL
+	id INT,
+	field_varchar VARCHAR(255)
 );
-INSERT INTO one_row_table (field_varchar) VALUES ('f0');
+INSERT INTO one_row_table VALUES (1, 'f0');
 
 CREATE TABLE two_rows_table (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	field_varchar VARCHAR(255) NOT NULL
+	id INT,
+	field_varchar VARCHAR(255)
 );
-INSERT INTO two_rows_table (field_varchar) VALUES ('f0'), ('f1');
+INSERT INTO two_rows_table VALUES (1, 'f0'), (2, 'f1');
 
 CREATE TABLE ints_table(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,

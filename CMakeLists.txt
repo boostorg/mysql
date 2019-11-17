@@ -89,6 +89,7 @@ gtest_discover_tests(unittests)
 # Integration testing
 add_executable(
 	integrationtests
+	test/integration/metadata_validator.cpp
 	test/integration/handshake.cpp
 	test/integration/query.cpp
 )
