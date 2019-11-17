@@ -10,6 +10,12 @@ namespace mysql
 namespace detail
 {
 
+template <typename ChannelType>
+using channel_stream_type = typename ChannelType::stream_type;
+
+template <typename ChannelType, typename Allocator>
+using channel_resultset_type = resultset<channel_stream_type<ChannelType>, Allocator>;
+
 enum class fetch_result
 {
 	error,
@@ -21,9 +27,18 @@ template <typename ChannelType, typename Allocator>
 void execute_query(
 	ChannelType& channel,
 	std::string_view query,
-	resultset<ChannelType, Allocator>& output,
+	channel_resultset_type<ChannelType, Allocator>& output,
 	error_code& err
 );
+
+template <typename ChannelType, typename Allocator, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, channel_resultset_type<ChannelType, Allocator>))
+async_execute_query(
+	ChannelType& channel,
+	std::string_view query,
+	CompletionToken&& token
+);
+
 
 template <typename ChannelType, typename Allocator>
 fetch_result fetch_text_row(

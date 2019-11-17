@@ -66,5 +66,19 @@ mysql::resultset<Stream, Allocator> mysql::connection<Stream, Allocator>::query(
 	return res;
 }
 
+template <typename Stream, typename Allocator>
+template <typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::resultset<Stream, Allocator>))
+mysql::connection<Stream, Allocator>::async_query(
+	std::string_view query_string,
+	CompletionToken&& token
+)
+{
+	return detail::async_execute_query<channel_type, Allocator>(
+		query_string,
+		std::forward<CompletionToken>(token)
+	);
+}
+
 
 #endif /* INCLUDE_MYSQL_IMPL_CONNECTION_IMPL_HPP_ */
