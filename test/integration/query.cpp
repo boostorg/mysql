@@ -8,6 +8,7 @@
 #include "mysql/connection.hpp"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <boost/system/system_error.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/use_future.hpp>
@@ -77,6 +78,7 @@ std::vector<mysql::value> makevalues(Types&&... args)
 	return std::vector<mysql::value>{mysql::value(std::forward<Types>(args))...};
 }
 
+// Query (just query, no result fetching), sync errc
 TEST_F(QueryTest, QuerySyncErrc_InsertQueryOk)
 {
 	auto result = conn.query(
@@ -113,7 +115,6 @@ TEST_F(QueryTest, QuerySyncErrc_UpdateQueryOk)
 	EXPECT_THAT(std::string(result.info()), HasSubstr("Rows matched"));
 }
 
-// Protocol handling of QUERY with results
 TEST_F(QueryTest, QuerySyncErrc_SelectOk)
 {
 	auto result = conn.query("SELECT * FROM empty_table", errc);
@@ -123,6 +124,30 @@ TEST_F(QueryTest, QuerySyncErrc_SelectOk)
 	validate_2fields_meta(result, "empty_table");
 }
 
+// Query sync exc
+TEST_F(QueryTest, QuerySyncExc_Ok)
+{
+	auto result = conn.query(
+			"INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')");
+	EXPECT_TRUE(result.fields().empty());
+	EXPECT_TRUE(result.valid());
+	EXPECT_TRUE(result.complete());
+	EXPECT_EQ(result.affected_rows(), 1);
+	EXPECT_EQ(result.warning_count(), 0);
+	EXPECT_GT(result.last_insert_id(), 0);
+	EXPECT_EQ(result.info(), "");
+}
+
+TEST_F(QueryTest, QuerySyncExc_Error)
+{
+	EXPECT_THROW(
+		conn.query("INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')"),
+		boost::system::system_error
+	);
+}
+
+
+// Fetch
 TEST_F(QueryTest, FetchOneSyncErrc_SelectOkNoResults)
 {
 	auto result = conn.query("SELECT * FROM empty_table");
