@@ -76,6 +76,7 @@ add_executable(
 	test/metadata.cpp
 	test/deserialize_row.cpp
 	test/value.cpp
+	test/row.cpp
 )
 target_include_directories(
 	unittests

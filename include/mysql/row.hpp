@@ -4,6 +4,7 @@
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/value.hpp"
 #include "mysql/metadata.hpp"
+#include <algorithm>
 
 namespace mysql
 {
@@ -36,6 +37,18 @@ public:
 	owning_row& operator=(owning_row&&) = default;
 	~owning_row() = default;
 };
+
+// Note: only values are checked, metadata do not have to match
+inline bool operator==(const row& lhs, const row& rhs)
+{
+	if (lhs.values().size() != rhs.values().size()) return false;
+	return std::equal(
+		lhs.values().begin(),
+		lhs.values().end(),
+		rhs.values().begin()
+	);
+}
+inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 
 }
 

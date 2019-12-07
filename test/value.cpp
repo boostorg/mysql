@@ -17,7 +17,7 @@ using namespace ::date::literals;
 namespace
 {
 
-struct ValuesTest : public testing::Test
+struct ValuesTest : public Test
 {
 	std::vector<value> values = makevalues(
 		std::int32_t(20),
