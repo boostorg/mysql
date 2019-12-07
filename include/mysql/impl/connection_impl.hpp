@@ -75,6 +75,7 @@ mysql::connection<Stream, Allocator>::async_query(
 )
 {
 	return detail::async_execute_query<channel_type, Allocator>(
+		channel_,
 		query_string,
 		std::forward<CompletionToken>(token)
 	);

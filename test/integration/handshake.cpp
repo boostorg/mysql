@@ -6,9 +6,7 @@
  */
 
 #include "mysql/connection.hpp"
-#include <gtest/gtest.h>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include "integration_test_common.hpp"
 #include <boost/asio/use_future.hpp>
 
 namespace net = boost::asio;
@@ -19,41 +17,8 @@ using mysql::detail::make_error_code;
 namespace
 {
 
-struct HandshakeTest : public Test
+struct HandshakeTest : public mysql::test::IntegTest
 {
-	mysql::connection_params connection_params {
-		mysql::collation::utf8_general_ci,
-		"root",
-		"root",
-		"awesome"
-	};
-	net::io_context ctx;
-	mysql::connection<net::ip::tcp::socket> conn {ctx};
-	mysql::error_code errc;
-
-	HandshakeTest()
-	{
-		net::ip::tcp::endpoint endpoint (net::ip::address_v4::loopback(), 3306);
-		conn.next_level().connect(endpoint);
-	}
-
-	~HandshakeTest()
-	{
-		conn.next_level().close(errc);
-	}
-
-	void validate_exception(std::future<void>& fut, mysql::error_code expected_errc)
-	{
-		try
-		{
-			fut.get();
-			FAIL() << "Expected asynchronous operation to fail";
-		}
-		catch (const boost::system::system_error& exc)
-		{
-			EXPECT_EQ(exc.code(), expected_errc);
-		}
-	}
 };
 
 // Sync with error codes
@@ -141,7 +106,7 @@ TEST_F(HandshakeTest, Async_FastAuthBadUser)
 	connection_params.username = "non_existing_user";
 	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
 	ctx.run();
-	validate_exception(fut, make_error_code(mysql::Error::access_denied_error));
+	validate_future_exception(fut, make_error_code(mysql::Error::access_denied_error));
 }
 
 TEST_F(HandshakeTest, Async_FastAuthBadPassword)
@@ -149,7 +114,7 @@ TEST_F(HandshakeTest, Async_FastAuthBadPassword)
 	connection_params.password = "bad_password";
 	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
 	ctx.run();
-	validate_exception(fut, make_error_code(mysql::Error::access_denied_error));
+	validate_future_exception(fut, make_error_code(mysql::Error::access_denied_error));
 }
 
 TEST_F(HandshakeTest, Async_FastAuthBadDatabase)
@@ -157,7 +122,7 @@ TEST_F(HandshakeTest, Async_FastAuthBadDatabase)
 	connection_params.database = "bad_db";
 	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
 	ctx.run();
-	validate_exception(fut, make_error_code(mysql::Error::bad_db_error));
+	validate_future_exception(fut, make_error_code(mysql::Error::bad_db_error));
 }
 
 } // anon namespace

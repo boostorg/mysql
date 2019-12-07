@@ -37,7 +37,7 @@ public:
 		channel_.reset_sequence_number();
 	}
 
-	std::optional<std::uint64_t> // ok, err, or a number of fields
+	std::optional<std::uint64_t> // has value if there are fields in the response
 	process_query_response(
 		channel_resultset_type<ChannelType, Allocator>& output,
 		error_code& err
@@ -179,7 +179,8 @@ mysql::detail::async_execute_query(
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
-		query_processor<ChannelType, Allocator> processor_;
+		std::shared_ptr<query_processor<ChannelType, Allocator>> processor_;
+		std::uint64_t remaining_fields_ {0};
 
 		Op(
 			HandlerType&& handler,
@@ -187,28 +188,34 @@ mysql::detail::async_execute_query(
 			std::string_view query
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
-			processor_(channel)
+			processor_(std::make_shared<query_processor<ChannelType, Allocator>>(channel))
 		{
-			processor_.process_query_request(query);
+			processor_->process_query_request(query);
 		}
 
-		std::optional<std::uint64_t> process_query_response(bool cont)
+		// true => has fields (must continue reading)
+		bool process_query_response(bool cont)
 		{
 			ResultsetType resultset;
 			error_code err;
-			auto num_fields = processor_.process_query_response(resultset, err);
+			auto num_fields = processor_->process_query_response(resultset, err);
 			if (!num_fields) // ok or err
 			{
-				complete(cont, err, std::move(resultset));
+				this->complete(cont, err, std::move(resultset));
+				return false;
 			}
-			return num_fields;
+			else
+			{
+				remaining_fields_ = *num_fields;
+				return true;
+			}
 		}
 
 		void complete_with_fields(bool cont)
 		{
 			ResultsetType resultset;
-			std::move(processor_).create_resultset(resultset);
-			complete(cont, error_code(), std::move(resultset));
+			std::move(*processor_).create_resultset(resultset);
+			this->complete(cont, error_code(), std::move(resultset));
 		}
 
 		void operator()(
@@ -216,52 +223,58 @@ mysql::detail::async_execute_query(
 			bool cont=true
 		)
 		{
-			std::optional<std::uint64_t> num_fields;
 			reenter(*this)
 			{
 				// The request message has already been composed in the ctor. Send it
-				yield processor_.channel().async_write(
-					boost::asio::buffer(processor_.buffer()),
+				yield processor_->channel().async_write(
+					boost::asio::buffer(processor_->buffer()),
 					std::move(*this)
 				);
 				if (err)
 				{
-					complete(cont, err, ResultsetType());
+					this->complete(cont, err, ResultsetType());
 					yield break;
 				}
 
 				// Read the response
-				yield processor_.channel().read(processor_.buffer(), std::move(*this));
+				yield processor_->channel().async_read(
+					processor_->buffer(),
+					std::move(*this)
+				);
 				if (err)
 				{
-					complete(cont, err, ResultsetType());
+					this->complete(cont, err, ResultsetType());
 					yield break;
 				}
 
 				// Response may be: ok_packet, err_packet, local infile request (TODO), or response with fields
-				num_fields = process_query_response(cont);
-				if (!num_fields)
+				if (!process_query_response(cont))
 				{
 					// Not a response with fields. complete() already called
 					yield break;
 				}
 
 				// Read all of the field definitions
-				for (std::uint64_t i = 0; i < *num_fields; ++i)
+				while (remaining_fields_ > 0)
 				{
 					// Read the field definition packet
-					yield processor_.channel().async_read(processor_.buffer(), std::move(*this));
+					yield processor_->channel().async_read(
+						processor_->buffer(),
+						std::move(*this)
+					);
 					if (!err)
 					{
 						// Process the message
-						err = processor_.process_field_definition();
+						err = processor_->process_field_definition();
 					}
 
 					if (err)
 					{
-						complete(cont, err, ResultsetType());
+						this->complete(cont, err, ResultsetType());
 						yield break;
 					}
+
+					remaining_fields_--;
 				}
 
 				// No EOF packet is expected here, as we require deprecate EOF capabilities
