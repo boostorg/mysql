@@ -27,6 +27,15 @@ const mysql::row* mysql::resultset<ChannelType>::fetch_one(
 	return result == detail::fetch_result::row ? &current_row_ : nullptr;
 }
 
+template <typename ChannelType>
+const mysql::row* mysql::resultset<ChannelType>::fetch_one()
+{
+	error_code errc;
+	const row* res = fetch_one(errc);
+	detail::check_error_code(errc);
+	return res;
+}
+
 
 
 #endif /* INCLUDE_MYSQL_IMPL_RESULTSET_IMPL_HPP_ */

@@ -278,6 +278,34 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
 	validate_eof(result);
 }
 
+// There seems to be no real case where fetch can fail (other than net fails)
+
+TEST_F(QueryTest, FetchOneSyncExc_SelectOkTwoRows)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+	EXPECT_TRUE(result.valid());
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(result.fields().size(), 2);
+
+	// Fetch first row
+	const mysql::row* row = result.fetch_one();
+	ASSERT_NE(row, nullptr);
+	validate_2fields_meta(result, "two_rows_table");
+	EXPECT_EQ(row->values(), makevalues(1, "f0"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next row
+	row = result.fetch_one();
+	ASSERT_NE(row, nullptr);
+	validate_2fields_meta(result, "two_rows_table");
+	EXPECT_EQ(row->values(), makevalues(2, "f1"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next: end of resultset
+	row = result.fetch_one();
+	ASSERT_EQ(row, nullptr);
+	validate_eof(result);
+}
 
 
 // Query for INT types
