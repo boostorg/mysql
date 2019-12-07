@@ -23,7 +23,7 @@ public:
 	MOCK_METHOD2(write, void(boost::asio::const_buffer, error_code&));
 
 	template <typename Allocator>
-	void read(bytestring<Allocator>& buffer, error_code& errc)
+	void read(basic_bytestring<Allocator>& buffer, error_code& errc)
 	{
 		read_impl(buffer, errc);
 	}

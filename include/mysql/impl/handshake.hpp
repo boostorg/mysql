@@ -21,20 +21,20 @@ struct handshake_params
 	std::string_view database;
 };
 
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 void hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
-	bytestring<Allocator>& buffer,
+	bytestring& buffer,
 	error_code& err
 );
 
-template <typename ChannelType, typename Allocator, typename CompletionToken>
+template <typename ChannelType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,
-	bytestring<Allocator>& buffer,
+	bytestring& buffer,
 	CompletionToken&& token
 );
 

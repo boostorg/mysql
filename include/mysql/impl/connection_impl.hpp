@@ -6,8 +6,8 @@
 #include <boost/asio/buffer.hpp>
 
 // Handshake
-template <typename Stream, typename Allocator>
-void mysql::connection<Stream, Allocator>::handshake(
+template <typename Stream>
+void mysql::connection<Stream>::handshake(
 	const connection_params& params,
 	error_code& errc
 )
@@ -16,8 +16,8 @@ void mysql::connection<Stream, Allocator>::handshake(
 	// TODO: should we close() the stream in case of error?
 }
 
-template <typename Stream, typename Allocator>
-void mysql::connection<Stream, Allocator>::handshake(
+template <typename Stream>
+void mysql::connection<Stream>::handshake(
 	const connection_params& params
 )
 {
@@ -26,10 +26,10 @@ void mysql::connection<Stream, Allocator>::handshake(
 	detail::check_error_code(errc);
 }
 
-template <typename Stream, typename Allocator>
+template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
-mysql::connection<Stream, Allocator>::async_handshake(
+mysql::connection<Stream>::async_handshake(
 	const connection_params& params,
 	CompletionToken&& token
 )
@@ -43,38 +43,38 @@ mysql::connection<Stream, Allocator>::async_handshake(
 }
 
 // Query
-template <typename Stream, typename Allocator>
-mysql::resultset<Stream, Allocator> mysql::connection<Stream, Allocator>::query(
+template <typename Stream>
+mysql::resultset<Stream> mysql::connection<Stream>::query(
 	std::string_view query_string,
 	error_code& err
 )
 {
-	resultset<Stream, Allocator> res;
+	resultset<Stream> res;
 	detail::execute_query(channel_, query_string, res, err);
 	return res;
 }
 
-template <typename Stream, typename Allocator>
-mysql::resultset<Stream, Allocator> mysql::connection<Stream, Allocator>::query(
+template <typename Stream>
+mysql::resultset<Stream> mysql::connection<Stream>::query(
 	std::string_view query_string
 )
 {
-	resultset<Stream, Allocator> res;
+	resultset<Stream> res;
 	error_code err;
 	detail::execute_query(channel_, query_string, res, err);
 	detail::check_error_code(err);
 	return res;
 }
 
-template <typename Stream, typename Allocator>
+template <typename Stream>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::resultset<Stream, Allocator>))
-mysql::connection<Stream, Allocator>::async_query(
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::resultset<Stream>))
+mysql::connection<Stream>::async_query(
 	std::string_view query_string,
 	CompletionToken&& token
 )
 {
-	return detail::async_execute_query<channel_type, Allocator>(
+	return detail::async_execute_query(
 		channel_,
 		query_string,
 		std::forward<CompletionToken>(token)

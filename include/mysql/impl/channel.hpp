@@ -32,13 +32,13 @@ public:
 	channel(AsyncStream& stream): next_layer_ {stream} {};
 
 	template <typename Allocator>
-	void read(std::vector<std::uint8_t, Allocator>& buffer, error_code& errc);
+	void read(basic_bytestring<Allocator>& buffer, error_code& errc);
 
 	void write(boost::asio::const_buffer buffer, error_code& errc);
 
 	template <typename Allocator, typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
-	async_read(std::vector<std::uint8_t, Allocator>& buffer, CompletionToken&& token);
+	async_read(basic_bytestring<Allocator>& buffer, CompletionToken&& token);
 
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))

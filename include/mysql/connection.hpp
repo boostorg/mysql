@@ -12,14 +12,14 @@ namespace mysql
 
 using connection_params = detail::handshake_params; // TODO: do we think this interface is good enough?
 
-template <typename Stream, typename Allocator=std::allocator<std::uint8_t>>
+template <typename Stream>
 class connection
 {
 	using channel_type = detail::channel<Stream>;
 
 	Stream next_level_;
 	channel_type channel_;
-	detail::bytestring<Allocator> buffer_;
+	detail::bytestring buffer_;
 public:
 	template <typename... Args>
 	connection(Args&&... args) :
@@ -38,11 +38,11 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 	async_handshake(const connection_params& params, CompletionToken&& token);
 
-	resultset<Stream, Allocator> query(std::string_view query_string, error_code&);
-	resultset<Stream, Allocator> query(std::string_view query_string);
+	resultset<Stream> query(std::string_view query_string, error_code&);
+	resultset<Stream> query(std::string_view query_string);
 
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream, Allocator>))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
 	async_query(std::string_view query_string, CompletionToken&& token);
 };
 

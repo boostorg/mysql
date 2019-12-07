@@ -76,7 +76,7 @@ void mysql::detail::channel<AsyncStream>::process_header_write(
 template <typename AsyncStream>
 template <typename Allocator>
 void mysql::detail::channel<AsyncStream>::read(
-	std::vector<std::uint8_t, Allocator>& buffer,
+	basic_bytestring<Allocator>& buffer,
 	error_code& errc
 )
 {
@@ -138,7 +138,7 @@ template <typename AsyncStream>
 template <typename Allocator, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
 mysql::detail::channel<AsyncStream>::async_read(
-	std::vector<std::uint8_t, Allocator>& buffer,
+	basic_bytestring<Allocator>& buffer,
 	CompletionToken&& token
 )
 {
@@ -151,13 +151,13 @@ mysql::detail::channel<AsyncStream>::async_read(
 	struct Op: BaseType, boost::asio::coroutine
 	{
 		channel<AsyncStream>& stream_;
-		std::vector<std::uint8_t, Allocator>& buffer_;
+		basic_bytestring<Allocator>& buffer_;
 		std::size_t total_transferred_size_ = 0;
 
 		Op(
 			HandlerType&& handler,
 			channel<AsyncStream>& stream,
-			std::vector<std::uint8_t, Allocator>& buffer
+			basic_bytestring<Allocator>& buffer
 		):
 			BaseType(std::move(handler), stream.next_layer_.get_executor()),
 			stream_(stream),

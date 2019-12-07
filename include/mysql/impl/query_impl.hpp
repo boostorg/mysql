@@ -12,13 +12,13 @@ namespace detail
 {
 
 
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 class query_processor
 {
 	ChannelType& channel_;
-	bytestring<Allocator> buffer_;
+	bytestring buffer_;
 	std::vector<field_metadata> fields_;
-	std::vector<bytestring<Allocator>> field_buffers_;
+	std::vector<bytestring> field_buffers_;
 public:
 	query_processor(ChannelType& channel): channel_(channel) {};
 	void process_query_request(
@@ -39,7 +39,7 @@ public:
 
 	std::optional<std::uint64_t> // has value if there are fields in the response
 	process_query_response(
-		channel_resultset_type<ChannelType, Allocator>& output,
+		channel_resultset_type<ChannelType>& output,
 		error_code& err
 	)
 	{
@@ -55,7 +55,7 @@ public:
 			msgs::ok_packet ok_packet;
 			err = deserialize_message(ok_packet, ctx);
 			if (err) return {};
-			output = channel_resultset_type<ChannelType, Allocator>(channel_, std::move(buffer_), ok_packet);
+			output = channel_resultset_type<ChannelType>(channel_, std::move(buffer_), ok_packet);
 			err.clear();
 			return {};
 		}
@@ -91,18 +91,18 @@ public:
 		// Add it to our array
 		fields_.push_back(field_definition);
 		field_buffers_.push_back(std::move(buffer_));
-		buffer_ = bytestring<Allocator>();
+		buffer_ = bytestring();
 
 		return error_code();
 	}
 
 	void create_resultset(
-		channel_resultset_type<ChannelType, Allocator>& output
+		channel_resultset_type<ChannelType>& output
 	) &&
 	{
-		output = channel_resultset_type<ChannelType, Allocator>(
+		output = channel_resultset_type<ChannelType>(
 			channel_,
-			resultset_metadata<Allocator>(std::move(field_buffers_), std::move(fields_))
+			resultset_metadata(std::move(field_buffers_), std::move(fields_))
 		);
 	}
 
@@ -113,16 +113,16 @@ public:
 } // detail
 } // mysql
 
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 void mysql::detail::execute_query(
 	ChannelType& channel,
 	std::string_view query,
-	resultset<channel_stream_type<ChannelType>, Allocator>& output,
+	resultset<channel_stream_type<ChannelType>>& output,
 	error_code& err
 )
 {
 	// Compose a com_query message, reset seq num
-	query_processor<ChannelType, Allocator> processor (channel);
+	query_processor<ChannelType> processor (channel);
 	processor.process_query_request(query);
 
 	// Send it
@@ -158,10 +158,10 @@ void mysql::detail::execute_query(
 }
 
 
-template <typename ChannelType, typename Allocator, typename CompletionToken>
+template <typename ChannelType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::detail::channel_resultset_type<ChannelType, Allocator>)
+	void(mysql::error_code, mysql::detail::channel_resultset_type<ChannelType>)
 )
 mysql::detail::async_execute_query(
 	ChannelType& channel,
@@ -169,17 +169,17 @@ mysql::detail::async_execute_query(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, channel_resultset_type<ChannelType, Allocator>);
+	using HandlerSignature = void(error_code, channel_resultset_type<ChannelType>);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using StreamType = typename ChannelType::stream_type;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-	using ResultsetType = channel_resultset_type<ChannelType, Allocator>;
+	using ResultsetType = channel_resultset_type<ChannelType>;
 
 	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
-		std::shared_ptr<query_processor<ChannelType, Allocator>> processor_;
+		std::shared_ptr<query_processor<ChannelType>> processor_;
 		std::uint64_t remaining_fields_ {0};
 
 		Op(
@@ -188,7 +188,7 @@ mysql::detail::async_execute_query(
 			std::string_view query
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
-			processor_(std::make_shared<query_processor<ChannelType, Allocator>>(channel))
+			processor_(std::make_shared<query_processor<ChannelType>>(channel))
 		{
 			processor_->process_query_request(query);
 		}
@@ -294,11 +294,11 @@ mysql::detail::async_execute_query(
 
 
 
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 mysql::detail::fetch_result mysql::detail::fetch_text_row(
 	ChannelType& channel,
 	const std::vector<field_metadata>& meta,
-	bytestring<Allocator>& buffer,
+	bytestring& buffer,
 	std::vector<value>& output_values,
 	msgs::ok_packet& output_ok_packet,
 	error_code& err

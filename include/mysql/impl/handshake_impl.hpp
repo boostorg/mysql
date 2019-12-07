@@ -128,8 +128,7 @@ public:
 		);
 	}
 
-	template <typename Allocator>
-	error_code process_handshake(bytestring<Allocator>& buffer)
+	error_code process_handshake(bytestring& buffer)
 	{
 		// Deserialize server greeting
 		msgs::handshake handshake;
@@ -159,9 +158,8 @@ public:
 		return error_code();
 	}
 
-	template <typename Allocator>
 	error_code process_handshake_server_response(
-		bytestring<Allocator>& buffer,
+		bytestring& buffer,
 		bool& auth_complete
 	)
 	{
@@ -229,11 +227,11 @@ public:
 
 
 // TODO: support compression, SSL, more authentication methods
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 void mysql::detail::hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
-	bytestring<Allocator>& buffer,
+	bytestring& buffer,
 	error_code& err
 )
 {
@@ -281,12 +279,12 @@ void mysql::detail::hanshake(
 	channel.set_current_capabilities(processor.negotiated_capabilities());
 }
 
-template <typename ChannelType, typename Allocator, typename CompletionToken>
+template <typename ChannelType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
 mysql::detail::async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,
-	bytestring<Allocator>& buffer,
+	bytestring& buffer,
 	CompletionToken&& token
 )
 {
@@ -300,13 +298,13 @@ mysql::detail::async_handshake(
 	struct Op: BaseType, boost::asio::coroutine
 	{
 		ChannelType& channel_;
-		bytestring<Allocator>& buffer_;
+		bytestring& buffer_;
 		handshake_processor processor_;
 
 		Op(
 			HandlerType&& handler,
 			ChannelType& channel,
-			bytestring<Allocator>& buffer,
+			bytestring& buffer,
 			const handshake_params& params
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),

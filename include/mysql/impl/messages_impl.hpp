@@ -171,7 +171,7 @@ template <typename Serializable, typename Allocator>
 void mysql::detail::serialize_message(
 	const Serializable& input,
 	capabilities caps,
-	std::vector<std::uint8_t, Allocator>& buffer
+	basic_bytestring<Allocator>& buffer
 )
 {
 	SerializationContext ctx (caps);

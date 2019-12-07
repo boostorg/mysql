@@ -13,8 +13,8 @@ namespace detail
 template <typename ChannelType>
 using channel_stream_type = typename ChannelType::stream_type;
 
-template <typename ChannelType, typename Allocator>
-using channel_resultset_type = resultset<channel_stream_type<ChannelType>, Allocator>;
+template <typename ChannelType>
+using channel_resultset_type = resultset<channel_stream_type<ChannelType>>;
 
 enum class fetch_result
 {
@@ -23,16 +23,16 @@ enum class fetch_result
 	eof
 };
 
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 void execute_query(
 	ChannelType& channel,
 	std::string_view query,
-	channel_resultset_type<ChannelType, Allocator>& output,
+	channel_resultset_type<ChannelType>& output,
 	error_code& err
 );
 
-template <typename ChannelType, typename Allocator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, channel_resultset_type<ChannelType, Allocator>))
+template <typename ChannelType, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, channel_resultset_type<ChannelType>))
 async_execute_query(
 	ChannelType& channel,
 	std::string_view query,
@@ -40,11 +40,11 @@ async_execute_query(
 );
 
 
-template <typename ChannelType, typename Allocator>
+template <typename ChannelType>
 fetch_result fetch_text_row(
 	ChannelType& channel,
 	const std::vector<field_metadata>& meta,
-	bytestring<Allocator>& buffer,
+	bytestring& buffer,
 	std::vector<value>& output_values,
 	msgs::ok_packet& output_ok_packet,
 	error_code& err

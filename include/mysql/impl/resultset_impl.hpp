@@ -4,8 +4,8 @@
 #include "mysql/impl/query.hpp"
 #include <cassert>
 
-template <typename ChannelType, typename Allocator>
-const mysql::row* mysql::resultset<ChannelType, Allocator>::fetch_one(
+template <typename ChannelType>
+const mysql::row* mysql::resultset<ChannelType>::fetch_one(
 	error_code& err
 )
 {

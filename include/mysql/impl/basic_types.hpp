@@ -42,7 +42,9 @@ struct string_eof : ValueHolder<std::string_view> {};
 struct string_lenenc : ValueHolder<std::string_view> {};
 
 template <typename Allocator>
-using bytestring = std::vector<std::uint8_t, Allocator>;
+using basic_bytestring = std::vector<std::uint8_t, Allocator>;
+
+using bytestring = std::vector<std::uint8_t>;
 
 }
 }

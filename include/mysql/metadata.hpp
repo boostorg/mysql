@@ -42,14 +42,13 @@ public:
 namespace detail
 {
 
-template <typename Allocator>
 class resultset_metadata
 {
-	std::vector<bytestring<Allocator>> buffers_;
+	std::vector<bytestring> buffers_;
 	std::vector<field_metadata> fields_;
 public:
 	resultset_metadata() = default;
-	resultset_metadata(std::vector<bytestring<Allocator>>&& buffers, std::vector<field_metadata>&& fields):
+	resultset_metadata(std::vector<bytestring>&& buffers, std::vector<field_metadata>&& fields):
 		buffers_(std::move(buffers)), fields_(std::move(fields)) {};
 	resultset_metadata(const resultset_metadata&) = delete;
 	resultset_metadata(resultset_metadata&&) = default;
