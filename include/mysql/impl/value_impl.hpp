@@ -1,6 +1,7 @@
 #ifndef INCLUDE_MYSQL_IMPL_VALUE_IMPL_HPP_
 #define INCLUDE_MYSQL_IMPL_VALUE_IMPL_HPP_
 
+#include "mysql/impl/container_equals.hpp"
 
 namespace mysql
 {
@@ -36,6 +37,14 @@ inline bool mysql::operator==(
 		using T = std::decay_t<decltype(rhs_value)>;
 		return std::get<T>(lhs) == rhs_value;
 	}, rhs);
+}
+
+inline bool mysql::operator==(
+	const std::vector<value>& lhs,
+	const std::vector<value>& rhs
+)
+{
+	return detail::container_equals(lhs, rhs);
 }
 
 

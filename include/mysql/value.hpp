@@ -33,6 +33,9 @@ using value = std::variant<
 inline bool operator==(const value& lhs, const value& rhs);
 inline bool operator!=(const value& lhs, const value& rhs) { return !(lhs == rhs); }
 
+inline bool operator==(const std::vector<value>& lhs, const std::vector<value>& rhs);
+inline bool operator!=(const std::vector<value>& lhs, const std::vector<value>& rhs) { return !(lhs == rhs); }
+
 }
 
 #include "mysql/impl/value_impl.hpp"
