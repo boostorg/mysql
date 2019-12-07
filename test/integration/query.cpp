@@ -50,14 +50,33 @@ struct QueryTest : public mysql::test::IntegTest
 	}
 
 	void validate_2fields_meta(
+		const std::vector<field_metadata>& fields,
+		const std::string& table
+	) const
+	{
+		validate_meta(fields, {
+			meta_validator(table, "id", field_type::int_),
+			meta_validator(table, "field_varchar", field_type::varchar, collation::utf8_general_ci)
+		});
+	}
+
+	void validate_2fields_meta(
 		const resultset_type& result,
 		const std::string& table
 	) const
 	{
-		validate_meta(result.fields(), {
-			meta_validator(table, "id", field_type::int_),
-			meta_validator(table, "field_varchar", field_type::varchar, collation::utf8_general_ci)
-		});
+		validate_2fields_meta(result.fields(), table);
+	}
+
+	void validate_2fields_meta(
+		const std::vector<owning_row>& rows,
+		const std::string& table
+	) const
+	{
+		for (const auto& row: rows)
+		{
+			validate_2fields_meta(row.metadata(), table);
+		}
 	}
 
 };
@@ -329,15 +348,15 @@ TEST_F(QueryTest, FetchMany_MoreRowsThanCount)
 	auto rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_FALSE(result.complete());
-	EXPECT_EQ(rows.size(), 2);
-	// TODO: check values & metadata
+	validate_2fields_meta(rows, "three_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 
 	// Fetch another two (completes the resultset)
 	rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(result.complete());
-	EXPECT_EQ(rows.size(), 1);
-	// TODO: check values & metadata
+	validate_2fields_meta(rows, "three_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 3, "f2")));
 }
 
 TEST_F(QueryTest, FetchMany_LessRowsThanCount)
@@ -348,8 +367,8 @@ TEST_F(QueryTest, FetchMany_LessRowsThanCount)
 	auto rows = result.fetch_many(3, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(result.complete());
-	EXPECT_EQ(rows.size(), 2);
-	// TODO: check values & metadata
+	validate_2fields_meta(rows, "two_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
 TEST_F(QueryTest, FetchMany_SameRowsAsCount)
@@ -360,8 +379,8 @@ TEST_F(QueryTest, FetchMany_SameRowsAsCount)
 	auto rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_FALSE(result.complete());
-	EXPECT_EQ(rows.size(), 2);
-	// TODO: check values & metadata
+	validate_2fields_meta(rows, "two_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 
 	// Fetch again, exhausts the resultset
 	rows = result.fetch_many(2, errc);
@@ -378,8 +397,8 @@ TEST_F(QueryTest, FetchMany_CountEqualsOne)
 	auto rows = result.fetch_many(1, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_FALSE(result.complete());
-	EXPECT_EQ(rows.size(), 1);
-	// TODO: check values & metadata
+	validate_2fields_meta(rows, "one_row_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
 }
 
 // Query for INT types
