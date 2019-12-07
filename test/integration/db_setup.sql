@@ -35,6 +35,12 @@ CREATE TABLE two_rows_table (
 );
 INSERT INTO two_rows_table VALUES (1, 'f0'), (2, 'f1');
 
+CREATE TABLE three_rows_table (
+	id INT,
+	field_varchar VARCHAR(255)
+);
+INSERT INTO three_rows_table VALUES (1, 'f0'), (2, 'f1'), (3, 'f2');
+
 CREATE TABLE ints_table(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,
 	signed_tiny TINYINT,

@@ -204,8 +204,8 @@ TEST_F(QueryTest, QueryAsync_SelectQueryFailed)
 }
 
 
-// Fetch
-TEST_F(QueryTest, FetchOneSyncErrc_SelectOkNoResults)
+// FetchOne
+TEST_F(QueryTest, FetchOneSyncErrc_NoResults)
 {
 	auto result = conn.query("SELECT * FROM empty_table");
 	EXPECT_TRUE(result.valid());
@@ -226,7 +226,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkNoResults)
 	validate_eof(result);
 }
 
-TEST_F(QueryTest, FetchOneSyncErrc_SelectOkOneRow)
+TEST_F(QueryTest, FetchOneSyncErrc_OneRow)
 {
 	auto result = conn.query("SELECT * FROM one_row_table");
 	EXPECT_TRUE(result.valid());
@@ -248,7 +248,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkOneRow)
 	validate_eof(result);
 }
 
-TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
+TEST_F(QueryTest, FetchOneSyncErrc_TwoRows)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
 	EXPECT_TRUE(result.valid());
@@ -280,7 +280,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_SelectOkTwoRows)
 
 // There seems to be no real case where fetch can fail (other than net fails)
 
-TEST_F(QueryTest, FetchOneSyncExc_SelectOkTwoRows)
+TEST_F(QueryTest, FetchOneSyncExc_TwoRows)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
 	EXPECT_TRUE(result.valid());
@@ -307,6 +307,84 @@ TEST_F(QueryTest, FetchOneSyncExc_SelectOkTwoRows)
 	validate_eof(result);
 }
 
+// FetchMany
+TEST_F(QueryTest, FetchMany_NoResults)
+{
+	auto result = conn.query("SELECT * FROM empty_table");
+
+	// Fetch many, but there are no results
+	auto rows = result.fetch_many(10, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
+
+	// Fetch again, should return OK and empty
+	rows = result.fetch_many(10, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
+}
+
+TEST_F(QueryTest, FetchMany_MoreRowsThanCount)
+{
+	auto result = conn.query("SELECT * FROM three_rows_table");
+
+	// Fetch 2, one remaining
+	auto rows = result.fetch_many(2, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(rows.size(), 2);
+	// TODO: check values & metadata
+
+	// Fetch another two (completes the resultset)
+	rows = result.fetch_many(2, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(result.complete());
+	EXPECT_EQ(rows.size(), 1);
+	// TODO: check values & metadata
+}
+
+TEST_F(QueryTest, FetchMany_LessRowsThanCount)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	// Fetch 3, resultset exhausted
+	auto rows = result.fetch_many(3, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(result.complete());
+	EXPECT_EQ(rows.size(), 2);
+	// TODO: check values & metadata
+}
+
+TEST_F(QueryTest, FetchMany_SameRowsAsCount)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	// Fetch 2, 0 remaining but resultset not exhausted
+	auto rows = result.fetch_many(2, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(rows.size(), 2);
+	// TODO: check values & metadata
+
+	// Fetch again, exhausts the resultset
+	rows = result.fetch_many(2, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(result.complete());
+	EXPECT_EQ(rows.size(), 0);
+}
+
+TEST_F(QueryTest, FetchMany_CountEqualsOne)
+{
+	auto result = conn.query("SELECT * FROM one_row_table");
+
+	// Fetch 1, 1 remaining
+	auto rows = result.fetch_many(1, errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(rows.size(), 1);
+	// TODO: check values & metadata
+}
 
 // Query for INT types
 
