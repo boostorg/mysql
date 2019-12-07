@@ -219,6 +219,7 @@ mysql::detail::channel<AsyncStream>::async_read(
 		}
 	};
 
+	buffer.clear();
 	Op(std::move(initiator.completion_handler), *this, buffer)(error_code(), 0, false);
 	return initiator.result.get();
 }
