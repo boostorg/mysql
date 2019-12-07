@@ -9,10 +9,10 @@ namespace mysql
 namespace detail
 {
 
-template <typename T>
+template <typename TLeft, typename TRight>
 inline bool container_equals(
-	const std::vector<T>& lhs,
-	const std::vector<T>& rhs
+	const std::vector<TLeft>& lhs,
+	const std::vector<TRight>& rhs
 )
 {
 	if (lhs.size() != rhs.size()) return false;

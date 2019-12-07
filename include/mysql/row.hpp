@@ -43,11 +43,23 @@ public:
 inline bool operator==(const row& lhs, const row& rhs) { return lhs.values() == rhs.values(); }
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 
-inline bool operator==(const std::vector<owning_row>& lhs, const std::vector<owning_row>& rhs)
+// Allow comparisons between vectors of rows and owning rows
+template <
+	typename RowTypeLeft,
+	typename RowTypeRight,
+	typename=std::enable_if_t<std::is_base_of_v<row, RowTypeLeft> && std::is_base_of_v<row, RowTypeRight>>
+>
+inline bool operator==(const std::vector<RowTypeLeft>& lhs, const std::vector<RowTypeRight>& rhs)
 {
 	return detail::container_equals(lhs, rhs);
 }
-inline bool operator!=(const std::vector<owning_row>& lhs, const std::vector<owning_row>& rhs)
+
+template <
+	typename RowTypeLeft,
+	typename RowTypeRight,
+	typename=std::enable_if_t<std::is_base_of_v<row, RowTypeLeft> && std::is_base_of_v<row, RowTypeRight>>
+>
+inline bool operator!=(const std::vector<RowTypeLeft>& lhs, const std::vector<RowTypeRight>& rhs)
 {
 	return !(lhs == rhs);
 }
