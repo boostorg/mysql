@@ -75,6 +75,12 @@ add_executable(
 	test/auth.cpp
 	test/metadata.cpp
 	test/deserialize_row.cpp
+	test/value.cpp
+)
+target_include_directories(
+	unittests
+	PRIVATE
+	test/common
 )
 target_link_libraries(
 	unittests
@@ -99,5 +105,10 @@ target_link_libraries(
 	GTest::GTest
 	GTest::Main
 	mysql_asio
+)
+target_include_directories(
+	integrationtests
+	PRIVATE
+	test/common
 )
 gtest_discover_tests(integrationtests)

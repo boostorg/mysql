@@ -10,10 +10,12 @@
 #include <boost/asio/use_future.hpp>
 #include "metadata_validator.hpp"
 #include "integration_test_common.hpp"
+#include "test_common.hpp"
 
 namespace net = boost::asio;
 using namespace testing;
 using namespace mysql;
+using namespace mysql::test;
 
 using mysql::detail::make_error_code;
 using mysql::test::meta_validator;
@@ -59,12 +61,6 @@ struct QueryTest : public mysql::test::IntegTest
 	}
 
 };
-
-template <typename... Types>
-std::vector<mysql::value> makevalues(Types&&... args)
-{
-	return std::vector<mysql::value>{mysql::value(std::forward<Types>(args))...};
-}
 
 // Query, sync errc
 TEST_F(QueryTest, QuerySyncErrc_InsertQueryOk)

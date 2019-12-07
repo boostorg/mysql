@@ -30,29 +30,12 @@ using value = std::variant<
 	std::nullptr_t     // Any of the above when the value is NULL
 >;
 
-}
-
-// Range checks
-namespace mysql
-{
-namespace detail
-{
-
-constexpr date min_date = ::date::day(1)/::date::January/::date::year(100); // some implementations support less than the official
-constexpr date max_date = ::date::day(31)/::date::December/::date::year(9999);
-constexpr datetime min_datetime = min_date;
-constexpr datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
-constexpr time min_time = -std::chrono::hours(839);
-constexpr time max_time = std::chrono::hours(839);
-
-static_assert(date::min() <= min_date);
-static_assert(date::max() >= max_date);
-static_assert(datetime::min() <= min_datetime);
-static_assert(datetime::max() >= max_datetime);
-static_assert(time::min() <= min_time);
-static_assert(time::max() >= max_time);
+inline bool operator==(const value& lhs, const value& rhs);
+inline bool operator!=(const value& lhs, const value& rhs) { return !(lhs == rhs); }
 
 }
-}
+
+#include "mysql/impl/value_impl.hpp"
+
 
 #endif /* INCLUDE_MYSQL_VALUE_HPP_ */
