@@ -522,7 +522,7 @@ TEST_F(QueryTest, FetchManyAsync_CountEqualsOne)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
 }
 
-// FetchAll
+// FetchAll, sync errc
 TEST_F(QueryTest, FetchAllSyncErrc_NoResults)
 {
 	auto result = conn.query("SELECT * FROM empty_table");
@@ -560,6 +560,7 @@ TEST_F(QueryTest, FetchAllSyncErrc_SeveralRows)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
+// FetchAll, sync exc
 TEST_F(QueryTest, FetchAllSyncExc_SeveralRows)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
@@ -570,14 +571,43 @@ TEST_F(QueryTest, FetchAllSyncExc_SeveralRows)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
+// FetchAll, async
+TEST_F(QueryTest, FetchAllAsync_NoResults)
+{
+	auto result = conn.query("SELECT * FROM empty_table");
 
-// Query for INT types
+	// Fetch many, but there are no results
+	auto rows = result.async_fetch_all(net::use_future).get();
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
 
-
-
-
-
+	// Fetch again, should return OK and empty
+	rows = result.async_fetch_all(net::use_future).get();
+	EXPECT_TRUE(rows.empty());
+	validate_eof(result);
 }
+
+TEST_F(QueryTest, FetchAllAsync_OneRow)
+{
+	auto result = conn.query("SELECT * FROM one_row_table");
+
+	auto rows = result.async_fetch_all(net::use_future).get();
+	EXPECT_TRUE(result.complete());
+	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
+}
+
+TEST_F(QueryTest, FetchAllAsync_SeveralRows)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	auto rows = result.async_fetch_all(net::use_future).get();
+	validate_eof(result);
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+}
+
+
+
+} // anon namespace
 
 
 

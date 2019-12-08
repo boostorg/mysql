@@ -264,6 +264,18 @@ mysql::resultset<StreamType>::async_fetch_many(
 	return initiator.result.get();
 }
 
+template <typename StreamType>
+template <typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, std::vector<mysql::owning_row>))
+mysql::resultset<StreamType>::async_fetch_all(
+	CompletionToken&& token
+)
+{
+	return async_fetch_many(
+		std::numeric_limits<std::size_t>::max(),
+		std::forward<CompletionToken>(token)
+	);
+}
 
 
 #include <boost/asio/unyield.hpp>
