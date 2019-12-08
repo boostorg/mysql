@@ -462,6 +462,17 @@ TEST_F(QueryTest, FetchAllSyncErrc_SeveralRows)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
+TEST_F(QueryTest, FetchAllSyncExc_SeveralRows)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	auto rows = result.fetch_all();
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(result.complete());
+	validate_2fields_meta(rows, "two_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+}
+
 
 // Query for INT types
 

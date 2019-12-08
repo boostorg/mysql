@@ -97,5 +97,11 @@ std::vector<mysql::owning_row> mysql::resultset<ChannelType>::fetch_all(
 	return fetch_many(std::numeric_limits<std::size_t>::max(), err);
 }
 
+template <typename ChannelType>
+std::vector<mysql::owning_row> mysql::resultset<ChannelType>::fetch_all()
+{
+	return fetch_many(std::numeric_limits<std::size_t>::max());
+}
+
 
 #endif /* INCLUDE_MYSQL_IMPL_RESULTSET_IMPL_HPP_ */
