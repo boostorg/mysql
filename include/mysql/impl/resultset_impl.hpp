@@ -77,6 +77,17 @@ std::vector<mysql::owning_row> mysql::resultset<ChannelType>::fetch_many(
 	return res;
 }
 
+template <typename ChannelType>
+std::vector<mysql::owning_row> mysql::resultset<ChannelType>::fetch_many(
+	std::size_t count
+)
+{
+	error_code errc;
+	auto res = fetch_many(count, errc);
+	detail::check_error_code(errc);
+	return res;
+}
+
 
 
 #endif /* INCLUDE_MYSQL_IMPL_RESULTSET_IMPL_HPP_ */

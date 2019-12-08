@@ -323,7 +323,7 @@ TEST_F(QueryTest, FetchOneSyncExc_TwoRows)
 }
 
 // FetchMany
-TEST_F(QueryTest, FetchMany_NoResults)
+TEST_F(QueryTest, FetchManySyncErrc_NoResults)
 {
 	auto result = conn.query("SELECT * FROM empty_table");
 
@@ -340,7 +340,7 @@ TEST_F(QueryTest, FetchMany_NoResults)
 	EXPECT_TRUE(result.complete());
 }
 
-TEST_F(QueryTest, FetchMany_MoreRowsThanCount)
+TEST_F(QueryTest, FetchManySyncErrc_MoreRowsThanCount)
 {
 	auto result = conn.query("SELECT * FROM three_rows_table");
 
@@ -359,7 +359,7 @@ TEST_F(QueryTest, FetchMany_MoreRowsThanCount)
 	EXPECT_EQ(rows, (makerows(2, 3, "f2")));
 }
 
-TEST_F(QueryTest, FetchMany_LessRowsThanCount)
+TEST_F(QueryTest, FetchManySyncErrc_LessRowsThanCount)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
 
@@ -371,7 +371,7 @@ TEST_F(QueryTest, FetchMany_LessRowsThanCount)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
-TEST_F(QueryTest, FetchMany_SameRowsAsCount)
+TEST_F(QueryTest, FetchManySyncErrc_SameRowsAsCount)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
 
@@ -389,7 +389,7 @@ TEST_F(QueryTest, FetchMany_SameRowsAsCount)
 	EXPECT_EQ(rows.size(), 0);
 }
 
-TEST_F(QueryTest, FetchMany_CountEqualsOne)
+TEST_F(QueryTest, FetchManySyncErrc_CountEqualsOne)
 {
 	auto result = conn.query("SELECT * FROM one_row_table");
 
@@ -399,6 +399,27 @@ TEST_F(QueryTest, FetchMany_CountEqualsOne)
 	EXPECT_FALSE(result.complete());
 	validate_2fields_meta(rows, "one_row_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
+}
+
+TEST_F(QueryTest, FetchManySyncExc_MoreRowsThanCount)
+{
+	auto result = conn.query("SELECT * FROM three_rows_table");
+
+	// Fetch 2, one remaining
+	auto rows = result.fetch_many(2);
+	EXPECT_FALSE(result.complete());
+	validate_2fields_meta(rows, "three_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+
+	// Fetch another two (completes the resultset)
+	rows = result.fetch_many(2);
+	EXPECT_TRUE(result.complete());
+	validate_2fields_meta(rows, "three_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 3, "f2")));
+
+	// Fetching another time returns empty
+	rows = result.fetch_many(2);
+	EXPECT_EQ(rows.size(), 0);
 }
 
 // Query for INT types
