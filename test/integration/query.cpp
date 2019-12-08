@@ -67,18 +67,6 @@ struct QueryTest : public mysql::test::IntegTest
 	{
 		validate_2fields_meta(result.fields(), table);
 	}
-
-	void validate_2fields_meta(
-		const std::vector<owning_row>& rows,
-		const std::string& table
-	) const
-	{
-		for (const auto& row: rows)
-		{
-			validate_2fields_meta(row.metadata(), table);
-		}
-	}
-
 };
 
 // Query, sync errc
@@ -219,7 +207,7 @@ TEST_F(QueryTest, QueryAsync_SelectQueryFailed)
 }
 
 
-// FetchOne
+// FetchOne, sync errc
 TEST_F(QueryTest, FetchOneSyncErrc_NoResults)
 {
 	auto result = conn.query("SELECT * FROM empty_table");
@@ -231,7 +219,6 @@ TEST_F(QueryTest, FetchOneSyncErrc_NoResults)
 	const mysql::row* row = result.fetch_one(errc);
 	EXPECT_EQ(errc, mysql::error_code());
 	EXPECT_EQ(row, nullptr);
-	validate_2fields_meta(result, "empty_table");
 	validate_eof(result);
 
 	// Fetching again just returns null
@@ -295,6 +282,7 @@ TEST_F(QueryTest, FetchOneSyncErrc_TwoRows)
 
 // There seems to be no real case where fetch can fail (other than net fails)
 
+// FetchOne, sync exc
 TEST_F(QueryTest, FetchOneSyncExc_TwoRows)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
@@ -322,6 +310,71 @@ TEST_F(QueryTest, FetchOneSyncExc_TwoRows)
 	validate_eof(result);
 }
 
+// FetchOne, async
+TEST_F(QueryTest, FetchOneAsync_NoResults)
+{
+	auto result = conn.query("SELECT * FROM empty_table");
+
+	// Already in the end of the resultset, we receive the EOF
+	auto fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	EXPECT_EQ(fut.get(), nullptr);
+	validate_eof(result);
+
+	// Fetching again just returns null
+	fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	EXPECT_EQ(fut.get(), nullptr);
+	validate_eof(result);
+}
+
+/*TEST_F(QueryTest, FetchOneAsync_OneRow)
+{
+	auto result = conn.query("SELECT * FROM one_row_table");
+
+	// Fetch only row
+	auto fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	const row* row = fut.get();
+	ASSERT_NE(row, nullptr);
+	EXPECT_EQ(row->values(), makevalues(1, "f0"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next: end of resultset
+	fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	row = fut.get();
+	ASSERT_EQ(row, nullptr);
+	validate_eof(result);
+}
+
+TEST_F(QueryTest, FetchOneAsync_TwoRows)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	// Fetch first row
+	auto fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	const mysql::row* row = fut.get();
+	ASSERT_NE(row, nullptr);
+	EXPECT_EQ(row->values(), makevalues(1, "f0"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next row
+	fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	ASSERT_NE(row, nullptr);
+	EXPECT_EQ(row->values(), makevalues(2, "f1"));
+	EXPECT_FALSE(result.complete());
+
+	// Fetch next: end of resultset
+	fut = result.async_fetch_one(net::use_future);
+	ctx.run();
+	row = fut.get();
+	ASSERT_EQ(row, nullptr);
+	validate_eof(result);
+}*/
+
 // FetchMany
 TEST_F(QueryTest, FetchManySyncErrc_NoResults)
 {
@@ -332,12 +385,14 @@ TEST_F(QueryTest, FetchManySyncErrc_NoResults)
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(rows.empty());
 	EXPECT_TRUE(result.complete());
+	validate_eof(result);
 
 	// Fetch again, should return OK and empty
 	rows = result.fetch_many(10, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(rows.empty());
 	EXPECT_TRUE(result.complete());
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, FetchManySyncErrc_MoreRowsThanCount)
@@ -348,14 +403,13 @@ TEST_F(QueryTest, FetchManySyncErrc_MoreRowsThanCount)
 	auto rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_FALSE(result.complete());
-	validate_2fields_meta(rows, "three_rows_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 
 	// Fetch another two (completes the resultset)
 	rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(result.complete());
-	validate_2fields_meta(rows, "three_rows_table");
+	validate_eof(result);
 	EXPECT_EQ(rows, (makerows(2, 3, "f2")));
 }
 
@@ -366,9 +420,8 @@ TEST_F(QueryTest, FetchManySyncErrc_LessRowsThanCount)
 	// Fetch 3, resultset exhausted
 	auto rows = result.fetch_many(3, errc);
 	ASSERT_EQ(errc, error_code());
-	EXPECT_TRUE(result.complete());
-	validate_2fields_meta(rows, "two_rows_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, FetchManySyncErrc_SameRowsAsCount)
@@ -379,14 +432,13 @@ TEST_F(QueryTest, FetchManySyncErrc_SameRowsAsCount)
 	auto rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_FALSE(result.complete());
-	validate_2fields_meta(rows, "two_rows_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 
 	// Fetch again, exhausts the resultset
 	rows = result.fetch_many(2, errc);
 	ASSERT_EQ(errc, error_code());
-	EXPECT_TRUE(result.complete());
 	EXPECT_EQ(rows.size(), 0);
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, FetchManySyncErrc_CountEqualsOne)
@@ -397,7 +449,6 @@ TEST_F(QueryTest, FetchManySyncErrc_CountEqualsOne)
 	auto rows = result.fetch_many(1, errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_FALSE(result.complete());
-	validate_2fields_meta(rows, "one_row_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
 }
 
@@ -408,13 +459,11 @@ TEST_F(QueryTest, FetchManySyncExc_MoreRowsThanCount)
 	// Fetch 2, one remaining
 	auto rows = result.fetch_many(2);
 	EXPECT_FALSE(result.complete());
-	validate_2fields_meta(rows, "three_rows_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 
 	// Fetch another two (completes the resultset)
 	rows = result.fetch_many(2);
-	EXPECT_TRUE(result.complete());
-	validate_2fields_meta(rows, "three_rows_table");
+	validate_eof(result);
 	EXPECT_EQ(rows, (makerows(2, 3, "f2")));
 
 	// Fetching another time returns empty
@@ -437,7 +486,7 @@ TEST_F(QueryTest, FetchAllSyncErrc_NoResults)
 	rows = result.fetch_all(errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(rows.empty());
-	EXPECT_TRUE(result.complete());
+	validate_eof(result);
 }
 
 TEST_F(QueryTest, FetchAllSyncErrc_OneRow)
@@ -447,7 +496,6 @@ TEST_F(QueryTest, FetchAllSyncErrc_OneRow)
 	auto rows = result.fetch_all(errc);
 	ASSERT_EQ(errc, error_code());
 	EXPECT_TRUE(result.complete());
-	validate_2fields_meta(rows, "one_row_table");
 	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
 }
 
@@ -457,8 +505,7 @@ TEST_F(QueryTest, FetchAllSyncErrc_SeveralRows)
 
 	auto rows = result.fetch_all(errc);
 	ASSERT_EQ(errc, error_code());
-	EXPECT_TRUE(result.complete());
-	validate_2fields_meta(rows, "two_rows_table");
+	validate_eof(result);
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
@@ -468,8 +515,7 @@ TEST_F(QueryTest, FetchAllSyncExc_SeveralRows)
 
 	auto rows = result.fetch_all();
 	ASSERT_EQ(errc, error_code());
-	EXPECT_TRUE(result.complete());
-	validate_2fields_meta(rows, "two_rows_table");
+	validate_eof(result);
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 

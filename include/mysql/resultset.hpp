@@ -35,6 +35,18 @@ public:
 	std::vector<owning_row> fetch_all(error_code& err);
 	std::vector<owning_row> fetch_all();
 
+	template <typename CompletionToken>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, const row*))
+	async_fetch_one(CompletionToken&& token);
+
+	template <typename CompletionToken>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+	async_fetch_many(std::size_t count, CompletionToken&& token);
+
+	template <typename CompletionToken>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+	async_fetch_all(CompletionToken&& token);
+
 	// Is the read of the resultset complete? Pre-condition to any of the functions
 	// accessing the ok_packet
 	bool valid() const noexcept { return channel_ != nullptr; }

@@ -19,8 +19,7 @@ std::vector<value> makevalues(Types&&... args)
 template <typename... Types>
 row makerow(Types&&... args)
 {
-	// note: metadata dangles, just for testing
-	return row(makevalues(std::forward<Types>(args)...), {}, {});
+	return row(makevalues(std::forward<Types>(args)...));
 }
 
 template <typename... Types>
@@ -32,7 +31,7 @@ std::vector<row> makerows(std::size_t row_size, Types&&... args)
 	for (std::size_t i = 0; i < values.size(); i += row_size)
 	{
 		std::vector<value> row_values (values.begin() + i, values.begin() + i + row_size);
-		res.push_back(row(std::move(row_values), {})); // metadata dangles, just for testing
+		res.push_back(row(std::move(row_values)));
 	}
 	return res;
 }

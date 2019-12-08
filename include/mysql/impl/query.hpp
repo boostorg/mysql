@@ -50,6 +50,18 @@ fetch_result fetch_text_row(
 	error_code& err
 );
 
+template <typename ChannelType, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, fetch_result))
+async_fetch_text_row(
+	ChannelType& channel,
+	const std::vector<field_metadata>& meta,
+	bytestring& buffer,
+	std::vector<value>& output_values,
+	msgs::ok_packet& output_ok_packet,
+	CompletionToken&& token
+);
+
+
 }
 }
 

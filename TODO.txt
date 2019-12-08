@@ -1,1 +1,7 @@
 Error code descriptions
+Review async initiations
+	See if async_initiate is applicable
+	See if we can drop the dependence on beast
+	See if we can just declare the functions as auto
+	Test things with other than futures
+Metadata in rows: being able to index by name
