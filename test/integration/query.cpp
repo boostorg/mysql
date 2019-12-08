@@ -356,7 +356,7 @@ TEST_F(QueryTest, FetchOneAsync_TwoRows)
 	validate_eof(result);
 }
 
-// FetchMany
+// FetchMany, sync errc
 TEST_F(QueryTest, FetchManySyncErrc_NoResults)
 {
 	auto result = conn.query("SELECT * FROM empty_table");
@@ -433,6 +433,7 @@ TEST_F(QueryTest, FetchManySyncErrc_CountEqualsOne)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
 }
 
+// FetchMany, sync exc
 TEST_F(QueryTest, FetchManySyncExc_MoreRowsThanCount)
 {
 	auto result = conn.query("SELECT * FROM three_rows_table");
@@ -450,6 +451,75 @@ TEST_F(QueryTest, FetchManySyncExc_MoreRowsThanCount)
 	// Fetching another time returns empty
 	rows = result.fetch_many(2);
 	EXPECT_EQ(rows.size(), 0);
+}
+
+// FetchMany, async
+TEST_F(QueryTest, FetchManyAsync_NoResults)
+{
+	auto result = conn.query("SELECT * FROM empty_table");
+
+	// Fetch many, but there are no results
+	auto rows = result.async_fetch_many(10, net::use_future).get();
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
+	validate_eof(result);
+
+	// Fetch again, should return OK and empty
+	rows = result.async_fetch_many(10, net::use_future).get();
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
+	validate_eof(result);
+}
+
+TEST_F(QueryTest, FetchManyAsync_MoreRowsThanCount)
+{
+	auto result = conn.query("SELECT * FROM three_rows_table");
+
+	// Fetch 2, one remaining
+	auto rows = result.async_fetch_many(2, net::use_future).get();
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+
+	// Fetch another two (completes the resultset)
+	rows = result.async_fetch_many(2, net::use_future).get();
+	EXPECT_TRUE(result.complete());
+	validate_eof(result);
+	EXPECT_EQ(rows, (makerows(2, 3, "f2")));
+}
+
+TEST_F(QueryTest, FetchManyAsync_LessRowsThanCount)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	// Fetch 3, resultset exhausted
+	auto rows = result.async_fetch_many(3, net::use_future).get();
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+	validate_eof(result);
+}
+
+TEST_F(QueryTest, FetchManyAsync_SameRowsAsCount)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	// Fetch 2, 0 remaining but resultset not exhausted
+	auto rows = result.async_fetch_many(2, net::use_future).get();
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+
+	// Fetch again, exhausts the resultset
+	rows = result.async_fetch_many(2, net::use_future).get();
+	EXPECT_EQ(rows.size(), 0);
+	validate_eof(result);
+}
+
+TEST_F(QueryTest, FetchManyAsync_CountEqualsOne)
+{
+	auto result = conn.query("SELECT * FROM one_row_table");
+
+	// Fetch 1, 1 remaining
+	auto rows = result.async_fetch_many(1, net::use_future).get();
+	EXPECT_FALSE(result.complete());
+	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
 }
 
 // FetchAll

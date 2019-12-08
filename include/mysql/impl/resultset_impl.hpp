@@ -171,6 +171,101 @@ mysql::resultset<StreamType>::async_fetch_one(
 	return initiator.result.get();
 }
 
+template <typename StreamType>
+template <typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, std::vector<mysql::owning_row>))
+mysql::resultset<StreamType>::async_fetch_many(
+	std::size_t count,
+	CompletionToken&& token
+)
+{
+	using HandlerSignature = void(error_code, std::vector<owning_row>);
+	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
+	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
+
+	struct OpImpl
+	{
+		resultset<StreamType>& parent_resultset;
+		std::vector<owning_row> rows;
+		detail::bytestring buffer;
+		std::vector<value> values;
+		std::size_t remaining;
+
+		OpImpl(resultset<StreamType>& obj, std::size_t count):
+			parent_resultset(obj), remaining(count) {};
+
+		void row_received()
+		{
+			rows.emplace_back(std::move(values), std::move(buffer));
+			values = std::vector<value>{};
+			buffer = detail::bytestring{};
+			--remaining;
+		}
+	};
+
+	struct Op: BaseType, boost::asio::coroutine
+	{
+		std::shared_ptr<OpImpl> impl_;
+
+		Op(
+			HandlerType&& handler,
+			std::shared_ptr<OpImpl>&& impl
+		):
+			BaseType(std::move(handler), impl->parent_resultset.channel_->next_layer().get_executor()),
+			impl_(std::move(impl))
+		{
+		};
+
+		void operator()(
+			error_code err,
+			detail::fetch_result result,
+			bool cont=true
+		)
+		{
+			reenter(*this)
+			{
+				while (!impl_->parent_resultset.complete() && impl_->remaining > 0)
+				{
+					yield detail::async_fetch_text_row(
+						*impl_->parent_resultset.channel_,
+						impl_->parent_resultset.meta_.fields(),
+						impl_->buffer,
+						impl_->values,
+						impl_->parent_resultset.ok_packet_,
+						std::move(*this)
+					);
+					if (result == detail::fetch_result::error)
+					{
+						this->complete(cont, err, std::move(impl_->rows));
+						yield break;
+					}
+					else if (result == detail::fetch_result::eof)
+					{
+						impl_->parent_resultset.eof_received_ = true;
+					}
+					else
+					{
+						impl_->row_received();
+					}
+				}
+				this->complete(cont, err, std::move(impl_->rows));
+			}
+		}
+	};
+
+	assert(valid());
+
+	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
+
+	Op(
+		std::move(initiator.completion_handler),
+		std::make_shared<OpImpl>(*this, count)
+	)(error_code(), detail::fetch_result::error, false);
+	return initiator.result.get();
+}
+
+
+
 #include <boost/asio/unyield.hpp>
 
 
