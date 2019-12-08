@@ -422,6 +422,47 @@ TEST_F(QueryTest, FetchManySyncExc_MoreRowsThanCount)
 	EXPECT_EQ(rows.size(), 0);
 }
 
+// FetchAll
+TEST_F(QueryTest, FetchAllSyncErrc_NoResults)
+{
+	auto result = conn.query("SELECT * FROM empty_table");
+
+	// Fetch many, but there are no results
+	auto rows = result.fetch_all(errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
+
+	// Fetch again, should return OK and empty
+	rows = result.fetch_all(errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(rows.empty());
+	EXPECT_TRUE(result.complete());
+}
+
+TEST_F(QueryTest, FetchAllSyncErrc_OneRow)
+{
+	auto result = conn.query("SELECT * FROM one_row_table");
+
+	auto rows = result.fetch_all(errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(result.complete());
+	validate_2fields_meta(rows, "one_row_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0")));
+}
+
+TEST_F(QueryTest, FetchAllSyncErrc_SeveralRows)
+{
+	auto result = conn.query("SELECT * FROM two_rows_table");
+
+	auto rows = result.fetch_all(errc);
+	ASSERT_EQ(errc, error_code());
+	EXPECT_TRUE(result.complete());
+	validate_2fields_meta(rows, "two_rows_table");
+	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
+}
+
+
 // Query for INT types
 
 

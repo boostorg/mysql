@@ -3,6 +3,7 @@
 
 #include "mysql/impl/query.hpp"
 #include <cassert>
+#include <limits>
 
 template <typename ChannelType>
 const mysql::row* mysql::resultset<ChannelType>::fetch_one(
@@ -88,6 +89,13 @@ std::vector<mysql::owning_row> mysql::resultset<ChannelType>::fetch_many(
 	return res;
 }
 
+template <typename ChannelType>
+std::vector<mysql::owning_row> mysql::resultset<ChannelType>::fetch_all(
+	error_code& err
+)
+{
+	return fetch_many(std::numeric_limits<std::size_t>::max(), err);
+}
 
 
 #endif /* INCLUDE_MYSQL_IMPL_RESULTSET_IMPL_HPP_ */
