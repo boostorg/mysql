@@ -147,12 +147,10 @@ TEST_F(QueryTest, QuerySyncExc_Error)
 // Query, async
 TEST_F(QueryTest, QueryAsync_InsertQueryOk)
 {
-	auto fut = conn.async_query(
+	auto result = conn.async_query(
 		"INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')",
 		net::use_future
-	);
-	ctx.run();
-	auto result = fut.get();
+	).get();
 	EXPECT_TRUE(result.fields().empty());
 	EXPECT_TRUE(result.valid());
 	EXPECT_TRUE(result.complete());
@@ -168,18 +166,15 @@ TEST_F(QueryTest, QueryAsync_InsertQueryFailed)
 		"INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')",
 		net::use_future
 	);
-	ctx.run();
 	validate_future_exception(fut, make_error_code(mysql::Error::no_such_table));
 }
 
 TEST_F(QueryTest, QueryAsync_UpdateQueryOk)
 {
-	auto fut = conn.async_query(
+	auto result = conn.async_query(
 		"UPDATE updates_table SET field_int = field_int+1",
 		net::use_future
-	);
-	ctx.run();
-	auto result = fut.get();
+	).get();
 	EXPECT_TRUE(result.fields().empty());
 	EXPECT_TRUE(result.valid());
 	EXPECT_TRUE(result.complete());
@@ -191,9 +186,7 @@ TEST_F(QueryTest, QueryAsync_UpdateQueryOk)
 
 TEST_F(QueryTest, QueryAsync_SelectOk)
 {
-	auto fut = conn.async_query("SELECT * FROM empty_table", net::use_future);
-	ctx.run();
-	auto result = fut.get();
+	auto result = conn.async_query("SELECT * FROM empty_table", net::use_future).get();
 	EXPECT_TRUE(result.valid());
 	EXPECT_FALSE(result.complete());
 	validate_2fields_meta(result, "empty_table");
@@ -202,7 +195,6 @@ TEST_F(QueryTest, QueryAsync_SelectOk)
 TEST_F(QueryTest, QueryAsync_SelectQueryFailed)
 {
 	auto fut = conn.async_query("SELECT field_varchar, field_bad FROM one_row_table", net::use_future);
-	ctx.run();
 	validate_future_exception(fut, make_error_code(Error::bad_field_error));
 }
 
@@ -316,34 +308,28 @@ TEST_F(QueryTest, FetchOneAsync_NoResults)
 	auto result = conn.query("SELECT * FROM empty_table");
 
 	// Already in the end of the resultset, we receive the EOF
-	auto fut = result.async_fetch_one(net::use_future);
-	ctx.run();
-	EXPECT_EQ(fut.get(), nullptr);
+	const auto* row  = result.async_fetch_one(net::use_future).get();
+	EXPECT_EQ(row, nullptr);
 	validate_eof(result);
 
 	// Fetching again just returns null
-	fut = result.async_fetch_one(net::use_future);
-	ctx.run();
-	EXPECT_EQ(fut.get(), nullptr);
+	row = result.async_fetch_one(net::use_future).get();
+	EXPECT_EQ(row, nullptr);
 	validate_eof(result);
 }
 
-/*TEST_F(QueryTest, FetchOneAsync_OneRow)
+TEST_F(QueryTest, FetchOneAsync_OneRow)
 {
 	auto result = conn.query("SELECT * FROM one_row_table");
 
 	// Fetch only row
-	auto fut = result.async_fetch_one(net::use_future);
-	ctx.run();
-	const row* row = fut.get();
+	const row* row = result.async_fetch_one(net::use_future).get();
 	ASSERT_NE(row, nullptr);
 	EXPECT_EQ(row->values(), makevalues(1, "f0"));
 	EXPECT_FALSE(result.complete());
 
 	// Fetch next: end of resultset
-	fut = result.async_fetch_one(net::use_future);
-	ctx.run();
-	row = fut.get();
+	row = result.async_fetch_one(net::use_future).get();
 	ASSERT_EQ(row, nullptr);
 	validate_eof(result);
 }
@@ -353,27 +339,22 @@ TEST_F(QueryTest, FetchOneAsync_TwoRows)
 	auto result = conn.query("SELECT * FROM two_rows_table");
 
 	// Fetch first row
-	auto fut = result.async_fetch_one(net::use_future);
-	ctx.run();
-	const mysql::row* row = fut.get();
+	const row* row = result.async_fetch_one(net::use_future).get();
 	ASSERT_NE(row, nullptr);
 	EXPECT_EQ(row->values(), makevalues(1, "f0"));
 	EXPECT_FALSE(result.complete());
 
 	// Fetch next row
-	fut = result.async_fetch_one(net::use_future);
-	ctx.run();
+	row = result.async_fetch_one(net::use_future).get();
 	ASSERT_NE(row, nullptr);
 	EXPECT_EQ(row->values(), makevalues(2, "f1"));
 	EXPECT_FALSE(result.complete());
 
 	// Fetch next: end of resultset
-	fut = result.async_fetch_one(net::use_future);
-	ctx.run();
-	row = fut.get();
+	row = result.async_fetch_one(net::use_future).get();
 	ASSERT_EQ(row, nullptr);
 	validate_eof(result);
-}*/
+}
 
 // FetchMany
 TEST_F(QueryTest, FetchManySyncErrc_NoResults)
