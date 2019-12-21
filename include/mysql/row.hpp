@@ -35,9 +35,22 @@ public:
 	~owning_row() = default;
 };
 
-// Note: only values are checked, metadata do not have to match
 inline bool operator==(const row& lhs, const row& rhs) { return lhs.values() == rhs.values(); }
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
+inline std::ostream& operator<<(std::ostream& os, const row& value)
+{
+	os << '{';
+	const auto& arr = value.values();
+	if (!arr.empty())
+	{
+		os << arr[0];
+		for (auto it = std::next(arr.begin()); it != arr.end(); ++it)
+		{
+			os << ", " << *it;
+		}
+	}
+	return os << '}';
+}
 
 // Allow comparisons between vectors of rows and owning rows
 template <
