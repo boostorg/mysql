@@ -13,7 +13,7 @@ namespace mysql
 namespace test
 {
 
-struct IntegTest : public testing::Test
+struct IntegTest : testing::Test
 {
 	mysql::connection_params connection_params {
 		mysql::collation::utf8_general_ci,
@@ -54,6 +54,10 @@ struct IntegTest : public testing::Test
 		}
 	}
 
+	void handshake()
+	{
+		conn.handshake(connection_params);
+	}
 };
 
 }

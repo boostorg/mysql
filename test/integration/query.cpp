@@ -30,7 +30,7 @@ struct QueryTest : public mysql::test::IntegTest
 
 	QueryTest()
 	{
-		conn.handshake(connection_params);
+		handshake();
 	}
 
 	void validate_eof(

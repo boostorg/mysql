@@ -41,6 +41,20 @@ CREATE TABLE three_rows_table (
 );
 INSERT INTO three_rows_table VALUES (1, 'f0'), (2, 'f1'), (3, 'f2');
 
+CREATE TABLE types_tinyint(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_signed TINYINT,
+	field_unsigned TINYINT UNSIGNED,
+	field_display_width TINYINT(4),
+	field_zerofill TINYINT(6) ZEROFILL
+);
+INSERT INTO types_tinyint VALUES
+	("regular",   20,   20,   20,      20),
+	("negative", -20,   NULL, NULL,    NULL),
+	("min",      -0x80, 0,    NULL,    NULL),
+	("max",       0x7f, 0xff, NULL,    NULL)
+;
+
 CREATE TABLE ints_table(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,
 	signed_tiny TINYINT,

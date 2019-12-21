@@ -91,7 +91,10 @@ target_link_libraries(
 	${GMOCK_LIBRARY}
 	mysql_asio
 )
-gtest_discover_tests(unittests)
+add_test(
+	NAME mysql_unittests
+	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/unittests
+)
 
 # Integration testing
 add_executable(
@@ -99,6 +102,7 @@ add_executable(
 	test/integration/metadata_validator.cpp
 	test/integration/handshake.cpp
 	test/integration/query.cpp
+	test/integration/query_types.cpp
 )
 target_link_libraries(
 	integrationtests
@@ -112,4 +116,7 @@ target_include_directories(
 	PRIVATE
 	test/common
 )
-gtest_discover_tests(integrationtests)
+add_test(
+	NAME mysql_integrationtests
+	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/integrationtests
+)

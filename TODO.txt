@@ -1,7 +1,10 @@
-Error code descriptions
+Errors
+	Error code descriptions
+	Error text is lost in the protocol
 Review async initiations
 	See if async_initiate is applicable
 	See if we can drop the dependence on beast
 	See if we can just declare the functions as auto
 	Test things with other than futures
 Metadata in rows: being able to index by name
+Auth plugins (absence of sha256_password may cause BadUser tests to fail in 8.0)
