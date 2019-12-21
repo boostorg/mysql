@@ -8,42 +8,16 @@
 #include <gtest/gtest.h>
 #include <boost/type_index.hpp>
 #include "mysql/impl/deserialize_row.hpp"
+#include "test_common.hpp"
 
 using namespace mysql;
 using namespace mysql::detail;
+using namespace mysql::test;
 using namespace testing;
 using namespace ::date::literals;
 
 namespace
 {
-
-struct ValuePrinter
-{
-	std::ostream& os;
-
-	template <typename T>
-	void print(T value) const { os << value; }
-
-	void print(nullptr_t) const { os << "NULL"; }
-	void print(mysql::date v) const { ::date::operator<<(os, v); }
-	void print(mysql::datetime v) const { print(std::chrono::time_point_cast<::date::days>(v)); }
-	void print(mysql::time v) const { ::date::operator<<(os, v); }
-
-	template <typename T>
-	void operator()(T content) const
-	{
-		os << "<" << boost::typeindex::type_id<decltype(content)>().pretty_name() << ">(";
-		print(content);
-		os << ")";
-	}
-};
-
-std::ostream& operator<<(std::ostream& os, const value& v)
-{
-	os << "mysql::value";
-	std::visit(ValuePrinter{os}, v);
-	return os;
-}
 
 struct TextValueParam
 {
@@ -201,13 +175,6 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueTest, Values(
 	TextValueParam("max", "9999-12-31", mysql::date(9999_y/12/31), protocol_field_type::date),
 	TextValueParam("unofficial min", "0100-01-01", mysql::date(100_y/1/1), protocol_field_type::date)
 ));
-
-datetime makedt(int years, int months, int days, int hours=0, int mins=0, int secs=0, int micros=0)
-{
-	return mysql::date(::date::year(years)/months/days) +
-		   std::chrono::hours(hours) + std::chrono::minutes(mins) +
-		   std::chrono::seconds(secs) + std::chrono::microseconds(micros);
-}
 
 INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, Values(
 	TextValueParam("0 decimals, only date", "2010-02-15 00:00:00", makedt(2010, 2, 15), protocol_field_type::datetime),

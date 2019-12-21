@@ -24,6 +24,38 @@ static_assert(datetime::max() >= max_datetime);
 static_assert(time::min() <= min_time);
 static_assert(time::max() >= max_time);
 
+struct print_visitor
+{
+	std::ostream& os;
+
+	print_visitor(std::ostream& os): os(os) {};
+
+	template <typename T>
+	void operator()(const T& value) const { os << value; }
+
+	void operator()(const date& value) const { ::date::operator<<(os, value); }
+	void operator()(const time& value) const
+	{
+		char buffer [100] {};
+		auto hours = std::chrono::duration_cast<std::chrono::hours>(value).count();
+		auto mins = std::abs(std::chrono::duration_cast<std::chrono::minutes>(value % std::chrono::hours(1)).count());
+		auto secs = std::abs(std::chrono::duration_cast<std::chrono::seconds>(value % std::chrono::minutes(1)).count());
+		auto micros = std::abs((value % std::chrono::seconds(1)).count());
+
+		snprintf(buffer, sizeof(buffer), "%02d:%02u:%02u:%06u",
+			static_cast<int>(hours),
+			static_cast<unsigned>(mins),
+			static_cast<unsigned>(secs),
+			static_cast<unsigned>(micros)
+		);
+
+		os << buffer;
+	}
+	void operator()(const datetime& value) const { ::date::operator<<(os, value); }
+	void operator()(const year& value) const { ::date::operator<<(os, value); }
+	void operator()(nullptr_t) const { os << "<NULL>"; }
+};
+
 }
 }
 
@@ -45,6 +77,15 @@ inline bool mysql::operator==(
 )
 {
 	return detail::container_equals(lhs, rhs);
+}
+
+inline std::ostream& mysql::operator<<(
+	std::ostream& os,
+	const value& value
+)
+{
+	std::visit(detail::print_visitor(os), value);
+	return os;
 }
 
 

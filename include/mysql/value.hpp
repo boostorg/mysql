@@ -6,6 +6,7 @@
 #include <string_view>
 #include <date/date.h>
 #include <chrono>
+#include <ostream>
 
 namespace mysql
 {
@@ -35,6 +36,8 @@ inline bool operator!=(const value& lhs, const value& rhs) { return !(lhs == rhs
 
 inline bool operator==(const std::vector<value>& lhs, const std::vector<value>& rhs);
 inline bool operator!=(const std::vector<value>& lhs, const std::vector<value>& rhs) { return !(lhs == rhs); }
+
+inline std::ostream& operator<<(std::ostream& os, const value& value);
 
 }
 

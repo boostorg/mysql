@@ -36,6 +36,13 @@ std::vector<row> makerows(std::size_t row_size, Types&&... args)
 	return res;
 }
 
+inline datetime makedt(int years, int months, int days, int hours=0, int mins=0, int secs=0, int micros=0)
+{
+	return mysql::date(::date::year(years)/months/days) +
+		   std::chrono::hours(hours) + std::chrono::minutes(mins) +
+		   std::chrono::seconds(secs) + std::chrono::microseconds(micros);
+}
+
 }
 }
 
