@@ -74,13 +74,31 @@ TEST_P(QueryTypesTest, Query_MetadataAndValueCorrect)
 	validate_meta(result.fields(), {param.mvalid});
 
 	// Validate the returned value
-	row expected_row ({param.expected_value});
+	std::vector<value> expected_values ({param.expected_value});
 	ASSERT_EQ(rows.size(), 1);
-	EXPECT_EQ(rows[0], expected_row);
+	EXPECT_EQ(rows[0].values(), expected_values);
 }
 
+using flagsvec = std::vector<meta_validator::flag_getter>;
+
+const flagsvec flags_unsigned { &field_metadata::is_unsigned };
+const flagsvec flags_zerofill { &field_metadata::is_unsigned, &field_metadata::is_zerofill };
+
 INSTANTIATE_TEST_SUITE_P(TINYINT, QueryTypesTest, Values(
-	QueryTypesParams("types_tinyint", "field_signed", "regular", std::int32_t(20), field_type::tinyint)
+	QueryTypesParams("types_tinyint", "field_signed", "regular", std::int32_t(20), field_type::tinyint),
+	QueryTypesParams("types_tinyint", "field_signed", "negative", std::int32_t(-20), field_type::tinyint),
+	QueryTypesParams("types_tinyint", "field_signed", "min", std::int32_t(-0x80), field_type::tinyint),
+	QueryTypesParams("types_tinyint", "field_signed", "max", std::int32_t(0x7f), field_type::tinyint),
+
+	QueryTypesParams("types_tinyint", "field_unsigned", "regular", std::uint32_t(20), field_type::tinyint, flags_unsigned),
+	QueryTypesParams("types_tinyint", "field_unsigned", "min", std::uint32_t(0), field_type::tinyint, flags_unsigned),
+	QueryTypesParams("types_tinyint", "field_unsigned", "max", std::uint32_t(0xff), field_type::tinyint, flags_unsigned),
+
+	QueryTypesParams("types_tinyint", "field_width", "regular", std::int32_t(20), field_type::tinyint),
+	QueryTypesParams("types_tinyint", "field_width", "negative", std::int32_t(-20), field_type::tinyint),
+
+	QueryTypesParams("types_tinyint", "field_zerofill", "regular", std::uint32_t(20), field_type::tinyint, flags_zerofill),
+	QueryTypesParams("types_tinyint", "field_zerofill", "min", std::uint32_t(0), field_type::tinyint, flags_zerofill)
 ));
 
 

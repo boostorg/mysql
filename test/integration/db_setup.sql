@@ -45,13 +45,13 @@ CREATE TABLE types_tinyint(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,
 	field_signed TINYINT,
 	field_unsigned TINYINT UNSIGNED,
-	field_display_width TINYINT(4),
+	field_width TINYINT(4),
 	field_zerofill TINYINT(6) ZEROFILL
 );
 INSERT INTO types_tinyint VALUES
 	("regular",   20,   20,   20,      20),
-	("negative", -20,   NULL, NULL,    NULL),
-	("min",      -0x80, 0,    NULL,    NULL),
+	("negative", -20,   NULL, -20,     NULL),
+	("min",      -0x80, 0,    NULL,       0),
 	("max",       0x7f, 0xff, NULL,    NULL)
 ;
 
