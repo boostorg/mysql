@@ -3,3 +3,4 @@ build/
 .project
 .settings/
 .pydevproject
+private/

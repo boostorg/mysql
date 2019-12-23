@@ -1,10 +1,26 @@
-Errors
-	Error code descriptions
-	Error text is lost in the protocol
-Review async initiations
-	See if async_initiate is applicable
-	See if we can drop the dependence on beast
-	See if we can just declare the functions as auto
-	Test things with other than futures
-Metadata in rows: being able to index by name
-Auth plugins (absence of sha256_password may cause BadUser tests to fail in 8.0)
+Prepared statements
+Multiresultset
+	Text protocol
+	Binary protocol (stored procedures)
+Handshake
+	sha256_password auth plugin: absence may cause BadUser tests to fail in 8.0
+	SSL
+	compression
+Usability
+	Metadata in rows: being able to index by name
+	Errors
+		Error code descriptions
+		Error text is lost in the protocol
+	Iterators for sync resultset iteration
+	Better interface for connection_params data structure
+	Consideration of timezones
+Consider if header-only is a good idea
+Technical debt
+	Concept checking
+	Review async initiations
+		See if async_initiate is applicable
+		See if we can drop the dependence on beast
+		See if we can just declare the functions as auto
+		Test things with other than futures
+	Review close() of the stream on error
+

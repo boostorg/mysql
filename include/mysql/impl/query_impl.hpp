@@ -43,7 +43,7 @@ public:
 		error_code& err
 	)
 	{
-		// Response may be: ok_packet, err_packet, local infile request (TODO)
+		// Response may be: ok_packet, err_packet, local infile request (not implemented)
 		// If it is none of this, then the message type itself is the beginning of
 		// a length-encoded int containing the field count
 		DeserializationContext ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
@@ -170,7 +170,7 @@ void mysql::detail::execute_query(
 	channel.read(processor.buffer(), err);
 	if (err) return;
 
-	// Response may be: ok_packet, err_packet, local infile request (TODO), or response with fields
+	// Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
 	auto num_fields = processor.process_query_response(output, err);
 	if (!num_fields) // ok or err
 	{
@@ -284,7 +284,7 @@ mysql::detail::async_execute_query(
 					yield break;
 				}
 
-				// Response may be: ok_packet, err_packet, local infile request (TODO), or response with fields
+				// Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
 				if (!process_query_response(cont))
 				{
 					// Not a response with fields. complete() already called

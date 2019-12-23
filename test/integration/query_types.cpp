@@ -87,11 +87,6 @@ INSTANTIATE_TEST_SUITE_P(TINYINT, QueryTypesTest, Values(
 
 } // anon namespace
 
-// Establish connection
-// query
-// fetch_all
-// verify metadata
-// verify result
 
 // All int types: signed, unsigned, unsigned zerofill
 // Floating points: signed, unsigned, unsigned zerofill

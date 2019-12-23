@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.11.0)
-set(CMAKE_CXX_STANDARD 17)
 project(mysql-asio)
 
 include(FetchContent)
 
-set(BOOST_ROOT /opt/boost_1_70_0 CACHE STRING "Path to boost installation")
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+
+set(CMAKE_CXX_STANDARD 17)
 
 # Date
 FetchContent_Declare(
@@ -19,18 +19,10 @@ FetchContent_Declare(
 FetchContent_GetProperties(date)
 if(NOT date_POPULATED)
     FetchContent_Populate(date)
-    # TODO: Building the project requires CMake 3.14
-    # add_subdirectory(${date_SOURCE_DIR} ${date_BINARY_DIR})
+    # Building date requires CMake 3.14, and we only need headers
 endif()
 
-# Library
-#add_library(
-#	mysql_asio
-#	SHARED
-#	src/basic_serialization.cpp
-#	src/message_serialization.cpp
-#	src/auth.cpp
-#)
+# Library (header-only)
 add_library(
     mysql_asio
     INTERFACE
@@ -39,7 +31,7 @@ add_library(
 target_link_libraries(
     mysql_asio
 	INTERFACE
-	Boost::system
+	Boost::system # TODO: can we specify asio/beast?
 	Threads::Threads
 	OpenSSL::Crypto
 )
@@ -50,20 +42,11 @@ target_include_directories(
 	${date_SOURCE_DIR}/include
 )
 
-# Main
-#add_executable(
-#	main
-#	main.cpp
-#)
-#target_link_libraries(
-#	main
-#	PRIVATE
-#	mysql_asio
-#)
-
 # Unit testing
-set(GTEST_ROOT /opt/gtest)
-include(GoogleTest)
+# TODO: build tests just when required
+# TODO: fetch gtest and gmock
+# TODO: is there a way of adding tests to ctest (like gtest_discover_tests)
+#       without runtime going nuts?
 find_package(GTest REQUIRED)
 find_library(GMOCK_LIBRARY gmock PATHS ${GTEST_ROOT}/lib) 
 enable_testing()

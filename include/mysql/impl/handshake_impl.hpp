@@ -226,7 +226,6 @@ public:
 } // mysql
 
 
-// TODO: support compression, SSL, more authentication methods
 template <typename ChannelType>
 void mysql::detail::hanshake(
 	ChannelType& channel,

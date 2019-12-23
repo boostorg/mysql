@@ -203,7 +203,7 @@ inline error_code deserialize_message_type(
 inline error_code process_error_packet(DeserializationContext& ctx);
 
 
-struct StmtPrepare
+/*struct StmtPrepare
 {
 	string_eof statement;
 };
@@ -259,7 +259,7 @@ struct StmtFetch
 struct StmtClose
 {
 	int4 statement_id;
-};
+};*/
 
 
 } // detail
