@@ -7,11 +7,13 @@
 
 #include "integration_test_common.hpp"
 #include "metadata_validator.hpp"
+#include "test_common.hpp"
 #include <sstream>
 
 using namespace mysql;
 using namespace mysql::test;
 using namespace testing;
+using namespace ::date::literals;
 
 namespace
 {
@@ -220,6 +222,72 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, QueryTypesTest, Values(
 	QueryTypesParams("types_double", "field_zerofill", "fractional_positive", 4.2, field_type::double_, flags_zerofill, 31),
 	QueryTypesParams("types_double", "field_zerofill", "positive_exp_positive_fractional", 3.14e200, field_type::double_, flags_zerofill, 31),
 	QueryTypesParams("types_double", "field_zerofill", "negative_exp_positive_fractional", 3.14e-200, field_type::double_, flags_zerofill, 31)
+));
+
+// Dates and times
+INSTANTIATE_TEST_SUITE_P(DATE, QueryTypesTest, Values(
+	QueryTypesParams("types_date", "field_date", "regular", 2010_y/3/28_d, field_type::date),
+	QueryTypesParams("types_date", "field_date", "leap", 1788_y/2/29_d, field_type::date),
+	QueryTypesParams("types_date", "field_date", "min", 1000_y/1/1_d, field_type::date),
+	QueryTypesParams("types_date", "field_date", "max", 9999_y/12/31_d, field_type::date)
+));
+
+INSTANTIATE_TEST_SUITE_P(DATETIME, QueryTypesTest, Values(
+	QueryTypesParams("types_datetime", "field_0", "date", makedt(2010, 5, 2), field_type::datetime),
+	QueryTypesParams("types_datetime", "field_1", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 6),
+
+	QueryTypesParams("types_datetime", "field_0", "h", makedt(2010, 5, 2, 23), field_type::datetime),
+	QueryTypesParams("types_datetime", "field_1", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 6),
+
+	QueryTypesParams("types_datetime", "field_0", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime),
+	QueryTypesParams("types_datetime", "field_1", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 6),
+
+	QueryTypesParams("types_datetime", "field_0", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime),
+	QueryTypesParams("types_datetime", "field_1", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 6),
+
+	QueryTypesParams("types_datetime", "field_1", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 100000), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 120000), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123000), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123400), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123450), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123456), field_type::datetime, no_flags, 6),
+
+	QueryTypesParams("types_datetime", "field_0", "min", makedt(1000, 1, 1), field_type::datetime),
+	QueryTypesParams("types_datetime", "field_1", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 6),
+
+	QueryTypesParams("types_datetime", "field_0", "max", makedt(9999, 12, 31, 23, 59, 59), field_type::datetime, no_flags, 0),
+	QueryTypesParams("types_datetime", "field_1", "max", makedt(9999, 12, 31, 23, 59, 59, 900000), field_type::datetime, no_flags, 1),
+	QueryTypesParams("types_datetime", "field_2", "max", makedt(9999, 12, 31, 23, 59, 59, 990000), field_type::datetime, no_flags, 2),
+	QueryTypesParams("types_datetime", "field_3", "max", makedt(9999, 12, 31, 23, 59, 59, 999000), field_type::datetime, no_flags, 3),
+	QueryTypesParams("types_datetime", "field_4", "max", makedt(9999, 12, 31, 23, 59, 59, 999900), field_type::datetime, no_flags, 4),
+	QueryTypesParams("types_datetime", "field_5", "max", makedt(9999, 12, 31, 23, 59, 59, 999990), field_type::datetime, no_flags, 5),
+	QueryTypesParams("types_datetime", "field_6", "max", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, no_flags, 6)
+
 ));
 
 } // anon namespace
