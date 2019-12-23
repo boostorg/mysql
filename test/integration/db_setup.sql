@@ -41,6 +41,11 @@ CREATE TABLE three_rows_table (
 );
 INSERT INTO three_rows_table VALUES (1, 'f0'), (2, 'f1'), (3, 'f2');
 
+-- Tables to test we retrieve correctly values of every possible type
+-- Every type gets a separate table. Each field within the table is a possible variant of this same type
+-- Every row is a test case, identified by the id column.
+
+--    Integer types
 CREATE TABLE types_tinyint(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,
 	field_signed TINYINT,
@@ -55,27 +60,62 @@ INSERT INTO types_tinyint VALUES
 	("max",       0x7f, 0xff, NULL,    NULL)
 ;
 
-CREATE TABLE ints_table(
+CREATE TABLE types_smallint(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,
-	signed_tiny TINYINT,
-	unsigned_tiny TINYINT UNSIGNED,
-	signed_small SMALLINT,
-	unsigned_small SMALLINT UNSIGNED,
-	signed_medium MEDIUMINT,
-	unsigned_medium MEDIUMINT UNSIGNED,
-	signed_int INT,
-	unsigned_int INT UNSIGNED,
-	signed_big BIGINT,
-	unsigned_big BIGINT UNSIGNED,
-	zerof INT(8) ZEROFILL
+	field_signed SMALLINT,
+	field_unsigned SMALLINT UNSIGNED,
+	field_width SMALLINT(8),
+	field_zerofill SMALLINT(7) ZEROFILL
 );
-INSERT INTO ints_table VALUES
-	("regular",   20,   20,   20,      20,      20,       20,        20,         20,          20,                 20,                 20),
-	("negative", -20,   NULL, -20,     NULL,   -20,       NULL,     -20,         NULL,       -20,                 NULL,               NULL),
-	("min",      -0x80, 0,    -0x8000, 0,      -0x800000, 0,        -0x80000000, 0,          -0x8000000000000000, 0,                  0),
-	("max",       0x7f, 0xff,  0x7fff, 0xffff,  0x7fffff, 0xffffff,  0x7fffffff, 0xffffffff,  0x7fffffffffffffff, 0xffffffffffffffff, NULL)
+INSERT INTO types_smallint VALUES
+	("regular",   20,     20,     20,      20),
+	("negative", -20,     NULL,   -20,     NULL),
+	("min",      -0x8000, 0,      NULL,    0),
+	("max",       0x7fff, 0xffff, NULL,    NULL)
 ;
-	
+
+CREATE TABLE types_mediumint(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_signed MEDIUMINT,
+	field_unsigned MEDIUMINT UNSIGNED,
+	field_width MEDIUMINT(8),
+	field_zerofill MEDIUMINT(7) ZEROFILL
+);
+INSERT INTO types_mediumint VALUES
+	("regular",   20,       20,       20,      20),
+	("negative", -20,       NULL,     -20,     NULL),   
+	("min",      -0x800000, 0,        NULL,    0),
+	("max",       0x7fffff, 0xffffff, NULL,    NULL)
+;
+
+CREATE TABLE types_int(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_signed INT,
+	field_unsigned INT UNSIGNED,
+	field_width INT(8),
+	field_zerofill INT(7) ZEROFILL
+);
+INSERT INTO types_int VALUES
+	("regular",   20,         20,         20,      20),
+	("negative", -20,         NULL,       -20,     NULL),   
+	("min",      -0x80000000, 0,          NULL,    0),
+	("max",       0x7fffffff, 0xffffffff, NULL,    NULL)
+;
+
+CREATE TABLE types_bigint(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_signed BIGINT,
+	field_unsigned BIGINT UNSIGNED,
+	field_width BIGINT(8),
+	field_zerofill BIGINT(7) ZEROFILL
+);
+INSERT INTO types_bigint VALUES
+	("regular",   20,                 20,                 20,      20),
+	("negative", -20,                 NULL,               -20,     NULL),   
+	("min",      -0x8000000000000000, 0,                  NULL,    0),
+	("max",       0x7fffffffffffffff, 0xffffffffffffffff, NULL,    NULL)
+;
+
 
 CREATE TABLE test_times(
 	id INT AUTO_INCREMENT PRIMARY KEY,
