@@ -81,9 +81,11 @@ TEST_P(QueryTypesTest, Query_MetadataAndValueCorrect)
 
 using flagsvec = std::vector<meta_validator::flag_getter>;
 
+const flagsvec no_flags {};
 const flagsvec flags_unsigned { &field_metadata::is_unsigned };
 const flagsvec flags_zerofill { &field_metadata::is_unsigned, &field_metadata::is_zerofill };
 
+// Integers
 INSTANTIATE_TEST_SUITE_P(TINYINT, QueryTypesTest, Values(
 	QueryTypesParams("types_tinyint", "field_signed", "regular", std::int32_t(20), field_type::tinyint),
 	QueryTypesParams("types_tinyint", "field_signed", "negative", std::int32_t(-20), field_type::tinyint),
@@ -167,6 +169,57 @@ INSTANTIATE_TEST_SUITE_P(BIGINT, QueryTypesTest, Values(
 
 	QueryTypesParams("types_bigint", "field_zerofill", "regular", std::uint64_t(20), field_type::bigint, flags_zerofill),
 	QueryTypesParams("types_bigint", "field_zerofill", "min", std::uint64_t(0), field_type::bigint, flags_zerofill)
+));
+
+// Floating point
+INSTANTIATE_TEST_SUITE_P(FLOAT, QueryTypesTest, Values(
+	QueryTypesParams("types_float", "field_signed", "zero", 0.0f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "int_positive", 4.0f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "int_negative", -4.0f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "fractional_positive", 4.2f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "fractional_negative", -4.2f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "positive_exp_positive_int", 3e20f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "positive_exp_negative_int", -3e20f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "positive_exp_positive_fractional", 3.14e20f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "positive_exp_negative_fractional", -3.14e20f, field_type::float_, no_flags, 31),
+	QueryTypesParams("types_float", "field_signed", "negative_exp_positive_fractional", 3.14e-20f, field_type::float_, no_flags, 31),
+
+	QueryTypesParams("types_float", "field_unsigned", "zero", 0.0f, field_type::float_, flags_unsigned, 31),
+	QueryTypesParams("types_float", "field_unsigned", "fractional_positive", 4.2f, field_type::float_, flags_unsigned, 31),
+
+	QueryTypesParams("types_float", "field_width", "zero", 0.0f, field_type::float_, no_flags, 10),
+	QueryTypesParams("types_float", "field_width", "fractional_positive", 4.2f, field_type::float_, no_flags, 10),
+	QueryTypesParams("types_float", "field_width", "fractional_negative", -4.2f, field_type::float_, no_flags, 10),
+
+	QueryTypesParams("types_float", "field_zerofill", "zero", 0.0f, field_type::float_, flags_zerofill, 31),
+	QueryTypesParams("types_float", "field_zerofill", "fractional_positive", 4.2f, field_type::float_, flags_zerofill, 31),
+	QueryTypesParams("types_float", "field_zerofill", "positive_exp_positive_fractional", 3.14e20f, field_type::float_, flags_zerofill, 31),
+	QueryTypesParams("types_float", "field_zerofill", "negative_exp_positive_fractional", 3.14e-20f, field_type::float_, flags_zerofill, 31)
+));
+
+INSTANTIATE_TEST_SUITE_P(DOUBLE, QueryTypesTest, Values(
+	QueryTypesParams("types_double", "field_signed", "zero", 0.0, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "int_positive", 4.0, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "int_negative", -4.0, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "fractional_positive", 4.2, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "fractional_negative", -4.2, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "positive_exp_positive_int", 3e200, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "positive_exp_negative_int", -3e200, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "positive_exp_positive_fractional", 3.14e200, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "positive_exp_negative_fractional", -3.14e200, field_type::double_, no_flags, 31),
+	QueryTypesParams("types_double", "field_signed", "negative_exp_positive_fractional", 3.14e-200, field_type::double_, no_flags, 31),
+
+	QueryTypesParams("types_double", "field_unsigned", "zero", 0.0, field_type::double_, flags_unsigned, 31),
+	QueryTypesParams("types_double", "field_unsigned", "fractional_positive", 4.2, field_type::double_, flags_unsigned, 31),
+
+	QueryTypesParams("types_double", "field_width", "zero", 0.0, field_type::double_, no_flags, 10),
+	QueryTypesParams("types_double", "field_width", "fractional_positive", 4.2, field_type::double_, no_flags, 10),
+	QueryTypesParams("types_double", "field_width", "fractional_negative", -4.2, field_type::double_, no_flags, 10),
+
+	QueryTypesParams("types_double", "field_zerofill", "zero", 0.0, field_type::double_, flags_zerofill, 31),
+	QueryTypesParams("types_double", "field_zerofill", "fractional_positive", 4.2, field_type::double_, flags_zerofill, 31),
+	QueryTypesParams("types_double", "field_zerofill", "positive_exp_positive_fractional", 3.14e200, field_type::double_, flags_zerofill, 31),
+	QueryTypesParams("types_double", "field_zerofill", "negative_exp_positive_fractional", 3.14e-200, field_type::double_, flags_zerofill, 31)
 ));
 
 } // anon namespace

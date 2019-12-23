@@ -116,6 +116,46 @@ INSERT INTO types_bigint VALUES
 	("max",       0x7fffffffffffffff, 0xffffffffffffffff, NULL,    NULL)
 ;
 
+--   Floating point types
+CREATE TABLE types_float(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_signed FLOAT,
+	field_unsigned FLOAT UNSIGNED,
+	field_width FLOAT(30, 10),
+	field_zerofill FLOAT(20) ZEROFILL
+);
+INSERT INTO types_float VALUES
+	("zero",                             0,        0,    0,        0),
+	("int_positive",                     4,        NULL, NULL,     NULL),
+	("int_negative",                     -4,       NULL, NULL,     NULL),
+	("fractional_positive",              4.2,      4.2,  4.2,      4.2),
+	("fractional_negative",              -4.2,     NULL, -4.2,     NULL),
+	("positive_exp_positive_int",        3e20,     NULL, NULL,     NULL),
+	("positive_exp_negative_int",        -3e20,    NULL, NULL,     NULL),
+	("positive_exp_positive_fractional", 3.14e20,  NULL, NULL,  3.14e20),
+	("positive_exp_negative_fractional", -3.14e20, NULL, NULL,  NULL),
+	("negative_exp_positive_fractional", 3.14e-20, NULL, NULL,  3.14e-20)
+;
+
+CREATE TABLE types_double(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_signed DOUBLE,
+	field_unsigned DOUBLE UNSIGNED,
+	field_width DOUBLE(60, 10),
+	field_zerofill FLOAT(40) ZEROFILL
+);
+INSERT INTO types_double VALUES
+	("zero",                             0,        0,    0,        0),
+	("int_positive",                     4,        NULL, NULL,     NULL),
+	("int_negative",                     -4,       NULL, NULL,     NULL),
+	("fractional_positive",              4.2,      4.2,  4.2,      4.2),
+	("fractional_negative",              -4.2,     NULL, -4.2,     NULL),
+	("positive_exp_positive_int",        3e200,     NULL, NULL,     NULL),
+	("positive_exp_negative_int",        -3e200,    NULL, NULL,     NULL),
+	("positive_exp_positive_fractional", 3.14e200,  NULL, NULL,  3.14e200),
+	("positive_exp_negative_fractional", -3.14e200, NULL, NULL,  NULL),
+	("negative_exp_positive_fractional", 3.14e-200, NULL, NULL,  3.14e-200)
+;
 
 CREATE TABLE test_times(
 	id INT AUTO_INCREMENT PRIMARY KEY,
