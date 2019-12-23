@@ -290,6 +290,47 @@ INSTANTIATE_TEST_SUITE_P(DATETIME, QueryTypesTest, Values(
 
 ));
 
+INSTANTIATE_TEST_SUITE_P(TIMESTAMP, QueryTypesTest, Values(
+	QueryTypesParams("types_timestamp", "field_0", "date", makedt(2010, 5, 2), field_type::timestamp),
+	QueryTypesParams("types_timestamp", "field_1", "date", makedt(2010, 5, 2), field_type::timestamp, no_flags, 1),
+	QueryTypesParams("types_timestamp", "field_2", "date", makedt(2010, 5, 2), field_type::timestamp, no_flags, 2),
+	QueryTypesParams("types_timestamp", "field_3", "date", makedt(2010, 5, 2), field_type::timestamp, no_flags, 3),
+	QueryTypesParams("types_timestamp", "field_4", "date", makedt(2010, 5, 2), field_type::timestamp, no_flags, 4),
+	QueryTypesParams("types_timestamp", "field_5", "date", makedt(2010, 5, 2), field_type::timestamp, no_flags, 5),
+	QueryTypesParams("types_timestamp", "field_6", "date", makedt(2010, 5, 2), field_type::timestamp, no_flags, 6),
+
+	QueryTypesParams("types_timestamp", "field_0", "h", makedt(2010, 5, 2, 23), field_type::timestamp),
+	QueryTypesParams("types_timestamp", "field_1", "h", makedt(2010, 5, 2, 23), field_type::timestamp, no_flags, 1),
+	QueryTypesParams("types_timestamp", "field_2", "h", makedt(2010, 5, 2, 23), field_type::timestamp, no_flags, 2),
+	QueryTypesParams("types_timestamp", "field_3", "h", makedt(2010, 5, 2, 23), field_type::timestamp, no_flags, 3),
+	QueryTypesParams("types_timestamp", "field_4", "h", makedt(2010, 5, 2, 23), field_type::timestamp, no_flags, 4),
+	QueryTypesParams("types_timestamp", "field_5", "h", makedt(2010, 5, 2, 23), field_type::timestamp, no_flags, 5),
+	QueryTypesParams("types_timestamp", "field_6", "h", makedt(2010, 5, 2, 23), field_type::timestamp, no_flags, 6),
+
+	QueryTypesParams("types_timestamp", "field_0", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp),
+	QueryTypesParams("types_timestamp", "field_1", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp, no_flags, 1),
+	QueryTypesParams("types_timestamp", "field_2", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp, no_flags, 2),
+	QueryTypesParams("types_timestamp", "field_3", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp, no_flags, 3),
+	QueryTypesParams("types_timestamp", "field_4", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp, no_flags, 4),
+	QueryTypesParams("types_timestamp", "field_5", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp, no_flags, 5),
+	QueryTypesParams("types_timestamp", "field_6", "hm", makedt(2010, 5, 2, 23, 1), field_type::timestamp, no_flags, 6),
+
+	QueryTypesParams("types_timestamp", "field_0", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp),
+	QueryTypesParams("types_timestamp", "field_1", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp, no_flags, 1),
+	QueryTypesParams("types_timestamp", "field_2", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp, no_flags, 2),
+	QueryTypesParams("types_timestamp", "field_3", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp, no_flags, 3),
+	QueryTypesParams("types_timestamp", "field_4", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp, no_flags, 4),
+	QueryTypesParams("types_timestamp", "field_5", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp, no_flags, 5),
+	QueryTypesParams("types_timestamp", "field_6", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::timestamp, no_flags, 6),
+
+	QueryTypesParams("types_timestamp", "field_1", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 100000), field_type::timestamp, no_flags, 1),
+	QueryTypesParams("types_timestamp", "field_2", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 120000), field_type::timestamp, no_flags, 2),
+	QueryTypesParams("types_timestamp", "field_3", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123000), field_type::timestamp, no_flags, 3),
+	QueryTypesParams("types_timestamp", "field_4", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123400), field_type::timestamp, no_flags, 4),
+	QueryTypesParams("types_timestamp", "field_5", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123450), field_type::timestamp, no_flags, 5),
+	QueryTypesParams("types_timestamp", "field_6", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123456), field_type::timestamp, no_flags, 6)
+));
+
 } // anon namespace
 
 
