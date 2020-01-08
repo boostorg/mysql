@@ -226,12 +226,6 @@ INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DeserializeTextValueTest, Values(
 	TextValueParam("6 decimals, max", "2038-01-19 03:14:07.999999", makedt(2038, 1, 19, 3, 14, 7, 999999), protocol_field_type::timestamp, 0, 6)
 ));
 
-mysql::time maket(int hours, int mins, int secs, int micros=0)
-{
-	return std::chrono::hours(hours) + std::chrono::minutes(mins)
-	     + std::chrono::seconds(secs) + std::chrono::microseconds(micros);
-}
-
 INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
 	TextValueParam("0 decimals, positive h", "01:00:00", maket(1, 0, 0), protocol_field_type::time),
 	TextValueParam("0 decimals, positive hm", "12:03:00", maket(12, 3, 0), protocol_field_type::time),

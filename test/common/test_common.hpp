@@ -43,6 +43,12 @@ inline datetime makedt(int years, int months, int days, int hours=0, int mins=0,
 		   std::chrono::seconds(secs) + std::chrono::microseconds(micros);
 }
 
+inline mysql::time maket(int hours, int mins, int secs, int micros=0)
+{
+	return std::chrono::hours(hours) + std::chrono::minutes(mins)
+	     + std::chrono::seconds(secs) + std::chrono::microseconds(micros);
+}
+
 }
 }
 

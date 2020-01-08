@@ -331,6 +331,79 @@ INSTANTIATE_TEST_SUITE_P(TIMESTAMP, QueryTypesTest, Values(
 	QueryTypesParams("types_timestamp", "field_6", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123456), field_type::timestamp, no_flags, 6)
 ));
 
+INSTANTIATE_TEST_SUITE_P(TIME, QueryTypesTest, Values(
+	QueryTypesParams("types_time", "field_0", "h", maket(1, 0, 0), field_type::time),
+	QueryTypesParams("types_time", "field_1", "h", maket(1, 0, 0), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "h", maket(1, 0, 0), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "h", maket(1, 0, 0), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "h", maket(1, 0, 0), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "h", maket(1, 0, 0), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "h", maket(1, 0, 0), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "hm", maket(1, 2, 0), field_type::time),
+	QueryTypesParams("types_time", "field_1", "hm", maket(1, 2, 0), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "hm", maket(1, 2, 0), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "hm", maket(1, 2, 0), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "hm", maket(1, 2, 0), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "hm", maket(1, 2, 0), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "hm", maket(1, 2, 0), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "hms", maket(120, 2, 3), field_type::time),
+	QueryTypesParams("types_time", "field_1", "hms", maket(120, 2, 3), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "hms", maket(120, 2, 3), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "hms", maket(120, 2, 3), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "hms", maket(120, 2, 3), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "hms", maket(120, 2, 3), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "hms", maket(120, 2, 3), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_1", "hmsu", maket(120, 2, 3, 100000), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "hmsu", maket(120, 2, 3, 120000), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "hmsu", maket(120, 2, 3, 123000), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "hmsu", maket(120, 2, 3, 123400), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "hmsu", maket(120, 2, 3, 123450), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "hmsu", maket(120, 2, 3, 123456), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "s", maket(0, 0, 21), field_type::time),
+	QueryTypesParams("types_time", "field_1", "s", maket(0, 0, 21, 100000), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "s", maket(0, 0, 21, 120000), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "s", maket(0, 0, 21, 123000), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "s", maket(0, 0, 21, 123400), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "s", maket(0, 0, 21, 123450), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "s", maket(0, 0, 21, 123456), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "negative_hmsu", maket(-120, -2, -3), field_type::time),
+	QueryTypesParams("types_time", "field_1", "negative_hmsu", maket(-120, -2, -3, -100000), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "negative_hmsu", maket(-120, -2, -3, -20000), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "negative_hmsu", maket(-120, -2, -3, -23000), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "negative_hmsu", maket(-120, -2, -3, -23400), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "negative_hmsu", maket(-120, -2, -3, -23450), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "negative_hmsu", maket(-120, -2, -3, -23456), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "min", maket(-838, -59, -59), field_type::time),
+	QueryTypesParams("types_time", "field_1", "min", maket(-838, -59, -58, -900000), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "min", maket(-838, -59, -58, -990000), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "min", maket(-838, -59, -58, -999000), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "min", maket(-838, -59, -58, -999900), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "min", maket(-838, -59, -58, -999990), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "min", maket(-838, -59, -58, -999999), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "max", maket(838, 59, 59), field_type::time),
+	QueryTypesParams("types_time", "field_1", "max", maket(838, 59, 58, 900000), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "max", maket(838, 59, 58, 990000), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "max", maket(838, 59, 58, 999000), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "max", maket(838, 59, 58, 999900), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "max", maket(838, 59, 58, 999990), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "max", maket(838, 59, 58, 999999), field_type::time, no_flags, 6),
+
+	QueryTypesParams("types_time", "field_0", "zero", maket(0, 0, 0), field_type::time),
+	QueryTypesParams("types_time", "field_1", "zero", maket(0, 0, 0), field_type::time, no_flags, 1),
+	QueryTypesParams("types_time", "field_2", "zero", maket(0, 0, 0), field_type::time, no_flags, 2),
+	QueryTypesParams("types_time", "field_3", "zero", maket(0, 0, 0), field_type::time, no_flags, 3),
+	QueryTypesParams("types_time", "field_4", "zero", maket(0, 0, 0), field_type::time, no_flags, 4),
+	QueryTypesParams("types_time", "field_5", "zero", maket(0, 0, 0), field_type::time, no_flags, 5),
+	QueryTypesParams("types_time", "field_6", "zero", maket(0, 0, 0), field_type::time, no_flags, 6)
+));
+
 } // anon namespace
 
 
