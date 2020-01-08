@@ -250,11 +250,12 @@ CREATE TABLE types_string(
 	field_text TEXT,
 	field_mediumtext MEDIUMTEXT,
 	field_longtext LONGTEXT,
-	field_enum ENUM("red", "green", "blue")
+	field_enum ENUM("red", "green", "blue"),
+	field_set SET("red", "green", "blue")
 );
 INSERT INTO types_string VALUES
-	("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "red"),
-	("empty",   "",          "",             "",              "",          "",                "",              NULL)
+	("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "red", "red,green"),
+	("empty",   "",          "",             "",              "",          "",                "",              NULL,  "")
 ;
 
 -- Users

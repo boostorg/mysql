@@ -430,7 +430,10 @@ INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
 	QueryTypesParams("types_string", "field_longtext", "regular", "test_longtext", field_type::text, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_longtext", "empty", "", field_type::text, collation::utf8_general_ci),
 
-	QueryTypesParams("types_string", "field_enum", "regular", "red", field_type::enum_, collation::utf8_general_ci)
+	QueryTypesParams("types_string", "field_enum", "regular", "red", field_type::enum_, collation::utf8_general_ci),
+
+	QueryTypesParams("types_string", "field_set", "regular", "red,green", field_type::set, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_set", "empty", "", field_type::set, collation::utf8_general_ci)
 ));
 
 } // anon namespace
