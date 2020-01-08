@@ -404,17 +404,22 @@ INSTANTIATE_TEST_SUITE_P(TIME, QueryTypesTest, Values(
 	QueryTypesParams("types_time", "field_6", "zero", maket(0, 0, 0), field_type::time, no_flags, 6)
 ));
 
+INSTANTIATE_TEST_SUITE_P(YEAR, QueryTypesTest, Values(
+	QueryTypesParams("types_year", "field_default", "regular", mysql::year(2019), field_type::year, flags_zerofill),
+	QueryTypesParams("types_year", "field_default", "min", mysql::year(1901), field_type::year, flags_zerofill),
+	QueryTypesParams("types_year", "field_default", "max", mysql::year(2155), field_type::year, flags_zerofill),
+	QueryTypesParams("types_year", "field_default", "zero", mysql::year(0), field_type::year, flags_zerofill)
+));
+
 } // anon namespace
 
 
-// All int types: signed, unsigned, unsigned zerofill
-// Floating points: signed, unsigned, unsigned zerofill
-// Date, year
-// datetime, time, timestamp: 0-6 decimals
+// year
 // text types
 // missing types
 // key flags
 // timestamp flags
 // character sets and collations
+// NULL
 
 

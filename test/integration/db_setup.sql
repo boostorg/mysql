@@ -231,6 +231,17 @@ INSERT INTO types_time VALUES
 	("zero",          "00:00:00",   "00:00:00",     "00:00:00",      "00:00:00",       "00:00:00",        "00:00:00",         "00:00:00")
 ;
 
+CREATE TABLE types_year(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_default YEAR
+);
+INSERT INTO types_year VALUES
+	("regular", 2019),
+	("min",     1901),
+	("max",     2155),
+	("zero",    0)
+;
+
 -- Users
 DROP USER IF EXISTS empty_password_user;
 CREATE USER empty_password_user IDENTIFIED BY '';
