@@ -49,6 +49,13 @@ inline mysql::time maket(int hours, int mins, int secs, int micros=0)
 	     + std::chrono::seconds(secs) + std::chrono::microseconds(micros);
 }
 
+template <std::size_t N>
+inline std::string_view makesv(const char (&value) [N])
+{
+	static_assert(N>=1);
+	return std::string_view(value, N-1); // discard null terminator
+}
+
 }
 }
 

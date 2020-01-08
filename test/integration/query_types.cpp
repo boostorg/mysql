@@ -436,12 +436,34 @@ INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
 	QueryTypesParams("types_string", "field_set", "empty", "", field_type::set, collation::utf8_general_ci)
 ));
 
+INSTANTIATE_TEST_SUITE_P(BINARY, QueryTypesTest, Values(
+	// BINARY values get padded with zeros to the declared length
+	QueryTypesParams("types_binary", "field_binary", "regular", makesv("\0_binary\0\0"), field_type::binary),
+	QueryTypesParams("types_binary", "field_binary", "empty", makesv("\0\0\0\0\0\0\0\0\0\0"), field_type::binary),
+
+	QueryTypesParams("types_binary", "field_varbinary", "regular", makesv("\0_varbinary"), field_type::varbinary),
+	QueryTypesParams("types_binary", "field_varbinary", "empty", "", field_type::varbinary),
+
+	QueryTypesParams("types_binary", "field_tinyblob", "regular", makesv("\0_tinyblob"), field_type::blob),
+	QueryTypesParams("types_binary", "field_tinyblob", "empty", "", field_type::blob),
+
+	QueryTypesParams("types_binary", "field_blob", "regular", makesv("\0_blob"), field_type::blob),
+	QueryTypesParams("types_binary", "field_blob", "empty", "", field_type::blob),
+
+	QueryTypesParams("types_binary", "field_mediumblob", "regular", makesv("\0_mediumblob"), field_type::blob),
+	QueryTypesParams("types_binary", "field_mediumblob", "empty", "", field_type::blob),
+
+	QueryTypesParams("types_binary", "field_longblob", "regular", makesv("\0_longblob"), field_type::blob),
+	QueryTypesParams("types_binary", "field_longblob", "empty", "", field_type::blob)
+));
+
 } // anon namespace
 
 
 // text types
 //    TODO: check if we have covered all text sizes and all text features
 //    TODO: strings with special characters
+//    TODO: binaries with non-ASCII stuff (0xff)
 //    TODO: strings with max sizes
 //    TODO: character sets and collations
 // missing types

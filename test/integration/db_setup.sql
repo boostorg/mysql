@@ -258,6 +258,20 @@ INSERT INTO types_string VALUES
 	("empty",   "",          "",             "",              "",          "",                "",              NULL,  "")
 ;
 
+CREATE TABLE types_binary(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_binary BINARY(10),
+	field_varbinary VARBINARY(30),
+	field_tinyblob TINYBLOB,
+	field_blob BLOB,
+	field_mediumblob MEDIUMBLOB,
+	field_longblob LONGBLOB
+);
+INSERT INTO types_binary VALUES
+	("regular", "\0_binary", "\0_varbinary", "\0_tinyblob", "\0_blob", "\0_mediumblob", "\0_longblob"),
+	("empty",   "",          "",             "",            "",        "",              "")
+;
+
 -- Users
 DROP USER IF EXISTS empty_password_user;
 CREATE USER empty_password_user IDENTIFIED BY '';
