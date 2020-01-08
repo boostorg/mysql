@@ -411,15 +411,37 @@ INSTANTIATE_TEST_SUITE_P(YEAR, QueryTypesTest, Values(
 	QueryTypesParams("types_year", "field_default", "zero", mysql::year(0), field_type::year, flags_zerofill)
 ));
 
+INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
+	QueryTypesParams("types_string", "field_char", "regular", "test_char", field_type::char_, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_char", "empty", "", field_type::char_, collation::utf8_general_ci),
+
+	QueryTypesParams("types_string", "field_varchar", "regular", "test_varchar", field_type::varchar, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_varchar", "empty", "", field_type::varchar, collation::utf8_general_ci),
+
+	QueryTypesParams("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_tinytext", "empty", "", field_type::text, collation::utf8_general_ci),
+
+	QueryTypesParams("types_string", "field_text", "regular", "test_text", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_text", "empty", "", field_type::text, collation::utf8_general_ci),
+
+	QueryTypesParams("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_mediumtext", "empty", "", field_type::text, collation::utf8_general_ci),
+
+	QueryTypesParams("types_string", "field_longtext", "regular", "test_longtext", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_longtext", "empty", "", field_type::text, collation::utf8_general_ci)
+));
+
 } // anon namespace
 
 
-// year
 // text types
+//    TODO: check if we have covered all text sizes and all text features
+//    TODO: strings with special characters
+//    TODO: strings with max sizes
+//    TODO: character sets and collations
 // missing types
 // key flags
 // timestamp flags
-// character sets and collations
 // NULL
 
 

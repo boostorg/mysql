@@ -242,6 +242,20 @@ INSERT INTO types_year VALUES
 	("zero",    0)
 ;
 
+CREATE TABLE types_string(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_char CHAR(20),
+	field_varchar VARCHAR(30),
+	field_tinytext TINYTEXT,
+	field_text TEXT,
+	field_mediumtext MEDIUMTEXT,
+	field_longtext LONGTEXT
+);
+INSERT INTO types_string VALUES
+	("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext"),
+	("empty",   "",          "",             "",              "",          "",                "")
+;
+
 -- Users
 DROP USER IF EXISTS empty_password_user;
 CREATE USER empty_password_user IDENTIFIED BY '';
