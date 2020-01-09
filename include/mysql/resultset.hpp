@@ -61,6 +61,6 @@ public:
 
 }
 
-#include "mysql/impl/resultset_impl.hpp"
+#include "mysql/impl/resultset.hpp"
 
 #endif /* INCLUDE_MYSQL_RESULTSET_HPP_ */

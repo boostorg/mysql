@@ -1,10 +1,10 @@
-#ifndef INCLUDE_MYSQL_IMPL_QUERY_IMPL_HPP_
-#define INCLUDE_MYSQL_IMPL_QUERY_IMPL_HPP_
+#ifndef INCLUDE_MYSQL_IMPL_QUERY_IPP_
+#define INCLUDE_MYSQL_IMPL_QUERY_IPP_
 
 #include "mysql/impl/messages.hpp"
-#include "mysql/impl/basic_serialization.hpp"
 #include "mysql/impl/deserialize_row.hpp"
 #include <boost/asio/yield.hpp>
+#include "mysql/impl/serialization.hpp"
 
 namespace mysql
 {
@@ -447,4 +447,4 @@ mysql::detail::async_fetch_text_row(
 #include <boost/asio/unyield.hpp>
 
 
-#endif /* INCLUDE_MYSQL_IMPL_QUERY_IMPL_HPP_ */
+#endif /* INCLUDE_MYSQL_IMPL_QUERY_IPP_ */

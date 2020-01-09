@@ -1,13 +1,13 @@
-#ifndef INCLUDE_MYSQL_IMPL_HANDSHAKE_IMPL_HPP_
-#define INCLUDE_MYSQL_IMPL_HANDSHAKE_IMPL_HPP_
+#ifndef INCLUDE_MYSQL_IMPL_HANDSHAKE_IPP_
+#define INCLUDE_MYSQL_IMPL_HANDSHAKE_IPP_
 
-#include "mysql/impl/basic_serialization.hpp"
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/auth.hpp"
 #include "mysql/error.hpp"
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/yield.hpp>
 #include <boost/beast/core/async_base.hpp>
+#include "mysql/impl/serialization.hpp"
 
 namespace mysql
 {
@@ -409,4 +409,4 @@ mysql::detail::async_handshake(
 #include <boost/asio/unyield.hpp>
 
 
-#endif /* INCLUDE_MYSQL_IMPL_HANDSHAKE_IMPL_HPP_ */
+#endif /* INCLUDE_MYSQL_IMPL_HANDSHAKE_IPP_ */

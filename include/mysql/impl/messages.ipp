@@ -1,7 +1,7 @@
-#ifndef INCLUDE_MYSQL_IMPL_MESSAGES_IMPL_HPP_
-#define INCLUDE_MYSQL_IMPL_MESSAGES_IMPL_HPP_
+#ifndef INCLUDE_MYSQL_IMPL_MESSAGES_IPP_
+#define INCLUDE_MYSQL_IMPL_MESSAGES_IPP_
 
-#include "mysql/impl/basic_serialization.hpp"
+#include "mysql/impl/serialization.hpp"
 #include <cassert>
 
 inline mysql::Error mysql::detail::deserialize(
@@ -218,4 +218,4 @@ inline mysql::error_code mysql::detail::process_error_packet(
 }
 
 
-#endif /* INCLUDE_MYSQL_IMPL_MESSAGES_IMPL_HPP_ */
+#endif /* INCLUDE_MYSQL_IMPL_MESSAGES_IPP_ */

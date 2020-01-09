@@ -1,13 +1,13 @@
 #ifndef MESSAGES_H_
 #define MESSAGES_H_
 
+#include "mysql/impl/serialization.hpp"
 #include <string>
 #include <vector>
 #include <variant>
 #include <tuple>
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/impl/constants.hpp"
-#include "mysql/impl/basic_serialization.hpp"
 #include "mysql/collation.hpp"
 
 namespace mysql
@@ -265,7 +265,7 @@ struct StmtClose
 } // detail
 } // mysql
 
-#include "mysql/impl/messages_impl.hpp"
+#include "mysql/impl/messages.ipp"
 
 
 #endif /* MESSAGES_H_ */

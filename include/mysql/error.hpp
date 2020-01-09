@@ -27,6 +27,6 @@ using error_code = boost::system::error_code;
 
 }
 
-#include "mysql/impl/error_impl.hpp"
+#include "mysql/impl/error.hpp"
 
 #endif /* INCLUDE_ERROR_HPP_ */

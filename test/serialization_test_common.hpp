@@ -1,12 +1,12 @@
 #ifndef TEST_SERIALIZATION_TEST_COMMON_HPP_
 #define TEST_SERIALIZATION_TEST_COMMON_HPP_
 
-#include "mysql/impl/basic_serialization.hpp"
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/constants.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <boost/type_index.hpp>
+#include "mysql/impl/serialization.hpp"
 
 namespace mysql
 {

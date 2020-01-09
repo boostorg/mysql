@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const value& value);
 
 }
 
-#include "mysql/impl/value_impl.hpp"
+#include "mysql/impl/value.hpp"
 
 
 #endif /* INCLUDE_MYSQL_VALUE_HPP_ */

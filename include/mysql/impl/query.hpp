@@ -65,6 +65,6 @@ async_fetch_text_row(
 }
 }
 
-#include "mysql/impl/query_impl.hpp"
+#include "mysql/impl/query.ipp"
 
 #endif /* INCLUDE_MYSQL_IMPL_QUERY_HPP_ */

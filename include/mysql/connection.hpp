@@ -48,6 +48,6 @@ public:
 
 }
 
-#include "mysql/impl/connection_impl.hpp"
+#include "mysql/impl/connection.ipp"
 
 #endif /* INCLUDE_MYSQL_CONNECTION_HPP_ */

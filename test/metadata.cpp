@@ -6,8 +6,8 @@
  */
 
 #include "mysql/metadata.hpp"
-#include "mysql/impl/basic_serialization.hpp"
 #include <gtest/gtest.h>
+#include "mysql/impl/serialization.hpp"
 
 using namespace testing;
 using namespace mysql;

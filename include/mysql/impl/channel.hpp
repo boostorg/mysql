@@ -57,6 +57,6 @@ public:
 }
 }
 
-#include "mysql/impl/channel_impl.hpp"
+#include "mysql/impl/channel.ipp"
 
 #endif /* INCLUDE_MYSQL_STREAM_HPP_ */

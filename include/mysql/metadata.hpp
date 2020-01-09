@@ -60,6 +60,6 @@ public:
 } // detail
 } // mysql
 
-#include "mysql/impl/metadata_impl.hpp"
+#include "mysql/impl/metadata.hpp"
 
 #endif /* INCLUDE_MYSQL_METADATA_HPP_ */

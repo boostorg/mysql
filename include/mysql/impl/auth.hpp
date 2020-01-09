@@ -28,6 +28,6 @@ inline void compute_auth_string(std::string_view password, const void* challenge
 } // detail
 } // mysql
 
-#include "mysql/impl/auth_impl.hpp"
+#include "mysql/impl/auth.ipp"
 
 #endif /* INCLUDE_AUTH_HPP_ */

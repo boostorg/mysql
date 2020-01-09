@@ -41,7 +41,7 @@ async_handshake(
 }
 }
 
-#include "mysql/impl/handshake_impl.hpp"
+#include "mysql/impl/handshake.ipp"
 
 
 #endif /* INCLUDE_MYSQL_IMPL_HANDSHAKE_HPP_ */
