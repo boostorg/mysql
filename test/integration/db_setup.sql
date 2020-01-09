@@ -277,6 +277,31 @@ INSERT INTO types_binary VALUES
 	("empty",   "",          "",             "",            "",        "",              "")
 ;
 
+CREATE TABLE types_not_implemented(
+	id VARCHAR(50) NOT NULL PRIMARY KEY,
+	field_bit BIT(8),
+	field_decimal DECIMAL,
+	field_geometry GEOMETRY
+);
+INSERT INTO types_not_implemented VALUES
+	("regular", 0xfe, 300, POINT(1, 2))
+;
+
+CREATE TABLE types_flags(
+	id VARCHAR(50) NOT NULL,
+	field_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	field_primary_key INT NOT NULL AUTO_INCREMENT,
+	field_not_null CHAR(8) NOT NULL DEFAULT "",
+	field_unique INT,
+	field_indexed INT,
+	PRIMARY KEY (field_primary_key, id),
+	UNIQUE KEY (field_unique),
+	KEY (field_indexed)
+);
+INSERT INTO types_flags VALUES
+	("default", NULL, 50, "char", 21, 42)
+;
+
 -- Users
 DROP USER IF EXISTS empty_password_user;
 CREATE USER empty_password_user IDENTIFIED BY '';

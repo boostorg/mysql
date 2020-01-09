@@ -56,6 +56,12 @@ inline std::string_view makesv(const char (&value) [N])
 	return std::string_view(value, N-1); // discard null terminator
 }
 
+template <std::size_t N>
+inline std::string_view makesv(const std::uint8_t (&value) [N])
+{
+	return std::string_view(reinterpret_cast<const char*>(value), N);
+}
+
 }
 }
 

@@ -14,6 +14,10 @@ Usability
 	Iterators for sync resultset iteration
 	Better interface for connection_params data structure
 	Consideration of timezones
+	Types
+		Decimal
+		Bit
+		Geometry
 Consider if header-only is a good idea
 Technical debt
 	Concept checking

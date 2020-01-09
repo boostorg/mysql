@@ -605,7 +605,14 @@ TEST_F(QueryTest, FetchAllAsync_SeveralRows)
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
 
-
+// Some system-level query tests
+TEST_F(QueryTest, QueryAndFetch_AliasedTableAndField_MetadataCorrect)
+{
+	auto result = conn.query("SELECT field_varchar AS field_alias FROM empty_table table_alias");
+	meta_validator validator ("table_alias", "empty_table", "field_alias",
+			"field_varchar", field_type::varchar, collation::utf8_general_ci);
+	validate_meta(result.fields(), {validator});
+}
 
 } // anon namespace
 

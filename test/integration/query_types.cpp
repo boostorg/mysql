@@ -469,14 +469,36 @@ INSTANTIATE_TEST_SUITE_P(BINARY, QueryTypesTest, Values(
 	QueryTypesParams("types_binary", "field_longblob", "empty", "", field_type::blob)
 ));
 
+// These types do not have a more concrete representation in the library yet.
+// Check we get them as strings and we get the metadata correctly
+std::uint8_t geometry_value [] = {
+	0x00, 0x00, 0x00,
+	0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x40
+};
+
+INSTANTIATE_TEST_SUITE_P(NOT_IMPLEMENTED_TYPES, QueryTypesTest, Values(
+	QueryTypesParams("types_not_implemented", "field_bit", "regular", "\xfe", field_type::bit, flags_unsigned),
+	QueryTypesParams("types_not_implemented", "field_decimal", "regular", "300", field_type::decimal),
+	QueryTypesParams("types_not_implemented", "field_geometry", "regular", makesv(geometry_value), field_type::geometry)
+));
+
+// Tests for certain metadata flags and NULL values
+INSTANTIATE_TEST_SUITE_P(METADATA_FLAGS, QueryTypesTest, Values(
+	QueryTypesParams("types_flags", "field_timestamp", "default", nullptr, field_type::timestamp,
+					 flagsvec{&field_metadata::is_set_to_now_on_update}),
+	QueryTypesParams("types_flags", "field_primary_key", "default", std::int32_t(50), field_type::int_,
+					 flagsvec{&field_metadata::is_primary_key, &field_metadata::is_not_null,
+							  &field_metadata::is_auto_increment}),
+	QueryTypesParams("types_flags", "field_not_null", "default", "char", field_type::char_, collation::utf8_general_ci,
+					 flagsvec{&field_metadata::is_not_null}),
+	QueryTypesParams("types_flags", "field_unique", "default", std::int32_t(21), field_type::int_,
+					 flagsvec{&field_metadata::is_unique_key}),
+	QueryTypesParams("types_flags", "field_indexed", "default", std::int32_t(42), field_type::int_,
+					 flagsvec{&field_metadata::is_multiple_key})
+));
+
+
 } // anon namespace
-
-
-// text types
-//    TODO: character sets and collations
-// missing types
-// key flags
-// timestamp flags
-// NULL
-
 
