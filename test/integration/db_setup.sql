@@ -268,7 +268,8 @@ CREATE TABLE types_binary(
 	field_longblob LONGBLOB
 );
 INSERT INTO types_binary VALUES
-	("regular", "\0_binary", "\0_varbinary", "\0_tinyblob", "\0_blob", "\0_mediumblob", "\0_longblob"),
+	("regular",  "\0_binary", "\0_varbinary", "\0_tinyblob", "\0_blob", "\0_mediumblob", "\0_longblob"),
+	("nonascii", X'00FF',     X'01FE',        X'02FD',       X'03FC',   X'04FB',         X'05FA'),
 	("empty",   "",          "",             "",            "",        "",              "")
 ;
 
