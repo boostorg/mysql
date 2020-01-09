@@ -413,21 +413,27 @@ INSTANTIATE_TEST_SUITE_P(YEAR, QueryTypesTest, Values(
 
 INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
 	QueryTypesParams("types_string", "field_char", "regular", "test_char", field_type::char_, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_char", "utf8", u8"\u00F1", field_type::char_, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_char", "empty", "", field_type::char_, collation::utf8_general_ci),
 
 	QueryTypesParams("types_string", "field_varchar", "regular", "test_varchar", field_type::varchar, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_varchar", "utf8", u8"\u00D1", field_type::varchar, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_varchar", "empty", "", field_type::varchar, collation::utf8_general_ci),
 
 	QueryTypesParams("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_tinytext", "utf8", "\u00e1", field_type::text, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_tinytext", "empty", "", field_type::text, collation::utf8_general_ci),
 
 	QueryTypesParams("types_string", "field_text", "regular", "test_text", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_text", "utf8", "\u00e9", field_type::text, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_text", "empty", "", field_type::text, collation::utf8_general_ci),
 
 	QueryTypesParams("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_mediumtext", "utf8", "\u00ed", field_type::text, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_mediumtext", "empty", "", field_type::text, collation::utf8_general_ci),
 
 	QueryTypesParams("types_string", "field_longtext", "regular", "test_longtext", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_longtext", "utf8", "\u00f3", field_type::text, collation::utf8_general_ci),
 	QueryTypesParams("types_string", "field_longtext", "empty", "", field_type::text, collation::utf8_general_ci),
 
 	QueryTypesParams("types_string", "field_enum", "regular", "red", field_type::enum_, collation::utf8_general_ci),
@@ -467,7 +473,6 @@ INSTANTIATE_TEST_SUITE_P(BINARY, QueryTypesTest, Values(
 
 
 // text types
-//    TODO: strings with special characters
 //    TODO: character sets and collations
 // missing types
 // key flags

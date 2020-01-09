@@ -1,4 +1,7 @@
--- Databse
+-- Connection system variables
+SET NAMES utf8;
+
+-- Database
 DROP DATABASE IF EXISTS awesome;
 CREATE DATABASE awesome;
 USE awesome;
@@ -255,6 +258,7 @@ CREATE TABLE types_string(
 );
 INSERT INTO types_string VALUES
 	("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "red", "red,green"),
+	("utf8",    "ñ",         "Ñ",            "á",             "é",         "í",               "ó",             NULL,  NULL),
 	("empty",   "",          "",             "",              "",          "",                "",              NULL,  "")
 ;
 
