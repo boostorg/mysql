@@ -1,3 +1,13 @@
+MVP
+	Examples
+	Restructure source code
+	Readme
+	License
+	Compile in Mac, Windows, clang
+	Add travis
+	Merge master
+	Sanitize cmake
+	Doxygen comments in interface
 Prepared statements
 Multiresultset
 	Text protocol

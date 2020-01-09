@@ -412,34 +412,34 @@ INSTANTIATE_TEST_SUITE_P(YEAR, QueryTypesTest, Values(
 ));
 
 INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
-	QueryTypesParams("types_string", "field_char", "regular", "test_char", field_type::char_, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_char", "utf8", u8"\u00F1", field_type::char_, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_char", "empty", "", field_type::char_, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_char", "regular", "test_char", field_type::char_),
+	QueryTypesParams("types_string", "field_char", "utf8", u8"\u00F1", field_type::char_),
+	QueryTypesParams("types_string", "field_char", "empty", "", field_type::char_),
 
-	QueryTypesParams("types_string", "field_varchar", "regular", "test_varchar", field_type::varchar, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_varchar", "utf8", u8"\u00D1", field_type::varchar, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_varchar", "empty", "", field_type::varchar, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_varchar", "regular", "test_varchar", field_type::varchar),
+	QueryTypesParams("types_string", "field_varchar", "utf8", u8"\u00D1", field_type::varchar),
+	QueryTypesParams("types_string", "field_varchar", "empty", "", field_type::varchar),
 
-	QueryTypesParams("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_tinytext", "utf8", "\u00e1", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_tinytext", "empty", "", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text),
+	QueryTypesParams("types_string", "field_tinytext", "utf8", "\u00e1", field_type::text),
+	QueryTypesParams("types_string", "field_tinytext", "empty", "", field_type::text),
 
-	QueryTypesParams("types_string", "field_text", "regular", "test_text", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_text", "utf8", "\u00e9", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_text", "empty", "", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_text", "regular", "test_text", field_type::text),
+	QueryTypesParams("types_string", "field_text", "utf8", "\u00e9", field_type::text),
+	QueryTypesParams("types_string", "field_text", "empty", "", field_type::text),
 
-	QueryTypesParams("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_mediumtext", "utf8", "\u00ed", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_mediumtext", "empty", "", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text),
+	QueryTypesParams("types_string", "field_mediumtext", "utf8", "\u00ed", field_type::text),
+	QueryTypesParams("types_string", "field_mediumtext", "empty", "", field_type::text),
 
-	QueryTypesParams("types_string", "field_longtext", "regular", "test_longtext", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_longtext", "utf8", "\u00f3", field_type::text, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_longtext", "empty", "", field_type::text, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_longtext", "regular", "test_longtext", field_type::text),
+	QueryTypesParams("types_string", "field_longtext", "utf8", "\u00f3", field_type::text),
+	QueryTypesParams("types_string", "field_longtext", "empty", "", field_type::text),
 
-	QueryTypesParams("types_string", "field_enum", "regular", "red", field_type::enum_, collation::utf8_general_ci),
+	QueryTypesParams("types_string", "field_enum", "regular", "red", field_type::enum_),
 
-	QueryTypesParams("types_string", "field_set", "regular", "red,green", field_type::set, collation::utf8_general_ci),
-	QueryTypesParams("types_string", "field_set", "empty", "", field_type::set, collation::utf8_general_ci)
+	QueryTypesParams("types_string", "field_set", "regular", "red,green", field_type::set),
+	QueryTypesParams("types_string", "field_set", "empty", "", field_type::set)
 ));
 
 INSTANTIATE_TEST_SUITE_P(BINARY, QueryTypesTest, Values(
@@ -491,7 +491,7 @@ INSTANTIATE_TEST_SUITE_P(METADATA_FLAGS, QueryTypesTest, Values(
 	QueryTypesParams("types_flags", "field_primary_key", "default", std::int32_t(50), field_type::int_,
 					 flagsvec{&field_metadata::is_primary_key, &field_metadata::is_not_null,
 							  &field_metadata::is_auto_increment}),
-	QueryTypesParams("types_flags", "field_not_null", "default", "char", field_type::char_, collation::utf8_general_ci,
+	QueryTypesParams("types_flags", "field_not_null", "default", "char", field_type::char_,
 					 flagsvec{&field_metadata::is_not_null}),
 	QueryTypesParams("types_flags", "field_unique", "default", std::int32_t(21), field_type::int_,
 					 flagsvec{&field_metadata::is_unique_key}),

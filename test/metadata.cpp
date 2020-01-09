@@ -38,7 +38,6 @@ TEST(FieldMetadata, IntPrimaryKey)
 	EXPECT_EQ(meta.original_table(), "test_table");
 	EXPECT_EQ(meta.field_name(), "id");
 	EXPECT_EQ(meta.original_field_name(), "id");
-	EXPECT_EQ(meta.field_collation(), collation::binary);
 	EXPECT_EQ(meta.column_length(), 11);
 	EXPECT_EQ(meta.type(), field_type::int_);
 	EXPECT_EQ(meta.protocol_type(), protocol_field_type::long_);
@@ -76,7 +75,6 @@ TEST(FieldMetadata, VarcharWithAlias)
 	EXPECT_EQ(meta.original_table(), "child_table");
 	EXPECT_EQ(meta.field_name(), "field_alias");
 	EXPECT_EQ(meta.original_field_name(), "field_varchar");
-	EXPECT_EQ(meta.field_collation(), collation::utf8_general_ci);
 	EXPECT_EQ(meta.column_length(), 765);
 	EXPECT_EQ(meta.protocol_type(), protocol_field_type::var_string);
 	EXPECT_EQ(meta.type(), field_type::varchar);
@@ -114,7 +112,6 @@ TEST(FieldMetadata, FloatField)
 	EXPECT_EQ(meta.original_table(), "test_table");
 	EXPECT_EQ(meta.field_name(), "field_float");
 	EXPECT_EQ(meta.original_field_name(), "field_float");
-	EXPECT_EQ(meta.field_collation(), collation::binary);
 	EXPECT_EQ(meta.column_length(), 12);
 	EXPECT_EQ(meta.protocol_type(), protocol_field_type::float_);
 	EXPECT_EQ(meta.type(), field_type::float_);

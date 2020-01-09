@@ -23,7 +23,6 @@ public:
 	std::string_view original_table() const noexcept { return msg_.org_table.value; }
 	std::string_view field_name() const noexcept { return msg_.name.value; }
 	std::string_view original_field_name() const noexcept { return msg_.org_name.value; }
-	collation field_collation() const noexcept { return msg_.character_set; }
 	unsigned column_length() const noexcept { return msg_.column_length.value; }
 	detail::protocol_field_type protocol_type() const noexcept { return msg_.type; }
 	field_type type() const noexcept;
