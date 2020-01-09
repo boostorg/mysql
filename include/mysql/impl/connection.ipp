@@ -5,14 +5,33 @@
 #include "mysql/impl/query.hpp"
 #include <boost/asio/buffer.hpp>
 
-// Handshake
+namespace mysql
+{
+namespace detail
+{
+
+inline handshake_params to_handshake_params(
+	const connection_params& input
+)
+{
+	return detail::handshake_params {
+		input.connection_collation,
+		input.username,
+		input.password,
+		input.database
+	};
+}
+
+}
+}
+
 template <typename Stream>
 void mysql::connection<Stream>::handshake(
 	const connection_params& params,
 	error_code& errc
 )
 {
-	detail::hanshake(channel_, params, buffer_, errc);
+	detail::hanshake(channel_, detail::to_handshake_params(params), buffer_, errc);
 	// TODO: should we close() the stream in case of error?
 }
 
@@ -36,7 +55,7 @@ mysql::connection<Stream>::async_handshake(
 {
 	return detail::async_handshake(
 		channel_,
-		params,
+		detail::to_handshake_params(params),
 		buffer_,
 		std::forward<CompletionToken>(token)
 	);

@@ -10,7 +10,22 @@
 namespace mysql
 {
 
-using connection_params = detail::handshake_params; // TODO: do we think this interface is good enough?
+struct connection_params
+{
+	std::string_view username;
+	std::string_view password;
+	std::string_view database;
+	collation connection_collation;
+
+	connection_params(std::string_view username, std::string_view password,
+			std::string_view db = "", collation connection_col = collation::utf8_general_ci) :
+		username(username),
+		password(password),
+		database(db),
+		connection_collation(connection_col)
+	{
+	}
+};
 
 template <typename Stream>
 class connection

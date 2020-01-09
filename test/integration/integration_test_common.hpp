@@ -15,12 +15,7 @@ namespace test
 
 struct IntegTest : testing::Test
 {
-	mysql::connection_params connection_params {
-		mysql::collation::utf8_general_ci,
-		"root",
-		"root",
-		"awesome"
-	};
+	mysql::connection_params connection_params {"root", "root", "awesome"};
 	boost::asio::io_context ctx;
 	mysql::connection<boost::asio::ip::tcp::socket> conn {ctx};
 	mysql::error_code errc;

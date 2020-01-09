@@ -1,6 +1,5 @@
 MVP
 	Examples
-	Restructure source code
 	Readme
 	License
 	Compile in Mac, Windows, clang

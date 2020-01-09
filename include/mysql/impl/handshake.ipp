@@ -78,7 +78,7 @@ public:
 
 class handshake_processor
 {
-	const handshake_params& params_;
+	handshake_params params_;
 	capabilities negotiated_caps_;
 public:
 	handshake_processor(const handshake_params& params): params_(params) {};
