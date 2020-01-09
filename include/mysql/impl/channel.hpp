@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_STREAM_HPP_
-#define INCLUDE_MYSQL_STREAM_HPP_
+#ifndef MYSQL_ASIO_IMPL_CHANNEL_HPP
+#define MYSQL_ASIO_IMPL_CHANNEL_HPP
 
 #include "mysql/error.hpp"
 #include "mysql/impl/basic_types.hpp"
@@ -59,4 +59,4 @@ public:
 
 #include "mysql/impl/channel.ipp"
 
-#endif /* INCLUDE_MYSQL_STREAM_HPP_ */
+#endif

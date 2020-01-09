@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_VALUE_HPP_
-#define INCLUDE_MYSQL_IMPL_VALUE_HPP_
+#ifndef MYSQL_ASIO_IMPL_VALUE_HPP
+#define MYSQL_ASIO_IMPL_VALUE_HPP
 
 #include "mysql/impl/container_equals.hpp"
 
@@ -89,4 +89,4 @@ inline std::ostream& mysql::operator<<(
 }
 
 
-#endif /* INCLUDE_MYSQL_IMPL_VALUE_HPP_ */
+#endif

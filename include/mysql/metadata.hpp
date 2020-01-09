@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_METADATA_HPP_
-#define INCLUDE_MYSQL_METADATA_HPP_
+#ifndef MYSQL_ASIO_METADATA_HPP
+#define MYSQL_ASIO_METADATA_HPP
 
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/basic_types.hpp"
@@ -62,4 +62,4 @@ public:
 
 #include "mysql/impl/metadata.hpp"
 
-#endif /* INCLUDE_MYSQL_METADATA_HPP_ */
+#endif

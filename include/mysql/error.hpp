@@ -1,5 +1,5 @@
-#ifndef INCLUDE_ERROR_HPP_
-#define INCLUDE_ERROR_HPP_
+#ifndef MYSQL_ASIO_ERROR_HPP
+#define MYSQL_ASIO_ERROR_HPP
 
 #include <boost/system/error_code.hpp>
 
@@ -29,4 +29,4 @@ using error_code = boost::system::error_code;
 
 #include "mysql/impl/error.hpp"
 
-#endif /* INCLUDE_ERROR_HPP_ */
+#endif

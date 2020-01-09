@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_METADATA_HPP_
-#define INCLUDE_MYSQL_IMPL_METADATA_HPP_
+#ifndef MYSQL_ASIO_IMPL_METADATA_HPP
+#define MYSQL_ASIO_IMPL_METADATA_HPP
 
 namespace mysql
 {
@@ -76,4 +76,4 @@ inline mysql::field_type mysql::field_metadata::type() const noexcept
 	return field_type_;
 }
 
-#endif /* INCLUDE_MYSQL_IMPL_METADATA_HPP_ */
+#endif

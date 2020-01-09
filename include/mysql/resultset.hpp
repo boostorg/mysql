@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_RESULTSET_HPP_
-#define INCLUDE_MYSQL_RESULTSET_HPP_
+#ifndef MYSQL_ASIO_RESULTSET_HPP
+#define MYSQL_ASIO_RESULTSET_HPP
 
 #include "mysql/row.hpp"
 #include "mysql/metadata.hpp"
@@ -63,4 +63,4 @@ public:
 
 #include "mysql/impl/resultset.hpp"
 
-#endif /* INCLUDE_MYSQL_RESULTSET_HPP_ */
+#endif

@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_RESULTSET_HPP_
-#define INCLUDE_MYSQL_IMPL_RESULTSET_HPP_
+#ifndef MYSQL_ASIO_IMPL_RESULTSET_HPP
+#define MYSQL_ASIO_IMPL_RESULTSET_HPP
 
 #include "mysql/impl/query.hpp"
 #include <boost/asio/coroutine.hpp>
@@ -281,4 +281,4 @@ mysql::resultset<StreamType>::async_fetch_all(
 #include <boost/asio/unyield.hpp>
 
 
-#endif /* INCLUDE_MYSQL_IMPL_RESULTSET_HPP_ */
+#endif

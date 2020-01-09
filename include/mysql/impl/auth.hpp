@@ -1,5 +1,5 @@
-#ifndef INCLUDE_AUTH_HPP_
-#define INCLUDE_AUTH_HPP_
+#ifndef MYSQL_ASIO_IMPL_AUTH_HPP
+#define MYSQL_ASIO_IMPL_AUTH_HPP
 
 #include <cstdint>
 #include <string_view>
@@ -30,4 +30,4 @@ inline void compute_auth_string(std::string_view password, const void* challenge
 
 #include "mysql/impl/auth.ipp"
 
-#endif /* INCLUDE_AUTH_HPP_ */
+#endif

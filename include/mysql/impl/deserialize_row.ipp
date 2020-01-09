@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_DESERIALIZE_ROW_IPP_
-#define INCLUDE_MYSQL_IMPL_DESERIALIZE_ROW_IPP_
+#ifndef MYSQL_ASIO_IMPL_DESERIALIZE_ROW_IPP
+#define MYSQL_ASIO_IMPL_DESERIALIZE_ROW_IPP
 
 #include <cstdlib>
 #include <cmath>
@@ -237,4 +237,4 @@ mysql::error_code mysql::detail::deserialize_text_row(
 
 
 
-#endif /* INCLUDE_MYSQL_IMPL_DESERIALIZE_ROW_IPP_ */
+#endif

@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_CONNECTION_IPP_
-#define INCLUDE_MYSQL_IMPL_CONNECTION_IPP_
+#ifndef MYSQL_ASIO_IMPL_CONNECTION_IPP
+#define MYSQL_ASIO_IMPL_CONNECTION_IPP
 
 #include "mysql/impl/handshake.hpp"
 #include "mysql/impl/query.hpp"
@@ -82,4 +82,4 @@ mysql::connection<Stream>::async_query(
 }
 
 
-#endif /* INCLUDE_MYSQL_IMPL_CONNECTION_IPP_ */
+#endif

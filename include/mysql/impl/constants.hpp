@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_CONSTANTS_HPP_
-#define INCLUDE_MYSQL_IMPL_CONSTANTS_HPP_
+#ifndef MYSQL_ASIO_IMPL_CONSTANTS_HPP
+#define MYSQL_ASIO_IMPL_CONSTANTS_HPP
 
 #include "mysql/impl/basic_types.hpp"
 
@@ -97,4 +97,4 @@ constexpr std::uint8_t CURSOR_TYPE_SCROLLABLE = 4;
 
 
 
-#endif /* INCLUDE_MYSQL_IMPL_CONSTANTS_HPP_ */
+#endif

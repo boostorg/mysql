@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_DESERIALIZE_ROW_HPP_
-#define INCLUDE_MYSQL_IMPL_DESERIALIZE_ROW_HPP_
+#ifndef MYSQL_ASIO_IMPL_DESERIALIZE_ROW_HPP
+#define MYSQL_ASIO_IMPL_DESERIALIZE_ROW_HPP
 
 #include "mysql/impl/serialization.hpp"
 #include "mysql/error.hpp"
@@ -30,4 +30,4 @@ inline error_code deserialize_text_row(
 
 #include "mysql/impl/deserialize_row.ipp"
 
-#endif /* INCLUDE_MYSQL_IMPL_DESERIALIZE_ROW_HPP_ */
+#endif

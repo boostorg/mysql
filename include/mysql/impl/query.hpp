@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_QUERY_HPP_
-#define INCLUDE_MYSQL_IMPL_QUERY_HPP_
+#ifndef MYSQL_ASIO_IMPL_QUERY_HPP
+#define MYSQL_ASIO_IMPL_QUERY_HPP
 
 #include "mysql/resultset.hpp"
 #include "mysql/impl/capabilities.hpp"
@@ -67,4 +67,4 @@ async_fetch_text_row(
 
 #include "mysql/impl/query.ipp"
 
-#endif /* INCLUDE_MYSQL_IMPL_QUERY_HPP_ */
+#endif

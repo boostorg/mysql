@@ -1,5 +1,5 @@
-#ifndef BASIC_TYPES_H_
-#define BASIC_TYPES_H_
+#ifndef MYSQL_ASIO_IMPL_BASIC_TYPES_HPP
+#define MYSQL_ASIO_IMPL_BASIC_TYPES_HPP
 
 #include <cstdint>
 #include <string_view>
@@ -50,4 +50,4 @@ using bytestring = std::vector<std::uint8_t>;
 }
 
 
-#endif /* BASIC_TYPES_H_ */
+#endif

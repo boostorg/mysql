@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_COLLATION_HPP_
-#define INCLUDE_MYSQL_COLLATION_HPP_
+#ifndef MYSQL_ASIO_COLLATION_HPP
+#define MYSQL_ASIO_COLLATION_HPP
 
 #include <cstdint>
 
@@ -236,4 +236,4 @@ enum class collation : std::uint16_t
 
 
 
-#endif /* INCLUDE_MYSQL_COLLATION_HPP_ */
+#endif

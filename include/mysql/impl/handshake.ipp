@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_HANDSHAKE_IPP_
-#define INCLUDE_MYSQL_IMPL_HANDSHAKE_IPP_
+#ifndef MYSQL_ASIO_IMPL_HANDSHAKE_IPP
+#define MYSQL_ASIO_IMPL_HANDSHAKE_IPP
 
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/auth.hpp"
@@ -409,4 +409,4 @@ mysql::detail::async_handshake(
 #include <boost/asio/unyield.hpp>
 
 
-#endif /* INCLUDE_MYSQL_IMPL_HANDSHAKE_IPP_ */
+#endif

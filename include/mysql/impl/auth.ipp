@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_AUTH_IPP_
-#define INCLUDE_MYSQL_IMPL_AUTH_IPP_
+#ifndef MYSQL_ASIO_IMPL_AUTH_IPP
+#define MYSQL_ASIO_IMPL_AUTH_IPP
 
 #include <openssl/sha.h>
 #include <cstring>
@@ -35,4 +35,4 @@ inline void mysql::detail::mysql_native_password::compute_auth_string(
 
 
 
-#endif /* INCLUDE_MYSQL_IMPL_AUTH_IPP_ */
+#endif

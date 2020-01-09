@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_QUERY_IPP_
-#define INCLUDE_MYSQL_IMPL_QUERY_IPP_
+#ifndef MYSQL_ASIO_IMPL_QUERY_IPP
+#define MYSQL_ASIO_IMPL_QUERY_IPP
 
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/deserialize_row.hpp"
@@ -447,4 +447,4 @@ mysql::detail::async_fetch_text_row(
 #include <boost/asio/unyield.hpp>
 
 
-#endif /* INCLUDE_MYSQL_IMPL_QUERY_IPP_ */
+#endif

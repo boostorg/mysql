@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_CONTAINER_EQUALS_HPP_
-#define INCLUDE_MYSQL_IMPL_CONTAINER_EQUALS_HPP_
+#ifndef MYSQL_ASIO_IMPL_CONTAINER_EQUALS_HPP
+#define MYSQL_ASIO_IMPL_CONTAINER_EQUALS_HPP
 
 #include <algorithm>
 #include <vector>
@@ -28,4 +28,4 @@ inline bool container_equals(
 
 
 
-#endif /* INCLUDE_MYSQL_IMPL_CONTAINER_EQUALS_HPP_ */
+#endif

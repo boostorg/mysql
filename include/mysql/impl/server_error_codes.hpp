@@ -1,3 +1,6 @@
+#ifndef MYSQL_ASIO_IMPL_SERVER_ERROR_CODES_HPP
+#define MYSQL_ASIO_IMPL_SERVER_ERROR_CODES_HPP
+
     hashchk = 1000,
     nisamchk = 1001,
     no = 1002,
@@ -1117,3 +1120,5 @@
     cant_open_error_log = 3228,
     grouping_on_timestamp_in_dst = 3229,
     cant_start_server_named_pipe = 3230,
+
+#endif

@@ -1,6 +1,5 @@
-
-#ifndef INCLUDE_MYSQL_FIELD_TYPE_HPP_
-#define INCLUDE_MYSQL_FIELD_TYPE_HPP_
+#ifndef MYSQL_ASIO_FIELD_TYPE_HPP
+#define MYSQL_ASIO_FIELD_TYPE_HPP
 
 #include <cstdint>
 
@@ -41,4 +40,4 @@ enum class field_type
 
 
 
-#endif /* INCLUDE_MYSQL_FIELD_TYPE_HPP_ */
+#endif

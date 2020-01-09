@@ -1,5 +1,5 @@
-#ifndef INCLUDE_IMPL_MYSQL_STREAM_IMPL_HPP_
-#define INCLUDE_IMPL_MYSQL_STREAM_IMPL_HPP_
+#ifndef MYSQL_ASIO_IMPL_CHANNEL_IPP
+#define MYSQL_ASIO_IMPL_CHANNEL_IPP
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>

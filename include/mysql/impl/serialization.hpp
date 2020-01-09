@@ -1,5 +1,5 @@
-#ifndef DESERIALIZATION_H_
-#define DESERIALIZATION_H_
+#ifndef MYSQL_ASIO_IMPL_SERIALIZATION_HPP
+#define MYSQL_ASIO_IMPL_SERIALIZATION_HPP
 
 #include <boost/endian/conversion.hpp>
 #include <boost/asio/buffer.hpp>
@@ -454,4 +454,4 @@ Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&..
 }
 
 
-#endif /* DESERIALIZATION_H_ */
+#endif

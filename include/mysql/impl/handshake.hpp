@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_HANDSHAKE_HPP_
-#define INCLUDE_MYSQL_IMPL_HANDSHAKE_HPP_
+#ifndef MYSQL_ASIO_IMPL_HANDSHAKE_HPP
+#define MYSQL_ASIO_IMPL_HANDSHAKE_HPP
 
 #include <string_view>
 #include <boost/asio/async_result.hpp>
@@ -44,4 +44,4 @@ async_handshake(
 #include "mysql/impl/handshake.ipp"
 
 
-#endif /* INCLUDE_MYSQL_IMPL_HANDSHAKE_HPP_ */
+#endif

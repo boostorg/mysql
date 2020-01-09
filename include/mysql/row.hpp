@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_ROW_HPP_
-#define INCLUDE_MYSQL_ROW_HPP_
+#ifndef MYSQL_ASIO_ROW_HPP
+#define MYSQL_ASIO_ROW_HPP
 
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/value.hpp"
@@ -77,4 +77,4 @@ inline bool operator!=(const std::vector<RowTypeLeft>& lhs, const std::vector<Ro
 
 
 
-#endif /* INCLUDE_MYSQL_ROW_HPP_ */
+#endif

@@ -1,5 +1,5 @@
-#ifndef INCLUDE_IMPL_ERROR_IMPL_HPP_
-#define INCLUDE_IMPL_ERROR_IMPL_HPP_
+#ifndef MYSQL_ASIO_IMPL_ERROR_HPP
+#define MYSQL_ASIO_IMPL_ERROR_HPP
 
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
@@ -78,4 +78,4 @@ inline void check_error_code(const error_code& errc)
 
 
 
-#endif /* INCLUDE_IMPL_ERROR_IMPL_HPP_ */
+#endif

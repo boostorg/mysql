@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_CAPABILITIES_HPP_
-#define INCLUDE_MYSQL_IMPL_CAPABILITIES_HPP_
+#ifndef MYSQL_ASIO_IMPL_CAPABILITIES_HPP
+#define MYSQL_ASIO_IMPL_CAPABILITIES_HPP
 
 #include <cstdint>
 
@@ -105,4 +105,4 @@ constexpr capabilities optional_capabilities {0};
 
 
 
-#endif /* INCLUDE_MYSQL_IMPL_CAPABILITIES_HPP_ */
+#endif

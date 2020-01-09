@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_CONNECTION_HPP_
-#define INCLUDE_MYSQL_CONNECTION_HPP_
+#ifndef MYSQL_ASIO_CONNECTION_HPP
+#define MYSQL_ASIO_CONNECTION_HPP
 
 #include "mysql/impl/channel.hpp"
 #include "mysql/impl/handshake.hpp"
@@ -50,4 +50,4 @@ public:
 
 #include "mysql/impl/connection.ipp"
 
-#endif /* INCLUDE_MYSQL_CONNECTION_HPP_ */
+#endif

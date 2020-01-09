@@ -1,5 +1,5 @@
-#ifndef MESSAGES_H_
-#define MESSAGES_H_
+#ifndef MYSQL_ASIO_IMPL_MESSAGES_HPP
+#define MYSQL_ASIO_IMPL_MESSAGES_HPP
 
 #include "mysql/impl/serialization.hpp"
 #include <string>
@@ -268,4 +268,4 @@ struct StmtClose
 #include "mysql/impl/messages.ipp"
 
 
-#endif /* MESSAGES_H_ */
+#endif

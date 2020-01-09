@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_VALUE_HPP_
-#define INCLUDE_MYSQL_VALUE_HPP_
+#ifndef MYSQL_ASIO_VALUE_HPP
+#define MYSQL_ASIO_VALUE_HPP
 
 #include <variant>
 #include <cstdint>
@@ -44,4 +44,4 @@ inline std::ostream& operator<<(std::ostream& os, const value& value);
 #include "mysql/impl/value.hpp"
 
 
-#endif /* INCLUDE_MYSQL_VALUE_HPP_ */
+#endif

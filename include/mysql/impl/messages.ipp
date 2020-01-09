@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MYSQL_IMPL_MESSAGES_IPP_
-#define INCLUDE_MYSQL_IMPL_MESSAGES_IPP_
+#ifndef MYSQL_ASIO_IMPL_MESSAGES_IPP
+#define MYSQL_ASIO_IMPL_MESSAGES_IPP
 
 #include "mysql/impl/serialization.hpp"
 #include <cassert>
@@ -218,4 +218,4 @@ inline mysql::error_code mysql::detail::process_error_packet(
 }
 
 
-#endif /* INCLUDE_MYSQL_IMPL_MESSAGES_IPP_ */
+#endif
