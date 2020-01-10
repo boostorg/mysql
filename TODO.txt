@@ -16,6 +16,7 @@ Handshake
 	SSL
 	compression
 Usability
+	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
 	Errors
 		Error code descriptions
@@ -27,6 +28,7 @@ Usability
 		Decimal
 		Bit
 		Geometry
+	UNIX socket connection
 Consider if header-only is a good idea
 Technical debt
 	Concept checking

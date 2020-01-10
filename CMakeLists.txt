@@ -8,6 +8,7 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
+enable_testing()
 
 # Date
 FetchContent_Declare(
@@ -42,6 +43,9 @@ target_include_directories(
 	${date_SOURCE_DIR}/include
 )
 
+# Examples
+add_subdirectory(examples)
+
 # Unit testing
 # TODO: build tests just when required
 # TODO: fetch gtest and gmock
@@ -49,7 +53,6 @@ target_include_directories(
 #       without runtime going nuts?
 find_package(GTest REQUIRED)
 find_library(GMOCK_LIBRARY gmock PATHS ${GTEST_ROOT}/lib) 
-enable_testing()
 add_executable(
 	unittests
 	test/serialization.cpp

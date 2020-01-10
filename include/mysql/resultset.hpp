@@ -5,6 +5,7 @@
 #include "mysql/metadata.hpp"
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/channel.hpp"
+#include <boost/asio/ip/tcp.hpp>
 #include <cassert>
 
 namespace mysql
@@ -58,6 +59,8 @@ public:
 	std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
 	// TODO: status flags accessors
 };
+
+using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
 
 }
 

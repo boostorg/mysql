@@ -6,6 +6,7 @@
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/error.hpp"
 #include "mysql/resultset.hpp"
+#include <boost/asio/ip/tcp.hpp>
 
 namespace mysql
 {
@@ -60,6 +61,11 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
 	async_query(std::string_view query_string, CompletionToken&& token);
 };
+
+using tcp_connection = connection<boost::asio::ip::tcp::socket>;
+// TODO: UNIX socket connection
+
+constexpr unsigned short default_port = 3306;
 
 }
 
