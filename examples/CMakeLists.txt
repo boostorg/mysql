@@ -1,25 +1,19 @@
 
-# Syncrhonous
-add_executable(
-	example_query_sync
-	query_sync.cpp
-)
-target_link_libraries(
-	example_query_sync
-	PRIVATE
-	mysql_asio
-)
+function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
+	add_executable(
+		${EXECUTABLE_NAME}
+		${CPPFILE}
+	)
+	target_link_libraries(
+		${EXECUTABLE_NAME}
+		PRIVATE
+		mysql_asio
+	)
+endfunction()
 
-# Asynchronous
-add_executable(
-	example_query_async
-	query_async.cpp
-)
-target_link_libraries(
-	example_query_async
-	PRIVATE
-	mysql_asio
-)
+_mysql_add_example(example_query_sync query_sync.cpp)
+_mysql_add_example(example_query_async query_async.cpp)
+_mysql_add_example(example_metadata metadata.cpp)
 
 # Add them as automated tests
 add_test(

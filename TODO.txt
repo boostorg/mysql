@@ -1,5 +1,4 @@
 MVP
-	Examples
 	Readme
 	License
 	Compile in Mac, Windows, clang
