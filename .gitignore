@@ -4,3 +4,4 @@ build/
 .settings/
 .pydevproject
 private/
+build-*/

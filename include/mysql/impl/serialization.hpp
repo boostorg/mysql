@@ -99,7 +99,7 @@ private:
 public:
 	static constexpr bool value =
 			std::is_integral_v<value_type> &&
-			std::is_base_of_v<ValueHolder<value_type>, T>;
+			std::is_base_of_v<value_holder<value_type>, T>;
 };
 
 
@@ -119,10 +119,10 @@ template <> struct get_fixed_size<int3> { static constexpr std::size_t value = 3
 template <> struct get_fixed_size<int6> { static constexpr std::size_t value = 6; };
 template <std::size_t N> struct get_fixed_size<string_fixed<N>> { static constexpr std::size_t value = N; };
 
-template <typename T> void little_to_native_inplace(ValueHolder<T>& value) noexcept { boost::endian::little_to_native_inplace(value.value); }
+template <typename T> void little_to_native_inplace(value_holder<T>& value) noexcept { boost::endian::little_to_native_inplace(value.value); }
 template <std::size_t size> void little_to_native_inplace(string_fixed<size>&) noexcept {}
 
-template <typename T> void native_to_little_inplace(ValueHolder<T>& value) noexcept { boost::endian::native_to_little_inplace(value.value); }
+template <typename T> void native_to_little_inplace(value_holder<T>& value) noexcept { boost::endian::native_to_little_inplace(value.value); }
 template <std::size_t size> void native_to_little_inplace(string_fixed<size>&) noexcept {}
 
 
@@ -200,22 +200,22 @@ inline void serialize(int_lenenc input, SerializationContext& ctx) noexcept
 {
 	if (input.value < 251)
 	{
-		serialize(int1{static_cast<std::uint8_t>(input.value)}, ctx);
+		serialize(int1(static_cast<std::uint8_t>(input.value)), ctx);
 	}
 	else if (input.value < 0x10000)
 	{
 		ctx.write(0xfc);
-		serialize(int2{static_cast<std::uint16_t>(input.value)}, ctx);
+		serialize(int2(static_cast<std::uint16_t>(input.value)), ctx);
 	}
 	else if (input.value < 0x1000000)
 	{
 		ctx.write(0xfd);
-		serialize(int3{static_cast<std::uint32_t>(input.value)}, ctx);
+		serialize(int3(static_cast<std::uint32_t>(input.value)), ctx);
 	}
 	else
 	{
 		ctx.write(0xfe);
-		serialize(int8{static_cast<std::uint64_t>(input.value)}, ctx);
+		serialize(int8(static_cast<std::uint64_t>(input.value)), ctx);
 	}
 }
 inline std::size_t get_size(int_lenenc input, const SerializationContext&) noexcept
@@ -306,7 +306,7 @@ inline std::size_t get_size(string_lenenc input, const SerializationContext& ctx
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
 Error deserialize(T& output, DeserializationContext& ctx) noexcept
 {
-	ValueHolder<std::underlying_type_t<T>> value;
+	value_holder<std::underlying_type_t<T>> value;
 	Error err = deserialize(value, ctx);
 	if (err != Error::ok)
 	{
@@ -319,14 +319,14 @@ Error deserialize(T& output, DeserializationContext& ctx) noexcept
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
 void serialize(T input, SerializationContext& ctx) noexcept
 {
-	ValueHolder<std::underlying_type_t<T>> value {static_cast<std::underlying_type_t<T>>(input)};
+	value_holder<std::underlying_type_t<T>> value {static_cast<std::underlying_type_t<T>>(input)};
 	serialize(value, ctx);
 }
 
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
 std::size_t get_size(T, const SerializationContext&) noexcept
 {
-	return get_fixed_size<ValueHolder<std::underlying_type_t<T>>>::value;
+	return get_fixed_size<value_holder<std::underlying_type_t<T>>>::value;
 }
 
 // Structs

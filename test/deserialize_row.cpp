@@ -297,43 +297,43 @@ struct DeserializeTextRowTest : public Test
 {
 	std::vector<field_metadata> meta {
 		msgs::column_definition {
-			{"def"},
-			{"awesome"},
-			{"test_table"},
-			{"test_table"},
-			{"f0"},
-			{"f0"},
+			string_lenenc("def"),
+			string_lenenc("awesome"),
+			string_lenenc("test_table"),
+			string_lenenc("test_table"),
+			string_lenenc("f0"),
+			string_lenenc("f0"),
 			collation::utf8_general_ci,
-			{300},
+			int4(300),
 			protocol_field_type::var_string,
-			{0},
-			{0}
+			int2(0),
+			int1(0)
 		},
 		msgs::column_definition {
-			{"def"},
-			{"awesome"},
-			{"test_table"},
-			{"test_table"},
-			{"f1"},
-			{"f1"},
+			string_lenenc("def"),
+			string_lenenc("awesome"),
+			string_lenenc("test_table"),
+			string_lenenc("test_table"),
+			string_lenenc("f1"),
+			string_lenenc("f1"),
 			collation::binary,
-			{11},
+			int4(11),
 			protocol_field_type::long_,
-			{0},
-			{0}
+			int2(0),
+			int1(0)
 		},
 		msgs::column_definition {
-			{"def"},
-			{"awesome"},
-			{"test_table"},
-			{"test_table"},
-			{"f2"},
-			{"f2"},
+			string_lenenc("def"),
+			string_lenenc("awesome"),
+			string_lenenc("test_table"),
+			string_lenenc("test_table"),
+			string_lenenc("f2"),
+			string_lenenc("f2"),
 			collation::binary,
-			{22},
+			int4(22),
 			protocol_field_type::datetime,
-			{column_flags::binary},
-			{2}
+			int2(column_flags::binary),
+			int1(2)
 		}
 	};
 	std::vector<value> values;

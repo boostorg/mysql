@@ -53,7 +53,7 @@ struct print_visitor
 	}
 	void operator()(const datetime& value) const { ::date::operator<<(os, value); }
 	void operator()(const year& value) const { ::date::operator<<(os, value); }
-	void operator()(nullptr_t) const { os << "<NULL>"; }
+	void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 
 }

@@ -35,7 +35,6 @@ inline mysql::Error mysql::detail::deserialize(
 	int1 filler; // should be 0
 	int1 auth_plugin_data_len;
 	string_fixed<10> reserved;
-	std::string_view auth_plugin_data_part_2;
 
 	auto err = deserialize_fields(
 		ctx,

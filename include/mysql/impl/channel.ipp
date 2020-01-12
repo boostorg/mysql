@@ -171,7 +171,7 @@ mysql::detail::channel<AsyncStream>::async_read(
 			bool cont=true
 		)
 		{
-			std::uint32_t size_to_read;
+			std::uint32_t size_to_read = 0;
 
 			reenter(*this)
 			{

@@ -97,7 +97,7 @@ public:
 		connection.async_query(sql, [this](const mysql::error_code& err, mysql::tcp_resultset&& result) {
 			die_on_error(err);
 			resultset = std::move(result);
-			resultset.async_fetch_all([this](const mysql::error_code& err, const auto& rows) {
+			resultset.async_fetch_all([](const mysql::error_code& err, const auto& rows) {
 				die_on_error(err);
 				assert(rows.size() == 1);
 				auto salary = std::get<double>(rows[0].values()[0]);

@@ -13,6 +13,18 @@ namespace mysql
 namespace detail
 {
 
+// Operator << for some basic types
+template <std::size_t N>
+std::ostream& operator<<(std::ostream& os, const std::array<char, N>& v)
+{
+	return os << v.data();
+}
+
+inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
+{
+	return os << +value;
+}
+
 // Operator == for structs
 template <std::size_t index, typename T>
 bool equals_struct(const T& lhs, const T& rhs)
@@ -37,9 +49,17 @@ operator==(const T& lhs, const T& rhs)
 
 // Operator << for ValueHolder's
 template <typename T>
-std::ostream& operator<<(std::ostream& os, const ValueHolder<T>& value)
+std::ostream& operator<<(std::ostream& os, const value_holder<T>& value)
 {
 	return os << value.value;
+}
+
+template <typename T>
+std::enable_if_t<std::is_enum_v<T>, std::ostream&>
+operator<<(std::ostream& os, T value)
+{
+	return os << boost::typeindex::type_id<T>().pretty_name() << "(" <<
+			static_cast<std::underlying_type_t<T>>(value) << ")";
 }
 
 // Operator << for structs
@@ -64,25 +84,7 @@ operator<<(std::ostream& os, const T& value)
 	return os;
 }
 
-// Operator << for some basic types
-template <std::size_t N>
-std::ostream& operator<<(std::ostream& os, const std::array<char, N>& v)
-{
-	return os << v.data();
-}
 
-template <typename T>
-std::enable_if_t<std::is_enum_v<T>, std::ostream&>
-operator<<(std::ostream& os, T value)
-{
-	return os << boost::typeindex::type_id<T>().pretty_name() << "(" <<
-			static_cast<std::underlying_type_t<T>>(value) << ")";
-}
-
-inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
-{
-	return os << +value;
-}
 
 
 class TypeErasedValue
@@ -123,7 +125,7 @@ public:
 		T res; // intentionally not value-initializing it
 		return std::make_shared<TypeErasedValueImpl<T>>(res);
 	}
-	bool equals(const TypeErasedValue& rhs) const
+	bool equals(const TypeErasedValue& rhs) const override
 	{
 		auto typed_value = dynamic_cast<const TypeErasedValueImpl<T>*>(&rhs);
 		return typed_value && (typed_value->value_ == value_);

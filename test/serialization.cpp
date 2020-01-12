@@ -6,20 +6,16 @@
  */
 
 #include "serialization_test_common.hpp"
+#include "test_common.hpp"
 
 using namespace testing;
 using namespace std;
 using namespace mysql;
 using namespace mysql::detail;
+using namespace mysql::test;
 
 namespace
 {
-
-template <std::size_t N>
-inline std::string_view buffer_to_sv(const std::uint8_t (&buff)[N])
-{
-	return std::string_view (reinterpret_cast<const char*>(buff), N);
-}
 
 struct DeserializeErrorParams
 {
@@ -88,65 +84,65 @@ enum class EnumInt4 : uint32_t
 };
 
 INSTANTIATE_TEST_SUITE_P(UnsignedFixedSizeInts, FullSerializationTest, ::testing::Values(
-	SerializeParams(int1{0xff}, {0xff}),
-	SerializeParams(int2{0xfeff}, {0xff, 0xfe}),
-	SerializeParams(int3{0xfdfeff}, {0xff, 0xfe, 0xfd}),
-	SerializeParams(int4{0xfcfdfeff}, {0xff, 0xfe, 0xfd, 0xfc}),
-	SerializeParams(int6{0xfafbfcfdfeff}, {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa}),
-	SerializeParams(int8{0xf8f9fafbfcfdfeff}, {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8})
+	SerializeParams(int1(0xff), {0xff}),
+	SerializeParams(int2(0xfeff), {0xff, 0xfe}),
+	SerializeParams(int3(0xfdfeff), {0xff, 0xfe, 0xfd}),
+	SerializeParams(int4(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}),
+	SerializeParams(int6(0xfafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa}),
+	SerializeParams(int8(0xf8f9fafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8})
 ));
 
 INSTANTIATE_TEST_SUITE_P(SignedFixedSizeInts, FullSerializationTest, ::testing::Values(
-	SerializeParams(int1_signed{-1}, {0xff}, "Negative"),
-	SerializeParams(int2_signed{-0x101}, {0xff, 0xfe}, "Negative"),
-	SerializeParams(int4_signed{-0x3020101}, {0xff, 0xfe, 0xfd, 0xfc}, "Negative"),
-	SerializeParams(int8_signed{-0x0706050403020101}, {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "Negative"),
-	SerializeParams(int1_signed{0x01}, {0x01}, "Positive"),
-	SerializeParams(int2_signed{0x0201}, {0x01, 0x02}, "Positive"),
-	SerializeParams(int4_signed{0x04030201}, {0x01, 0x02, 0x03, 0x04}, "Positive"),
-	SerializeParams(int8_signed{0x0807060504030201}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "Positive")
+	SerializeParams(int1_signed(-1), {0xff}, "Negative"),
+	SerializeParams(int2_signed(-0x101), {0xff, 0xfe}, "Negative"),
+	SerializeParams(int4_signed(-0x3020101), {0xff, 0xfe, 0xfd, 0xfc}, "Negative"),
+	SerializeParams(int8_signed(-0x0706050403020101), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "Negative"),
+	SerializeParams(int1_signed(0x01), {0x01}, "Positive"),
+	SerializeParams(int2_signed(0x0201), {0x01, 0x02}, "Positive"),
+	SerializeParams(int4_signed(0x04030201), {0x01, 0x02, 0x03, 0x04}, "Positive"),
+	SerializeParams(int8_signed(0x0807060504030201), {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "Positive")
 ));
 
 INSTANTIATE_TEST_SUITE_P(LengthEncodedInt, FullSerializationTest, ::testing::Values(
-	SerializeParams(int_lenenc{1}, {0x01}, "1 byte (regular value)"),
-	SerializeParams(int_lenenc{250}, {0xfa}, "1 byte (max value)"),
-	SerializeParams(int_lenenc{0xfeb7}, {0xfc, 0xb7, 0xfe}, "2 bytes (regular value)"),
-	SerializeParams(int_lenenc{0xffff}, {0xfc, 0xff, 0xff}, "2 bytes (max value)"),
-	SerializeParams(int_lenenc{0xa0feff}, {0xfd, 0xff, 0xfe, 0xa0}, "3 bytes (regular value)"),
-	SerializeParams(int_lenenc{0xffffff}, {0xfd, 0xff, 0xff, 0xff}, "3 bytes (max value)"),
-	SerializeParams(int_lenenc{0xf8f9fafbfcfdfeff},
+	SerializeParams(int_lenenc(1), {0x01}, "1 byte (regular value)"),
+	SerializeParams(int_lenenc(250), {0xfa}, "1 byte (max value)"),
+	SerializeParams(int_lenenc(0xfeb7), {0xfc, 0xb7, 0xfe}, "2 bytes (regular value)"),
+	SerializeParams(int_lenenc(0xffff), {0xfc, 0xff, 0xff}, "2 bytes (max value)"),
+	SerializeParams(int_lenenc(0xa0feff), {0xfd, 0xff, 0xfe, 0xa0}, "3 bytes (regular value)"),
+	SerializeParams(int_lenenc(0xffffff), {0xfd, 0xff, 0xff, 0xff}, "3 bytes (max value)"),
+	SerializeParams(int_lenenc(0xf8f9fafbfcfdfeff),
 			{0xfe, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "8 bytes (regular value)"),
-	SerializeParams(int_lenenc{0xffffffffffffffff},
+	SerializeParams(int_lenenc(0xffffffffffffffff),
 			{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, "8 bytes (max value)")
 ));
 
 INSTANTIATE_TEST_SUITE_P(FixedSizeString, FullSerializationTest, ::testing::Values(
-	SerializeParams(string_fixed<4>{'a', 'b', 'd', 'e'}, {0x61, 0x62, 0x64, 0x65}, "Regular characters"),
-	SerializeParams(string_fixed<3>{'\0', '\1', 'a'}, {0x00, 0x01, 0x61}, "Null characters"),
-	SerializeParams(string_fixed<3>{char(0xc3), char(0xb1), 'a'}, {0xc3, 0xb1, 0x61}, "UTF-8 characters"),
-	SerializeParams(string_fixed<1>{'a'}, {0x61}, "Size 1 string")
+	SerializeParams(string_fixed<4>({'a', 'b', 'd', 'e'}), {0x61, 0x62, 0x64, 0x65}, "Regular characters"),
+	SerializeParams(string_fixed<3>({'\0', '\1', 'a'}), {0x00, 0x01, 0x61}, "Null characters"),
+	SerializeParams(string_fixed<3>({char(0xc3), char(0xb1), 'a'}), {0xc3, 0xb1, 0x61}, "UTF-8 characters"),
+	SerializeParams(string_fixed<1>({'a'}), {0x61}, "Size 1 string")
 ));
 
 INSTANTIATE_TEST_SUITE_P(NullTerminatedString, FullSerializationTest, ::testing::Values(
-	SerializeParams(string_null{"abc"}, {0x61, 0x62, 0x63, 0x00}, "Regular characters"),
-	SerializeParams(string_null{"\xc3\xb1"}, {0xc3, 0xb1, 0x00}, "UTF-8 characters"),
-	SerializeParams(string_null{""}, {0x00}, "Empty string")
+	SerializeParams(string_null("abc"), {0x61, 0x62, 0x63, 0x00}, "Regular characters"),
+	SerializeParams(string_null("\xc3\xb1"), {0xc3, 0xb1, 0x00}, "UTF-8 characters"),
+	SerializeParams(string_null(""), {0x00}, "Empty string")
 ));
 
 INSTANTIATE_TEST_SUITE_P(LengthEncodedString, FullSerializationTest, ::testing::Values(
-	SerializeParams(string_lenenc{""}, {0x00}, "Empty string"),
-	SerializeParams(string_lenenc{"abc"}, {0x03, 0x61, 0x62, 0x63}, "1 byte size, regular characters"),
-	SerializeParams(string_lenenc{string_view("a\0b", 3)}, {0x03, 0x61, 0x00, 0x62}, "1 byte size, null characters"),
-	SerializeParams(string_lenenc{string_250}, concat({250}, vector<uint8_t>(250, 0x61)), "1 byte size, max"),
-	SerializeParams(string_lenenc{string_251}, concat({0xfc, 251, 0}, vector<uint8_t>(251, 0x61)), "2 byte size, min"),
-	SerializeParams(string_lenenc{string_ffff}, concat({0xfc, 0xff, 0xff}, vector<uint8_t>(0xffff, 0x61)), "2 byte size, max"),
-	SerializeParams(string_lenenc{string_10000}, concat({0xfd, 0x00, 0x00, 0x01}, vector<uint8_t>(0x10000, 0x61)), "3 byte size, max")
+	SerializeParams(string_lenenc(""), {0x00}, "Empty string"),
+	SerializeParams(string_lenenc("abc"), {0x03, 0x61, 0x62, 0x63}, "1 byte size, regular characters"),
+	SerializeParams(string_lenenc(string_view("a\0b", 3)), {0x03, 0x61, 0x00, 0x62}, "1 byte size, null characters"),
+	SerializeParams(string_lenenc(string_250), concat({250}, vector<uint8_t>(250, 0x61)), "1 byte size, max"),
+	SerializeParams(string_lenenc(string_251), concat({0xfc, 251, 0}, vector<uint8_t>(251, 0x61)), "2 byte size, min"),
+	SerializeParams(string_lenenc(string_ffff), concat({0xfc, 0xff, 0xff}, vector<uint8_t>(0xffff, 0x61)), "2 byte size, max"),
+	SerializeParams(string_lenenc(string_10000), concat({0xfd, 0x00, 0x00, 0x01}, vector<uint8_t>(0x10000, 0x61)), "3 byte size, max")
 ));
 
 INSTANTIATE_TEST_SUITE_P(EofString, SerializeDeserializeTest, ::testing::Values(
-	SerializeParams(string_eof{"abc"}, {0x61, 0x62, 0x63}, "Regular characters"),
-	SerializeParams(string_eof{string_view("a\0b", 3)}, {0x61, 0x00, 0x62}, "Null characters"),
-	SerializeParams(string_eof{""}, {}, "Empty string")
+	SerializeParams(string_eof("abc"), {0x61, 0x62, 0x63}, "Regular characters"),
+	SerializeParams(string_eof(string_view("a\0b", 3)), {0x61, 0x00, 0x62}, "Null characters"),
+	SerializeParams(string_eof(""), {}, "Empty string")
 ));
 
 INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
@@ -160,19 +156,19 @@ INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
 
 INSTANTIATE_TEST_SUITE_P(PacketHeader, FullSerializationTest, ::testing::Values(
 	// packet header
-	SerializeParams(msgs::packet_header{{3}, {0}}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
-	SerializeParams(msgs::packet_header{{9}, {2}}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
-	SerializeParams(msgs::packet_header{{0xcacbcc}, {0xfa}}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
-	SerializeParams(msgs::packet_header{{0xffffff}, {0xff}}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
+	SerializeParams(msgs::packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
+	SerializeParams(msgs::packet_header{int3(9), int1(2)}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
+	SerializeParams(msgs::packet_header{int3(0xcacbcc), int1(0xfa)}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
+	SerializeParams(msgs::packet_header{int3(0xffffff), int1(0xff)}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
 ));
 
 INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 	SerializeParams(msgs::ok_packet{
-		{4}, // affected rows
-		{0}, // last insert ID
-		{SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED}, // server status
-		{0}, // warnings
-		string_lenenc{"Rows matched: 5  Changed: 4  Warnings: 0"}
+		int_lenenc(4), // affected rows
+		int_lenenc(0), // last insert ID
+		int2(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED), // server status
+		int2(0), // warnings
+		string_lenenc("Rows matched: 5  Changed: 4  Warnings: 0")
 	}, {
 		0x04, 0x00, 0x22, 0x00, 0x00, 0x00, 0x28, 0x52, 0x6f, 0x77, 0x73,
 		0x20, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x3a, 0x20, 0x35, 0x20, 0x20, 0x43, 0x68, 0x61,
@@ -181,21 +177,21 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 	}, "successful UPDATE"),
 
 	SerializeParams(msgs::ok_packet{
-		{1}, // affected rows
-		{6}, // last insert ID
-		{SERVER_STATUS_AUTOCOMMIT}, // server status
-		{0}, // warnings
-		{}  // no message
+		int_lenenc(1), // affected rows
+		int_lenenc(6), // last insert ID
+		int2(SERVER_STATUS_AUTOCOMMIT), // server status
+		int2(0), // warnings
+		string_lenenc("")  // no message
 	},{
 		0x01, 0x06, 0x02, 0x00, 0x00, 0x00
 	}, "successful INSERT"),
 
 	SerializeParams(msgs::ok_packet{
-		{0}, // affected rows
-		{0}, // last insert ID
-		{SERVER_STATUS_AUTOCOMMIT}, // server status
-		{0}, // warnings
-		{}  // no message
+		int_lenenc(0), // affected rows
+		int_lenenc(0), // last insert ID
+		int2(SERVER_STATUS_AUTOCOMMIT), // server status
+		int2(0), // warnings
+		string_lenenc("")  // no message
 	}, {
 		0x00, 0x00, 0x02, 0x00, 0x00, 0x00
 	}, "Successful login")
@@ -203,10 +199,10 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 
 INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 	SerializeParams(msgs::err_packet{
-		{1049}, // eror code
-		{0x23}, // sql state marker
-		{'4', '2', '0', '0', '0'}, // sql state
-		{"Unknown database 'a'"} // err msg
+		int2(1049), // eror code
+		string_fixed<1>({0x23}), // sql state marker
+		string_fixed<5>({'4', '2', '0', '0', '0'}), // sql state
+		string_eof("Unknown database 'a'") // err msg
 	}, {
 		0x19, 0x04, 0x23, 0x34, 0x32, 0x30, 0x30, 0x30, 0x55, 0x6e, 0x6b,
 		0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
@@ -214,10 +210,10 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 	}, "Wrong USE database"),
 
 	SerializeParams(msgs::err_packet{
-		{1146}, // eror code
-		{0x23}, // sql state marker
-		{'4', '2', 'S', '0', '2'}, // sql state
-		{"Table 'awesome.unknown' doesn't exist"} // err msg
+		int2(1146), // eror code
+		string_fixed<1>({0x23}), // sql state marker
+		string_fixed<5>({'4', '2', 'S', '0', '2'}), // sql state
+		string_eof("Table 'awesome.unknown' doesn't exist") // err msg
 	}, {
 		0x7a, 0x04, 0x23, 0x34, 0x32, 0x53, 0x30, 0x32,
 		0x54, 0x61, 0x62, 0x6c, 0x65, 0x20, 0x27, 0x61,
@@ -228,10 +224,10 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 	}, "Unknown table"),
 
 	SerializeParams(msgs::err_packet{
-		{1045}, // error code
-		{0x23}, // SQL state marker
-		{'2', '8', '0', '0', '0'}, // SQL state
-		{"Access denied for user 'root'@'localhost' (using password: YES)"}
+		int2(1045), // error code
+		string_fixed<1>({0x23}), // SQL state marker
+		string_fixed<5>({'2', '8', '0', '0', '0'}), // SQL state
+		string_eof("Access denied for user 'root'@'localhost' (using password: YES)")
 	}, {
 	  0x15, 0x04, 0x23, 0x32, 0x38, 0x30, 0x30, 0x30,
 	  0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x20, 0x64,
@@ -280,13 +276,13 @@ constexpr std::uint32_t hanshake_caps =
 
 INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
 	SerializeParams(msgs::handshake{
-		{"5.7.27-0ubuntu0.19.04.1"}, // server version
-		{2}, // connection ID
-		{buffer_to_sv(handshake_auth_plugin_data)},
-		{hanshake_caps},
-		static_cast<std::uint8_t>(collation::latin1_swedish_ci),
-		{ SERVER_STATUS_AUTOCOMMIT },
-		{ "mysql_native_password" },
+		string_null("5.7.27-0ubuntu0.19.04.1"), // server version
+		int4(2), // connection ID
+		string_lenenc(makesv(handshake_auth_plugin_data)),
+		int4(hanshake_caps),
+		int1(static_cast<std::uint8_t>(collation::latin1_swedish_ci)),
+		int2(SERVER_STATUS_AUTOCOMMIT),
+		string_null("mysql_native_password"),
 		{} // data buffer; internal, not used in the comparisons for correctness
 	}, {
 	  0x35, 0x2e, 0x37, 0x2e, 0x32, 0x37, 0x2d, 0x30,
@@ -330,13 +326,13 @@ constexpr std::uint32_t handshake_response_caps =
 
 INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 	SerializeParams(msgs::handshake_response{
-		{ handshake_response_caps },
-		{ 16777216 }, // max packet size
-		static_cast<std::uint8_t>(collation::utf8_general_ci),
-		{ "root" },
-		{ buffer_to_sv(handshake_response_auth_data) },
-		{ "" }, // Irrelevant, not using connect with DB
-		{ "mysql_native_password" } // auth plugin name
+		int4(handshake_response_caps),
+		int4(16777216), // max packet size
+		int1(static_cast<std::uint8_t>(collation::utf8_general_ci)),
+		string_null("root"),
+		string_lenenc(makesv(handshake_response_auth_data)),
+		string_null(""), // Irrelevant, not using connect with DB
+		string_null("mysql_native_password") // auth plugin name
 	}, {
 		0x85, 0xa6, 0xff, 0x01, 0x00, 0x00, 0x00, 0x01,
 		0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -351,13 +347,13 @@ INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 	}, "without database", handshake_response_caps),
 
 	SerializeParams(msgs::handshake_response{
-		{ handshake_response_caps | CLIENT_CONNECT_WITH_DB },
-		{ 16777216 }, // max packet size
-		static_cast<std::uint8_t>(collation::utf8_general_ci),
-		{ "root" },
-		{ buffer_to_sv(handshake_response_auth_data) },
-		{ "database" }, // database name
-		{ "mysql_native_password" } // auth plugin name
+		int4(handshake_response_caps | CLIENT_CONNECT_WITH_DB),
+		int4(16777216), // max packet size
+		int1(static_cast<std::uint8_t>(collation::utf8_general_ci)),
+		string_null("root"),
+		string_lenenc(makesv(handshake_response_auth_data)),
+		string_null("database"), // database name
+		string_null("mysql_native_password") // auth plugin name
 	}, {
 		0x8d, 0xa6, 0xff, 0x01, 0x00, 0x00, 0x00, 0x01,
 		0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -382,8 +378,8 @@ constexpr std::uint8_t auth_switch_request_auth_data [] = {
 
 INSTANTIATE_TEST_SUITE_P(AuthSwitchRequest, DeserializeTest, testing::Values(
 	SerializeParams(msgs::auth_switch_request{
-		{"mysql_native_password"},
-		{buffer_to_sv(auth_switch_request_auth_data)}
+		string_null("mysql_native_password"),
+		string_eof(makesv(auth_switch_request_auth_data))
 	}, {
 		0x6d, 0x79, 0x73,
 		0x71, 0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76,
@@ -402,7 +398,7 @@ constexpr std::uint8_t auth_switch_response_auth_data [] = {
 
 INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
 	SerializeParams(msgs::auth_switch_response{
-		{buffer_to_sv(auth_switch_response_auth_data)}
+		string_eof(makesv(auth_switch_response_auth_data))
 	}, {
 		0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06,
 		0x91, 0xff, 0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf,
@@ -413,22 +409,22 @@ INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
 // Column definition
 INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values(
 	SerializeParams(msgs::column_definition{
-		{"def"}, //catalog
-		{"awesome"}, // schema (database)
-		{"test_table"}, // table
-		{"test_table"}, // physical table
-		{"id"}, // field name
-		{"id"}, // physical field name
+		string_lenenc("def"), //catalog
+		string_lenenc("awesome"), // schema (database)
+		string_lenenc("test_table"), // table
+		string_lenenc("test_table"), // physical table
+		string_lenenc("id"), // field name
+		string_lenenc("id"), // physical field name
 		collation::binary,
-		{11}, // length
+		int4(11), // length
 		protocol_field_type::long_,
-		{
+		int2(
 			column_flags::not_null |
 			column_flags::pri_key |
 			column_flags::auto_increment |
 			column_flags::part_key
-		},
-		{0} // decimals
+		),
+		int1(0) // decimals
 	}, {
 		0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
 		0x73, 0x6f, 0x6d, 0x65, 0x0a, 0x74, 0x65, 0x73,
@@ -439,17 +435,17 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		0x03, 0x42, 0x00, 0x00, 0x00
 	}, "Numeric, auto-increment primary key"),
 	SerializeParams(msgs::column_definition{
-		{"def"}, //catalog
-		{"awesome"}, // schema (database)
-		{"child"}, // table
-		{"child_table"}, // physical table
-		{"field_alias"}, // field name
-		{"field_varchar"}, // physical field name
+		string_lenenc("def"), //catalog
+		string_lenenc("awesome"), // schema (database)
+		string_lenenc("child"), // table
+		string_lenenc("child_table"), // physical table
+		string_lenenc("field_alias"), // field name
+		string_lenenc("field_varchar"), // physical field name
 		collation::utf8_general_ci,
-		{765}, // length
+		int4(765), // length
 		protocol_field_type::var_string,
-		{}, // no column flags
-		{0} // decimals
+		int2(), // no column flags
+		int1(0) // decimals
 	}, {
 		0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
 		0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68, 0x69,
@@ -463,17 +459,17 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 	}, "Varchar field, aliased field and table names (query with a JOIN)"),
 
 	SerializeParams(msgs::column_definition{
-		{"def"}, //catalog
-		{"awesome"}, // schema (database)
-		{"test_table"}, // table
-		{"test_table"}, // physical table
-		{"field_float"}, // field name
-		{"field_float"}, // physical field name
+		string_lenenc("def"), //catalog
+		string_lenenc("awesome"), // schema (database)
+		string_lenenc("test_table"), // table
+		string_lenenc("test_table"), // physical table
+		string_lenenc("field_float"), // field name
+		string_lenenc("field_float"), // physical field name
 		collation::binary, // binary
-		{12}, // length
+		int4(12), // length
 		protocol_field_type::float_,
-		{}, // no column flags
-		{31} // decimals
+		int2(), // no column flags
+		int1(31) // decimals
 	}, {
 		0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
 		0x73, 0x6f, 0x6d, 0x65, 0x0a, 0x74, 0x65, 0x73,
@@ -489,7 +485,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 
 INSTANTIATE_TEST_SUITE_P(ComQuery, SerializeTest, testing::Values(
 	SerializeParams(msgs::com_query{
-		{"show databases"}
+		string_eof("show databases")
 	}, {
 		0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61,
 		0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73

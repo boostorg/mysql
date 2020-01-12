@@ -19,17 +19,17 @@ namespace
 TEST(FieldMetadata, IntPrimaryKey)
 {
 	msgs::column_definition msg {
-		{"def"},
-		{"awesome"},
-		{"test_table"},
-		{"test_table"},
-		{"id"},
-		{"id"},
+		string_lenenc("def"),
+		string_lenenc("awesome"),
+		string_lenenc("test_table"),
+		string_lenenc("test_table"),
+		string_lenenc("id"),
+		string_lenenc("id"),
 		collation::binary,
-		{11},
+		int4(11),
 		protocol_field_type::long_,
-		{column_flags::pri_key | column_flags::auto_increment | column_flags::not_null},
-		{0}
+		int2(column_flags::pri_key | column_flags::auto_increment | column_flags::not_null),
+		int1(0)
 	};
 	field_metadata meta (msg);
 
@@ -56,17 +56,17 @@ TEST(FieldMetadata, IntPrimaryKey)
 TEST(FieldMetadata, VarcharWithAlias)
 {
 	msgs::column_definition msg {
-		{"def"},
-		{"awesome"},
-		{"child"},
-		{"child_table"},
-		{"field_alias"},
-		{"field_varchar"},
+		string_lenenc("def"),
+		string_lenenc("awesome"),
+		string_lenenc("child"),
+		string_lenenc("child_table"),
+		string_lenenc("field_alias"),
+		string_lenenc("field_varchar"),
 		collation::utf8_general_ci,
-		{765},
+		int4(765),
 		protocol_field_type::var_string,
-		{0},
-		{0}
+		int2(0),
+		int1(0)
 	};
 	field_metadata meta (msg);
 
@@ -93,17 +93,17 @@ TEST(FieldMetadata, VarcharWithAlias)
 TEST(FieldMetadata, FloatField)
 {
 	msgs::column_definition msg {
-		{"def"},
-		{"awesome"},
-		{"test_table"},
-		{"test_table"},
-		{"field_float"},
-		{"field_float"},
+		string_lenenc("def"),
+		string_lenenc("awesome"),
+		string_lenenc("test_table"),
+		string_lenenc("test_table"),
+		string_lenenc("field_float"),
+		string_lenenc("field_float"),
 		collation::binary,
-		{12},
+		int4(12),
 		protocol_field_type::float_,
-		{0},
-		{31}
+		int2(0),
+		int1(31)
 	};
 	field_metadata meta (msg);
 
