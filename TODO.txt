@@ -1,6 +1,4 @@
 MVP
-	Readme
-	License
 	Compile in Mac, Windows
 		Compile in clang
 		Compile with other g++ versions (find theoretical minimum)
