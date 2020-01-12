@@ -6,7 +6,7 @@
  */
 
 #include "mysql/connection.hpp"
-#include <gmock/gmock.h>
+#include <gmock/gmock.h> // for EXPECT_THAT()
 #include <boost/asio/use_future.hpp>
 #include "metadata_validator.hpp"
 #include "integration_test_common.hpp"
