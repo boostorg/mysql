@@ -9,6 +9,7 @@ function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 		PRIVATE
 		mysql_asio
 	)
+	_mysql_set_target_warnings(${EXECUTABLE_NAME})
 endfunction()
 
 _mysql_add_example(example_query_sync query_sync.cpp)

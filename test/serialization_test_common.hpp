@@ -186,7 +186,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	void serialize_test()
 	{
 		auto expected_size = GetParam().expected_buffer.size();
-		std::vector<uint8_t> buffer (expected_size + 8, 0xaa); // buffer overrun detector
+		std::vector<uint8_t> buffer (expected_size + 8, 0x7a); // buffer overrun detector
 		SerializationContext ctx (GetParam().caps, buffer.data());
 		GetParam().value->serialize(ctx);
 
@@ -199,7 +199,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		EXPECT_EQ(expected_populated, actual_populated) << "Buffer contents incorrect";
 
 		// Check for buffer overruns
-		std::string expected_clean (8, 0xaa);
+		std::string expected_clean (8, 0x7a);
 		std::string_view actual_clean = make_buffer_view(buffer.data() + expected_size, 8);
 		EXPECT_EQ(expected_clean, actual_clean) << "Buffer overrun";
 	}
@@ -245,7 +245,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	void deserialize_not_enough_space_test()
 	{
 		std::vector<uint8_t> buffer (GetParam().expected_buffer);
-		buffer.back() = 0xaa; // try to detect any overruns
+		buffer.back() = 0x7a; // try to detect any overruns
 		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size() - 1, GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);

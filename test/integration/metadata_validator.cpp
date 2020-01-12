@@ -70,7 +70,7 @@ void mysql::test::validate_meta(
 )
 {
 	ASSERT_EQ(actual.size(), expected.size());
-	for (int i = 0; i < actual.size(); ++i)
+	for (std::size_t i = 0; i < actual.size(); ++i)
 	{
 		expected[i].validate(actual[i]);
 	}

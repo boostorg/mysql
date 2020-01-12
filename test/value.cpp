@@ -56,9 +56,9 @@ struct ValueEqualityTest : public Test
 
 TEST_F(ValueEqualityTest, OperatorsEqNe_DifferentType_ReturnNotEquals)
 {
-	for (int i = 0; i < values.size(); ++i)
+	for (std::size_t i = 0; i < values.size(); ++i)
 	{
-		for (int j = 0; j < i; ++j)
+		for (std::size_t j = 0; j < i; ++j)
 		{
 			EXPECT_FALSE(values.at(i) == values.at(j)) << "i=" << i << ", j=" << j;
 			EXPECT_TRUE(values.at(i) != values.at(j))  << "i=" << i << ", j=" << j;
@@ -70,7 +70,7 @@ TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeDifferentValue_ReturnNotEquals)
 {
 	// Note: nullptr_t (the last value) can't have other value than nullptr
 	// so it is excluded from this test
-	for (int i = 0; i < values.size() - 1; ++i)
+	for (std::size_t i = 0; i < values.size() - 1; ++i)
 	{
 		EXPECT_FALSE(values.at(i) == other_values.at(i)) << "i=" << i;
 		EXPECT_TRUE(values.at(i) != other_values.at(i))  << "i=" << i;
@@ -79,7 +79,7 @@ TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeDifferentValue_ReturnNotEquals)
 
 TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeSameValue_ReturnEquals)
 {
-	for (int i = 0; i < values.size(); ++i)
+	for (std::size_t i = 0; i < values.size(); ++i)
 	{
 		EXPECT_TRUE(values.at(i) == values_copy.at(i))  << "i=" << i;
 		EXPECT_FALSE(values.at(i) != values_copy.at(i)) << "i=" << i;

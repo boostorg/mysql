@@ -10,6 +10,14 @@ find_package(OpenSSL REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 enable_testing()
 
+function (_mysql_set_target_warnings TARGET_NAME)
+	if(MSVC)
+		target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX)
+	else()
+		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
+	endif()
+endfunction()
+
 # Date
 FetchContent_Declare(
     date
@@ -46,63 +54,5 @@ target_include_directories(
 # Examples
 add_subdirectory(examples)
 
-# Unit testing
-# TODO: build tests just when required
-# TODO: fetch gtest and gmock
-# TODO: is there a way of adding tests to ctest (like gtest_discover_tests)
-#       without runtime going nuts?
-find_package(GTest REQUIRED)
-find_library(GMOCK_LIBRARY gmock PATHS ${GTEST_ROOT}/lib) 
-add_executable(
-	unittests
-	test/serialization.cpp
-	test/channel.cpp
-	test/capabilities.cpp
-	test/auth.cpp
-	test/metadata.cpp
-	test/deserialize_row.cpp
-	test/value.cpp
-	test/row.cpp
-)
-target_include_directories(
-	unittests
-	PRIVATE
-	test/common
-)
-target_link_libraries(
-	unittests
-	PUBLIC
-	GTest::GTest
-	GTest::Main
-	${GMOCK_LIBRARY}
-	mysql_asio
-)
-add_test(
-	NAME mysql_unittests
-	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/unittests
-)
-
-# Integration testing
-add_executable(
-	integrationtests
-	test/integration/metadata_validator.cpp
-	test/integration/handshake.cpp
-	test/integration/query.cpp
-	test/integration/query_types.cpp
-)
-target_link_libraries(
-	integrationtests
-	PRIVATE
-	GTest::GTest
-	GTest::Main
-	mysql_asio
-)
-target_include_directories(
-	integrationtests
-	PRIVATE
-	test/common
-)
-add_test(
-	NAME mysql_integrationtests
-	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/integrationtests
-)
+# Tests
+add_subdirectory(test)

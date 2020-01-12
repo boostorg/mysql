@@ -156,7 +156,7 @@ serialize(T input, SerializationContext& ctx) noexcept
 
 template <typename T>
 constexpr std::enable_if_t<is_fixed_size_v<T>, std::size_t>
-get_size(T input, const SerializationContext&) noexcept
+get_size(T, const SerializationContext&) noexcept
 {
 	return get_fixed_size<T>::value;
 }
@@ -324,7 +324,7 @@ void serialize(T input, SerializationContext& ctx) noexcept
 }
 
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-std::size_t get_size(T input, const SerializationContext&) noexcept
+std::size_t get_size(T, const SerializationContext&) noexcept
 {
 	return get_fixed_size<ValueHolder<std::underlying_type_t<T>>>::value;
 }

@@ -4,7 +4,6 @@ MVP
 		Compile with other g++ versions (find theoretical minimum)
 		Add to readme
 	Add travis
-	Merge master
 	Sanitize cmake
 		GTest/GMock to be downloaded
 		Namespacing for the exported library (how does export work anyway?)

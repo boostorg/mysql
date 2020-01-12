@@ -286,7 +286,8 @@ INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
 		{hanshake_caps},
 		static_cast<std::uint8_t>(collation::latin1_swedish_ci),
 		{ SERVER_STATUS_AUTOCOMMIT },
-		{ "mysql_native_password" }
+		{ "mysql_native_password" },
+		{} // data buffer; internal, not used in the comparisons for correctness
 	}, {
 	  0x35, 0x2e, 0x37, 0x2e, 0x32, 0x37, 0x2d, 0x30,
 	  0x75, 0x62, 0x75, 0x6e, 0x74, 0x75, 0x30, 0x2e,

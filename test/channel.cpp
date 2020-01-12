@@ -132,7 +132,7 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 	static auto read_failer(error_code error)
 	{
-		return [error](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+		return [error](boost::asio::mutable_buffer, mysql::error_code& ec) {
 			ec = error;
 			return size_t(0);
 		};
@@ -248,7 +248,7 @@ struct MysqlChannelWriteTest : public MysqlChannelFixture
 
 	static auto write_failer(errc::errc_t error)
 	{
-		return [error](boost::asio::const_buffer buff, error_code& ec) {
+		return [error](boost::asio::const_buffer, error_code& ec) {
 			ec = errc::make_error_code(error);
 			return 0;
 		};

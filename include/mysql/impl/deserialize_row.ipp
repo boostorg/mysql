@@ -77,7 +77,6 @@ inline Error deserialize_text_value_impl(
 {
 	// Length check
 	constexpr std::size_t min_size = 4 + 5*2 + 5; // year, month, day, hour, minute, seconds, separators
-	constexpr std::size_t max_size = min_size + 7;
 	decimals = std::min(decimals, 6u);
 	std::size_t expected_size = min_size + (decimals ? decimals + 1 : 0);
 	if (from.size() != expected_size) return Error::protocol_value_error;

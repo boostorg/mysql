@@ -44,9 +44,9 @@ class application
 	mysql::tcp_connection connection;
 	mysql::tcp_resultset resultset;
 public:
-	application(int argc, char** argv) :
+	application(const char* username, const char* password) :
 		ep (boost::asio::ip::address_v4::loopback(), mysql::default_port),
-		conn_params(argv[1], argv[2], "mysql_asio_examples"),
+		conn_params(username, password, "mysql_asio_examples"),
 		connection(ctx)
 	{
 	}
@@ -117,7 +117,7 @@ void main_impl(int argc, char** argv)
 		exit(1);
 	}
 
-	application app (argc, argv);
+	application app (argv[1], argv[2]);
 	app.start(); // starts the async chain
 	app.context().run(); // run the asio::io_context until the async chain finishes
 }

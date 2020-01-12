@@ -44,7 +44,7 @@ struct TextValueParam
 		decimals(decimals),
 		flags(flags)
 	{
-	};
+	}
 };
 
 std::ostream& operator<<(std::ostream& os, const TextValueParam& value) { return os << value.name; }
