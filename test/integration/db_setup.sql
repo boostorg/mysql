@@ -194,14 +194,13 @@ INSERT INTO types_datetime VALUES
 
 CREATE TABLE types_timestamp(
 	id VARCHAR(50) NOT NULL PRIMARY KEY,
-	field_0 TIMESTAMP(0),
-	field_1 TIMESTAMP(1),
-	field_2 TIMESTAMP(2),
-	field_3 TIMESTAMP(3),
-	field_4 TIMESTAMP(4),
-	field_5 TIMESTAMP(5),
-	field_6 TIMESTAMP(6)
-	-- TODO: set to now on insert/update
+	field_0 TIMESTAMP(0) DEFAULT NULL,
+	field_1 TIMESTAMP(1) DEFAULT NULL,
+	field_2 TIMESTAMP(2) DEFAULT NULL,
+	field_3 TIMESTAMP(3) DEFAULT NULL,
+	field_4 TIMESTAMP(4) DEFAULT NULL,
+	field_5 TIMESTAMP(5) DEFAULT NULL,
+	field_6 TIMESTAMP(6) DEFAULT NULL
 );
 -- TODO: min and max not reproducible due to time zones. Find a programmatic way of determining the values here
 INSERT INTO types_timestamp VALUES
