@@ -2,7 +2,7 @@
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-mysql -u root -proot < $SCRIPTPATH/db_setup.sql
-./example_query_sync root root
-./example_query_async root root
-./example_metadata root root
+mysql -u root < $SCRIPTPATH/db_setup.sql
+./example_query_sync root ""
+./example_query_async root ""
+./example_metadata root ""

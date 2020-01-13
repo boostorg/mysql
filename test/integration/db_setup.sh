@@ -1,3 +1,3 @@
 #!/bin/bash
 
-mysql -u root -proot < db_setup.sql
+mysql -u root < db_setup.sql
