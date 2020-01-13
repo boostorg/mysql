@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.11.0)
 project(mysql-asio)
-cmake_policy(SET CMP0091 NEW)
 
 include(FetchContent)
 
