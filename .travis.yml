@@ -1,0 +1,26 @@
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      dist: bionic
+      sudo: true
+      compiler: gcc
+      addons:
+       apt:
+         update: true
+         sources:
+           - sourceline: 'ppa:mhier/libboost-latest'
+         packages:
+           - boost1.67
+           - libssl-dev
+
+services:
+  - mysql
+
+script:
+  - mkdir -p build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=Release .. 
+  - make -j all test
+
