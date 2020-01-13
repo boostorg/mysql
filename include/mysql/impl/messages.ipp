@@ -5,7 +5,7 @@
 #include <cassert>
 
 inline mysql::Error mysql::detail::deserialize(
-	msgs::ok_packet& output,
+	ok_packet& output,
 	DeserializationContext& ctx
 ) noexcept
 {
@@ -24,7 +24,7 @@ inline mysql::Error mysql::detail::deserialize(
 }
 
 inline mysql::Error mysql::detail::deserialize(
-	msgs::handshake& output,
+	handshake_packet& output,
 	DeserializationContext& ctx
 ) noexcept
 {
@@ -87,7 +87,7 @@ inline mysql::Error mysql::detail::deserialize(
 }
 
 std::size_t mysql::detail::get_size(
-	const msgs::handshake_response& value,
+	const handshake_response_packet& value,
 	const SerializationContext& ctx
 ) noexcept
 {
@@ -107,7 +107,7 @@ std::size_t mysql::detail::get_size(
 }
 
 inline void mysql::detail::serialize(
-	const msgs::handshake_response& value,
+	const handshake_response_packet& value,
 	SerializationContext& ctx
 ) noexcept
 {
@@ -126,7 +126,7 @@ inline void mysql::detail::serialize(
 }
 
 inline mysql::Error mysql::detail::deserialize(
-	msgs::auth_switch_request& output,
+	auth_switch_request_packet& output,
 	DeserializationContext& ctx
 ) noexcept
 {
@@ -142,7 +142,7 @@ inline mysql::Error mysql::detail::deserialize(
 }
 
 inline mysql::Error mysql::detail::deserialize(
-	msgs::column_definition& output,
+	column_definition_packet& output,
 	DeserializationContext& ctx
 ) noexcept
 {
@@ -210,7 +210,7 @@ inline mysql::error_code mysql::detail::process_error_packet(
 	DeserializationContext& ctx
 )
 {
-	msgs::err_packet error_packet;
+	err_packet error_packet;
 	auto errc = deserialize_message(error_packet, ctx);
 	if (errc) return errc;
 	return make_error_code(static_cast<Error>(error_packet.error_code.value));

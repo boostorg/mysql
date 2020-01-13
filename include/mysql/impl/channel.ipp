@@ -49,7 +49,7 @@ mysql::error_code mysql::detail::channel<AsyncStream>::process_header_read(
 	std::uint32_t& size_to_read
 )
 {
-	msgs::packet_header header;
+	packet_header header;
 	DeserializationContext ctx (boost::asio::buffer(header_buffer_), capabilities(0)); // unaffected by capabilities
 	[[maybe_unused]] Error err = deserialize(header, ctx);
 	assert(err == Error::ok); // this should always succeed
@@ -66,7 +66,7 @@ void mysql::detail::channel<AsyncStream>::process_header_write(
 	std::uint32_t size_to_write
 )
 {
-	msgs::packet_header header;
+	packet_header header;
 	header.packet_size.value = size_to_write;
 	header.sequence_number.value = next_sequence_number();
 	SerializationContext ctx (capabilities(0), header_buffer_.data()); // capabilities not relevant here

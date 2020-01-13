@@ -55,7 +55,7 @@ struct DeserializeTextValueTest : public TestWithParam<TextValueParam>
 
 TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
-	msgs::column_definition coldef;
+	column_definition_packet coldef;
 	coldef.type = GetParam().type;
 	coldef.decimals.value = static_cast<std::uint8_t>(GetParam().decimals);
 	coldef.flags.value = GetParam().flags;
@@ -296,7 +296,7 @@ INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
 struct DeserializeTextRowTest : public Test
 {
 	std::vector<field_metadata> meta {
-		msgs::column_definition {
+		column_definition_packet {
 			string_lenenc("def"),
 			string_lenenc("awesome"),
 			string_lenenc("test_table"),
@@ -309,7 +309,7 @@ struct DeserializeTextRowTest : public Test
 			int2(0),
 			int1(0)
 		},
-		msgs::column_definition {
+		column_definition_packet {
 			string_lenenc("def"),
 			string_lenenc("awesome"),
 			string_lenenc("test_table"),
@@ -322,7 +322,7 @@ struct DeserializeTextRowTest : public Test
 			int2(0),
 			int1(0)
 		},
-		msgs::column_definition {
+		column_definition_packet {
 			string_lenenc("def"),
 			string_lenenc("awesome"),
 			string_lenenc("test_table"),

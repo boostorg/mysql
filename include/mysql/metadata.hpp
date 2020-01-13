@@ -10,13 +10,13 @@ namespace mysql
 
 class field_metadata
 {
-	detail::msgs::column_definition msg_;
+	detail::column_definition_packet msg_;
 	mutable field_type field_type_ { field_type::_not_computed };
 
 	bool flag_set(std::uint16_t flag) const noexcept { return msg_.flags.value & flag; }
 public:
 	field_metadata() = default;
-	field_metadata(const detail::msgs::column_definition& msg) noexcept: msg_(msg) {};
+	field_metadata(const detail::column_definition_packet& msg) noexcept: msg_(msg) {};
 
 	std::string_view database() const noexcept { return msg_.schema.value; }
 	std::string_view table() const noexcept { return msg_.table.value; }

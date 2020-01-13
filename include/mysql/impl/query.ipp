@@ -26,7 +26,7 @@ public:
 	)
 	{
 		// Compose a com_query message
-		msgs::com_query query_msg;
+		com_query_packet query_msg;
 		query_msg.query.value = query;
 
 		// Serialize it
@@ -52,7 +52,7 @@ public:
 		if (err) return {};
 		if (msg_type == ok_packet_header)
 		{
-			msgs::ok_packet ok_packet;
+			ok_packet ok_packet;
 			err = deserialize_message(ok_packet, ctx);
 			if (err) return {};
 			output = channel_resultset_type<ChannelType>(channel_, std::move(buffer_), ok_packet);
@@ -83,7 +83,7 @@ public:
 
 	error_code process_field_definition()
 	{
-		msgs::column_definition field_definition;
+		column_definition_packet field_definition;
 		DeserializationContext ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
 		auto err = deserialize_message(field_definition, ctx);
 		if (err) return err;
@@ -115,7 +115,7 @@ inline fetch_result process_fetch_message(
 	const std::vector<field_metadata>& meta,
 	const bytestring& buffer,
 	std::vector<value>& output_values,
-	msgs::ok_packet& output_ok_packet,
+	ok_packet& output_ok_packet,
 	error_code& err
 )
 {
@@ -337,7 +337,7 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
-	msgs::ok_packet& output_ok_packet,
+	ok_packet& output_ok_packet,
 	error_code& err
 )
 {
@@ -363,7 +363,7 @@ mysql::detail::async_fetch_text_row(
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
-	msgs::ok_packet& output_ok_packet,
+	ok_packet& output_ok_packet,
 	CompletionToken&& token
 )
 {
@@ -378,7 +378,7 @@ mysql::detail::async_fetch_text_row(
 		const std::vector<field_metadata>& meta_;
 		bytestring& buffer_;
 		std::vector<value>& output_values_;
-		msgs::ok_packet& output_ok_packet_;
+		ok_packet& output_ok_packet_;
 
 		Op(
 			HandlerType&& handler,
@@ -386,7 +386,7 @@ mysql::detail::async_fetch_text_row(
 			const std::vector<field_metadata>& meta,
 			bytestring& buffer,
 			std::vector<value>& output_values,
-			msgs::ok_packet& output_ok_packet
+			ok_packet& output_ok_packet
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
 			channel_(channel),

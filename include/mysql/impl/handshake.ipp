@@ -21,7 +21,7 @@ inline std::uint8_t get_collation_first_byte(collation value)
 
 inline error_code deserialize_handshake(
 	boost::asio::const_buffer buffer,
-	msgs::handshake& output
+	handshake_packet& output
 )
 {
 	std::uint8_t msg_type;
@@ -84,7 +84,7 @@ public:
 	handshake_processor(const handshake_params& params): params_(params) {};
 	capabilities negotiated_capabilities() const { return negotiated_caps_; }
 
-	error_code process_capabilities(const msgs::handshake& handshake)
+	error_code process_capabilities(const handshake_packet& handshake)
 	{
 		capabilities server_caps (handshake.capability_falgs.value);
 		capabilities required_caps =
@@ -100,7 +100,7 @@ public:
 	}
 	void compose_handshake_response(
 		std::string_view auth_response,
-		msgs::handshake_response& output
+		handshake_response_packet& output
 	)
 	{
 		output.client_flag.value = negotiated_caps_.get();
@@ -112,8 +112,8 @@ public:
 		output.client_plugin_name.value = mysql_native_password::plugin_name;
 	}
 	error_code compute_auth_switch_response(
-		const msgs::auth_switch_request& request,
-		msgs::auth_switch_response& output,
+		const auth_switch_request_packet& request,
+		auth_switch_response_packet& output,
 		auth_response_calculator& calc
 	)
 	{
@@ -131,7 +131,7 @@ public:
 	error_code process_handshake(bytestring& buffer)
 	{
 		// Deserialize server greeting
-		msgs::handshake handshake;
+		handshake_packet handshake;
 		auto err = deserialize_handshake(boost::asio::buffer(buffer), handshake);
 		if (err) return err;
 
@@ -149,7 +149,7 @@ public:
 		}
 
 		// Compose response
-		msgs::handshake_response response;
+		handshake_response_packet response;
 		compose_handshake_response(auth_response, response);
 
 		// Serialize
@@ -184,12 +184,12 @@ public:
 		}
 
 		// We have received an auth switch request. Deserialize it
-		msgs::auth_switch_request auth_sw;
+		auth_switch_request_packet auth_sw;
 		err = deserialize_message(auth_sw, ctx);
 		if (err) return err;
 
 		// Compute response
-		msgs::auth_switch_response auth_sw_res;
+		auth_switch_response_packet auth_sw_res;
 		auth_response_calculator calc;
 		err = compute_auth_switch_response(auth_sw, auth_sw_res, calc);
 		if (err) return err;

@@ -20,13 +20,13 @@ class resultset
 	detail::resultset_metadata meta_;
 	row current_row_;
 	detail::bytestring buffer_;
-	detail::msgs::ok_packet ok_packet_;
+	detail::ok_packet ok_packet_;
 	bool eof_received_ {false};
 public:
 	resultset(): channel_(nullptr) {};
 	resultset(channel_type& channel, detail::resultset_metadata&& meta):
 		channel_(&channel), meta_(std::move(meta)) {};
-	resultset(channel_type& channel, detail::bytestring&& buffer, const detail::msgs::ok_packet& ok_pack):
+	resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
 		channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 
 	const row* fetch_one(error_code& err);

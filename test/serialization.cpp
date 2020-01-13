@@ -156,14 +156,14 @@ INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
 
 INSTANTIATE_TEST_SUITE_P(PacketHeader, FullSerializationTest, ::testing::Values(
 	// packet header
-	SerializeParams(msgs::packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
-	SerializeParams(msgs::packet_header{int3(9), int1(2)}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
-	SerializeParams(msgs::packet_header{int3(0xcacbcc), int1(0xfa)}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
-	SerializeParams(msgs::packet_header{int3(0xffffff), int1(0xff)}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
+	SerializeParams(packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
+	SerializeParams(packet_header{int3(9), int1(2)}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
+	SerializeParams(packet_header{int3(0xcacbcc), int1(0xfa)}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
+	SerializeParams(packet_header{int3(0xffffff), int1(0xff)}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
 ));
 
 INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
-	SerializeParams(msgs::ok_packet{
+	SerializeParams(ok_packet{
 		int_lenenc(4), // affected rows
 		int_lenenc(0), // last insert ID
 		int2(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED), // server status
@@ -176,7 +176,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 		0x73, 0x3a, 0x20, 0x30
 	}, "successful UPDATE"),
 
-	SerializeParams(msgs::ok_packet{
+	SerializeParams(ok_packet{
 		int_lenenc(1), // affected rows
 		int_lenenc(6), // last insert ID
 		int2(SERVER_STATUS_AUTOCOMMIT), // server status
@@ -186,7 +186,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 		0x01, 0x06, 0x02, 0x00, 0x00, 0x00
 	}, "successful INSERT"),
 
-	SerializeParams(msgs::ok_packet{
+	SerializeParams(ok_packet{
 		int_lenenc(0), // affected rows
 		int_lenenc(0), // last insert ID
 		int2(SERVER_STATUS_AUTOCOMMIT), // server status
@@ -198,7 +198,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 ));
 
 INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
-	SerializeParams(msgs::err_packet{
+	SerializeParams(err_packet{
 		int2(1049), // eror code
 		string_fixed<1>({0x23}), // sql state marker
 		string_fixed<5>({'4', '2', '0', '0', '0'}), // sql state
@@ -209,7 +209,7 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 		0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
 	}, "Wrong USE database"),
 
-	SerializeParams(msgs::err_packet{
+	SerializeParams(err_packet{
 		int2(1146), // eror code
 		string_fixed<1>({0x23}), // sql state marker
 		string_fixed<5>({'4', '2', 'S', '0', '2'}), // sql state
@@ -223,7 +223,7 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 		0x65, 0x78, 0x69, 0x73, 0x74
 	}, "Unknown table"),
 
-	SerializeParams(msgs::err_packet{
+	SerializeParams(err_packet{
 		int2(1045), // error code
 		string_fixed<1>({0x23}), // SQL state marker
 		string_fixed<5>({'2', '8', '0', '0', '0'}), // SQL state
@@ -275,7 +275,7 @@ constexpr std::uint32_t hanshake_caps =
 		CLIENT_REMEMBER_OPTIONS;
 
 INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
-	SerializeParams(msgs::handshake{
+	SerializeParams(handshake_packet{
 		string_null("5.7.27-0ubuntu0.19.04.1"), // server version
 		int4(2), // connection ID
 		string_lenenc(makesv(handshake_auth_plugin_data)),
@@ -325,7 +325,7 @@ constexpr std::uint32_t handshake_response_caps =
 		CLIENT_DEPRECATE_EOF;
 
 INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
-	SerializeParams(msgs::handshake_response{
+	SerializeParams(handshake_response_packet{
 		int4(handshake_response_caps),
 		int4(16777216), // max packet size
 		int1(static_cast<std::uint8_t>(collation::utf8_general_ci)),
@@ -346,7 +346,7 @@ INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 		0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
 	}, "without database", handshake_response_caps),
 
-	SerializeParams(msgs::handshake_response{
+	SerializeParams(handshake_response_packet{
 		int4(handshake_response_caps | CLIENT_CONNECT_WITH_DB),
 		int4(16777216), // max packet size
 		int1(static_cast<std::uint8_t>(collation::utf8_general_ci)),
@@ -377,7 +377,7 @@ constexpr std::uint8_t auth_switch_request_auth_data [] = {
 };
 
 INSTANTIATE_TEST_SUITE_P(AuthSwitchRequest, DeserializeTest, testing::Values(
-	SerializeParams(msgs::auth_switch_request{
+	SerializeParams(auth_switch_request_packet{
 		string_null("mysql_native_password"),
 		string_eof(makesv(auth_switch_request_auth_data))
 	}, {
@@ -397,7 +397,7 @@ constexpr std::uint8_t auth_switch_response_auth_data [] = {
 };
 
 INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
-	SerializeParams(msgs::auth_switch_response{
+	SerializeParams(auth_switch_response_packet{
 		string_eof(makesv(auth_switch_response_auth_data))
 	}, {
 		0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06,
@@ -408,7 +408,7 @@ INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
 
 // Column definition
 INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values(
-	SerializeParams(msgs::column_definition{
+	SerializeParams(column_definition_packet{
 		string_lenenc("def"), //catalog
 		string_lenenc("awesome"), // schema (database)
 		string_lenenc("test_table"), // table
@@ -434,7 +434,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		0x0c, 0x3f, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x03,
 		0x03, 0x42, 0x00, 0x00, 0x00
 	}, "Numeric, auto-increment primary key"),
-	SerializeParams(msgs::column_definition{
+	SerializeParams(column_definition_packet{
 		string_lenenc("def"), //catalog
 		string_lenenc("awesome"), // schema (database)
 		string_lenenc("child"), // table
@@ -458,7 +458,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		0x00, 0x00, 0x00, 0x00, 0x00
 	}, "Varchar field, aliased field and table names (query with a JOIN)"),
 
-	SerializeParams(msgs::column_definition{
+	SerializeParams(column_definition_packet{
 		string_lenenc("def"), //catalog
 		string_lenenc("awesome"), // schema (database)
 		string_lenenc("test_table"), // table
@@ -484,7 +484,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 ));
 
 INSTANTIATE_TEST_SUITE_P(ComQuery, SerializeTest, testing::Values(
-	SerializeParams(msgs::com_query{
+	SerializeParams(com_query_packet{
 		string_eof("show databases")
 	}, {
 		0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61,

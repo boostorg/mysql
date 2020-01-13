@@ -46,7 +46,7 @@ fetch_result fetch_text_row(
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
-	msgs::ok_packet& output_ok_packet,
+	ok_packet& output_ok_packet,
 	error_code& err
 );
 
@@ -57,7 +57,7 @@ async_fetch_text_row(
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
-	msgs::ok_packet& output_ok_packet,
+	ok_packet& output_ok_packet,
 	CompletionToken&& token
 );
 

@@ -5,7 +5,6 @@ MVP
 		Add to readme
 	Add travis
 	Sanitize cmake
-		GTest/GMock to be downloaded
 		Namespacing for the exported library (how does export work anyway?)
 		Building tests/examples conditionally
 	Doxygen comments in interface

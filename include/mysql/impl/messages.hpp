@@ -15,9 +15,6 @@ namespace mysql
 namespace detail
 {
 
-namespace msgs
-{
-
 struct packet_header
 {
 	int3 packet_size;
@@ -64,7 +61,7 @@ struct err_packet
 	);
 };
 
-struct handshake
+struct handshake_packet
 {
 	// int<1> 	protocol version 	Always 10
 	string_null server_version;
@@ -78,17 +75,17 @@ struct handshake
 	std::array<char, 8 + 0xff> auth_plugin_data_buffer; // not an actual protocol field, the merge of two fields
 
 	static constexpr auto fields = std::make_tuple(
-		&handshake::server_version,
-		&handshake::connection_id,
-		&handshake::auth_plugin_data,
-		&handshake::capability_falgs,
-		&handshake::character_set,
-		&handshake::status_flags,
-		&handshake::auth_plugin_name
+		&handshake_packet::server_version,
+		&handshake_packet::connection_id,
+		&handshake_packet::auth_plugin_data,
+		&handshake_packet::capability_falgs,
+		&handshake_packet::character_set,
+		&handshake_packet::status_flags,
+		&handshake_packet::auth_plugin_name
 	);
 };
 
-struct handshake_response
+struct handshake_response_packet
 {
 	int4 client_flag; // capabilities
 	int4 max_packet_size;
@@ -101,37 +98,37 @@ struct handshake_response
 	// TODO: CLIENT_CONNECT_ATTRS
 
 	static constexpr auto fields = std::make_tuple(
-		&handshake_response::client_flag,
-		&handshake_response::max_packet_size,
-		&handshake_response::character_set,
-		&handshake_response::username,
-		&handshake_response::auth_response,
-		&handshake_response::database,
-		&handshake_response::client_plugin_name
+		&handshake_response_packet::client_flag,
+		&handshake_response_packet::max_packet_size,
+		&handshake_response_packet::character_set,
+		&handshake_response_packet::username,
+		&handshake_response_packet::auth_response,
+		&handshake_response_packet::database,
+		&handshake_response_packet::client_plugin_name
 	);
 };
 
-struct auth_switch_request
+struct auth_switch_request_packet
 {
 	string_null plugin_name;
 	string_eof auth_plugin_data;
 
 	static constexpr auto fields = std::make_tuple(
-		&auth_switch_request::plugin_name,
-		&auth_switch_request::auth_plugin_data
+		&auth_switch_request_packet::plugin_name,
+		&auth_switch_request_packet::auth_plugin_data
 	);
 };
 
-struct auth_switch_response
+struct auth_switch_response_packet
 {
 	string_eof auth_plugin_data;
 
 	static constexpr auto fields = std::make_tuple(
-		&auth_switch_response::auth_plugin_data
+		&auth_switch_response_packet::auth_plugin_data
 	);
 };
 
-struct column_definition
+struct column_definition_packet
 {
 	string_lenenc catalog; // always "def"
 	string_lenenc schema;
@@ -146,40 +143,39 @@ struct column_definition
 	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
 
 	static constexpr auto fields = std::make_tuple(
-		&column_definition::catalog,
-		&column_definition::schema,
-		&column_definition::table,
-		&column_definition::org_table,
-		&column_definition::name,
-		&column_definition::org_name,
-		&column_definition::character_set,
-		&column_definition::column_length,
-		&column_definition::type,
-		&column_definition::flags,
-		&column_definition::decimals
+		&column_definition_packet::catalog,
+		&column_definition_packet::schema,
+		&column_definition_packet::table,
+		&column_definition_packet::org_table,
+		&column_definition_packet::name,
+		&column_definition_packet::org_name,
+		&column_definition_packet::character_set,
+		&column_definition_packet::column_length,
+		&column_definition_packet::type,
+		&column_definition_packet::flags,
+		&column_definition_packet::decimals
 	);
 };
 
 // Commands
-struct com_query
+struct com_query_packet
 {
 	string_eof query;
 
 	static constexpr std::uint8_t command_id = 3;
 	static constexpr auto fields = std::make_tuple(
-		&com_query::query
+		&com_query_packet::query
 	);
 };
 
-} // msgs
 
 // serialization functions
-inline Error deserialize(msgs::ok_packet& output, DeserializationContext& ctx) noexcept;
-inline Error deserialize(msgs::handshake& output, DeserializationContext& ctx) noexcept;
-inline std::size_t get_size(const msgs::handshake_response& value, const SerializationContext& ctx) noexcept;
-inline void serialize(const msgs::handshake_response& value, SerializationContext& ctx) noexcept;
-inline Error deserialize(msgs::auth_switch_request& output, DeserializationContext& ctx) noexcept;
-inline Error deserialize(msgs::column_definition& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(ok_packet& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(handshake_packet& output, DeserializationContext& ctx) noexcept;
+inline std::size_t get_size(const handshake_response_packet& value, const SerializationContext& ctx) noexcept;
+inline void serialize(const handshake_response_packet& value, SerializationContext& ctx) noexcept;
+inline Error deserialize(auth_switch_request_packet& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(column_definition_packet& output, DeserializationContext& ctx) noexcept;
 
 // Helper to serialize top-level messages
 template <typename Serializable, typename Allocator>

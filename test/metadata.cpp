@@ -18,7 +18,7 @@ namespace
 
 TEST(FieldMetadata, IntPrimaryKey)
 {
-	msgs::column_definition msg {
+	column_definition_packet msg {
 		string_lenenc("def"),
 		string_lenenc("awesome"),
 		string_lenenc("test_table"),
@@ -55,7 +55,7 @@ TEST(FieldMetadata, IntPrimaryKey)
 
 TEST(FieldMetadata, VarcharWithAlias)
 {
-	msgs::column_definition msg {
+	column_definition_packet msg {
 		string_lenenc("def"),
 		string_lenenc("awesome"),
 		string_lenenc("child"),
@@ -92,7 +92,7 @@ TEST(FieldMetadata, VarcharWithAlias)
 
 TEST(FieldMetadata, FloatField)
 {
-	msgs::column_definition msg {
+	column_definition_packet msg {
 		string_lenenc("def"),
 		string_lenenc("awesome"),
 		string_lenenc("test_table"),
