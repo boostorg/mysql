@@ -1,6 +1,6 @@
 # MySQL-Asio
 
-[![Build Status](https://api.travis-ci.org/repos/anarthal/mysql-asio.svg?branch=master)](https://github.com/anarthal/mysql-asio)
+[![Build Status](https://travis-ci.com/anarthal/mysql-asio.png?branch=master)](https://github.com/anarthal/mysql-asio)
 
 MySQL-Asio is a C++17 client for the MySQL database server, based on Boost.Asio.
 
