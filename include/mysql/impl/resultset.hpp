@@ -3,9 +3,9 @@
 
 #include "mysql/impl/query.hpp"
 #include <boost/asio/coroutine.hpp>
-#include <boost/asio/yield.hpp>
 #include <cassert>
 #include <limits>
+#include <boost/asio/yield.hpp>
 
 template <typename StreamType>
 const mysql::row* mysql::resultset<StreamType>::fetch_one(

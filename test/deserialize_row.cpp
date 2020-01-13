@@ -10,14 +10,19 @@
 #include "mysql/impl/deserialize_row.hpp"
 #include "test_common.hpp"
 
-using namespace mysql;
 using namespace mysql::detail;
 using namespace mysql::test;
 using namespace testing;
-using namespace ::date::literals;
+using namespace date::literals;
+using mysql::value;
+using mysql::collation;
+using mysql::error_code;
+using mysql::Error;
 
 namespace
 {
+
+using mysql::operator<<;
 
 struct TextValueParam
 {
@@ -59,7 +64,7 @@ TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	coldef.type = GetParam().type;
 	coldef.decimals.value = static_cast<std::uint8_t>(GetParam().decimals);
 	coldef.flags.value = GetParam().flags;
-	field_metadata meta (coldef);
+	mysql::field_metadata meta (coldef);
 	value actual_value;
 	auto err = deserialize_text_value(GetParam().from, meta, actual_value);
 	EXPECT_EQ(err, Error::ok);
@@ -287,15 +292,15 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
 ));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
-	TextValueParam("regular value", "1999", year(1999), protocol_field_type::year),
-	TextValueParam("min", "1901", year(1901), protocol_field_type::year),
-	TextValueParam("max", "2155", year(2155), protocol_field_type::year),
-	TextValueParam("zero", "0000", year(0), protocol_field_type::year)
+	TextValueParam("regular value", "1999", mysql::year(1999), protocol_field_type::year),
+	TextValueParam("min", "1901", mysql::year(1901), protocol_field_type::year),
+	TextValueParam("max", "2155", mysql::year(2155), protocol_field_type::year),
+	TextValueParam("zero", "0000", mysql::year(0), protocol_field_type::year)
 ));
 
 struct DeserializeTextRowTest : public Test
 {
-	std::vector<field_metadata> meta {
+	std::vector<mysql::field_metadata> meta {
 		column_definition_packet {
 			string_lenenc("def"),
 			string_lenenc("awesome"),

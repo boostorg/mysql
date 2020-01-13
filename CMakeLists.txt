@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11.0)
+cmake_minimum_required(VERSION 3.15.0)
 project(mysql-asio)
 
 include(FetchContent)
@@ -12,7 +12,7 @@ enable_testing()
 
 function (_mysql_set_target_warnings TARGET_NAME)
 	if(MSVC)
-		target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX)
+		target_compile_definitions(${TARGET_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
 	else()
 		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
 	endif()

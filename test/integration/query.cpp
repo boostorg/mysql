@@ -14,12 +14,13 @@
 
 namespace net = boost::asio;
 using namespace testing;
-using namespace mysql;
 using namespace mysql::test;
-
 using mysql::detail::make_error_code;
 using mysql::test::meta_validator;
 using mysql::test::validate_meta;
+using mysql::field_metadata;
+using mysql::field_type;
+using mysql::error_code;
 
 namespace
 {
@@ -195,7 +196,7 @@ TEST_F(QueryTest, QueryAsync_SelectOk)
 TEST_F(QueryTest, QueryAsync_SelectQueryFailed)
 {
 	auto fut = conn.async_query("SELECT field_varchar, field_bad FROM one_row_table", net::use_future);
-	validate_future_exception(fut, make_error_code(Error::bad_field_error));
+	validate_future_exception(fut, make_error_code(mysql::Error::bad_field_error));
 }
 
 
@@ -323,7 +324,7 @@ TEST_F(QueryTest, FetchOneAsync_OneRow)
 	auto result = conn.query("SELECT * FROM one_row_table");
 
 	// Fetch only row
-	const row* row = result.async_fetch_one(net::use_future).get();
+	const auto* row = result.async_fetch_one(net::use_future).get();
 	ASSERT_NE(row, nullptr);
 	EXPECT_EQ(row->values(), makevalues(1, "f0"));
 	EXPECT_FALSE(result.complete());
@@ -339,7 +340,7 @@ TEST_F(QueryTest, FetchOneAsync_TwoRows)
 	auto result = conn.query("SELECT * FROM two_rows_table");
 
 	// Fetch first row
-	const row* row = result.async_fetch_one(net::use_future).get();
+	const auto* row = result.async_fetch_one(net::use_future).get();
 	ASSERT_NE(row, nullptr);
 	EXPECT_EQ(row->values(), makevalues(1, "f0"));
 	EXPECT_FALSE(result.complete());

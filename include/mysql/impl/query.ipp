@@ -3,8 +3,9 @@
 
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/deserialize_row.hpp"
-#include <boost/asio/yield.hpp>
 #include "mysql/impl/serialization.hpp"
+#include <optional>
+#include <boost/asio/yield.hpp>
 
 namespace mysql
 {

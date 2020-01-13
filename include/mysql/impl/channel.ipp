@@ -3,11 +3,11 @@
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
-#include <boost/asio/yield.hpp>
 #include <boost/beast/core/async_base.hpp>
 #include <cassert>
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/constants.hpp"
+#include <boost/asio/yield.hpp>
 
 namespace mysql
 {
@@ -261,7 +261,7 @@ mysql::detail::channel<AsyncStream>::async_write(
 			bool cont=true
 		)
 		{
-			std::size_t size_to_write;
+			std::uint32_t size_to_write;
 
 			reenter(*this)
 			{

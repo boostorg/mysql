@@ -13,10 +13,10 @@
 #include "mysql/impl/channel.hpp"
 
 using namespace testing;
-using namespace mysql;
 using namespace mysql::detail;
 using namespace boost::asio;
 namespace errc = boost::system::errc;
+using mysql::error_code;
 
 namespace
 {
@@ -41,8 +41,14 @@ public:
 
 	MockStream()
 	{
-		ON_CALL(*this, read_buffer).WillByDefault(SetArgReferee<1>(errc::make_error_code(errc::timed_out)));
-		ON_CALL(*this, write_buffer).WillByDefault(SetArgReferee<1>(errc::make_error_code(errc::timed_out)));
+		ON_CALL(*this, read_buffer).WillByDefault(DoAll(
+			SetArgReferee<1>(errc::make_error_code(errc::timed_out)),
+			Return(0)
+		));
+		ON_CALL(*this, write_buffer).WillByDefault(DoAll(
+			SetArgReferee<1>(errc::make_error_code(errc::timed_out)),
+			Return(0)
+		));
 	}
 
 	template <typename MutableBufferSequence>
@@ -104,8 +110,8 @@ public:
 
 struct MysqlChannelFixture : public Test
 {
-	using MockChannel = channel<MockStream>;
-	MockStream stream;
+	using MockChannel = channel<NiceMock<MockStream>>;
+	NiceMock<MockStream> stream;
 	MockChannel chan {stream};
 	mysql::error_code errc;
 	InSequence seq;
@@ -199,7 +205,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateE
 	EXPECT_CALL(stream, read_buffer)
 		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x05})));
 	chan.read(buffer, errc);
-	EXPECT_EQ(errc, make_error_code(Error::sequence_number_mismatch));
+	EXPECT_EQ(errc, make_error_code(mysql::Error::sequence_number_mismatch));
 }
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSequenceNumber)

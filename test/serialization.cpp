@@ -10,9 +10,10 @@
 
 using namespace testing;
 using namespace std;
-using namespace mysql;
 using namespace mysql::detail;
 using namespace mysql::test;
+using mysql::Error;
+using mysql::collation;
 
 namespace
 {

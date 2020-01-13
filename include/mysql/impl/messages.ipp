@@ -66,7 +66,8 @@ inline mysql::Error mysql::detail::deserialize(
 		reserved
 	);
 	if (err != Error::ok) return err;
-	auto auth2_length = std::max(13, auth_plugin_data_len.value - auth1_length);
+	auto auth2_length = static_cast<std::uint8_t>(
+		std::max(13, auth_plugin_data_len.value - auth1_length));
 	err = ctx.copy(output.auth_plugin_data_buffer.data() + auth1_length, auth2_length);
 	if (err != Error::ok) return err;
 	err = deserialize(output.auth_plugin_name, ctx);

@@ -10,10 +10,12 @@
 #include "test_common.hpp"
 #include <sstream>
 
-using namespace mysql;
 using namespace mysql::test;
 using namespace testing;
-using namespace ::date::literals;
+using namespace date::literals;
+using mysql::value;
+using mysql::field_metadata;
+using mysql::field_type;
 
 namespace
 {

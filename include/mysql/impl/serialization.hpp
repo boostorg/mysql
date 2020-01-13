@@ -365,7 +365,10 @@ struct is_command : decltype(is_command_helper::get<T>(nullptr))
 };
 
 template <std::size_t index, typename T>
-Error deserialize_struct(T& output, DeserializationContext& ctx) noexcept
+Error deserialize_struct(
+	[[maybe_unused]] T& output,
+	[[maybe_unused]] DeserializationContext& ctx
+) noexcept
 {
 	constexpr auto fields = get_struct_fields<T>::value;
 	if constexpr (index == std::tuple_size<decltype(fields)>::value)
@@ -395,7 +398,10 @@ deserialize(T& output, DeserializationContext& ctx) noexcept
 }
 
 template <std::size_t index, typename T>
-void serialize_struct(const T& value, SerializationContext& ctx) noexcept
+void serialize_struct(
+	[[maybe_unused]] const T& value,
+	[[maybe_unused]] SerializationContext& ctx
+) noexcept
 {
 	constexpr auto fields = get_struct_fields<T>::value;
 	if constexpr (index < std::tuple_size<decltype(fields)>::value)
@@ -408,7 +414,10 @@ void serialize_struct(const T& value, SerializationContext& ctx) noexcept
 
 template <typename T>
 std::enable_if_t<is_struct_with_fields<T>::value>
-serialize(const T& input, SerializationContext& ctx) noexcept
+serialize(
+	[[maybe_unused]] const T& input,
+	[[maybe_unused]] SerializationContext& ctx
+) noexcept
 {
 	// For commands, add the command ID. Commands are only sent by the client,
 	// so this is not considered in the deserialization functions.
@@ -420,7 +429,10 @@ serialize(const T& input, SerializationContext& ctx) noexcept
 }
 
 template <std::size_t index, typename T>
-std::size_t get_size_struct(const T& input, const SerializationContext& ctx) noexcept
+std::size_t get_size_struct(
+	[[maybe_unused]] const T& input,
+	[[maybe_unused]] const SerializationContext& ctx
+) noexcept
 {
 	constexpr auto fields = get_struct_fields<T>::value;
 	if constexpr (index == std::tuple_size<decltype(fields)>::value)

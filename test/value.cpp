@@ -12,7 +12,7 @@
 
 using namespace mysql::test;
 using namespace testing;
-using namespace ::date::literals;
+using namespace date::literals;
 using namespace std::chrono;
 
 namespace

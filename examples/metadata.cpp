@@ -2,8 +2,6 @@
 #include "mysql/connection.hpp"
 #include <boost/asio/io_service.hpp>
 #include <boost/system/system_error.hpp>
-#include <boost/asio/coroutine.hpp>
-#include <boost/asio/yield.hpp>
 #include <iostream>
 
 /**

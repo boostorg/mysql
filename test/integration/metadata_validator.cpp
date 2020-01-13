@@ -30,7 +30,7 @@ static struct flag_entry
 };
 
 void meta_validator::validate(
-	const field_metadata& value
+	const mysql::field_metadata& value
 ) const
 {
 	// Fixed fields

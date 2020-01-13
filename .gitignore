@@ -5,3 +5,6 @@ build/
 .pydevproject
 private/
 build-*/
+CMakeSettings.json
+out/
+.vs/

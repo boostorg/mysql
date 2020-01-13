@@ -5,9 +5,9 @@
 #include "mysql/impl/auth.hpp"
 #include "mysql/error.hpp"
 #include <boost/asio/coroutine.hpp>
-#include <boost/asio/yield.hpp>
 #include <boost/beast/core/async_base.hpp>
 #include "mysql/impl/serialization.hpp"
+#include <boost/asio/yield.hpp>
 
 namespace mysql
 {

@@ -9,9 +9,9 @@
 #include "mysql/row.hpp"
 #include "test_common.hpp"
 
-using namespace mysql;
 using namespace mysql::test;
 using namespace testing;
+using mysql::row;
 
 namespace
 {
