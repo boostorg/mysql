@@ -12,8 +12,7 @@ matrix:
          sources:
            - sourceline: 'ppa:mhier/libboost-latest'
          packages:
-           - boost1.67
-           - libssl-dev
+           - boost1.70
 
 services:
   - mysql
