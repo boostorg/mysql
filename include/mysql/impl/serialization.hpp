@@ -329,19 +329,25 @@ std::size_t get_size(T, const SerializationContext&) noexcept
 	return get_fixed_size<value_holder<std::underlying_type_t<T>>>::value;
 }
 
-// Structs
-struct is_struct_with_fields_helper
-{
-    template <typename T>
-    static constexpr std::true_type get(decltype(T::fields)*);
+// Structs. To allow a limited way of reflection, structs should
+// specialize get_struct_fields with a tuple of pointers to members,
+// thus defining which fields should be (de)serialized in the struct
+// and in which order
+struct not_a_struct_with_fields {}; // Tag indicating a type is not a struct with fields
 
-    template <typename T>
-    static constexpr std::false_type get(...);
+template <typename T>
+struct get_struct_fields
+{
+	static constexpr not_a_struct_with_fields value {};
 };
 
 template <typename T>
-struct is_struct_with_fields : decltype(is_struct_with_fields_helper::get<T>(nullptr))
+struct is_struct_with_fields
 {
+	static constexpr bool value = !std::is_same_v<
+		std::decay_t<decltype(get_struct_fields<T>::value)>,
+		not_a_struct_with_fields
+	>;
 };
 
 struct is_command_helper
@@ -361,13 +367,14 @@ struct is_command : decltype(is_command_helper::get<T>(nullptr))
 template <std::size_t index, typename T>
 Error deserialize_struct(T& output, DeserializationContext& ctx) noexcept
 {
-	if constexpr (index == std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	constexpr auto fields = get_struct_fields<T>::value;
+	if constexpr (index == std::tuple_size<decltype(fields)>::value)
 	{
 		return Error::ok;
 	}
 	else
 	{
-		constexpr auto pmem = std::get<index>(T::fields);
+		constexpr auto pmem = std::get<index>(fields);
 		Error err = deserialize(output.*pmem, ctx);
 		if (err != Error::ok)
 		{
@@ -390,9 +397,10 @@ deserialize(T& output, DeserializationContext& ctx) noexcept
 template <std::size_t index, typename T>
 void serialize_struct(const T& value, SerializationContext& ctx) noexcept
 {
-	if constexpr (index < std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	constexpr auto fields = get_struct_fields<T>::value;
+	if constexpr (index < std::tuple_size<decltype(fields)>::value)
 	{
-		auto pmem = std::get<index>(T::fields);
+		auto pmem = std::get<index>(fields);
 		serialize(value.*pmem, ctx);
 		serialize_struct<index+1>(value, ctx);
 	}
@@ -406,7 +414,7 @@ serialize(const T& input, SerializationContext& ctx) noexcept
 	// so this is not considered in the deserialization functions.
 	if constexpr (is_command<T>::value)
 	{
-		serialize(int1{T::command_id}, ctx);
+		serialize(int1(T::command_id), ctx);
 	}
 	serialize_struct<0>(input, ctx);
 }
@@ -414,13 +422,14 @@ serialize(const T& input, SerializationContext& ctx) noexcept
 template <std::size_t index, typename T>
 std::size_t get_size_struct(const T& input, const SerializationContext& ctx) noexcept
 {
-	if constexpr (index == std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	constexpr auto fields = get_struct_fields<T>::value;
+	if constexpr (index == std::tuple_size<decltype(fields)>::value)
 	{
 		return 0;
 	}
 	else
 	{
-		constexpr auto pmem = std::get<index>(T::fields);
+		constexpr auto pmem = std::get<index>(fields);
 		return get_size_struct<index+1>(input, ctx) +
 		       get_size(input.*pmem, ctx);
 	}

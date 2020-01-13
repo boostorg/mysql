@@ -26,7 +26,7 @@ Finally, link your target against the **mysql_asio** interface library, and you 
 
 ## Requirements
 
-- C++17 capable compiler (tested with g++ 9.2.1).
+- C++17 capable compiler (tested with g++ 9.2.1 and clang 9.0.0).
 - Boost 1.70 or higher. The following Boost libraries are used:
     - Boost.Asio (and in consequence, Boost.System).
     - Boost.Beast (implementation dependency, we are working in removing it).

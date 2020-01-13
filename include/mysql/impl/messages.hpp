@@ -19,8 +19,12 @@ struct packet_header
 {
 	int3 packet_size;
 	int1 sequence_number;
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<packet_header>
+{
+	static constexpr auto value = std::make_tuple(
 		&packet_header::packet_size,
 		&packet_header::sequence_number
 	);
@@ -35,8 +39,12 @@ struct ok_packet
 	int2 warnings;
 	// TODO: CLIENT_SESSION_TRACK
 	string_lenenc info;
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<ok_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&ok_packet::affected_rows,
 		&ok_packet::last_insert_id,
 		&ok_packet::status_flags,
@@ -52,8 +60,12 @@ struct err_packet
 	string_fixed<1> sql_state_marker;
 	string_fixed<5> sql_state;
 	string_eof error_message;
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<err_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&err_packet::error_code,
 		&err_packet::sql_state_marker,
 		&err_packet::sql_state,
@@ -73,8 +85,12 @@ struct handshake_packet
 	string_null auth_plugin_name;
 
 	std::array<char, 8 + 0xff> auth_plugin_data_buffer; // not an actual protocol field, the merge of two fields
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<handshake_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&handshake_packet::server_version,
 		&handshake_packet::connection_id,
 		&handshake_packet::auth_plugin_data,
@@ -96,8 +112,12 @@ struct handshake_response_packet
 	string_null database; // only to be serialized if CLIENT_CONNECT_WITH_DB
 	string_null client_plugin_name; // we require CLIENT_PLUGIN_AUTH
 	// TODO: CLIENT_CONNECT_ATTRS
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<handshake_response_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&handshake_response_packet::client_flag,
 		&handshake_response_packet::max_packet_size,
 		&handshake_response_packet::character_set,
@@ -112,8 +132,12 @@ struct auth_switch_request_packet
 {
 	string_null plugin_name;
 	string_eof auth_plugin_data;
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<auth_switch_request_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&auth_switch_request_packet::plugin_name,
 		&auth_switch_request_packet::auth_plugin_data
 	);
@@ -122,8 +146,12 @@ struct auth_switch_request_packet
 struct auth_switch_response_packet
 {
 	string_eof auth_plugin_data;
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<auth_switch_response_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&auth_switch_response_packet::auth_plugin_data
 	);
 };
@@ -141,8 +169,12 @@ struct column_definition_packet
 	protocol_field_type type; // type of the column as defined in enum_field_types
 	int2 flags; // Flags as defined in Column Definition Flags
 	int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
+};
 
-	static constexpr auto fields = std::make_tuple(
+template <>
+struct get_struct_fields<column_definition_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&column_definition_packet::catalog,
 		&column_definition_packet::schema,
 		&column_definition_packet::table,
@@ -163,7 +195,12 @@ struct com_query_packet
 	string_eof query;
 
 	static constexpr std::uint8_t command_id = 3;
-	static constexpr auto fields = std::make_tuple(
+};
+
+template <>
+struct get_struct_fields<com_query_packet>
+{
+	static constexpr auto value = std::make_tuple(
 		&com_query_packet::query
 	);
 };

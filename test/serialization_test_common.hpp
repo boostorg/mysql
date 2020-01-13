@@ -29,13 +29,14 @@ inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
 template <std::size_t index, typename T>
 bool equals_struct(const T& lhs, const T& rhs)
 {
-	if constexpr (index == std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	constexpr auto fields = get_struct_fields<T>::value;
+	if constexpr (index == std::tuple_size<decltype(fields)>::value)
 	{
 		return true;
 	}
 	else
 	{
-		constexpr auto pmem = std::get<index>(T::fields);
+		constexpr auto pmem = std::get<index>(fields);
 		return (rhs.*pmem == lhs.*pmem) && equals_struct<index+1>(lhs, rhs);
 	}
 }
@@ -66,9 +67,10 @@ operator<<(std::ostream& os, T value)
 template <std::size_t index, typename T>
 void print_struct(std::ostream& os, const T& value)
 {
-	if constexpr (index < std::tuple_size<std::decay_t<decltype(T::fields)>>::value)
+	constexpr auto fields = get_struct_fields<T>::value;
+	if constexpr (index < std::tuple_size<decltype(fields)>::value)
 	{
-		constexpr auto pmem = std::get<index>(T::fields);
+		constexpr auto pmem = std::get<index>(fields);
 		os << "    " << (value.*pmem) << ",\n";
 		print_struct<index+1>(os, value);
 	}
