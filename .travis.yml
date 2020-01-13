@@ -16,10 +16,13 @@ matrix:
 
 services:
   - mysql
+  
+before_install:
+  - mysql -u root < test/integration/db_setup.sql
 
 script:
   - mkdir -p build
   - cd build
   - cmake -DCMAKE_BUILD_TYPE=Release .. 
-  - make -j all test
+  - make -j CTEST_OUTPUT_ON_FAILURE=1 all test
 
