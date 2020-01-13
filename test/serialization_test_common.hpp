@@ -124,8 +124,7 @@ public:
 	}
 	std::shared_ptr<TypeErasedValue> default_construct() const override
 	{
-		T res; // intentionally not value-initializing it
-		return std::make_shared<TypeErasedValueImpl<T>>(res);
+		return std::make_shared<TypeErasedValueImpl<T>>(T{});
 	}
 	bool equals(const TypeErasedValue& rhs) const override
 	{

@@ -194,16 +194,22 @@ mysql::error_code mysql::detail::deserialize_message(
 }
 
 
-inline mysql::error_code mysql::detail::deserialize_message_type(
-	std::uint8_t& output,
+inline std::pair<mysql::error_code, std::uint8_t> mysql::detail::deserialize_message_type(
 	DeserializationContext& ctx
 )
 {
 	int1 msg_type;
+	std::pair<mysql::error_code, std::uint8_t> res {};
 	auto err = deserialize(msg_type, ctx);
-	if (err != Error::ok) return make_error_code(err);
-	output = msg_type.value;
-	return error_code();
+	if (err == Error::ok)
+	{
+		res.second = msg_type.value;
+	}
+	else
+	{
+		res.first = make_error_code(err);
+	}
+	return res;
 }
 
 inline mysql::error_code mysql::detail::process_error_packet(

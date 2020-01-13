@@ -99,7 +99,7 @@ void main_impl(int argc, char** argv)
 	result = conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'");
 	auto rows = result.fetch_all();
 	assert(rows.size() == 1);
-	auto salary = std::get<double>(rows[0].values()[0]);
+	[[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
 	assert(salary == 10000);
 }
 

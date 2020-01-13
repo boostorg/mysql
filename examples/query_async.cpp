@@ -84,7 +84,7 @@ public:
 	void update_slacker()
 	{
 		const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](const mysql::error_code& err, mysql::tcp_resultset&& result) {
+		connection.async_query(sql, [this](const mysql::error_code& err, [[maybe_unused]] mysql::tcp_resultset&& result) {
 			die_on_error(err);
 			assert(result.fields().size() == 0);
 			query_intern();
@@ -100,7 +100,7 @@ public:
 			resultset.async_fetch_all([](const mysql::error_code& err, const auto& rows) {
 				die_on_error(err);
 				assert(rows.size() == 1);
-				auto salary = std::get<double>(rows[0].values()[0]);
+				[[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
 				assert(salary == 15000);
 			});
 		});

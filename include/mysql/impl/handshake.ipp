@@ -24,9 +24,8 @@ inline error_code deserialize_handshake(
 	handshake_packet& output
 )
 {
-	std::uint8_t msg_type;
 	DeserializationContext ctx (boost::asio::buffer(buffer), capabilities());
-	auto err = deserialize_message_type(msg_type, ctx);
+	auto [err, msg_type] = deserialize_message_type(ctx);
 	if (err) return err;
 	if (msg_type == handshake_protocol_version_9)
 	{
@@ -163,9 +162,8 @@ public:
 		bool& auth_complete
 	)
 	{
-		std::uint8_t msg_type;
 		DeserializationContext ctx (boost::asio::buffer(buffer), negotiated_caps_);
-		auto err = deserialize_message_type(msg_type, ctx);
+		auto [err, msg_type] = deserialize_message_type(ctx);
 		if (err) return err;
 		if (msg_type == ok_packet_header)
 		{
@@ -206,8 +204,7 @@ public:
 	)
 	{
 		DeserializationContext ctx (boost::asio::buffer(buffer), negotiated_caps_);
-		std::uint8_t msg_type;
-		auto err = deserialize_message_type(msg_type, ctx);
+		auto [err, msg_type] = deserialize_message_type(ctx);
 		if (err) return err;
 		if (msg_type == error_packet_header)
 		{

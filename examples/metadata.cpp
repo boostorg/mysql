@@ -53,7 +53,7 @@ void main_impl(int argc, char** argv)
 	 */
 	assert(result.fields().size() == 2);
 
-	const mysql::field_metadata& company_name = result.fields()[0];
+	[[maybe_unused]] const mysql::field_metadata& company_name = result.fields()[0];
 	assert(company_name.database() == "mysql_asio_examples");  // database name
 	assert(company_name.table() == "comp");                    // the alias we assigned to the table in the query
 	assert(company_name.original_table() == "company");        // the original table name
@@ -64,7 +64,7 @@ void main_impl(int argc, char** argv)
 	assert(!company_name.is_auto_increment());                 // field is not AUTO_INCREMENT
 	assert(company_name.is_not_null());                        // field may not be NULL
 
-	const mysql::field_metadata& employee_id = result.fields()[1];
+	[[maybe_unused]] const mysql::field_metadata& employee_id = result.fields()[1];
 	assert(employee_id.database() == "mysql_asio_examples");// database name
 	assert(employee_id.table() == "emp");                   // the alias we assigned to the table in the query
 	assert(employee_id.original_table() == "employee");     // the original table name

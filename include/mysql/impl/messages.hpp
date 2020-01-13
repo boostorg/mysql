@@ -228,8 +228,7 @@ error_code deserialize_message(
 	DeserializationContext& ctx
 );
 
-inline error_code deserialize_message_type(
-	std::uint8_t& output,
+inline std::pair<error_code, std::uint8_t> deserialize_message_type(
 	DeserializationContext& ctx
 );
 

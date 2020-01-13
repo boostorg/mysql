@@ -48,7 +48,7 @@ public:
 		// a length-encoded int containing the field count
 		DeserializationContext ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
 		std::uint8_t msg_type;
-		err = deserialize_message_type(msg_type, ctx);
+		std::tie(err, msg_type) = deserialize_message_type(ctx);
 		if (err) return {};
 		if (msg_type == ok_packet_header)
 		{
@@ -122,7 +122,7 @@ inline fetch_result process_fetch_message(
 	// Message type: row, error or eof?
 	std::uint8_t msg_type;
 	DeserializationContext ctx (boost::asio::buffer(buffer), current_capabilities);
-	err = deserialize_message_type(msg_type, ctx);
+	std::tie(err, msg_type) = deserialize_message_type(ctx);
 	if (err) return fetch_result::error;
 	if (msg_type == eof_packet_header)
 	{
