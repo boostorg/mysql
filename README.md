@@ -39,7 +39,7 @@ Finally, link your target against the **mysql_asio** interface library, and you 
 - Howard Hinnant's date library (https://github.com/HowardHinnant/date) v2.4.1 or higher.
   If you are using CMake to link against MySQL-Asio (the preferred way), it will be fetched automatically.
   (no need for a manual download).
-- Tested with MySQL v8.0.18.
+- Tested with MySQL v5.7 and v8.0.18.
 
 ## Documentation and examples
 
