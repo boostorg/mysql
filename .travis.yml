@@ -6,6 +6,8 @@ matrix:
       dist: bionic
       sudo: true
       compiler: gcc
+      services:
+        - mysql
       addons:
        apt:
          update: true
@@ -21,9 +23,8 @@ matrix:
        homebrew:
          packages:
            - boost
+           - mysql
 
-services:
-  - mysql
   
 before_install:
   - mysql -u root < test/integration/db_setup.sql
