@@ -24,15 +24,16 @@ matrix:
           packages:
             - boost
             - mysql
-            - openssl
       before_install:
         - mysql.server start
+      env:
+        - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
 
 
 script:
   - mysql -u root < test/integration/db_setup.sql
   - mkdir -p build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release .. 
+  - cmake -DCMAKE_BUILD_TYPE=Release $CMAKE_OPTIONS .. 
   - make -j CTEST_OUTPUT_ON_FAILURE=1 all test
 
