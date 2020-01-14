@@ -6,6 +6,7 @@
 namespace mysql
 {
 
+/// MySQL-specific error codes.
 enum class Error : int
 {
 	// OK
@@ -23,6 +24,7 @@ enum class Error : int
 	unknown_auth_plugin
 };
 
+/// An alias for boost::system error codes.
 using error_code = boost::system::error_code;
 
 }

@@ -6,6 +6,11 @@
 namespace mysql
 {
 
+/**
+ * \brief A character set and a collation.
+ * \details Names and ids for this enum correspond to the "Collation" and "Id"
+ * fields returned by MySQL "SHOW COLLATION" statement.
+ */
 enum class collation : std::uint16_t
 {
     big5_chinese_ci = 1,

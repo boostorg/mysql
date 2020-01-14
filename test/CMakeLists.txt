@@ -12,20 +12,18 @@ if(NOT googletest_POPULATED)
     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 endif()
 
-# Unit testing
-# TODO: build tests just when required
-# TODO: is there a way of adding tests to ctest (like gtest_discover_tests)
-#       without runtime going nuts?
+# Unit testing. We do not use gtest_discover_tests because
+# of the runtime penalty (specially considerable in integration tests)
 add_executable(
 	mysql_unittests
-	serialization.cpp
-	channel.cpp
-	capabilities.cpp
-	auth.cpp
-	metadata.cpp
-	deserialize_row.cpp
-	value.cpp
-	row.cpp
+	unit/serialization.cpp
+	unit/channel.cpp
+	unit/capabilities.cpp
+	unit/auth.cpp
+	unit/metadata.cpp
+	unit/deserialize_row.cpp
+	unit/value.cpp
+	unit/row.cpp
 )
 target_include_directories(
 	mysql_unittests

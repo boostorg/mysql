@@ -11,11 +11,29 @@
 namespace mysql
 {
 
+/// Type representing MySQL DATE data type.
 using date = ::date::sys_days;
+
+/// Type representing MySQL DATETIME and TIMESTAMP data types.
 using datetime = ::date::sys_time<std::chrono::microseconds>;
+
+/// Type representing MySQL TIME data type.
 using time = std::chrono::microseconds;
+
+/// Type representing MySQL YEAR data type.
 using year = ::date::year;
 
+/**
+ * \brief Represents a value in the database of any of the allowed types.
+ * \details If a value is NULL, the type of the variant will be nullptr_t.
+ *
+ * If a value is a string, the type will be string_view, and it will
+ * point to a externally owned piece of memory. That implies that mysql::value
+ * does **NOT** own its string memory (saving copies).
+ *
+ * MySQL types BIT and GEOMETRY do not have direct support yet.
+ * They are represented as binary strings.
+ */
 using value = std::variant<
 	std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
 	std::int64_t,      // signed BIGINT
