@@ -15,19 +15,20 @@ matrix:
             - sourceline: 'ppa:mhier/libboost-latest'
           packages:
             - boost1.70
-    - os: osx
-      osx_image: xcode11.3
-      sudo: true
-      compiler: clang
-      addons:
-        homebrew:
-          packages:
-            - boost
-            - mysql
-      before_install:
-        - mysql.server start
-      env:
-        - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
+
+#    - os: osx
+#      osx_image: xcode11.3
+#      sudo: true
+#      compiler: clang
+#      addons:
+#        homebrew:
+#          packages:
+#            - boost
+#            - mysql
+#      before_install:
+#        - mysql.server start
+#      env:
+#        - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
 
 
 script:
