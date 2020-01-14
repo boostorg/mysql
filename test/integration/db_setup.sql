@@ -1,6 +1,11 @@
 -- Connection system variables
 SET NAMES utf8;
 
+-- Update root password and authentication methods to known ones
+UPDATE mysql.user
+SET plugin = 'mysql_native_password', authentication_string = PASSWORD('')
+WHERE User = 'root';
+
 -- Database
 DROP DATABASE IF EXISTS awesome;
 CREATE DATABASE awesome;
