@@ -9,29 +9,27 @@ matrix:
       services:
         - mysql
       addons:
-       apt:
-         update: true
-         sources:
-           - sourceline: 'ppa:mhier/libboost-latest'
-         packages:
-           - boost1.70
-         before_install:
-           - mysql.server start
+        apt:
+          update: true
+          sources:
+            - sourceline: 'ppa:mhier/libboost-latest'
+          packages:
+            - boost1.70
     - os: osx
       osx_image: xcode11.3
       sudo: true
       compiler: clang
       addons:
-       homebrew:
-         packages:
-           - boost
-           - mysql
+        homebrew:
+          packages:
+            - boost
+            - mysql
+      before_install:
+        - mysql.server start
 
-  
-before_script:
-  - mysql -u root < test/integration/db_setup.sql
 
 script:
+  - mysql -u root < test/integration/db_setup.sql
   - mkdir -p build
   - cd build
   - cmake -DCMAKE_BUILD_TYPE=Release .. 
