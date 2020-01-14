@@ -39,7 +39,7 @@ public:
 	MOCK_METHOD2(read_buffer, std::size_t(boost::asio::mutable_buffer, mysql::error_code&));
 	MOCK_METHOD2(write_buffer, std::size_t(boost::asio::const_buffer, mysql::error_code&));
 
-	MockStream()
+	void set_default_behavior()
 	{
 		ON_CALL(*this, read_buffer).WillByDefault(DoAll(
 			SetArgReferee<1>(errc::make_error_code(errc::timed_out)),
@@ -110,11 +110,18 @@ public:
 
 struct MysqlChannelFixture : public Test
 {
-	using MockChannel = channel<NiceMock<MockStream>>;
-	NiceMock<MockStream> stream;
+	//using MockChannel = channel<NiceMock<MockStream>>;
+	//NiceMock<MockStream> stream;
+	using MockChannel = channel<MockStream>;
+	MockStream stream;
 	MockChannel chan {stream};
 	mysql::error_code errc;
-	InSequence seq;
+	//InSequence seq;
+
+	MysqlChannelFixture()
+	{
+		stream.set_default_behavior();
+	}
 };
 
 
@@ -129,7 +136,8 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 	static auto buffer_copier(const std::vector<uint8_t>& buffer)
 	{
-		return [buffer = move(buffer)](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+		return [buffer](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+			assert(b.size() >= buffer.size());
 			memcpy(b.data(), buffer.data(), buffer.size());
 			ec.clear();
 			return buffer.size();
