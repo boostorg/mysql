@@ -124,16 +124,55 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
 	async_fetch_all(CompletionToken&& token);
 
+	/**
+	 * \brief Returns whether this object represents a valid resultset.
+	 * \details Returns false for default-constructed resultsets. It is
+	 * undefined to call any member function on an invalid resultset,
+	 * except assignment.
+	 */
 	bool valid() const noexcept { return channel_ != nullptr; }
+
+	/// Returns whether the resultset has been completely read or not.
 	bool complete() const noexcept { return eof_received_; }
+
+	/**
+	 * \brief Returns metadata about the fields in the query.
+	 * \details There will be as many field_metadata objects as fields
+	 * in the SQL query, and in the same order. For SQL statements
+	 * that do not return values (like UPDATEs), it will be empty.
+	 * \see field_metadata for more details.
+	 */
 	const std::vector<field_metadata>& fields() const noexcept { return meta_.fields(); }
+
+	/**
+	 * \brief The number of rows affected by the SQL that generated this resultset.
+	 * \warning The resultset **must be complete** before calling this function.
+	 */
 	std::uint64_t affected_rows() const noexcept { assert(complete()); return ok_packet_.affected_rows.value; }
+
+	/**
+	 * \brief The last insert ID produced by the SQL that generated this resultset.
+	 * \warning The resultset **must be complete** before calling this function.
+	 */
 	std::uint64_t last_insert_id() const noexcept { assert(complete()); return ok_packet_.last_insert_id.value; }
+
+	/**
+	 * \brief The number of warnings produced by the SQL that generated this resultset.
+	 * \warning The resultset **must be complete** before calling this function.
+	 */
 	unsigned warning_count() const noexcept { assert(complete()); return ok_packet_.warnings.value; }
+
+	/**
+	 * \brief Additionat text information about the execution of
+	 *        the SQL that generated this resultset.
+	 * \warning The resultset **must be complete** before calling this function.
+	 */
 	std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
+
 	// TODO: status flags accessors
 };
 
+/// Specialization of resultset for TCP sockets.
 using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
 
 }

@@ -39,4 +39,4 @@ Technical debt
 		See if we can just declare the functions as auto
 		Test things with other than futures
 	Review close() of the stream on error
-
+	Review valid() for moved-from resultsets (should it return always true?)
