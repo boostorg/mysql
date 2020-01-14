@@ -72,5 +72,5 @@ target_include_directories(
 _mysql_set_target_warnings(mysql_integrationtests)
 add_test(
 	NAME mysql_integrationtests
-	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/integration/run_tests.${_MYSQL_SHELL_EXT}
 )

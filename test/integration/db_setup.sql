@@ -302,13 +302,12 @@ INSERT INTO types_flags VALUES
 ;
 
 -- Users
-DROP USER IF EXISTS empty_password_user;
-CREATE USER empty_password_user IDENTIFIED BY '';
-GRANT ALL PRIVILEGES ON awesome.* TO 'empty_password_user';
+DROP USER IF EXISTS integ_user;
+CREATE USER integ_user IDENTIFIED WITH 'mysql_native_password' BY 'integ_password';
+GRANT ALL PRIVILEGES ON *.* TO 'integ_user';
 
--- Update root password and authentication methods to known ones
-UPDATE mysql.user
-SET plugin = 'mysql_native_password', authentication_string = PASSWORD('')
-WHERE User = 'root';
+DROP USER IF EXISTS empty_password_user;
+CREATE USER empty_password_user IDENTIFIED WITH 'mysql_native_password' BY '';
+GRANT ALL PRIVILEGES ON awesome.* TO 'empty_password_user';
 
 FLUSH PRIVILEGES;

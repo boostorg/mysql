@@ -20,6 +20,8 @@ function(_mysql_set_target_warnings TARGET_NAME)
 	set_target_properties(${TARGET_NAME} PROPERTIES CXX_EXTENSIONS OFF) # disable extensions
 endfunction()
 
+set(_MYSQL_SHELL_EXT $<IF:$<PLATFORM_ID:Windows>,bat,sh>)
+
 # Dependencies
 include(FetchContent)
 

@@ -31,7 +31,6 @@ matrix:
 
 
 script:
-  - mysql -u root < test/integration/db_setup.sql
   - mkdir -p build
   - cd build
   - cmake -DCMAKE_BUILD_TYPE=Release $CMAKE_OPTIONS .. 

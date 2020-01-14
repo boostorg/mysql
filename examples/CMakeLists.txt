@@ -19,6 +19,6 @@ _mysql_add_example(example_metadata metadata.cpp)
 # Add them as automated tests
 add_test(
 	NAME examples
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run_examples.sh
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run_examples.${_MYSQL_SHELL_EXT}
 )
 

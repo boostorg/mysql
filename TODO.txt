@@ -1,6 +1,3 @@
-MVP
-	Compile in Mac
-	Compile in Windows
 Prepared statements
 Multiresultset
 	Text protocol
