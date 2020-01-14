@@ -1,11 +1,6 @@
 -- Connection system variables
 SET NAMES utf8;
 
--- Update root password and authentication methods to known ones
-UPDATE mysql.user
-SET plugin = 'mysql_native_password', authentication_string = PASSWORD('')
-WHERE User = 'root';
-
 -- Database
 DROP DATABASE IF EXISTS awesome;
 CREATE DATABASE awesome;
@@ -310,3 +305,10 @@ INSERT INTO types_flags VALUES
 DROP USER IF EXISTS empty_password_user;
 CREATE USER empty_password_user IDENTIFIED BY '';
 GRANT ALL PRIVILEGES ON awesome.* TO 'empty_password_user';
+
+-- Update root password and authentication methods to known ones
+UPDATE mysql.user
+SET plugin = 'mysql_native_password', authentication_string = PASSWORD('')
+WHERE User = 'root';
+
+FLUSH PRIVILEGES;
