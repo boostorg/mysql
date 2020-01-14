@@ -78,9 +78,9 @@ TEST_P(QueryTypesTest, Query_MetadataAndValueCorrect)
 	validate_meta(result.fields(), {param.mvalid});
 
 	// Validate the returned value
-	std::vector<value> expected_values ({param.expected_value});
+	mysql::row expected_row ({param.expected_value});
 	ASSERT_EQ(rows.size(), 1);
-	EXPECT_EQ(rows[0].values(), expected_values);
+	EXPECT_EQ(static_cast<const mysql::row&>(rows[0]), expected_row); // make gtest pick operator<<
 }
 
 using flagsvec = std::vector<meta_validator::flag_getter>;
@@ -423,19 +423,19 @@ INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
 	QueryTypesParams("types_string", "field_varchar", "empty", "", field_type::varchar),
 
 	QueryTypesParams("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text),
-	QueryTypesParams("types_string", "field_tinytext", "utf8", "\u00e1", field_type::text),
+	QueryTypesParams("types_string", "field_tinytext", "utf8", u8"\u00e1", field_type::text),
 	QueryTypesParams("types_string", "field_tinytext", "empty", "", field_type::text),
 
 	QueryTypesParams("types_string", "field_text", "regular", "test_text", field_type::text),
-	QueryTypesParams("types_string", "field_text", "utf8", "\u00e9", field_type::text),
+	QueryTypesParams("types_string", "field_text", "utf8", u8"\u00e9", field_type::text),
 	QueryTypesParams("types_string", "field_text", "empty", "", field_type::text),
 
 	QueryTypesParams("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text),
-	QueryTypesParams("types_string", "field_mediumtext", "utf8", "\u00ed", field_type::text),
+	QueryTypesParams("types_string", "field_mediumtext", "utf8", u8"\u00ed", field_type::text),
 	QueryTypesParams("types_string", "field_mediumtext", "empty", "", field_type::text),
 
 	QueryTypesParams("types_string", "field_longtext", "regular", "test_longtext", field_type::text),
-	QueryTypesParams("types_string", "field_longtext", "utf8", "\u00f3", field_type::text),
+	QueryTypesParams("types_string", "field_longtext", "utf8", u8"\u00f3", field_type::text),
 	QueryTypesParams("types_string", "field_longtext", "empty", "", field_type::text),
 
 	QueryTypesParams("types_string", "field_enum", "regular", "red", field_type::enum_),
