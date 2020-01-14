@@ -24,6 +24,7 @@ matrix:
           packages:
             - boost
             - mysql
+            - openssl
       before_install:
         - mysql.server start
 
