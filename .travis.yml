@@ -13,6 +13,14 @@ matrix:
            - sourceline: 'ppa:mhier/libboost-latest'
          packages:
            - boost1.70
+    - os: osx
+      osx_image: xcode11.3
+      sudo: true
+      compiler: clang
+      addons:
+       homebrew:
+         packages:
+           - boost
 
 services:
   - mysql
