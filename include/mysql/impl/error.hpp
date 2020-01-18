@@ -40,7 +40,7 @@ inline const char* error_to_string(Error error) noexcept
 	}
 }
 
-class MysqlErrorCategory : public boost::system::error_category
+class mysql_error_category_t : public boost::system::error_category
 {
 public:
 	const char* name() const noexcept final override { return "mysql"; }
@@ -49,19 +49,11 @@ public:
 		return error_to_string(static_cast<Error>(ev));
 	}
 };
-
-inline const boost::system::error_category& get_mysql_error_category()
-{
-	static MysqlErrorCategory res;
-	return res;
-}
-
+inline mysql_error_category_t mysql_error_category;
 
 inline boost::system::error_code make_error_code(Error error)
 {
-	return boost::system::error_code(
-		static_cast<int>(error), get_mysql_error_category()
-	);
+	return boost::system::error_code(static_cast<int>(error), mysql_error_category);
 }
 
 inline void check_error_code(const error_code& errc, const error_info& info)
