@@ -110,13 +110,11 @@ public:
 
 struct MysqlChannelFixture : public Test
 {
-	//using MockChannel = channel<NiceMock<MockStream>>;
-	//NiceMock<MockStream> stream;
-	using MockChannel = channel<MockStream>;
-	MockStream stream;
+	using MockChannel = channel<NiceMock<MockStream>>;
+	NiceMock<MockStream> stream;
 	MockChannel chan {stream};
 	mysql::error_code errc;
-	//InSequence seq;
+	InSequence seq;
 
 	MysqlChannelFixture()
 	{
@@ -128,6 +126,8 @@ struct MysqlChannelFixture : public Test
 struct MysqlChannelReadTest : public MysqlChannelFixture
 {
 	std::vector<uint8_t> buffer;
+	std::vector<uint8_t> bytes_to_read;
+	std::size_t index {0};
 
 	void verify_buffer(const std::vector<uint8_t>& expected)
 	{
@@ -144,6 +144,17 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 		};
 	}
 
+	auto make_read_handler()
+	{
+		return [this](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+			std::size_t to_copy = std::min(b.size(), bytes_to_read.size() - index);
+			memcpy(b.data(), bytes_to_read.data() + index, to_copy);
+			index += to_copy;
+			ec.clear();
+			return to_copy;
+		};
+	}
+
 	static auto read_failer(error_code error)
 	{
 		return [error](boost::asio::mutable_buffer, mysql::error_code& ec) {
@@ -155,9 +166,12 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 TEST_F(MysqlChannelReadTest, SyncRead_AllReadsSuccessful_ReadHeaderPopulatesBuffer)
 {
-	EXPECT_CALL(stream, read_buffer)
-		.WillOnce(Invoke(buffer_copier({0x03, 0x00, 0x00, 0x00})))
-		.WillOnce(Invoke(buffer_copier({0xfe, 0x03, 0x02})));
+	ON_CALL(stream, read_buffer)
+		.WillByDefault(Invoke(make_read_handler()));
+	bytes_to_read = {
+		0x03, 0x00, 0x00, 0x00,
+		0xfe, 0x03, 0x02
+	};
 	chan.read(buffer, errc);
 	EXPECT_EQ(errc, error_code());
 	verify_buffer({0xfe, 0x03, 0x02});
@@ -165,13 +179,14 @@ TEST_F(MysqlChannelReadTest, SyncRead_AllReadsSuccessful_ReadHeaderPopulatesBuff
 
 TEST_F(MysqlChannelReadTest, SyncRead_MoreThan16M_JoinsPackets)
 {
-	EXPECT_CALL(stream, read_buffer)
-		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x00})))
-		.WillOnce(Invoke(buffer_copier(std::vector<uint8_t>(0xffffff, 0x20))))
-		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x01})))
-		.WillOnce(Invoke(buffer_copier(std::vector<uint8_t>(0xffffff, 0x20))))
-		.WillOnce(Invoke(buffer_copier({0x04, 0x00, 0x00, 0x02})))
-		.WillOnce(Invoke(buffer_copier({0x20, 0x20, 0x20, 0x20})));
+	ON_CALL(stream, read_buffer)
+		.WillByDefault(Invoke(make_read_handler()));
+	concat(bytes_to_read, {0xff, 0xff, 0xff, 0x00});
+	concat(bytes_to_read, std::vector<uint8_t>(0xffffff, 0x20));
+	concat(bytes_to_read, {0xff, 0xff, 0xff, 0x01});
+	concat(bytes_to_read, std::vector<uint8_t>(0xffffff, 0x20));
+	concat(bytes_to_read, {0x04, 0x00, 0x00, 0x02});
+	concat(bytes_to_read, {0x20, 0x20, 0x20, 0x20});
 	chan.read(buffer, errc);
 	EXPECT_EQ(errc, error_code());
 	verify_buffer(std::vector<uint8_t>(0xffffff * 2 + 4, 0x20));
@@ -210,18 +225,22 @@ TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInPacket_ReturnsFailureErrorCode)
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateErrorCode)
 {
-	EXPECT_CALL(stream, read_buffer)
-		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x05})));
+	ON_CALL(stream, read_buffer)
+		.WillByDefault(Invoke(make_read_handler()));
+	bytes_to_read = {0xff, 0xff, 0xff, 0x05};
 	chan.read(buffer, errc);
 	EXPECT_EQ(errc, make_error_code(mysql::Error::sequence_number_mismatch));
 }
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSequenceNumber)
 {
+	ON_CALL(stream, read_buffer)
+		.WillByDefault(Invoke(make_read_handler()));
+	bytes_to_read = {
+		0x03, 0x00, 0x00, 0x21,
+		0xfe, 0x03, 0x02
+	};
 	chan.reset_sequence_number(0x21);
-	EXPECT_CALL(stream, read_buffer)
-		.WillOnce(Invoke(buffer_copier({0x03, 0x00, 0x00, 0x21})))
-		.WillOnce(Invoke(buffer_copier({0xfe, 0x03, 0x02})));
 	chan.read(buffer, errc);
 	EXPECT_EQ(errc, error_code());
 	verify_buffer({0xfe, 0x03, 0x02});
@@ -230,10 +249,13 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSeque
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberFF_SequenceNumberWraps)
 {
+	ON_CALL(stream, read_buffer)
+		.WillByDefault(Invoke(make_read_handler()));
+	bytes_to_read = {
+		0x03, 0x00, 0x00, 0xff,
+		0xfe, 0x03, 0x02
+	};
 	chan.reset_sequence_number(0xff);
-	EXPECT_CALL(stream, read_buffer)
-		.WillOnce(Invoke(buffer_copier({0x03, 0x00, 0x00, 0xff})))
-		.WillOnce(Invoke(buffer_copier({0xfe, 0x03, 0x02})));
 	chan.read(buffer, errc);
 	EXPECT_EQ(errc, error_code());
 	verify_buffer({0xfe, 0x03, 0x02});

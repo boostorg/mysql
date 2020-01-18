@@ -1,13 +1,9 @@
 error_info
-	Add error_info to all existing API
 	Document
-	Add error_info to examples
-	Add error_info to integ tests
 	Make error_info optional for synchronous (?)
 	Use error_info in sync exc
 	Add validation of exception messages
 	Error code descriptions
-	Review async testing with futures (it no longer tests the error_info parameter)
 	Verify that error_codes are cleared in sync errc stuff
 Prepared statements
 Multiresultset

@@ -25,9 +25,9 @@ add_executable(
 	unit/row.cpp
 )
 # A codegen issue in MSVC C++17 makes gmock expectations not work
-#if (NOT MSVC)
-#	target_sources(mysql_unittests PRIVATE unit/channel.cpp)
-#endif()
+if (NOT MSVC)
+	target_sources(mysql_unittests PRIVATE unit/channel.cpp)
+endif()
 
 target_include_directories(
 	mysql_unittests
