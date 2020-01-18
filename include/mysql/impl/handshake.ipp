@@ -21,7 +21,8 @@ inline std::uint8_t get_collation_first_byte(collation value)
 
 inline error_code deserialize_handshake(
 	boost::asio::const_buffer buffer,
-	handshake_packet& output
+	handshake_packet& output,
+	error_info& info
 )
 {
 	DeserializationContext ctx (boost::asio::buffer(buffer), capabilities());
@@ -33,7 +34,7 @@ inline error_code deserialize_handshake(
 	}
 	else if (msg_type == error_packet_header)
 	{
-		return process_error_packet(ctx);
+		return process_error_packet(ctx, info);
 	}
 	else if (msg_type != handshake_protocol_version_10)
 	{
@@ -127,11 +128,11 @@ public:
 		);
 	}
 
-	error_code process_handshake(bytestring& buffer)
+	error_code process_handshake(bytestring& buffer, error_info& info)
 	{
 		// Deserialize server greeting
 		handshake_packet handshake;
-		auto err = deserialize_handshake(boost::asio::buffer(buffer), handshake);
+		auto err = deserialize_handshake(boost::asio::buffer(buffer), handshake, info);
 		if (err) return err;
 
 		// Check capabilities
@@ -159,7 +160,8 @@ public:
 
 	error_code process_handshake_server_response(
 		bytestring& buffer,
-		bool& auth_complete
+		bool& auth_complete,
+		error_info& info
 	)
 	{
 		DeserializationContext ctx (boost::asio::buffer(buffer), negotiated_caps_);
@@ -174,7 +176,7 @@ public:
 		}
 		else if (msg_type == error_packet_header)
 		{
-			return process_error_packet(ctx);
+			return process_error_packet(ctx, info);
 		}
 		else if (msg_type != auth_switch_request_header)
 		{
@@ -200,7 +202,8 @@ public:
 	}
 
 	error_code process_auth_switch_response(
-		boost::asio::const_buffer buffer
+		boost::asio::const_buffer buffer,
+		error_info& info
 	)
 	{
 		DeserializationContext ctx (boost::asio::buffer(buffer), negotiated_caps_);
@@ -208,7 +211,7 @@ public:
 		if (err) return err;
 		if (msg_type == error_packet_header)
 		{
-			return process_error_packet(ctx);
+			return process_error_packet(ctx, info);
 		}
 		else if (msg_type != ok_packet_header)
 		{
@@ -228,9 +231,12 @@ void mysql::detail::hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring& buffer,
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
+	info.clear();
+
 	// Set up processor
 	handshake_processor processor (params);
 
@@ -239,7 +245,7 @@ void mysql::detail::hanshake(
 	if (err) return;
 
 	// Process server greeting
-	err = processor.process_handshake(buffer);
+	err = processor.process_handshake(buffer, info);
 	if (err) return;
 
 	// Send
@@ -252,7 +258,7 @@ void mysql::detail::hanshake(
 
 	// Process it
 	bool auth_complete = false;
-	err = processor.process_handshake_server_response(buffer, auth_complete);
+	err = processor.process_handshake_server_response(buffer, auth_complete, info);
 	if (err) return;
 	if (auth_complete)
 	{
@@ -269,14 +275,14 @@ void mysql::detail::hanshake(
 	if (err) return;
 
 	// Process it
-	err = processor.process_auth_switch_response(boost::asio::buffer(buffer));
+	err = processor.process_auth_switch_response(boost::asio::buffer(buffer), info);
 	if (err) return;
 
 	channel.set_current_capabilities(processor.negotiated_capabilities());
 }
 
 template <typename ChannelType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::error_info))
 mysql::detail::async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,
@@ -284,7 +290,7 @@ mysql::detail::async_handshake(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(mysql::error_code);
+	using HandlerSignature = void(error_code, error_info);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using StreamType = typename ChannelType::stream_type;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
@@ -296,6 +302,7 @@ mysql::detail::async_handshake(
 		ChannelType& channel_;
 		bytestring& buffer_;
 		handshake_processor processor_;
+		error_info info_;
 
 		Op(
 			HandlerType&& handler,
@@ -313,7 +320,7 @@ mysql::detail::async_handshake(
 		void complete(bool cont, error_code errc)
 		{
 			channel_.set_current_capabilities(processor_.negotiated_capabilities());
-			BaseType::complete(cont, errc);
+			BaseType::complete(cont, errc, std::move(info_));
 		}
 
 		void operator()(
@@ -333,7 +340,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Process server greeting
-				err = processor_.process_handshake(buffer_);
+				err = processor_.process_handshake(buffer_, info_);
 				if (err)
 				{
 					complete(cont, err);
@@ -357,7 +364,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Process it
-				err = processor_.process_handshake_server_response(buffer_, auth_complete);
+				err = processor_.process_handshake_server_response(buffer_, auth_complete, info_);
 				if (auth_complete) err.clear();
 				if (err || auth_complete)
 				{
@@ -382,7 +389,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Process it
-				err = processor_.process_auth_switch_response(boost::asio::buffer(buffer_));
+				err = processor_.process_auth_switch_response(boost::asio::buffer(buffer_), info_);
 				if (err)
 				{
 					complete(cont, err);

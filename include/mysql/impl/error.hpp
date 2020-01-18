@@ -64,11 +64,11 @@ inline boost::system::error_code make_error_code(Error error)
 	);
 }
 
-inline void check_error_code(const error_code& errc)
+inline void check_error_code(const error_code& errc, const error_info& info)
 {
 	if (errc)
 	{
-		throw boost::system::system_error(errc);
+		throw boost::system::system_error(errc, info.message());
 	}
 }
 

@@ -2,6 +2,7 @@
 #define MYSQL_ASIO_IMPL_QUERY_HPP
 
 #include "mysql/resultset.hpp"
+#include "mysql/error.hpp"
 #include "mysql/impl/capabilities.hpp"
 #include <string_view>
 
@@ -28,11 +29,12 @@ void execute_query(
 	ChannelType& channel,
 	std::string_view query,
 	channel_resultset_type<ChannelType>& output,
-	error_code& err
+	error_code& err,
+	error_info& info
 );
 
 template <typename ChannelType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, channel_resultset_type<ChannelType>))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, channel_resultset_type<ChannelType>))
 async_execute_query(
 	ChannelType& channel,
 	std::string_view query,
@@ -47,11 +49,12 @@ fetch_result fetch_text_row(
 	bytestring& buffer,
 	std::vector<value>& output_values,
 	ok_packet& output_ok_packet,
-	error_code& err
+	error_code& err,
+	error_info& info
 );
 
 template <typename ChannelType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, fetch_result))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, fetch_result))
 async_fetch_text_row(
 	ChannelType& channel,
 	const std::vector<field_metadata>& meta,

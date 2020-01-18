@@ -41,7 +41,8 @@ public:
 	std::optional<std::uint64_t> // has value if there are fields in the response
 	process_query_response(
 		channel_resultset_type<ChannelType>& output,
-		error_code& err
+		error_code& err,
+		error_info& info
 	)
 	{
 		// Response may be: ok_packet, err_packet, local infile request (not implemented)
@@ -62,7 +63,7 @@ public:
 		}
 		else if (msg_type == error_packet_header)
 		{
-			err = process_error_packet(ctx);
+			err = process_error_packet(ctx, info);
 			return {};
 		}
 		else
@@ -117,7 +118,8 @@ inline fetch_result process_fetch_message(
 	const bytestring& buffer,
 	std::vector<value>& output_values,
 	ok_packet& output_ok_packet,
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
 	// Message type: row, error or eof?
@@ -135,7 +137,7 @@ inline fetch_result process_fetch_message(
 	else if (msg_type == error_packet_header)
 	{
 		// An error occurred during the generation of the rows
-		err = process_error_packet(ctx);
+		err = process_error_packet(ctx, info);
 		return fetch_result::error;
 	}
 	else
@@ -156,7 +158,8 @@ void mysql::detail::execute_query(
 	ChannelType& channel,
 	std::string_view query,
 	resultset<channel_stream_type<ChannelType>>& output,
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
 	// Compose a com_query message, reset seq num
@@ -172,7 +175,7 @@ void mysql::detail::execute_query(
 	if (err) return;
 
 	// Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
-	auto num_fields = processor.process_query_response(output, err);
+	auto num_fields = processor.process_query_response(output, err, info);
 	if (!num_fields) // ok or err
 	{
 		return;
@@ -199,7 +202,7 @@ void mysql::detail::execute_query(
 template <typename ChannelType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::detail::channel_resultset_type<ChannelType>)
+	void(mysql::error_code, mysql::error_info, mysql::detail::channel_resultset_type<ChannelType>)
 )
 mysql::detail::async_execute_query(
 	ChannelType& channel,
@@ -207,7 +210,7 @@ mysql::detail::async_execute_query(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, channel_resultset_type<ChannelType>);
+	using HandlerSignature = void(error_code, error_info, channel_resultset_type<ChannelType>);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using StreamType = typename ChannelType::stream_type;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
@@ -236,10 +239,11 @@ mysql::detail::async_execute_query(
 		{
 			ResultsetType resultset;
 			error_code err;
-			auto num_fields = processor_->process_query_response(resultset, err);
+			error_info info;
+			auto num_fields = processor_->process_query_response(resultset, err, info);
 			if (!num_fields) // ok or err
 			{
-				this->complete(cont, err, std::move(resultset));
+				this->complete(cont, err, std::move(info), std::move(resultset));
 				return false;
 			}
 			else
@@ -253,7 +257,7 @@ mysql::detail::async_execute_query(
 		{
 			ResultsetType resultset;
 			std::move(*processor_).create_resultset(resultset);
-			this->complete(cont, error_code(), std::move(resultset));
+			this->complete(cont, error_code(), error_info(), std::move(resultset));
 		}
 
 		void operator()(
@@ -270,7 +274,7 @@ mysql::detail::async_execute_query(
 				);
 				if (err)
 				{
-					this->complete(cont, err, ResultsetType());
+					this->complete(cont, err, error_info(), ResultsetType());
 					yield break;
 				}
 
@@ -281,7 +285,7 @@ mysql::detail::async_execute_query(
 				);
 				if (err)
 				{
-					this->complete(cont, err, ResultsetType());
+					this->complete(cont, err, error_info(), ResultsetType());
 					yield break;
 				}
 
@@ -308,7 +312,7 @@ mysql::detail::async_execute_query(
 
 					if (err)
 					{
-						this->complete(cont, err, ResultsetType());
+						this->complete(cont, err, error_info(), ResultsetType());
 						yield break;
 					}
 
@@ -339,7 +343,8 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 	bytestring& buffer,
 	std::vector<value>& output_values,
 	ok_packet& output_ok_packet,
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
 	// Read a packet
@@ -352,13 +357,17 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 		buffer,
 		output_values,
 		output_ok_packet,
-		err
+		err,
+		info
 	);
 }
 
 
 template <typename ChannelType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::detail::fetch_result))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	void(mysql::error_code, mysql::error_info, mysql::detail::fetch_result)
+)
 mysql::detail::async_fetch_text_row(
 	ChannelType& channel,
 	const std::vector<field_metadata>& meta,
@@ -401,15 +410,17 @@ mysql::detail::async_fetch_text_row(
 		void process_result(bool cont)
 		{
 			error_code err;
+			error_info info;
 			auto result = process_fetch_message(
 				channel_.current_capabilities(),
 				meta_,
 				buffer_,
 				output_values_,
 				output_ok_packet_,
-				err
+				err,
+				info
 			);
-			this->complete(cont, err, result);
+			this->complete(cont, err, info, result);
 		}
 
 		void operator()(
@@ -422,7 +433,7 @@ mysql::detail::async_fetch_text_row(
 				yield channel_.async_read(buffer_, std::move(*this));
 				if (err)
 				{
-					this->complete(cont, err, fetch_result::error);
+					this->complete(cont, err, error_info(), fetch_result::error);
 					yield break;
 				}
 				process_result(cont);

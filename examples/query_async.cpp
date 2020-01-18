@@ -27,11 +27,11 @@ void print_employee(const mysql::row& employee)
 			  << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
 }
 
-void die_on_error(const mysql::error_code& err)
+void die_on_error(const mysql::error_code& err, const mysql::error_info& info = mysql::error_info())
 {
 	if (err)
 	{
-		std::cerr << "Error: " << err << std::endl;
+		std::cerr << "Error: " << err << ": " << info.message() << std::endl;
 		exit(1);
 	}
 }
@@ -55,10 +55,10 @@ public:
 
 	void connect()
 	{
-		connection.next_level().async_connect(ep, [this](const mysql::error_code& err) {
+		connection.next_level().async_connect(ep, [this](mysql::error_code err) {
 			die_on_error(err);
-			connection.async_handshake(conn_params, [this](const mysql::error_code& err) {
-				die_on_error(err);
+			connection.async_handshake(conn_params, [this](mysql::error_code err, const mysql::error_info& info) {
+				die_on_error(err, info);
 				query_employees();
 			});
 		});
@@ -67,11 +67,13 @@ public:
 	void query_employees()
 	{
 		const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-		connection.async_query(sql, [this](const mysql::error_code& err, mysql::tcp_resultset&& result) {
-			die_on_error(err);
+		connection.async_query(sql, [this](mysql::error_code err, const mysql::error_info& info,
+										   mysql::tcp_resultset&& result
+			) {
+			die_on_error(err, info);
 			resultset = std::move(result);
-			resultset.async_fetch_all([this](const mysql::error_code& err, const auto& rows) {
-				die_on_error(err);
+			resultset.async_fetch_all([this](mysql::error_code err, const mysql::error_info& info, const auto& rows) {
+				die_on_error(err, info);
 				for (const auto& employee: rows)
 				{
 					print_employee(employee);
@@ -84,8 +86,9 @@ public:
 	void update_slacker()
 	{
 		const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](const mysql::error_code& err, [[maybe_unused]] mysql::tcp_resultset&& result) {
-			die_on_error(err);
+		connection.async_query(sql, [this](mysql::error_code err, const mysql::error_info& info,
+				                           [[maybe_unused]] mysql::tcp_resultset&& result) {
+			die_on_error(err, info);
 			assert(result.fields().size() == 0);
 			query_intern();
 		});
@@ -94,11 +97,12 @@ public:
 	void query_intern()
 	{
 		const char* sql = "SELECT salary FROM employee WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](const mysql::error_code& err, mysql::tcp_resultset&& result) {
-			die_on_error(err);
+		connection.async_query(sql, [this](const mysql::error_code& err, mysql::error_info info,
+				                           mysql::tcp_resultset&& result) {
+			die_on_error(err, info);
 			resultset = std::move(result);
-			resultset.async_fetch_all([](const mysql::error_code& err, const auto& rows) {
-				die_on_error(err);
+			resultset.async_fetch_all([](const mysql::error_code& err, mysql::error_info info, const auto& rows) {
+				die_on_error(err, info);
 				assert(rows.size() == 1);
 				[[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
 				assert(salary == 15000);

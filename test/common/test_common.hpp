@@ -3,6 +3,7 @@
 
 #include "mysql/value.hpp"
 #include "mysql/row.hpp"
+#include <gmock/gmock.h>
 #include <vector>
 
 namespace mysql
@@ -60,6 +61,16 @@ template <std::size_t N>
 inline std::string_view makesv(const std::uint8_t (&value) [N])
 {
 	return std::string_view(reinterpret_cast<const char*>(value), N);
+}
+
+inline void validate_error_info(const mysql::error_info& value, const std::vector<std::string>& to_check)
+{
+	std::string msg_lower = value.message();
+	std::transform(msg_lower.begin(), msg_lower.end(), msg_lower.begin(), &tolower);
+	for (const auto& elm: to_check)
+	{
+		EXPECT_THAT(msg_lower, testing::HasSubstr(elm));
+	}
 }
 
 }

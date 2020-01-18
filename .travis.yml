@@ -8,6 +8,53 @@ matrix:
       compiler: gcc
       services:
         - mysql
+      env:
+        - CMAKE_OPTIONS=-DCMAKE_BUILD_TYPE=Debug
+      addons:
+        apt:
+          update: true
+          sources:
+            - sourceline: 'ppa:mhier/libboost-latest'
+          packages:
+            - boost1.70
+    - os: linux
+      dist: bionic
+      sudo: true
+      compiler: gcc
+      services:
+        - mysql
+      env:
+        - CMAKE_OPTIONS=-DCMAKE_BUILD_TYPE=Release
+      addons:
+        apt:
+          update: true
+          sources:
+            - sourceline: 'ppa:mhier/libboost-latest'
+          packages:
+            - boost1.70
+    - os: linux
+      dist: bionic
+      sudo: true
+      compiler: gcc
+      services:
+        - mysql
+      env:
+        - CMAKE_OPTIONS=-DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      addons:
+        apt:
+          update: true
+          sources:
+            - sourceline: 'ppa:mhier/libboost-latest'
+          packages:
+            - boost1.70
+    - os: linux
+      dist: bionic
+      sudo: true
+      compiler: gcc
+      services:
+        - mysql
+      env:
+        - CMAKE_OPTIONS=-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
       addons:
         apt:
           update: true
@@ -27,12 +74,24 @@ matrix:
       before_install:
         - mysql.server start
       env:
-        - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
-
+        - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_BUILD_TYPE=Debug
+    - os: osx
+      osx_image: xcode11.3
+      sudo: true
+      compiler: clang
+      addons:
+        homebrew:
+          packages:
+            - boost
+            - mysql
+      before_install:
+        - mysql.server start
+      env:
+        - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_BUILD_TYPE=Release
 
 script:
   - mkdir -p build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release $CMAKE_OPTIONS .. 
+  - cmake $CMAKE_OPTIONS .. 
   - make -j CTEST_OUTPUT_ON_FAILURE=1 all test
 

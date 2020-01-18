@@ -26,11 +26,12 @@ void hanshake(
 	ChannelType& channel,
 	const handshake_params& params,
 	bytestring& buffer,
-	error_code& err
+	error_code& err,
+	error_info& info
 );
 
 template <typename ChannelType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
 async_handshake(
 	ChannelType& channel,
 	const handshake_params& params,

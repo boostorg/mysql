@@ -214,12 +214,14 @@ inline std::pair<mysql::error_code, std::uint8_t> mysql::detail::deserialize_mes
 }
 
 inline mysql::error_code mysql::detail::process_error_packet(
-	DeserializationContext& ctx
+	DeserializationContext& ctx,
+	error_info& info
 )
 {
 	err_packet error_packet;
 	auto errc = deserialize_message(error_packet, ctx);
 	if (errc) return errc;
+	info.set_message(std::string(error_packet.error_message.value));
 	return make_error_code(static_cast<Error>(error_packet.error_code.value));
 }
 

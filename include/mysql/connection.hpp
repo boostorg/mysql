@@ -85,7 +85,7 @@ public:
 	const Stream& next_level() const { return next_level_; }
 
 	/// Performs the MySQL-level handshake (synchronous with error code version).
-	void handshake(const connection_params& params, error_code& ec);
+	void handshake(const connection_params& params, error_code& ec, error_info& info);
 
 	/// Performs the MySQL-level handshake (synchronous with exceptions version).
 	void handshake(const connection_params& params);
@@ -96,7 +96,7 @@ public:
 	 * until the operation completes, as no copy is made by the library.
 	 */
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
 	async_handshake(const connection_params& params, CompletionToken&& token);
 
 	/**
@@ -111,14 +111,14 @@ public:
 	 * \warning After query() has returned, you should read the entire resultset
 	 * before calling query() again. Otherwise, the results are undefined.
 	 */
-	resultset<Stream> query(std::string_view query_string, error_code&);
+	resultset<Stream> query(std::string_view query_string, error_code&, error_info&);
 
 	/// Executes a SQL text query (sync with exceptions version).
 	resultset<Stream> query(std::string_view query_string);
 
 	/// Executes a SQL text query (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<Stream>))
 	async_query(std::string_view query_string, CompletionToken&& token);
 };
 

@@ -28,10 +28,19 @@ inline handshake_params to_handshake_params(
 template <typename Stream>
 void mysql::connection<Stream>::handshake(
 	const connection_params& params,
-	error_code& errc
+	error_code& errc,
+	error_info& info
 )
 {
-	detail::hanshake(channel_, detail::to_handshake_params(params), buffer_, errc);
+	errc.clear();
+	info.clear();
+	detail::hanshake(
+		channel_,
+		detail::to_handshake_params(params),
+		buffer_,
+		errc,
+		info
+	);
 	// TODO: should we close() the stream in case of error?
 }
 
@@ -41,13 +50,14 @@ void mysql::connection<Stream>::handshake(
 )
 {
 	error_code errc;
-	handshake(params, errc);
-	detail::check_error_code(errc);
+	error_info info;
+	handshake(params, errc, info);
+	detail::check_error_code(errc, info);
 }
 
 template <typename Stream>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::error_info))
 mysql::connection<Stream>::async_handshake(
 	const connection_params& params,
 	CompletionToken&& token
@@ -65,11 +75,14 @@ mysql::connection<Stream>::async_handshake(
 template <typename Stream>
 mysql::resultset<Stream> mysql::connection<Stream>::query(
 	std::string_view query_string,
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
+	err.clear();
+	info.clear();
 	resultset<Stream> res;
-	detail::execute_query(channel_, query_string, res, err);
+	detail::execute_query(channel_, query_string, res, err, info);
 	return res;
 }
 
@@ -80,14 +93,18 @@ mysql::resultset<Stream> mysql::connection<Stream>::query(
 {
 	resultset<Stream> res;
 	error_code err;
-	detail::execute_query(channel_, query_string, res, err);
-	detail::check_error_code(err);
+	error_info info;
+	detail::execute_query(channel_, query_string, res, err, info);
+	detail::check_error_code(err, info);
 	return res;
 }
 
 template <typename Stream>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::resultset<Stream>))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	void(mysql::error_code, mysql::error_info, mysql::resultset<Stream>)
+)
 mysql::connection<Stream>::async_query(
 	std::string_view query_string,
 	CompletionToken&& token

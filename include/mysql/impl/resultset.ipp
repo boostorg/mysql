@@ -9,13 +9,17 @@
 
 template <typename StreamType>
 const mysql::row* mysql::resultset<StreamType>::fetch_one(
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
 	assert(valid());
+
+	err.clear();
+	info.clear();
+
 	if (complete())
 	{
-		err.clear();
 		return nullptr;
 	}
 	auto result = detail::fetch_text_row(
@@ -24,7 +28,8 @@ const mysql::row* mysql::resultset<StreamType>::fetch_one(
 		buffer_,
 		current_row_.values(),
 		ok_packet_,
-		err
+		err,
+		info
 	);
 	eof_received_ = result == detail::fetch_result::eof;
 	return result == detail::fetch_result::row ? &current_row_ : nullptr;
@@ -34,20 +39,24 @@ template <typename StreamType>
 const mysql::row* mysql::resultset<StreamType>::fetch_one()
 {
 	error_code errc;
-	const row* res = fetch_one(errc);
-	detail::check_error_code(errc);
+	error_info info;
+	const row* res = fetch_one(errc, info);
+	detail::check_error_code(errc, info);
 	return res;
 }
 
 template <typename StreamType>
 std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 	std::size_t count,
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
 	assert(valid());
 
 	err.clear();
+	info.clear();
+
 	std::vector<mysql::owning_row> res;
 
 	if (!complete()) // support calling fetch on already exhausted resultset
@@ -63,7 +72,8 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 				buff,
 				values,
 				ok_packet_,
-				err
+				err,
+				info
 			);
 			eof_received_ = result == detail::fetch_result::eof;
 			if (result == detail::fetch_result::row)
@@ -86,17 +96,19 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 )
 {
 	error_code errc;
-	auto res = fetch_many(count, errc);
-	detail::check_error_code(errc);
+	error_info info;
+	auto res = fetch_many(count, errc, info);
+	detail::check_error_code(errc, info);
 	return res;
 }
 
 template <typename StreamType>
 std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_all(
-	error_code& err
+	error_code& err,
+	error_info& info
 )
 {
-	return fetch_many(std::numeric_limits<std::size_t>::max(), err);
+	return fetch_many(std::numeric_limits<std::size_t>::max(), err, info);
 }
 
 template <typename StreamType>
@@ -107,12 +119,15 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_all()
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, const mysql::row*))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	void(mysql::error_code, mysql::error_info, const mysql::row*)
+)
 mysql::resultset<StreamType>::async_fetch_one(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, const row*);
+	using HandlerSignature = void(error_code, error_info, const row*);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
@@ -129,6 +144,7 @@ mysql::resultset<StreamType>::async_fetch_one(
 
 		void operator()(
 			error_code err,
+			error_info info,
 			detail::fetch_result result,
 			bool cont=true
 		)
@@ -137,7 +153,7 @@ mysql::resultset<StreamType>::async_fetch_one(
 			{
 				if (resultset_.complete())
 				{
-					this->complete(cont, error_code(), nullptr);
+					this->complete(cont, error_code(), error_info(), nullptr);
 				}
 				else
 				{
@@ -153,6 +169,7 @@ mysql::resultset<StreamType>::async_fetch_one(
 					this->complete(
 						cont,
 						err,
+						std::move(info),
 						result == detail::fetch_result::row ? &resultset_.current_row_ : nullptr
 					);
 				}
@@ -167,19 +184,22 @@ mysql::resultset<StreamType>::async_fetch_one(
 	Op(
 		std::move(initiator.completion_handler),
 		*this
-	)(error_code(), detail::fetch_result::error, false);
+	)(error_code(), error_info(), detail::fetch_result::error, false);
 	return initiator.result.get();
 }
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, std::vector<mysql::owning_row>))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	void(mysql::error_code, mysql::error_info, std::vector<mysql::owning_row>)
+)
 mysql::resultset<StreamType>::async_fetch_many(
 	std::size_t count,
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, std::vector<owning_row>);
+	using HandlerSignature = void(error_code, error_info, std::vector<owning_row>);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
@@ -218,6 +238,7 @@ mysql::resultset<StreamType>::async_fetch_many(
 
 		void operator()(
 			error_code err,
+			error_info info,
 			detail::fetch_result result,
 			bool cont=true
 		)
@@ -236,7 +257,7 @@ mysql::resultset<StreamType>::async_fetch_many(
 					);
 					if (result == detail::fetch_result::error)
 					{
-						this->complete(cont, err, std::move(impl_->rows));
+						this->complete(cont, err, std::move(info), std::move(impl_->rows));
 						yield break;
 					}
 					else if (result == detail::fetch_result::eof)
@@ -248,7 +269,7 @@ mysql::resultset<StreamType>::async_fetch_many(
 						impl_->row_received();
 					}
 				}
-				this->complete(cont, err, std::move(impl_->rows));
+				this->complete(cont, err, error_info(), std::move(impl_->rows));
 			}
 		}
 	};
@@ -260,13 +281,16 @@ mysql::resultset<StreamType>::async_fetch_many(
 	Op(
 		std::move(initiator.completion_handler),
 		std::make_shared<OpImpl>(*this, count)
-	)(error_code(), detail::fetch_result::error, false);
+	)(error_code(), error_info(), detail::fetch_result::error, false);
 	return initiator.result.get();
 }
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, std::vector<mysql::owning_row>))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	void(mysql::error_code, mysql::error_info, std::vector<mysql::owning_row>)
+)
 mysql::resultset<StreamType>::async_fetch_all(
 	CompletionToken&& token
 )

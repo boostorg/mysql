@@ -77,7 +77,7 @@ public:
 	 * fetch_one is the fetch method that performs the less memory allocations
 	 * of the three.
 	 */
-	const row* fetch_one(error_code& err);
+	const row* fetch_one(error_code& err, error_info& info);
 
 	/// Fetches a single row (sync with exceptions version).
 	const row* fetch_one();
@@ -91,7 +91,7 @@ public:
 	 * Only if count is **greater** than the available number of rows,
 	 * the resultset will be completed.
 	 */
-	std::vector<owning_row> fetch_many(std::size_t count, error_code& err);
+	std::vector<owning_row> fetch_many(std::size_t count, error_code& err, error_info& info);
 
 	/// Fetches at most count rows (sync with exceptions version).
 	std::vector<owning_row> fetch_many(std::size_t count);
@@ -104,24 +104,24 @@ public:
 	 *
 	 * The resultset is guaranteed to be complete() after this call returns.
 	 */
-	std::vector<owning_row> fetch_all(error_code& err);
+	std::vector<owning_row> fetch_all(error_code& err, error_info& info);
 
 	/// Fetches all available rows (sync with exceptions version).
 	std::vector<owning_row> fetch_all();
 
 	/// Fetchs a single row (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, const row*))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, const row*))
 	async_fetch_one(CompletionToken&& token);
 
 	/// Fetches at most count rows (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, std::vector<owning_row>))
 	async_fetch_many(std::size_t count, CompletionToken&& token);
 
 	/// Fetches all available rows (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, std::vector<owning_row>))
 	async_fetch_all(CompletionToken&& token);
 
 	/**
@@ -177,6 +177,6 @@ using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
 
 }
 
-#include "mysql/impl/resultset.hpp"
+#include "mysql/impl/resultset.ipp"
 
 #endif

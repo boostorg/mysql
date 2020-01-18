@@ -232,7 +232,7 @@ inline std::pair<error_code, std::uint8_t> deserialize_message_type(
 	DeserializationContext& ctx
 );
 
-inline error_code process_error_packet(DeserializationContext& ctx);
+inline error_code process_error_packet(DeserializationContext& ctx, error_info& info);
 
 
 /*struct StmtPrepare
