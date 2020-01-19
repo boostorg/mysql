@@ -33,13 +33,28 @@ class error_info
 {
 	std::string msg_;
 public:
-	error_info(std::string&& err = {}): msg_(std::move(err)) {}
+	/// Default constructor.
+	error_info() = default;
+
+	/// Initialization constructor.
+	error_info(std::string&& err): msg_(std::move(err)) {}
+
+	/// Gets the error message.
 	const std::string& message() const noexcept { return msg_; }
+
+	/// Sets the error message.
 	void set_message(std::string&& err) { msg_ = std::move(err); }
+
+	/// Restores the object to its initial state.
 	void clear() noexcept { msg_.clear(); }
 };
+
+/// Compare two error infos.
 inline bool operator==(const error_info& lhs, const error_info& rhs) noexcept { return lhs.message() == rhs.message(); }
+
+/// Compare two error infos.
 inline bool operator!=(const error_info& lhs, const error_info& rhs) noexcept { return !(lhs==rhs); }
+
 inline std::ostream& operator<<(std::ostream& os, const error_info& v) { return os << v.message(); }
 
 }
