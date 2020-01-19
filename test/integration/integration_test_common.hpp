@@ -36,6 +36,7 @@ struct IntegTest : testing::Test
 		{
 			guard.reset();
 			runner.join();
+			throw;
 		}
 	}
 
