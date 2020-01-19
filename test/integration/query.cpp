@@ -152,10 +152,9 @@ TEST_F(QueryTest, QuerySyncExc_Ok)
 
 TEST_F(QueryTest, QuerySyncExc_Error)
 {
-	EXPECT_THROW(
-		conn.query("INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')"),
-		boost::system::system_error
-	);
+	validate_sync_fail([this] {
+		conn.query("INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')");
+	}, mysql::Error::no_such_table, {"table", "doesn't exist", "bad_table"});
 }
 
 // Query, async

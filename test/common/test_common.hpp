@@ -5,6 +5,7 @@
 #include "mysql/row.hpp"
 #include <gmock/gmock.h>
 #include <vector>
+#include <algorithm>
 
 namespace mysql
 {
@@ -63,14 +64,18 @@ inline std::string_view makesv(const std::uint8_t (&value) [N])
 	return std::string_view(reinterpret_cast<const char*>(value), N);
 }
 
-inline void validate_error_info(const mysql::error_info& value, const std::vector<std::string>& to_check)
+inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
 {
-	std::string msg_lower = value.message();
-	std::transform(msg_lower.begin(), msg_lower.end(), msg_lower.begin(), &tolower);
+	std::transform(value.begin(), value.end(), value.begin(), &tolower);
 	for (const auto& elm: to_check)
 	{
-		EXPECT_THAT(msg_lower, testing::HasSubstr(elm));
+		EXPECT_THAT(value, testing::HasSubstr(elm));
 	}
+}
+
+inline void validate_error_info(const mysql::error_info& value, const std::vector<std::string>& to_check)
+{
+	validate_string_contains(value.message(), to_check);
 }
 
 }

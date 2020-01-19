@@ -26,9 +26,17 @@ struct IntegTest : testing::Test
 
 	IntegTest()
 	{
-		boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v4::loopback(), 3306);
-		conn.next_level().connect(endpoint);
-		reset_errors();
+		try
+		{
+			boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v4::loopback(), 3306);
+			conn.next_level().connect(endpoint);
+			reset_errors();
+		}
+		catch (...) // prevent terminate without an active exception on connect error
+		{
+			guard.reset();
+			runner.join();
+		}
 	}
 
 	~IntegTest()
@@ -66,6 +74,35 @@ struct IntegTest : testing::Test
 			::mysql::detail::make_error_code(expected_errc),
 			expected_info
 		);
+	}
+
+	template <typename Callable>
+	void validate_sync_fail(
+		Callable&& cb,
+		error_code expected_errc,
+		const std::vector<std::string>& expected_msg
+	)
+	{
+		try
+		{
+			std::forward<Callable>(cb)();
+			FAIL() << "Expected error: " << expected_errc.message();
+		}
+		catch (const boost::system::system_error& err)
+		{
+			EXPECT_EQ(err.code(), expected_errc);
+			validate_string_contains(err.what(), expected_msg);
+		}
+	}
+
+	template <typename Callable>
+	void validate_sync_fail(
+		Callable&& cb,
+		Error expected_errc,
+		const std::vector<std::string>& expected_msg
+	)
+	{
+		validate_sync_fail(std::forward<Callable>(cb), detail::make_error_code(expected_errc), expected_msg);
 	}
 
 	void handshake()

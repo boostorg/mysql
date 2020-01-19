@@ -36,3 +36,4 @@ Technical debt
 	Review valid() for moved-from resultsets (should it return always true?)
 	Force the same number of values in each row as in fields()
 	CMake exporting?
+	Integration test for network errors (e.g. host unreachable)

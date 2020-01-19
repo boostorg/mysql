@@ -16,6 +16,7 @@ using namespace mysql::test;
 
 using mysql::detail::make_error_code;
 using mysql::error_info;
+using mysql::Error;
 
 namespace
 {
@@ -54,7 +55,6 @@ TEST_F(HandshakeTest, SyncErrc_FastAuthBadUser)
 	connection_params.username = "non_existing_user";
 	conn.handshake(connection_params, errc, info);
 	EXPECT_NE(errc, mysql::error_code());
-	EXPECT_NE(info, error_info());
 	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
 	// EXPECT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
 }
@@ -84,7 +84,9 @@ TEST_F(HandshakeTest, SyncExc_FastAuthSuccessfulLogin)
 TEST_F(HandshakeTest, SyncExc_FastAuthBadPassword)
 {
 	connection_params.password = "bad_password";
-	EXPECT_THROW(conn.handshake(connection_params), boost::system::system_error);
+	validate_sync_fail([this] {
+		conn.handshake(connection_params);
+	}, Error::access_denied_error, {"access denied", "integ_user"});
 }
 
 // Async
