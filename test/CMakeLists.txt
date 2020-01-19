@@ -23,6 +23,7 @@ add_executable(
 	unit/deserialize_row.cpp
 	unit/value.cpp
 	unit/row.cpp
+	unit/error.cpp
 )
 # A codegen issue in MSVC C++17 makes gmock expectations not work
 if (NOT MSVC)
