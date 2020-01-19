@@ -62,8 +62,7 @@ inline void check_error_code(const error_code& errc, const error_info& info)
 {
 	if (errc)
 	{
-		throw boost::system::system_error(
-				errc, info.message().empty() ? errc.message() : info.message());
+		throw boost::system::system_error(errc, info.message());
 	}
 }
 
