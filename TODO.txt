@@ -1,10 +1,7 @@
 error_info
 	Document
 	Make error_info optional for synchronous (?)
-	Use error_info in sync exc
-	Add validation of exception messages
 	Error code descriptions
-	Verify that error_codes are cleared in sync errc stuff
 Prepared statements
 Multiresultset
 	Text protocol

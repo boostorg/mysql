@@ -111,9 +111,10 @@ struct IntegTest : testing::Test
 		conn.handshake(connection_params);
 	}
 
+	// To ensure we clear things passed by lvalue reference
 	void reset_errors()
 	{
-		// TODO: set errc to something not null to verify we clear stuff
+		errc = detail::make_error_code(mysql::Error::no);
 		info.set_message("Previous error message was not cleared correctly");
 	}
 };

@@ -630,9 +630,7 @@ TEST_F(QueryTest, FetchAllSyncErrc_SeveralRows)
 TEST_F(QueryTest, FetchAllSyncExc_SeveralRows)
 {
 	auto result = conn.query("SELECT * FROM two_rows_table");
-
 	auto rows = result.fetch_all();
-	ASSERT_EQ(errc, error_code());
 	validate_eof(result);
 	EXPECT_EQ(rows, (makerows(2, 1, "f0", 2, "f1")));
 }
