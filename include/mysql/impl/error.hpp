@@ -26,7 +26,6 @@ namespace detail
 
 inline const char* error_to_string(Error error) noexcept
 {
-	// TODO: add server errors
 	switch (error)
 	{
 	case Error::ok: return "no error";
@@ -36,6 +35,9 @@ inline const char* error_to_string(Error error) noexcept
 	case Error::server_unsupported: return "The server does not implement the minimum features to be supported";
 	case Error::protocol_value_error: return "A field in a message had an unexpected value";
 	case Error::unknown_auth_plugin: return "The user employs an authentication plugin unknown to the client";
+
+	#include "mysql/impl/server_error_descriptions.hpp"
+
 	default: return "<unknown error>";
 	}
 }

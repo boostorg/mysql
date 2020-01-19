@@ -14,7 +14,7 @@ enum class Error : int
 	ok = 0,
 
 	// Server returned errors
-	#include "mysql/impl/server_error_codes.hpp"
+	#include "mysql/impl/server_error_enum.hpp"
 
 	// Protocol errors
 	incomplete_message = 0x10000,
