@@ -167,6 +167,22 @@ inline mysql::Error mysql::detail::deserialize(
 	);
 }
 
+inline mysql::Error mysql::detail::deserialize(
+	com_stmt_prepare_ok_packet& output,
+	DeserializationContext& ctx
+) noexcept
+{
+	int1 reserved;
+	return deserialize_fields(
+		ctx,
+		output.statement_id,
+		output.num_columns,
+		output.num_params,
+		reserved,
+		output.warning_count
+	);
+}
+
 template <typename Serializable, typename Allocator>
 void mysql::detail::serialize_message(
 	const Serializable& input,

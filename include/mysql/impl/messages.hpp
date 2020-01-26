@@ -189,7 +189,7 @@ struct get_struct_fields<column_definition_packet>
 	);
 };
 
-// Commands
+// Commands (text protocol)
 struct com_query_packet
 {
 	string_eof query;
@@ -205,6 +205,44 @@ struct get_struct_fields<com_query_packet>
 	);
 };
 
+// Commands (prepared statements)
+struct com_stmt_prepare_packet
+{
+	string_eof statement;
+
+	static constexpr std::uint8_t command_id = 0x16;
+};
+
+template <>
+struct get_struct_fields<com_stmt_prepare_packet>
+{
+	static constexpr auto value = std::make_tuple(
+		&com_stmt_prepare_packet::statement
+	);
+};
+
+struct com_stmt_prepare_ok_packet
+{
+	// int1 status: must be 0
+	int4 statement_id;
+	int2 num_columns;
+	int2 num_params;
+	// int1 reserved_1: must be 0
+	int2 warning_count;
+	// TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
+};
+
+template <>
+struct get_struct_fields<com_stmt_prepare_ok_packet>
+{
+	static constexpr auto value = std::make_tuple(
+		&com_stmt_prepare_ok_packet::statement_id,
+		&com_stmt_prepare_ok_packet::num_columns,
+		&com_stmt_prepare_ok_packet::num_params,
+		&com_stmt_prepare_ok_packet::warning_count
+	);
+};
+
 
 // serialization functions
 inline Error deserialize(ok_packet& output, DeserializationContext& ctx) noexcept;
@@ -213,6 +251,7 @@ inline std::size_t get_size(const handshake_response_packet& value, const Serial
 inline void serialize(const handshake_response_packet& value, SerializationContext& ctx) noexcept;
 inline Error deserialize(auth_switch_request_packet& output, DeserializationContext& ctx) noexcept;
 inline Error deserialize(column_definition_packet& output, DeserializationContext& ctx) noexcept;
+inline Error deserialize(com_stmt_prepare_ok_packet& output, DeserializationContext& ctx) noexcept;
 
 // Helper to serialize top-level messages
 template <typename Serializable, typename Allocator>
@@ -235,21 +274,7 @@ inline std::pair<error_code, std::uint8_t> deserialize_message_type(
 inline error_code process_error_packet(DeserializationContext& ctx, error_info& info);
 
 
-/*struct StmtPrepare
-{
-	string_eof statement;
-};
-
-struct StmtPrepareResponseHeader
-{
-	// int1 status: must be 0
-	int4 statement_id;
-	int2 num_columns;
-	int2 num_params;
-	// int1 reserved_1: must be 0
-	int2 warning_count; // only if (packet_length > 12)
-	// TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
-};
+/*
 
 using BinaryValue = std::variant<
 	std::int8_t,
