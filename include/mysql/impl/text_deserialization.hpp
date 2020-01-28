@@ -28,6 +28,6 @@ inline error_code deserialize_text_row(
 }
 }
 
-#include "mysql/impl/deserialize_row.ipp"
+#include "mysql/impl/text_deserialization.ipp"
 
 #endif

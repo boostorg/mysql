@@ -2,13 +2,14 @@
 #define MYSQL_ASIO_IMPL_MESSAGES_HPP
 
 #include "mysql/impl/serialization.hpp"
+#include "mysql/impl/basic_types.hpp"
+#include "mysql/impl/constants.hpp"
+#include "mysql/collation.hpp"
+#include "mysql/value.hpp"
 #include <string>
 #include <vector>
 #include <variant>
 #include <tuple>
-#include "mysql/impl/basic_types.hpp"
-#include "mysql/impl/constants.hpp"
-#include "mysql/collation.hpp"
 
 namespace mysql
 {
@@ -243,6 +244,35 @@ struct get_struct_fields<com_stmt_prepare_ok_packet>
 	);
 };
 
+struct com_stmt_execute_packet
+{
+	int4 statement_id;
+	int1 flags;
+	int4 iteration_count;
+	// int1 num_params; implicit: from the iterator distance
+	// if num_params > 0: NULL bitmap
+	int1 new_params_bind_flag;
+	const value* params_begin; // TODO: maybe change to a generic iterator
+	const value* params_end;
+
+	static constexpr std::uint8_t command_id = 0x17;
+
+	struct param_meta
+	{
+		protocol_field_type type;
+		int1 unsigned_flag;
+	};
+};
+
+template <>
+struct get_struct_fields<com_stmt_execute_packet::param_meta>
+{
+	static constexpr auto value = std::make_tuple(
+		&com_stmt_execute_packet::param_meta::type,
+		&com_stmt_execute_packet::param_meta::unsigned_flag
+	);
+};
+
 
 // serialization functions
 inline Error deserialize(ok_packet& output, DeserializationContext& ctx) noexcept;
@@ -252,6 +282,10 @@ inline void serialize(const handshake_response_packet& value, SerializationConte
 inline Error deserialize(auth_switch_request_packet& output, DeserializationContext& ctx) noexcept;
 inline Error deserialize(column_definition_packet& output, DeserializationContext& ctx) noexcept;
 inline Error deserialize(com_stmt_prepare_ok_packet& output, DeserializationContext& ctx) noexcept;
+inline std::size_t get_size(const com_stmt_execute_packet& value, const SerializationContext& ctx) noexcept;
+inline void serialize(const com_stmt_execute_packet& input, SerializationContext& ctx) noexcept;
+
+
 
 // Helper to serialize top-level messages
 template <typename Serializable, typename Allocator>

@@ -20,7 +20,7 @@ add_executable(
 	unit/capabilities.cpp
 	unit/auth.cpp
 	unit/metadata.cpp
-	unit/deserialize_row.cpp
+	unit/text_deserialization.cpp
 	unit/value.cpp
 	unit/row.cpp
 	unit/error.cpp

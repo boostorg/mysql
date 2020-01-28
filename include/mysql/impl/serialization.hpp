@@ -98,9 +98,13 @@ private:
 	using value_type = typename get_value_type<T>::type;
 public:
 	static constexpr bool value =
-			std::is_integral_v<value_type> &&
+			std::is_arithmetic_v<value_type> && // includes floating point types
 			std::is_base_of_v<value_holder<value_type>, T>;
 };
+
+// Serialization of these types relies on this fact
+static_assert(std::numeric_limits<float>::is_iec559);
+static_assert(std::numeric_limits<double>::is_iec559);
 
 
 template <> struct is_fixed_size<int_lenenc> : std::false_type {};
@@ -456,12 +460,12 @@ get_size(const T& input, const SerializationContext& ctx) noexcept
 	return res;
 }
 
-// Helper to write custom struct deserialize()
+// Helper to write custom struct (de)serialize()
 template <typename FirstType>
-Error deserialize_fields(DeserializationContext& ctx, FirstType& field) { return deserialize(field, ctx); }
+Error deserialize_fields(DeserializationContext& ctx, FirstType& field) noexcept { return deserialize(field, ctx); }
 
 template <typename FirstType, typename... Types>
-Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&... fields_tail)
+Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&... fields_tail) noexcept
 {
 	Error err = deserialize(field, ctx);
 	if (err == Error::ok)
@@ -470,6 +474,25 @@ Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&..
 	}
 	return err;
 }
+
+template <typename FirstType>
+void serialize_fields(SerializationContext& ctx, const FirstType& field) noexcept { serialize(field, ctx); }
+
+template <typename FirstType, typename... Types>
+void serialize_fields(SerializationContext& ctx, const FirstType& field, const Types&... fields_tail)
+{
+	serialize(field, ctx);
+	serialize_fields(ctx, fields_tail...);
+}
+
+// Dummy type to indicate no (de)serialization is required
+struct dummy_serializable
+{
+	dummy_serializable(...) {} // Make it constructible from anything
+};
+inline std::size_t get_size(dummy_serializable, const SerializationContext&) noexcept { return 0; }
+inline void serialize(dummy_serializable, SerializationContext&) noexcept {}
+inline Error deserialize(dummy_serializable, DeserializationContext&) noexcept { return Error::ok; }
 
 }
 }

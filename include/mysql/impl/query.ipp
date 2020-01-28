@@ -2,7 +2,7 @@
 #define MYSQL_ASIO_IMPL_QUERY_IPP
 
 #include "mysql/impl/messages.hpp"
-#include "mysql/impl/deserialize_row.hpp"
+#include "mysql/impl/text_deserialization.hpp"
 #include "mysql/impl/serialization.hpp"
 #include <optional>
 #include <boost/asio/yield.hpp>

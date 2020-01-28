@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <boost/type_index.hpp>
-#include "mysql/impl/deserialize_row.hpp"
+#include "mysql/impl/text_deserialization.hpp"
 #include "test_common.hpp"
 
 using namespace mysql::detail;
