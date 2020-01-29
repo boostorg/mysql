@@ -119,10 +119,13 @@ struct broken_time
 	std::uint8_t binary_serialized_length() const noexcept
 	{
 		std::uint8_t res = 12;
-		if (microseconds == 0)
+		if (microseconds.count() == 0)
 		{
 			res -= 4;
-			if (seconds == 0 && minutes == 0 && hours == 0 && days == 0)
+			if (seconds.count() == 0 &&
+				minutes.count() == 0 &&
+				hours.count() == 0 &&
+				days.count() == 0)
 			{
 				res -= 8;
 			}
@@ -261,15 +264,15 @@ inline void mysql::detail::serialize(
 		serialize_fields(
 			ctx,
 			is_negative,
-			int4(broken.days.count()),
-			int1(broken.hours.count()),
-			int1(broken.minutes.count()),
-			int1(broken.seconds.count())
+			int4(std::abs(broken.days.count())),
+			int1(std::abs(broken.hours.count())),
+			int1(std::abs(broken.minutes.count())),
+			int1(std::abs(broken.seconds.count()))
 		);
 	}
 	if (length >= 12)
 	{
-		serialize(int4(broken.microseconds.count()), ctx);
+		serialize(int4(std::abs(broken.microseconds.count())), ctx);
 	}
 }
 
