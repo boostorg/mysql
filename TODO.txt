@@ -1,5 +1,4 @@
 Prepared statements
-	Add tests for (de)serialization of floats
 	Rename (De)SerializationContext
 	Zero dates?
 Multiresultset
