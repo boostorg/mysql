@@ -84,14 +84,14 @@ struct broken_datetime
 	std::uint8_t binary_serialized_length() const noexcept
 	{
 		std::uint8_t res = 11; // base length
-		if (tod.subseconds() == 0)
+		if (tod.subseconds().count() == 0)
 		{
 			res -= 4;
-			if (tod.seconds() == 0 &&
-			    tod.minutes() == 0 &&
-				tod.hours() == 0)
+			if (tod.seconds().count() == 0 &&
+			    tod.minutes().count() == 0 &&
+				tod.hours().count() == 0)
 			{
-				res -= 4;
+				res -= 3;
 			}
 		}
 		return res;
@@ -171,7 +171,8 @@ inline std::size_t mysql::detail::get_size(
 	const SerializationContext&
 ) noexcept
 {
-	return broken_datetime(input).binary_serialized_length() + 1; // extra length prefix byte
+	broken_datetime dt (input);
+	return dt.binary_serialized_length() + 1; // extra length prefix byte
 }
 
 inline void mysql::detail::serialize(
