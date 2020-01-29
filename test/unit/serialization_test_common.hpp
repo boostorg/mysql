@@ -7,6 +7,7 @@
 #include <string>
 #include <boost/type_index.hpp>
 #include "mysql/impl/serialization.hpp"
+#include "mysql/value.hpp"
 
 namespace mysql
 {
@@ -24,6 +25,8 @@ inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
 {
 	return os << +value;
 }
+
+using ::date::operator<<;
 
 // Operator == for structs
 template <std::size_t index, typename T>

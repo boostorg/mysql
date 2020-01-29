@@ -6,6 +6,8 @@
  */
 
 #include "serialization_test_common.hpp"
+#include "mysql/impl/messages.hpp"
+#include "mysql/impl/binary_serialization.hpp"
 #include "test_common.hpp"
 
 using namespace testing;
@@ -146,6 +148,16 @@ INSTANTIATE_TEST_SUITE_P(EofString, SerializeDeserializeTest, ::testing::Values(
 	SerializeParams(string_eof(""), {}, "Empty string")
 ));
 
+INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
+	SerializeParams(EnumInt1::value1, {0x03}, "low value"),
+	SerializeParams(EnumInt1::value2, {0xff}, "high value"),
+	SerializeParams(EnumInt2::value1, {0x03, 0x00}, "low value"),
+	SerializeParams(EnumInt2::value2, {0xff, 0xfe}, "high value"),
+	SerializeParams(EnumInt4::value1, {0x03, 0x00, 0x00, 0x00}, "low value"),
+	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "high value")
+));
+
+// Other binary values
 INSTANTIATE_TEST_SUITE_P(Float, FullSerializationTest, ::testing::Values(
 	SerializeParams(value_holder<float>(-4.2f), {0x66, 0x66, 0x86, 0xc0}, "fractional_negative"),
 	SerializeParams(value_holder<float>( 4.2f), {0x66, 0x66, 0x86, 0x40}, "fractional_positive"),
@@ -160,15 +172,13 @@ INSTANTIATE_TEST_SUITE_P(Double, FullSerializationTest, ::testing::Values(
 	SerializeParams(value_holder<double>(0.0), {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, "zero")
 ));
 
-INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
-	SerializeParams(EnumInt1::value1, {0x03}, "low value"),
-	SerializeParams(EnumInt1::value2, {0xff}, "high value"),
-	SerializeParams(EnumInt2::value1, {0x03, 0x00}, "low value"),
-	SerializeParams(EnumInt2::value2, {0xff, 0xfe}, "high value"),
-	SerializeParams(EnumInt4::value1, {0x03, 0x00, 0x00, 0x00}, "low value"),
-	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "high value")
+INSTANTIATE_TEST_SUITE_P(Date, FullSerializationTest, ::testing::Values(
+	SerializeParams(makedate(2010, 3, 28), {0x04, 0xda, 0x07, 0x03, 0x1c}, "regular"),
+	SerializeParams(makedate(1000, 1, 1), {0x04, 0xe8, 0x03, 0x01, 0x01}, "min"),
+	SerializeParams(makedate(9999, 12, 31), {0x04, 0x0f, 0x27, 0x0c, 0x1f}, "max")
 ));
 
+// Messages
 INSTANTIATE_TEST_SUITE_P(PacketHeader, FullSerializationTest, ::testing::Values(
 	// packet header
 	SerializeParams(packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),

@@ -38,6 +38,11 @@ std::vector<row> makerows(std::size_t row_size, Types&&... args)
 	return res;
 }
 
+inline date makedate(int years, int months, int days)
+{
+	return mysql::date(::date::year(years)/::date::month(months)/::date::day(days));
+}
+
 inline datetime makedt(int years, int months, int days, int hours=0, int mins=0, int secs=0, int micros=0)
 {
 	return mysql::datetime(mysql::date(::date::year(years)/::date::month(months)/::date::day(days))) +
