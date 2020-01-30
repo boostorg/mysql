@@ -6,6 +6,7 @@
 #include <gmock/gmock.h>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 namespace mysql
 {
@@ -69,6 +70,12 @@ inline std::string_view makesv(const std::uint8_t (&value) [N])
 	return std::string_view(reinterpret_cast<const char*>(value), N);
 }
 
+inline std::string_view makesv(const std::uint8_t* value, std::size_t size)
+{
+	return std::string_view(reinterpret_cast<const char*>(value), size);
+}
+
+
 inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
 {
 	std::transform(value.begin(), value.end(), value.begin(), &tolower);
@@ -81,6 +88,31 @@ inline void validate_string_contains(std::string value, const std::vector<std::s
 inline void validate_error_info(const mysql::error_info& value, const std::vector<std::string>& to_check)
 {
 	validate_string_contains(value.message(), to_check);
+}
+
+inline std::string buffer_diff(std::string_view s0, std::string_view s1)
+{
+	std::ostringstream ss;
+	ss << std::hex;
+	for (std::size_t i = 0; i < std::min(s0.size(), s1.size()); ++i)
+	{
+		unsigned b0 = reinterpret_cast<const std::uint8_t*>(s0.data())[i];
+		unsigned b1 = reinterpret_cast<const std::uint8_t*>(s1.data())[i];
+		if (b0 != b1)
+		{
+			ss << "i=" << i << ": " << b0 << " != " << b1 << "\n";
+		}
+	}
+	if (s0.size() != s1.size())
+	{
+		ss << "sizes: " << s0.size() << " != " << s1.size() << "\n";
+	}
+	return ss.str();
+}
+
+inline void compare_buffers(std::string_view s0, std::string_view s1, const char* msg = "")
+{
+	EXPECT_EQ(s0, s1) << msg << ":\n" << buffer_diff(s0, s1);
 }
 
 }

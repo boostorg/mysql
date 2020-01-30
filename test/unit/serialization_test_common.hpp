@@ -9,6 +9,7 @@
 #include <boost/type_index.hpp>
 #include "mysql/impl/serialization.hpp"
 #include "mysql/value.hpp"
+#include "test_common.hpp"
 
 namespace mysql
 {
@@ -178,11 +179,6 @@ std::vector<uint8_t> concat(std::vector<uint8_t>&& lhs, const std::vector<uint8_
 // Test fixtures
 struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 {
-	static std::string_view make_buffer_view(const uint8_t* buff, size_t sz)
-	{
-		return std::string_view(reinterpret_cast<const char*>(buff), sz);
-	}
-
 	// get_size
 	void get_size_test()
 	{
@@ -203,14 +199,14 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		EXPECT_EQ(ctx.first(), buffer.data() + expected_size) << "Iterator not updated correctly";
 
 		// Buffer
-		std::string_view expected_populated = make_buffer_view(GetParam().expected_buffer.data(), expected_size);
-		std::string_view actual_populated = make_buffer_view(buffer.data(), expected_size);
-		EXPECT_EQ(expected_populated, actual_populated) << "Buffer contents incorrect";
+		std::string_view expected_populated = test::makesv(GetParam().expected_buffer.data(), expected_size);
+		std::string_view actual_populated = test::makesv(buffer.data(), expected_size);
+		test::compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
 
 		// Check for buffer overruns
 		std::string expected_clean (8, 0x7a);
-		std::string_view actual_clean = make_buffer_view(buffer.data() + expected_size, 8);
-		EXPECT_EQ(expected_clean, actual_clean) << "Buffer overrun";
+		std::string_view actual_clean = test::makesv(buffer.data() + expected_size, 8);
+		test::compare_buffers(expected_clean, actual_clean, "Buffer overrun");
 	}
 
 	// deserialize

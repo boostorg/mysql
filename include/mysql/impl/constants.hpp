@@ -87,10 +87,14 @@ constexpr std::uint16_t num = 32768;     // Field is num (for clients)
 }
 
 // Prepared statements
-constexpr std::uint8_t CURSOR_TYPE_NO_CURSOR = 0;
-constexpr std::uint8_t CURSOR_TYPE_READ_ONLY = 1;
-constexpr std::uint8_t CURSOR_TYPE_FOR_UPDATE = 2;
-constexpr std::uint8_t CURSOR_TYPE_SCROLLABLE = 4;
+namespace cursor_types
+{
+constexpr std::uint8_t no_cursor = 0;
+constexpr std::uint8_t read_only = 1;
+constexpr std::uint8_t for_update = 2;
+constexpr std::uint8_t scrollable = 4;
+}
+
 
 }
 }
