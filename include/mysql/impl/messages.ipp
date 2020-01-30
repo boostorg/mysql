@@ -239,8 +239,7 @@ inline std::size_t mysql::detail::get_size(
 	std::size_t res = 1 + // command ID
 		get_size(value.statement_id, ctx) +
 		get_size(value.flags, ctx) +
-		get_size(value.iteration_count, ctx) +
-		1; // num_params
+		get_size(value.iteration_count, ctx);
 	auto num_params = std::distance(value.params_begin, value.params_end);
 	assert(num_params >= 0 && num_params <= 255);
 	res += null_bitmap_traits(stmt_execute_null_bitmap_offset, num_params).byte_count();
@@ -266,11 +265,11 @@ inline void mysql::detail::serialize(
 	// Number of parameters
 	auto num_params = std::distance(input.params_begin, input.params_end);
 	assert(num_params >= 0 && num_params <= 255);
-	serialize(int1(static_cast<std::uint8_t>(num_params)), ctx);
 
 	// NULL bitmap (already size zero if num_params == 0)
 	null_bitmap_traits traits (stmt_execute_null_bitmap_offset, num_params);
 	std::size_t i = 0;
+	std::memset(ctx.first(), 0, traits.byte_count()); // Initialize to zeroes
 	for (auto it = input.params_begin; it < input.params_end; ++it, ++i)
 	{
 		if (std::holds_alternative<nullptr_t>(*it))

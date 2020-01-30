@@ -249,7 +249,6 @@ struct com_stmt_execute_packet
 	int4 statement_id;
 	int1 flags;
 	int4 iteration_count;
-	// int1 num_params; implicit: from the iterator distance
 	// if num_params > 0: NULL bitmap
 	int1 new_params_bind_flag;
 	const value* params_begin; // TODO: maybe change to a generic iterator
@@ -262,6 +261,19 @@ struct com_stmt_execute_packet
 		protocol_field_type type;
 		int1 unsigned_flag;
 	};
+};
+
+template <>
+struct get_struct_fields<com_stmt_execute_packet>
+{
+	static constexpr auto value = std::make_tuple(
+		&com_stmt_execute_packet::statement_id,
+		&com_stmt_execute_packet::flags,
+		&com_stmt_execute_packet::iteration_count,
+		&com_stmt_execute_packet::new_params_bind_flag,
+		&com_stmt_execute_packet::params_begin,
+		&com_stmt_execute_packet::params_end
+	);
 };
 
 template <>

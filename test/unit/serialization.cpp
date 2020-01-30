@@ -16,6 +16,7 @@ using namespace mysql::detail;
 using namespace mysql::test;
 using mysql::Error;
 using mysql::collation;
+using mysql::value;
 
 namespace
 {
@@ -233,13 +234,20 @@ INSTANTIATE_TEST_SUITE_P(Time, FullSerializationTest, ::testing::Values(
 												  0x3a, 0x58, 0x3e, 0x0f, 0x00}, "negative_hmsu")
 ));
 
-/*
- *
- */
 
 /*
- *  0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0xe8, 0xe5, 0x04, 0x00
+ * 	std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
+	std::int64_t,      // signed BIGINT
+	std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT
+	std::uint64_t,     // unsigned BIGINT
+	std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+	float,             // FLOAT
+	double,            // DOUBLE
+	date,              // DATE
+	datetime,          // DATETIME, TIMESTAMP
+	time,              // TIME
+	year,              // YEAR
+	std::nullptr_t     // Any of the above when the value is NULL
  */
 
 // Messages
@@ -604,6 +612,60 @@ INSTANTIATE_TEST_SUITE_P(ComStmtPrepareResponse, DeserializeSpaceTest, testing::
 		0x00, 0x00, 0x00
 	})
 ));
+
+// Helper for composing ComStmtExecute tests
+SerializeParams make_stmt_execute_test(
+	std::uint32_t stmt_id,
+	std::uint8_t flags,
+	std::uint32_t itercount,
+	std::uint8_t new_params_flag,
+	std::vector<value>&& params,
+	std::vector<std::uint8_t>&& buffer,
+	std::string&& test_name
+)
+{
+	auto params_shared = std::make_shared<std::vector<value>>(std::move(params));
+	return SerializeParams(
+		com_stmt_execute_packet {
+			int4(stmt_id),
+			int1(flags),
+			int4(itercount),
+			int1(new_params_flag),
+			params_shared->data(),
+			params_shared->data() + params_shared->size()
+		},
+		std::move(buffer),
+		std::move(test_name),
+		0, // capabilities
+		params_shared
+	);
+}
+
+INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
+	make_stmt_execute_test(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
+		{ std::uint32_t(0xabffff) }, {
+			0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
+			0x00, 0x00, 0x00, 0x01, 0x03, 0x80, 0xff, 0xff,
+			0xab, 0x00
+		},
+		"uint32_t"
+	)
+));
+
+/*
+ * 	std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
+	std::int64_t,      // signed BIGINT
+	std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT
+	std::uint64_t,     // unsigned BIGINT
+	std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+	float,             // FLOAT
+	double,            // DOUBLE
+	date,              // DATE
+	datetime,          // DATETIME, TIMESTAMP
+	time,              // TIME
+	year,              // YEAR
+	std::nullptr_t     // Any of the above when the value is NULL
+ */
 
 
 } // anon namespace

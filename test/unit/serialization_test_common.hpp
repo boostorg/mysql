@@ -5,6 +5,7 @@
 #include "mysql/impl/constants.hpp"
 #include <gtest/gtest.h>
 #include <string>
+#include <any>
 #include <boost/type_index.hpp>
 #include "mysql/impl/serialization.hpp"
 #include "mysql/value.hpp"
@@ -146,14 +147,16 @@ struct SerializeParams
 	std::vector<uint8_t> expected_buffer;
 	std::string test_name;
 	capabilities caps;
+	std::any additional_storage;
 
 	template <typename T>
 	SerializeParams(const T& v, std::vector<uint8_t>&& buff,
-			        std::string&& name="default", std::uint32_t caps=0):
+			        std::string&& name="default", std::uint32_t caps=0, std::any storage = {}):
 		value(std::make_shared<TypeErasedValueImpl<T>>(v)),
 		expected_buffer(move(buff)),
 		test_name(move(name)),
-		caps(caps)
+		caps(caps),
+		additional_storage(std::move(storage))
 	{
 	}
 };
