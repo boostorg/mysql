@@ -285,6 +285,21 @@ struct get_struct_fields<com_stmt_execute_packet::param_meta>
 	);
 };
 
+struct com_stmt_close_packet
+{
+	int4 statement_id;
+
+	static constexpr std::uint8_t command_id = 0x19;
+};
+
+template <>
+struct get_struct_fields<com_stmt_close_packet>
+{
+	static constexpr auto value = std::make_tuple(
+		&com_stmt_close_packet::statement_id
+	);
+};
+
 
 // serialization functions
 inline Error deserialize(ok_packet& output, DeserializationContext& ctx) noexcept;
@@ -318,52 +333,6 @@ inline std::pair<error_code, std::uint8_t> deserialize_message_type(
 );
 
 inline error_code process_error_packet(DeserializationContext& ctx, error_info& info);
-
-
-/*
-
-using BinaryValue = std::variant<
-	std::int8_t,
-	std::int16_t,
-	std::int32_t,
-	std::int64_t,
-	std::uint8_t,
-	std::uint16_t,
-	std::uint32_t,
-	std::uint64_t,
-	string_lenenc,
-	std::nullptr_t // NULL
-	// TODO: double, float, dates/times
->;
-
-struct StmtExecute
-{
-	//int1 message_type: COM_STMT_EXECUTE
-	int4 statement_id;
-	int1 flags;
-	// int4 iteration_count: always 1
-	int1 num_params;
-	int1 new_params_bind_flag;
-	std::vector<BinaryValue> param_values; // empty if !new_params_bind_flag
-};
-
-struct StmtExecuteResponseHeader
-{
-	int1 num_fields;
-};
-
-struct StmtFetch
-{
-	// int1 message_type: COM_STMT_FETCH
-	int4 statement_id;
-	int4 rows_to_fetch;
-};
-
-struct StmtClose
-{
-	int4 statement_id;
-};*/
-
 
 } // detail
 } // mysql

@@ -772,5 +772,9 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
 	)
 ));
 
+INSTANTIATE_TEST_SUITE_P(ComStmtClose, SerializeTest, testing::Values(
+	SerializeParams(com_stmt_close_packet{int4(1)}, {0x19, 0x01, 0x00, 0x00, 0x00})
+));
+
 
 } // anon namespace
