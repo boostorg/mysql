@@ -32,3 +32,4 @@ Technical debt
 	Force the same number of values in each row as in fields()
 	CMake exporting?
 	Integration test for network errors (e.g. host unreachable)
+	Refactor file structucture for serialization and tests

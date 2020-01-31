@@ -76,7 +76,7 @@ TEST(RowTest, OperatorStream_OneElement)
 TEST(RowTest, OperatorStream_SeveralElements)
 {
 	EXPECT_EQ((to_string(makerow("value", nullptr))), "{value, <NULL>}");
-	EXPECT_EQ((to_string(makerow("value", mysql::year(2019), 3.14f))), "{value, 2019, 3.14}");
+	EXPECT_EQ((to_string(makerow("value", std::uint32_t(2019), 3.14f))), "{value, 2019, 3.14}");
 }
 
 }

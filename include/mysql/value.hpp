@@ -20,9 +20,6 @@ using datetime = ::date::sys_time<std::chrono::microseconds>;
 /// Type representing MySQL TIME data type.
 using time = std::chrono::microseconds;
 
-/// Type representing MySQL YEAR data type.
-using year = ::date::year;
-
 /**
  * \brief Represents a value in the database of any of the allowed types.
  * \details If a value is NULL, the type of the variant will be nullptr_t.
@@ -37,7 +34,7 @@ using year = ::date::year;
 using value = std::variant<
 	std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
 	std::int64_t,      // signed BIGINT
-	std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT
+	std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, YEAR
 	std::uint64_t,     // unsigned BIGINT
 	std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
 	float,             // FLOAT
@@ -45,7 +42,6 @@ using value = std::variant<
 	date,              // DATE
 	datetime,          // DATETIME, TIMESTAMP
 	time,              // TIME
-	year,              // YEAR
 	std::nullptr_t     // Any of the above when the value is NULL
 >;
 

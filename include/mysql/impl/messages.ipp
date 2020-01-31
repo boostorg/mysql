@@ -29,7 +29,6 @@ inline protocol_field_type get_protocol_field_type(
 		constexpr auto operator()(date) const noexcept { return protocol_field_type::date; }
 		constexpr auto operator()(datetime) const noexcept { return protocol_field_type::datetime; }
 		constexpr auto operator()(time) const noexcept { return protocol_field_type::time; }
-		constexpr auto operator()(year) const noexcept { return protocol_field_type::short_; }
 		constexpr auto operator()(std::nullptr_t) const noexcept { return protocol_field_type::null; }
 	};
 	return std::visit(visitor(), input);
@@ -45,8 +44,7 @@ inline bool is_unsigned(
 	return std::visit([](auto v) {
 		using type = decltype(v);
 		return std::is_same_v<type, std::uint32_t> ||
-			   std::is_same_v<type, std::uint64_t> ||
-			   std::is_same_v<type, year>;
+			   std::is_same_v<type, std::uint64_t>;
 	}, input);
 }
 

@@ -35,7 +35,7 @@ struct ValueEqualityTest : public Test
 		mysql::date(1_d/10/2019_y),
 		mysql::date(1_d/10/2019_y) + std::chrono::hours(10),
 		mysql::time(std::chrono::seconds(-10)),
-		mysql::year(2010),
+		std::uint32_t(2010),
 		nullptr
 	);
 	std::vector<mysql::value> values_copy = values;
@@ -49,7 +49,7 @@ struct ValueEqualityTest : public Test
 		mysql::date(1_d/9/2019_y),
 		mysql::date(1_d/9/2019_y) + std::chrono::hours(10),
 		mysql::time(std::chrono::seconds(10)),
-		mysql::year(1900),
+		std::uint32_t(1900),
 		nullptr
 	);
 };
@@ -125,7 +125,6 @@ INSTANTIATE_TEST_SUITE_P(Default, ValueStreamTest, Values(
 	ValueStreamParams(mysql::time(hours(-839) - minutes(20) - seconds(35) - microseconds(999999)), "-839:20:35:999999"),
 	ValueStreamParams(makedt(2019, 1, 8, 9, 20, 11, 123), "2019-01-08 09:20:11.000123"),
 	ValueStreamParams(makedt(2019, 1, 8), "2019-01-08 00:00:00.000000"),
-	ValueStreamParams(mysql::year(2019), "2019"),
 	ValueStreamParams(nullptr, "<NULL>")
 ));
 

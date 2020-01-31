@@ -5,7 +5,6 @@
 #include "mysql/error.hpp"
 #include "mysql/value.hpp"
 #include "mysql/metadata.hpp"
-#include "mysql/value.hpp"
 #include <vector>
 
 namespace mysql

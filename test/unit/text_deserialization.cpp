@@ -292,10 +292,10 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
 ));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
-	TextValueParam("regular value", "1999", mysql::year(1999), protocol_field_type::year),
-	TextValueParam("min", "1901", mysql::year(1901), protocol_field_type::year),
-	TextValueParam("max", "2155", mysql::year(2155), protocol_field_type::year),
-	TextValueParam("zero", "0000", mysql::year(0), protocol_field_type::year)
+	TextValueParam("regular value", "1999", std::uint32_t(1999), protocol_field_type::year, column_flags::unsigned_),
+	TextValueParam("min", "1901", std::uint32_t(1901), protocol_field_type::year, column_flags::unsigned_),
+	TextValueParam("max", "2155", std::uint32_t(2155), protocol_field_type::year, column_flags::unsigned_),
+	TextValueParam("zero", "0000", std::uint32_t(0), protocol_field_type::year, column_flags::unsigned_)
 ));
 
 struct DeserializeTextRowTest : public Test

@@ -407,10 +407,10 @@ INSTANTIATE_TEST_SUITE_P(TIME, QueryTypesTest, Values(
 ));
 
 INSTANTIATE_TEST_SUITE_P(YEAR, QueryTypesTest, Values(
-	QueryTypesParams("types_year", "field_default", "regular", mysql::year(2019), field_type::year, flags_zerofill),
-	QueryTypesParams("types_year", "field_default", "min", mysql::year(1901), field_type::year, flags_zerofill),
-	QueryTypesParams("types_year", "field_default", "max", mysql::year(2155), field_type::year, flags_zerofill),
-	QueryTypesParams("types_year", "field_default", "zero", mysql::year(0), field_type::year, flags_zerofill)
+	QueryTypesParams("types_year", "field_default", "regular", std::uint32_t(2019), field_type::year, flags_zerofill),
+	QueryTypesParams("types_year", "field_default", "min", std::uint32_t(1901), field_type::year, flags_zerofill),
+	QueryTypesParams("types_year", "field_default", "max", std::uint32_t(2155), field_type::year, flags_zerofill),
+	QueryTypesParams("types_year", "field_default", "zero", std::uint32_t(0), field_type::year, flags_zerofill)
 ));
 
 INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(

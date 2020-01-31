@@ -22,7 +22,6 @@ template <> struct get_serializable_type<std::int64_t> { using type = int8_signe
 template <> struct get_serializable_type<float> { using type = value_holder<float>; };
 template <> struct get_serializable_type<double> { using type = value_holder<double>; };
 template <> struct get_serializable_type<std::string_view> { using type = string_lenenc; };
-template <> struct get_serializable_type<year> { using type = int2; };
 template <> struct get_serializable_type<nullptr_t> { using type = dummy_serializable; };
 
 template <typename T>
@@ -31,11 +30,6 @@ inline get_serializable_type_t<T> to_serializable_type(T input) noexcept
 	return get_serializable_type_t<T>(input);
 }
 
-template <>
-inline get_serializable_type_t<year> to_serializable_type(year input) noexcept
-{
-	return get_serializable_type_t<year>(static_cast<int>(input));
-}
 
 inline Error deserialize_binary_date(date& output, std::uint8_t length, DeserializationContext& ctx) noexcept
 {
