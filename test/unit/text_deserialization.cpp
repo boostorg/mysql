@@ -6,7 +6,6 @@
  */
 
 #include <gtest/gtest.h>
-#include <boost/type_index.hpp>
 #include "mysql/impl/text_deserialization.hpp"
 #include "test_common.hpp"
 
@@ -82,7 +81,7 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeTextValueTest, Values(
 	TextValueParam("SET", "value1,value2", "value1,value2", protocol_field_type::string, column_flags::set),
 
 	TextValueParam("BIT", "\1", "\1", protocol_field_type::bit),
-	TextValueParam("DECIMAL", "\1", "\1", protocol_field_type::bit),
+	TextValueParam("DECIMAL", "\1", "\1", protocol_field_type::newdecimal),
 	TextValueParam("GEOMTRY", "\1", "\1", protocol_field_type::geometry, column_flags::binary | column_flags::blob)
 ));
 

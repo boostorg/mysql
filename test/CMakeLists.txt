@@ -21,6 +21,7 @@ add_executable(
 	unit/auth.cpp
 	unit/metadata.cpp
 	unit/text_deserialization.cpp
+	unit/binary_deserialization.cpp
 	unit/value.cpp
 	unit/row.cpp
 	unit/error.cpp
