@@ -23,7 +23,7 @@ namespace
 
 using mysql::operator<<;
 
-// for deserializa_binary_value
+// for deserialize_binary_value
 struct BinaryValueParam
 {
 	std::string name;
@@ -127,124 +127,96 @@ INSTANTIATE_TEST_SUITE_P(TimeTypes, DeserializeBinaryValueTest, Values(
 	BinaryValueParam("year", {0xe3, 0x07}, std::uint32_t(2019), protocol_field_type::year, column_flags::unsigned_)
 ));
 
-/*struct DeserializeTextRowTest : public Test
+// for deserialize_binary_row
+struct BinaryRowParam
 {
-	std::vector<mysql::field_metadata> meta {
-		column_definition_packet {
-			string_lenenc("def"),
-			string_lenenc("awesome"),
-			string_lenenc("test_table"),
-			string_lenenc("test_table"),
-			string_lenenc("f0"),
-			string_lenenc("f0"),
-			collation::utf8_general_ci,
-			int4(300),
-			protocol_field_type::var_string,
-			int2(0),
-			int1(0)
-		},
-		column_definition_packet {
-			string_lenenc("def"),
-			string_lenenc("awesome"),
-			string_lenenc("test_table"),
-			string_lenenc("test_table"),
-			string_lenenc("f1"),
-			string_lenenc("f1"),
-			collation::binary,
-			int4(11),
-			protocol_field_type::long_,
-			int2(0),
-			int1(0)
-		},
-		column_definition_packet {
-			string_lenenc("def"),
-			string_lenenc("awesome"),
-			string_lenenc("test_table"),
-			string_lenenc("test_table"),
-			string_lenenc("f2"),
-			string_lenenc("f2"),
-			collation::binary,
-			int4(22),
-			protocol_field_type::datetime,
-			int2(column_flags::binary),
-			int1(2)
-		}
-	};
-	std::vector<value> values;
+	std::string name;
+	std::vector<std::uint8_t> from;
+	std::vector<value> expected;
+	std::vector<protocol_field_type> types;
 
-	error_code deserialize(const std::vector<std::uint8_t>& buffer)
+	BinaryRowParam(
+		std::string name,
+		std::vector<std::uint8_t> from,
+		std::vector<value> expected,
+		std::vector<protocol_field_type> types
+	):
+		name(std::move(name)),
+		from(std::move(from)),
+		expected(std::move(expected)),
+		types(std::move(types))
 	{
-		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
-		return deserialize_text_row(ctx, meta, values);
+		assert(expected.size() == types.size());
 	}
 };
 
-TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsNonNulls_DeserializesReturnsOk)
+std::ostream& operator<<(std::ostream& os, const BinaryRowParam& value) { return os << value.name; }
+
+struct DeserializeBinaryRowTest : public TestWithParam<BinaryRowParam>
 {
-	std::vector<value> expected_values {value("val"), value(std::int32_t(21)), value(makedt(2010, 10, 1))};
-	std::vector<std::uint8_t> buffer {
-		0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x16,
-		0x32, 0x30, 0x31, 0x30, 0x2d, 0x31, 0x30, 0x2d,
-		0x30, 0x31, 0x20, 0x30, 0x30, 0x3a, 0x30, 0x30,
-		0x3a, 0x30, 0x30, 0x2e, 0x30, 0x30
-	};
-	auto err = deserialize(buffer);
+};
+
+TEST_P(DeserializeBinaryRowTest, CorrectFormat_SetsOutputValueReturnsTrue)
+{
+	// Meta
+	std::vector<mysql::field_metadata> meta;
+	for (const auto type: GetParam().types)
+	{
+		column_definition_packet coldef;
+		coldef.type = type;
+		meta.emplace_back(coldef);
+	}
+
+	// Context
+	const auto& buffer = GetParam().from;
+	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+
+	std::vector<value> actual;
+	auto err = deserialize_binary_row(ctx, meta, actual);
 	EXPECT_EQ(err, error_code());
-	EXPECT_EQ(values, expected_values);
+	EXPECT_EQ(actual, GetParam().expected);
 }
 
-TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsOneNull_DeserializesReturnsOk)
-{
-	std::vector<value> expected_values {value("val"), value(nullptr), value(makedt(2010, 10, 1))};
-	std::vector<std::uint8_t> buffer {
-		0x03, 0x76, 0x61, 0x6c, 0xfb, 0x16, 0x32, 0x30,
-		0x31, 0x30, 0x2d, 0x31, 0x30, 0x2d, 0x30, 0x31,
-		0x20, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x3a, 0x30,
-		0x30, 0x2e, 0x30, 0x30
-	};
-	auto err = deserialize(buffer);
-	EXPECT_EQ(err, error_code());
-	EXPECT_EQ(values, expected_values);
-}
+INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowTest, testing::Values(
+	BinaryRowParam("one_value", {0x00, 0x14}, makevalues(std::int32_t(20)), {protocol_field_type::tiny}),
+	BinaryRowParam("one_null", {0x04}, makevalues(nullptr), {protocol_field_type::tiny}),
+	BinaryRowParam("two_values", {0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07},
+			makevalues("min", std::int32_t(1901)), {protocol_field_type::var_string, protocol_field_type::short_}),
+	BinaryRowParam("one_value_one_null", {0x08, 0x03, 0x6d, 0x61, 0x78},
+			makevalues("max", nullptr), {protocol_field_type::var_string, protocol_field_type::tiny}),
+	BinaryRowParam("two_nulls", {0x0c},
+			makevalues(nullptr, nullptr), {protocol_field_type::tiny, protocol_field_type::tiny}),
+	BinaryRowParam("six_nulls", {0xfc}, std::vector<value>(6, value(nullptr)),
+			std::vector<protocol_field_type>(6, protocol_field_type::tiny)),
+	BinaryRowParam("seven_nulls", {0xfc, 0x01}, std::vector<value>(7, value(nullptr)),
+			std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
+	BinaryRowParam("several_values", {
+			0x90, 0x00, 0xfd, 0x14, 0x00, 0xc3, 0xf5, 0x48,
+			0x40, 0x02, 0x61, 0x62, 0x04, 0xe2, 0x07, 0x0a,
+			0x05, 0x71, 0x99, 0x6d, 0xe2, 0x93, 0x4d, 0xf5,
+			0x3d
+		}, makevalues(
+			std::int32_t(-3),
+			std::int32_t(20),
+			nullptr,
+			3.14f,
+			"ab",
+			nullptr,
+			makedate(2018, 10, 5),
+			3.10e-10
+		), {
+			protocol_field_type::tiny,
+			protocol_field_type::short_,
+			protocol_field_type::long_,
+			protocol_field_type::float_,
+			protocol_field_type::string,
+			protocol_field_type::long_,
+			protocol_field_type::date,
+			protocol_field_type::double_
+		}
+	)
+));
 
-TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsAllNull_DeserializesReturnsOk)
-{
-	std::vector<value> expected_values {value(nullptr), value(nullptr), value(nullptr)};
-	auto err = deserialize({0xfb, 0xfb, 0xfb});
-	EXPECT_EQ(err, error_code());
-	EXPECT_EQ(values, expected_values);
-}
 
-TEST_F(DeserializeTextRowTest, TooFewValues_ReturnsError)
-{
-	auto err = deserialize({0xfb, 0xfb});
-	EXPECT_EQ(err, make_error_code(Error::incomplete_message));
-}
-
-TEST_F(DeserializeTextRowTest, TooManyValues_ReturnsError)
-{
-	auto err = deserialize({0xfb, 0xfb, 0xfb, 0xfb});
-	EXPECT_EQ(err, make_error_code(Error::extra_bytes));
-}
-
-TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerStringValue_ReturnsError)
-{
-	auto err = deserialize({0x03, 0xaa, 0xab, 0xfb, 0xfb});
-	EXPECT_EQ(err, make_error_code(Error::incomplete_message));
-}
-
-TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerValue_ReturnsError)
-{
-	std::vector<std::uint8_t> buffer {
-		0x03, 0x76, 0x61, 0x6c, 0xfb, 0x16, 0x32, 0x30,
-		0x31, 0x30, 0x2d, 0x31, 0x30, 0x2d, 0x30, 0x31,
-		0x20, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x3a, 0x30,
-		0x30, 0x2f, 0x30, 0x30
-	};
-	auto err = deserialize(buffer);
-	EXPECT_EQ(err, make_error_code(Error::protocol_value_error));
-}*/
-
-}
-
+} // anon namespace
 

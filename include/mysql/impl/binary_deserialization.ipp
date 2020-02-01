@@ -83,40 +83,6 @@ inline binary_protocol_value get_deserializable_type(
 	}
 }
 
-inline Error deserialize_binary_row_impl(
-	DeserializationContext& ctx,
-	const std::vector<field_metadata>& meta,
-	std::vector<value>& output
-)
-{
-	// Packet header is already read
-	// Number of fields
-	auto num_fields = meta.size();
-	output.resize(num_fields);
-
-	// Null bitmap
-	null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
-	const std::uint8_t* null_bitmap_begin = ctx.first();
-	ctx.advance(null_bitmap.byte_count());
-
-	// Actual values
-	for (std::vector<value>::size_type i = 0; i < output.size(); ++i)
-	{
-		if (null_bitmap.is_null(null_bitmap_begin, i))
-		{
-			output[i] = nullptr;
-		}
-		else
-		{
-			auto err = deserialize(output[i], ctx);
-			if (err != Error::ok) return err;
-		}
-	}
-
-	// Check for remaining bytes
-	return ctx.empty() ? Error::extra_bytes : Error::ok;
-}
-
 }
 }
 
@@ -156,9 +122,35 @@ inline mysql::error_code mysql::detail::deserialize_binary_row(
 	std::vector<value>& output
 )
 {
-	return make_error_code(deserialize_binary_row_impl(ctx, meta, output));
-}
+	// Packet header is already read
+	// Number of fields
+	auto num_fields = meta.size();
+	output.resize(num_fields);
 
+	// Null bitmap
+	null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
+	const std::uint8_t* null_bitmap_begin = ctx.first();
+	ctx.advance(null_bitmap.byte_count());
+
+	// Actual values
+	for (std::vector<value>::size_type i = 0; i < output.size(); ++i)
+	{
+		if (null_bitmap.is_null(null_bitmap_begin, i))
+		{
+			output[i] = nullptr;
+		}
+		else
+		{
+			auto err = deserialize_binary_value(ctx, meta[i], output[i]);
+			if (err != Error::ok) return make_error_code(err);
+		}
+	}
+
+	// Check for remaining bytes
+	if (!ctx.empty()) return make_error_code(Error::extra_bytes);
+
+	return error_code();
+}
 
 
 #endif /* INCLUDE_MYSQL_IMPL_BINARY_DESERIALIZATION_IPP_ */
