@@ -33,3 +33,4 @@ Technical debt
 	CMake exporting?
 	Integration test for network errors (e.g. host unreachable)
 	Refactor file structucture for serialization and tests
+	Deserialize common should be in namespace mysql::test, not in detail

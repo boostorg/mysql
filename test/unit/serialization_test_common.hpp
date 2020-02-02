@@ -91,9 +91,6 @@ operator<<(std::ostream& os, const T& value)
 	return os;
 }
 
-
-
-
 class TypeErasedValue
 {
 public:
@@ -101,7 +98,6 @@ public:
 	virtual void serialize(SerializationContext& ctx) const = 0;
 	virtual std::size_t get_size(const SerializationContext& ctx) const = 0;
 	virtual Error deserialize(DeserializationContext& ctx) = 0;
-	virtual std::string get_type_name() const = 0;
 	virtual std::shared_ptr<TypeErasedValue> default_construct() const = 0;
 	virtual bool equals(const TypeErasedValue& rhs) const = 0;
 	virtual void print(std::ostream& os) const = 0;
@@ -123,10 +119,6 @@ public:
 	void serialize(SerializationContext& ctx) const override { ::mysql::detail::serialize(value_, ctx); }
 	std::size_t get_size(const SerializationContext& ctx) const override { return ::mysql::detail::get_size(value_, ctx); }
 	Error deserialize(DeserializationContext& ctx) override { return ::mysql::detail::deserialize(value_, ctx); }
-	std::string get_type_name() const override
-	{
-		return boost::typeindex::type_id<T>().pretty_name();
-	}
 	std::shared_ptr<TypeErasedValue> default_construct() const override
 	{
 		return std::make_shared<TypeErasedValueImpl<T>>(T{});
@@ -142,30 +134,25 @@ public:
 	}
 };
 
-struct SerializeParams
+struct SerializeParams : test::named_param
 {
 	std::shared_ptr<TypeErasedValue> value;
 	std::vector<uint8_t> expected_buffer;
-	std::string test_name;
+	std::string name;
 	capabilities caps;
 	std::any additional_storage;
 
 	template <typename T>
 	SerializeParams(const T& v, std::vector<uint8_t>&& buff,
-			        std::string&& name="default", std::uint32_t caps=0, std::any storage = {}):
+			        std::string&& name, std::uint32_t caps=0, std::any storage = {}):
 		value(std::make_shared<TypeErasedValueImpl<T>>(v)),
 		expected_buffer(move(buff)),
-		test_name(move(name)),
+		name(move(name)),
 		caps(caps),
 		additional_storage(std::move(storage))
 	{
 	}
 };
-
-std::ostream& operator<<(std::ostream& os, const SerializeParams& params)
-{
-	return os << params.value->get_type_name() << " - " << params.test_name;
-}
 
 std::vector<uint8_t> concat(std::vector<uint8_t>&& lhs, const std::vector<uint8_t>& rhs)
 {
@@ -286,6 +273,41 @@ TEST_P(FullSerializationTest, serialize) { serialize_test(); }
 TEST_P(FullSerializationTest, deserialize) { deserialize_test(); }
 TEST_P(FullSerializationTest, deserialize_extra_space) { deserialize_extra_space_test(); }
 TEST_P(FullSerializationTest, deserialize_not_enough_space) { deserialize_not_enough_space_test(); }
+
+
+// Error tests
+struct DeserializeErrorParams : test::named_param
+{
+	std::shared_ptr<TypeErasedValue> value;
+	std::vector<uint8_t> buffer;
+	std::string name;
+	Error expected_error;
+
+	template <typename T>
+	DeserializeErrorParams(
+		std::vector<uint8_t>&& buffer,
+		std::string&& test_name,
+		Error err = Error::incomplete_message
+	) :
+		value(std::make_shared<TypeErasedValueImpl<T>>(T{})),
+		buffer(std::move(buffer)),
+		name(std::move(name)),
+		expected_error(err)
+	{
+	}
+};
+
+struct DeserializeErrorTest : testing::TestWithParam<DeserializeErrorParams> {};
+
+TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
+{
+	auto first = GetParam().buffer.data();
+	auto last = GetParam().buffer.data() + GetParam().buffer.size();
+	DeserializationContext ctx (first, last, capabilities(0));
+	auto value = GetParam().value->default_construct();
+	auto err = value->deserialize(ctx);
+	EXPECT_EQ(err, GetParam().expected_error);
+}
 
 
 }

@@ -118,13 +118,17 @@ inline void compare_buffers(std::string_view s0, std::string_view s1, const char
 	EXPECT_EQ(s0, s1) << msg << ":\n" << buffer_diff(s0, s1);
 }
 
-struct named_test {};
+struct named_param {};
 
-template <typename T, typename=std::enable_if_t<std::is_base_of_v<named_test, T>>>
+template <typename T, typename=std::enable_if_t<std::is_base_of_v<named_param, T>>>
 std::ostream& operator<<(std::ostream& os, const T& v) { return os << v.name; }
 
 constexpr auto test_name_generator = [](const auto& param_info) {
-	return param_info.param.name;
+	std::ostringstream os;
+	os << param_info.param;
+	std::string res = os.str();
+	std::replace_if(res.begin(), res.end(), [](char c) { return !std::isalnum(c); }, '_');
+	return res;
 };
 
 }

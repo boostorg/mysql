@@ -21,44 +21,7 @@ using mysql::value;
 namespace
 {
 
-struct DeserializeErrorParams
-{
-	shared_ptr<TypeErasedValue> value;
-	vector<uint8_t> buffer;
-	string test_name;
-	Error expected_error;
 
-	template <typename T>
-	DeserializeErrorParams create(vector<uint8_t>&& buffer, string&& test_name, Error err = Error::incomplete_message)
-	{
-		return DeserializeErrorParams {
-			make_shared<TypeErasedValueImpl<T>>(T{}),
-			move(buffer),
-			move(test_name),
-			err
-		};
-	}
-};
-
-ostream& operator<<(ostream& os, const DeserializeErrorParams& params)
-{
-	return os << params.value->get_type_name() << " - " << params.test_name;
-}
-
-// Special error conditions
-struct DeserializeErrorTest : testing::TestWithParam<DeserializeErrorParams>
-{
-};
-
-TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
-{
-	auto first = GetParam().buffer.data();
-	auto last = GetParam().buffer.data() + GetParam().buffer.size();
-	DeserializationContext ctx (first, last, capabilities(0));
-	auto value = GetParam().value->default_construct();
-	auto err = value->deserialize(ctx);
-	EXPECT_EQ(err, GetParam().expected_error);
-}
 
 // Definitions for the parameterized tests
 string string_250 (250, 'a');
@@ -88,75 +51,75 @@ enum class EnumInt4 : uint32_t
 };
 
 INSTANTIATE_TEST_SUITE_P(UnsignedFixedSizeInts, FullSerializationTest, ::testing::Values(
-	SerializeParams(int1(0xff), {0xff}),
-	SerializeParams(int2(0xfeff), {0xff, 0xfe}),
-	SerializeParams(int3(0xfdfeff), {0xff, 0xfe, 0xfd}),
-	SerializeParams(int4(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}),
-	SerializeParams(int6(0xfafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa}),
-	SerializeParams(int8(0xf8f9fafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8})
-));
+	SerializeParams(int1(0xff), {0xff}, "int1"),
+	SerializeParams(int2(0xfeff), {0xff, 0xfe}, "int2"),
+	SerializeParams(int3(0xfdfeff), {0xff, 0xfe, 0xfd}, "int3"),
+	SerializeParams(int4(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}, "int4"),
+	SerializeParams(int6(0xfafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa}, "int6"),
+	SerializeParams(int8(0xf8f9fafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "int8")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(SignedFixedSizeInts, FullSerializationTest, ::testing::Values(
-	SerializeParams(int1_signed(-1), {0xff}, "Negative"),
-	SerializeParams(int2_signed(-0x101), {0xff, 0xfe}, "Negative"),
-	SerializeParams(int4_signed(-0x3020101), {0xff, 0xfe, 0xfd, 0xfc}, "Negative"),
-	SerializeParams(int8_signed(-0x0706050403020101), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "Negative"),
-	SerializeParams(int1_signed(0x01), {0x01}, "Positive"),
-	SerializeParams(int2_signed(0x0201), {0x01, 0x02}, "Positive"),
-	SerializeParams(int4_signed(0x04030201), {0x01, 0x02, 0x03, 0x04}, "Positive"),
-	SerializeParams(int8_signed(0x0807060504030201), {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "Positive")
-));
+	SerializeParams(int1_signed(-1), {0xff}, "int1_negative"),
+	SerializeParams(int2_signed(-0x101), {0xff, 0xfe}, "int2_negative"),
+	SerializeParams(int4_signed(-0x3020101), {0xff, 0xfe, 0xfd, 0xfc}, "int4_negative"),
+	SerializeParams(int8_signed(-0x0706050403020101), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "int8_negative"),
+	SerializeParams(int1_signed(0x01), {0x01}, "int1_positive"),
+	SerializeParams(int2_signed(0x0201), {0x01, 0x02}, "int2_positive"),
+	SerializeParams(int4_signed(0x04030201), {0x01, 0x02, 0x03, 0x04}, "int4_positive"),
+	SerializeParams(int8_signed(0x0807060504030201), {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "int8_positive")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(LengthEncodedInt, FullSerializationTest, ::testing::Values(
-	SerializeParams(int_lenenc(1), {0x01}, "1 byte (regular value)"),
-	SerializeParams(int_lenenc(250), {0xfa}, "1 byte (max value)"),
-	SerializeParams(int_lenenc(0xfeb7), {0xfc, 0xb7, 0xfe}, "2 bytes (regular value)"),
-	SerializeParams(int_lenenc(0xffff), {0xfc, 0xff, 0xff}, "2 bytes (max value)"),
-	SerializeParams(int_lenenc(0xa0feff), {0xfd, 0xff, 0xfe, 0xa0}, "3 bytes (regular value)"),
-	SerializeParams(int_lenenc(0xffffff), {0xfd, 0xff, 0xff, 0xff}, "3 bytes (max value)"),
+	SerializeParams(int_lenenc(1), {0x01}, "1_byte_regular"),
+	SerializeParams(int_lenenc(250), {0xfa}, "1_byte_max"),
+	SerializeParams(int_lenenc(0xfeb7), {0xfc, 0xb7, 0xfe}, "2_bytes_regular"),
+	SerializeParams(int_lenenc(0xffff), {0xfc, 0xff, 0xff}, "2_bytes_max"),
+	SerializeParams(int_lenenc(0xa0feff), {0xfd, 0xff, 0xfe, 0xa0}, "3_bytes_regular"),
+	SerializeParams(int_lenenc(0xffffff), {0xfd, 0xff, 0xff, 0xff}, "3_bytes_max"),
 	SerializeParams(int_lenenc(0xf8f9fafbfcfdfeff),
-			{0xfe, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "8 bytes (regular value)"),
+			{0xfe, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "8_bytes_regular"),
 	SerializeParams(int_lenenc(0xffffffffffffffff),
-			{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, "8 bytes (max value)")
-));
+			{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, "8_bytes_max")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(FixedSizeString, FullSerializationTest, ::testing::Values(
-	SerializeParams(string_fixed<4>({'a', 'b', 'd', 'e'}), {0x61, 0x62, 0x64, 0x65}, "Regular characters"),
-	SerializeParams(string_fixed<3>({'\0', '\1', 'a'}), {0x00, 0x01, 0x61}, "Null characters"),
-	SerializeParams(string_fixed<3>({char(0xc3), char(0xb1), 'a'}), {0xc3, 0xb1, 0x61}, "UTF-8 characters"),
-	SerializeParams(string_fixed<1>({'a'}), {0x61}, "Size 1 string")
-));
+	SerializeParams(string_fixed<4>({'a', 'b', 'd', 'e'}), {0x61, 0x62, 0x64, 0x65}, "4c_regular_characters"),
+	SerializeParams(string_fixed<3>({'\0', '\1', 'a'}), {0x00, 0x01, 0x61}, "3c_null_characters"),
+	SerializeParams(string_fixed<3>({char(0xc3), char(0xb1), 'a'}), {0xc3, 0xb1, 0x61}, "3c_utf8_characters"),
+	SerializeParams(string_fixed<1>({'a'}), {0x61}, "1c_regular_characters")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(NullTerminatedString, FullSerializationTest, ::testing::Values(
-	SerializeParams(string_null("abc"), {0x61, 0x62, 0x63, 0x00}, "Regular characters"),
-	SerializeParams(string_null("\xc3\xb1"), {0xc3, 0xb1, 0x00}, "UTF-8 characters"),
-	SerializeParams(string_null(""), {0x00}, "Empty string")
-));
+	SerializeParams(string_null("abc"), {0x61, 0x62, 0x63, 0x00}, "regular_characters"),
+	SerializeParams(string_null("\xc3\xb1"), {0xc3, 0xb1, 0x00}, "utf8_characters"),
+	SerializeParams(string_null(""), {0x00}, "empty")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(LengthEncodedString, FullSerializationTest, ::testing::Values(
-	SerializeParams(string_lenenc(""), {0x00}, "Empty string"),
-	SerializeParams(string_lenenc("abc"), {0x03, 0x61, 0x62, 0x63}, "1 byte size, regular characters"),
-	SerializeParams(string_lenenc(string_view("a\0b", 3)), {0x03, 0x61, 0x00, 0x62}, "1 byte size, null characters"),
-	SerializeParams(string_lenenc(string_250), concat({250}, vector<uint8_t>(250, 0x61)), "1 byte size, max"),
-	SerializeParams(string_lenenc(string_251), concat({0xfc, 251, 0}, vector<uint8_t>(251, 0x61)), "2 byte size, min"),
-	SerializeParams(string_lenenc(string_ffff), concat({0xfc, 0xff, 0xff}, vector<uint8_t>(0xffff, 0x61)), "2 byte size, max"),
-	SerializeParams(string_lenenc(string_10000), concat({0xfd, 0x00, 0x00, 0x01}, vector<uint8_t>(0x10000, 0x61)), "3 byte size, max")
-));
+	SerializeParams(string_lenenc(""), {0x00}, "empty"),
+	SerializeParams(string_lenenc("abc"), {0x03, 0x61, 0x62, 0x63}, "1_byte_size_regular_characters"),
+	SerializeParams(string_lenenc(string_view("a\0b", 3)), {0x03, 0x61, 0x00, 0x62}, "1_byte_size_null_characters"),
+	SerializeParams(string_lenenc(string_250), concat({250}, vector<uint8_t>(250, 0x61)), "1_byte_size_max"),
+	SerializeParams(string_lenenc(string_251), concat({0xfc, 251, 0}, vector<uint8_t>(251, 0x61)), "2_byte_size_min"),
+	SerializeParams(string_lenenc(string_ffff), concat({0xfc, 0xff, 0xff}, vector<uint8_t>(0xffff, 0x61)), "2_byte_size_max"),
+	SerializeParams(string_lenenc(string_10000), concat({0xfd, 0x00, 0x00, 0x01}, vector<uint8_t>(0x10000, 0x61)), "3_byte_size_min")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(EofString, SerializeDeserializeTest, ::testing::Values(
-	SerializeParams(string_eof("abc"), {0x61, 0x62, 0x63}, "Regular characters"),
-	SerializeParams(string_eof(string_view("a\0b", 3)), {0x61, 0x00, 0x62}, "Null characters"),
-	SerializeParams(string_eof(""), {}, "Empty string")
-));
+	SerializeParams(string_eof("abc"), {0x61, 0x62, 0x63}, "regular_characters"),
+	SerializeParams(string_eof(string_view("a\0b", 3)), {0x61, 0x00, 0x62}, "null_characters"),
+	SerializeParams(string_eof(""), {}, "empty")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
-	SerializeParams(EnumInt1::value1, {0x03}, "low value"),
-	SerializeParams(EnumInt1::value2, {0xff}, "high value"),
-	SerializeParams(EnumInt2::value1, {0x03, 0x00}, "low value"),
-	SerializeParams(EnumInt2::value2, {0xff, 0xfe}, "high value"),
-	SerializeParams(EnumInt4::value1, {0x03, 0x00, 0x00, 0x00}, "low value"),
-	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "high value")
-));
+	SerializeParams(EnumInt1::value1, {0x03}, "int1_low_value"),
+	SerializeParams(EnumInt1::value2, {0xff}, "int1_high_value"),
+	SerializeParams(EnumInt2::value1, {0x03, 0x00}, "int2_low_value"),
+	SerializeParams(EnumInt2::value2, {0xff, 0xfe}, "int2_high_value"),
+	SerializeParams(EnumInt4::value1, {0x03, 0x00, 0x00, 0x00}, "int4_low_value"),
+	SerializeParams(EnumInt4::value2, {0xff, 0xfe, 0xfd, 0xfc}, "int4_high_value")
+), test_name_generator);
 
 // Other binary values
 INSTANTIATE_TEST_SUITE_P(Float, FullSerializationTest, ::testing::Values(
@@ -164,20 +127,20 @@ INSTANTIATE_TEST_SUITE_P(Float, FullSerializationTest, ::testing::Values(
 	SerializeParams(value_holder<float>( 4.2f), {0x66, 0x66, 0x86, 0x40}, "fractional_positive"),
 	SerializeParams(value_holder<float>(3.14e20f), {0x01, 0x2d, 0x88, 0x61}, "positive_exp_positive_fractional"),
 	SerializeParams(value_holder<float>(0.0f), {0x00, 0x00, 0x00, 0x00}, "zero")
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Double, FullSerializationTest, ::testing::Values(
 	SerializeParams(value_holder<double>(-4.2), {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0xc0}, "fractional_negative"),
 	SerializeParams(value_holder<double>( 4.2), {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0x40}, "fractional_positive"),
 	SerializeParams(value_holder<double>(3.14e200), {0xce, 0x46, 0x3c, 0x76, 0x9c, 0x68, 0x90, 0x69}, "positive_exp_positive_fractional"),
 	SerializeParams(value_holder<double>(0.0), {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, "zero")
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Date, FullSerializationTest, ::testing::Values(
 	SerializeParams(makedate(2010, 3, 28), {0x04, 0xda, 0x07, 0x03, 0x1c}, "regular"),
 	SerializeParams(makedate(1000, 1, 1), {0x04, 0xe8, 0x03, 0x01, 0x01}, "min"),
 	SerializeParams(makedate(9999, 12, 31), {0x04, 0x0f, 0x27, 0x0c, 0x1f}, "max")
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Datetime, FullSerializationTest, ::testing::Values(
 	SerializeParams(makedt(2010, 1, 1), {0x04, 0xda, 0x07, 0x01, 0x01}, "only_date"),
@@ -204,7 +167,7 @@ INSTANTIATE_TEST_SUITE_P(Datetime, FullSerializationTest, ::testing::Values(
 	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  0x56, 0xc3, 0x0e, 0x00}, "date_hsu"),
 	SerializeParams(makedt(2010, 1, 1, 23,  1,  59, 967510), {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b,
 			  	  	  	  	  	  	  	  	  	  	  	  	  0x56, 0xc3, 0x0e, 0x00}, "date_hmsu")
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Time, FullSerializationTest, ::testing::Values(
 	SerializeParams(maket(0, 0, 0),              {0x00}, "zero"),
@@ -232,15 +195,15 @@ INSTANTIATE_TEST_SUITE_P(Time, FullSerializationTest, ::testing::Values(
 											      0x00, 0xe8, 0xe5, 0x04, 0x00}, "negative_u"),
 	SerializeParams(-maket(838, 59, 58, 999000), {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b,
 												  0x3a, 0x58, 0x3e, 0x0f, 0x00}, "negative_hmsu")
-));
+), test_name_generator);
 
 // Messages
 INSTANTIATE_TEST_SUITE_P(PacketHeader, FullSerializationTest, ::testing::Values(
-	SerializeParams(packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small packet, seqnum==0"),
-	SerializeParams(packet_header{int3(9), int1(2)}, {0x09, 0x00, 0x00, 0x02}, "small packet, seqnum!=0"),
-	SerializeParams(packet_header{int3(0xcacbcc), int1(0xfa)}, {0xcc, 0xcb, 0xca, 0xfa}, "big packet, seqnum!=0"),
-	SerializeParams(packet_header{int3(0xffffff), int1(0xff)}, {0xff, 0xff, 0xff, 0xff}, "max packet, max seqnum")
-));
+	SerializeParams(packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small_packet_seqnum_0"),
+	SerializeParams(packet_header{int3(9), int1(2)}, {0x09, 0x00, 0x00, 0x02}, "small_packet_seqnum_not_0"),
+	SerializeParams(packet_header{int3(0xcacbcc), int1(0xfa)}, {0xcc, 0xcb, 0xca, 0xfa}, "big_packet_seqnum_0"),
+	SerializeParams(packet_header{int3(0xffffff), int1(0xff)}, {0xff, 0xff, 0xff, 0xff}, "max_packet_max_seqnum")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 	SerializeParams(ok_packet{
@@ -254,7 +217,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 		0x20, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x3a, 0x20, 0x35, 0x20, 0x20, 0x43, 0x68, 0x61,
 		0x6e, 0x67, 0x65, 0x64, 0x3a, 0x20, 0x34, 0x20, 0x20, 0x57, 0x61, 0x72, 0x6e, 0x69, 0x6e, 0x67,
 		0x73, 0x3a, 0x20, 0x30
-	}, "successful UPDATE"),
+	}, "successful_update"),
 
 	SerializeParams(ok_packet{
 		int_lenenc(1), // affected rows
@@ -264,7 +227,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 		string_lenenc("")  // no message
 	},{
 		0x01, 0x06, 0x02, 0x00, 0x00, 0x00
-	}, "successful INSERT"),
+	}, "successful_insert"),
 
 	SerializeParams(ok_packet{
 		int_lenenc(0), // affected rows
@@ -274,8 +237,8 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 		string_lenenc("")  // no message
 	}, {
 		0x00, 0x00, 0x02, 0x00, 0x00, 0x00
-	}, "Successful login")
-));
+	}, "successful_login")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 	SerializeParams(err_packet{
@@ -287,7 +250,7 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 		0x19, 0x04, 0x23, 0x34, 0x32, 0x30, 0x30, 0x30, 0x55, 0x6e, 0x6b,
 		0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
 		0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
-	}, "Wrong USE database"),
+	}, "wrong_use_database"),
 
 	SerializeParams(err_packet{
 		int2(1146), // eror code
@@ -301,7 +264,7 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 		0x6e, 0x6b, 0x6e, 0x6f, 0x77, 0x6e, 0x27, 0x20,
 		0x64, 0x6f, 0x65, 0x73, 0x6e, 0x27, 0x74, 0x20,
 		0x65, 0x78, 0x69, 0x73, 0x74
-	}, "Unknown table"),
+	}, "unknown_table"),
 
 	SerializeParams(err_packet{
 		int2(1045), // error code
@@ -318,8 +281,8 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
 	  0x27, 0x20, 0x28, 0x75, 0x73, 0x69, 0x6e, 0x67,
 	  0x20, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72,
 	  0x64, 0x3a, 0x20, 0x59, 0x45, 0x53, 0x29
-	}, "Failed login")
-));
+	}, "failed_login")
+), test_name_generator);
 
 constexpr std::uint8_t handshake_auth_plugin_data [] = {
 	0x52, 0x1a, 0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f,
@@ -377,8 +340,8 @@ INSTANTIATE_TEST_SUITE_P(Handhsake, DeserializeSpaceTest, ::testing::Values(
 	  0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65,
 	  0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72,
 	  0x64, 0x00
-	})
-));
+	}, "regular")
+), test_name_generator);
 
 constexpr std::uint8_t handshake_response_auth_data [] = {
 	0xfe, 0xc6, 0x2c, 0x9f, 0xab, 0x43, 0x69, 0x46,
@@ -424,7 +387,7 @@ INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 		0x34, 0xc9, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f,
 		0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70,
 		0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
-	}, "without database", handshake_response_caps),
+	}, "without_database", handshake_response_caps),
 
 	SerializeParams(handshake_response_packet{
 		int4(handshake_response_caps | CLIENT_CONNECT_WITH_DB),
@@ -447,8 +410,8 @@ INSTANTIATE_TEST_SUITE_P(HandhsakeResponse, SerializeTest, ::testing::Values(
 		0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f,
 		0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64,
 		0x00
-	}, "with database", handshake_response_caps | CLIENT_CONNECT_WITH_DB)
-));
+	}, "with_database", handshake_response_caps | CLIENT_CONNECT_WITH_DB)
+), test_name_generator);
 
 constexpr std::uint8_t auth_switch_request_auth_data [] = {
 	0x49, 0x49, 0x7e, 0x51, 0x5d, 0x1f, 0x19, 0x6a,
@@ -467,8 +430,8 @@ INSTANTIATE_TEST_SUITE_P(AuthSwitchRequest, DeserializeTest, testing::Values(
 		0x72, 0x64, 0x00, 0x49, 0x49, 0x7e, 0x51, 0x5d,
 		0x1f, 0x19, 0x6a, 0x0f, 0x5a, 0x63, 0x15, 0x3e,
 		0x28, 0x31, 0x3e, 0x3c, 0x79, 0x09, 0x7c, 0x00
-	})
-));
+	}, "regular")
+), test_name_generator);
 
 constexpr std::uint8_t auth_switch_response_auth_data [] = {
 	0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06,
@@ -483,8 +446,8 @@ INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
 		0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06,
 		0x91, 0xff, 0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf,
 		0x88, 0x2d, 0xf9, 0xcf
-	})
-));
+	}, "regular")
+), test_name_generator);
 
 // Column definition
 INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values(
@@ -513,7 +476,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		0x6c, 0x65, 0x02, 0x69, 0x64, 0x02, 0x69, 0x64,
 		0x0c, 0x3f, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x03,
 		0x03, 0x42, 0x00, 0x00, 0x00
-	}, "Numeric, auto-increment primary key"),
+	}, "numeric_auto_increment_primary_key"),
 	SerializeParams(column_definition_packet{
 		string_lenenc("def"), //catalog
 		string_lenenc("awesome"), // schema (database)
@@ -536,7 +499,7 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		0x5f, 0x76, 0x61, 0x72, 0x63, 0x68, 0x61, 0x72,
 		0x0c, 0x21, 0x00, 0xfd, 0x02, 0x00, 0x00, 0xfd,
 		0x00, 0x00, 0x00, 0x00, 0x00
-	}, "Varchar field, aliased field and table names (query with a JOIN)"),
+	}, "varchar_field_aliased_field_and_table_names_join"),
 
 	SerializeParams(column_definition_packet{
 		string_lenenc("def"), //catalog
@@ -560,8 +523,8 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
 		0x69, 0x65, 0x6c, 0x64, 0x5f, 0x66, 0x6c, 0x6f,
 		0x61, 0x74, 0x0c, 0x3f, 0x00, 0x0c, 0x00, 0x00,
 		0x00, 0x04, 0x00, 0x00, 0x1f, 0x00, 0x00
-	}, "Float field")
-));
+	}, "float_field")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(ComQuery, SerializeTest, testing::Values(
 	SerializeParams(com_query_packet{
@@ -569,8 +532,8 @@ INSTANTIATE_TEST_SUITE_P(ComQuery, SerializeTest, testing::Values(
 	}, {
 		0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61,
 		0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73
-	})
-));
+	}, "regular")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(ComStmtPrepare, SerializeTest, testing::Values(
 	SerializeParams(com_stmt_prepare_packet{
@@ -582,8 +545,8 @@ INSTANTIATE_TEST_SUITE_P(ComStmtPrepare, SerializeTest, testing::Values(
 		0x73, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x20,
 		0x57, 0x48, 0x45, 0x52, 0x45, 0x20, 0x69, 0x64,
 		0x20, 0x3d, 0x20, 0x3f
-	})
-));
+	}, "regular")
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(ComStmtPrepareResponse, DeserializeSpaceTest, testing::Values(
 	SerializeParams(com_stmt_prepare_ok_packet{
@@ -594,8 +557,8 @@ INSTANTIATE_TEST_SUITE_P(ComStmtPrepareResponse, DeserializeSpaceTest, testing::
 	}, {
 		0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00,
 		0x00, 0x00, 0x00
-	})
-));
+	}, "regular")
+), test_name_generator);
 
 // Helper for composing ComStmtExecute tests
 SerializeParams make_stmt_execute_test(
@@ -744,11 +707,11 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
 		},
 		"several_params"
 	)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(ComStmtClose, SerializeTest, testing::Values(
-	SerializeParams(com_stmt_close_packet{int4(1)}, {0x19, 0x01, 0x00, 0x00, 0x00})
-));
+	SerializeParams(com_stmt_close_packet{int4(1)}, {0x19, 0x01, 0x00, 0x00, 0x00}, "regular")
+), test_name_generator);
 
 
 } // anon namespace

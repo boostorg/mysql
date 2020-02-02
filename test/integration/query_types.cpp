@@ -105,7 +105,7 @@ INSTANTIATE_TEST_SUITE_P(TINYINT, QueryTypesTest, Values(
 
 	QueryTypesParams("types_tinyint", "field_zerofill", "regular", std::uint32_t(20), field_type::tinyint, flags_zerofill),
 	QueryTypesParams("types_tinyint", "field_zerofill", "min", std::uint32_t(0), field_type::tinyint, flags_zerofill)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(SMALLINT, QueryTypesTest, Values(
 	QueryTypesParams("types_smallint", "field_signed", "regular", std::int32_t(20), field_type::smallint),
@@ -122,7 +122,7 @@ INSTANTIATE_TEST_SUITE_P(SMALLINT, QueryTypesTest, Values(
 
 	QueryTypesParams("types_smallint", "field_zerofill", "regular", std::uint32_t(20), field_type::smallint, flags_zerofill),
 	QueryTypesParams("types_smallint", "field_zerofill", "min", std::uint32_t(0), field_type::smallint, flags_zerofill)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(MEDIUMINT, QueryTypesTest, Values(
 	QueryTypesParams("types_mediumint", "field_signed", "regular", std::int32_t(20), field_type::mediumint),
@@ -139,7 +139,7 @@ INSTANTIATE_TEST_SUITE_P(MEDIUMINT, QueryTypesTest, Values(
 
 	QueryTypesParams("types_mediumint", "field_zerofill", "regular", std::uint32_t(20), field_type::mediumint, flags_zerofill),
 	QueryTypesParams("types_mediumint", "field_zerofill", "min", std::uint32_t(0), field_type::mediumint, flags_zerofill)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(INT, QueryTypesTest, Values(
 	QueryTypesParams("types_int", "field_signed", "regular", std::int32_t(20), field_type::int_),
@@ -156,7 +156,7 @@ INSTANTIATE_TEST_SUITE_P(INT, QueryTypesTest, Values(
 
 	QueryTypesParams("types_int", "field_zerofill", "regular", std::uint32_t(20), field_type::int_, flags_zerofill),
 	QueryTypesParams("types_int", "field_zerofill", "min", std::uint32_t(0), field_type::int_, flags_zerofill)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BIGINT, QueryTypesTest, Values(
 	QueryTypesParams("types_bigint", "field_signed", "regular", std::int64_t(20), field_type::bigint),
@@ -173,7 +173,7 @@ INSTANTIATE_TEST_SUITE_P(BIGINT, QueryTypesTest, Values(
 
 	QueryTypesParams("types_bigint", "field_zerofill", "regular", std::uint64_t(20), field_type::bigint, flags_zerofill),
 	QueryTypesParams("types_bigint", "field_zerofill", "min", std::uint64_t(0), field_type::bigint, flags_zerofill)
-));
+), test_name_generator);
 
 // Floating point
 INSTANTIATE_TEST_SUITE_P(FLOAT, QueryTypesTest, Values(
@@ -199,7 +199,7 @@ INSTANTIATE_TEST_SUITE_P(FLOAT, QueryTypesTest, Values(
 	QueryTypesParams("types_float", "field_zerofill", "fractional_positive", 4.2f, field_type::float_, flags_zerofill, 31),
 	QueryTypesParams("types_float", "field_zerofill", "positive_exp_positive_fractional", 3.14e20f, field_type::float_, flags_zerofill, 31),
 	QueryTypesParams("types_float", "field_zerofill", "negative_exp_positive_fractional", 3.14e-20f, field_type::float_, flags_zerofill, 31)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(DOUBLE, QueryTypesTest, Values(
 	QueryTypesParams("types_double", "field_signed", "zero", 0.0, field_type::double_, no_flags, 31),
@@ -224,7 +224,7 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, QueryTypesTest, Values(
 	QueryTypesParams("types_double", "field_zerofill", "fractional_positive", 4.2, field_type::double_, flags_zerofill, 31),
 	QueryTypesParams("types_double", "field_zerofill", "positive_exp_positive_fractional", 3.14e200, field_type::double_, flags_zerofill, 31),
 	QueryTypesParams("types_double", "field_zerofill", "negative_exp_positive_fractional", 3.14e-200, field_type::double_, flags_zerofill, 31)
-));
+), test_name_generator);
 
 // Dates and times
 INSTANTIATE_TEST_SUITE_P(DATE, QueryTypesTest, Values(
@@ -232,7 +232,7 @@ INSTANTIATE_TEST_SUITE_P(DATE, QueryTypesTest, Values(
 	QueryTypesParams("types_date", "field_date", "leap", 1788_y/2/29_d, field_type::date),
 	QueryTypesParams("types_date", "field_date", "min", 1000_y/1/1_d, field_type::date),
 	QueryTypesParams("types_date", "field_date", "max", 9999_y/12/31_d, field_type::date)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(DATETIME, QueryTypesTest, Values(
 	QueryTypesParams("types_datetime", "field_0", "date", makedt(2010, 5, 2), field_type::datetime),
@@ -289,8 +289,7 @@ INSTANTIATE_TEST_SUITE_P(DATETIME, QueryTypesTest, Values(
 	QueryTypesParams("types_datetime", "field_4", "max", makedt(9999, 12, 31, 23, 59, 59, 999900), field_type::datetime, no_flags, 4),
 	QueryTypesParams("types_datetime", "field_5", "max", makedt(9999, 12, 31, 23, 59, 59, 999990), field_type::datetime, no_flags, 5),
 	QueryTypesParams("types_datetime", "field_6", "max", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, no_flags, 6)
-
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(TIMESTAMP, QueryTypesTest, Values(
 	QueryTypesParams("types_timestamp", "field_0", "date", makedt(2010, 5, 2), field_type::timestamp),
@@ -331,7 +330,7 @@ INSTANTIATE_TEST_SUITE_P(TIMESTAMP, QueryTypesTest, Values(
 	QueryTypesParams("types_timestamp", "field_4", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123400), field_type::timestamp, no_flags, 4),
 	QueryTypesParams("types_timestamp", "field_5", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123450), field_type::timestamp, no_flags, 5),
 	QueryTypesParams("types_timestamp", "field_6", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123456), field_type::timestamp, no_flags, 6)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(TIME, QueryTypesTest, Values(
 	QueryTypesParams("types_time", "field_0", "h", maket(1, 0, 0), field_type::time),
@@ -404,14 +403,14 @@ INSTANTIATE_TEST_SUITE_P(TIME, QueryTypesTest, Values(
 	QueryTypesParams("types_time", "field_4", "zero", maket(0, 0, 0), field_type::time, no_flags, 4),
 	QueryTypesParams("types_time", "field_5", "zero", maket(0, 0, 0), field_type::time, no_flags, 5),
 	QueryTypesParams("types_time", "field_6", "zero", maket(0, 0, 0), field_type::time, no_flags, 6)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(YEAR, QueryTypesTest, Values(
 	QueryTypesParams("types_year", "field_default", "regular", std::uint32_t(2019), field_type::year, flags_zerofill),
 	QueryTypesParams("types_year", "field_default", "min", std::uint32_t(1901), field_type::year, flags_zerofill),
 	QueryTypesParams("types_year", "field_default", "max", std::uint32_t(2155), field_type::year, flags_zerofill),
 	QueryTypesParams("types_year", "field_default", "zero", std::uint32_t(0), field_type::year, flags_zerofill)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
 	QueryTypesParams("types_string", "field_char", "regular", "test_char", field_type::char_),
@@ -442,7 +441,7 @@ INSTANTIATE_TEST_SUITE_P(STRING, QueryTypesTest, Values(
 
 	QueryTypesParams("types_string", "field_set", "regular", "red,green", field_type::set),
 	QueryTypesParams("types_string", "field_set", "empty", "", field_type::set)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BINARY, QueryTypesTest, Values(
 	// BINARY values get padded with zeros to the declared length
@@ -469,7 +468,7 @@ INSTANTIATE_TEST_SUITE_P(BINARY, QueryTypesTest, Values(
 	QueryTypesParams("types_binary", "field_longblob", "regular", makesv("\0_longblob"), field_type::blob),
 	QueryTypesParams("types_binary", "field_longblob", "nonascii", makesv("\5\xfa"), field_type::blob),
 	QueryTypesParams("types_binary", "field_longblob", "empty", "", field_type::blob)
-));
+), test_name_generator);
 
 // These types do not have a more concrete representation in the library yet.
 // Check we get them as strings and we get the metadata correctly
@@ -484,7 +483,7 @@ INSTANTIATE_TEST_SUITE_P(NOT_IMPLEMENTED_TYPES, QueryTypesTest, Values(
 	QueryTypesParams("types_not_implemented", "field_bit", "regular", "\xfe", field_type::bit, flags_unsigned),
 	QueryTypesParams("types_not_implemented", "field_decimal", "regular", "300", field_type::decimal),
 	QueryTypesParams("types_not_implemented", "field_geometry", "regular", makesv(geometry_value), field_type::geometry)
-));
+), test_name_generator);
 
 // Tests for certain metadata flags and NULL values
 INSTANTIATE_TEST_SUITE_P(METADATA_FLAGS, QueryTypesTest, Values(
@@ -499,7 +498,7 @@ INSTANTIATE_TEST_SUITE_P(METADATA_FLAGS, QueryTypesTest, Values(
 					 flagsvec{&field_metadata::is_unique_key}),
 	QueryTypesParams("types_flags", "field_indexed", "default", std::int32_t(42), field_type::int_,
 					 flagsvec{&field_metadata::is_multiple_key})
-));
+), test_name_generator);
 
 
 } // anon namespace

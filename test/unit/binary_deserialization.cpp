@@ -38,7 +38,7 @@ std::vector<mysql::field_metadata> make_meta(
 }
 
 // for deserialize_binary_value
-struct BinaryValueParam
+struct BinaryValueParam : named_param
 {
 	std::string name;
 	std::vector<std::uint8_t> from;
@@ -63,11 +63,7 @@ struct BinaryValueParam
 	}
 };
 
-std::ostream& operator<<(std::ostream& os, const BinaryValueParam& value) { return os << value.name; }
-
-struct DeserializeBinaryValueTest : public TestWithParam<BinaryValueParam>
-{
-};
+struct DeserializeBinaryValueTest : public TestWithParam<BinaryValueParam> {};
 
 TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
@@ -100,7 +96,7 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeBinaryValueTest, Values(
 	BinaryValueParam("bit", {0x02, 0x02, 0x01}, "\2\1", protocol_field_type::bit),
 	BinaryValueParam("decimal", {0x02, 0x31, 0x30}, "10", protocol_field_type::newdecimal),
 	BinaryValueParam("geomtry", {0x04, 0x74, 0x65, 0x73, 0x74}, "test", protocol_field_type::geometry)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(IntTypes, DeserializeBinaryValueTest, Values(
 	BinaryValueParam("tinyint_unsigned", {0x14}, std::uint32_t(20),
@@ -123,12 +119,12 @@ INSTANTIATE_TEST_SUITE_P(IntTypes, DeserializeBinaryValueTest, Values(
 			protocol_field_type::longlong, column_flags::unsigned_),
 	BinaryValueParam("bigint_signed", {0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, std::int64_t(-20),
 			protocol_field_type::longlong)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(FloatingPointTypes, DeserializeBinaryValueTest, Values(
 	BinaryValueParam("float", {0x66, 0x66, 0x86, 0xc0}, -4.2f, protocol_field_type::float_),
 	BinaryValueParam("double", {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0xc0}, -4.2, protocol_field_type::double_)
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(TimeTypes, DeserializeBinaryValueTest, Values(
 	BinaryValueParam("date", {0x04, 0xda, 0x07, 0x03, 0x1c}, makedate(2010, 3, 28), protocol_field_type::date),
@@ -139,10 +135,10 @@ INSTANTIATE_TEST_SUITE_P(TimeTypes, DeserializeBinaryValueTest, Values(
 	BinaryValueParam("time", {  0x0c, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x02, 0x03, 0xa0, 0x86, 0x01, 0x00},
 			maket(120, 2, 3, 100000), protocol_field_type::time),
 	BinaryValueParam("year", {0xe3, 0x07}, std::uint32_t(2019), protocol_field_type::year, column_flags::unsigned_)
-));
+), test_name_generator);
 
 // for deserialize_binary_row
-struct BinaryRowParam
+struct BinaryRowParam : named_param
 {
 	std::string name;
 	std::vector<std::uint8_t> from;
@@ -164,11 +160,7 @@ struct BinaryRowParam
 	}
 };
 
-std::ostream& operator<<(std::ostream& os, const BinaryRowParam& value) { return os << value.name; }
-
-struct DeserializeBinaryRowTest : public TestWithParam<BinaryRowParam>
-{
-};
+struct DeserializeBinaryRowTest : public TestWithParam<BinaryRowParam> {};
 
 TEST_P(DeserializeBinaryRowTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
@@ -220,10 +212,10 @@ INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowTest, testing::Values(
 			protocol_field_type::double_
 		}
 	)
-));
+), test_name_generator);
 
 // Error cases for deserialize_binary_row
-struct BinaryRowErrorParam : named_test
+struct BinaryRowErrorParam : named_param
 {
 	std::string name;
 	std::vector<std::uint8_t> from;
@@ -244,9 +236,7 @@ struct BinaryRowErrorParam : named_test
 	}
 };
 
-struct DeserializeBinaryRowErrorTest : public TestWithParam<BinaryRowErrorParam>
-{
-};
+struct DeserializeBinaryRowErrorTest : public TestWithParam<BinaryRowErrorParam> {};
 
 TEST_P(DeserializeBinaryRowErrorTest, ErrorCondition_ReturnsErrorCode)
 {

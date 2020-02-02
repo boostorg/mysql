@@ -2,10 +2,12 @@
 #include <gtest/gtest.h>
 #include <array>
 #include "mysql/impl/null_bitmap_traits.hpp"
+#include "test_common.hpp"
 
 using mysql::detail::null_bitmap_traits;
 using mysql::detail::stmt_execute_null_bitmap_offset;
 using mysql::detail::binary_row_null_bitmap_offset;
+using namespace mysql::test;
 
 namespace
 {
@@ -19,7 +21,7 @@ struct ByteCountParams
 };
 std::ostream& operator<<(std::ostream& os, const ByteCountParams& v)
 {
-	return os << "(offset=" << v.offset << ", num_fields=" << v.num_fields << ")";
+	return os << "offset=" << v.offset << ",num_fields=" << v.num_fields;
 }
 
 struct NullBitmapTraitsByteCountTest : testing::TestWithParam<ByteCountParams> {};
@@ -49,7 +51,7 @@ INSTANTIATE_TEST_SUITE_P(StmtExecuteOffset, NullBitmapTraitsByteCountTest, testi
 	ByteCountParams{stmt_execute_null_bitmap_offset, 15, 2},
 	ByteCountParams{stmt_execute_null_bitmap_offset, 16, 2},
 	ByteCountParams{stmt_execute_null_bitmap_offset, 17, 3}
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsByteCountTest, testing::Values(
 	ByteCountParams{binary_row_null_bitmap_offset, 0, 1},
@@ -70,7 +72,7 @@ INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsByteCountTest, testing
 	ByteCountParams{binary_row_null_bitmap_offset, 15, 3},
 	ByteCountParams{binary_row_null_bitmap_offset, 16, 3},
 	ByteCountParams{binary_row_null_bitmap_offset, 17, 3}
-));
+), test_name_generator);
 
 // is_null
 struct IsNullParams
@@ -81,7 +83,7 @@ struct IsNullParams
 };
 std::ostream& operator<<(std::ostream& os, const IsNullParams& v)
 {
-	return os << "(offset=" << v.offset << ", pos=" << v.pos << ")";
+	return os << "offset=" << v.offset << ",pos=" << v.pos;
 }
 struct NullBitmapTraitsIsNullTest : testing::TestWithParam<IsNullParams> {};
 
@@ -111,7 +113,7 @@ INSTANTIATE_TEST_SUITE_P(StmtExecuteOffset, NullBitmapTraitsIsNullTest, testing:
 	IsNullParams{stmt_execute_null_bitmap_offset, 14, true},
 	IsNullParams{stmt_execute_null_bitmap_offset, 15, true},
 	IsNullParams{stmt_execute_null_bitmap_offset, 16, false}
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsIsNullTest, testing::Values(
 	IsNullParams{binary_row_null_bitmap_offset, 0, true},
@@ -131,7 +133,7 @@ INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsIsNullTest, testing::V
 	IsNullParams{binary_row_null_bitmap_offset, 14, false},
 	IsNullParams{binary_row_null_bitmap_offset, 15, false},
 	IsNullParams{binary_row_null_bitmap_offset, 16, false}
-));
+), test_name_generator);
 
 TEST(NullBitmapTraits, IsNull_OneFieldStmtExecuteFirstBitZero_ReturnsFalse)
 {
@@ -173,7 +175,7 @@ struct SetNullParams
 };
 std::ostream& operator<<(std::ostream& os, const SetNullParams& v)
 {
-	return os << "(offset=" << v.offset << ", pos=" << v.pos << ")";
+	return os << "offset=" << v.offset << ",pos=" << v.pos;
 }
 struct NullBitmapTraitsSetNullTest : testing::TestWithParam<SetNullParams> {};
 
@@ -205,7 +207,7 @@ INSTANTIATE_TEST_SUITE_P(StmtExecuteOffset, NullBitmapTraitsSetNullTest, testing
 	SetNullParams(stmt_execute_null_bitmap_offset, 14, {0, 0b01000000, 0}),
 	SetNullParams(stmt_execute_null_bitmap_offset, 15, {0, 0b10000000, 0}),
 	SetNullParams(stmt_execute_null_bitmap_offset, 16, {0, 0, 0b00000001})
-));
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsSetNullTest, testing::Values(
 	SetNullParams(binary_row_null_bitmap_offset, 0, {0b00000100, 0, 0}),
@@ -225,7 +227,7 @@ INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsSetNullTest, testing::
 	SetNullParams(binary_row_null_bitmap_offset, 14, {0, 0, 0b00000001}),
 	SetNullParams(binary_row_null_bitmap_offset, 15, {0, 0, 0b00000010}),
 	SetNullParams(binary_row_null_bitmap_offset, 16, {0, 0, 0b00000100})
-));
+), test_name_generator);
 
 TEST(NullBitmapTraits, SetNull_OneFieldStmtExecute_SetsFirstBitToZero)
 {
