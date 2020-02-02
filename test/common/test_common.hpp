@@ -4,9 +4,12 @@
 #include "mysql/value.hpp"
 #include "mysql/row.hpp"
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <type_traits>
+#include <ostream>
 
 namespace mysql
 {
@@ -114,6 +117,15 @@ inline void compare_buffers(std::string_view s0, std::string_view s1, const char
 {
 	EXPECT_EQ(s0, s1) << msg << ":\n" << buffer_diff(s0, s1);
 }
+
+struct named_test {};
+
+template <typename T, typename=std::enable_if_t<std::is_base_of_v<named_test, T>>>
+std::ostream& operator<<(std::ostream& os, const T& v) { return os << v.name; }
+
+constexpr auto test_name_generator = [](const auto& param_info) {
+	return param_info.param.name;
+};
 
 }
 }

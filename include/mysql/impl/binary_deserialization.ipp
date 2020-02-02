@@ -130,6 +130,7 @@ inline mysql::error_code mysql::detail::deserialize_binary_row(
 	// Null bitmap
 	null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
 	const std::uint8_t* null_bitmap_begin = ctx.first();
+	if (!ctx.enough_size(null_bitmap.byte_count())) return make_error_code(Error::incomplete_message);
 	ctx.advance(null_bitmap.byte_count());
 
 	// Actual values

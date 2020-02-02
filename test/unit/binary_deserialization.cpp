@@ -23,6 +23,20 @@ namespace
 
 using mysql::operator<<;
 
+std::vector<mysql::field_metadata> make_meta(
+	const std::vector<protocol_field_type>& types
+)
+{
+	std::vector<mysql::field_metadata> res;
+	for (const auto type: types)
+	{
+		column_definition_packet coldef;
+		coldef.type = type;
+		res.emplace_back(coldef);
+	}
+	return res;
+}
+
 // for deserialize_binary_value
 struct BinaryValueParam
 {
@@ -158,16 +172,7 @@ struct DeserializeBinaryRowTest : public TestWithParam<BinaryRowParam>
 
 TEST_P(DeserializeBinaryRowTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
-	// Meta
-	std::vector<mysql::field_metadata> meta;
-	for (const auto type: GetParam().types)
-	{
-		column_definition_packet coldef;
-		coldef.type = type;
-		meta.emplace_back(coldef);
-	}
-
-	// Context
+	auto meta = make_meta(GetParam().types);
 	const auto& buffer = GetParam().from;
 	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 
@@ -216,6 +221,55 @@ INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowTest, testing::Values(
 		}
 	)
 ));
+
+// Error cases for deserialize_binary_row
+struct BinaryRowErrorParam : named_test
+{
+	std::string name;
+	std::vector<std::uint8_t> from;
+	Error expected;
+	std::vector<protocol_field_type> types;
+
+	BinaryRowErrorParam(
+		std::string name,
+		std::vector<std::uint8_t> from,
+		Error expected,
+		std::vector<protocol_field_type> types
+	):
+		name(std::move(name)),
+		from(std::move(from)),
+		expected(expected),
+		types(std::move(types))
+	{
+	}
+};
+
+struct DeserializeBinaryRowErrorTest : public TestWithParam<BinaryRowErrorParam>
+{
+};
+
+TEST_P(DeserializeBinaryRowErrorTest, ErrorCondition_ReturnsErrorCode)
+{
+	auto meta = make_meta(GetParam().types);
+	const auto& buffer = GetParam().from;
+	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+
+	std::vector<value> actual;
+	auto err = deserialize_binary_row(ctx, meta, actual);
+	EXPECT_EQ(err, make_error_code(GetParam().expected));
+}
+
+INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowErrorTest, testing::Values(
+	BinaryRowErrorParam("no_space_null_bitmap_1", {}, Error::incomplete_message, {protocol_field_type::tiny}),
+	BinaryRowErrorParam("no_space_null_bitmap_2", {0xfc}, Error::incomplete_message,
+			std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
+	BinaryRowErrorParam("no_space_value_single", {0x00}, Error::incomplete_message, {protocol_field_type::tiny}),
+	BinaryRowErrorParam("no_space_value_last", {0x00, 0x01}, Error::incomplete_message,
+			std::vector<protocol_field_type>(2, protocol_field_type::tiny)),
+	BinaryRowErrorParam("no_space_value_middle", {0x00, 0x01}, Error::incomplete_message,
+			std::vector<protocol_field_type>(3, protocol_field_type::tiny)),
+	BinaryRowErrorParam("extra_bytes", {0x00, 0x01, 0x02}, Error::extra_bytes, {protocol_field_type::tiny})
+), test_name_generator);
 
 
 } // anon namespace
