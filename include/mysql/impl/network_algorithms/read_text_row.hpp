@@ -14,7 +14,7 @@ namespace detail
 {
 
 template <typename StreamType>
-fetch_result fetch_text_row(
+read_row_result read_text_row(
 	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
@@ -25,8 +25,8 @@ fetch_result fetch_text_row(
 );
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, fetch_result))
-async_fetch_text_row(
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, read_row_result))
+async_read_text_row(
 	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,

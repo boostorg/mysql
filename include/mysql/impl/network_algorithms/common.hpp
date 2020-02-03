@@ -3,15 +3,16 @@
 
 #include <boost/asio/coroutine.hpp>
 #include <boost/beast/core/async_base.hpp>
-#include "mysql/impl/error.hpp"
+#include "mysql/error.hpp"
 #include "mysql/impl/channel.hpp"
+#include "mysql/impl/messages.hpp"
 
 namespace mysql
 {
 namespace detail
 {
 
-enum class fetch_result
+enum class read_row_result
 {
 	error,
 	row,

@@ -9,7 +9,7 @@ namespace mysql
 namespace detail
 {
 
-inline fetch_result process_fetch_message(
+inline read_row_result process_fetch_message(
 	capabilities current_capabilities,
 	const std::vector<field_metadata>& meta,
 	const bytestring& buffer,
@@ -23,27 +23,27 @@ inline fetch_result process_fetch_message(
 	std::uint8_t msg_type;
 	DeserializationContext ctx (boost::asio::buffer(buffer), current_capabilities);
 	std::tie(err, msg_type) = deserialize_message_type(ctx);
-	if (err) return fetch_result::error;
+	if (err) return read_row_result::error;
 	if (msg_type == eof_packet_header)
 	{
 		// end of resultset
 		err = deserialize_message(output_ok_packet, ctx);
-		if (err) return fetch_result::error;
-		return fetch_result::eof;
+		if (err) return read_row_result::error;
+		return read_row_result::eof;
 	}
 	else if (msg_type == error_packet_header)
 	{
 		// An error occurred during the generation of the rows
 		err = process_error_packet(ctx, info);
-		return fetch_result::error;
+		return read_row_result::error;
 	}
 	else
 	{
 		// An actual row
 		ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
 		err = deserialize_text_row(ctx, meta, output_values);
-		if (err) return fetch_result::error;
-		return fetch_result::row;
+		if (err) return read_row_result::error;
+		return read_row_result::row;
 	}
 }
 
@@ -53,7 +53,7 @@ inline fetch_result process_fetch_message(
 
 
 template <typename StreamType>
-mysql::detail::fetch_result mysql::detail::fetch_text_row(
+mysql::detail::read_row_result mysql::detail::read_text_row(
 	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
@@ -65,7 +65,7 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 {
 	// Read a packet
 	channel.read(buffer, err);
-	if (err) return fetch_result::error;
+	if (err) return read_row_result::error;
 
 	return process_fetch_message(
 		channel.current_capabilities(),
@@ -82,9 +82,9 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::detail::fetch_result)
+	void(mysql::error_code, mysql::error_info, mysql::detail::read_row_result)
 )
-mysql::detail::async_fetch_text_row(
+mysql::detail::async_read_text_row(
 	channel<StreamType>& chan,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
@@ -93,7 +93,7 @@ mysql::detail::async_fetch_text_row(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(mysql::error_code, mysql::detail::fetch_result);
+	using HandlerSignature = void(mysql::error_code, mysql::detail::read_row_result);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
@@ -148,7 +148,7 @@ mysql::detail::async_fetch_text_row(
 				yield channel_.async_read(buffer_, std::move(*this));
 				if (err)
 				{
-					this->complete(cont, err, error_info(), fetch_result::error);
+					this->complete(cont, err, error_info(), read_row_result::error);
 					yield break;
 				}
 				process_result(cont);

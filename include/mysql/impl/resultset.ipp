@@ -22,7 +22,7 @@ const mysql::row* mysql::resultset<StreamType>::fetch_one(
 	{
 		return nullptr;
 	}
-	auto result = detail::fetch_text_row(
+	auto result = detail::read_text_row(
 		*channel_,
 		meta_.fields(),
 		buffer_,
@@ -31,8 +31,8 @@ const mysql::row* mysql::resultset<StreamType>::fetch_one(
 		err,
 		info
 	);
-	eof_received_ = result == detail::fetch_result::eof;
-	return result == detail::fetch_result::row ? &current_row_ : nullptr;
+	eof_received_ = result == detail::read_row_result::eof;
+	return result == detail::read_row_result::row ? &current_row_ : nullptr;
 }
 
 template <typename StreamType>
@@ -66,7 +66,7 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 			detail::bytestring buff;
 			std::vector<value> values;
 
-			auto result = detail::fetch_text_row(
+			auto result = detail::read_text_row(
 				*channel_,
 				meta_.fields(),
 				buff,
@@ -75,8 +75,8 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 				err,
 				info
 			);
-			eof_received_ = result == detail::fetch_result::eof;
-			if (result == detail::fetch_result::row)
+			eof_received_ = result == detail::read_row_result::eof;
+			if (result == detail::read_row_result::row)
 			{
 				res.emplace_back(std::move(values), std::move(buff));
 			}
@@ -145,7 +145,7 @@ mysql::resultset<StreamType>::async_fetch_one(
 		void operator()(
 			error_code err,
 			error_info info,
-			detail::fetch_result result,
+			detail::read_row_result result,
 			bool cont=true
 		)
 		{
@@ -157,7 +157,7 @@ mysql::resultset<StreamType>::async_fetch_one(
 				}
 				else
 				{
-					yield detail::async_fetch_text_row(
+					yield detail::async_read_text_row(
 						*resultset_.channel_,
 						resultset_.meta_.fields(),
 						resultset_.buffer_,
@@ -165,12 +165,12 @@ mysql::resultset<StreamType>::async_fetch_one(
 						resultset_.ok_packet_,
 						std::move(*this)
 					);
-					resultset_.eof_received_ = result == detail::fetch_result::eof;
+					resultset_.eof_received_ = result == detail::read_row_result::eof;
 					this->complete(
 						cont,
 						err,
 						std::move(info),
-						result == detail::fetch_result::row ? &resultset_.current_row_ : nullptr
+						result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
 					);
 				}
 			}
@@ -184,7 +184,7 @@ mysql::resultset<StreamType>::async_fetch_one(
 	Op(
 		std::move(initiator.completion_handler),
 		*this
-	)(error_code(), error_info(), detail::fetch_result::error, false);
+	)(error_code(), error_info(), detail::read_row_result::error, false);
 	return initiator.result.get();
 }
 
@@ -239,7 +239,7 @@ mysql::resultset<StreamType>::async_fetch_many(
 		void operator()(
 			error_code err,
 			error_info info,
-			detail::fetch_result result,
+			detail::read_row_result result,
 			bool cont=true
 		)
 		{
@@ -247,7 +247,7 @@ mysql::resultset<StreamType>::async_fetch_many(
 			{
 				while (!impl_->parent_resultset.complete() && impl_->remaining > 0)
 				{
-					yield detail::async_fetch_text_row(
+					yield detail::async_read_text_row(
 						*impl_->parent_resultset.channel_,
 						impl_->parent_resultset.meta_.fields(),
 						impl_->buffer,
@@ -255,12 +255,12 @@ mysql::resultset<StreamType>::async_fetch_many(
 						impl_->parent_resultset.ok_packet_,
 						std::move(*this)
 					);
-					if (result == detail::fetch_result::error)
+					if (result == detail::read_row_result::error)
 					{
 						this->complete(cont, err, std::move(info), std::move(impl_->rows));
 						yield break;
 					}
-					else if (result == detail::fetch_result::eof)
+					else if (result == detail::read_row_result::eof)
 					{
 						impl_->parent_resultset.eof_received_ = true;
 					}
@@ -281,7 +281,7 @@ mysql::resultset<StreamType>::async_fetch_many(
 	Op(
 		std::move(initiator.completion_handler),
 		std::make_shared<OpImpl>(*this, count)
-	)(error_code(), error_info(), detail::fetch_result::error, false);
+	)(error_code(), error_info(), detail::read_row_result::error, false);
 	return initiator.result.get();
 }
 
