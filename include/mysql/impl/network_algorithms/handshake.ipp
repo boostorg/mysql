@@ -3,10 +3,8 @@
 
 #include "mysql/impl/capabilities.hpp"
 #include "mysql/impl/auth.hpp"
-#include "mysql/error.hpp"
-#include <boost/asio/coroutine.hpp>
-#include <boost/beast/core/async_base.hpp>
 #include "mysql/impl/serialization.hpp"
+#include "mysql/impl/network_algorithms/common.hpp"
 #include <boost/asio/yield.hpp>
 
 namespace mysql
@@ -226,9 +224,9 @@ public:
 } // mysql
 
 
-template <typename ChannelType>
+template <typename StreamType>
 void mysql::detail::hanshake(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	const handshake_params& params,
 	bytestring& buffer,
 	error_code& err,
@@ -281,10 +279,10 @@ void mysql::detail::hanshake(
 	channel.set_current_capabilities(processor.negotiated_capabilities());
 }
 
-template <typename ChannelType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::error_info))
 mysql::detail::async_handshake(
-	ChannelType& channel,
+	channel<StreamType>& chan,
 	const handshake_params& params,
 	bytestring& buffer,
 	CompletionToken&& token
@@ -292,21 +290,20 @@ mysql::detail::async_handshake(
 {
 	using HandlerSignature = void(error_code, error_info);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-	using StreamType = typename ChannelType::stream_type;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
 	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
-		ChannelType& channel_;
+		channel<StreamType>& channel_;
 		bytestring& buffer_;
 		handshake_processor processor_;
 		error_info info_;
 
 		Op(
 			HandlerType&& handler,
-			ChannelType& channel,
+			channel<StreamType>& channel,
 			bytestring& buffer,
 			const handshake_params& params
 		):
@@ -403,7 +400,7 @@ mysql::detail::async_handshake(
 
 	Op(
 		std::move(initiator.completion_handler),
-		channel,
+		chan,
 		buffer,
 		params
 	)(error_code(), false);

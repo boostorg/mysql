@@ -4,7 +4,7 @@
 #include "mysql/impl/network_algorithms/common.hpp"
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/impl/messages.hpp"
-#include "mysql/error.hpp"
+#include "mysql/metadata.hpp"
 #include <string_view>
 #include <vector>
 
@@ -13,9 +13,9 @@ namespace mysql
 namespace detail
 {
 
-template <typename ChannelType>
+template <typename StreamType>
 fetch_result fetch_text_row(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
@@ -24,10 +24,10 @@ fetch_result fetch_text_row(
 	error_info& info
 );
 
-template <typename ChannelType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, fetch_result))
 async_fetch_text_row(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,

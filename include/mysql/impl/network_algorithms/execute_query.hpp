@@ -2,7 +2,7 @@
 #define INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_EXECUTE_QUERY_HPP_
 
 #include "mysql/impl/network_algorithms/common.hpp"
-#include "mysql/error.hpp"
+#include "mysql/resultset.hpp"
 #include <string_view>
 
 namespace mysql
@@ -10,19 +10,19 @@ namespace mysql
 namespace detail
 {
 
-template <typename ChannelType>
+template <typename StreamType>
 void execute_query(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	std::string_view query,
-	channel_resultset_type<ChannelType>& output,
+	resultset<StreamType>& output,
 	error_code& err,
 	error_info& info
 );
 
-template <typename ChannelType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, channel_resultset_type<ChannelType>))
+template <typename StreamType, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<StreamType>))
 async_execute_query(
-	ChannelType& channel,
+	channel<StreamType>& chan,
 	std::string_view query,
 	CompletionToken&& token
 );

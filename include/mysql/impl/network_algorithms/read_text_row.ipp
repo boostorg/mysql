@@ -52,9 +52,9 @@ inline fetch_result process_fetch_message(
 
 
 
-template <typename ChannelType>
+template <typename StreamType>
 mysql::detail::fetch_result mysql::detail::fetch_text_row(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
@@ -79,13 +79,13 @@ mysql::detail::fetch_result mysql::detail::fetch_text_row(
 }
 
 
-template <typename ChannelType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	void(mysql::error_code, mysql::error_info, mysql::detail::fetch_result)
 )
 mysql::detail::async_fetch_text_row(
-	ChannelType& channel,
+	channel<StreamType>& chan,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
 	std::vector<value>& output_values,
@@ -95,12 +95,11 @@ mysql::detail::async_fetch_text_row(
 {
 	using HandlerSignature = void(mysql::error_code, mysql::detail::fetch_result);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-	using StreamType = channel_stream_type<ChannelType>;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
-		ChannelType& channel_;
+		channel<StreamType>& channel_;
 		const std::vector<field_metadata>& meta_;
 		bytestring& buffer_;
 		std::vector<value>& output_values_;
@@ -108,7 +107,7 @@ mysql::detail::async_fetch_text_row(
 
 		Op(
 			HandlerType&& handler,
-			ChannelType& channel,
+			channel<StreamType>& channel,
 			const std::vector<field_metadata>& meta,
 			bytestring& buffer,
 			std::vector<value>& output_values,
@@ -161,7 +160,7 @@ mysql::detail::async_fetch_text_row(
 
 	Op(
 		std::move(initiator.completion_handler),
-		channel,
+		chan,
 		meta,
 		buffer,
 		output_values,

@@ -2,9 +2,7 @@
 #define MYSQL_ASIO_IMPL_HANDSHAKE_HPP
 
 #include <string_view>
-#include <boost/asio/async_result.hpp>
 #include "mysql/impl/channel.hpp"
-#include "mysql/impl/constants.hpp"
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/collation.hpp"
 
@@ -21,19 +19,19 @@ struct handshake_params
 	std::string_view database;
 };
 
-template <typename ChannelType>
+template <typename StreamType>
 void hanshake(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	const handshake_params& params,
 	bytestring& buffer,
 	error_code& err,
 	error_info& info
 );
 
-template <typename ChannelType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
 async_handshake(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	const handshake_params& params,
 	bytestring& buffer,
 	CompletionToken&& token

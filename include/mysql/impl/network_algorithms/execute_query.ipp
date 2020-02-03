@@ -12,15 +12,15 @@ namespace detail
 {
 
 
-template <typename ChannelType>
+template <typename StreamType>
 class query_processor
 {
-	ChannelType& channel_;
+	channel<StreamType>& channel_;
 	bytestring buffer_;
 	std::vector<field_metadata> fields_;
 	std::vector<bytestring> field_buffers_;
 public:
-	query_processor(ChannelType& channel): channel_(channel) {};
+	query_processor(channel<StreamType>& chan): channel_(chan) {};
 	void process_query_request(
 		std::string_view query
 	)
@@ -39,7 +39,7 @@ public:
 
 	std::optional<std::uint64_t> // has value if there are fields in the response
 	process_query_response(
-		channel_resultset_type<ChannelType>& output,
+		resultset<StreamType>& output,
 		error_code& err,
 		error_info& info
 	)
@@ -56,7 +56,7 @@ public:
 			ok_packet ok_packet;
 			err = deserialize_message(ok_packet, ctx);
 			if (err) return {};
-			output = channel_resultset_type<ChannelType>(channel_, std::move(buffer_), ok_packet);
+			output = resultset<StreamType>(channel_, std::move(buffer_), ok_packet);
 			err.clear();
 			return {};
 		}
@@ -97,42 +97,40 @@ public:
 		return error_code();
 	}
 
-	void create_resultset(
-		channel_resultset_type<ChannelType>& output
-	) &&
+	resultset<StreamType> create_resultset() &&
 	{
-		output = channel_resultset_type<ChannelType>(
+		return resultset<StreamType>(
 			channel_,
 			resultset_metadata(std::move(field_buffers_), std::move(fields_))
 		);
 	}
 
-	auto& channel() { return channel_; }
-	auto& buffer() { return buffer_; }
+	auto& get_channel() { return channel_; }
+	auto& get_buffer() { return buffer_; }
 };
 
 }
 }
 
-template <typename ChannelType>
+template <typename StreamType>
 void mysql::detail::execute_query(
-	ChannelType& channel,
+	channel<StreamType>& channel,
 	std::string_view query,
-	resultset<channel_stream_type<ChannelType>>& output,
+	resultset<StreamType>& output,
 	error_code& err,
 	error_info& info
 )
 {
 	// Compose a com_query message, reset seq num
-	query_processor<ChannelType> processor (channel);
+	query_processor<StreamType> processor (channel);
 	processor.process_query_request(query);
 
 	// Send it
-	channel.write(boost::asio::buffer(processor.buffer()), err);
+	channel.write(boost::asio::buffer(processor.get_buffer()), err);
 	if (err) return;
 
 	// Read the response
-	channel.read(processor.buffer(), err);
+	channel.read(processor.get_buffer(), err);
 	if (err) return;
 
 	// Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
@@ -146,7 +144,7 @@ void mysql::detail::execute_query(
 	for (std::uint64_t i = 0; i < *num_fields; ++i)
 	{
 		// Read the field definition packet
-		channel.read(processor.buffer(), err);
+		channel.read(processor.get_buffer(), err);
 		if (err) return;
 
 		// Process the message
@@ -155,42 +153,41 @@ void mysql::detail::execute_query(
 	}
 
 	// No EOF packet is expected here, as we require deprecate EOF capabilities
-	std::move(processor).create_resultset(output);
+	output = std::move(processor).create_resultset();
 	err.clear();
 }
 
 
-template <typename ChannelType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::detail::channel_resultset_type<ChannelType>)
+	void(mysql::error_code, mysql::error_info, mysql::resultset<StreamType>)
 )
 mysql::detail::async_execute_query(
-	ChannelType& channel,
+	channel<StreamType>& chan,
 	std::string_view query,
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, error_info, channel_resultset_type<ChannelType>);
+	using HandlerSignature = void(error_code, error_info, resultset<StreamType>);
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-	using StreamType = typename ChannelType::stream_type;
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-	using ResultsetType = channel_resultset_type<ChannelType>;
+	using ResultsetType = resultset<StreamType>;
 
 	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
-		std::shared_ptr<query_processor<ChannelType>> processor_;
+		std::shared_ptr<query_processor<StreamType>> processor_;
 		std::uint64_t remaining_fields_ {0};
 
 		Op(
 			HandlerType&& handler,
-			ChannelType& channel,
+			channel<StreamType>& channel,
 			std::string_view query
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
-			processor_(std::make_shared<query_processor<ChannelType>>(channel))
+			processor_(std::make_shared<query_processor<StreamType>>(channel))
 		{
 			processor_->process_query_request(query);
 		}
@@ -216,9 +213,12 @@ mysql::detail::async_execute_query(
 
 		void complete_with_fields(bool cont)
 		{
-			ResultsetType resultset;
-			std::move(*processor_).create_resultset(resultset);
-			this->complete(cont, error_code(), error_info(), std::move(resultset));
+			this->complete(
+				cont,
+				error_code(),
+				error_info(),
+				std::move(*processor_).create_resultset()
+			);
 		}
 
 		void operator()(
@@ -229,8 +229,8 @@ mysql::detail::async_execute_query(
 			reenter(*this)
 			{
 				// The request message has already been composed in the ctor. Send it
-				yield processor_->channel().async_write(
-					boost::asio::buffer(processor_->buffer()),
+				yield processor_->get_channel().async_write(
+					boost::asio::buffer(processor_->get_buffer()),
 					std::move(*this)
 				);
 				if (err)
@@ -240,8 +240,8 @@ mysql::detail::async_execute_query(
 				}
 
 				// Read the response
-				yield processor_->channel().async_read(
-					processor_->buffer(),
+				yield processor_->get_channel().async_read(
+					processor_->get_buffer(),
 					std::move(*this)
 				);
 				if (err)
@@ -261,8 +261,8 @@ mysql::detail::async_execute_query(
 				while (remaining_fields_ > 0)
 				{
 					// Read the field definition packet
-					yield processor_->channel().async_read(
-						processor_->buffer(),
+					yield processor_->get_channel().async_read(
+						processor_->get_buffer(),
 						std::move(*this)
 					);
 					if (!err)
@@ -289,7 +289,7 @@ mysql::detail::async_execute_query(
 
 	Op(
 		std::move(initiator.completion_handler),
-		channel,
+		chan,
 		query
 	)(error_code(), false);
 	return initiator.result.get();
