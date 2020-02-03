@@ -34,3 +34,4 @@ Technical debt
 	Integration test for network errors (e.g. host unreachable)
 	Refactor file structucture for serialization and tests
 	Deserialize common should be in namespace mysql::test, not in detail
+	Consider using a shared buffer in channel to avoid allocations
