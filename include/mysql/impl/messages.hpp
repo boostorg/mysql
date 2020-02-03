@@ -244,6 +244,7 @@ struct get_struct_fields<com_stmt_prepare_ok_packet>
 	);
 };
 
+template <typename ForwardIterator>
 struct com_stmt_execute_packet
 {
 	int4 statement_id;
@@ -251,37 +252,35 @@ struct com_stmt_execute_packet
 	int4 iteration_count;
 	// if num_params > 0: NULL bitmap
 	int1 new_params_bind_flag;
-	const value* params_begin; // TODO: maybe change to a generic iterator
-	const value* params_end;
+	ForwardIterator params_begin;
+	ForwardIterator params_end;
 
 	static constexpr std::uint8_t command_id = 0x17;
-
-	struct param_meta
-	{
-		protocol_field_type type;
-		int1 unsigned_flag;
-	};
 };
 
-template <>
-struct get_struct_fields<com_stmt_execute_packet>
+struct com_stmt_execute_param_meta_packet
+{
+	protocol_field_type type;
+	int1 unsigned_flag;
+};
+
+template <typename ForwardIterator>
+struct get_struct_fields<com_stmt_execute_packet<ForwardIterator>>
 {
 	static constexpr auto value = std::make_tuple(
-		&com_stmt_execute_packet::statement_id,
-		&com_stmt_execute_packet::flags,
-		&com_stmt_execute_packet::iteration_count,
-		&com_stmt_execute_packet::new_params_bind_flag,
-		&com_stmt_execute_packet::params_begin,
-		&com_stmt_execute_packet::params_end
+		&com_stmt_execute_packet<ForwardIterator>::statement_id,
+		&com_stmt_execute_packet<ForwardIterator>::flags,
+		&com_stmt_execute_packet<ForwardIterator>::iteration_count,
+		&com_stmt_execute_packet<ForwardIterator>::new_params_bind_flag
 	);
 };
 
 template <>
-struct get_struct_fields<com_stmt_execute_packet::param_meta>
+struct get_struct_fields<com_stmt_execute_param_meta_packet>
 {
 	static constexpr auto value = std::make_tuple(
-		&com_stmt_execute_packet::param_meta::type,
-		&com_stmt_execute_packet::param_meta::unsigned_flag
+		&com_stmt_execute_param_meta_packet::type,
+		&com_stmt_execute_param_meta_packet::unsigned_flag
 	);
 };
 
@@ -309,8 +308,12 @@ inline void serialize(const handshake_response_packet& value, SerializationConte
 inline Error deserialize(auth_switch_request_packet& output, DeserializationContext& ctx) noexcept;
 inline Error deserialize(column_definition_packet& output, DeserializationContext& ctx) noexcept;
 inline Error deserialize(com_stmt_prepare_ok_packet& output, DeserializationContext& ctx) noexcept;
-inline std::size_t get_size(const com_stmt_execute_packet& value, const SerializationContext& ctx) noexcept;
-inline void serialize(const com_stmt_execute_packet& input, SerializationContext& ctx) noexcept;
+
+template <typename FowardIterator>
+inline std::size_t get_size(const com_stmt_execute_packet<FowardIterator>& value, const SerializationContext& ctx) noexcept;
+
+template <typename FowardIterator>
+inline void serialize(const com_stmt_execute_packet<FowardIterator>& input, SerializationContext& ctx) noexcept;
 
 
 

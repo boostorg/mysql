@@ -9,6 +9,8 @@
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/binary_serialization.hpp"
 #include "test_common.hpp"
+#include <forward_list>
+#include <array>
 
 using namespace testing;
 using namespace std;
@@ -561,6 +563,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtPrepareResponse, DeserializeSpaceTest, testing::
 ), test_name_generator);
 
 // Helper for composing ComStmtExecute tests
+template <typename Collection = std::vector<value>>
 SerializeParams make_stmt_execute_test(
 	std::uint32_t stmt_id,
 	std::uint8_t flags,
@@ -571,15 +574,15 @@ SerializeParams make_stmt_execute_test(
 	std::string&& test_name
 )
 {
-	auto params_shared = std::make_shared<std::vector<value>>(std::move(params));
+	auto params_shared = std::make_shared<Collection>(std::begin(params), std::end(params));
 	return SerializeParams(
-		com_stmt_execute_packet {
+		com_stmt_execute_packet<typename Collection::const_iterator> {
 			int4(stmt_id),
 			int1(flags),
 			int4(itercount),
 			int1(new_params_flag),
-			params_shared->data(),
-			params_shared->data() + params_shared->size()
+			params_shared->begin(),
+			params_shared->end()
 		},
 		std::move(buffer),
 		std::move(test_name),
@@ -706,6 +709,14 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
 			0x1e, 0x3b, 0x78, 0x89, 0x03, 0x00
 		},
 		"several_params"
+	),
+	make_stmt_execute_test<std::forward_list<value>>(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
+		{ std::uint32_t(0xabffff) }, {
+			0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
+			0x00, 0x00, 0x00, 0x01, 0x03, 0x80, 0xff, 0xff,
+			0xab, 0x00
+		},
+		"forward_list_iterator"
 	)
 ), test_name_generator);
 

@@ -230,8 +230,9 @@ inline mysql::Error mysql::detail::deserialize(
 	);
 }
 
+template <typename ForwardIterator>
 inline std::size_t mysql::detail::get_size(
-	const com_stmt_execute_packet& value,
+	const com_stmt_execute_packet<ForwardIterator>& value,
 	const SerializationContext& ctx
 ) noexcept
 {
@@ -243,7 +244,7 @@ inline std::size_t mysql::detail::get_size(
 	assert(num_params >= 0 && num_params <= 255);
 	res += null_bitmap_traits(stmt_execute_null_bitmap_offset, num_params).byte_count();
 	res += get_size(value.new_params_bind_flag, ctx);
-	res += get_size(com_stmt_execute_packet::param_meta{}, ctx) * num_params;
+	res += get_size(com_stmt_execute_param_meta_packet{}, ctx) * num_params;
 	for (auto it = value.params_begin; it != value.params_end; ++it)
 	{
 		res += get_size(*it, ctx);
@@ -251,12 +252,13 @@ inline std::size_t mysql::detail::get_size(
 	return res;
 }
 
+template <typename ForwardIterator>
 inline void mysql::detail::serialize(
-	const com_stmt_execute_packet& input,
+	const com_stmt_execute_packet<ForwardIterator>& input,
 	SerializationContext& ctx
 ) noexcept
 {
-	serialize(int1(com_stmt_execute_packet::command_id), ctx);
+	serialize(int1(com_stmt_execute_packet<ForwardIterator>::command_id), ctx);
 	serialize(input.statement_id, ctx);
 	serialize(input.flags, ctx);
 	serialize(input.iteration_count, ctx);
@@ -269,7 +271,7 @@ inline void mysql::detail::serialize(
 	null_bitmap_traits traits (stmt_execute_null_bitmap_offset, num_params);
 	std::size_t i = 0;
 	std::memset(ctx.first(), 0, traits.byte_count()); // Initialize to zeroes
-	for (auto it = input.params_begin; it < input.params_end; ++it, ++i)
+	for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
 	{
 		if (std::holds_alternative<nullptr_t>(*it))
 		{
@@ -282,8 +284,8 @@ inline void mysql::detail::serialize(
 	serialize(input.new_params_bind_flag, ctx);
 
 	// value metadata
-	com_stmt_execute_packet::param_meta meta;
-	for (auto it = input.params_begin; it < input.params_end; ++it)
+	com_stmt_execute_param_meta_packet meta;
+	for (auto it = input.params_begin; it != input.params_end; ++it)
 	{
 		meta.type = get_protocol_field_type(*it);
 		meta.unsigned_flag.value = is_unsigned(*it) ? 0x80 : 0;
@@ -291,7 +293,7 @@ inline void mysql::detail::serialize(
 	}
 
 	// actual values
-	for (auto it = input.params_begin; it < input.params_end; ++it)
+	for (auto it = input.params_begin; it != input.params_end; ++it)
 	{
 		serialize(*it, ctx);
 	}
