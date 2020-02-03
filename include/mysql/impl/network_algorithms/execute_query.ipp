@@ -2,6 +2,7 @@
 #define INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_EXECUTE_QUERY_IPP_
 
 #include "mysql/impl/network_algorithms/execute_generic.hpp"
+#include "mysql/impl/text_deserialization.hpp"
 
 template <typename StreamType>
 void mysql::detail::execute_query(
@@ -13,7 +14,7 @@ void mysql::detail::execute_query(
 )
 {
 	com_query_packet request { string_eof(query) };
-	execute_generic(channel, request, output, err, info);
+	execute_generic(&deserialize_text_row, channel, request, output, err, info);
 }
 
 
@@ -29,7 +30,7 @@ mysql::detail::async_execute_query(
 )
 {
 	com_query_packet request { string_eof(query) };
-	return async_execute_generic(chan, request, std::forward<CompletionToken>(token));
+	return async_execute_generic(&deserialize_text_row, chan, request, std::forward<CompletionToken>(token));
 }
 
 #include <boost/asio/unyield.hpp>

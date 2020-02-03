@@ -12,6 +12,7 @@ namespace detail
 
 template <typename StreamType, typename Serializable>
 void execute_generic(
+	deserialize_row_fn deserializer,
 	channel<StreamType>& channel,
 	const Serializable& request,
 	resultset<StreamType>& output,
@@ -22,6 +23,7 @@ void execute_generic(
 template <typename StreamType, typename Serializable, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<StreamType>))
 async_execute_generic(
+	deserialize_row_fn deserializer,
 	channel<StreamType>& chan,
 	const Serializable& request,
 	CompletionToken&& token

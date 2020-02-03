@@ -9,7 +9,8 @@ namespace mysql
 namespace detail
 {
 
-inline read_row_result process_fetch_message(
+inline read_row_result process_read_message(
+	deserialize_row_fn deserializer,
 	capabilities current_capabilities,
 	const std::vector<field_metadata>& meta,
 	const bytestring& buffer,
@@ -19,6 +20,8 @@ inline read_row_result process_fetch_message(
 	error_info& info
 )
 {
+	assert(deserializer);
+
 	// Message type: row, error or eof?
 	std::uint8_t msg_type;
 	DeserializationContext ctx (boost::asio::buffer(buffer), current_capabilities);
@@ -41,7 +44,7 @@ inline read_row_result process_fetch_message(
 	{
 		// An actual row
 		ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
-		err = deserialize_text_row(ctx, meta, output_values);
+		err = deserializer(ctx, meta, output_values);
 		if (err) return read_row_result::error;
 		return read_row_result::row;
 	}
@@ -53,7 +56,8 @@ inline read_row_result process_fetch_message(
 
 
 template <typename StreamType>
-mysql::detail::read_row_result mysql::detail::read_text_row(
+mysql::detail::read_row_result mysql::detail::read_row(
+	deserialize_row_fn deserializer,
 	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
@@ -67,7 +71,8 @@ mysql::detail::read_row_result mysql::detail::read_text_row(
 	channel.read(buffer, err);
 	if (err) return read_row_result::error;
 
-	return process_fetch_message(
+	return process_read_message(
+		deserializer,
 		channel.current_capabilities(),
 		meta,
 		buffer,
@@ -84,7 +89,8 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	void(mysql::error_code, mysql::error_info, mysql::detail::read_row_result)
 )
-mysql::detail::async_read_text_row(
+mysql::detail::async_read_row(
+	deserialize_row_fn deserializer,
 	channel<StreamType>& chan,
 	const std::vector<field_metadata>& meta,
 	bytestring& buffer,
@@ -99,6 +105,7 @@ mysql::detail::async_read_text_row(
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
+		deserialize_row_fn deserializer_;
 		channel<StreamType>& channel_;
 		const std::vector<field_metadata>& meta_;
 		bytestring& buffer_;
@@ -107,6 +114,7 @@ mysql::detail::async_read_text_row(
 
 		Op(
 			HandlerType&& handler,
+			deserialize_row_fn deserializer,
 			channel<StreamType>& channel,
 			const std::vector<field_metadata>& meta,
 			bytestring& buffer,
@@ -114,6 +122,7 @@ mysql::detail::async_read_text_row(
 			ok_packet& output_ok_packet
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
+			deserializer_(deserializer),
 			channel_(channel),
 			meta_(meta),
 			buffer_(buffer),
@@ -126,7 +135,8 @@ mysql::detail::async_read_text_row(
 		{
 			error_code err;
 			error_info info;
-			auto result = process_fetch_message(
+			auto result = process_read_message(
+				deserializer_,
 				channel_.current_capabilities(),
 				meta_,
 				buffer_,
@@ -160,6 +170,7 @@ mysql::detail::async_read_text_row(
 
 	Op(
 		std::move(initiator.completion_handler),
+		deserializer,
 		chan,
 		meta,
 		buffer,

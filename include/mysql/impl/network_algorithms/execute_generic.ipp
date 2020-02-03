@@ -14,12 +14,14 @@ namespace detail
 template <typename StreamType>
 class execute_processor
 {
+	deserialize_row_fn deserializer_;
 	channel<StreamType>& channel_;
 	bytestring buffer_;
 	std::vector<field_metadata> fields_;
 	std::vector<bytestring> field_buffers_;
 public:
-	execute_processor(channel<StreamType>& chan): channel_(chan) {};
+	execute_processor(deserialize_row_fn deserializer, channel<StreamType>& chan):
+		deserializer_(deserializer), channel_(chan) {};
 
 	template <typename Serializable>
 	void process_request(
@@ -98,7 +100,8 @@ public:
 	{
 		return resultset<StreamType>(
 			channel_,
-			resultset_metadata(std::move(field_buffers_), std::move(fields_))
+			resultset_metadata(std::move(field_buffers_), std::move(fields_)),
+			deserializer_
 		);
 	}
 
@@ -111,6 +114,7 @@ public:
 
 template <typename StreamType, typename Serializable>
 void mysql::detail::execute_generic(
+	deserialize_row_fn deserializer,
 	channel<StreamType>& channel,
 	const Serializable& request,
 	resultset<StreamType>& output,
@@ -119,7 +123,7 @@ void mysql::detail::execute_generic(
 )
 {
 	// Compose a com_query message, reset seq num
-	execute_processor<StreamType> processor (channel);
+	execute_processor<StreamType> processor (deserializer, channel);
 	processor.process_request(request);
 
 	// Send it
@@ -161,6 +165,7 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 	void(mysql::error_code, mysql::error_info, mysql::resultset<StreamType>)
 )
 mysql::detail::async_execute_generic(
+	deserialize_row_fn deserializer,
 	channel<StreamType>& chan,
 	const Serializable& request,
 	CompletionToken&& token
@@ -180,11 +185,12 @@ mysql::detail::async_execute_generic(
 
 		Op(
 			HandlerType&& handler,
+			deserialize_row_fn deserializer,
 			channel<StreamType>& channel,
 			const Serializable& request
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
-			processor_(std::make_shared<execute_processor<StreamType>>(channel))
+			processor_(std::make_shared<execute_processor<StreamType>>(deserializer, channel))
 		{
 			processor_->process_request(request);
 		}
@@ -286,6 +292,7 @@ mysql::detail::async_execute_generic(
 
 	Op(
 		std::move(initiator.completion_handler),
+		deserializer,
 		chan,
 		request
 	)(error_code(), false);

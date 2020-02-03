@@ -5,6 +5,7 @@
 #include "mysql/metadata.hpp"
 #include "mysql/impl/messages.hpp"
 #include "mysql/impl/channel.hpp"
+#include "mysql/impl/network_algorithms/common.hpp" // deserialize_row_fn
 #include <boost/asio/ip/tcp.hpp>
 #include <cassert>
 
@@ -50,6 +51,7 @@ class resultset
 {
 	using channel_type = detail::channel<StreamType>;
 
+	detail::deserialize_row_fn deserializer_ {};
 	channel_type* channel_;
 	detail::resultset_metadata meta_;
 	row current_row_;
@@ -61,8 +63,8 @@ public:
 	resultset(): channel_(nullptr) {};
 
 	// Private, do not use
-	resultset(channel_type& channel, detail::resultset_metadata&& meta):
-		channel_(&channel), meta_(std::move(meta)) {};
+	resultset(channel_type& channel, detail::resultset_metadata&& meta, detail::deserialize_row_fn deserializer):
+		deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
 	resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
 		channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 

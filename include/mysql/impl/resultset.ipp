@@ -1,7 +1,7 @@
 #ifndef MYSQL_ASIO_IMPL_RESULTSET_HPP
 #define MYSQL_ASIO_IMPL_RESULTSET_HPP
 
-#include "mysql/impl/network_algorithms/read_text_row.hpp"
+#include "mysql/impl/network_algorithms/read_row.hpp"
 #include <boost/asio/coroutine.hpp>
 #include <cassert>
 #include <limits>
@@ -22,7 +22,8 @@ const mysql::row* mysql::resultset<StreamType>::fetch_one(
 	{
 		return nullptr;
 	}
-	auto result = detail::read_text_row(
+	auto result = detail::read_row(
+		deserializer_,
 		*channel_,
 		meta_.fields(),
 		buffer_,
@@ -66,7 +67,8 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 			detail::bytestring buff;
 			std::vector<value> values;
 
-			auto result = detail::read_text_row(
+			auto result = detail::read_row(
+				deserializer_,
 				*channel_,
 				meta_.fields(),
 				buff,
@@ -157,7 +159,8 @@ mysql::resultset<StreamType>::async_fetch_one(
 				}
 				else
 				{
-					yield detail::async_read_text_row(
+					yield detail::async_read_row(
+						resultset_.deserializer_,
 						*resultset_.channel_,
 						resultset_.meta_.fields(),
 						resultset_.buffer_,
@@ -247,7 +250,8 @@ mysql::resultset<StreamType>::async_fetch_many(
 			{
 				while (!impl_->parent_resultset.complete() && impl_->remaining > 0)
 				{
-					yield detail::async_read_text_row(
+					yield detail::async_read_row(
+						impl_->parent_resultset.deserializer_,
 						*impl_->parent_resultset.channel_,
 						impl_->parent_resultset.meta_.fields(),
 						impl_->buffer,
