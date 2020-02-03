@@ -42,7 +42,7 @@ async_handshake(
 }
 }
 
-#include "mysql/impl/handshake.ipp"
+#include "mysql/impl/network_algorithms/handshake.ipp"
 
 
 #endif

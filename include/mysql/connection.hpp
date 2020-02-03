@@ -2,7 +2,7 @@
 #define MYSQL_ASIO_CONNECTION_HPP
 
 #include "mysql/impl/channel.hpp"
-#include "mysql/impl/handshake.hpp"
+#include "mysql/impl/network_algorithms/handshake.hpp"
 #include "mysql/impl/basic_types.hpp"
 #include "mysql/error.hpp"
 #include "mysql/resultset.hpp"

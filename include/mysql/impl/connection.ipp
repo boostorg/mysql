@@ -1,8 +1,8 @@
 #ifndef MYSQL_ASIO_IMPL_CONNECTION_IPP
 #define MYSQL_ASIO_IMPL_CONNECTION_IPP
 
-#include "mysql/impl/handshake.hpp"
-#include "mysql/impl/query.hpp"
+#include "mysql/impl/network_algorithms/handshake.hpp"
+#include "mysql/impl/network_algorithms/execute_query.hpp"
 #include <boost/asio/buffer.hpp>
 
 namespace mysql

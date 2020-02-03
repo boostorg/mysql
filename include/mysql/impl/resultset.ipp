@@ -1,7 +1,7 @@
 #ifndef MYSQL_ASIO_IMPL_RESULTSET_HPP
 #define MYSQL_ASIO_IMPL_RESULTSET_HPP
 
-#include "mysql/impl/query.hpp"
+#include "mysql/impl/network_algorithms/read_text_row.hpp"
 #include <boost/asio/coroutine.hpp>
 #include <cassert>
 #include <limits>

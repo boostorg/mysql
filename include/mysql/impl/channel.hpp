@@ -54,6 +54,9 @@ public:
 	void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 };
 
+template <typename ChannelType>
+using channel_stream_type = typename ChannelType::stream_type;
+
 }
 }
 
