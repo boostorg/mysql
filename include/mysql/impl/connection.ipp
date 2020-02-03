@@ -3,6 +3,7 @@
 
 #include "mysql/impl/network_algorithms/handshake.hpp"
 #include "mysql/impl/network_algorithms/execute_query.hpp"
+#include "mysql/impl/network_algorithms/prepare_statement.hpp"
 #include <boost/asio/buffer.hpp>
 
 namespace mysql
@@ -115,6 +116,18 @@ mysql::connection<Stream>::async_query(
 		query_string,
 		std::forward<CompletionToken>(token)
 	);
+}
+
+template <typename Stream>
+mysql::prepared_statement mysql::connection<Stream>::prepare_statement(
+	std::string_view statement,
+	error_code& err,
+	error_info& info
+)
+{
+	mysql::prepared_statement res;
+	detail::prepare_statement(channel_, statement, err, info, res);
+	return res;
 }
 
 
