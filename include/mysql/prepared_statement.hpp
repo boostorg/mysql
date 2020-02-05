@@ -31,9 +31,22 @@ public:
 		return execute(std::begin(params), std::end(params), err, info);
 	}
 
+	template <typename Collection>
+	resultset<Stream> execute(const Collection& params) const
+	{
+		return execute(std::begin(params), std::end(params));
+	}
+
+
 	template <typename ForwardIterator>
 	resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last, error_code&, error_info&) const;
+
+
+	template <typename ForwardIterator>
+	resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last) const;
 };
+
+using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
 
 }
 

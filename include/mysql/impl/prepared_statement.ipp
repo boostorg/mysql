@@ -42,6 +42,18 @@ mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
 	return res;
 }
 
-
+template <typename Stream>
+template <typename ForwardIterator>
+mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
+	ForwardIterator params_first,
+	ForwardIterator params_last
+) const
+{
+	error_code err;
+	error_info info;
+	auto res = execute(params_first, params_last, err, info);
+	detail::check_error_code(err, info);
+	return res;
+}
 
 #endif /* INCLUDE_MYSQL_IMPL_PREPARED_STATEMENT_IPP_ */

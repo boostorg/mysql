@@ -7,6 +7,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <future>
 #include <thread>
+#include <functional>
 #include "test_common.hpp"
 
 namespace mysql
@@ -147,8 +148,113 @@ struct IntegTestAfterHandshake : IntegTest
 	IntegTestAfterHandshake() { handshake(); }
 };
 
+template <typename T>
+struct NetworkResult
+{
+	error_code errc;
+	error_info info;
+	T value;
+
+	void validate_no_error() const
+	{
+		ASSERT_EQ(errc, error_code());
+		EXPECT_EQ(info, error_info());
+	}
+
+	void validate_error(
+		error_code expected_errc,
+		const std::vector<std::string>& expected_msg
+	) const
+	{
+		EXPECT_EQ(errc, expected_errc);
+		validate_string_contains(info.message(), expected_msg);
+	}
+
+	void validate_error(
+		Error expected_errc,
+		const std::vector<std::string>& expected_msg
+	) const
+	{
+		validate_error(detail::make_error_code(expected_errc), expected_msg);
+	}
+};
+
+template <typename R, typename... Args>
+struct NetworkFunction : named_param
+{
+	std::string name;
+	std::function<NetworkResult<R>(Args...)> fun;
+
+	template <typename Callable>
+	NetworkFunction(std::string name, Callable&& cb):
+		name(std::move(name)), fun(std::forward<Callable>(cb)) {}
+};
+
+template <typename TraitsType>
+class get_network_function_type
+{
+	template <typename R, typename... Args>
+	static NetworkFunction<R, Args...> helper(R(*)(Args...));
+public:
+	using type = decltype(helper(&TraitsType::sync_exc));
+};
+
+template <typename TraitsType>
+using traits_network_function = typename get_network_function_type<TraitsType>::type;
+
+template <typename TraitsType, typename R, typename... Args>
+auto make_network_functions_impl(R(*)(Args...))
+{
+	using NetResultType = NetworkResult<R>;
+	using NetFunType = NetworkFunction<R, Args...>;
+	auto sync_errc = [](Args... args) {
+		NetResultType res;
+		res.errc = detail::make_error_code(Error::no);
+		res.info.set_message("Error info not cleared correctly");
+		res.value = TraitsType::sync_errc(std::forward<Args>(args)..., res.errc, res.info);
+		return res;
+	};
+	auto sync_exc = [](Args... args) {
+		NetResultType res;
+		try
+		{
+			res.value = TraitsType::sync_exc(std::forward<Args>(args)...);
+		}
+		catch (const boost::system::system_error& err)
+		{
+			res.errc = err.code();
+			res.info.set_message(err.what());
+		}
+		return res;
+	};
+	return std::vector<NetFunType>{
+		NetFunType("sync_errc", sync_errc),
+		NetFunType("sync_exc", sync_exc)
+	};
+}
+
+template <typename TraitsType>
+std::vector<traits_network_function<TraitsType>>
+make_network_functions()
+{
+	return make_network_functions_impl<TraitsType>(&TraitsType::sync_exc);
+}
+
+template <typename TraitsType, typename BaseTest=IntegTestAfterHandshake>
+struct NetworkTest :
+	public BaseTest,
+	public testing::WithParamInterface<traits_network_function<TraitsType>>
+{
+	using traits_type = TraitsType;
+};
+
 }
 }
+
+#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
+	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
+		make_network_functions<TestSuiteName::traits_type>() \
+	), test_name_generator)
 
 
 
