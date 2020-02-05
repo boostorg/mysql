@@ -132,5 +132,18 @@ mysql::prepared_statement<Stream> mysql::connection<Stream>::prepare_statement(
 	return res;
 }
 
+template <typename Stream>
+mysql::prepared_statement<Stream> mysql::connection<Stream>::prepare_statement(
+	std::string_view statement
+)
+{
+	mysql::prepared_statement<Stream> res;
+	error_code err;
+	error_info info;
+	detail::prepare_statement(channel_, statement, err, info, res);
+	detail::check_error_code(err, info);
+	return res;
+}
+
 
 #endif
