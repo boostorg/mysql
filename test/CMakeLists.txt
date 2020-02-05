@@ -26,6 +26,7 @@ add_executable(
 	unit/row.cpp
 	unit/error.cpp
 	unit/null_bitmap.cpp
+	unit/prepared_statement.cpp
 )
 # A codegen issue in MSVC C++17 makes gmock expectations not work
 if (NOT MSVC)

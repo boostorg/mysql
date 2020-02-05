@@ -122,7 +122,7 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<Stream>))
 	async_query(std::string_view query_string, CompletionToken&& token);
 
-	prepared_statement prepare_statement(std::string_view statement, error_code&, error_info&);
+	prepared_statement<Stream> prepare_statement(std::string_view statement, error_code&, error_info&);
 };
 
 /// A connection to MySQL over TCP.

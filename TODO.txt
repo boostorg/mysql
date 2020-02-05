@@ -1,6 +1,13 @@
 Prepared statements
-	Rename (De)SerializationContext
-	Zero dates?
+	Unit tests for basic prepared statement ops
+	Integ tests for sync versions
+	Sync exc versions and tests
+	Async versions and tests
+	Statement close
+	Examples
+	Docs
+	(?) Rework deserialize_row_fn to allow cursors
+	(?) Test prepared statement binding to procedure out params
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -12,13 +19,15 @@ Usability
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
 	Iterators for sync resultset iteration
-	Better interface for connection_params data structure
 	Consideration of timezones
 	Types
 		Decimal
 		Bit
 		Geometry
 	UNIX socket connection
+	make_values
+	connection::connect that handles TCP/Unix and MySQL connect
+	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
 	Concept checking
@@ -36,3 +45,5 @@ Technical debt
 	Deserialize common should be in namespace mysql::test, not in detail
 	Consider using a shared buffer in channel to avoid allocations
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
+	Rename (De)SerializationContext
+	Test zero dates

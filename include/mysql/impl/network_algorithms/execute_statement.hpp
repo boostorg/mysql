@@ -10,12 +10,12 @@ namespace mysql
 namespace detail
 {
 
-template <typename StreamType>
+template <typename StreamType, typename ForwardIterator>
 void execute_statement(
 	channel<StreamType>& channel,
 	std::uint32_t statement_id,
-	const value* params_begin,
-	const value* params_end,
+	ForwardIterator params_begin,
+	ForwardIterator params_end,
 	resultset<StreamType>& output,
 	error_code& err,
 	error_info& info

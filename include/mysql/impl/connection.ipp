@@ -119,13 +119,13 @@ mysql::connection<Stream>::async_query(
 }
 
 template <typename Stream>
-mysql::prepared_statement mysql::connection<Stream>::prepare_statement(
+mysql::prepared_statement<Stream> mysql::connection<Stream>::prepare_statement(
 	std::string_view statement,
 	error_code& err,
 	error_info& info
 )
 {
-	mysql::prepared_statement res;
+	mysql::prepared_statement<Stream> res;
 	detail::prepare_statement(channel_, statement, err, info, res);
 	return res;
 }

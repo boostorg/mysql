@@ -7,7 +7,7 @@ void mysql::detail::prepare_statement(
 	std::string_view statement,
 	error_code& err,
 	error_info& info,
-	prepared_statement& output
+	prepared_statement<StreamType>& output
 )
 {
 	// Prepare message
@@ -33,7 +33,7 @@ void mysql::detail::prepare_statement(
 		com_stmt_prepare_ok_packet response;
 		err = deserialize_message(response, ctx);
 		if (err) return;
-		output = prepared_statement(response);
+		output = prepared_statement<StreamType>(response);
 	}
 	else if (msg_type == error_packet_header)
 	{

@@ -15,7 +15,7 @@ void prepare_statement(
 	std::string_view statement,
 	error_code& err,
 	error_info& info,
-	prepared_statement& output
+	prepared_statement<StreamType>& output
 );
 
 }
