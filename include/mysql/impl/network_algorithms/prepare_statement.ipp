@@ -29,21 +29,32 @@ void mysql::detail::prepare_statement(
 	std::uint8_t msg_type = 0;
 	std::tie(err, msg_type) = deserialize_message_type(ctx);
 	if (err) return;
-	if (msg_type == 0)
-	{
-		com_stmt_prepare_ok_packet response;
-		err = deserialize_message(response, ctx);
-		if (err) return;
-		output = prepared_statement<StreamType>(channel, response);
-	}
-	else if (msg_type == error_packet_header)
+
+	if (msg_type == error_packet_header)
 	{
 		err = process_error_packet(ctx, info);
+		return;
 	}
-	else
+	else if (msg_type != 0)
 	{
 		err = make_error_code(Error::protocol_value_error);
+		return;
 	}
+
+	com_stmt_prepare_ok_packet response;
+	err = deserialize_message(response, ctx);
+	if (err) return;
+
+	// Server sends now one packet per parameter and field.
+	// We ignore these for now. TODO: do sth useful with these
+	for (unsigned i = 0; i < response.num_columns.value + response.num_params.value; ++i)
+	{
+		channel.read(buff, err);
+		if (err) return;
+	}
+
+	// Compose response
+	output = prepared_statement<StreamType>(channel, response);
 }
 
 

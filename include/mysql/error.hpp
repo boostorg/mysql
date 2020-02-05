@@ -22,7 +22,8 @@ enum class Error : int
 	sequence_number_mismatch,
 	server_unsupported,
 	protocol_value_error,
-	unknown_auth_plugin
+	unknown_auth_plugin,
+	wrong_num_params
 };
 
 /// An alias for boost::system error codes.

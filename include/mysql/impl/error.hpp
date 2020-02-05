@@ -35,6 +35,7 @@ inline const char* error_to_string(Error error) noexcept
 	case Error::server_unsupported: return "The server does not implement the minimum features to be supported";
 	case Error::protocol_value_error: return "A field in a message had an unexpected value";
 	case Error::unknown_auth_plugin: return "The user employs an authentication plugin unknown to the client";
+	case Error::wrong_num_params: return "The provided parameter count does not match the prepared statement parameter count";
 
 	#include "mysql/impl/server_error_descriptions.hpp"
 
