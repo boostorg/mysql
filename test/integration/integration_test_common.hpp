@@ -106,6 +106,23 @@ struct IntegTest : testing::Test
 		validate_sync_fail(std::forward<Callable>(cb), detail::make_error_code(expected_errc), expected_msg);
 	}
 
+	void validate_sync_fail(
+		error_code expected_errc,
+		const std::vector<std::string>& expected_msg
+	)
+	{
+		EXPECT_EQ(errc, expected_errc);
+		validate_string_contains(info.message(), expected_msg);
+	}
+
+	void validate_sync_fail(
+		Error expected_errc,
+		const std::vector<std::string>& expected_msg
+	)
+	{
+		validate_sync_fail(detail::make_error_code(expected_errc), expected_msg);
+	}
+
 	void handshake()
 	{
 		conn.handshake(connection_params);
@@ -116,6 +133,12 @@ struct IntegTest : testing::Test
 	{
 		errc = detail::make_error_code(mysql::Error::no);
 		info.set_message("Previous error message was not cleared correctly");
+	}
+
+	void validate_no_error()
+	{
+		EXPECT_EQ(errc, error_code());
+		EXPECT_EQ(info, error_info());
 	}
 };
 

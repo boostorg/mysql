@@ -16,7 +16,8 @@ void mysql::detail::prepare_statement(
 	serialize_message(packet, channel.current_capabilities(), buff);
 
 	// Write message
-	channel.write(buff, err);
+	channel.reset_sequence_number();
+	channel.write(boost::asio::buffer(buff), err);
 	if (err) return;
 
 	// Read response
@@ -24,7 +25,7 @@ void mysql::detail::prepare_statement(
 	if (err) return;
 
 	// Deserialize response
-	DeserializationContext ctx (buff, channel.current_capabilities());
+	DeserializationContext ctx (boost::asio::buffer(buff), channel.current_capabilities());
 	std::uint8_t msg_type = 0;
 	std::tie(err, msg_type) = deserialize_message_type(ctx);
 	if (err) return;
@@ -33,7 +34,7 @@ void mysql::detail::prepare_statement(
 		com_stmt_prepare_ok_packet response;
 		err = deserialize_message(response, ctx);
 		if (err) return;
-		output = prepared_statement<StreamType>(response);
+		output = prepared_statement<StreamType>(channel, response);
 	}
 	else if (msg_type == error_packet_header)
 	{

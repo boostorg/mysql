@@ -58,6 +58,7 @@ add_executable(
 	integration/metadata_validator.cpp
 	integration/handshake.cpp
 	integration/query.cpp
+	integration/prepare_statement.cpp
 	integration/query_types.cpp
 )
 target_link_libraries(

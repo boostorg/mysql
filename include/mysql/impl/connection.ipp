@@ -126,6 +126,8 @@ mysql::prepared_statement<Stream> mysql::connection<Stream>::prepare_statement(
 )
 {
 	mysql::prepared_statement<Stream> res;
+	err.clear();
+	info.clear();
 	detail::prepare_statement(channel_, statement, err, info, res);
 	return res;
 }

@@ -47,3 +47,4 @@ Technical debt
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	Rename (De)SerializationContext
 	Test zero dates
+	clear_errors() function to clear error_info and error_code at once
