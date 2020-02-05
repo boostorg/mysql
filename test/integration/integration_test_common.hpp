@@ -137,9 +137,14 @@ struct IntegTest : testing::Test
 
 	void validate_no_error()
 	{
-		EXPECT_EQ(errc, error_code());
+		ASSERT_EQ(errc, error_code());
 		EXPECT_EQ(info, error_info());
 	}
+};
+
+struct IntegTestAfterHandshake : IntegTest
+{
+	IntegTestAfterHandshake() { handshake(); }
 };
 
 }

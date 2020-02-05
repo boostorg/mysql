@@ -14,9 +14,8 @@ using mysql::Error;
 namespace
 {
 
-struct PrepareStatementTest : public IntegTest
+struct PrepareStatementTest : public IntegTestAfterHandshake
 {
-	PrepareStatementTest() { handshake(); }
 };
 
 TEST_F(PrepareStatementTest, SyncErrc_OkNoParams)

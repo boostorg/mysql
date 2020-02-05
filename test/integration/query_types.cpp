@@ -51,12 +51,8 @@ std::ostream& operator<<(std::ostream& os, const QueryTypesParams& v)
 	return os << v.table << "." << v.field << "." << v.row_id;
 }
 
-struct QueryTypesTest : IntegTest, WithParamInterface<QueryTypesParams>
+struct QueryTypesTest : IntegTestAfterHandshake, WithParamInterface<QueryTypesParams>
 {
-	QueryTypesTest()
-	{
-		handshake();
-	}
 };
 
 TEST_P(QueryTypesTest, Query_MetadataAndValueCorrect)
