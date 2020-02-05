@@ -9,6 +9,8 @@
 namespace mysql
 {
 
+constexpr std::array<value, 0> no_statement_params;
+
 template <typename Stream>
 class prepared_statement
 {
@@ -31,8 +33,6 @@ public:
 
 	template <typename ForwardIterator>
 	resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last, error_code&, error_info&) const;
-
-	static constexpr std::array<value, 0> no_params {};
 };
 
 }

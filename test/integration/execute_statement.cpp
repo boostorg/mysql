@@ -46,11 +46,28 @@ TEST_F(ExecuteStatementTest, IteratorsSyncErrc_Error)
 	EXPECT_FALSE(result.valid());
 }
 
-// prepared_statement::execute
-//    OK, no params
-//    OK, with params
-//    OK, select, insert, update, delete
-//    Error, wrong number of parameters
-//    Collection version
+TEST_F(ExecuteStatementTest, CollectionSyncErrc_OkNoParams)
+{
+	auto stmt = conn.prepare_statement("SELECT * FROM empty_table");
+	auto result = stmt.execute(mysql::no_statement_params, errc, info);
+	validate_no_error();
+	EXPECT_TRUE(result.valid());
+}
+
+TEST_F(ExecuteStatementTest, CollectionSyncErrc_OkWithParams)
+{
+	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
+	auto result = stmt.execute(makevalues("item", 42), errc, info);
+	validate_no_error();
+	EXPECT_TRUE(result.valid());
+}
+
+TEST_F(ExecuteStatementTest, CollectionSyncErrc_Error)
+{
+	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
+	auto result = stmt.execute(makevalues("item"), errc, info);
+	validate_sync_fail(Error::wrong_num_params, {"param", "2", "1", "statement", "execute"});
+	EXPECT_FALSE(result.valid());
+}
 
 }
