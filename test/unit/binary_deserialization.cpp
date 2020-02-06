@@ -175,20 +175,20 @@ TEST_P(DeserializeBinaryRowTest, CorrectFormat_SetsOutputValueReturnsTrue)
 }
 
 INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowTest, testing::Values(
-	BinaryRowParam("one_value", {0x00, 0x14}, makevalues(std::int32_t(20)), {protocol_field_type::tiny}),
-	BinaryRowParam("one_null", {0x04}, makevalues(nullptr), {protocol_field_type::tiny}),
-	BinaryRowParam("two_values", {0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07},
+	BinaryRowParam("one_value", {0x00, 0x00, 0x14}, makevalues(std::int32_t(20)), {protocol_field_type::tiny}),
+	BinaryRowParam("one_null", {0x00, 0x04}, makevalues(nullptr), {protocol_field_type::tiny}),
+	BinaryRowParam("two_values", {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07},
 			makevalues("min", std::int32_t(1901)), {protocol_field_type::var_string, protocol_field_type::short_}),
-	BinaryRowParam("one_value_one_null", {0x08, 0x03, 0x6d, 0x61, 0x78},
+	BinaryRowParam("one_value_one_null", {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78},
 			makevalues("max", nullptr), {protocol_field_type::var_string, protocol_field_type::tiny}),
-	BinaryRowParam("two_nulls", {0x0c},
+	BinaryRowParam("two_nulls", {0x00, 0x0c},
 			makevalues(nullptr, nullptr), {protocol_field_type::tiny, protocol_field_type::tiny}),
-	BinaryRowParam("six_nulls", {0xfc}, std::vector<value>(6, value(nullptr)),
+	BinaryRowParam("six_nulls", {0x00, 0xfc}, std::vector<value>(6, value(nullptr)),
 			std::vector<protocol_field_type>(6, protocol_field_type::tiny)),
-	BinaryRowParam("seven_nulls", {0xfc, 0x01}, std::vector<value>(7, value(nullptr)),
+	BinaryRowParam("seven_nulls", {0x00, 0xfc, 0x01}, std::vector<value>(7, value(nullptr)),
 			std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
 	BinaryRowParam("several_values", {
-			0x90, 0x00, 0xfd, 0x14, 0x00, 0xc3, 0xf5, 0x48,
+			0x00, 0x90, 0x00, 0xfd, 0x14, 0x00, 0xc3, 0xf5, 0x48,
 			0x40, 0x02, 0x61, 0x62, 0x04, 0xe2, 0x07, 0x0a,
 			0x05, 0x71, 0x99, 0x6d, 0xe2, 0x93, 0x4d, 0xf5,
 			0x3d
@@ -250,15 +250,15 @@ TEST_P(DeserializeBinaryRowErrorTest, ErrorCondition_ReturnsErrorCode)
 }
 
 INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowErrorTest, testing::Values(
-	BinaryRowErrorParam("no_space_null_bitmap_1", {}, Error::incomplete_message, {protocol_field_type::tiny}),
-	BinaryRowErrorParam("no_space_null_bitmap_2", {0xfc}, Error::incomplete_message,
+	BinaryRowErrorParam("no_space_null_bitmap_1", {0x00}, Error::incomplete_message, {protocol_field_type::tiny}),
+	BinaryRowErrorParam("no_space_null_bitmap_2", {0x00, 0xfc}, Error::incomplete_message,
 			std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
-	BinaryRowErrorParam("no_space_value_single", {0x00}, Error::incomplete_message, {protocol_field_type::tiny}),
-	BinaryRowErrorParam("no_space_value_last", {0x00, 0x01}, Error::incomplete_message,
+	BinaryRowErrorParam("no_space_value_single", {0x00, 0x00}, Error::incomplete_message, {protocol_field_type::tiny}),
+	BinaryRowErrorParam("no_space_value_last", {0x00, 0x00, 0x01}, Error::incomplete_message,
 			std::vector<protocol_field_type>(2, protocol_field_type::tiny)),
-	BinaryRowErrorParam("no_space_value_middle", {0x00, 0x01}, Error::incomplete_message,
+	BinaryRowErrorParam("no_space_value_middle", {0x00, 0x00, 0x01}, Error::incomplete_message,
 			std::vector<protocol_field_type>(3, protocol_field_type::tiny)),
-	BinaryRowErrorParam("extra_bytes", {0x00, 0x01, 0x02}, Error::extra_bytes, {protocol_field_type::tiny})
+	BinaryRowErrorParam("extra_bytes", {0x00, 0x00, 0x01, 0x02}, Error::extra_bytes, {protocol_field_type::tiny})
 ), test_name_generator);
 
 

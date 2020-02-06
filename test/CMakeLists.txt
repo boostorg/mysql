@@ -60,6 +60,7 @@ add_executable(
 	integration/query.cpp
 	integration/prepare_statement.cpp
 	integration/execute_statement.cpp
+	integration/resultset.cpp
 	integration/query_types.cpp
 )
 target_link_libraries(

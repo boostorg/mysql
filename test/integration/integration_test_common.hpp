@@ -9,6 +9,7 @@
 #include <thread>
 #include <functional>
 #include "test_common.hpp"
+#include "metadata_validator.hpp"
 
 namespace mysql
 {
@@ -141,6 +142,44 @@ struct IntegTest : testing::Test
 		ASSERT_EQ(errc, error_code());
 		EXPECT_EQ(info, error_info());
 	}
+
+	using resultset_type = mysql::resultset<boost::asio::ip::tcp::socket>;
+
+	void validate_eof(
+		const resultset_type& result,
+		int affected_rows=0,
+		int warnings=0,
+		int last_insert=0,
+		std::string_view info=""
+	)
+	{
+		EXPECT_TRUE(result.valid());
+		EXPECT_TRUE(result.complete());
+		EXPECT_EQ(result.affected_rows(), affected_rows);
+		EXPECT_EQ(result.warning_count(), warnings);
+		EXPECT_EQ(result.last_insert_id(), last_insert);
+		EXPECT_EQ(result.info(), info);
+	}
+
+	void validate_2fields_meta(
+		const std::vector<field_metadata>& fields,
+		const std::string& table
+	) const
+	{
+		validate_meta(fields, {
+			meta_validator(table, "id", field_type::int_),
+			meta_validator(table, "field_varchar", field_type::varchar)
+		});
+	}
+
+	void validate_2fields_meta(
+		const resultset_type& result,
+		const std::string& table
+	) const
+	{
+		validate_2fields_meta(result.fields(), table);
+	}
+
 };
 
 struct IntegTestAfterHandshake : IntegTest

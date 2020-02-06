@@ -122,7 +122,12 @@ inline mysql::error_code mysql::detail::deserialize_binary_row(
 	std::vector<value>& output
 )
 {
-	// Packet header is already read
+	// Skip packet header (it is not part of the message in the binary
+	// protocol but it is in the text protocol, so we include it for homogeneity)
+	// The caller will have checked we have this byte already for us
+	assert(ctx.enough_size(1));
+	ctx.advance(1);
+
 	// Number of fields
 	auto num_fields = meta.size();
 	output.resize(num_fields);
