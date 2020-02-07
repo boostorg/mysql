@@ -18,6 +18,14 @@ void prepare_statement(
 	prepared_statement<StreamType>& output
 );
 
+template <typename StreamType, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, prepared_statement<StreamType>))
+async_prepare_statement(
+	channel<StreamType>& channel,
+	std::string_view statement,
+	CompletionToken&& token
+);
+
 }
 }
 
