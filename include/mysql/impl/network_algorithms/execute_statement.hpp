@@ -21,6 +21,16 @@ void execute_statement(
 	error_info& info
 );
 
+template <typename StreamType, typename ForwardIterator, typename CompletionToken>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<StreamType>))
+async_execute_statement(
+	channel<StreamType>& chan,
+	std::uint32_t statement_id,
+	ForwardIterator params_begin,
+	ForwardIterator params_end,
+	CompletionToken&& token
+);
+
 }
 }
 
