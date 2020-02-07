@@ -145,5 +145,15 @@ mysql::prepared_statement<Stream> mysql::connection<Stream>::prepare_statement(
 	return res;
 }
 
+template <typename Stream>
+template <typename CompletionToken>
+auto mysql::connection<Stream>::async_prepare_statement(
+	std::string_view statement,
+	CompletionToken&& token
+)
+{
+	return detail::async_prepare_statement(channel_, statement, std::forward<CompletionToken>(token));
+}
+
 
 #endif

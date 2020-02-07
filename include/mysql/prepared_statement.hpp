@@ -37,6 +37,12 @@ public:
 		return execute(std::begin(params), std::end(params));
 	}
 
+	template <typename Collection, typename CompletionToken>
+	auto async_execute(const Collection& params, CompletionToken&& token) const
+	{
+		return async_execute(std::begin(params), std::end(params), std::forward<CompletionToken>(token));
+	}
+
 
 	template <typename ForwardIterator>
 	resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last, error_code&, error_info&) const;
@@ -44,6 +50,9 @@ public:
 
 	template <typename ForwardIterator>
 	resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last) const;
+
+	template <typename ForwardIterator, typename CompletionToken>
+	auto async_execute(ForwardIterator params_first, ForwardIterator params_last, CompletionToken&& token) const;
 };
 
 using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;

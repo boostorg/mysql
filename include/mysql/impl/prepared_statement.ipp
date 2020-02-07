@@ -56,4 +56,24 @@ mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
 	return res;
 }
 
+template <typename StreamType>
+template <typename ForwardIterator, typename CompletionToken>
+auto mysql::prepared_statement<StreamType>::async_execute(
+	ForwardIterator params_first,
+	ForwardIterator params_last,
+	CompletionToken&& token
+) const
+{
+	// TODO: actually return an error message here instead of crashing
+	assert(std::distance(params_first, params_last) == num_params());
+	return detail::async_execute_statement(
+		*channel_,
+		stmt_msg_.statement_id.value,
+		params_first,
+		params_last,
+		std::forward<CompletionToken>(token)
+	);
+}
+
+
 #endif /* INCLUDE_MYSQL_IMPL_PREPARED_STATEMENT_IPP_ */

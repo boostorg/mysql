@@ -124,6 +124,9 @@ public:
 
 	prepared_statement<Stream> prepare_statement(std::string_view statement, error_code&, error_info&);
 	prepared_statement<Stream> prepare_statement(std::string_view statement);
+
+	template <typename CompletionToken>
+	auto async_prepare_statement(std::string_view statement, CompletionToken&& token);
 };
 
 /// A connection to MySQL over TCP.
