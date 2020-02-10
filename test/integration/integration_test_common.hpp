@@ -241,6 +241,12 @@ public:
 template <typename TraitsType>
 using traits_network_function = typename get_network_function_type<TraitsType>::type;
 
+template <typename... T>
+struct printer
+{
+	static_assert(std::is_same_v<T..., int>);
+};
+
 template <typename TraitsType, typename R, typename... Args>
 auto make_network_functions_impl(R(*)(Args...))
 {
@@ -266,9 +272,17 @@ auto make_network_functions_impl(R(*)(Args...))
 		}
 		return res;
 	};
+	auto async = [](Args... args) {
+		std::promise<NetResultType> prom;
+		TraitsType::async(std::forward<Args>(args)..., [&prom](error_code errc, error_info info, auto retval) {
+			prom.set_value(NetResultType{errc, std::move(info), std::move(retval)});
+		});
+		return prom.get_future().get();
+	};
 	return std::vector<NetFunType>{
 		NetFunType("sync_errc", sync_errc),
-		NetFunType("sync_exc", sync_exc)
+		NetFunType("sync_exc", sync_exc),
+		NetFunType("async", async)
 	};
 }
 

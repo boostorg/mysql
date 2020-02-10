@@ -16,6 +16,9 @@ class prepared_statement
 {
 	detail::channel<Stream>* channel_ {};
 	detail::com_stmt_prepare_ok_packet stmt_msg_;
+
+	template <typename ForwardIterator>
+	void check_num_params(ForwardIterator first, ForwardIterator last, error_code& err, error_info& info) const;
 public:
 	prepared_statement() = default;
 	prepared_statement(detail::channel<Stream>& chan, const detail::com_stmt_prepare_ok_packet& msg) noexcept:

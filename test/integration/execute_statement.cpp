@@ -33,6 +33,12 @@ struct ExecuteStatementIteratorTraits
 	{
 		return stmt.execute(first, last);
 	}
+
+	template <typename CompletionToken>
+	static auto async(const tcp_prepared_statement& stmt, listit first, listit last, CompletionToken&& token)
+	{
+		return stmt.async_execute(first, last, std::forward<CompletionToken>(token));
+	}
 };
 
 struct ExecuteStatementIteratorTest : public NetworkTest<ExecuteStatementIteratorTraits> {};
@@ -80,6 +86,12 @@ struct ExecuteStatementContainerTraits
 	static tcp_resultset sync_exc(const tcp_prepared_statement& stmt, const std::vector<value>& v)
 	{
 		return stmt.execute(v);
+	}
+
+	template <typename CompletionToken>
+	static auto async(const tcp_prepared_statement& stmt, const std::vector<value>& v, CompletionToken&& token)
+	{
+		return stmt.async_execute(v, std::forward<CompletionToken>(token));
 	}
 };
 

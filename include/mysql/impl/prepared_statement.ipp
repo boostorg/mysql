@@ -3,6 +3,26 @@
 
 #include "mysql/impl/network_algorithms/execute_statement.hpp"
 #include "mysql/impl/stringize.hpp"
+#include <boost/beast/core/bind_handler.hpp>
+
+template <typename Stream>
+template <typename ForwardIterator>
+void mysql::prepared_statement<Stream>::check_num_params(
+	ForwardIterator first,
+	ForwardIterator last,
+	error_code& err,
+	error_info& info
+) const
+{
+	auto param_count = std::distance(first, last);
+	if (param_count != num_params())
+	{
+		err = detail::make_error_code(Error::wrong_num_params);
+		info.set_message(detail::stringize(
+				"prepared_statement::execute: expected ", num_params(), " params, but got ", param_count));
+	}
+}
+
 
 template <typename Stream>
 template <typename ForwardIterator>
@@ -16,18 +36,13 @@ mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
 	assert(valid());
 
 	mysql::resultset<Stream> res;
+	err.clear();
+	info.clear();
 
-	auto param_count = std::distance(params_first, params_last);
-	if (param_count != num_params())
+	// Verify we got passed the right number of params
+	check_num_params(params_first, params_last, err, info);
+	if (!err)
 	{
-		err = detail::make_error_code(Error::wrong_num_params);
-		info.set_message(detail::stringize(
-				"prepared_statement::execute: expected ", num_params(), " params, but got ", param_count));
-	}
-	else
-	{
-		err.clear();
-		info.clear();
 		detail::execute_statement(
 			*channel_,
 			stmt_msg_.statement_id.value,
@@ -64,8 +79,26 @@ auto mysql::prepared_statement<StreamType>::async_execute(
 	CompletionToken&& token
 ) const
 {
-	// TODO: actually return an error message here instead of crashing
-	assert(std::distance(params_first, params_last) == num_params());
+	// Check we got passed the right number of params
+	error_code err;
+	error_info info;
+	check_num_params(params_first, params_last, err, info);
+	if (err)
+	{
+		using HandlerSignature = void(error_code, error_info, resultset<StreamType>);
+		boost::asio::async_completion<CompletionToken, HandlerSignature> completion (token);
+		return boost::asio::post(
+			channel_->next_layer().get_executor(),
+			boost::beast::bind_front_handler(
+				std::move(completion.completion_handler),
+				err,
+				std::move(info),
+				resultset<StreamType>()
+			)
+		);
+	}
+
+	// Actually execute the statement
 	return detail::async_execute_statement(
 		*channel_,
 		stmt_msg_.statement_id.value,

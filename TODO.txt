@@ -48,3 +48,4 @@ Technical debt
 	Rename (De)SerializationContext
 	Test zero dates
 	clear_errors() function to clear error_info and error_code at once
+	Review .hpp/.ipp convention
