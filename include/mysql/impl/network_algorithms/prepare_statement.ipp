@@ -197,7 +197,12 @@ mysql::detail::async_prepare_statement(
 				}
 
 				// Compose response
-				this->complete(cont, err, error_info(), PreparedStatementType(processor_->get_response()));
+				this->complete(
+					cont,
+					err,
+					error_info(),
+					PreparedStatementType(processor_->get_channel(), processor_->get_response())
+				);
 			}
 		}
 	};

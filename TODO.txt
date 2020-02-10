@@ -1,8 +1,6 @@
 Prepared statements
-	Unit tests for basic prepared statement ops
-	Integ tests for sync versions
-	Sync exc versions and tests
-	Async versions and tests
+	Statement lifecycle tests
+	Statement types tests
 	Statement close
 	Examples
 	Docs
@@ -35,7 +33,7 @@ Technical debt
 		See if async_initiate is applicable
 		See if we can drop the dependence on beast
 		See if we can just declare the functions as auto
-		Test things with other than futures
+		Test things with futures
 	Review close() of the stream on error
 	Review valid() for moved-from resultsets (should it return always true?)
 	Force the same number of values in each row as in fields()
@@ -49,3 +47,4 @@ Technical debt
 	Test zero dates
 	clear_errors() function to clear error_info and error_code at once
 	Review .hpp/.ipp convention
+	Make all sync/async tests use the network test suite

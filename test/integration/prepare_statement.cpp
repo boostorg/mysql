@@ -9,60 +9,66 @@
 
 using namespace mysql::test;
 using mysql::error_code;
+using mysql::error_info;
 using mysql::Error;
+using mysql::tcp_prepared_statement;
+using mysql::tcp_connection;
 
 namespace
 {
 
-struct PrepareStatementTest : public IntegTestAfterHandshake
+struct PrepareStatementTraits
+{
+	static tcp_prepared_statement sync_errc(tcp_connection& conn, std::string_view statement,
+			error_code& err, error_info& info)
+	{
+		return conn.prepare_statement(statement, err, info);
+	}
+
+	static tcp_prepared_statement sync_exc(tcp_connection& conn, std::string_view statement)
+	{
+		return conn.prepare_statement(statement);
+	}
+
+	template <typename CompletionToken>
+	static auto async(tcp_connection& conn, std::string_view statement, CompletionToken&& token)
+	{
+		return conn.async_prepare_statement(statement, std::forward<CompletionToken>(token));
+	}
+};
+
+struct PrepareStatementTest : public NetworkTest<PrepareStatementTraits>
 {
 };
 
 // sync errc
-TEST_F(PrepareStatementTest, SyncErrc_OkNoParams)
+TEST_P(PrepareStatementTest, OkNoParams)
 {
-	auto stmt = conn.prepare_statement("SELECT * FROM empty_table", errc, info);
-	validate_no_error();
-	ASSERT_TRUE(stmt.valid());
-	EXPECT_GT(stmt.id(), 0);
-	EXPECT_EQ(stmt.num_params(), 0);
+	auto stmt = GetParam().fun(conn, "SELECT * FROM empty_table");
+	stmt.validate_no_error();
+	ASSERT_TRUE(stmt.value.valid());
+	EXPECT_GT(stmt.value.id(), 0);
+	EXPECT_EQ(stmt.value.num_params(), 0);
 }
 
-TEST_F(PrepareStatementTest, SyncErrc_OkWithParams)
+TEST_P(PrepareStatementTest, OkWithParams)
 {
-	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", errc, info);
-	validate_no_error();
-	ASSERT_TRUE(stmt.valid());
-	EXPECT_GT(stmt.id(), 0);
-	EXPECT_EQ(stmt.num_params(), 2);
+	auto stmt = GetParam().fun(conn, "SELECT * FROM empty_table WHERE id IN (?, ?)");
+	stmt.validate_no_error();
+	ASSERT_TRUE(stmt.value.valid());
+	EXPECT_GT(stmt.value.id(), 0);
+	EXPECT_EQ(stmt.value.num_params(), 2);
 }
 
-TEST_F(PrepareStatementTest, SyncErrc_Error)
+TEST_P(PrepareStatementTest, Error)
 {
-	auto stmt = conn.prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)", errc, info);
-	validate_sync_fail(Error::no_such_table, {"table", "doesn't exist", "bad_table"});
-	EXPECT_FALSE(stmt.valid());
+	auto stmt = GetParam().fun(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
+	stmt.validate_error(Error::no_such_table, {"table", "doesn't exist", "bad_table"});
+	EXPECT_FALSE(stmt.value.valid());
 }
 
-// sync exc
-TEST_F(PrepareStatementTest, SyncExc_Ok)
-{
-	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id = ?");
-	ASSERT_TRUE(stmt.valid());
-	EXPECT_GT(stmt.id(), 0);
-	EXPECT_EQ(stmt.num_params(), 1);
-}
+MYSQL_NETWORK_TEST_SUITE(PrepareStatementTest);
 
-TEST_F(PrepareStatementTest, SyncExc_Err)
-{
-	validate_sync_fail([this] {
-		conn.prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)");
-	}, Error::no_such_table, {"table", "doesn't exist", "bad_table"});
-}
-
-
-// resultset::fetch_xxxx: repeat the same tests as in query
-//    Cover no params, with params, select, insert, update, delete, with table/fields as params
 // statements life cycle
 //    Test select, insert, update, delete
 //    Test with tables/fields as params
