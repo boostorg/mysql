@@ -233,8 +233,6 @@ void mysql::detail::hanshake(
 	error_info& info
 )
 {
-	info.clear();
-
 	// Set up processor
 	handshake_processor processor (params);
 

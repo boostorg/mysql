@@ -21,120 +21,56 @@ using mysql::Error;
 namespace
 {
 
-struct HandshakeTest : public mysql::test::IntegTest
+struct HandshakeTest : public NetworkTest<IntegTest>
 {
+	auto do_handshake() { return GetParam()->handshake(conn, connection_params); }
 };
 
-// Sync with error codes
-TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLogin)
+TEST_P(HandshakeTest, FastAuthSuccessfulLogin)
 {
-	conn.handshake(connection_params, errc, info);
-	EXPECT_EQ(errc, mysql::error_code());
-	EXPECT_EQ(info, error_info());
+	auto result = do_handshake();
+	result.validate_no_error();
 }
 
 // TODO: review failure in Mac
-/*TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLoginEmptyPassword)
+/*TEST_P(HandshakeTest, FastAuthSuccessfulLoginEmptyPassword)
 {
 	connection_params.username = "empty_password_user";
 	connection_params.password = "";
-	conn.handshake(connection_params, errc);
-	EXPECT_EQ(errc, mysql::error_code());
+	auto result = do_handshake();
+	result.validate_no_error();
 }*/
 
-TEST_F(HandshakeTest, SyncErrc_FastAuthSuccessfulLoginNoDatabase)
+TEST_P(HandshakeTest, FastAuthSuccessfulLoginNoDatabase)
 {
 	connection_params.database = "";
-	conn.handshake(connection_params, errc, info);
-	EXPECT_EQ(errc, mysql::error_code());
-	EXPECT_EQ(info, error_info());
+	auto result = do_handshake();
+	result.validate_no_error();
 }
 
-TEST_F(HandshakeTest, SyncErrc_FastAuthBadUser)
+TEST_P(HandshakeTest, FastAuthBadUser)
 {
 	connection_params.username = "non_existing_user";
-	conn.handshake(connection_params, errc, info);
-	EXPECT_NE(errc, mysql::error_code());
+	auto result = do_handshake();
+	EXPECT_NE(result.err, mysql::error_code());
 	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
 	// EXPECT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
 }
 
-TEST_F(HandshakeTest, SyncErrc_FastAuthBadPassword)
+TEST_P(HandshakeTest, FastAuthBadPassword)
 {
 	connection_params.password = "bad_password";
-	conn.handshake(connection_params, errc, info);
-	EXPECT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
-	validate_error_info(info, {"access denied", "integ_user"});
+	auto result = do_handshake();
+	result.validate_error(mysql::Error::access_denied_error, {"access denied", "integ_user"});
 }
 
-TEST_F(HandshakeTest, SyncErrc_FastAuthBadDatabase)
+TEST_P(HandshakeTest, FastAuthBadDatabase)
 {
 	connection_params.database = "bad_database";
-	conn.handshake(connection_params, errc, info);
-	EXPECT_EQ(errc, make_error_code(mysql::Error::bad_db_error));
-	validate_error_info(info, {"unknown database", "bad_database"});
+	auto result = do_handshake();
+	result.validate_error(mysql::Error::bad_db_error, {"unknown database", "bad_database"});
 }
 
-// Sync with exceptions
-TEST_F(HandshakeTest, SyncExc_FastAuthSuccessfulLogin)
-{
-	EXPECT_NO_THROW(conn.handshake(connection_params));
-}
-
-TEST_F(HandshakeTest, SyncExc_FastAuthBadPassword)
-{
-	connection_params.password = "bad_password";
-	validate_sync_fail([this] {
-		conn.handshake(connection_params);
-	}, Error::access_denied_error, {"access denied", "integ_user"});
-}
-
-// Async
-TEST_F(HandshakeTest, Async_FastAuthSuccessfulLogin)
-{
-	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
-	EXPECT_EQ(fut.get(), error_info());
-}
-
-// TODO: review failure in Mac
-/*TEST_F(HandshakeTest, Async_FastAuthSuccessfulLoginEmptyPassword)
-{
-	connection_params.username = "empty_password_user";
-	connection_params.password = "";
-	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
-	EXPECT_EQ(fut.get(), error_info());
-}*/
-
-TEST_F(HandshakeTest, Async_FastAuthSuccessfulLoginNoDatabase)
-{
-	connection_params.database = "";
-	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
-	EXPECT_EQ(fut.get(), error_info());
-}
-
-TEST_F(HandshakeTest, Async_FastAuthBadUser)
-{
-	connection_params.username = "non_existing_user";
-	auto fut = conn.async_handshake(connection_params, boost::asio::use_future);
-	EXPECT_THROW(fut.get(), boost::system::system_error);
-	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
-	// validate_future_exception(fut, make_error_code(mysql::Error::access_denied_error));
-}
-
-TEST_F(HandshakeTest, Async_FastAuthBadPassword)
-{
-	connection_params.password = "bad_password";
-	validate_async_fail([&](auto&& cb) {
-		conn.async_handshake(connection_params, std::move(cb));
-	}, mysql::Error::access_denied_error, {"access denied", "integ_user"});
-}
-
-TEST_F(HandshakeTest, Async_FastAuthBadDatabase)
-{
-	connection_params.database = "bad_db";
-	validate_async_fail([&](auto&& cb) {
-		conn.async_handshake(connection_params, std::move(cb));
-	}, mysql::Error::bad_db_error, {"unknown database", "bad_db"});
-}
+MYSQL_NETWORK_TEST_SUITE(HandshakeTest);
 
 } // anon namespace

@@ -11,6 +11,8 @@ namespace mysql
 namespace test
 {
 
+struct no_result {};
+
 template <typename T>
 struct network_result
 {
@@ -48,6 +50,8 @@ class network_functions
 {
 public:
 	virtual ~network_functions() = default;
+	virtual const char* name() const = 0;
+	virtual network_result<no_result> handshake(tcp_connection&, const connection_params&) = 0;
 	virtual network_result<tcp_prepared_statement> prepare_statement(
 			tcp_connection&, std::string_view statement) = 0;
 	virtual network_result<tcp_resultset> execute_statement(
@@ -69,7 +73,7 @@ inline network_functions* all_network_functions [] = {
 #define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
 	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
 		all_network_functions \
-	), test_name_generator)
+	), [](const auto& param_info) { return param_info.param->name(); })
 
 }
 }
