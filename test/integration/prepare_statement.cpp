@@ -17,34 +17,14 @@ using mysql::tcp_connection;
 namespace
 {
 
-struct PrepareStatementTraits
-{
-	static tcp_prepared_statement sync_errc(tcp_connection& conn, std::string_view statement,
-			error_code& err, error_info& info)
-	{
-		return conn.prepare_statement(statement, err, info);
-	}
-
-	static tcp_prepared_statement sync_exc(tcp_connection& conn, std::string_view statement)
-	{
-		return conn.prepare_statement(statement);
-	}
-
-	template <typename CompletionToken>
-	static auto async(tcp_connection& conn, std::string_view statement, CompletionToken&& token)
-	{
-		return conn.async_prepare_statement(statement, std::forward<CompletionToken>(token));
-	}
-};
-
-struct PrepareStatementTest : public NetworkTest<PrepareStatementTraits>
+struct PrepareStatementTest : public NetworkTest<>
 {
 };
 
 // sync errc
 TEST_P(PrepareStatementTest, OkNoParams)
 {
-	auto stmt = GetParam().fun(conn, "SELECT * FROM empty_table");
+	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table");
 	stmt.validate_no_error();
 	ASSERT_TRUE(stmt.value.valid());
 	EXPECT_GT(stmt.value.id(), 0);
@@ -53,7 +33,7 @@ TEST_P(PrepareStatementTest, OkNoParams)
 
 TEST_P(PrepareStatementTest, OkWithParams)
 {
-	auto stmt = GetParam().fun(conn, "SELECT * FROM empty_table WHERE id IN (?, ?)");
+	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table WHERE id IN (?, ?)");
 	stmt.validate_no_error();
 	ASSERT_TRUE(stmt.value.valid());
 	EXPECT_GT(stmt.value.id(), 0);
@@ -62,7 +42,7 @@ TEST_P(PrepareStatementTest, OkWithParams)
 
 TEST_P(PrepareStatementTest, Error)
 {
-	auto stmt = GetParam().fun(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
+	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
 	stmt.validate_error(Error::no_such_table, {"table", "doesn't exist", "bad_table"});
 	EXPECT_FALSE(stmt.value.valid());
 }

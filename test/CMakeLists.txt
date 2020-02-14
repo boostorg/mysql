@@ -56,6 +56,7 @@ add_test(
 add_executable(
 	mysql_integrationtests
 	integration/metadata_validator.cpp
+	integration/network_functions.cpp
 	integration/handshake.cpp
 	integration/query.cpp
 	integration/prepare_statement.cpp
