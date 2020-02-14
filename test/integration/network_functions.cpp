@@ -36,6 +36,15 @@ public:
 			return no_result();
 		});
 	}
+	network_result<tcp_resultset> query(
+		tcp_connection& conn,
+		std::string_view query
+	) override
+	{
+		return impl([&](error_code& errc, error_info& info) {
+			return conn.query(query, errc, info);
+		});
+	}
 	network_result<tcp_prepared_statement> prepare_statement(
 		tcp_connection& conn,
 		std::string_view statement
@@ -93,6 +102,15 @@ public:
 		return impl([&] {
 			conn.handshake(params);
 			return no_result();
+		});
+	}
+	network_result<tcp_resultset> query(
+		tcp_connection& conn,
+		std::string_view query
+	) override
+	{
+		return impl([&] {
+			return conn.query(query);
 		});
 	}
 	network_result<tcp_prepared_statement> prepare_statement(
@@ -153,6 +171,15 @@ public:
 	{
 		return impl_no_result([&](auto&& token) {
 			return conn.async_handshake(params, std::forward<decltype(token)>(token));
+		});
+	}
+	network_result<tcp_resultset> query(
+		tcp_connection& conn,
+		std::string_view query
+	) override
+	{
+		return impl<tcp_resultset>([&](auto&& token) {
+			return conn.async_query(query, std::forward<decltype(token)>(token));
 		});
 	}
 	network_result<tcp_prepared_statement> prepare_statement(

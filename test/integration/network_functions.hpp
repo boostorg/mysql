@@ -52,6 +52,7 @@ public:
 	virtual ~network_functions() = default;
 	virtual const char* name() const = 0;
 	virtual network_result<no_result> handshake(tcp_connection&, const connection_params&) = 0;
+	virtual network_result<tcp_resultset> query(tcp_connection&, std::string_view query) = 0;
 	virtual network_result<tcp_prepared_statement> prepare_statement(
 			tcp_connection&, std::string_view statement) = 0;
 	virtual network_result<tcp_resultset> execute_statement(
