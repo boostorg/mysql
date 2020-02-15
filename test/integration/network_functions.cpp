@@ -73,6 +73,31 @@ public:
 			return stmt.execute(values, err, info);
 		});
 	}
+	network_result<const mysql::row*> fetch_one(
+		tcp_resultset& r
+	) override
+	{
+		return impl([&](error_code& errc, error_info& info) {
+			return r.fetch_one(errc, info);
+		});
+	}
+	network_result<std::vector<mysql::owning_row>> fetch_many(
+		tcp_resultset& r,
+		std::size_t count
+	) override
+	{
+		return impl([&](error_code& errc, error_info& info) {
+			return r.fetch_many(count, errc, info);
+		});
+	}
+	network_result<std::vector<mysql::owning_row>> fetch_all(
+		tcp_resultset& r
+	) override
+	{
+		return impl([&](error_code& errc, error_info& info) {
+			return r.fetch_all(errc, info);
+		});
+	}
 };
 
 class sync_exc : public network_functions
@@ -139,6 +164,31 @@ public:
 	{
 		return impl([&stmt, &values] {
 			return stmt.execute(values);
+		});
+	}
+	network_result<const mysql::row*> fetch_one(
+		tcp_resultset& r
+	) override
+	{
+		return impl([&] {
+			return r.fetch_one();
+		});
+	}
+	network_result<std::vector<mysql::owning_row>> fetch_many(
+		tcp_resultset& r,
+		std::size_t count
+	) override
+	{
+		return impl([&] {
+			return r.fetch_many(count);
+		});
+	}
+	network_result<std::vector<mysql::owning_row>> fetch_all(
+		tcp_resultset& r
+	) override
+	{
+		return impl([&] {
+			return r.fetch_all();
 		});
 	}
 };
@@ -208,6 +258,31 @@ public:
 	{
 		return impl<tcp_resultset>([&](auto&& token) {
 			return stmt.async_execute(values, std::forward<decltype(token)>(token));
+		});
+	}
+	network_result<const mysql::row*> fetch_one(
+		tcp_resultset& r
+	) override
+	{
+		return impl<const mysql::row*>([&](auto&& token) {
+			return r.async_fetch_one(std::forward<decltype(token)>(token));
+		});
+	}
+	network_result<std::vector<mysql::owning_row>> fetch_many(
+		tcp_resultset& r,
+		std::size_t count
+	) override
+	{
+		return impl<std::vector<mysql::owning_row>>([&](auto&& token) {
+			return r.async_fetch_many(count, std::forward<decltype(token)>(token));
+		});
+	}
+	network_result<std::vector<mysql::owning_row>> fetch_all(
+		tcp_resultset& r
+	) override
+	{
+		return impl<std::vector<mysql::owning_row>>([&](auto&& token) {
+			return r.async_fetch_all(std::forward<decltype(token)>(token));
 		});
 	}
 };
