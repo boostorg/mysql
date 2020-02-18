@@ -62,6 +62,7 @@ add_executable(
 	integration/prepare_statement.cpp
 	integration/execute_statement.cpp
 	integration/resultset.cpp
+	integration/prepared_statement_lifecycle.cpp
 	integration/database_types.cpp
 )
 target_link_libraries(

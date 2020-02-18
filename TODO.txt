@@ -1,5 +1,6 @@
 Prepared statements
-	Statement lifecycle tests: select, insert, update, several executions, out of order execution
+	Statement execute: null values as parameters
+	Statement execute: fail (insert)
 	Db types: relevant cases for datetimes and times for binary protocol
 	Statement close
 	Examples
@@ -48,3 +49,5 @@ Technical debt
 	Make all sync/async tests use the network test suite
 	Rework deserialize_row_fn to allow cursors
 	Test prepared statement binding to procedure out params
+	More thorough testing for several NULLs in integration testing
+	Query and statement tests for DELETEs
