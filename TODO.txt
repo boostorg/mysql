@@ -1,11 +1,9 @@
 Prepared statements
-	Statement lifecycle tests
-	Statement types tests
+	Statement lifecycle tests: select, insert, update, several executions, out of order execution
+	Db types: relevant cases for datetimes and times for binary protocol
 	Statement close
 	Examples
 	Docs
-	(?) Rework deserialize_row_fn to allow cursors
-	(?) Test prepared statement binding to procedure out params
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -48,3 +46,5 @@ Technical debt
 	clear_errors() function to clear error_info and error_code at once
 	Review .hpp/.ipp convention
 	Make all sync/async tests use the network test suite
+	Rework deserialize_row_fn to allow cursors
+	Test prepared statement binding to procedure out params

@@ -49,12 +49,4 @@ TEST_P(PrepareStatementTest, Error)
 
 MYSQL_NETWORK_TEST_SUITE(PrepareStatementTest);
 
-// statements life cycle
-//    Test select, insert, update, delete
-//    Test with tables/fields as params
-//    Test several executions
-//    Test out of order execution
-
 }
-
-

@@ -62,7 +62,7 @@ add_executable(
 	integration/prepare_statement.cpp
 	integration/execute_statement.cpp
 	integration/resultset.cpp
-	integration/query_types.cpp
+	integration/database_types.cpp
 )
 target_link_libraries(
 	mysql_integrationtests

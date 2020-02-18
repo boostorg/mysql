@@ -28,6 +28,7 @@ public:
 	{
 	}
 	void validate(const field_metadata& value) const;
+	field_type type() const noexcept { return type_; }
 private:
 	std::string table_;
 	std::string org_table_;
