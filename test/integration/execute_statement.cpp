@@ -49,7 +49,14 @@ TEST_P(ExecuteStatementTest, Iterator_MismatchedNumParams)
 	EXPECT_FALSE(result.value.valid());
 }
 
-// TODO: is there any way of making server return an error here?
+TEST_P(ExecuteStatementTest, Iterator_ServerError)
+{
+	std::forward_list<value> params { value("f0"), value("bad_date") };
+	auto stmt = conn.prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
+	auto result = GetParam()->execute_statement(stmt, params.begin(), params.end());
+	result.validate_error(Error::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
+	EXPECT_FALSE(result.value.valid());
+}
 
 // Container version
 TEST_P(ExecuteStatementTest, Container_OkNoParams)
@@ -75,6 +82,14 @@ TEST_P(ExecuteStatementTest, Container_MismatchedNumParams)
 	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
 	auto result = GetParam()->execute_statement(stmt, params);
 	result.validate_error(Error::wrong_num_params, {"param", "2", "1", "statement", "execute"});
+	EXPECT_FALSE(result.value.valid());
+}
+
+TEST_P(ExecuteStatementTest, Container_ServerError)
+{
+	auto stmt = conn.prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
+	auto result = GetParam()->execute_statement(stmt, makevalues("f0", "bad_date"));
+	result.validate_error(Error::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
 	EXPECT_FALSE(result.value.valid());
 }
 

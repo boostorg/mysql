@@ -1,6 +1,5 @@
 Prepared statements
 	Statement execute: null values as parameters
-	Statement execute: fail (insert)
 	Db types: relevant cases for datetimes and times for binary protocol
 	Statement close
 	Examples
