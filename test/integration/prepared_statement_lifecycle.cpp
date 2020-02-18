@@ -22,11 +22,10 @@ struct PreparedStatementLifecycleTest : NetworkTest<>
 			conn.query("SELECT COUNT(*) FROM " + table).fetch_all().at(0).values().at(0));
 	}
 
-	std::int32_t get_updates_table_value()
+	value get_updates_table_value(const std::string& field_varchar="f0")
 	{
-		return std::get<std::int32_t>(
-			conn.query("SELECT field_int FROM updates_table WHERE field_varchar = 'f0'")
-				.fetch_all().at(0).values().at(0));
+		return conn.query("SELECT field_int FROM updates_table WHERE field_varchar = '" + field_varchar + "'")
+				.fetch_all().at(0).values().at(0);
 	}
 };
 
@@ -121,7 +120,7 @@ TEST_P(PreparedStatementLifecycleTest, UpdateWithParametersMultipleExecutions)
 	EXPECT_TRUE(result.value.fields().empty());
 
 	// Verify that took effect
-	EXPECT_EQ(get_updates_table_value(), 200);
+	EXPECT_EQ(get_updates_table_value(), value(std::int32_t(200)));
 
 	// Set field_int to something different
 	result = net->execute_statement(stmt.value, makevalues(250, "f0"));
@@ -131,7 +130,7 @@ TEST_P(PreparedStatementLifecycleTest, UpdateWithParametersMultipleExecutions)
 	EXPECT_TRUE(result.value.fields().empty());
 
 	// Verify that took effect
-	EXPECT_EQ(get_updates_table_value(), 250);
+	EXPECT_EQ(get_updates_table_value(), value(std::int32_t(250)));
 }
 
 TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
@@ -180,6 +179,32 @@ TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
 	rows.validate_no_error();
 	EXPECT_EQ(rows.value.size(), 1);
 	EXPECT_EQ(static_cast<row&>(rows.value[0]), makerow(220));
+}
+
+TEST_P(PreparedStatementLifecycleTest, InsertWithNullValues)
+{
+	auto* net = GetParam();
+
+	// Statement to perform the updates
+	auto stmt = net->prepare_statement(
+		conn,
+		"UPDATE updates_table SET field_int = ? WHERE field_varchar = 'fnull'"
+	);
+	stmt.validate_no_error();
+
+	// Set the value we will be updating to something non-NULL
+	auto result = net->execute_statement(stmt.value, makevalues(42));
+	result.validate_no_error();
+
+	// Verify it took effect
+	ASSERT_EQ(get_updates_table_value("fnull"), value(std::int32_t(42)));
+
+	// Update the value to NULL
+	result = net->execute_statement(stmt.value, makevalues(nullptr));
+	result.validate_no_error();
+
+	// Verify it took effect
+	ASSERT_EQ(get_updates_table_value("fnull"), value(nullptr));
 }
 
 MYSQL_NETWORK_TEST_SUITE(PreparedStatementLifecycleTest);

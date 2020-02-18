@@ -19,7 +19,7 @@ CREATE TABLE updates_table (
     field_int INT
 ) ENGINE=INNODB;
 INSERT INTO updates_table (field_varchar, field_int)
-VALUES ('f0', 42), ('f1', 43);
+VALUES ('f0', 42), ('f1', 43), ('fnull', NULL);
 
 CREATE TABLE empty_table (
 	id INT,
