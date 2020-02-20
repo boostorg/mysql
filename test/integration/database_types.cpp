@@ -9,6 +9,7 @@
 #include "metadata_validator.hpp"
 #include "test_common.hpp"
 #include <sstream>
+#include <unordered_map>
 
 using namespace mysql::test;
 using namespace testing;
@@ -28,20 +29,20 @@ namespace
  */
 struct database_types_testcase
 {
-	const char* table;
-	const char* field;
-	const char* row_id;
+	std::string table;
+	std::string field;
+	std::string row_id;
 	value expected_value;
 	meta_validator mvalid;
 
 	template <typename ValueType, typename... Args>
-	database_types_testcase(const char* table, const char* field, const char* row_id,
+	database_types_testcase(std::string table, std::string field, std::string row_id,
 			ValueType&& expected_value, Args&&... args) :
 		table(table),
 		field(field),
-		row_id(row_id),
+		row_id(move(row_id)),
 		expected_value(std::forward<ValueType>(expected_value)),
-		mvalid(table, field, std::forward<Args>(args)...)
+		mvalid(move(table), move(field), std::forward<Args>(args)...)
 	{
 	}
 };
@@ -287,62 +288,105 @@ INSTANTIATE_TEST_SUITE_P(DATE, DatabaseTypesTest, Values(
 	database_types_testcase("types_date", "field_date", "max", 9999_y/12/31_d, field_type::date)
 ), test_name_generator);
 
-INSTANTIATE_TEST_SUITE_P(DATETIME, DatabaseTypesTest, Values(
-	database_types_testcase("types_datetime", "field_0", "date", makedt(2010, 5, 2), field_type::datetime),
-	database_types_testcase("types_datetime", "field_1", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "date", makedt(2010, 5, 2), field_type::datetime, no_flags, 6),
+/**
+ * date  0
+ *    u  1
+ *   s   2
+ *   su  3
+ *  m    4
+ *  m u  5
+ *  ms
+ *  msu
+ * h
+ * h  u
+ * h s
+ * h su
+ * hm
+ * hm u
+ * hms
+ * hmsu
+ */
 
-	database_types_testcase("types_datetime", "field_0", "h", makedt(2010, 5, 2, 23), field_type::datetime),
-	database_types_testcase("types_datetime", "field_1", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "h", makedt(2010, 5, 2, 23), field_type::datetime, no_flags, 6),
+int round_micros(int input, int decimals)
+{
+	assert(decimals >= 0 && decimals <= 6);
+	if (decimals == 0) return 0;
+	int modulus = std::pow(10, 6 - decimals);
+	return (input / modulus) * modulus;
+}
 
-	database_types_testcase("types_datetime", "field_0", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime),
-	database_types_testcase("types_datetime", "field_1", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "hm", makedt(2010, 5, 2, 23, 1), field_type::datetime, no_flags, 6),
+std::pair<std::string, mysql::datetime> datetime_from_id(int id, int decimals)
+{
+	// id is a bitmap
+	// Bit 0 => h
+	// Bit 1 => m
+	// Bit 2 => s
+	// Bit 3 => u
 
-	database_types_testcase("types_datetime", "field_0", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime),
-	database_types_testcase("types_datetime", "field_1", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "hms", makedt(2010, 5, 2, 23, 1, 50), field_type::datetime, no_flags, 6),
+	// Compose name
+	const char* letters = "hmsu";
+	std::string name;
+	for (int i = 0; i < 4; ++i)
+	{
+		if (id & (1 << i)) name.push_back(letters[i]);
+	}
+	if (name.empty()) name = "date";
 
-	database_types_testcase("types_datetime", "field_1", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 100000), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 120000), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123000), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123400), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123450), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "hmsu", makedt(2010, 5, 2, 23, 1, 50, 123456), field_type::datetime, no_flags, 6),
+	// Compose value
+	mysql::datetime dt = makedt(
+		2010,
+		5,
+		2,
+		(id & 1) ? 23 : 0,
+		(id & 2) ? 1  : 0,
+		(id & 4) ? 50 : 0,
+		(id & 8) ? round_micros(123456, decimals) : 0
+	);
 
-	database_types_testcase("types_datetime", "field_0", "min", makedt(1000, 1, 1), field_type::datetime),
-	database_types_testcase("types_datetime", "field_1", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "min", makedt(1000, 1, 1), field_type::datetime, no_flags, 6),
+	return {name, dt};
+}
 
-	database_types_testcase("types_datetime", "field_0", "max", makedt(9999, 12, 31, 23, 59, 59), field_type::datetime, no_flags, 0),
-	database_types_testcase("types_datetime", "field_1", "max", makedt(9999, 12, 31, 23, 59, 59, 900000), field_type::datetime, no_flags, 1),
-	database_types_testcase("types_datetime", "field_2", "max", makedt(9999, 12, 31, 23, 59, 59, 990000), field_type::datetime, no_flags, 2),
-	database_types_testcase("types_datetime", "field_3", "max", makedt(9999, 12, 31, 23, 59, 59, 999000), field_type::datetime, no_flags, 3),
-	database_types_testcase("types_datetime", "field_4", "max", makedt(9999, 12, 31, 23, 59, 59, 999900), field_type::datetime, no_flags, 4),
-	database_types_testcase("types_datetime", "field_5", "max", makedt(9999, 12, 31, 23, 59, 59, 999990), field_type::datetime, no_flags, 5),
-	database_types_testcase("types_datetime", "field_6", "max", makedt(9999, 12, 31, 23, 59, 59, 999999), field_type::datetime, no_flags, 6)
-), test_name_generator);
+database_types_testcase create_datetime_testcase(
+	int decimals,
+	std::string id,
+	mysql::datetime expected
+)
+{
+	return database_types_testcase(
+		"types_datetime",
+		"field_" + std::to_string(decimals),
+		std::move(id),
+		expected,
+		field_type::datetime,
+		no_flags,
+		decimals
+	);
+}
+
+std::vector<database_types_testcase> generate_datetime_cases()
+{
+	std::vector<database_types_testcase> res;
+
+	for (int decimals = 0; decimals <= 6; ++decimals)
+	{
+		// Regular values
+		for (int int_id = 0; int_id <= 15; ++int_id)
+		{
+			if ((int_id & 8) && decimals == 0) continue;
+			auto [id, value] = datetime_from_id(int_id, decimals);
+			res.push_back(create_datetime_testcase(decimals, move(id), value));
+		}
+
+		// min and max
+		res.push_back(create_datetime_testcase(decimals, "min", makedt(1000, 1, 1)));
+		res.push_back(create_datetime_testcase(decimals, "max",
+				makedt(9999, 12, 31, 23, 59, 59, round_micros(999999, decimals))));
+	}
+
+	return res;
+}
+
+INSTANTIATE_TEST_SUITE_P(DATETIME, DatabaseTypesTest, ValuesIn(generate_datetime_cases()), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DatabaseTypesTest, Values(
 	database_types_testcase("types_timestamp", "field_0", "date", makedt(2010, 5, 2), field_type::timestamp),
