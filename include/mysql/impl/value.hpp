@@ -37,12 +37,14 @@ struct print_visitor
 	void operator()(const time& value) const
 	{
 		char buffer [100] {};
-		auto hours = std::chrono::duration_cast<std::chrono::hours>(value).count();
+		const char* sign = value < std::chrono::microseconds(0) ? "-" : "";
+		auto hours = std::abs(std::chrono::duration_cast<std::chrono::hours>(value).count());
 		auto mins = std::abs(std::chrono::duration_cast<std::chrono::minutes>(value % std::chrono::hours(1)).count());
 		auto secs = std::abs(std::chrono::duration_cast<std::chrono::seconds>(value % std::chrono::minutes(1)).count());
 		auto micros = std::abs((value % std::chrono::seconds(1)).count());
 
-		snprintf(buffer, sizeof(buffer), "%02d:%02u:%02u:%06u",
+		snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u:%06u",
+			sign,
 			static_cast<int>(hours),
 			static_cast<unsigned>(mins),
 			static_cast<unsigned>(secs),

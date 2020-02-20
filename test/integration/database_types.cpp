@@ -340,13 +340,14 @@ std::pair<std::string, mysql::datetime> datetime_from_id(std::bitset<4> id, int 
 database_types_testcase create_datetime_testcase(
 	int decimals,
 	std::string id,
-	mysql::datetime expected,
+	mysql::value expected,
 	mysql::field_type type
 )
 {
 	static std::unordered_map<field_type, const char*> table_map {
 		{ field_type::datetime, "types_datetime" },
-		{ field_type::timestamp, "types_timestamp" }
+		{ field_type::timestamp, "types_timestamp" },
+		{ field_type::time, "types_time" }
 	};
 	return database_types_testcase(
 		table_map.at(type),
@@ -357,6 +358,45 @@ database_types_testcase create_datetime_testcase(
 		no_flags,
 		decimals
 	);
+}
+
+std::pair<std::string, mysql::time> time_from_id(std::bitset<6> id, int decimals)
+{
+	// id represents which components (h, m, s, u) should the test case have
+	constexpr struct
+	{
+		char letter;
+		std::chrono::microseconds offset;
+	} bit_meaning [] = {
+		{ 'n', std::chrono::hours(0) }, // bit 0: negative bit
+		{ 'd', std::chrono::hours(48) }, // bit 1
+		{ 'h', std::chrono::hours(23) }, // bit 2
+		{ 'm', std::chrono::minutes(1) },
+		{ 's', std::chrono::seconds(50) },
+		{ 'u', std::chrono::microseconds(123456) }
+	};
+
+	std::string name;
+	mysql::time t {0};
+
+	for (std::size_t i = 1; i < id.size(); ++i)
+	{
+		if (id[i]) // component present
+		{
+			char letter = bit_meaning[i].letter;
+			auto offset = bit_meaning[i].offset;
+			name.push_back(letter); // add to name
+			t += letter == 'u' ? round_micros(offset, decimals) : offset; // add to value
+		}
+	}
+	if (name.empty()) name = "zero";
+	if (id[0]) // bit sign
+	{
+		name = "negative_" + name;
+		t = -t;
+	}
+
+	return {name, t};
 }
 
 // shared between DATETIME and TIMESTAMP
@@ -403,81 +443,36 @@ std::vector<database_types_testcase> generate_timestamp_cases()
 	return generate_common_datetime_cases(field_type::timestamp);
 }
 
-INSTANTIATE_TEST_SUITE_P(DATETIME, DatabaseTypesTest, ValuesIn(generate_datetime_cases()), test_name_generator);
+std::vector<database_types_testcase> generate_time_cases()
+{
+	std::vector<database_types_testcase> res;
+
+	for (int decimals = 0; decimals <= 6; ++decimals)
+	{
+		// Regular values
+		auto max_int_id = static_cast<std::size_t>(std::pow(2, 6)); // 6 components can be varied
+		for (std::size_t int_id = 0; int_id < max_int_id; ++int_id)
+		{
+			std::bitset<6> bitset_id (int_id);
+			if (bitset_id[5] && decimals == 0) continue; // cases with micros don't make sense for fields with no decimals
+			if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
+			auto [id, value] = time_from_id(int_id, decimals);
+			res.push_back(create_datetime_testcase(decimals, move(id), value, field_type::time));
+		}
+
+		// min and max
+		auto max_value = decimals == 0 ? maket(838, 59, 59) : maket(838, 59, 58, round_micros(999999, decimals));
+		res.push_back(create_datetime_testcase(decimals, "min", -max_value, field_type::time));
+		res.push_back(create_datetime_testcase(decimals, "max",  max_value, field_type::time));
+	}
+
+	return res;
+
+}
+
+INSTANTIATE_TEST_SUITE_P(DATETIME,  DatabaseTypesTest, ValuesIn(generate_datetime_cases()),  test_name_generator);
 INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DatabaseTypesTest, ValuesIn(generate_timestamp_cases()), test_name_generator);
-
-INSTANTIATE_TEST_SUITE_P(TIME, DatabaseTypesTest, Values(
-	database_types_testcase("types_time", "field_0", "h", maket(1, 0, 0), field_type::time),
-	database_types_testcase("types_time", "field_1", "h", maket(1, 0, 0), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "h", maket(1, 0, 0), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "h", maket(1, 0, 0), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "h", maket(1, 0, 0), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "h", maket(1, 0, 0), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "h", maket(1, 0, 0), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "hm", maket(1, 2, 0), field_type::time),
-	database_types_testcase("types_time", "field_1", "hm", maket(1, 2, 0), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "hm", maket(1, 2, 0), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "hm", maket(1, 2, 0), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "hm", maket(1, 2, 0), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "hm", maket(1, 2, 0), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "hm", maket(1, 2, 0), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "hms", maket(120, 2, 3), field_type::time),
-	database_types_testcase("types_time", "field_1", "hms", maket(120, 2, 3), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "hms", maket(120, 2, 3), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "hms", maket(120, 2, 3), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "hms", maket(120, 2, 3), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "hms", maket(120, 2, 3), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "hms", maket(120, 2, 3), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_1", "hmsu", maket(120, 2, 3, 100000), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "hmsu", maket(120, 2, 3, 120000), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "hmsu", maket(120, 2, 3, 123000), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "hmsu", maket(120, 2, 3, 123400), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "hmsu", maket(120, 2, 3, 123450), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "hmsu", maket(120, 2, 3, 123456), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "s", maket(0, 0, 21), field_type::time),
-	database_types_testcase("types_time", "field_1", "s", maket(0, 0, 21, 100000), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "s", maket(0, 0, 21, 120000), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "s", maket(0, 0, 21, 123000), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "s", maket(0, 0, 21, 123400), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "s", maket(0, 0, 21, 123450), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "s", maket(0, 0, 21, 123456), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "negative_hmsu", maket(-120, -2, -3), field_type::time),
-	database_types_testcase("types_time", "field_1", "negative_hmsu", maket(-120, -2, -3, -100000), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "negative_hmsu", maket(-120, -2, -3, -20000), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "negative_hmsu", maket(-120, -2, -3, -23000), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "negative_hmsu", maket(-120, -2, -3, -23400), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "negative_hmsu", maket(-120, -2, -3, -23450), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "negative_hmsu", maket(-120, -2, -3, -23456), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "min", maket(-838, -59, -59), field_type::time),
-	database_types_testcase("types_time", "field_1", "min", maket(-838, -59, -58, -900000), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "min", maket(-838, -59, -58, -990000), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "min", maket(-838, -59, -58, -999000), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "min", maket(-838, -59, -58, -999900), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "min", maket(-838, -59, -58, -999990), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "min", maket(-838, -59, -58, -999999), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "max", maket(838, 59, 59), field_type::time),
-	database_types_testcase("types_time", "field_1", "max", maket(838, 59, 58, 900000), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "max", maket(838, 59, 58, 990000), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "max", maket(838, 59, 58, 999000), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "max", maket(838, 59, 58, 999900), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "max", maket(838, 59, 58, 999990), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "max", maket(838, 59, 58, 999999), field_type::time, no_flags, 6),
-
-	database_types_testcase("types_time", "field_0", "zero", maket(0, 0, 0), field_type::time),
-	database_types_testcase("types_time", "field_1", "zero", maket(0, 0, 0), field_type::time, no_flags, 1),
-	database_types_testcase("types_time", "field_2", "zero", maket(0, 0, 0), field_type::time, no_flags, 2),
-	database_types_testcase("types_time", "field_3", "zero", maket(0, 0, 0), field_type::time, no_flags, 3),
-	database_types_testcase("types_time", "field_4", "zero", maket(0, 0, 0), field_type::time, no_flags, 4),
-	database_types_testcase("types_time", "field_5", "zero", maket(0, 0, 0), field_type::time, no_flags, 5),
-	database_types_testcase("types_time", "field_6", "zero", maket(0, 0, 0), field_type::time, no_flags, 6)
-), test_name_generator);
+INSTANTIATE_TEST_SUITE_P(TIME,      DatabaseTypesTest, ValuesIn(generate_time_cases()),      test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DatabaseTypesTest, Values(
 	database_types_testcase("types_year", "field_default", "regular", std::uint32_t(2019), field_type::year, flags_zerofill),

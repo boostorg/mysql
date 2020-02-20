@@ -51,8 +51,8 @@ inline Error deserialize_text_value_impl(
 			                sscanf(buffer, "%4d:%2u:%2u", &hours, &minutes, &seconds);
 	if ((decimals && parsed != 4) || (!decimals && parsed != 3)) return Error::protocol_value_error;
 	micros *= static_cast<unsigned>(std::pow(10, 6 - decimals));
-	bool is_negative = hours < 0;
 	hours = std::abs(hours);
+	bool is_negative = from[0] == '-';
 
 	// Sum it
 	auto res = std::chrono::hours(hours) + std::chrono::minutes(minutes) +

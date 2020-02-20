@@ -1,5 +1,4 @@
 Prepared statements
-	Db types: relevant cases for datetimes and times for binary protocol
 	Statement close
 	Examples
 	Docs

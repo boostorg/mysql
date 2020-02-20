@@ -123,6 +123,10 @@ INSTANTIATE_TEST_SUITE_P(Default, ValueStreamTest, Values(
 	ValueStreamParams(mysql::time(hours(24)), "24:00:00:000000"),
 	ValueStreamParams(mysql::time(hours(210) + minutes(59) + seconds(59) + microseconds(100)), "210:59:59:000100"),
 	ValueStreamParams(mysql::time(hours(-839) - minutes(20) - seconds(35) - microseconds(999999)), "-839:20:35:999999"),
+	ValueStreamParams(maket(0, 2, 5), "00:02:05:000000"),
+	ValueStreamParams(-maket(0, 21, 45), "-00:21:45:000000"),
+	ValueStreamParams(maket(0, 0, 1, 234000), "00:00:01:234000"),
+	ValueStreamParams(-maket(0, 0, 1, 234000), "-00:00:01:234000"),
 	ValueStreamParams(makedt(2019, 1, 8, 9, 20, 11, 123), "2019-01-08 09:20:11.000123"),
 	ValueStreamParams(makedt(2019, 1, 8), "2019-01-08 00:00:00.000000"),
 	ValueStreamParams(nullptr, "<NULL>")
