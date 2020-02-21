@@ -66,7 +66,6 @@ class connection
 
 	Stream next_level_;
 	channel_type channel_;
-	detail::bytestring buffer_;
 public:
 	/**
 	 * \brief Initializing constructor.

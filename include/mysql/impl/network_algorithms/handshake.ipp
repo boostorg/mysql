@@ -228,7 +228,6 @@ template <typename StreamType>
 void mysql::detail::hanshake(
 	channel<StreamType>& channel,
 	const handshake_params& params,
-	bytestring& buffer,
 	error_code& err,
 	error_info& info
 )
@@ -237,24 +236,24 @@ void mysql::detail::hanshake(
 	handshake_processor processor (params);
 
 	// Read server greeting
-	channel.read(buffer, err);
+	channel.read(channel.shared_buffer(), err);
 	if (err) return;
 
 	// Process server greeting
-	err = processor.process_handshake(buffer, info);
+	err = processor.process_handshake(channel.shared_buffer(), info);
 	if (err) return;
 
 	// Send
-	channel.write(boost::asio::buffer(buffer), err);
+	channel.write(boost::asio::buffer(channel.shared_buffer()), err);
 	if (err) return;
 
 	// Receive response
-	channel.read(buffer, err);
+	channel.read(channel.shared_buffer(), err);
 	if (err) return;
 
 	// Process it
 	bool auth_complete = false;
-	err = processor.process_handshake_server_response(buffer, auth_complete, info);
+	err = processor.process_handshake_server_response(channel.shared_buffer(), auth_complete, info);
 	if (err) return;
 	if (auth_complete)
 	{
@@ -263,15 +262,15 @@ void mysql::detail::hanshake(
 	}
 
 	// We received an auth switch response and we have the response ready to be sent
-	channel.write(boost::asio::buffer(buffer), err);
+	channel.write(boost::asio::buffer(channel.shared_buffer()), err);
 	if (err) return;
 
 	// Receive response
-	channel.read(buffer, err);
+	channel.read(channel.shared_buffer(), err);
 	if (err) return;
 
 	// Process it
-	err = processor.process_auth_switch_response(boost::asio::buffer(buffer), info);
+	err = processor.process_auth_switch_response(boost::asio::buffer(channel.shared_buffer()), info);
 	if (err) return;
 
 	channel.set_current_capabilities(processor.negotiated_capabilities());
@@ -282,7 +281,6 @@ BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::er
 mysql::detail::async_handshake(
 	channel<StreamType>& chan,
 	const handshake_params& params,
-	bytestring& buffer,
 	CompletionToken&& token
 )
 {
@@ -295,19 +293,16 @@ mysql::detail::async_handshake(
 	struct Op: BaseType, boost::asio::coroutine
 	{
 		channel<StreamType>& channel_;
-		bytestring& buffer_;
 		handshake_processor processor_;
 		error_info info_;
 
 		Op(
 			HandlerType&& handler,
 			channel<StreamType>& channel,
-			bytestring& buffer,
 			const handshake_params& params
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
 			channel_(channel),
-			buffer_(buffer),
 			processor_(params)
 		{
 		}
@@ -327,7 +322,7 @@ mysql::detail::async_handshake(
 			reenter(*this)
 			{
 				// Read server greeting
-				yield channel_.async_read(buffer_, std::move(*this));
+				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
 				if (err)
 				{
 					complete(cont, err);
@@ -335,7 +330,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Process server greeting
-				err = processor_.process_handshake(buffer_, info_);
+				err = processor_.process_handshake(channel_.shared_buffer(), info_);
 				if (err)
 				{
 					complete(cont, err);
@@ -343,7 +338,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Send
-				yield channel_.async_write(boost::asio::buffer(buffer_), std::move(*this));
+				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
 				if (err)
 				{
 					complete(cont, err);
@@ -351,7 +346,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Receive response
-				yield channel_.async_read(buffer_, std::move(*this));
+				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
 				if (err)
 				{
 					complete(cont, err);
@@ -359,7 +354,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Process it
-				err = processor_.process_handshake_server_response(buffer_, auth_complete, info_);
+				err = processor_.process_handshake_server_response(channel_.shared_buffer(), auth_complete, info_);
 				if (auth_complete) err.clear();
 				if (err || auth_complete)
 				{
@@ -368,7 +363,7 @@ mysql::detail::async_handshake(
 				}
 
 				// We received an auth switch response and we have the response ready to be sent
-				yield channel_.async_write(boost::asio::buffer(buffer_), std::move(*this));
+				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
 				if (err)
 				{
 					complete(cont, err);
@@ -376,7 +371,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Receive response
-				yield channel_.async_read(buffer_, std::move(*this));
+				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
 				if (err)
 				{
 					complete(cont, err);
@@ -384,7 +379,7 @@ mysql::detail::async_handshake(
 				}
 
 				// Process it
-				err = processor_.process_auth_switch_response(boost::asio::buffer(buffer_), info_);
+				err = processor_.process_auth_switch_response(boost::asio::buffer(channel_.shared_buffer()), info_);
 				if (err)
 				{
 					complete(cont, err);
@@ -399,7 +394,6 @@ mysql::detail::async_handshake(
 	Op(
 		std::move(initiator.completion_handler),
 		chan,
-		buffer,
 		params
 	)(error_code(), false);
 	return initiator.result.get();

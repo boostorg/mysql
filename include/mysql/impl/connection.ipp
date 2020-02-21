@@ -38,7 +38,6 @@ void mysql::connection<Stream>::handshake(
 	detail::hanshake(
 		channel_,
 		detail::to_handshake_params(params),
-		buffer_,
 		errc,
 		info
 	);
@@ -67,7 +66,6 @@ mysql::connection<Stream>::async_handshake(
 	return detail::async_handshake(
 		channel_,
 		detail::to_handshake_params(params),
-		buffer_,
 		std::forward<CompletionToken>(token)
 	);
 }

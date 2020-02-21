@@ -23,7 +23,6 @@ template <typename StreamType>
 void hanshake(
 	channel<StreamType>& channel,
 	const handshake_params& params,
-	bytestring& buffer,
 	error_code& err,
 	error_info& info
 );
@@ -33,7 +32,6 @@ BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
 async_handshake(
 	channel<StreamType>& channel,
 	const handshake_params& params,
-	bytestring& buffer,
 	CompletionToken&& token
 );
 
