@@ -61,6 +61,7 @@ add_executable(
 	integration/query.cpp
 	integration/prepare_statement.cpp
 	integration/execute_statement.cpp
+	integration/close_statement.cpp
 	integration/resultset.cpp
 	integration/prepared_statement_lifecycle.cpp
 	integration/database_types.cpp

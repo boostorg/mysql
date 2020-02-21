@@ -59,6 +59,7 @@ public:
 			tcp_prepared_statement&, value_list_it params_first, value_list_it params_last) = 0;
 	virtual network_result<tcp_resultset> execute_statement(
 			tcp_prepared_statement&, const std::vector<value>&) = 0;
+	virtual network_result<no_result> close_statement(tcp_prepared_statement&) = 0;
 	virtual network_result<const row*> fetch_one(tcp_resultset&) = 0;
 	virtual network_result<std::vector<owning_row>> fetch_many(tcp_resultset&, std::size_t count) = 0;
 	virtual network_result<std::vector<owning_row>> fetch_all(tcp_resultset&) = 0;

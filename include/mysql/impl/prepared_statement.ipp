@@ -2,6 +2,7 @@
 #define INCLUDE_MYSQL_IMPL_PREPARED_STATEMENT_IPP_
 
 #include "mysql/impl/network_algorithms/execute_statement.hpp"
+#include "mysql/impl/network_algorithms/close_statement.hpp"
 #include "mysql/impl/stringize.hpp"
 #include <boost/beast/core/bind_handler.hpp>
 
@@ -108,5 +109,36 @@ auto mysql::prepared_statement<StreamType>::async_execute(
 	);
 }
 
+template <typename StreamType>
+void mysql::prepared_statement<StreamType>::close(
+	error_code& errc,
+	error_info& info
+)
+{
+	assert(valid());
+	errc.clear();
+	info.clear();
+	detail::close_statement(*channel_, id(), errc, info);
+}
+
+template <typename StreamType>
+void mysql::prepared_statement<StreamType>::close()
+{
+	assert(valid());
+	error_code errc;
+	error_info info;
+	detail::close_statement(*channel_, id(), errc, info);
+	detail::check_error_code(errc, info);
+}
+
+template <typename StreamType>
+template <typename CompletionToken>
+auto mysql::prepared_statement<StreamType>::async_close(
+	CompletionToken&& token
+)
+{
+	assert(valid());
+	return detail::async_close_statement(*channel_, id(), std::forward<CompletionToken>(token));
+}
 
 #endif /* INCLUDE_MYSQL_IMPL_PREPARED_STATEMENT_IPP_ */

@@ -56,6 +56,12 @@ public:
 
 	template <typename ForwardIterator, typename CompletionToken>
 	auto async_execute(ForwardIterator params_first, ForwardIterator params_last, CompletionToken&& token) const;
+
+	void close(error_code&, error_info&);
+	void close();
+
+	template <typename CompletionToken>
+	auto async_close(CompletionToken&& token);
 };
 
 using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;

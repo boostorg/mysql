@@ -73,6 +73,15 @@ public:
 			return stmt.execute(values, err, info);
 		});
 	}
+	network_result<no_result> close_statement(
+		tcp_prepared_statement& stmt
+	) override
+	{
+		return impl([&](error_code& errc, error_info& info) {
+			stmt.close(errc, info);
+			return no_result();
+		});
+	}
 	network_result<const mysql::row*> fetch_one(
 		tcp_resultset& r
 	) override
@@ -164,6 +173,15 @@ public:
 	{
 		return impl([&stmt, &values] {
 			return stmt.execute(values);
+		});
+	}
+	network_result<no_result> close_statement(
+		tcp_prepared_statement& stmt
+	) override
+	{
+		return impl([&] {
+			stmt.close();
+			return no_result();
 		});
 	}
 	network_result<const mysql::row*> fetch_one(
@@ -258,6 +276,14 @@ public:
 	{
 		return impl<tcp_resultset>([&](auto&& token) {
 			return stmt.async_execute(values, std::forward<decltype(token)>(token));
+		});
+	}
+	network_result<no_result> close_statement(
+		tcp_prepared_statement& stmt
+	) override
+	{
+		return impl_no_result([&](auto&& token) {
+			return stmt.async_close(std::forward<decltype(token)>(token));
 		});
 	}
 	network_result<const mysql::row*> fetch_one(

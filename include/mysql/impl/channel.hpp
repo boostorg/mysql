@@ -21,6 +21,7 @@ class channel
 	AsyncStream& next_layer_;
 	std::uint8_t sequence_number_ {0};
 	std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
+	bytestring shared_buff_; // for async ops
 	capabilities current_caps_;
 
 	bool process_sequence_number(std::uint8_t got);
@@ -52,6 +53,9 @@ public:
 
 	capabilities current_capabilities() const noexcept { return current_caps_; }
 	void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
+
+	const bytestring& shared_buffer() const noexcept { return shared_buff_; }
+	bytestring& shared_buffer() noexcept { return shared_buff_; }
 };
 
 template <typename ChannelType>
