@@ -66,6 +66,10 @@ TEST_P(PreparedStatementLifecycleTest, SelectWithParametersMultipleExecutions)
 	EXPECT_EQ(static_cast<const row&>(rows.value[0]), (makerow(1, "f0")));
 	EXPECT_EQ(static_cast<const row&>(rows.value[1]), (makerow(2, "f1")));
 	EXPECT_TRUE(result.value.complete());
+
+	// Close it
+	auto close_result = net->close_statement(stmt.value);
+	close_result.validate_no_error();
 }
 
 TEST_P(PreparedStatementLifecycleTest, InsertWithParametersMultipleExecutions)
@@ -99,6 +103,10 @@ TEST_P(PreparedStatementLifecycleTest, InsertWithParametersMultipleExecutions)
 	// Validate we did something
 	auto rows_after = get_table_size("inserts_table");
 	EXPECT_EQ(rows_after, rows_before + 2);
+
+	// Close it
+	auto close_result = net->close_statement(stmt.value);
+	close_result.validate_no_error();
 }
 
 TEST_P(PreparedStatementLifecycleTest, UpdateWithParametersMultipleExecutions)
@@ -131,6 +139,10 @@ TEST_P(PreparedStatementLifecycleTest, UpdateWithParametersMultipleExecutions)
 
 	// Verify that took effect
 	EXPECT_EQ(get_updates_table_value(), value(std::int32_t(250)));
+
+	// Close the statement
+	auto close_result = net->close_statement(stmt.value);
+	close_result.validate_no_error();
 }
 
 TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
@@ -172,6 +184,10 @@ TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
 	update_result.validate_no_error();
 	EXPECT_TRUE(update_result.value.complete());
 
+	// Update no longer needed, close it
+	auto close_result = net->close_statement(stmt_update.value);
+	close_result.validate_no_error();
+
 	// Execute select again
 	select_result = net->execute_statement(stmt_select.value, makevalues("f0"));
 	select_result.validate_no_error();
@@ -179,6 +195,10 @@ TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
 	rows.validate_no_error();
 	EXPECT_EQ(rows.value.size(), 1);
 	EXPECT_EQ(static_cast<row&>(rows.value[0]), makerow(220));
+
+	// Close select
+	close_result = net->close_statement(stmt_select.value);
+	close_result.validate_no_error();
 }
 
 TEST_P(PreparedStatementLifecycleTest, InsertWithNullValues)
@@ -205,6 +225,10 @@ TEST_P(PreparedStatementLifecycleTest, InsertWithNullValues)
 
 	// Verify it took effect
 	ASSERT_EQ(get_updates_table_value("fnull"), value(nullptr));
+
+	// Close statement
+	auto close_result = net->close_statement(stmt.value);
+	close_result.validate_no_error();
 }
 
 MYSQL_NETWORK_TEST_SUITE(PreparedStatementLifecycleTest);
