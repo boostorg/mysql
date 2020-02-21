@@ -1,5 +1,4 @@
 Prepared statements
-	Statement close
 	Examples
 	Docs
 Multiresultset
@@ -37,7 +36,6 @@ Technical debt
 	Integration test for network errors (e.g. host unreachable)
 	Refactor file structucture for serialization and tests
 	Deserialize common should be in namespace mysql::test, not in detail
-	Consider using a shared buffer in channel to avoid allocations
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	Rename (De)SerializationContext
 	Test zero dates

@@ -12,19 +12,21 @@ template <typename StreamType>
 class prepare_statement_processor
 {
 	channel<StreamType>& channel_;
-	bytestring buffer_;
 	com_stmt_prepare_ok_packet response_;
 public:
 	prepare_statement_processor(channel<StreamType>& chan): channel_(chan) {}
 	void process_request(std::string_view statement)
 	{
 		com_stmt_prepare_packet packet { string_eof(statement) };
-		serialize_message(packet, channel_.current_capabilities(), buffer_);
+		serialize_message(packet, channel_.current_capabilities(), channel_.shared_buffer());
 		channel_.reset_sequence_number();
 	}
 	void process_response(error_code& err, error_info& info)
 	{
-		DeserializationContext ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
+		DeserializationContext ctx (
+			boost::asio::buffer(channel_.shared_buffer()),
+			channel_.current_capabilities()
+		);
 		std::uint8_t msg_type = 0;
 		std::tie(err, msg_type) = deserialize_message_type(ctx);
 		if (err) return;
@@ -42,7 +44,7 @@ public:
 			err = deserialize_message(response_, ctx);
 		}
 	}
-	auto& get_buffer() noexcept { return buffer_; }
+	auto& get_buffer() noexcept { return channel_.shared_buffer(); }
 	auto& get_channel() noexcept { return channel_; }
 	const auto& get_response() const noexcept { return response_; }
 
@@ -114,7 +116,7 @@ mysql::detail::async_prepare_statement(
 
 	struct Op: BaseType, boost::asio::coroutine
 	{
-		std::shared_ptr<prepare_statement_processor<StreamType>> processor_;
+		prepare_statement_processor<StreamType> processor_;
 		unsigned remaining_meta_;
 
 		Op(
@@ -123,17 +125,17 @@ mysql::detail::async_prepare_statement(
 			std::string_view statement
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
-			processor_(std::make_shared<prepare_statement_processor<StreamType>>(channel)),
+			processor_(channel),
 			remaining_meta_(0)
 		{
-			processor_->process_request(statement);
+			processor_.process_request(statement);
 		}
 
 		bool process_response(bool cont)
 		{
 			error_info info;
 			error_code err;
-			processor_->process_response(err, info);
+			processor_.process_response(err, info);
 			if (err)
 			{
 				this->complete(cont, err, info, PreparedStatementType());
@@ -153,8 +155,8 @@ mysql::detail::async_prepare_statement(
 			reenter(*this)
 			{
 				// Write message (already serialized at this point)
-				yield processor_->get_channel().async_write(
-					boost::asio::buffer(processor_->get_buffer()),
+				yield processor_.get_channel().async_write(
+					boost::asio::buffer(processor_.get_buffer()),
 					std::move(*this)
 				);
 				if (err)
@@ -164,8 +166,8 @@ mysql::detail::async_prepare_statement(
 				}
 
 				// Read response
-				yield processor_->get_channel().async_read(
-					processor_->get_buffer(),
+				yield processor_.get_channel().async_read(
+					processor_.get_buffer(),
 					std::move(*this)
 				);
 				if (err)
@@ -182,11 +184,11 @@ mysql::detail::async_prepare_statement(
 
 				// Server sends now one packet per parameter and field.
 				// We ignore these for now. TODO: do sth useful with these
-				remaining_meta_ = processor_->get_num_metadata_packets();
+				remaining_meta_ = processor_.get_num_metadata_packets();
 				for (; remaining_meta_ > 0; --remaining_meta_)
 				{
-					yield processor_->get_channel().async_read(
-						processor_->get_buffer(),
+					yield processor_.get_channel().async_read(
+						processor_.get_buffer(),
 						std::move(*this)
 					);
 					if (err)
@@ -201,7 +203,7 @@ mysql::detail::async_prepare_statement(
 					cont,
 					err,
 					error_info(),
-					PreparedStatementType(processor_->get_channel(), processor_->get_response())
+					PreparedStatementType(processor_.get_channel(), processor_.get_response())
 				);
 			}
 		}
