@@ -15,6 +15,7 @@ endfunction()
 _mysql_add_example(example_query_sync query_sync.cpp)
 _mysql_add_example(example_query_async query_async.cpp)
 _mysql_add_example(example_metadata metadata.cpp)
+_mysql_add_example(example_prepared_statements prepared_statements.cpp)
 
 # Add them as automated tests
 add_test(

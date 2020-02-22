@@ -1,5 +1,4 @@
 Prepared statements
-	Examples
 	Docs
 Multiresultset
 	Text protocol

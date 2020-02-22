@@ -7,6 +7,7 @@
 #include <date/date.h>
 #include <chrono>
 #include <ostream>
+#include <array>
 
 namespace mysql
 {
@@ -52,6 +53,9 @@ inline bool operator==(const std::vector<value>& lhs, const std::vector<value>& 
 inline bool operator!=(const std::vector<value>& lhs, const std::vector<value>& rhs) { return !(lhs == rhs); }
 
 inline std::ostream& operator<<(std::ostream& os, const value& value);
+
+template <typename... Types>
+std::array<value, sizeof...(Types)> make_values(Types&&... args);
 
 }
 

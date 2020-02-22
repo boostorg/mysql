@@ -89,5 +89,13 @@ inline std::ostream& mysql::operator<<(
 	return os;
 }
 
+template <typename... Types>
+std::array<mysql::value, sizeof...(Types)> mysql::make_values(
+	Types&&... args
+)
+{
+	return std::array<mysql::value, sizeof...(Types)>{value(std::forward<Types>(args))...};
+}
+
 
 #endif
