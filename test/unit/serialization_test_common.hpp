@@ -291,7 +291,7 @@ struct DeserializeErrorParams : test::named_param
 	) :
 		value(std::make_shared<TypeErasedValueImpl<T>>(T{})),
 		buffer(std::move(buffer)),
-		name(std::move(name)),
+		name(std::move(test_name)),
 		expected_error(err)
 	{
 	}

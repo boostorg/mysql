@@ -22,7 +22,7 @@ template <> struct get_serializable_type<std::int64_t> { using type = int8_signe
 template <> struct get_serializable_type<float> { using type = value_holder<float>; };
 template <> struct get_serializable_type<double> { using type = value_holder<double>; };
 template <> struct get_serializable_type<std::string_view> { using type = string_lenenc; };
-template <> struct get_serializable_type<nullptr_t> { using type = dummy_serializable; };
+template <> struct get_serializable_type<std::nullptr_t> { using type = dummy_serializable; };
 
 template <typename T>
 inline get_serializable_type_t<T> to_serializable_type(T input) noexcept

@@ -273,7 +273,7 @@ inline void mysql::detail::serialize(
 	std::memset(ctx.first(), 0, traits.byte_count()); // Initialize to zeroes
 	for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
 	{
-		if (std::holds_alternative<nullptr_t>(*it))
+		if (std::holds_alternative<std::nullptr_t>(*it))
 		{
 			traits.set_null(ctx.first(), i);
 		}
