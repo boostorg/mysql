@@ -1,5 +1,6 @@
 Prepared statements
-	Docs
+	Build in Windows
+	Build in CI
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -45,3 +46,4 @@ Technical debt
 	Test prepared statement binding to procedure out params
 	More thorough testing for several NULLs in integration testing
 	Query and statement tests for DELETEs
+	prepared_statement::execute(): static_assert(), handle value&, const value&, anything convertible

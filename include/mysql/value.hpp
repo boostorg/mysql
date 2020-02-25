@@ -46,14 +46,23 @@ using value = std::variant<
 	std::nullptr_t     // Any of the above when the value is NULL
 >;
 
+/// Tests for equality (type and value).
 inline bool operator==(const value& lhs, const value& rhs);
+
+/// Tests for inequality (type and value).
 inline bool operator!=(const value& lhs, const value& rhs) { return !(lhs == rhs); }
 
 inline bool operator==(const std::vector<value>& lhs, const std::vector<value>& rhs);
 inline bool operator!=(const std::vector<value>& lhs, const std::vector<value>& rhs) { return !(lhs == rhs); }
 
+/// Streams a value.
 inline std::ostream& operator<<(std::ostream& os, const value& value);
 
+/**
+ * \brief Creates an array of mysql::value out of the passed in arguments.
+ * \details Each argument creates an element in the array. It should be possible
+ * to construct a mysql::value out of every single argument passed in.
+ */
 template <typename... Types>
 std::array<value, sizeof...(Types)> make_values(Types&&... args);
 

@@ -55,7 +55,9 @@ struct connection_params
  *
  * Because of how the MySQL protocol works, you must fully perform an operation before
  * starting the next one. For queries, you must wait for the query response and
- * **read the entire resultset** before starting a new query. Otherwise, results are undefined.
+ * **read the entire resultset** before starting a new query. For prepared statements,
+ * once executed, you must wait for the response and read the entire resultset.
+ * Otherwise, results are undefined.
  */
 template <
 	typename Stream ///< The underlying stream to use; must satisfy Boost.Asio's SyncStream and AsyncStream concepts.
@@ -109,7 +111,9 @@ public:
 	 * (\see resultset for more details).
 	 *
 	 * \warning After query() has returned, you should read the entire resultset
-	 * before calling query() again. Otherwise, the results are undefined.
+	 * before calling any function that involves communication with the server over this
+	 * connection (like connection::query, connection::prepare_statement or
+	 * prepared_statement::execute). Otherwise, the results are undefined.
 	 */
 	resultset<Stream> query(std::string_view query_string, error_code&, error_info&);
 
@@ -121,9 +125,23 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<Stream>))
 	async_query(std::string_view query_string, CompletionToken&& token);
 
+	/**
+	 * \brief Prepares a statement in the server (sync with error code version).
+	 * \details Instructs the server to create a prepared statement. The passed
+	 * in statement should be a SQL statement with question marks (?) as placeholders
+	 * for the statement parameters. See the MySQL documentation on prepared statements
+	 * for more info.
+	 *
+	 * Prepared statements are only valid while the connection object on which
+	 * prepare_statement was called is alive and open. See prepared_statement docs
+	 * for more info.
+	 */
 	prepared_statement<Stream> prepare_statement(std::string_view statement, error_code&, error_info&);
+
+	/// Prepares a statement (sync with exceptions version).
 	prepared_statement<Stream> prepare_statement(std::string_view statement);
 
+	/// Prepares a statement (async version).
 	template <typename CompletionToken>
 	auto async_prepare_statement(std::string_view statement, CompletionToken&& token);
 };
