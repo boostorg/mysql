@@ -2,6 +2,7 @@
 #define MYSQL_ASIO_IMPL_SERIALIZATION_HPP
 
 #include <boost/endian/conversion.hpp>
+#include <boost/endian/buffers.hpp>
 #include <boost/asio/buffer.hpp>
 #include <vector>
 #include <type_traits>
@@ -98,7 +99,7 @@ private:
 	using value_type = typename get_value_type<T>::type;
 public:
 	static constexpr bool value =
-			std::is_arithmetic_v<value_type> && // includes floating point types
+			std::is_integral_v<value_type> &&
 			std::is_base_of_v<value_holder<value_type>, T>;
 };
 
@@ -331,6 +332,47 @@ template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
 std::size_t get_size(T, const SerializationContext&) noexcept
 {
 	return get_fixed_size<value_holder<std::underlying_type_t<T>>>::value;
+}
+
+// Floating points
+template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
+Error deserialize(value_holder<T>& output, DeserializationContext& ctx) noexcept
+{
+	// Size check
+	if (!ctx.enough_size(sizeof(T))) return Error::incomplete_message;
+
+	// Endianness conversion
+	// Boost.Endian support for floats start at 1.71. TODO: maybe update requirements and CI
+#if BOOST_ENDIAN_BIG_BYTE
+	char buf [sizeof(T)];
+	std::memcpy(buf, ctx.first(), sizeof(T));
+	std::reverse(buf, buf + sizeof(T));
+	std::memcpy(&output.value, buf, sizeof(T));
+#else
+	std::memcpy(&output.value, ctx.first(), sizeof(T));
+#endif
+	ctx.advance(sizeof(T));
+	return Error::ok;
+}
+
+template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
+void serialize(const value_holder<T>& input, SerializationContext& ctx) noexcept
+{
+	// Endianness conversion
+#if BOOST_ENDIAN_BIG_BYTE
+	char buf [sizeof(T)];
+	std::memcpy(buf, &input.value, sizeof(T));
+	std::reverse(buf, buf + sizeof(T));
+	ctx.write(buf, sizeof(T));
+#else
+	ctx.write(&input.value, sizeof(T));
+#endif
+}
+
+template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
+std::size_t get_size(const value_holder<T>&, const SerializationContext&) noexcept
+{
+	return sizeof(T);
 }
 
 // Structs. To allow a limited way of reflection, structs should
