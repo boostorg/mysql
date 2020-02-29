@@ -10,7 +10,7 @@ namespace mysql
 {
 
 /// Convenience constant to use within prepared_statement::execute with statements without parameters.
-constexpr std::array<value, 0> no_statement_params;
+constexpr std::array<value, 0> no_statement_params {};
 
 /**
  * \brief Represents a prepared statement.
