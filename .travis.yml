@@ -66,12 +66,9 @@ matrix:
       osx_image: xcode11.3
       sudo: true
       compiler: clang
-      addons:
-        homebrew:
-          packages:
-            - boost
-            - mysql
       before_install:
+        - brew update
+        - brew install boost mysql
         - mysql.server start
       env:
         - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_BUILD_TYPE=Debug
@@ -79,12 +76,9 @@ matrix:
       osx_image: xcode11.3
       sudo: true
       compiler: clang
-      addons:
-        homebrew:
-          packages:
-            - boost
-            - mysql
       before_install:
+        - brew update
+        - brew install boost mysql
         - mysql.server start
       env:
         - CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_BUILD_TYPE=Release
