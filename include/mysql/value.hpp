@@ -8,6 +8,7 @@
 #include <chrono>
 #include <ostream>
 #include <array>
+#include <vector>
 
 namespace mysql
 {
