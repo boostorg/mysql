@@ -16,7 +16,6 @@ Usability
 		Bit
 		Geometry
 	UNIX socket connection
-	make_values
 	connection::connect that handles TCP/Unix and MySQL connect
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
