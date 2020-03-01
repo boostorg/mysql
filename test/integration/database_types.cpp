@@ -199,7 +199,7 @@ INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DatabaseTypesTest, Values(
 INSTANTIATE_TEST_SUITE_P(INT, DatabaseTypesTest, Values(
 	database_types_testcase("types_int", "field_signed", "regular", std::int32_t(20), field_type::int_),
 	database_types_testcase("types_int", "field_signed", "negative", std::int32_t(-20), field_type::int_),
-	database_types_testcase("types_int", "field_signed", "min", std::int32_t(-0x80000000), field_type::int_),
+	database_types_testcase("types_int", "field_signed", "min", -std::int32_t(0x80000000), field_type::int_),
 	database_types_testcase("types_int", "field_signed", "max", std::int32_t(0x7fffffff), field_type::int_),
 
 	database_types_testcase("types_int", "field_unsigned", "regular", std::uint32_t(20), field_type::int_, flags_unsigned),
@@ -216,7 +216,7 @@ INSTANTIATE_TEST_SUITE_P(INT, DatabaseTypesTest, Values(
 INSTANTIATE_TEST_SUITE_P(BIGINT, DatabaseTypesTest, Values(
 	database_types_testcase("types_bigint", "field_signed", "regular", std::int64_t(20), field_type::bigint),
 	database_types_testcase("types_bigint", "field_signed", "negative", std::int64_t(-20), field_type::bigint),
-	database_types_testcase("types_bigint", "field_signed", "min", std::int64_t(-0x8000000000000000), field_type::bigint),
+	database_types_testcase("types_bigint", "field_signed", "min", -std::int64_t(0x8000000000000000), field_type::bigint),
 	database_types_testcase("types_bigint", "field_signed", "max", std::int64_t(0x7fffffffffffffff), field_type::bigint),
 
 	database_types_testcase("types_bigint", "field_unsigned", "regular", std::uint64_t(20), field_type::bigint, flags_unsigned),
@@ -296,13 +296,13 @@ int round_micros(int input, int decimals)
 {
 	assert(decimals >= 0 && decimals <= 6);
 	if (decimals == 0) return 0;
-	int modulus = std::pow(10, 6 - decimals);
+	auto modulus = static_cast<int>(std::pow(10, 6 - decimals));
 	return (input / modulus) * modulus;
 }
 
 std::chrono::microseconds round_micros(std::chrono::microseconds input, int decimals)
 {
-	return std::chrono::microseconds(round_micros(input.count(), decimals));
+	return std::chrono::microseconds(round_micros(static_cast<int>(input.count()), decimals));
 }
 
 std::pair<std::string, mysql::datetime> datetime_from_id(std::bitset<4> id, int decimals)

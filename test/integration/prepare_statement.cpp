@@ -27,7 +27,7 @@ TEST_P(PrepareStatementTest, OkNoParams)
 	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table");
 	stmt.validate_no_error();
 	ASSERT_TRUE(stmt.value.valid());
-	EXPECT_GT(stmt.value.id(), 0);
+	EXPECT_GT(stmt.value.id(), 0u);
 	EXPECT_EQ(stmt.value.num_params(), 0);
 }
 
@@ -36,7 +36,7 @@ TEST_P(PrepareStatementTest, OkWithParams)
 	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table WHERE id IN (?, ?)");
 	stmt.validate_no_error();
 	ASSERT_TRUE(stmt.value.valid());
-	EXPECT_GT(stmt.value.id(), 0);
+	EXPECT_GT(stmt.value.id(), 0u);
 	EXPECT_EQ(stmt.value.num_params(), 2);
 }
 

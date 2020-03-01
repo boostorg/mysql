@@ -1,6 +1,3 @@
-Prepared statements
-	Build in Windows
-	Build in CI
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -9,6 +6,7 @@ Handshake
 	SSL
 	compression
 Usability
+	Connection quit
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
 	Iterators for sync resultset iteration
@@ -47,3 +45,5 @@ Technical debt
 	More thorough testing for several NULLs in integration testing
 	Query and statement tests for DELETEs
 	prepared_statement::execute(): static_assert(), handle value&, const value&, anything convertible
+	Test for too many connections: do we have a buffer overrun there? (error msg shows incomplete)
+	Add a connection quit in integ tests: they may fail under Windows otherwise

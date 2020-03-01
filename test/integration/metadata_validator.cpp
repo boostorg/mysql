@@ -39,7 +39,7 @@ void meta_validator::validate(
 	EXPECT_EQ(value.original_table(), org_table_);
 	EXPECT_EQ(value.field_name(), field_);
 	EXPECT_EQ(value.original_field_name(), org_field_);
-	EXPECT_GT(value.column_length(), 0);
+	EXPECT_GT(value.column_length(), 0u);
 	EXPECT_EQ(value.type(), type_);
 	EXPECT_EQ(value.decimals(), decimals_);
 
