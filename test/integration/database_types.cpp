@@ -296,13 +296,13 @@ int round_micros(int input, int decimals)
 {
 	assert(decimals >= 0 && decimals <= 6);
 	if (decimals == 0) return 0;
-	int modulus = std::pow(10, 6 - decimals);
+	auto modulus = static_cast<int>(std::pow(10, 6 - decimals));
 	return (input / modulus) * modulus;
 }
 
 std::chrono::microseconds round_micros(std::chrono::microseconds input, int decimals)
 {
-	return std::chrono::microseconds(round_micros(input.count(), decimals));
+	return std::chrono::microseconds(round_micros(static_cast<int>(input.count()), decimals));
 }
 
 std::pair<std::string, mysql::datetime> datetime_from_id(std::bitset<4> id, int decimals)

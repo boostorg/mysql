@@ -188,14 +188,15 @@ inline void mysql::detail::serialize(
 	{
 		serialize_fields(
 			ctx,
-			int1(brokendt.tod.hours().count()),
-			int1(brokendt.tod.minutes().count()),
-			int1(brokendt.tod.seconds().count())
+			int1(static_cast<std::uint8_t>(brokendt.tod.hours().count())),
+			int1(static_cast<std::uint8_t>(brokendt.tod.minutes().count())),
+			int1(static_cast<std::uint8_t>(brokendt.tod.seconds().count()))
 		);
 	}
 	if (length >= 11)
 	{
-		serialize(int4(brokendt.tod.subseconds().count()), ctx);
+		auto micros = static_cast<std::uint32_t>(brokendt.tod.subseconds().count());
+		serialize(int4(micros), ctx);
 	}
 }
 
@@ -229,9 +230,10 @@ inline mysql::Error mysql::detail::deserialize(
 		if (err != Error::ok) return err;
 	}
 
-	// Compose the final datetime
-	output = date_part + std::chrono::hours(hours.value) + std::chrono::minutes(minutes.value) +
-			 std::chrono::seconds(seconds.value) + std::chrono::microseconds(micros.value);
+	// Compose the final datetime. Doing time of day and date separately to avoid overflow
+	auto time_of_day_part = std::chrono::hours(hours.value) + std::chrono::minutes(minutes.value) +
+		std::chrono::seconds(seconds.value) + std::chrono::microseconds(micros.value);
+	output = date_part + time_of_day_part;
 	return Error::ok;
 }
 
@@ -258,15 +260,16 @@ inline void mysql::detail::serialize(
 		serialize_fields(
 			ctx,
 			is_negative,
-			int4(std::abs(broken.days.count())),
-			int1(std::abs(broken.hours.count())),
-			int1(std::abs(broken.minutes.count())),
-			int1(std::abs(broken.seconds.count()))
+			int4(static_cast<std::uint32_t>(std::abs(broken.days.count()))),
+			int1(static_cast<std::uint8_t>(std::abs(broken.hours.count()))),
+			int1(static_cast<std::uint8_t>(std::abs(broken.minutes.count()))),
+			int1(static_cast<std::uint8_t>(std::abs(broken.seconds.count())))
 		);
 	}
 	if (length >= 12)
 	{
-		serialize(int4(std::abs(broken.microseconds.count())), ctx);
+		auto micros = static_cast<std::uint32_t>(std::abs(broken.microseconds.count()));
+		serialize(int4(micros), ctx);
 	}
 }
 
