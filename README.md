@@ -58,12 +58,13 @@ Currently implemented:
 - Text queries (execution of text SQL queries and data retrieval).
   MySQL refers to this as the "text protocol", as all information is passed using text
   (as opposed to prepared statements, see below).
+- Prepared statements. MySQL refers to this as the "binary protocol", as the result
+  of executing a prepared statement is sent in binary format rather than in text.
 - User/password basic authentication (mysql_native_password). MySQL supports several
   authentication methods ("authentication plugins"). Only the mysql_native_password
   is supported yet.
 
 Yet to be done (but it is on our list - PRs welcome):
-- Prepared statements. MySQL refers to this as the "binary protocol", as the result
-  of executing a prepared statement is sent in binary format rather than in text.
+
 - Further authentication methods: caching_sha2_password, sha256_password...
 - SSL encrypted connections.
