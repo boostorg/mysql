@@ -366,12 +366,14 @@ INSERT INTO types_flags VALUES
 ;
 
 -- Users
-DROP USER IF EXISTS integ_user;
-CREATE USER integ_user IDENTIFIED WITH 'mysql_native_password' BY 'integ_password';
-GRANT ALL PRIVILEGES ON *.* TO 'integ_user';
+DROP USER IF EXISTS 'integ_user'@'localhost';
+CREATE USER 'integ_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'integ_user'@'localhost' IDENTIFIED BY 'integ_password';
+GRANT ALL PRIVILEGES ON awesome.* TO 'integ_user'@'localhost';
 
-DROP USER IF EXISTS empty_password_user;
-CREATE USER empty_password_user IDENTIFIED WITH 'mysql_native_password' BY '';
-GRANT ALL PRIVILEGES ON awesome.* TO 'empty_password_user';
+DROP USER IF EXISTS 'empty_password_user'@'localhost';
+CREATE USER 'empty_password_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'empty_password_user'@'localhost' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON awesome.* TO 'empty_password_user'@'localhost';
 
 FLUSH PRIVILEGES;

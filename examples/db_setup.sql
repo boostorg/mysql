@@ -35,6 +35,7 @@ INSERT INTO employee (first_name, last_name, salary, company_id) VALUES
 ;
 
 -- User
-DROP USER IF EXISTS example_user;
-CREATE USER example_user IDENTIFIED WITH 'mysql_native_password' BY 'example_password';
-GRANT ALL PRIVILEGES ON mysql_asio_examples.* TO 'example_user';
+DROP USER IF EXISTS 'example_user'@'localhost';
+CREATE USER 'example_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'example_user'@'localhost' IDENTIFIED BY 'example_password';
+GRANT ALL PRIVILEGES ON mysql_asio_examples.* TO 'example_user'@'localhost';
