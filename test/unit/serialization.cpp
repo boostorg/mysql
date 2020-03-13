@@ -307,7 +307,7 @@ constexpr std::uint32_t hanshake_caps =
 		CLIENT_IGNORE_SIGPIPE |
 		CLIENT_TRANSACTIONS |
 		CLIENT_RESERVED | // old flag, but set in this frame
-		CLIENT_RESERVED2 | // old flag, but set in this frame
+		CLIENT_SECURE_CONNECTION | // old flag, but set in this frame
 		CLIENT_MULTI_STATEMENTS |
 		CLIENT_MULTI_RESULTS |
 		CLIENT_PS_MULTI_RESULTS |
@@ -358,7 +358,7 @@ constexpr std::uint32_t handshake_response_caps =
 		CLIENT_PROTOCOL_41 |
 		CLIENT_INTERACTIVE |
 		CLIENT_TRANSACTIONS |
-		CLIENT_RESERVED2 |
+		CLIENT_SECURE_CONNECTION |
 		CLIENT_MULTI_STATEMENTS |
 		CLIENT_MULTI_RESULTS |
 		CLIENT_PS_MULTI_RESULTS |

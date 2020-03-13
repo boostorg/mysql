@@ -24,7 +24,7 @@ constexpr std::uint32_t CLIENT_SSL = 2048; // Use SSL encryption for the session
 constexpr std::uint32_t CLIENT_IGNORE_SIGPIPE = 4096; // Client only flag
 constexpr std::uint32_t CLIENT_TRANSACTIONS = 8192; // Client knows about transactions
 constexpr std::uint32_t CLIENT_RESERVED = 16384; // DEPRECATED: Old flag for 4.1 protocol
-constexpr std::uint32_t CLIENT_RESERVED2 = 32768; // DEPRECATED: Old flag for 4.1 authentication \ CLIENT_SECURE_CONNECTION
+constexpr std::uint32_t CLIENT_SECURE_CONNECTION = 32768; // DEPRECATED: Old flag for 4.1 authentication, required by MariaDB
 constexpr std::uint32_t CLIENT_MULTI_STATEMENTS = (1UL << 16); // Enable/disable multi-stmt support
 constexpr std::uint32_t CLIENT_MULTI_RESULTS = (1UL << 17); // Enable/disable multi-results
 constexpr std::uint32_t CLIENT_PS_MULTI_RESULTS = (1UL << 18); // Multi-results and OUT parameters in PS-protocol
@@ -95,7 +95,8 @@ constexpr capabilities mandatory_capabilities {
 	CLIENT_PROTOCOL_41 |
 	CLIENT_PLUGIN_AUTH |
 	CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-	CLIENT_DEPRECATE_EOF
+	CLIENT_DEPRECATE_EOF |
+	CLIENT_SECURE_CONNECTION
 };
 
 constexpr capabilities optional_capabilities {0};
