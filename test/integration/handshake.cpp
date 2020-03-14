@@ -68,7 +68,7 @@ TEST_P(HandshakeTest, FastAuthBadDatabase)
 {
 	connection_params.database = "bad_database";
 	auto result = do_handshake();
-	result.validate_error(mysql::Error::bad_db_error, {"unknown database", "bad_database"});
+	result.validate_error(mysql::Error::dbaccess_denied_error, {"database", "bad_database"});
 }
 
 MYSQL_NETWORK_TEST_SUITE(HandshakeTest);
