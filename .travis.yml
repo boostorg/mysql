@@ -3,22 +3,34 @@ __windows_defaults: &__windows_defaults
   language: sh # For some reason, language cpp will start an Ubuntu machine instead
   script:
     - cmd //c 'ci\build_windows.bat'
+    
+__linux_addons_defaults: &__linux_addons_defaults
+  apt:
+    update: true
+    sources:
+      - sourceline: 'ppa:mhier/libboost-latest'
+    packages:
+      - boost1.70
 
 __linux_defaults: &__linux_defaults
   os: linux
   dist: bionic
   sudo: true
-  services:
-    - mysql
   addons:
-    apt:
-      update: true
-      sources:
-        - sourceline: 'ppa:mhier/libboost-latest'
-      packages:
-        - boost1.70
+    <<: *__linux_addons_defaults
   script:
     - bash -e -x ci/build_unix.sh
+    
+__linux_mysql_defaults: &__linux_mysql_defaults
+  <<: *__linux_defaults
+  services:
+    - mysql
+    
+__linux_mariadb_defaults: &__linux_mariadb_defaults
+  <<: *__linux_defaults
+  addons:
+    <<: *__linux_addons_defaults
+    mariadb: '10.3'
 
 __osx_defaults: &__osx_defaults
   os: osx
@@ -39,42 +51,62 @@ language: cpp
 
 matrix:
   include:
-    - name: windows_msvc_x64_debug
+    - name: windows_msvc_x64_debug_mysql
       <<: *__windows_defaults
       env:
         - CMAKE_BUILD_TYPE=Debug
         - TARGET_ARCH=x64
-    - name: windows_msvc_x64_release
+    - name: windows_msvc_x64_release_mysql
       <<: *__windows_defaults
       env:
         - CMAKE_BUILD_TYPE=Release
         - TARGET_ARCH=x64
-    - name: linux_gcc_x64_debug
-      <<: *__linux_defaults
+    - name: linux_gcc_x64_debug_mysql
+      <<: *__linux_mysql_defaults
       compiler: gcc
       env:
         - CMAKE_BUILD_TYPE=Debug
-    - name: linux_gcc_x64_release
-      <<: *__linux_defaults
+    - name: linux_gcc_x64_release_mysql
+      <<: *__linux_mysql_defaults
       compiler: gcc
       env:
         - CMAKE_BUILD_TYPE=Release
-    - name: linux_clang_x64_debug
-      <<: *__linux_defaults
+    - name: linux_clang_x64_debug_mysql
+      <<: *__linux_mysql_defaults
       compiler: clang
       env:
         - CMAKE_BUILD_TYPE=Debug
-    - name: linux_clang_x64_release
-      <<: *__linux_defaults
+    - name: linux_clang_x64_release_mysql
+      <<: *__linux_mysql_defaults
       compiler: clang
       env:
         - CMAKE_BUILD_TYPE=Release
-    - name: osx_clang_x64_debug
+    - name: linux_gcc_x64_debug_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+    - name: linux_gcc_x64_release_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: linux_clang_x64_debug_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+    - name: linux_clang_x64_release_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: osx_clang_x64_debug_mysql
       <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
-    - name: osx_clang_x64_release
+    - name: osx_clang_x64_release_mysql
       <<: *__osx_defaults
       env:
         - *__osx_cmake_options
