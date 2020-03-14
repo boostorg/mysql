@@ -14,17 +14,21 @@ class meta_validator
 public:
 	using flag_getter = bool (field_metadata::*)() const noexcept;
 	meta_validator(std::string table, std::string field, field_type type,
-			std::vector<flag_getter> flags={}, unsigned decimals=0):
+			std::vector<flag_getter> flags={}, unsigned decimals=0,
+			std::vector<flag_getter> ignore_flags={}):
 		table_(std::move(table)), org_table_(table_), field_(std::move(field)), org_field_(field_),
-		decimals_(decimals), type_(type), flags_(std::move(flags))
+		decimals_(decimals), type_(type), flags_(std::move(flags)),
+		ignore_flags_(std::move(ignore_flags))
 	{
 	}
 	meta_validator(std::string table, std::string org_table,
 			std::string field, std::string org_field, field_type type,
-			std::vector<flag_getter> flags={}, unsigned decimals=0):
+			std::vector<flag_getter> flags={}, unsigned decimals=0,
+			std::vector<flag_getter> ignore_flags={}):
 		table_(std::move(table)), org_table_(std::move(org_table)),
 		field_(std::move(field)), org_field_(std::move(org_field)),
-		decimals_(decimals), type_(type), flags_(std::move(flags))
+		decimals_(decimals), type_(type), flags_(std::move(flags)),
+		ignore_flags_(std::move(ignore_flags))
 	{
 	}
 	void validate(const field_metadata& value) const;
@@ -37,6 +41,7 @@ private:
 	unsigned decimals_;
 	field_type type_;
 	std::vector<flag_getter> flags_;
+	std::vector<flag_getter> ignore_flags_;
 };
 
 void validate_meta(const std::vector<field_metadata>& actual, const std::vector<meta_validator>& expected);

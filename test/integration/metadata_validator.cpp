@@ -29,6 +29,14 @@ static struct flag_entry
 	MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(is_set_to_now_on_update)
 };
 
+static bool contains(
+	meta_validator::flag_getter flag,
+	const std::vector<meta_validator::flag_getter>& flagvec
+)
+{
+	return std::find(flagvec.begin(), flagvec.end(), flag) != flagvec.end();
+}
+
 void meta_validator::validate(
 	const mysql::field_metadata& value
 ) const
@@ -53,14 +61,18 @@ void meta_validator::validate(
 			all_flags.end(),
 			[true_flag](const flag_entry& entry) { return entry.getter == true_flag; }
 		);
-		ASSERT_NE(it, all_flags.end());
+		ASSERT_NE(it, all_flags.end()); // no repeated flag
+		ASSERT_FALSE(contains(true_flag, ignore_flags_)); // ignore flags cannot be set to true
 		EXPECT_TRUE((value.*true_flag)()) << it->name;
 		all_flags.erase(it);
 	}
 
 	for (const auto& entry: all_flags)
 	{
-		EXPECT_FALSE((value.*entry.getter)()) << entry.name;
+		if (!contains(entry.getter, ignore_flags_))
+		{
+			EXPECT_FALSE((value.*entry.getter)()) << entry.name;
+		}
 	}
 }
 

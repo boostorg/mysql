@@ -349,6 +349,8 @@ database_types_testcase create_datetime_testcase(
 		{ field_type::timestamp, "types_timestamp" },
 		{ field_type::time, "types_time" }
 	};
+	// Inconsistencies between Maria and MySQL in the unsigned flag
+	// we don't really care here about signedness of timestamps
 	return database_types_testcase(
 		table_map.at(type),
 		"field_" + std::to_string(decimals),
@@ -356,7 +358,8 @@ database_types_testcase create_datetime_testcase(
 		expected,
 		type,
 		no_flags,
-		decimals
+		decimals,
+		flagsvec{ &mysql::field_metadata::is_unsigned }
 	);
 }
 
@@ -557,7 +560,7 @@ INSTANTIATE_TEST_SUITE_P(NOT_IMPLEMENTED_TYPES, DatabaseTypesTest, Values(
 // Tests for certain metadata flags and NULL values
 INSTANTIATE_TEST_SUITE_P(METADATA_FLAGS, DatabaseTypesTest, Values(
 	database_types_testcase("types_flags", "field_timestamp", "default", nullptr, field_type::timestamp,
-					 flagsvec{&field_metadata::is_set_to_now_on_update}),
+					 flagsvec{&field_metadata::is_set_to_now_on_update}, 0, flagsvec{&field_metadata::is_unsigned}),
 	database_types_testcase("types_flags", "field_primary_key", "default", std::int32_t(50), field_type::int_,
 					 flagsvec{&field_metadata::is_primary_key, &field_metadata::is_not_null,
 							  &field_metadata::is_auto_increment}),
