@@ -3,7 +3,7 @@ rem Chocolatey stuff
 choco feature enable -n=allowGlobalConfirmation || goto error
 choco install ^
 	openssl ^
-	mysql ^
+	%DATABASE% ^
 	visualstudio2019buildtools ^
 	visualstudio2019-workload-vctools || goto error
 set PATH=%PATH%;C:\tools\mysql\current\bin
