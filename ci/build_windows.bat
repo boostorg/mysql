@@ -6,7 +6,7 @@ choco install ^
 	%DATABASE% ^
 	visualstudio2019buildtools ^
 	visualstudio2019-workload-vctools || goto error
-set PATH=%PATH%;C:\tools\mysql\current\bin
+set PATH=%PATH%;C:\tools\mysql\current\bin;C:\Program Files\MariaDB 10.5\bin
 
 rem Environment setup
 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" %TARGET_ARCH%
