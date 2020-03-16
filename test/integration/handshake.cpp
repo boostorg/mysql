@@ -32,14 +32,13 @@ TEST_P(HandshakeTest, FastAuthSuccessfulLogin)
 	result.validate_no_error();
 }
 
-// TODO: review failure in Mac
-/*TEST_P(HandshakeTest, FastAuthSuccessfulLoginEmptyPassword)
+TEST_P(HandshakeTest, FastAuthSuccessfulLoginEmptyPassword)
 {
 	connection_params.username = "empty_password_user";
 	connection_params.password = "";
 	auto result = do_handshake();
 	result.validate_no_error();
-}*/
+}
 
 TEST_P(HandshakeTest, FastAuthSuccessfulLoginNoDatabase)
 {
