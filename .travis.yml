@@ -53,6 +53,7 @@ __osx_mariadb_defaults: &__osx_mariadb_defaults
     - brew update
     - brew install boost mariadb
     - mysql.server start
+    - sudo mysql -u root < ci/root_user_setup.sql
 
 __osx_cmake_options: &__osx_cmake_options "CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 
