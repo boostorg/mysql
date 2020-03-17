@@ -6,7 +6,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "mysql/row.hpp"
+#include "boost/mysql/row.hpp"
 #include "test_common.hpp"
 
 using namespace mysql::test;

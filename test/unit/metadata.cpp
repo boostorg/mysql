@@ -5,9 +5,9 @@
  *      Author: ruben
  */
 
-#include "mysql/metadata.hpp"
+#include "boost/mysql/metadata.hpp"
 #include <gtest/gtest.h>
-#include "mysql/impl/serialization.hpp"
+#include "boost/mysql/detail/protocol/serialization.hpp"
 
 using namespace testing;
 using namespace mysql::detail;

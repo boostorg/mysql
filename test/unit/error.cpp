@@ -6,7 +6,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "mysql/error.hpp"
+#include "boost/mysql/error.hpp"
 
 using namespace testing;
 using mysql::Error;

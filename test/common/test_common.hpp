@@ -1,8 +1,8 @@
 #ifndef TEST_TEST_COMMON_HPP_
 #define TEST_TEST_COMMON_HPP_
 
-#include "mysql/value.hpp"
-#include "mysql/row.hpp"
+#include "boost/mysql/value.hpp"
+#include "boost/mysql/row.hpp"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>

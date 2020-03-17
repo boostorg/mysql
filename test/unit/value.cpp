@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <sstream>
-#include "mysql/value.hpp"
+#include "boost/mysql/value.hpp"
 #include "test_common.hpp"
 
 using namespace mysql::test;

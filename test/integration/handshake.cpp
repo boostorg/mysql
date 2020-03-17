@@ -5,7 +5,7 @@
  *      Author: ruben
  */
 
-#include "mysql/connection.hpp"
+#include "boost/mysql/connection.hpp"
 #include "integration_test_common.hpp"
 #include "test_common.hpp"
 #include <boost/asio/use_future.hpp>

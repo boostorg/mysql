@@ -1,7 +1,7 @@
 #ifndef TEST_INTEGRATION_METADATA_VALIDATOR_HPP_
 #define TEST_INTEGRATION_METADATA_VALIDATOR_HPP_
 
-#include "mysql/metadata.hpp"
+#include "boost/mysql/metadata.hpp"
 #include <vector>
 
 namespace mysql

@@ -2,7 +2,7 @@
 #define TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP_
 
 #include <gtest/gtest.h>
-#include <mysql/connection.hpp>
+#include "boost/mysql/connection.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <future>

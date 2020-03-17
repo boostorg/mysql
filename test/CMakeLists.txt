@@ -16,21 +16,21 @@ endif()
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
 	mysql_unittests
-	unit/serialization.cpp
-	unit/capabilities.cpp
-	unit/auth.cpp
+	unit/detail/auth/mysql_native_password.cpp
+	unit/detail/protocol/serialization.cpp
+	unit/detail/protocol/capabilities.cpp
+	unit/detail/protocol/text_deserialization.cpp
+	unit/detail/protocol/binary_deserialization.cpp
+	unit/detail/protocol/null_bitmap_traits.cpp
 	unit/metadata.cpp
-	unit/text_deserialization.cpp
-	unit/binary_deserialization.cpp
 	unit/value.cpp
 	unit/row.cpp
 	unit/error.cpp
-	unit/null_bitmap.cpp
 	unit/prepared_statement.cpp
 )
 # A codegen issue in MSVC C++17 makes gmock expectations not work
 if (NOT MSVC)
-	target_sources(mysql_unittests PRIVATE unit/channel.cpp)
+	target_sources(mysql_unittests PRIVATE unit/detail/protocol/channel.cpp)
 endif()
 
 target_include_directories(

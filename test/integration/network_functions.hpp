@@ -1,7 +1,7 @@
 #ifndef TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP_
 #define TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP_
 
-#include "mysql/connection.hpp"
+#include "boost/mysql/connection.hpp"
 #include "test_common.hpp"
 #include <gtest/gtest.h>
 #include <forward_list>

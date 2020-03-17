@@ -6,7 +6,7 @@
  */
 
 #include "test_common.hpp"
-#include "mysql/prepared_statement.hpp"
+#include "boost/mysql/prepared_statement.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
 using namespace mysql::detail;

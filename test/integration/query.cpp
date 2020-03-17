@@ -5,7 +5,7 @@
  *      Author: ruben
  */
 
-#include "mysql/connection.hpp"
+#include "boost/mysql/connection.hpp"
 #include <gmock/gmock.h> // for EXPECT_THAT()
 #include <boost/asio/use_future.hpp>
 #include "metadata_validator.hpp"
