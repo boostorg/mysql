@@ -38,7 +38,6 @@ Technical debt
 	Test zero dates
 	clear_errors() function to clear error_info and error_code at once
 	Review .hpp/.ipp convention
-	Make all sync/async tests use the network test suite
 	Rework deserialize_row_fn to allow cursors
 	Test prepared statement binding to procedure out params
 	More thorough testing for several NULLs in integration testing
