@@ -125,7 +125,7 @@ struct MysqlChannelFixture : public Test
 
 struct MysqlChannelReadTest : public MysqlChannelFixture
 {
-	std::vector<uint8_t> buffer;
+	std::vector<uint8_t> buffer { 0xab, 0xac, 0xad, 0xae }; // simulate buffer was not empty, to verify we clear it
 	std::vector<uint8_t> bytes_to_read;
 	std::size_t index {0};
 
@@ -190,6 +190,16 @@ TEST_F(MysqlChannelReadTest, SyncRead_MoreThan16M_JoinsPackets)
 	chan.read(buffer, errc);
 	EXPECT_EQ(errc, error_code());
 	verify_buffer(std::vector<uint8_t>(0xffffff * 2 + 4, 0x20));
+}
+
+TEST_F(MysqlChannelReadTest, SyncRead_EmptyPacket_LeavesBufferEmpty)
+{
+	ON_CALL(stream, read_buffer)
+		.WillByDefault(Invoke(make_read_handler()));
+	concat(bytes_to_read, {0x00, 0x00, 0x00, 0x00});
+	chan.read(buffer, errc);
+	EXPECT_EQ(errc, error_code());
+	verify_buffer(std::vector<uint8_t>{});
 }
 
 TEST_F(MysqlChannelReadTest, SyncRead_ShortReads_InvokesReadAgain)
@@ -318,6 +328,16 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_MoreThan16M_SplitsInPackets)
 	EXPECT_EQ(errc, error_code());
 }
 
+TEST_F(MysqlChannelWriteTest, SyncWrite_EmptyPacket_WritesHeader)
+{
+	ON_CALL(stream, write_buffer)
+		.WillByDefault(Invoke(make_write_handler()));
+	chan.reset_sequence_number(2);
+	chan.write(buffer(std::vector<uint8_t>{}), errc);
+	verify_buffer({0x00, 0x00, 0x00, 0x02});
+	EXPECT_EQ(errc, error_code());
+}
+
 TEST_F(MysqlChannelWriteTest, SyncWrite_ShortWrites_WritesHeaderAndBuffer)
 {
 	ON_CALL(stream, write_buffer)
@@ -376,5 +396,4 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceIsFF_WrapsSequenceNumber)
 }
 
 } // anon namespace
-
 

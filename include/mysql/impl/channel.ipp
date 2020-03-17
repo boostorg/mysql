@@ -116,7 +116,9 @@ void mysql::detail::channel<AsyncStream>::write(
 	auto bufsize = buffer.size();
 	auto first = static_cast<ReadIterator>(buffer.data());
 
-	while (transferred_size < bufsize)
+	// If the packet is empty, we should still write the header, saying
+	// we are sending an empty packet.
+	do
 	{
 		auto size_to_write = compute_size_to_write(bufsize, transferred_size);
 		process_header_write(size_to_write);
@@ -130,7 +132,7 @@ void mysql::detail::channel<AsyncStream>::write(
 		);
 		if (errc) return;
 		transferred_size += size_to_write;
-	}
+	} while (transferred_size < bufsize);
 }
 
 
@@ -265,7 +267,8 @@ mysql::detail::channel<AsyncStream>::async_write(
 
 			reenter(*this)
 			{
-				while (total_transferred_size_ < buffer_.size())
+				// Force write the packet header on an empty packet, at least.
+				do
 				{
 					size_to_write = compute_size_to_write(buffer_.size(), total_transferred_size_);
 					stream_.process_header_write(size_to_write);
@@ -286,7 +289,8 @@ mysql::detail::channel<AsyncStream>::async_write(
 					}
 
 					total_transferred_size_ += (bytes_transferred - 4); // header size
-				}
+
+				} while (total_transferred_size_ < buffer_.size());
 
 				this->complete(cont, error_code());
 			}
