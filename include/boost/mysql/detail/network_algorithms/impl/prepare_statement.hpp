@@ -3,10 +3,9 @@
 
 #include <boost/asio/yield.hpp>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType>
 class prepare_statement_processor
@@ -54,13 +53,12 @@ public:
 	}
 };
 
-
-
-}
-}
+} // detail
+} // mysql
+} // boost
 
 template <typename StreamType>
-void mysql::detail::prepare_statement(
+void boost::mysql::detail::prepare_statement(
 	channel<StreamType>& channel,
 	std::string_view statement,
 	error_code& err,
@@ -99,9 +97,9 @@ void mysql::detail::prepare_statement(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::prepared_statement<StreamType>)
+	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::prepared_statement<StreamType>)
 )
-mysql::detail::async_prepare_statement(
+boost::mysql::detail::async_prepare_statement(
 	channel<StreamType>& chan,
 	std::string_view statement,
 	CompletionToken&& token

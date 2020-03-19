@@ -5,7 +5,7 @@
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
 
 template <typename StreamType>
-void mysql::detail::execute_query(
+void boost::mysql::detail::execute_query(
 	channel<StreamType>& channel,
 	std::string_view query,
 	resultset<StreamType>& output,
@@ -21,9 +21,9 @@ void mysql::detail::execute_query(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::resultset<StreamType>)
+	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::resultset<StreamType>)
 )
-mysql::detail::async_execute_query(
+boost::mysql::detail::async_execute_query(
 	channel<StreamType>& chan,
 	std::string_view query,
 	CompletionToken&& token

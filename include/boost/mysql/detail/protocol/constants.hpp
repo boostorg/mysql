@@ -3,10 +3,9 @@
 
 #include "boost/mysql/detail/basic_types.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 enum class protocol_field_type : std::uint8_t
 {
@@ -96,9 +95,9 @@ constexpr std::uint8_t scrollable = 4;
 }
 
 
-}
-}
-
+} // detail
+} // mysql
+} // boost
 
 
 #endif

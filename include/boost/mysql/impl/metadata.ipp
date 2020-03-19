@@ -1,10 +1,9 @@
 #ifndef MYSQL_ASIO_IMPL_METADATA_HPP
 #define MYSQL_ASIO_IMPL_METADATA_HPP
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline field_type compute_field_type_string(
 	std::uint32_t flags
@@ -63,10 +62,11 @@ inline field_type compute_field_type(
 	}
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
-inline mysql::field_type mysql::field_metadata::type() const noexcept
+inline boost::mysql::field_type boost::mysql::field_metadata::type() const noexcept
 {
 	if (field_type_ == field_type::_not_computed)
 	{

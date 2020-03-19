@@ -7,12 +7,12 @@
 
 #include "integration_test_common.hpp"
 
-using namespace mysql::test;
-using mysql::error_code;
-using mysql::error_info;
-using mysql::Error;
-using mysql::tcp_prepared_statement;
-using mysql::tcp_connection;
+using namespace boost::mysql::test;
+using boost::mysql::error_code;
+using boost::mysql::error_info;
+using boost::mysql::Error;
+using boost::mysql::tcp_prepared_statement;
+using boost::mysql::tcp_connection;
 
 namespace
 {

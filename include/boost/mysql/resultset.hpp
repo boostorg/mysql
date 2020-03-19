@@ -9,8 +9,8 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <cassert>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /**
  * \brief Represents tabular data retrieved from the MySQL server.
@@ -177,7 +177,8 @@ public:
 /// Specialization of resultset for TCP sockets.
 using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
 
-}
+} // mysql
+} // boost
 
 #include "boost/mysql/impl/resultset.hpp"
 

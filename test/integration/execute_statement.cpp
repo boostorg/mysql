@@ -8,13 +8,13 @@
 #include "integration_test_common.hpp"
 #include <forward_list>
 
-using namespace mysql::test;
-using mysql::value;
-using mysql::error_code;
-using mysql::error_info;
-using mysql::Error;
-using mysql::tcp_resultset;
-using mysql::tcp_prepared_statement;
+using namespace boost::mysql::test;
+using boost::mysql::value;
+using boost::mysql::error_code;
+using boost::mysql::error_info;
+using boost::mysql::Error;
+using boost::mysql::tcp_resultset;
+using boost::mysql::tcp_prepared_statement;
 
 namespace
 {
@@ -101,7 +101,7 @@ struct ExecuteStatementOtherContainersTest : IntegTestAfterHandshake {};
 TEST_F(ExecuteStatementOtherContainersTest, NoParams_CanUseNoStatementParamsVariable)
 {
 	auto stmt = conn.prepare_statement("SELECT * FROM empty_table");
-	auto result = stmt.execute(mysql::no_statement_params);
+	auto result = stmt.execute(boost::mysql::no_statement_params);
 	EXPECT_TRUE(result.valid());
 }
 

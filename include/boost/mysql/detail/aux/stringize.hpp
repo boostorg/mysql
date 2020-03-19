@@ -4,10 +4,9 @@
 #include <string>
 #include <sstream>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename... Types>
 std::string stringize(const Types&... inputs)
@@ -17,8 +16,9 @@ std::string stringize(const Types&... inputs)
 	return ss.str();
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 
 

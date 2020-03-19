@@ -4,10 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 class null_bitmap_traits
 {
@@ -38,8 +37,8 @@ public:
 constexpr std::size_t stmt_execute_null_bitmap_offset = 0;
 constexpr std::size_t binary_row_null_bitmap_offset = 2;
 
-}
-}
-
+} // detail
+} // mysql
+} // boost
 
 #endif /* INCLUDE_NULL_BITMAP_HPP_ */

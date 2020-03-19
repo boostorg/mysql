@@ -12,10 +12,9 @@
 #include "metadata_validator.hpp"
 #include "network_functions.hpp"
 
-namespace mysql
-{
-namespace test
-{
+namespace boost {
+namespace mysql {
+namespace test {
 
 struct IntegTest : testing::Test
 {
@@ -101,7 +100,8 @@ struct NetworkTest : public BaseType,
 {
 };
 
-}
-}
+} // test
+} // mysql
+} // boost
 
 #endif /* TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP_ */

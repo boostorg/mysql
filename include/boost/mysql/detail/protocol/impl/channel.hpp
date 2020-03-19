@@ -9,10 +9,9 @@
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include <boost/asio/yield.hpp>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline std::uint32_t compute_size_to_write(
 	std::size_t buffer_size,
@@ -27,9 +26,10 @@ inline std::uint32_t compute_size_to_write(
 
 } // detail
 } // mysql
+} // boost
 
 template <typename AsyncStream>
-bool mysql::detail::channel<AsyncStream>::process_sequence_number(
+bool boost::mysql::detail::channel<AsyncStream>::process_sequence_number(
 	std::uint8_t got
 )
 {
@@ -45,7 +45,7 @@ bool mysql::detail::channel<AsyncStream>::process_sequence_number(
 }
 
 template <typename AsyncStream>
-mysql::error_code mysql::detail::channel<AsyncStream>::process_header_read(
+boost::mysql::error_code boost::mysql::detail::channel<AsyncStream>::process_header_read(
 	std::uint32_t& size_to_read
 )
 {
@@ -62,7 +62,7 @@ mysql::error_code mysql::detail::channel<AsyncStream>::process_header_read(
 }
 
 template <typename AsyncStream>
-void mysql::detail::channel<AsyncStream>::process_header_write(
+void boost::mysql::detail::channel<AsyncStream>::process_header_write(
 	std::uint32_t size_to_write
 )
 {
@@ -75,7 +75,7 @@ void mysql::detail::channel<AsyncStream>::process_header_write(
 
 template <typename AsyncStream>
 template <typename Allocator>
-void mysql::detail::channel<AsyncStream>::read(
+void boost::mysql::detail::channel<AsyncStream>::read(
 	basic_bytestring<Allocator>& buffer,
 	error_code& errc
 )
@@ -107,7 +107,7 @@ void mysql::detail::channel<AsyncStream>::read(
 }
 
 template <typename AsyncStream>
-void mysql::detail::channel<AsyncStream>::write(
+void boost::mysql::detail::channel<AsyncStream>::write(
 	boost::asio::const_buffer buffer,
 	error_code& errc
 )
@@ -138,8 +138,8 @@ void mysql::detail::channel<AsyncStream>::write(
 
 template <typename AsyncStream>
 template <typename Allocator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
-mysql::detail::channel<AsyncStream>::async_read(
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::channel<AsyncStream>::async_read(
 	basic_bytestring<Allocator>& buffer,
 	CompletionToken&& token
 )
@@ -228,8 +228,8 @@ mysql::detail::channel<AsyncStream>::async_read(
 
 template <typename AsyncStream>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code))
-mysql::detail::channel<AsyncStream>::async_write(
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::channel<AsyncStream>::async_write(
 	boost::asio::const_buffer buffer,
 	CompletionToken&& token
 )

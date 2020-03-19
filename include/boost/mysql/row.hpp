@@ -7,8 +7,8 @@
 #include "boost/mysql/detail/aux/container_equals.hpp"
 #include <algorithm>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /**
  * \brief Represents a row returned from a query.
@@ -98,7 +98,8 @@ inline bool operator!=(const std::vector<RowTypeLeft>& lhs, const std::vector<Ro
 	return !(lhs == rhs);
 }
 
-}
+} // mysql
+} // boost
 
 
 

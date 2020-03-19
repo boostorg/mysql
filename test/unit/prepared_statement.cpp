@@ -9,14 +9,14 @@
 #include "boost/mysql/prepared_statement.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
-using namespace mysql::detail;
+using namespace boost::mysql::detail;
 
 namespace
 {
 
 using stream_type = boost::asio::ip::tcp::socket;
-using channel_type = mysql::detail::channel<stream_type>;
-using stmt_type = mysql::prepared_statement<stream_type>;
+using channel_type = channel<stream_type>;
+using stmt_type = boost::mysql::prepared_statement<stream_type>;
 
 struct PreparedStatementTest : public testing::Test
 {

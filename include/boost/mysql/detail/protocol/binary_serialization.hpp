@@ -6,10 +6,9 @@
 
 // (de)serialization overloads for date/time types and mysql::value
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline std::size_t get_size(const date& input, const SerializationContext& ctx) noexcept;
 inline void serialize(const date& input, SerializationContext& ctx) noexcept;
@@ -26,8 +25,9 @@ inline Error deserialize(time& output, DeserializationContext& ctx) noexcept;
 inline std::size_t get_size(const value& input, const SerializationContext& ctx) noexcept;
 inline void serialize(const value& input, SerializationContext& ctx) noexcept;
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/protocol/impl/binary_serialization.ipp"
 

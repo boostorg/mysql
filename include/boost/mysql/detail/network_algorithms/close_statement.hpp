@@ -3,10 +3,9 @@
 
 #include "boost/mysql/detail/network_algorithms/common.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType>
 void close_statement(
@@ -24,8 +23,9 @@ async_close_statement(
 	CompletionToken&& token
 );
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/network_algorithms/impl/close_statement.hpp"
 

@@ -7,9 +7,9 @@
 
 #include "integration_test_common.hpp"
 
-using namespace mysql::test;
-using mysql::row;
-using mysql::value;
+using namespace boost::mysql::test;
+using boost::mysql::row;
+using boost::mysql::value;
 
 namespace
 {

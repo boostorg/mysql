@@ -3,10 +3,9 @@
 
 #include <type_traits>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename T, typename Head, typename... Tail>
 struct is_one_of
@@ -24,9 +23,9 @@ struct is_one_of<T, Head>
 template <typename T, typename... Types>
 constexpr bool is_one_of_v = is_one_of<T, Types...>::value;
 
-}
-}
-
+} // detail
+} // mysql
+} // boost
 
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUX_TMP_HPP_ */

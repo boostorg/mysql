@@ -3,10 +3,9 @@
 
 #include "boost/mysql/detail/aux/container_equals.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 // Max/min
 constexpr date min_date = ::date::day(1)/::date::January/::date::year(100); // some implementations support less than the official
@@ -57,10 +56,11 @@ struct print_visitor
 	void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
-inline bool mysql::operator==(
+inline bool boost::mysql::operator==(
 	const value& lhs,
 	const value& rhs
 )
@@ -72,7 +72,7 @@ inline bool mysql::operator==(
 	}, rhs);
 }
 
-inline bool mysql::operator==(
+inline bool boost::mysql::operator==(
 	const std::vector<value>& lhs,
 	const std::vector<value>& rhs
 )
@@ -80,7 +80,7 @@ inline bool mysql::operator==(
 	return detail::container_equals(lhs, rhs);
 }
 
-inline std::ostream& mysql::operator<<(
+inline std::ostream& boost::mysql::operator<<(
 	std::ostream& os,
 	const value& value
 )
@@ -90,11 +90,12 @@ inline std::ostream& mysql::operator<<(
 }
 
 template <typename... Types>
-std::array<mysql::value, sizeof...(Types)> mysql::make_values(
+std::array<boost::mysql::value, sizeof...(Types)>
+boost::mysql::make_values(
 	Types&&... args
 )
 {
-	return std::array<mysql::value, sizeof...(Types)>{value(std::forward<Types>(args))...};
+	return std::array<value, sizeof...(Types)>{value(std::forward<Types>(args))...};
 }
 
 

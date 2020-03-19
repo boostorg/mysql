@@ -6,10 +6,9 @@
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <date/date.h>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline Error deserialize_text_value_impl(
 	std::string_view from,
@@ -142,10 +141,11 @@ inline bool is_next_field_null(
 	return false;
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
-inline mysql::Error mysql::detail::deserialize_text_value(
+inline boost::mysql::Error boost::mysql::detail::deserialize_text_value(
 	std::string_view from,
 	const field_metadata& meta,
 	value& output
@@ -197,7 +197,7 @@ inline mysql::Error mysql::detail::deserialize_text_value(
 }
 
 
-mysql::error_code mysql::detail::deserialize_text_row(
+boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
 	DeserializationContext& ctx,
 	const std::vector<field_metadata>& fields,
 	std::vector<value>& output

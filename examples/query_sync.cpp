@@ -23,9 +23,9 @@
  * row::values() has the same number of elements as fields are in the SQL query,
  * and in the same order.
  */
-void print_employee(const mysql::row& employee)
+void print_employee(const boost::mysql::row& employee)
 {
-	using mysql::operator<<; // Required for mysql::value objects to be streamable, due to ADL rules
+	using boost::mysql::operator<<; // Required for mysql::value objects to be streamable, due to ADL rules
 	std::cout << "Employee '"
 			  << employee.values()[0] << " "                   // first_name (type std::string_view)
 			  << employee.values()[1] << "' earns "            // last_name  (type std::string_view)
@@ -48,9 +48,9 @@ void main_impl(int argc, char** argv)
 	 */
 	boost::asio::ip::tcp::endpoint ep (
 		boost::asio::ip::address_v4::loopback(), // host
-		mysql::default_port					     // port
+		boost::mysql::default_port					     // port
 	);
-	mysql::connection_params params (
+	boost::mysql::connection_params params (
 		argv[1],               // username
 		argv[2],		       // password
 		"mysql_asio_examples"  // database to use; leave empty or omit the parameter for no database
@@ -64,7 +64,7 @@ void main_impl(int argc, char** argv)
 	 *    - Establishing the TCP-level session.
 	 *    - Authenticating to the MySQL server.
 	 */
-	mysql::tcp_connection conn (ctx);
+	boost::mysql::tcp_connection conn (ctx);
 	conn.next_level().connect(ep); // next_level() returns a boost::asio::ip::tcp::socket
 	conn.handshake(params); // Authenticates to the MySQL server
 
@@ -80,10 +80,10 @@ void main_impl(int argc, char** argv)
 	 * We will get all employees working for 'High Growth Startup'.
 	 */
 	const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-	mysql::tcp_resultset result = conn.query(sql);
+	boost::mysql::tcp_resultset result = conn.query(sql);
 
 	// Get all the rows in the resultset
-	std::vector<mysql::owning_row> employees = result.fetch_all();
+	std::vector<boost::mysql::owning_row> employees = result.fetch_all();
 	for (const auto& employee: employees)
 	{
 		print_employee(employee);

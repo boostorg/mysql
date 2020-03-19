@@ -8,10 +8,9 @@
 #include <boost/asio/async_result.hpp>
 #include <array>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename AsyncStream>
 class channel
@@ -61,8 +60,9 @@ public:
 template <typename ChannelType>
 using channel_stream_type = typename ChannelType::stream_type;
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/protocol/impl/channel.hpp"
 

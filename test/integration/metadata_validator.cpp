@@ -8,10 +8,10 @@
 #include "metadata_validator.hpp"
 #include <gtest/gtest.h>
 
-using namespace mysql::test;
+using namespace boost::mysql::test;
 
 #define MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(getter) \
-	{ #getter, &mysql::field_metadata::getter }
+	{ #getter, &boost::mysql::field_metadata::getter }
 
 static struct flag_entry
 {
@@ -76,7 +76,7 @@ void meta_validator::validate(
 	}
 }
 
-void mysql::test::validate_meta(
+void boost::mysql::test::validate_meta(
 	const std::vector<field_metadata>& actual,
 	const std::vector<meta_validator>& expected
 )

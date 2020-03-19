@@ -4,10 +4,9 @@
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
 #include <boost/asio/yield.hpp>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline read_row_result process_read_message(
 	deserialize_row_fn deserializer,
@@ -52,11 +51,11 @@ inline read_row_result process_read_message(
 
 } // detail
 } // mysql
-
+} // boost
 
 
 template <typename StreamType>
-mysql::detail::read_row_result mysql::detail::read_row(
+boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
 	deserialize_row_fn deserializer,
 	channel<StreamType>& channel,
 	const std::vector<field_metadata>& meta,
@@ -87,9 +86,9 @@ mysql::detail::read_row_result mysql::detail::read_row(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::detail::read_row_result)
+	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::detail::read_row_result)
 )
-mysql::detail::async_read_row(
+boost::mysql::detail::async_read_row(
 	deserialize_row_fn deserializer,
 	channel<StreamType>& chan,
 	const std::vector<field_metadata>& meta,

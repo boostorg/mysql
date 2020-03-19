@@ -14,11 +14,11 @@
 
 using namespace testing;
 using namespace std;
-using namespace mysql::detail;
-using namespace mysql::test;
-using mysql::Error;
-using mysql::collation;
-using mysql::value;
+using namespace boost::mysql::detail;
+using namespace boost::mysql::test;
+using boost::mysql::Error;
+using boost::mysql::collation;
+using boost::mysql::value;
 
 namespace
 {

@@ -6,10 +6,9 @@
 #include "boost/mysql/detail/basic_types.hpp"
 #include "boost/mysql/collation.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 struct handshake_params
 {
@@ -35,8 +34,9 @@ async_handshake(
 	CompletionToken&& token
 );
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/network_algorithms/impl/handshake.hpp"
 

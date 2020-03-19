@@ -8,7 +8,7 @@
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include <gtest/gtest.h>
 
-using namespace mysql::detail;
+using namespace boost::mysql::detail;
 using namespace testing;
 
 TEST(Capabilities, Has_BitSet_ReturnsTrue)

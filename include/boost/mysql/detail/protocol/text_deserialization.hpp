@@ -7,10 +7,9 @@
 #include "boost/mysql/metadata.hpp"
 #include <vector>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline Error deserialize_text_value(
 	std::string_view from,
@@ -24,8 +23,9 @@ inline error_code deserialize_text_row(
 	std::vector<value>& output
 );
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/protocol/impl/text_deserialization.ipp"
 

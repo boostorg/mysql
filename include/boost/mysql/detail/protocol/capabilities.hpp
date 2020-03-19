@@ -3,10 +3,9 @@
 
 #include <cstdint>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 // Server/client capabilities
 constexpr std::uint32_t CLIENT_LONG_PASSWORD = 1; // Use the improved version of Old Password Authentication
@@ -101,9 +100,9 @@ constexpr capabilities mandatory_capabilities {
 
 constexpr capabilities optional_capabilities {0};
 
-}
-}
-
+} // detail
+} // mysql
+} // boost
 
 
 #endif

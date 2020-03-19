@@ -8,7 +8,7 @@
 #include <boost/asio/yield.hpp>
 
 template <typename StreamType>
-const mysql::row* mysql::resultset<StreamType>::fetch_one(
+const boost::mysql::row* boost::mysql::resultset<StreamType>::fetch_one(
 	error_code& err,
 	error_info& info
 )
@@ -37,7 +37,7 @@ const mysql::row* mysql::resultset<StreamType>::fetch_one(
 }
 
 template <typename StreamType>
-const mysql::row* mysql::resultset<StreamType>::fetch_one()
+const boost::mysql::row* boost::mysql::resultset<StreamType>::fetch_one()
 {
 	error_code errc;
 	error_info info;
@@ -47,7 +47,7 @@ const mysql::row* mysql::resultset<StreamType>::fetch_one()
 }
 
 template <typename StreamType>
-std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
+std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch_many(
 	std::size_t count,
 	error_code& err,
 	error_info& info
@@ -93,7 +93,7 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 }
 
 template <typename StreamType>
-std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
+std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch_many(
 	std::size_t count
 )
 {
@@ -105,7 +105,7 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_many(
 }
 
 template <typename StreamType>
-std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_all(
+std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch_all(
 	error_code& err,
 	error_info& info
 )
@@ -114,7 +114,7 @@ std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_all(
 }
 
 template <typename StreamType>
-std::vector<mysql::owning_row> mysql::resultset<StreamType>::fetch_all()
+std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch_all()
 {
 	return fetch_many(std::numeric_limits<std::size_t>::max());
 }
@@ -123,9 +123,9 @@ template <typename StreamType>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, const mysql::row*)
+	void(boost::mysql::error_code, boost::mysql::error_info, const boost::mysql::row*)
 )
-mysql::resultset<StreamType>::async_fetch_one(
+boost::mysql::resultset<StreamType>::async_fetch_one(
 	CompletionToken&& token
 )
 {
@@ -195,9 +195,9 @@ template <typename StreamType>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, std::vector<mysql::owning_row>)
+	void(boost::mysql::error_code, boost::mysql::error_info, std::vector<boost::mysql::owning_row>)
 )
-mysql::resultset<StreamType>::async_fetch_many(
+boost::mysql::resultset<StreamType>::async_fetch_many(
 	std::size_t count,
 	CompletionToken&& token
 )
@@ -293,9 +293,9 @@ template <typename StreamType>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, std::vector<mysql::owning_row>)
+	void(boost::mysql::error_code, boost::mysql::error_info, std::vector<boost::mysql::owning_row>)
 )
-mysql::resultset<StreamType>::async_fetch_all(
+boost::mysql::resultset<StreamType>::async_fetch_all(
 	CompletionToken&& token
 )
 {

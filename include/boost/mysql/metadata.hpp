@@ -5,8 +5,8 @@
 #include "boost/mysql/detail/basic_types.hpp"
 #include "boost/mysql/field_type.hpp"
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /**
  * \brief Holds metadata about a field in a SQL query.
@@ -97,8 +97,7 @@ public:
 	bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
 };
 
-namespace detail
-{
+namespace detail {
 
 class resultset_metadata
 {
@@ -118,6 +117,7 @@ public:
 
 } // detail
 } // mysql
+} // boost
 
 #include "boost/mysql/impl/metadata.ipp"
 

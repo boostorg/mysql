@@ -7,7 +7,7 @@
 
 #include "integration_test_common.hpp"
 
-using namespace mysql::test;
+using namespace boost::mysql::test;
 
 namespace
 {
@@ -39,7 +39,7 @@ TEST_P(CloseStatementTest, ExistingOrClosedStatement)
 
 	// Verify close took effect
 	exec_result = net->execute_statement(stmt.value, {});
-	exec_result.validate_error(mysql::Error::unknown_stmt_handler, {"unknown prepared statement"});
+	exec_result.validate_error(boost::mysql::Error::unknown_stmt_handler, {"unknown prepared statement"});
 }
 
 MYSQL_NETWORK_TEST_SUITE(CloseStatementTest);

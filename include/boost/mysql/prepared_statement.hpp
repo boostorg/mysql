@@ -6,8 +6,8 @@
 #include "boost/mysql/detail/protocol/messages.hpp"
 #include <optional>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /// Convenience constant to use within prepared_statement::execute with statements without parameters.
 constexpr std::array<value, 0> no_statement_params {};
@@ -144,7 +144,8 @@ public:
 /// A prepared statement associated to a TCP connection to the MySQL server.
 using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
 
-}
+} // mysql
+} // boost
 
 #include "boost/mysql/impl/prepared_statement.hpp"
 

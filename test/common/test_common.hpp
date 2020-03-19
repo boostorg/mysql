@@ -11,10 +11,9 @@
 #include <type_traits>
 #include <ostream>
 
-namespace mysql
-{
-namespace test
-{
+namespace boost {
+namespace mysql {
+namespace test {
 
 template <typename... Types>
 std::vector<value> makevalues(Types&&... args)
@@ -131,8 +130,9 @@ constexpr auto test_name_generator = [](const auto& param_info) {
 	return res;
 };
 
-}
-}
+} // test
+} // mysql
+} // boost
 
 
 

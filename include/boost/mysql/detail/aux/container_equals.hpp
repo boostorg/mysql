@@ -4,10 +4,9 @@
 #include <algorithm>
 #include <vector>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename TLeft, typename TRight>
 inline bool container_equals(
@@ -23,8 +22,9 @@ inline bool container_equals(
 	);
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 
 

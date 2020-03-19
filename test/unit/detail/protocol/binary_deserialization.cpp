@@ -9,25 +9,25 @@
 #include "boost/mysql/detail/protocol/binary_deserialization.hpp"
 #include "test_common.hpp"
 
-using namespace mysql::detail;
-using namespace mysql::test;
+using namespace boost::mysql::detail;
+using namespace boost::mysql::test;
 using namespace testing;
 using namespace date::literals;
-using mysql::value;
-using mysql::collation;
-using mysql::error_code;
-using mysql::Error;
+using boost::mysql::value;
+using boost::mysql::collation;
+using boost::mysql::error_code;
+using boost::mysql::Error;
 
 namespace
 {
 
-using mysql::operator<<;
+using boost::mysql::operator<<;
 
-std::vector<mysql::field_metadata> make_meta(
+std::vector<boost::mysql::field_metadata> make_meta(
 	const std::vector<protocol_field_type>& types
 )
 {
-	std::vector<mysql::field_metadata> res;
+	std::vector<boost::mysql::field_metadata> res;
 	for (const auto type: types)
 	{
 		column_definition_packet coldef;
@@ -70,7 +70,7 @@ TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	column_definition_packet coldef;
 	coldef.type = GetParam().type;
 	coldef.flags.value = GetParam().flags;
-	mysql::field_metadata meta (coldef);
+	boost::mysql::field_metadata meta (coldef);
 	value actual_value;
 	const auto& buffer = GetParam().from;
 	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());

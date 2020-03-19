@@ -9,8 +9,8 @@
 #include "boost/mysql/prepared_statement.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /**
  * \brief Parameters defining how to authenticate to a MySQL server.
@@ -154,7 +154,8 @@ using tcp_connection = connection<boost::asio::ip::tcp::socket>;
 /// The default TCP port for the MySQL protocol.
 constexpr unsigned short default_port = 3306;
 
-}
+} // mysql
+} // boost
 
 #include "boost/mysql/impl/connection.hpp"
 

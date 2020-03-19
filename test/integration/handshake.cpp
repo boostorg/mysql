@@ -12,11 +12,12 @@
 
 namespace net = boost::asio;
 using namespace testing;
-using namespace mysql::test;
+using namespace boost::mysql::test;
 
-using mysql::detail::make_error_code;
-using mysql::error_info;
-using mysql::Error;
+using boost::mysql::detail::make_error_code;
+using boost::mysql::error_info;
+using boost::mysql::Error;
+using boost::mysql::error_code;
 
 namespace
 {
@@ -51,7 +52,7 @@ TEST_P(HandshakeTest, FastAuthBadUser)
 {
 	connection_params.username = "non_existing_user";
 	auto result = do_handshake();
-	EXPECT_NE(result.err, mysql::error_code());
+	EXPECT_NE(result.err, error_code());
 	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
 	// EXPECT_EQ(errc, make_error_code(mysql::Error::access_denied_error));
 }
@@ -60,14 +61,14 @@ TEST_P(HandshakeTest, FastAuthBadPassword)
 {
 	connection_params.password = "bad_password";
 	auto result = do_handshake();
-	result.validate_error(mysql::Error::access_denied_error, {"access denied", "integ_user"});
+	result.validate_error(Error::access_denied_error, {"access denied", "integ_user"});
 }
 
 TEST_P(HandshakeTest, FastAuthBadDatabase)
 {
 	connection_params.database = "bad_database";
 	auto result = do_handshake();
-	result.validate_error(mysql::Error::dbaccess_denied_error, {"database", "bad_database"});
+	result.validate_error(Error::dbaccess_denied_error, {"database", "bad_database"});
 }
 
 MYSQL_NETWORK_TEST_SUITE(HandshakeTest);

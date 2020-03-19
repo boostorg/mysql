@@ -7,10 +7,9 @@
 #include "boost/mysql/detail/network_algorithms/common.hpp"
 #include <boost/asio/yield.hpp>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 inline std::uint8_t get_collation_first_byte(collation value)
 {
@@ -222,10 +221,10 @@ public:
 
 } // detail
 } // mysql
-
+} // boost
 
 template <typename StreamType>
-void mysql::detail::hanshake(
+void boost::mysql::detail::hanshake(
 	channel<StreamType>& channel,
 	const handshake_params& params,
 	error_code& err,
@@ -277,8 +276,8 @@ void mysql::detail::hanshake(
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(mysql::error_code, mysql::error_info))
-mysql::detail::async_handshake(
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::error_info))
+boost::mysql::detail::async_handshake(
 	channel<StreamType>& chan,
 	const handshake_params& params,
 	CompletionToken&& token

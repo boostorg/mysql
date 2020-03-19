@@ -6,10 +6,9 @@
 #include <string_view>
 #include <vector>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 enum class read_row_result
 {
@@ -43,8 +42,9 @@ async_read_row(
 );
 
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/network_algorithms/impl/read_row.hpp"
 

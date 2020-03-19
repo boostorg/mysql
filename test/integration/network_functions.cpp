@@ -1,14 +1,17 @@
 #include "network_functions.hpp"
 #include <future>
 
-using namespace mysql::test;
-using mysql::tcp_prepared_statement;
-using mysql::tcp_resultset;
-using mysql::tcp_connection;
-using mysql::error_info;
-using mysql::error_code;
-using mysql::detail::make_error_code;
-using mysql::Error;
+using namespace boost::mysql::test;
+using boost::mysql::tcp_prepared_statement;
+using boost::mysql::tcp_resultset;
+using boost::mysql::tcp_connection;
+using boost::mysql::error_info;
+using boost::mysql::error_code;
+using boost::mysql::detail::make_error_code;
+using boost::mysql::Error;
+using boost::mysql::value;
+using boost::mysql::row;
+using boost::mysql::owning_row;
 
 namespace
 {
@@ -28,7 +31,7 @@ public:
 	const char* name() const override { return "sync_errc"; }
 	network_result<no_result> handshake(
 		tcp_connection& conn,
-		const mysql::connection_params& params
+		const boost::mysql::connection_params& params
 	) override
 	{
 		return impl([&](error_code& errc, error_info& info) {
@@ -66,7 +69,7 @@ public:
 	}
 	network_result<tcp_resultset> execute_statement(
 		tcp_prepared_statement& stmt,
-		const std::vector<mysql::value>& values
+		const std::vector<value>& values
 	) override
 	{
 		return impl([&stmt, &values](error_code& err, error_info& info) {
@@ -82,7 +85,7 @@ public:
 			return no_result();
 		});
 	}
-	network_result<const mysql::row*> fetch_one(
+	network_result<const row*> fetch_one(
 		tcp_resultset& r
 	) override
 	{
@@ -90,7 +93,7 @@ public:
 			return r.fetch_one(errc, info);
 		});
 	}
-	network_result<std::vector<mysql::owning_row>> fetch_many(
+	network_result<std::vector<owning_row>> fetch_many(
 		tcp_resultset& r,
 		std::size_t count
 	) override
@@ -99,7 +102,7 @@ public:
 			return r.fetch_many(count, errc, info);
 		});
 	}
-	network_result<std::vector<mysql::owning_row>> fetch_all(
+	network_result<std::vector<owning_row>> fetch_all(
 		tcp_resultset& r
 	) override
 	{
@@ -130,7 +133,7 @@ public:
 	const char* name() const override { return "sync_exc"; }
 	network_result<no_result> handshake(
 		tcp_connection& conn,
-		const mysql::connection_params& params
+		const boost::mysql::connection_params& params
 	) override
 	{
 		return impl([&] {
@@ -168,7 +171,7 @@ public:
 	}
 	network_result<tcp_resultset> execute_statement(
 		tcp_prepared_statement& stmt,
-		const std::vector<mysql::value>& values
+		const std::vector<value>& values
 	) override
 	{
 		return impl([&stmt, &values] {
@@ -184,7 +187,7 @@ public:
 			return no_result();
 		});
 	}
-	network_result<const mysql::row*> fetch_one(
+	network_result<const row*> fetch_one(
 		tcp_resultset& r
 	) override
 	{
@@ -192,7 +195,7 @@ public:
 			return r.fetch_one();
 		});
 	}
-	network_result<std::vector<mysql::owning_row>> fetch_many(
+	network_result<std::vector<owning_row>> fetch_many(
 		tcp_resultset& r,
 		std::size_t count
 	) override
@@ -201,7 +204,7 @@ public:
 			return r.fetch_many(count);
 		});
 	}
-	network_result<std::vector<mysql::owning_row>> fetch_all(
+	network_result<std::vector<owning_row>> fetch_all(
 		tcp_resultset& r
 	) override
 	{
@@ -234,7 +237,7 @@ public:
 	const char* name() const override { return "async"; }
 	network_result<no_result> handshake(
 		tcp_connection& conn,
-		const mysql::connection_params& params
+		const boost::mysql::connection_params& params
 	) override
 	{
 		return impl_no_result([&](auto&& token) {
@@ -271,7 +274,7 @@ public:
 	}
 	network_result<tcp_resultset> execute_statement(
 		tcp_prepared_statement& stmt,
-		const std::vector<mysql::value>& values
+		const std::vector<value>& values
 	) override
 	{
 		return impl<tcp_resultset>([&](auto&& token) {
@@ -286,28 +289,28 @@ public:
 			return stmt.async_close(std::forward<decltype(token)>(token));
 		});
 	}
-	network_result<const mysql::row*> fetch_one(
+	network_result<const row*> fetch_one(
 		tcp_resultset& r
 	) override
 	{
-		return impl<const mysql::row*>([&](auto&& token) {
+		return impl<const row*>([&](auto&& token) {
 			return r.async_fetch_one(std::forward<decltype(token)>(token));
 		});
 	}
-	network_result<std::vector<mysql::owning_row>> fetch_many(
+	network_result<std::vector<owning_row>> fetch_many(
 		tcp_resultset& r,
 		std::size_t count
 	) override
 	{
-		return impl<std::vector<mysql::owning_row>>([&](auto&& token) {
+		return impl<std::vector<owning_row>>([&](auto&& token) {
 			return r.async_fetch_many(count, std::forward<decltype(token)>(token));
 		});
 	}
-	network_result<std::vector<mysql::owning_row>> fetch_all(
+	network_result<std::vector<owning_row>> fetch_all(
 		tcp_resultset& r
 	) override
 	{
-		return impl<std::vector<mysql::owning_row>>([&](auto&& token) {
+		return impl<std::vector<owning_row>>([&](auto&& token) {
 			return r.async_fetch_all(std::forward<decltype(token)>(token));
 		});
 	}
@@ -321,6 +324,6 @@ async async_obj;
 }
 
 // Visible stuff
-mysql::test::network_functions* mysql::test::sync_errc_network_functions = &sync_errc_obj;
-mysql::test::network_functions* mysql::test::sync_exc_network_functions = &sync_exc_obj;
-mysql::test::network_functions* mysql::test::async_network_functions = &async_obj;
+boost::mysql::test::network_functions* boost::mysql::test::sync_errc_network_functions = &sync_errc_obj;
+boost::mysql::test::network_functions* boost::mysql::test::sync_exc_network_functions = &sync_exc_obj;
+boost::mysql::test::network_functions* boost::mysql::test::async_network_functions = &async_obj;

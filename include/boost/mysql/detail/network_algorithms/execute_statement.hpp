@@ -5,10 +5,9 @@
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/value.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType, typename ForwardIterator>
 void execute_statement(
@@ -31,8 +30,9 @@ async_execute_statement(
 	CompletionToken&& token
 );
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/network_algorithms/impl/execute_statement.hpp"
 

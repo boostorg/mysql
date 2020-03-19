@@ -7,10 +7,9 @@
 #include <cassert>
 #include <iterator>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 // Maps from an actual value to a protocol_field_type. Only value's type is used
 inline protocol_field_type get_protocol_field_type(
@@ -48,10 +47,11 @@ inline bool is_unsigned(
 	}, input);
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
-inline mysql::Error mysql::detail::deserialize(
+inline boost::mysql::Error boost::mysql::detail::deserialize(
 	ok_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -70,7 +70,7 @@ inline mysql::Error mysql::detail::deserialize(
 	return err;
 }
 
-inline mysql::Error mysql::detail::deserialize(
+inline boost::mysql::Error boost::mysql::detail::deserialize(
 	handshake_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -134,7 +134,7 @@ inline mysql::Error mysql::detail::deserialize(
 	return Error::ok;
 }
 
-std::size_t mysql::detail::get_size(
+std::size_t boost::mysql::detail::get_size(
 	const handshake_response_packet& value,
 	const SerializationContext& ctx
 ) noexcept
@@ -154,7 +154,7 @@ std::size_t mysql::detail::get_size(
 	return res;
 }
 
-inline void mysql::detail::serialize(
+inline void boost::mysql::detail::serialize(
 	const handshake_response_packet& value,
 	SerializationContext& ctx
 ) noexcept
@@ -173,7 +173,7 @@ inline void mysql::detail::serialize(
 	serialize(value.client_plugin_name, ctx);
 }
 
-inline mysql::Error mysql::detail::deserialize(
+inline boost::mysql::Error boost::mysql::detail::deserialize(
 	auth_switch_request_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -189,7 +189,7 @@ inline mysql::Error mysql::detail::deserialize(
 	return err;
 }
 
-inline mysql::Error mysql::detail::deserialize(
+inline boost::mysql::Error boost::mysql::detail::deserialize(
 	column_definition_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -214,7 +214,7 @@ inline mysql::Error mysql::detail::deserialize(
 	);
 }
 
-inline mysql::Error mysql::detail::deserialize(
+inline boost::mysql::Error boost::mysql::detail::deserialize(
 	com_stmt_prepare_ok_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -231,7 +231,7 @@ inline mysql::Error mysql::detail::deserialize(
 }
 
 template <typename ForwardIterator>
-inline std::size_t mysql::detail::get_size(
+inline std::size_t boost::mysql::detail::get_size(
 	const com_stmt_execute_packet<ForwardIterator>& value,
 	const SerializationContext& ctx
 ) noexcept
@@ -253,7 +253,7 @@ inline std::size_t mysql::detail::get_size(
 }
 
 template <typename ForwardIterator>
-inline void mysql::detail::serialize(
+inline void boost::mysql::detail::serialize(
 	const com_stmt_execute_packet<ForwardIterator>& input,
 	SerializationContext& ctx
 ) noexcept
@@ -300,7 +300,7 @@ inline void mysql::detail::serialize(
 }
 
 template <typename Serializable, typename Allocator>
-void mysql::detail::serialize_message(
+void boost::mysql::detail::serialize_message(
 	const Serializable& input,
 	capabilities caps,
 	basic_bytestring<Allocator>& buffer
@@ -315,7 +315,7 @@ void mysql::detail::serialize_message(
 }
 
 template <typename Deserializable>
-mysql::error_code mysql::detail::deserialize_message(
+boost::mysql::error_code boost::mysql::detail::deserialize_message(
 	Deserializable& output,
 	DeserializationContext& ctx
 )
@@ -327,7 +327,8 @@ mysql::error_code mysql::detail::deserialize_message(
 }
 
 
-inline std::pair<mysql::error_code, std::uint8_t> mysql::detail::deserialize_message_type(
+inline std::pair<boost::mysql::error_code, std::uint8_t>
+boost::mysql::detail::deserialize_message_type(
 	DeserializationContext& ctx
 )
 {
@@ -345,7 +346,7 @@ inline std::pair<mysql::error_code, std::uint8_t> mysql::detail::deserialize_mes
 	return res;
 }
 
-inline mysql::error_code mysql::detail::process_error_packet(
+inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
 	DeserializationContext& ctx,
 	error_info& info
 )

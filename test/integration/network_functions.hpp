@@ -6,10 +6,9 @@
 #include <gtest/gtest.h>
 #include <forward_list>
 
-namespace mysql
-{
-namespace test
-{
+namespace boost {
+namespace mysql {
+namespace test {
 
 struct no_result {};
 
@@ -80,8 +79,10 @@ inline network_functions* all_network_functions [] = {
 		all_network_functions \
 	), [](const auto& param_info) { return param_info.param->name(); })
 
-}
-}
+
+} // test
+} // mysql
+} // boost
 
 
 

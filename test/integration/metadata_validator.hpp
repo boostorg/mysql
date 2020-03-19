@@ -4,10 +4,9 @@
 #include "boost/mysql/metadata.hpp"
 #include <vector>
 
-namespace mysql
-{
-namespace test
-{
+namespace boost {
+namespace mysql {
+namespace test {
 
 class meta_validator
 {
@@ -46,8 +45,9 @@ private:
 
 void validate_meta(const std::vector<field_metadata>& actual, const std::vector<meta_validator>& expected);
 
-}
-}
+} // test
+} // mysql
+} // boost
 
 
 

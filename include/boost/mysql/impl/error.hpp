@@ -4,10 +4,8 @@
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
 
-namespace boost
-{
-namespace system
-{
+namespace boost {
+namespace system {
 
 template <>
 struct is_error_code_enum<mysql::Error>
@@ -16,13 +14,9 @@ struct is_error_code_enum<mysql::Error>
 };
 
 } // system
-} // boost
 
-
-namespace mysql
-{
-namespace detail
-{
+namespace mysql {
+namespace detail {
 
 inline const char* error_to_string(Error error) noexcept
 {
@@ -67,10 +61,9 @@ inline void check_error_code(const error_code& errc, const error_info& info)
 	}
 }
 
-}
-}
-
-
+} // detail
+} // mysql
+} // boost
 
 
 #endif

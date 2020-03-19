@@ -5,7 +5,7 @@
 #include <cstring>
 
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-inline void mysql::detail::mysql_native_password::compute_auth_string(
+inline void boost::mysql::detail::mysql_native_password::compute_auth_string(
 	std::string_view password,
 	const void* challenge,
 	void* output

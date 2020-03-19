@@ -4,10 +4,9 @@
 #include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 #include "boost/mysql/detail/protocol/binary_deserialization.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename ForwardIterator>
 com_stmt_execute_packet<ForwardIterator> make_stmt_execute_packet(
@@ -26,11 +25,12 @@ com_stmt_execute_packet<ForwardIterator> make_stmt_execute_packet(
 	};
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 template <typename StreamType, typename ForwardIterator>
-void mysql::detail::execute_statement(
+void boost::mysql::detail::execute_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
 	ForwardIterator params_begin,
@@ -47,9 +47,9 @@ void mysql::detail::execute_statement(
 template <typename StreamType, typename ForwardIterator, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::resultset<StreamType>)
+	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::resultset<StreamType>)
 )
-mysql::detail::async_execute_statement(
+boost::mysql::detail::async_execute_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
 	ForwardIterator params_begin,

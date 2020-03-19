@@ -4,14 +4,13 @@
 #include "boost/mysql/detail/network_algorithms/common.hpp"
 #include "boost/mysql/prepared_statement.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType>
 void prepare_statement(
-	channel<StreamType>& channel,
+	::boost::mysql::detail::channel<StreamType>& channel,
 	std::string_view statement,
 	error_code& err,
 	error_info& info,
@@ -26,8 +25,9 @@ async_prepare_statement(
 	CompletionToken&& token
 );
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/network_algorithms/impl/prepare_statement.hpp"
 

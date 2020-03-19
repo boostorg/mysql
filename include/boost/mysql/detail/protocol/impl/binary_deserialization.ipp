@@ -5,10 +5,9 @@
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
 #include "boost/mysql/detail/aux/tmp.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 using binary_protocol_value = std::variant<
 	int1,
@@ -83,10 +82,11 @@ inline binary_protocol_value get_deserializable_type(
 	}
 }
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
-inline mysql::Error mysql::detail::deserialize_binary_value(
+inline boost::mysql::Error boost::mysql::detail::deserialize_binary_value(
 	DeserializationContext& ctx,
 	const field_metadata& meta,
 	value& output
@@ -116,7 +116,7 @@ inline mysql::Error mysql::detail::deserialize_binary_value(
 	}, protocol_value);
 }
 
-inline mysql::error_code mysql::detail::deserialize_binary_row(
+inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
 	DeserializationContext& ctx,
 	const std::vector<field_metadata>& meta,
 	std::vector<value>& output

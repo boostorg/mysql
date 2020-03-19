@@ -4,10 +4,10 @@
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
 #include "test_common.hpp"
 
-using mysql::detail::null_bitmap_traits;
-using mysql::detail::stmt_execute_null_bitmap_offset;
-using mysql::detail::binary_row_null_bitmap_offset;
-using namespace mysql::test;
+using boost::mysql::detail::null_bitmap_traits;
+using boost::mysql::detail::stmt_execute_null_bitmap_offset;
+using boost::mysql::detail::binary_row_null_bitmap_offset;
+using namespace boost::mysql::test;
 
 namespace
 {

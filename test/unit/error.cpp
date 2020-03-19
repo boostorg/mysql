@@ -9,8 +9,8 @@
 #include "boost/mysql/error.hpp"
 
 using namespace testing;
-using mysql::Error;
-using mysql::detail::error_to_string;
+using boost::mysql::Error;
+using boost::mysql::detail::error_to_string;
 
 TEST(Error, ErrorToString_Ok_ReturnsOk)
 {

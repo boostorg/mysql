@@ -8,15 +8,14 @@
 #include "integration_test_common.hpp"
 #include <boost/asio/use_future.hpp>
 
-using namespace mysql::test;
-using mysql::detail::make_error_code;
-using mysql::test::meta_validator;
-using mysql::test::validate_meta;
-using mysql::field_metadata;
-using mysql::field_type;
-using mysql::error_code;
-using mysql::error_info;
-using mysql::tcp_resultset;
+using namespace boost::mysql::test;
+using boost::mysql::detail::make_error_code;
+using boost::mysql::field_metadata;
+using boost::mysql::field_type;
+using boost::mysql::error_code;
+using boost::mysql::error_info;
+using boost::mysql::tcp_resultset;
+using boost::mysql::tcp_connection;
 namespace net = boost::asio;
 
 namespace
@@ -27,7 +26,7 @@ class resultset_generator
 public:
 	virtual ~resultset_generator() {}
 	virtual const char* name() const = 0;
-	virtual mysql::tcp_resultset generate(mysql::tcp_connection&, std::string_view) = 0;
+	virtual tcp_resultset generate(tcp_connection&, std::string_view) = 0;
 };
 
 struct ResultsetTestParam : named_param
@@ -250,7 +249,7 @@ class text_resultset_generator : public resultset_generator
 {
 public:
 	const char* name() const override { return "text"; }
-	mysql::tcp_resultset generate(mysql::tcp_connection& conn, std::string_view query) override
+	tcp_resultset generate(tcp_connection& conn, std::string_view query) override
 	{
 		return conn.query(query);
 	}
@@ -260,9 +259,9 @@ class binary_resultset_generator : public resultset_generator
 {
 public:
 	const char* name() const override { return "binary"; }
-	mysql::tcp_resultset generate(mysql::tcp_connection& conn, std::string_view query) override
+	tcp_resultset generate(tcp_connection& conn, std::string_view query) override
 	{
-		return conn.prepare_statement(query).execute(mysql::no_statement_params);
+		return conn.prepare_statement(query).execute(boost::mysql::no_statement_params);
 	}
 };
 

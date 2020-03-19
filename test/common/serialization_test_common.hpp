@@ -11,10 +11,9 @@
 #include "boost/mysql/value.hpp"
 #include "test_common.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 // Operator << for some basic types
 template <std::size_t N>
@@ -116,9 +115,9 @@ class TypeErasedValueImpl : public TypeErasedValue
 	T value_;
 public:
 	TypeErasedValueImpl(const T& v): value_(v) {};
-	void serialize(SerializationContext& ctx) const override { ::mysql::detail::serialize(value_, ctx); }
-	std::size_t get_size(const SerializationContext& ctx) const override { return ::mysql::detail::get_size(value_, ctx); }
-	Error deserialize(DeserializationContext& ctx) override { return ::mysql::detail::deserialize(value_, ctx); }
+	void serialize(SerializationContext& ctx) const override { ::boost::mysql::detail::serialize(value_, ctx); }
+	std::size_t get_size(const SerializationContext& ctx) const override { return ::boost::mysql::detail::get_size(value_, ctx); }
+	Error deserialize(DeserializationContext& ctx) override { return ::boost::mysql::detail::deserialize(value_, ctx); }
 	std::shared_ptr<TypeErasedValue> default_construct() const override
 	{
 		return std::make_shared<TypeErasedValueImpl<T>>(T{});
@@ -310,8 +309,9 @@ TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
 }
 
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 
 #endif /* TEST_SERIALIZATION_TEST_COMMON_HPP_ */

@@ -11,10 +11,9 @@
 #include <variant>
 #include <tuple>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 struct packet_header
 {
@@ -339,6 +338,7 @@ inline error_code process_error_packet(DeserializationContext& ctx, error_info& 
 
 } // detail
 } // mysql
+} // boost
 
 #include "boost/mysql/detail/protocol/impl/messages.ipp"
 

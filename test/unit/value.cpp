@@ -10,45 +10,46 @@
 #include "boost/mysql/value.hpp"
 #include "test_common.hpp"
 
-using namespace mysql::test;
+using namespace boost::mysql::test;
 using namespace testing;
 using namespace date::literals;
 using namespace std::chrono;
+using boost::mysql::value;
 
 namespace
 {
 
 // Required because value is a typedef for a specific std::variant and operator<<
 // is defined in namespace mysql - ADL does not find it
-using mysql::operator<<;
+using boost::mysql::operator<<;
 
 // tests for operator== and operator!=
 struct ValueEqualityTest : public Test
 {
-	std::vector<mysql::value> values = makevalues(
+	std::vector<value> values = makevalues(
 		std::int32_t(20),
 		std::int64_t(-1),
 		std::uint32_t(0xffffffff),
 		std::uint64_t(0x100000000),
 		3.14f,
 		8.89,
-		mysql::date(1_d/10/2019_y),
-		mysql::date(1_d/10/2019_y) + std::chrono::hours(10),
-		mysql::time(std::chrono::seconds(-10)),
+		boost::mysql::date(1_d/10/2019_y),
+		boost::mysql::date(1_d/10/2019_y) + std::chrono::hours(10),
+		boost::mysql::time(std::chrono::seconds(-10)),
 		std::uint32_t(2010),
 		nullptr
 	);
-	std::vector<mysql::value> values_copy = values;
-	std::vector<mysql::value> other_values = makevalues(
+	std::vector<value> values_copy = values;
+	std::vector<value> other_values = makevalues(
 		std::int32_t(10),
 		std::int64_t(-22),
 		std::uint32_t(0xff6723),
 		std::uint64_t(222),
 		-3.0f,
 		8e24,
-		mysql::date(1_d/9/2019_y),
-		mysql::date(1_d/9/2019_y) + std::chrono::hours(10),
-		mysql::time(std::chrono::seconds(10)),
+		boost::mysql::date(1_d/9/2019_y),
+		boost::mysql::date(1_d/9/2019_y) + std::chrono::hours(10),
+		boost::mysql::time(std::chrono::seconds(10)),
 		std::uint32_t(1900),
 		nullptr
 	);
@@ -89,7 +90,7 @@ TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeSameValue_ReturnEquals)
 // Tests for operator<<
 struct ValueStreamParams
 {
-	mysql::value input;
+	value input;
 	std::string expected;
 
 	template <typename T>
@@ -118,11 +119,11 @@ INSTANTIATE_TEST_SUITE_P(Default, ValueStreamTest, Values(
 	ValueStreamParams("a_string", "a_string"),
 	ValueStreamParams(2.43f, "2.43"),
 	ValueStreamParams(8.12, "8.12"),
-	ValueStreamParams(mysql::date(1_d/9/2019_y), "2019-09-01"),
-	ValueStreamParams(mysql::time(0), "00:00:00:000000"),
-	ValueStreamParams(mysql::time(hours(24)), "24:00:00:000000"),
-	ValueStreamParams(mysql::time(hours(210) + minutes(59) + seconds(59) + microseconds(100)), "210:59:59:000100"),
-	ValueStreamParams(mysql::time(hours(-839) - minutes(20) - seconds(35) - microseconds(999999)), "-839:20:35:999999"),
+	ValueStreamParams(makedate(2019, 9, 1), "2019-09-01"),
+	ValueStreamParams(maket(0, 0, 0), "00:00:00:000000"),
+	ValueStreamParams(maket(24, 0, 0), "24:00:00:000000"),
+	ValueStreamParams(maket(210, 59, 59, 100), "210:59:59:000100"),
+	ValueStreamParams(-maket(839, 20, 35, 999999), "-839:20:35:999999"),
 	ValueStreamParams(maket(0, 2, 5), "00:02:05:000000"),
 	ValueStreamParams(-maket(0, 21, 45), "-00:21:45:000000"),
 	ValueStreamParams(maket(0, 0, 1, 234000), "00:00:01:234000"),

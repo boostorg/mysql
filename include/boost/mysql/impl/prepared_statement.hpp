@@ -8,7 +8,7 @@
 
 template <typename Stream>
 template <typename ForwardIterator>
-void mysql::prepared_statement<Stream>::check_num_params(
+void boost::mysql::prepared_statement<Stream>::check_num_params(
 	ForwardIterator first,
 	ForwardIterator last,
 	error_code& err,
@@ -27,7 +27,7 @@ void mysql::prepared_statement<Stream>::check_num_params(
 
 template <typename Stream>
 template <typename ForwardIterator>
-mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
+boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last,
 	error_code& err,
@@ -60,7 +60,7 @@ mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
 
 template <typename Stream>
 template <typename ForwardIterator>
-mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
+boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last
 ) const
@@ -74,7 +74,7 @@ mysql::resultset<Stream> mysql::prepared_statement<Stream>::execute(
 
 template <typename StreamType>
 template <typename ForwardIterator, typename CompletionToken>
-auto mysql::prepared_statement<StreamType>::async_execute(
+auto boost::mysql::prepared_statement<StreamType>::async_execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last,
 	CompletionToken&& token
@@ -110,7 +110,7 @@ auto mysql::prepared_statement<StreamType>::async_execute(
 }
 
 template <typename StreamType>
-void mysql::prepared_statement<StreamType>::close(
+void boost::mysql::prepared_statement<StreamType>::close(
 	error_code& errc,
 	error_info& info
 )
@@ -122,7 +122,7 @@ void mysql::prepared_statement<StreamType>::close(
 }
 
 template <typename StreamType>
-void mysql::prepared_statement<StreamType>::close()
+void boost::mysql::prepared_statement<StreamType>::close()
 {
 	assert(valid());
 	error_code errc;
@@ -133,7 +133,7 @@ void mysql::prepared_statement<StreamType>::close()
 
 template <typename StreamType>
 template <typename CompletionToken>
-auto mysql::prepared_statement<StreamType>::async_close(
+auto boost::mysql::prepared_statement<StreamType>::async_close(
 	CompletionToken&& token
 )
 {

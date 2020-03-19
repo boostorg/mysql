@@ -10,8 +10,8 @@
 #include <array>
 #include <vector>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /// Type representing MySQL DATE data type.
 using date = ::date::sys_days;
@@ -67,7 +67,8 @@ inline std::ostream& operator<<(std::ostream& os, const value& value);
 template <typename... Types>
 std::array<value, sizeof...(Types)> make_values(Types&&... args);
 
-}
+} // mysql
+} // boost
 
 #include "boost/mysql/impl/value.hpp"
 

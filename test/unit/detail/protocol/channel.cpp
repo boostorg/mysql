@@ -13,10 +13,11 @@
 #include "boost/mysql/detail/protocol/channel.hpp"
 
 using namespace testing;
-using namespace mysql::detail;
+using namespace boost::mysql::detail;
 using namespace boost::asio;
 namespace errc = boost::system::errc;
-using mysql::error_code;
+using boost::mysql::error_code;
+using boost::mysql::Error;
 
 namespace
 {
@@ -36,8 +37,8 @@ void concat(std::vector<uint8_t>& lhs, const std::vector<uint8_t>& rhs)
 class MockStream
 {
 public:
-	MOCK_METHOD2(read_buffer, std::size_t(boost::asio::mutable_buffer, mysql::error_code&));
-	MOCK_METHOD2(write_buffer, std::size_t(boost::asio::const_buffer, mysql::error_code&));
+	MOCK_METHOD2(read_buffer, std::size_t(boost::asio::mutable_buffer, error_code&));
+	MOCK_METHOD2(write_buffer, std::size_t(boost::asio::const_buffer, error_code&));
 
 	void set_default_behavior()
 	{
@@ -52,7 +53,7 @@ public:
 	}
 
 	template <typename MutableBufferSequence>
-	std::size_t read_some(MutableBufferSequence mb, mysql::error_code& ec)
+	std::size_t read_some(MutableBufferSequence mb, error_code& ec)
 	{
 		if (buffer_size(mb) == 0)
 		{
@@ -78,7 +79,7 @@ public:
 	}
 
 	template <typename ConstBufferSequence>
-	std::size_t write_some(ConstBufferSequence cb, mysql::error_code& ec)
+	std::size_t write_some(ConstBufferSequence cb, error_code& ec)
 	{
 		if (buffer_size(cb) == 0)
 		{
@@ -113,7 +114,7 @@ struct MysqlChannelFixture : public Test
 	using MockChannel = channel<NiceMock<MockStream>>;
 	NiceMock<MockStream> stream;
 	MockChannel chan {stream};
-	mysql::error_code errc;
+	error_code errc;
 	InSequence seq;
 
 	MysqlChannelFixture()
@@ -136,7 +137,7 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 	static auto buffer_copier(const std::vector<uint8_t>& buffer)
 	{
-		return [buffer](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+		return [buffer](boost::asio::mutable_buffer b, error_code& ec) {
 			assert(b.size() >= buffer.size());
 			memcpy(b.data(), buffer.data(), buffer.size());
 			ec.clear();
@@ -146,7 +147,7 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 	auto make_read_handler()
 	{
-		return [this](boost::asio::mutable_buffer b, mysql::error_code& ec) {
+		return [this](boost::asio::mutable_buffer b, error_code& ec) {
 			std::size_t to_copy = std::min(b.size(), bytes_to_read.size() - index);
 			memcpy(b.data(), bytes_to_read.data() + index, to_copy);
 			index += to_copy;
@@ -157,7 +158,7 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 	static auto read_failer(error_code error)
 	{
-		return [error](boost::asio::mutable_buffer, mysql::error_code& ec) {
+		return [error](boost::asio::mutable_buffer, error_code& ec) {
 			ec = error;
 			return size_t(0);
 		};
@@ -239,7 +240,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateE
 		.WillByDefault(Invoke(make_read_handler()));
 	bytes_to_read = {0xff, 0xff, 0xff, 0x05};
 	chan.read(buffer, errc);
-	EXPECT_EQ(errc, make_error_code(mysql::Error::sequence_number_mismatch));
+	EXPECT_EQ(errc, make_error_code(Error::sequence_number_mismatch));
 }
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSequenceNumber)

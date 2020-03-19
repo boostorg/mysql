@@ -13,10 +13,9 @@
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include "boost/mysql/error.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 class DeserializationContext
 {
@@ -536,8 +535,8 @@ inline std::size_t get_size(dummy_serializable, const SerializationContext&) noe
 inline void serialize(dummy_serializable, SerializationContext&) noexcept {}
 inline Error deserialize(dummy_serializable, DeserializationContext&) noexcept { return Error::ok; }
 
-}
-}
-
+} // detail
+} // mysql
+} // boost
 
 #endif

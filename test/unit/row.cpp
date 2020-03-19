@@ -9,9 +9,9 @@
 #include "boost/mysql/row.hpp"
 #include "test_common.hpp"
 
-using namespace mysql::test;
+using namespace boost::mysql::test;
 using namespace testing;
-using mysql::row;
+using boost::mysql::row;
 
 namespace
 {

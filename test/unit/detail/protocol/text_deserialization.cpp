@@ -9,19 +9,19 @@
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
 #include "test_common.hpp"
 
-using namespace mysql::detail;
-using namespace mysql::test;
+using namespace boost::mysql::detail;
+using namespace boost::mysql::test;
 using namespace testing;
 using namespace date::literals;
-using mysql::value;
-using mysql::collation;
-using mysql::error_code;
-using mysql::Error;
+using boost::mysql::value;
+using boost::mysql::collation;
+using boost::mysql::error_code;
+using boost::mysql::Error;
 
 namespace
 {
 
-using mysql::operator<<;
+using boost::mysql::operator<<;
 
 struct TextValueParam : named_param
 {
@@ -59,7 +59,7 @@ TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	coldef.type = GetParam().type;
 	coldef.decimals.value = static_cast<std::uint8_t>(GetParam().decimals);
 	coldef.flags.value = GetParam().flags;
-	mysql::field_metadata meta (coldef);
+	boost::mysql::field_metadata meta (coldef);
 	value actual_value;
 	auto err = deserialize_text_value(GetParam().from, meta, actual_value);
 	EXPECT_EQ(err, Error::ok);
@@ -169,11 +169,11 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, DeserializeTextValueTest, Values(
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueTest, Values(
-	TextValueParam("regular_date", "2019-02-28", mysql::date(2019_y/2/28), protocol_field_type::date),
-	TextValueParam("leap_year", "1788-02-29", mysql::date(1788_y/2/29), protocol_field_type::date),
-	TextValueParam("min", "1000-01-01", mysql::date(1000_y/1/1), protocol_field_type::date),
-	TextValueParam("max", "9999-12-31", mysql::date(9999_y/12/31), protocol_field_type::date),
-	TextValueParam("unofficial_min", "0100-01-01", mysql::date(100_y/1/1), protocol_field_type::date)
+	TextValueParam("regular_date", "2019-02-28", boost::mysql::date(2019_y/2/28), protocol_field_type::date),
+	TextValueParam("leap_year", "1788-02-29", boost::mysql::date(1788_y/2/29), protocol_field_type::date),
+	TextValueParam("min", "1000-01-01", boost::mysql::date(1000_y/1/1), protocol_field_type::date),
+	TextValueParam("max", "9999-12-31", boost::mysql::date(9999_y/12/31), protocol_field_type::date),
+	TextValueParam("unofficial_min", "0100-01-01", boost::mysql::date(100_y/1/1), protocol_field_type::date)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, Values(
@@ -295,7 +295,7 @@ INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
 
 struct DeserializeTextRowTest : public Test
 {
-	std::vector<mysql::field_metadata> meta {
+	std::vector<boost::mysql::field_metadata> meta {
 		column_definition_packet {
 			string_lenenc("def"),
 			string_lenenc("awesome"),

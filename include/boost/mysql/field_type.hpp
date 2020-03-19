@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /**
  * \brief Represents the type of a MySQL field.
@@ -43,7 +43,8 @@ enum class field_type
 	_not_computed,
 };
 
-}
+} // mysql
+} // boost
 
 
 

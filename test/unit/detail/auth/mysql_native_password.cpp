@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 #include <array>
 
-using namespace mysql::detail;
+using namespace boost::mysql::detail;
 using namespace testing;
 
 namespace

@@ -5,10 +5,9 @@
 #include "boost/mysql/resultset.hpp"
 #include <string_view>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType, typename Serializable>
 void execute_generic(
@@ -29,8 +28,9 @@ async_execute_generic(
 	CompletionToken&& token
 );
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 #include "boost/mysql/detail/network_algorithms/impl/execute_generic.hpp"
 

@@ -8,10 +8,9 @@
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/messages.hpp"
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 using deserialize_row_fn = error_code (*)(
 	DeserializationContext&,
@@ -19,9 +18,9 @@ using deserialize_row_fn = error_code (*)(
 	std::vector<value>&
 );
 
-}
-}
-
+} // detail
+} // mysql
+} // boost
 
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_COMMON_HPP_ */

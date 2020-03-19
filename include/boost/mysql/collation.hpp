@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /**
  * \brief A character set and a collation.
@@ -237,7 +237,8 @@ enum class collation : std::uint16_t
     gb18030_unicode_520_ci = 250
 };
 
-}
+} // mysql
+} // boost
 
 
 

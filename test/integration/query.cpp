@@ -14,14 +14,11 @@
 
 namespace net = boost::asio;
 using namespace testing;
-using namespace mysql::test;
-using mysql::detail::make_error_code;
-using mysql::test::meta_validator;
-using mysql::test::validate_meta;
-using mysql::field_metadata;
-using mysql::field_type;
-using mysql::error_code;
-using mysql::error_info;
+using namespace boost::mysql::test;
+using boost::mysql::detail::make_error_code;
+using boost::mysql::field_metadata;
+using boost::mysql::field_type;
+using boost::mysql::Error;
 
 namespace
 {
@@ -49,7 +46,7 @@ TEST_P(QueryTest, InsertQueryFailed)
 {
 	const char* sql = "INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')";
 	auto result = do_query(sql);
-	result.validate_error(mysql::Error::no_such_table, {"table", "doesn't exist", "bad_table"});
+	result.validate_error(Error::no_such_table, {"table", "doesn't exist", "bad_table"});
 	EXPECT_FALSE(result.value.valid());
 }
 
@@ -79,7 +76,7 @@ TEST_P(QueryTest, SelectOk)
 TEST_P(QueryTest, SelectQueryFailed)
 {
 	auto result = do_query("SELECT field_varchar, field_bad FROM one_row_table");
-	result.validate_error(mysql::Error::bad_field_error, {"unknown column", "field_bad"});
+	result.validate_error(Error::bad_field_error, {"unknown column", "field_bad"});
 	EXPECT_FALSE(result.value.valid());
 }
 

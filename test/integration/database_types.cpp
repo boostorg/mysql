@@ -12,12 +12,14 @@
 #include <unordered_map>
 #include <bitset>
 
-using namespace mysql::test;
+using namespace boost::mysql::test;
 using namespace testing;
 using namespace date::literals;
-using mysql::value;
-using mysql::field_metadata;
-using mysql::field_type;
+using boost::mysql::value;
+using boost::mysql::field_metadata;
+using boost::mysql::field_type;
+using boost::mysql::row;
+using boost::mysql::datetime;
 
 namespace
 {
@@ -76,9 +78,9 @@ TEST_P(DatabaseTypesTest, Query_MetadataAndValueCorrect)
 	validate_meta(result.fields(), {param.mvalid});
 
 	// Validate the returned value
-	mysql::row expected_row ({param.expected_value});
+	row expected_row ({param.expected_value});
 	ASSERT_EQ(rows.size(), 1);
-	EXPECT_EQ(static_cast<const mysql::row&>(rows[0]), expected_row); // make gtest pick operator<<
+	EXPECT_EQ(static_cast<const row&>(rows[0]), expected_row); // make gtest pick operator<<
 }
 
 TEST_P(DatabaseTypesTest, PreparedStatementExecuteResult_MetadataAndValueCorrect)
@@ -102,9 +104,9 @@ TEST_P(DatabaseTypesTest, PreparedStatementExecuteResult_MetadataAndValueCorrect
 	validate_meta(result.fields(), {param.mvalid});
 
 	// Validate the returned value
-	mysql::row expected_row ({param.expected_value});
+	row expected_row ({param.expected_value});
 	ASSERT_EQ(rows.size(), 1);
-	EXPECT_EQ(static_cast<const mysql::row&>(rows[0]), expected_row); // make gtest pick operator<<
+	EXPECT_EQ(static_cast<const row&>(rows[0]), expected_row); // make gtest pick operator<<
 }
 
 TEST_P(DatabaseTypesTest, PreparedStatementExecuteParam_ValueSerializedCorrectly)
@@ -133,9 +135,9 @@ TEST_P(DatabaseTypesTest, PreparedStatementExecuteParam_ValueSerializedCorrectly
 	auto rows = result.fetch_all();
 
 	// Validate the returned value
-	mysql::row expected_row ({param.expected_value});
+	row expected_row ({param.expected_value});
 	ASSERT_EQ(rows.size(), 1);
-	EXPECT_EQ(static_cast<const mysql::row&>(rows[0]), expected_row); // make gtest pick operator<<
+	EXPECT_EQ(static_cast<const row&>(rows[0]), expected_row); // make gtest pick operator<<
 }
 
 using flagsvec = std::vector<meta_validator::flag_getter>;
@@ -305,7 +307,7 @@ std::chrono::microseconds round_micros(std::chrono::microseconds input, int deci
 	return std::chrono::microseconds(round_micros(static_cast<int>(input.count()), decimals));
 }
 
-std::pair<std::string, mysql::datetime> datetime_from_id(std::bitset<4> id, int decimals)
+std::pair<std::string, datetime> datetime_from_id(std::bitset<4> id, int decimals)
 {
 	// id represents which components (h, m, s, u) should the test case have
 	constexpr struct
@@ -320,7 +322,7 @@ std::pair<std::string, mysql::datetime> datetime_from_id(std::bitset<4> id, int 
 	};
 
 	std::string name;
-	mysql::datetime dt = makedt(2010, 5, 2); // components all tests have
+	datetime dt = makedt(2010, 5, 2); // components all tests have
 
 	for (std::size_t i = 0; i < id.size(); ++i)
 	{
@@ -340,8 +342,8 @@ std::pair<std::string, mysql::datetime> datetime_from_id(std::bitset<4> id, int 
 database_types_testcase create_datetime_testcase(
 	int decimals,
 	std::string id,
-	mysql::value expected,
-	mysql::field_type type
+	value expected,
+	field_type type
 )
 {
 	static std::unordered_map<field_type, const char*> table_map {
@@ -359,11 +361,11 @@ database_types_testcase create_datetime_testcase(
 		type,
 		no_flags,
 		decimals,
-		flagsvec{ &mysql::field_metadata::is_unsigned }
+		flagsvec{ &field_metadata::is_unsigned }
 	);
 }
 
-std::pair<std::string, mysql::time> time_from_id(std::bitset<6> id, int decimals)
+std::pair<std::string, boost::mysql::time> time_from_id(std::bitset<6> id, int decimals)
 {
 	// id represents which components (h, m, s, u) should the test case have
 	constexpr struct
@@ -380,7 +382,7 @@ std::pair<std::string, mysql::time> time_from_id(std::bitset<6> id, int decimals
 	};
 
 	std::string name;
-	mysql::time t {0};
+	boost::mysql::time t {0};
 
 	for (std::size_t i = 1; i < id.size(); ++i)
 	{
@@ -404,7 +406,7 @@ std::pair<std::string, mysql::time> time_from_id(std::bitset<6> id, int decimals
 
 // shared between DATETIME and TIMESTAMP
 std::vector<database_types_testcase> generate_common_datetime_cases(
-	mysql::field_type type
+	field_type type
 )
 {
 	std::vector<database_types_testcase> res;

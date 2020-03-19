@@ -1,3 +1,8 @@
+Name change
+	Refactor file structucture for serialization and tests
+	Deserialize common should be in namespace mysql::test, not in detail
+	Rename (De)SerializationContext
+	Rename Error
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -31,10 +36,7 @@ Technical debt
 	Force the same number of values in each row as in fields()
 	CMake exporting?
 	Integration test for network errors (e.g. host unreachable)
-	Refactor file structucture for serialization and tests
-	Deserialize common should be in namespace mysql::test, not in detail
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
-	Rename (De)SerializationContext
 	Test zero dates
 	clear_errors() function to clear error_info and error_code at once
 	Rework deserialize_row_fn to allow cursors
@@ -43,4 +45,3 @@ Technical debt
 	Query and statement tests for DELETEs
 	prepared_statement::execute(): static_assert(), handle value&, const value&, anything convertible
 	Test for too many connections: do we have a buffer overrun there? (error msg shows incomplete)
-	Add a connection quit in integ tests: they may fail under Windows otherwise

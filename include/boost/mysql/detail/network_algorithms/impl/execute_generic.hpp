@@ -6,10 +6,9 @@
 #include <optional>
 #include <boost/asio/yield.hpp>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType>
 class execute_processor
@@ -109,11 +108,12 @@ public:
 	auto& get_buffer() { return buffer_; }
 };
 
-}
-}
+} // detail
+} // mysql
+} // boost
 
 template <typename StreamType, typename Serializable>
-void mysql::detail::execute_generic(
+void boost::mysql::detail::execute_generic(
 	deserialize_row_fn deserializer,
 	channel<StreamType>& channel,
 	const Serializable& request,
@@ -162,9 +162,9 @@ void mysql::detail::execute_generic(
 template <typename StreamType, typename Serializable, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(mysql::error_code, mysql::error_info, mysql::resultset<StreamType>)
+	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::resultset<StreamType>)
 )
-mysql::detail::async_execute_generic(
+boost::mysql::detail::async_execute_generic(
 	deserialize_row_fn deserializer,
 	channel<StreamType>& chan,
 	const Serializable& request,

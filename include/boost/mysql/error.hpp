@@ -4,8 +4,8 @@
 #include <boost/system/error_code.hpp>
 #include <string>
 
-namespace mysql
-{
+namespace boost {
+namespace mysql {
 
 /// MySQL-specific error codes.
 enum class Error : int
@@ -58,7 +58,8 @@ inline bool operator!=(const error_info& lhs, const error_info& rhs) noexcept { 
 
 inline std::ostream& operator<<(std::ostream& os, const error_info& v) { return os << v.message(); }
 
-}
+} // mysql
+} // boost
 
 #include "boost/mysql/impl/error.hpp"
 

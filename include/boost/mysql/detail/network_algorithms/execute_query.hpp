@@ -5,10 +5,9 @@
 #include "boost/mysql/resultset.hpp"
 #include <string_view>
 
-namespace mysql
-{
-namespace detail
-{
+namespace boost {
+namespace mysql {
+namespace detail {
 
 template <typename StreamType>
 void execute_query(
@@ -27,6 +26,7 @@ async_execute_query(
 	CompletionToken&& token
 );
 
+}
 }
 }
 
