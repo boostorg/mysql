@@ -8,7 +8,7 @@ template <typename StreamType>
 void boost::mysql::detail::close_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
-	error_code& errc,
+	error_code& code,
 	error_info&
 )
 {
@@ -20,7 +20,7 @@ void boost::mysql::detail::close_statement(
 
 	// Send it. No response is sent back
 	chan.reset_sequence_number();
-	chan.write(boost::asio::buffer(chan.shared_buffer()), errc);
+	chan.write(boost::asio::buffer(chan.shared_buffer()), code);
 }
 
 template <typename StreamType, typename CompletionToken>

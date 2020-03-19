@@ -111,24 +111,24 @@ auto boost::mysql::prepared_statement<StreamType>::async_execute(
 
 template <typename StreamType>
 void boost::mysql::prepared_statement<StreamType>::close(
-	error_code& errc,
+	error_code& code,
 	error_info& info
 )
 {
 	assert(valid());
-	errc.clear();
+	code.clear();
 	info.clear();
-	detail::close_statement(*channel_, id(), errc, info);
+	detail::close_statement(*channel_, id(), code, info);
 }
 
 template <typename StreamType>
 void boost::mysql::prepared_statement<StreamType>::close()
 {
 	assert(valid());
-	error_code errc;
+	error_code code;
 	error_info info;
-	detail::close_statement(*channel_, id(), errc, info);
-	detail::check_error_code(errc, info);
+	detail::close_statement(*channel_, id(), code, info);
+	detail::check_error_code(code, info);
 }
 
 template <typename StreamType>

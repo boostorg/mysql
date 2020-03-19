@@ -11,7 +11,7 @@ template <typename StreamType>
 void close_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
-	error_code& errc,
+	error_code& code,
 	error_info& info
 );
 

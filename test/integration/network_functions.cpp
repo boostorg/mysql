@@ -34,8 +34,8 @@ public:
 		const boost::mysql::connection_params& params
 	) override
 	{
-		return impl([&](error_code& errc, error_info& info) {
-			conn.handshake(params, errc, info);
+		return impl([&](error_code& code, error_info& info) {
+			conn.handshake(params, code, info);
 			return no_result();
 		});
 	}
@@ -44,8 +44,8 @@ public:
 		std::string_view query
 	) override
 	{
-		return impl([&](error_code& errc, error_info& info) {
-			return conn.query(query, errc, info);
+		return impl([&](error_code& code, error_info& info) {
+			return conn.query(query, code, info);
 		});
 	}
 	network_result<tcp_prepared_statement> prepare_statement(
@@ -80,8 +80,8 @@ public:
 		tcp_prepared_statement& stmt
 	) override
 	{
-		return impl([&](error_code& errc, error_info& info) {
-			stmt.close(errc, info);
+		return impl([&](error_code& code, error_info& info) {
+			stmt.close(code, info);
 			return no_result();
 		});
 	}
@@ -89,8 +89,8 @@ public:
 		tcp_resultset& r
 	) override
 	{
-		return impl([&](error_code& errc, error_info& info) {
-			return r.fetch_one(errc, info);
+		return impl([&](error_code& code, error_info& info) {
+			return r.fetch_one(code, info);
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
@@ -98,16 +98,16 @@ public:
 		std::size_t count
 	) override
 	{
-		return impl([&](error_code& errc, error_info& info) {
-			return r.fetch_many(count, errc, info);
+		return impl([&](error_code& code, error_info& info) {
+			return r.fetch_many(count, code, info);
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
 		tcp_resultset& r
 	) override
 	{
-		return impl([&](error_code& errc, error_info& info) {
-			return r.fetch_all(errc, info);
+		return impl([&](error_code& code, error_info& info) {
+			return r.fetch_all(code, info);
 		});
 	}
 };
@@ -219,8 +219,8 @@ class async : public network_functions
 	template <typename R, typename Callable>
 	static network_result<R> impl(Callable&& cb) {
 		std::promise<network_result<R>> prom;
-		cb([&prom](error_code errc, error_info info, auto retval) {
-			prom.set_value(network_result<R>{errc, std::move(info), std::move(retval)});
+		cb([&prom](error_code code, error_info info, auto retval) {
+			prom.set_value(network_result<R>{code, std::move(info), std::move(retval)});
 		});
 		return prom.get_future().get();
 	}
@@ -228,8 +228,8 @@ class async : public network_functions
 	template <typename Callable>
 	static network_result<no_result> impl_no_result(Callable&& cb) {
 		std::promise<network_result<no_result>> prom;
-		cb([&prom](error_code errc, error_info info) {
-			prom.set_value(network_result<no_result>{errc, std::move(info), no_result()});
+		cb([&prom](error_code code, error_info info) {
+			prom.set_value(network_result<no_result>{code, std::move(info), no_result()});
 		});
 		return prom.get_future().get();
 	}

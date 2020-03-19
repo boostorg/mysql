@@ -53,11 +53,11 @@ inline boost::system::error_code make_error_code(Error error)
 	return boost::system::error_code(static_cast<int>(error), mysql_error_category);
 }
 
-inline void check_error_code(const error_code& errc, const error_info& info)
+inline void check_error_code(const error_code& code, const error_info& info)
 {
-	if (errc)
+	if (code)
 	{
-		throw boost::system::system_error(errc, info.message());
+		throw boost::system::system_error(code, info.message());
 	}
 }
 

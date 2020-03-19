@@ -41,8 +41,8 @@ struct IntegTest : testing::Test
 
 	~IntegTest()
 	{
-		error_code errc;
-		conn.next_level().close(errc);
+		error_code code;
+		conn.next_level().close(code);
 		guard.reset();
 		runner.join();
 	}

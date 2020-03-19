@@ -29,16 +29,16 @@ inline handshake_params to_handshake_params(
 template <typename Stream>
 void boost::mysql::connection<Stream>::handshake(
 	const connection_params& params,
-	error_code& errc,
+	error_code& code,
 	error_info& info
 )
 {
-	errc.clear();
+	code.clear();
 	info.clear();
 	detail::hanshake(
 		channel_,
 		detail::to_handshake_params(params),
-		errc,
+		code,
 		info
 	);
 	// TODO: should we close() the stream in case of error?
@@ -49,10 +49,10 @@ void boost::mysql::connection<Stream>::handshake(
 	const connection_params& params
 )
 {
-	error_code errc;
+	error_code code;
 	error_info info;
-	handshake(params, errc, info);
-	detail::check_error_code(errc, info);
+	handshake(params, code, info);
+	detail::check_error_code(code, info);
 }
 
 template <typename Stream>

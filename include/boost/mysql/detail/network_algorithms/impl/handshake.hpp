@@ -306,10 +306,10 @@ boost::mysql::detail::async_handshake(
 		{
 		}
 
-		void complete(bool cont, error_code errc)
+		void complete(bool cont, error_code code)
 		{
 			channel_.set_current_capabilities(processor_.negotiated_capabilities());
-			BaseType::complete(cont, errc, std::move(info_));
+			BaseType::complete(cont, code, std::move(info_));
 		}
 
 		void operator()(

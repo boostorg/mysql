@@ -21,7 +21,6 @@ struct PrepareStatementTest : public NetworkTest<>
 {
 };
 
-// sync errc
 TEST_P(PrepareStatementTest, OkNoParams)
 {
 	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table");

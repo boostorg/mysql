@@ -32,9 +32,9 @@ public:
 	channel(AsyncStream& stream): next_layer_ {stream} {};
 
 	template <typename Allocator>
-	void read(basic_bytestring<Allocator>& buffer, error_code& errc);
+	void read(basic_bytestring<Allocator>& buffer, error_code& code);
 
-	void write(boost::asio::const_buffer buffer, error_code& errc);
+	void write(boost::asio::const_buffer buffer, error_code& code);
 
 	template <typename Allocator, typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))

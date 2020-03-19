@@ -39,10 +39,10 @@ const boost::mysql::row* boost::mysql::resultset<StreamType>::fetch_one(
 template <typename StreamType>
 const boost::mysql::row* boost::mysql::resultset<StreamType>::fetch_one()
 {
-	error_code errc;
+	error_code code;
 	error_info info;
-	const row* res = fetch_one(errc, info);
-	detail::check_error_code(errc, info);
+	const row* res = fetch_one(code, info);
+	detail::check_error_code(code, info);
 	return res;
 }
 
@@ -97,10 +97,10 @@ std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch
 	std::size_t count
 )
 {
-	error_code errc;
+	error_code code;
 	error_info info;
-	auto res = fetch_many(count, errc, info);
-	detail::check_error_code(errc, info);
+	auto res = fetch_many(count, code, info);
+	detail::check_error_code(code, info);
 	return res;
 }
 

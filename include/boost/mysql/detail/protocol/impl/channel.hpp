@@ -77,31 +77,31 @@ template <typename AsyncStream>
 template <typename Allocator>
 void boost::mysql::detail::channel<AsyncStream>::read(
 	basic_bytestring<Allocator>& buffer,
-	error_code& errc
+	error_code& code
 )
 {
 	std::size_t transferred_size = 0;
 	std::uint32_t size_to_read = 0;
 	buffer.clear();
-	errc.clear();
+	code.clear();
 
 	do
 	{
 		boost::asio::read(
 			next_layer_,
 			boost::asio::buffer(header_buffer_),
-			errc
+			code
 		);
-		if (errc) return;
-		errc = process_header_read(size_to_read);
-		if (errc) return;
+		if (code) return;
+		code = process_header_read(size_to_read);
+		if (code) return;
 		buffer.resize(buffer.size() + size_to_read);
 		boost::asio::read(
 			next_layer_,
 			boost::asio::buffer(buffer.data() + transferred_size, size_to_read),
-			errc
+			code
 		);
-		if (errc) return;
+		if (code) return;
 		transferred_size += size_to_read;
 	} while (size_to_read == MAX_PACKET_SIZE);
 }
@@ -109,7 +109,7 @@ void boost::mysql::detail::channel<AsyncStream>::read(
 template <typename AsyncStream>
 void boost::mysql::detail::channel<AsyncStream>::write(
 	boost::asio::const_buffer buffer,
-	error_code& errc
+	error_code& code
 )
 {
 	std::size_t transferred_size = 0;
@@ -128,9 +128,9 @@ void boost::mysql::detail::channel<AsyncStream>::write(
 				boost::asio::buffer(header_buffer_),
 				boost::asio::buffer(first + transferred_size, size_to_write)
 			},
-			errc
+			code
 		);
-		if (errc) return;
+		if (code) return;
 		transferred_size += size_to_write;
 	} while (transferred_size < bufsize);
 }
@@ -168,7 +168,7 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 		}
 
 		void operator()(
-			error_code errc,
+			error_code code,
 			std::size_t bytes_transferred,
 			bool cont=true
 		)
@@ -185,17 +185,17 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 						std::move(*this)
 					);
 
-					if (errc)
+					if (code)
 					{
-						this->complete(cont, errc);
+						this->complete(cont, code);
 						yield break;
 					}
 
-					errc = stream_.process_header_read(size_to_read);
+					code = stream_.process_header_read(size_to_read);
 
-					if (errc)
+					if (code)
 					{
-						this->complete(cont, errc);
+						this->complete(cont, code);
 						yield break;
 					}
 
@@ -207,9 +207,9 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 						std::move(*this)
 					);
 
-					if (errc)
+					if (code)
 					{
-						this->complete(cont, errc);
+						this->complete(cont, code);
 						yield break;
 					}
 
@@ -258,7 +258,7 @@ boost::mysql::detail::channel<AsyncStream>::async_write(
 		}
 
 		void operator()(
-			error_code errc,
+			error_code code,
 			std::size_t bytes_transferred,
 			bool cont=true
 		)
@@ -282,9 +282,9 @@ boost::mysql::detail::channel<AsyncStream>::async_write(
 						std::move(*this)
 					);
 
-					if (errc)
+					if (code)
 					{
-						this->complete(cont, errc);
+						this->complete(cont, code);
 						yield break;
 					}
 
