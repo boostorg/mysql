@@ -73,7 +73,7 @@ TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	boost::mysql::field_metadata meta (coldef);
 	value actual_value;
 	const auto& buffer = GetParam().from;
-	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+	deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 	auto err = deserialize_binary_value(ctx, meta, actual_value);
 	EXPECT_EQ(err, errc::ok);
 	EXPECT_EQ(actual_value, GetParam().expected);
@@ -166,7 +166,7 @@ TEST_P(DeserializeBinaryRowTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
 	auto meta = make_meta(GetParam().types);
 	const auto& buffer = GetParam().from;
-	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+	deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 
 	std::vector<value> actual;
 	auto err = deserialize_binary_row(ctx, meta, actual);
@@ -242,7 +242,7 @@ TEST_P(DeserializeBinaryRowErrorTest, ErrorCondition_ReturnsErrorCode)
 {
 	auto meta = make_meta(GetParam().types);
 	const auto& buffer = GetParam().from;
-	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+	deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 
 	std::vector<value> actual;
 	auto err = deserialize_binary_row(ctx, meta, actual);

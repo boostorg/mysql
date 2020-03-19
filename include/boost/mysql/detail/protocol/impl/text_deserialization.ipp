@@ -125,7 +125,7 @@ errc deserialize_text_value_to_variant(std::string_view from, value& to, Args&&.
 }
 
 inline bool is_next_field_null(
-	DeserializationContext& ctx
+	deserialization_context& ctx
 )
 {
 	int1 type_byte;
@@ -198,7 +198,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
 
 
 boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	const std::vector<field_metadata>& fields,
 	std::vector<value>& output
 )

@@ -22,7 +22,7 @@ public:
 	}
 	void process_response(error_code& err, error_info& info)
 	{
-		DeserializationContext ctx (
+		deserialization_context ctx (
 			boost::asio::buffer(channel_.shared_buffer()),
 			channel_.current_capabilities()
 		);

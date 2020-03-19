@@ -340,7 +340,7 @@ struct DeserializeTextRowTest : public Test
 
 	error_code deserialize(const std::vector<std::uint8_t>& buffer)
 	{
-		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+		deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 		return deserialize_text_row(ctx, meta, values);
 	}
 };

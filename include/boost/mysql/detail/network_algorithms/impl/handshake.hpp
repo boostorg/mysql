@@ -22,7 +22,7 @@ inline error_code deserialize_handshake(
 	error_info& info
 )
 {
-	DeserializationContext ctx (boost::asio::buffer(buffer), capabilities());
+	deserialization_context ctx (boost::asio::buffer(buffer), capabilities());
 	auto [err, msg_type] = deserialize_message_type(ctx);
 	if (err) return err;
 	if (msg_type == handshake_protocol_version_9)
@@ -161,7 +161,7 @@ public:
 		error_info& info
 	)
 	{
-		DeserializationContext ctx (boost::asio::buffer(buffer), negotiated_caps_);
+		deserialization_context ctx (boost::asio::buffer(buffer), negotiated_caps_);
 		auto [err, msg_type] = deserialize_message_type(ctx);
 		if (err) return err;
 		if (msg_type == ok_packet_header)
@@ -203,7 +203,7 @@ public:
 		error_info& info
 	)
 	{
-		DeserializationContext ctx (boost::asio::buffer(buffer), negotiated_caps_);
+		deserialization_context ctx (boost::asio::buffer(buffer), negotiated_caps_);
 		auto [err, msg_type] = deserialize_message_type(ctx);
 		if (err) return err;
 		if (msg_type == error_packet_header)

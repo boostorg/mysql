@@ -17,16 +17,16 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class DeserializationContext
+class deserialization_context
 {
 	ReadIterator first_;
 	ReadIterator last_;
 	capabilities capabilities_;
 public:
-	DeserializationContext(ReadIterator first, ReadIterator last, capabilities caps) noexcept:
+	deserialization_context(ReadIterator first, ReadIterator last, capabilities caps) noexcept:
 		first_(first), last_(last), capabilities_(caps) { assert(last_ >= first_); };
-	DeserializationContext(boost::asio::const_buffer buff, capabilities caps) noexcept:
-		DeserializationContext(
+	deserialization_context(boost::asio::const_buffer buff, capabilities caps) noexcept:
+		deserialization_context(
 				static_cast<const std::uint8_t*>(buff.data()),
 				static_cast<const std::uint8_t*>(buff.data()) + buff.size(),
 				caps
@@ -49,12 +49,12 @@ public:
 	}
 };
 
-class SerializationContext
+class serialization_context
 {
 	WriteIterator first_;
 	capabilities capabilities_;
 public:
-	SerializationContext(capabilities caps, WriteIterator first = nullptr) noexcept:
+	serialization_context(capabilities caps, WriteIterator first = nullptr) noexcept:
 		first_(first), capabilities_(caps) {};
 	WriteIterator first() const noexcept { return first_; }
 	void set_first(WriteIterator new_first) noexcept { first_ = new_first; }
@@ -67,7 +67,7 @@ public:
 
 /**
  * Base forms:
- *  errc deserialize(T& output, DeserializationContext&) noexcept
+ *  errc deserialize(T& output, deserialization_context&) noexcept
  *  void  serialize(const T& input, SerializationContext&) noexcept
  *  std::size_t get_size(const T& input, const SerializationContext&) noexcept
  */
@@ -132,7 +132,7 @@ template <std::size_t size> void native_to_little_inplace(string_fixed<size>&) n
 
 template <typename T>
 std::enable_if_t<is_fixed_size_v<T>, errc>
-deserialize(T& output, DeserializationContext& ctx) noexcept
+deserialize(T& output, deserialization_context& ctx) noexcept
 {
 	static_assert(std::is_standard_layout_v<decltype(T::value)>);
 
@@ -152,7 +152,7 @@ deserialize(T& output, DeserializationContext& ctx) noexcept
 
 template <typename T>
 std::enable_if_t<is_fixed_size_v<T>>
-serialize(T input, SerializationContext& ctx) noexcept
+serialize(T input, serialization_context& ctx) noexcept
 {
 	native_to_little_inplace(input);
 	ctx.write(&input.value, get_fixed_size<T>::value);
@@ -160,13 +160,13 @@ serialize(T input, SerializationContext& ctx) noexcept
 
 template <typename T>
 constexpr std::enable_if_t<is_fixed_size_v<T>, std::size_t>
-get_size(T, const SerializationContext&) noexcept
+get_size(T, const serialization_context&) noexcept
 {
 	return get_fixed_size<T>::value;
 }
 
 // int_lenenc
-inline errc deserialize(int_lenenc& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(int_lenenc& output, deserialization_context& ctx) noexcept
 {
 	int1 first_byte;
 	errc err = deserialize(first_byte, ctx);
@@ -200,7 +200,7 @@ inline errc deserialize(int_lenenc& output, DeserializationContext& ctx) noexcep
 	}
 	return err;
 }
-inline void serialize(int_lenenc input, SerializationContext& ctx) noexcept
+inline void serialize(int_lenenc input, serialization_context& ctx) noexcept
 {
 	if (input.value < 251)
 	{
@@ -222,7 +222,7 @@ inline void serialize(int_lenenc input, SerializationContext& ctx) noexcept
 		serialize(int8(static_cast<std::uint64_t>(input.value)), ctx);
 	}
 }
-inline std::size_t get_size(int_lenenc input, const SerializationContext&) noexcept
+inline std::size_t get_size(int_lenenc input, const serialization_context&) noexcept
 {
 	if (input.value < 251) return 1;
 	else if (input.value < 0x10000) return 3;
@@ -237,7 +237,7 @@ inline std::string_view get_string(ReadIterator from, std::size_t size)
 }
 
 // string_null
-inline errc deserialize(string_null& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(string_null& output, deserialization_context& ctx) noexcept
 {
 	ReadIterator string_end = std::find(ctx.first(), ctx.last(), 0);
 	if (string_end == ctx.last())
@@ -248,34 +248,34 @@ inline errc deserialize(string_null& output, DeserializationContext& ctx) noexce
 	ctx.set_first(string_end + 1); // skip the null terminator
 	return errc::ok;
 }
-inline void serialize(string_null input, SerializationContext& ctx) noexcept
+inline void serialize(string_null input, serialization_context& ctx) noexcept
 {
 	ctx.write(input.value.data(), input.value.size());
 	ctx.write(0); // null terminator
 }
-inline std::size_t get_size(string_null input, const SerializationContext&) noexcept
+inline std::size_t get_size(string_null input, const serialization_context&) noexcept
 {
 	return input.value.size() + 1;
 }
 
 // string_eof
-inline errc deserialize(string_eof& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(string_eof& output, deserialization_context& ctx) noexcept
 {
 	output.value = get_string(ctx.first(), ctx.last()-ctx.first());
 	ctx.set_first(ctx.last());
 	return errc::ok;
 }
-inline void serialize(string_eof input, SerializationContext& ctx) noexcept
+inline void serialize(string_eof input, serialization_context& ctx) noexcept
 {
 	ctx.write(input.value.data(), input.value.size());
 }
-inline std::size_t get_size(string_eof input, const SerializationContext&) noexcept
+inline std::size_t get_size(string_eof input, const serialization_context&) noexcept
 {
 	return input.value.size();
 }
 
 // string_lenenc
-inline errc deserialize(string_lenenc& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(string_lenenc& output, deserialization_context& ctx) noexcept
 {
 	int_lenenc length;
 	errc err = deserialize(length, ctx);
@@ -292,14 +292,14 @@ inline errc deserialize(string_lenenc& output, DeserializationContext& ctx) noex
 	ctx.advance(length.value);
 	return errc::ok;
 }
-inline void serialize(string_lenenc input, SerializationContext& ctx) noexcept
+inline void serialize(string_lenenc input, serialization_context& ctx) noexcept
 {
 	int_lenenc length;
 	length.value = input.value.size();
 	serialize(length, ctx);
 	ctx.write(input.value.data(), input.value.size());
 }
-inline std::size_t get_size(string_lenenc input, const SerializationContext& ctx) noexcept
+inline std::size_t get_size(string_lenenc input, const serialization_context& ctx) noexcept
 {
 	int_lenenc length;
 	length.value = input.value.size();
@@ -308,7 +308,7 @@ inline std::size_t get_size(string_lenenc input, const SerializationContext& ctx
 
 // Enums
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-errc deserialize(T& output, DeserializationContext& ctx) noexcept
+errc deserialize(T& output, deserialization_context& ctx) noexcept
 {
 	value_holder<std::underlying_type_t<T>> value;
 	errc err = deserialize(value, ctx);
@@ -321,21 +321,21 @@ errc deserialize(T& output, DeserializationContext& ctx) noexcept
 }
 
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-void serialize(T input, SerializationContext& ctx) noexcept
+void serialize(T input, serialization_context& ctx) noexcept
 {
 	value_holder<std::underlying_type_t<T>> value {static_cast<std::underlying_type_t<T>>(input)};
 	serialize(value, ctx);
 }
 
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-std::size_t get_size(T, const SerializationContext&) noexcept
+std::size_t get_size(T, const serialization_context&) noexcept
 {
 	return get_fixed_size<value_holder<std::underlying_type_t<T>>>::value;
 }
 
 // Floating points
 template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-errc deserialize(value_holder<T>& output, DeserializationContext& ctx) noexcept
+errc deserialize(value_holder<T>& output, deserialization_context& ctx) noexcept
 {
 	// Size check
 	if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
@@ -355,7 +355,7 @@ errc deserialize(value_holder<T>& output, DeserializationContext& ctx) noexcept
 }
 
 template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-void serialize(const value_holder<T>& input, SerializationContext& ctx) noexcept
+void serialize(const value_holder<T>& input, serialization_context& ctx) noexcept
 {
 	// Endianness conversion
 #if BOOST_ENDIAN_BIG_BYTE
@@ -369,7 +369,7 @@ void serialize(const value_holder<T>& input, SerializationContext& ctx) noexcept
 }
 
 template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-std::size_t get_size(const value_holder<T>&, const SerializationContext&) noexcept
+std::size_t get_size(const value_holder<T>&, const serialization_context&) noexcept
 {
 	return sizeof(T);
 }
@@ -412,7 +412,7 @@ struct is_command : decltype(is_command_helper::get<T>(nullptr))
 template <std::size_t index, typename T>
 errc deserialize_struct(
 	[[maybe_unused]] T& output,
-	[[maybe_unused]] DeserializationContext& ctx
+	[[maybe_unused]] deserialization_context& ctx
 ) noexcept
 {
 	constexpr auto fields = get_struct_fields<T>::value;
@@ -437,7 +437,7 @@ errc deserialize_struct(
 
 template <typename T>
 std::enable_if_t<is_struct_with_fields<T>::value, errc>
-deserialize(T& output, DeserializationContext& ctx) noexcept
+deserialize(T& output, deserialization_context& ctx) noexcept
 {
 	return deserialize_struct<0>(output, ctx);
 }
@@ -445,7 +445,7 @@ deserialize(T& output, DeserializationContext& ctx) noexcept
 template <std::size_t index, typename T>
 void serialize_struct(
 	[[maybe_unused]] const T& value,
-	[[maybe_unused]] SerializationContext& ctx
+	[[maybe_unused]] serialization_context& ctx
 ) noexcept
 {
 	constexpr auto fields = get_struct_fields<T>::value;
@@ -461,7 +461,7 @@ template <typename T>
 std::enable_if_t<is_struct_with_fields<T>::value>
 serialize(
 	[[maybe_unused]] const T& input,
-	[[maybe_unused]] SerializationContext& ctx
+	[[maybe_unused]] serialization_context& ctx
 ) noexcept
 {
 	// For commands, add the command ID. Commands are only sent by the client,
@@ -476,7 +476,7 @@ serialize(
 template <std::size_t index, typename T>
 std::size_t get_size_struct(
 	[[maybe_unused]] const T& input,
-	[[maybe_unused]] const SerializationContext& ctx
+	[[maybe_unused]] const serialization_context& ctx
 ) noexcept
 {
 	constexpr auto fields = get_struct_fields<T>::value;
@@ -494,7 +494,7 @@ std::size_t get_size_struct(
 
 template <typename T>
 std::enable_if_t<is_struct_with_fields<T>::value, std::size_t>
-get_size(const T& input, const SerializationContext& ctx) noexcept
+get_size(const T& input, const serialization_context& ctx) noexcept
 {
 	std::size_t res = is_command<T>::value ? 1 : 0;
 	res += get_size_struct<0>(input, ctx);
@@ -503,10 +503,10 @@ get_size(const T& input, const SerializationContext& ctx) noexcept
 
 // Helper to write custom struct (de)serialize()
 template <typename FirstType>
-errc deserialize_fields(DeserializationContext& ctx, FirstType& field) noexcept { return deserialize(field, ctx); }
+errc deserialize_fields(deserialization_context& ctx, FirstType& field) noexcept { return deserialize(field, ctx); }
 
 template <typename FirstType, typename... Types>
-errc deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&... fields_tail) noexcept
+errc deserialize_fields(deserialization_context& ctx, FirstType& field, Types&... fields_tail) noexcept
 {
 	errc err = deserialize(field, ctx);
 	if (err == errc::ok)
@@ -517,10 +517,10 @@ errc deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&...
 }
 
 template <typename FirstType>
-void serialize_fields(SerializationContext& ctx, const FirstType& field) noexcept { serialize(field, ctx); }
+void serialize_fields(serialization_context& ctx, const FirstType& field) noexcept { serialize(field, ctx); }
 
 template <typename FirstType, typename... Types>
-void serialize_fields(SerializationContext& ctx, const FirstType& field, const Types&... fields_tail)
+void serialize_fields(serialization_context& ctx, const FirstType& field, const Types&... fields_tail)
 {
 	serialize(field, ctx);
 	serialize_fields(ctx, fields_tail...);
@@ -531,9 +531,9 @@ struct dummy_serializable
 {
 	dummy_serializable(...) {} // Make it constructible from anything
 };
-inline std::size_t get_size(dummy_serializable, const SerializationContext&) noexcept { return 0; }
-inline void serialize(dummy_serializable, SerializationContext&) noexcept {}
-inline errc deserialize(dummy_serializable, DeserializationContext&) noexcept { return errc::ok; }
+inline std::size_t get_size(dummy_serializable, const serialization_context&) noexcept { return 0; }
+inline void serialize(dummy_serializable, serialization_context&) noexcept {}
+inline errc deserialize(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
 
 } // detail
 } // mysql

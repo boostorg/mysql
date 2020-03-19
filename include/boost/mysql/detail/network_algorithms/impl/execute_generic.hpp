@@ -45,7 +45,7 @@ public:
 		// Response may be: ok_packet, err_packet, local infile request (not implemented)
 		// If it is none of this, then the message type itself is the beginning of
 		// a length-encoded int containing the field count
-		DeserializationContext ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
+		deserialization_context ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
 		std::uint8_t msg_type;
 		std::tie(err, msg_type) = deserialize_message_type(ctx);
 		if (err) return {};
@@ -83,7 +83,7 @@ public:
 	error_code process_field_definition()
 	{
 		column_definition_packet field_definition;
-		DeserializationContext ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
+		deserialization_context ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
 		auto err = deserialize_message(field_definition, ctx);
 		if (err) return err;
 

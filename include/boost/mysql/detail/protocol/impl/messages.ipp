@@ -53,7 +53,7 @@ inline bool is_unsigned(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	ok_packet& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	auto err = deserialize_fields(
@@ -72,7 +72,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	handshake_packet& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	constexpr std::uint8_t auth1_length = 8;
@@ -136,7 +136,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 
 std::size_t boost::mysql::detail::get_size(
 	const handshake_response_packet& value,
-	const SerializationContext& ctx
+	const serialization_context& ctx
 ) noexcept
 {
 	std::size_t res =
@@ -156,7 +156,7 @@ std::size_t boost::mysql::detail::get_size(
 
 inline void boost::mysql::detail::serialize(
 	const handshake_response_packet& value,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	serialize(value.client_flag, ctx);
@@ -175,7 +175,7 @@ inline void boost::mysql::detail::serialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	auth_switch_request_packet& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	auto err = deserialize_fields(ctx, output.plugin_name, output.auth_plugin_data);
@@ -191,7 +191,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	column_definition_packet& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	int_lenenc length_of_fixed_fields;
@@ -216,7 +216,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	com_stmt_prepare_ok_packet& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	int1 reserved;
@@ -233,7 +233,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 template <typename ForwardIterator>
 inline std::size_t boost::mysql::detail::get_size(
 	const com_stmt_execute_packet<ForwardIterator>& value,
-	const SerializationContext& ctx
+	const serialization_context& ctx
 ) noexcept
 {
 	std::size_t res = 1 + // command ID
@@ -255,7 +255,7 @@ inline std::size_t boost::mysql::detail::get_size(
 template <typename ForwardIterator>
 inline void boost::mysql::detail::serialize(
 	const com_stmt_execute_packet<ForwardIterator>& input,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	serialize(int1(com_stmt_execute_packet<ForwardIterator>::command_id), ctx);
@@ -306,7 +306,7 @@ void boost::mysql::detail::serialize_message(
 	basic_bytestring<Allocator>& buffer
 )
 {
-	SerializationContext ctx (caps);
+	serialization_context ctx (caps);
 	std::size_t size = get_size(input, ctx);
 	buffer.resize(size);
 	ctx.set_first(buffer.data());
@@ -317,7 +317,7 @@ void boost::mysql::detail::serialize_message(
 template <typename Deserializable>
 boost::mysql::error_code boost::mysql::detail::deserialize_message(
 	Deserializable& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 )
 {
 	auto err = deserialize(output, ctx);
@@ -329,7 +329,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_message(
 
 inline std::pair<boost::mysql::error_code, std::uint8_t>
 boost::mysql::detail::deserialize_message_type(
-	DeserializationContext& ctx
+	deserialization_context& ctx
 )
 {
 	int1 msg_type;
@@ -347,7 +347,7 @@ boost::mysql::detail::deserialize_message_type(
 }
 
 inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	error_info& info
 )
 {

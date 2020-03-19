@@ -18,7 +18,7 @@ inline errc deserialize_text_value(
 );
 
 inline error_code deserialize_text_row(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	const std::vector<field_metadata>& meta,
 	std::vector<value>& output
 );

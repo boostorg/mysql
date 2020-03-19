@@ -94,9 +94,9 @@ class TypeErasedValue
 {
 public:
 	virtual ~TypeErasedValue() {}
-	virtual void serialize(SerializationContext& ctx) const = 0;
-	virtual std::size_t get_size(const SerializationContext& ctx) const = 0;
-	virtual errc deserialize(DeserializationContext& ctx) = 0;
+	virtual void serialize(serialization_context& ctx) const = 0;
+	virtual std::size_t get_size(const serialization_context& ctx) const = 0;
+	virtual errc deserialize(deserialization_context& ctx) = 0;
 	virtual std::shared_ptr<TypeErasedValue> default_construct() const = 0;
 	virtual bool equals(const TypeErasedValue& rhs) const = 0;
 	virtual void print(std::ostream& os) const = 0;
@@ -115,9 +115,9 @@ class TypeErasedValueImpl : public TypeErasedValue
 	T value_;
 public:
 	TypeErasedValueImpl(const T& v): value_(v) {};
-	void serialize(SerializationContext& ctx) const override { ::boost::mysql::detail::serialize(value_, ctx); }
-	std::size_t get_size(const SerializationContext& ctx) const override { return ::boost::mysql::detail::get_size(value_, ctx); }
-	errc deserialize(DeserializationContext& ctx) override { return ::boost::mysql::detail::deserialize(value_, ctx); }
+	void serialize(serialization_context& ctx) const override { ::boost::mysql::detail::serialize(value_, ctx); }
+	std::size_t get_size(const serialization_context& ctx) const override { return ::boost::mysql::detail::get_size(value_, ctx); }
+	errc deserialize(deserialization_context& ctx) override { return ::boost::mysql::detail::deserialize(value_, ctx); }
 	std::shared_ptr<TypeErasedValue> default_construct() const override
 	{
 		return std::make_shared<TypeErasedValueImpl<T>>(T{});
@@ -168,7 +168,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	// get_size
 	void get_size_test()
 	{
-		SerializationContext ctx (GetParam().caps, nullptr);
+		serialization_context ctx (GetParam().caps, nullptr);
 		auto size = GetParam().value->get_size(ctx);
 		EXPECT_EQ(size, GetParam().expected_buffer.size());
 	}
@@ -178,7 +178,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	{
 		auto expected_size = GetParam().expected_buffer.size();
 		std::vector<uint8_t> buffer (expected_size + 8, 0x7a); // buffer overrun detector
-		SerializationContext ctx (GetParam().caps, buffer.data());
+		serialization_context ctx (GetParam().caps, buffer.data());
 		GetParam().value->serialize(ctx);
 
 		// Iterator
@@ -200,7 +200,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	{
 		auto first = GetParam().expected_buffer.data();
 		auto size = GetParam().expected_buffer.size();
-		DeserializationContext ctx (first, first + size, GetParam().caps);
+		deserialization_context ctx (first, first + size, GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
 
@@ -219,7 +219,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		std::vector<uint8_t> buffer (GetParam().expected_buffer);
 		buffer.push_back(0xff);
 		auto first = buffer.data();
-		DeserializationContext ctx (first, first + buffer.size(), GetParam().caps);
+		deserialization_context ctx (first, first + buffer.size(), GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
 
@@ -237,7 +237,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 	{
 		std::vector<uint8_t> buffer (GetParam().expected_buffer);
 		buffer.back() = 0x7a; // try to detect any overruns
-		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size() - 1, GetParam().caps);
+		deserialization_context ctx (buffer.data(), buffer.data() + buffer.size() - 1, GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
 		EXPECT_EQ(err, errc::incomplete_message);
@@ -302,7 +302,7 @@ TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
 {
 	auto first = GetParam().buffer.data();
 	auto last = GetParam().buffer.data() + GetParam().buffer.size();
-	DeserializationContext ctx (first, last, capabilities(0));
+	deserialization_context ctx (first, last, capabilities(0));
 	auto value = GetParam().value->default_construct();
 	auto err = value->deserialize(ctx);
 	EXPECT_EQ(err, GetParam().expected_error);

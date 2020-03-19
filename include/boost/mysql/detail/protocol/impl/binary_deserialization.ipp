@@ -87,7 +87,7 @@ inline binary_protocol_value get_deserializable_type(
 } // boost
 
 inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	const field_metadata& meta,
 	value& output
 )
@@ -117,7 +117,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
 }
 
 inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	const std::vector<field_metadata>& meta,
 	std::vector<value>& output
 )

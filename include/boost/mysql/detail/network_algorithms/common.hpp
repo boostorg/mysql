@@ -13,7 +13,7 @@ namespace mysql {
 namespace detail {
 
 using deserialize_row_fn = error_code (*)(
-	DeserializationContext&,
+	deserialization_context&,
 	const std::vector<field_metadata>&,
 	std::vector<value>&
 );

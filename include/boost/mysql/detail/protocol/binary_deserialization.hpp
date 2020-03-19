@@ -12,13 +12,13 @@ namespace mysql {
 namespace detail {
 
 inline errc deserialize_binary_value(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	const field_metadata& meta,
 	value& output
 );
 
 inline error_code deserialize_binary_row(
-	DeserializationContext& ctx,
+	deserialization_context& ctx,
 	const std::vector<field_metadata>& meta,
 	std::vector<value>& output
 );

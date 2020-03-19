@@ -30,7 +30,7 @@ inline get_serializable_type_t<T> to_serializable_type(T input) noexcept
 }
 
 
-inline errc deserialize_binary_date(date& output, std::uint8_t length, DeserializationContext& ctx) noexcept
+inline errc deserialize_binary_date(date& output, std::uint8_t length, deserialization_context& ctx) noexcept
 {
 	int2 year;
 	int1 month;
@@ -51,7 +51,7 @@ inline errc deserialize_binary_date(date& output, std::uint8_t length, Deseriali
 // Does not add the length prefix byte
 inline void serialize_binary_ymd(
 	const ::date::year_month_day& ymd,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	serialize_fields(
@@ -134,7 +134,7 @@ struct broken_time
 // date
 inline std::size_t boost::mysql::detail::get_size(
 	const date&,
-	const SerializationContext&
+	const serialization_context&
 ) noexcept
 {
 	// TODO: consider zero dates?
@@ -143,7 +143,7 @@ inline std::size_t boost::mysql::detail::get_size(
 
 inline void boost::mysql::detail::serialize(
 	const date& input,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	// TODO: consider zero dates?
@@ -153,7 +153,7 @@ inline void boost::mysql::detail::serialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	date& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	int1 length;
@@ -165,7 +165,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 // datetime
 inline std::size_t boost::mysql::detail::get_size(
 	const datetime& input,
-	const SerializationContext&
+	const serialization_context&
 ) noexcept
 {
 	broken_datetime dt (input);
@@ -174,7 +174,7 @@ inline std::size_t boost::mysql::detail::get_size(
 
 inline void boost::mysql::detail::serialize(
 	const datetime& input,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	broken_datetime brokendt (input);
@@ -202,7 +202,7 @@ inline void boost::mysql::detail::serialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	datetime& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	int1 length;
@@ -240,7 +240,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 // time
 inline std::size_t boost::mysql::detail::get_size(
 	const time& input,
-	const SerializationContext&
+	const serialization_context&
 ) noexcept
 {
 	return broken_time(input).binary_serialized_length() + 1; // length byte
@@ -248,7 +248,7 @@ inline std::size_t boost::mysql::detail::get_size(
 
 inline void boost::mysql::detail::serialize(
 	const time& input,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	broken_time broken (input);
@@ -275,7 +275,7 @@ inline void boost::mysql::detail::serialize(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize(
 	time& output,
-	DeserializationContext& ctx
+	deserialization_context& ctx
 ) noexcept
 {
 	// Length
@@ -321,7 +321,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 // mysql::value
 inline std::size_t boost::mysql::detail::get_size(
 	const value& input,
-	const SerializationContext& ctx
+	const serialization_context& ctx
 ) noexcept
 {
 	return std::visit([&ctx](const auto& v) {
@@ -331,7 +331,7 @@ inline std::size_t boost::mysql::detail::get_size(
 
 inline void boost::mysql::detail::serialize(
 	const value& input,
-	SerializationContext& ctx
+	serialization_context& ctx
 ) noexcept
 {
 	std::visit([&ctx](const auto& v) {
