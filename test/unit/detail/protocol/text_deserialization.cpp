@@ -16,7 +16,7 @@ using namespace date::literals;
 using boost::mysql::value;
 using boost::mysql::collation;
 using boost::mysql::error_code;
-using boost::mysql::Error;
+using boost::mysql::errc;
 
 namespace
 {
@@ -62,7 +62,7 @@ TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	boost::mysql::field_metadata meta (coldef);
 	value actual_value;
 	auto err = deserialize_text_value(GetParam().from, meta, actual_value);
-	EXPECT_EQ(err, Error::ok);
+	EXPECT_EQ(err, errc::ok);
 	EXPECT_EQ(actual_value, GetParam().expected);
 }
 
@@ -384,19 +384,19 @@ TEST_F(DeserializeTextRowTest, SameNumberOfValuesAsFieldsAllNull_DeserializesRet
 TEST_F(DeserializeTextRowTest, TooFewValues_ReturnsError)
 {
 	auto err = deserialize({0xfb, 0xfb});
-	EXPECT_EQ(err, make_error_code(Error::incomplete_message));
+	EXPECT_EQ(err, make_error_code(errc::incomplete_message));
 }
 
 TEST_F(DeserializeTextRowTest, TooManyValues_ReturnsError)
 {
 	auto err = deserialize({0xfb, 0xfb, 0xfb, 0xfb});
-	EXPECT_EQ(err, make_error_code(Error::extra_bytes));
+	EXPECT_EQ(err, make_error_code(errc::extra_bytes));
 }
 
 TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerStringValue_ReturnsError)
 {
 	auto err = deserialize({0x03, 0xaa, 0xab, 0xfb, 0xfb});
-	EXPECT_EQ(err, make_error_code(Error::incomplete_message));
+	EXPECT_EQ(err, make_error_code(errc::incomplete_message));
 }
 
 TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerValue_ReturnsError)
@@ -408,7 +408,7 @@ TEST_F(DeserializeTextRowTest, ErrorDeserializingContainerValue_ReturnsError)
 		0x30, 0x2f, 0x30, 0x30
 	};
 	auto err = deserialize(buffer);
-	EXPECT_EQ(err, make_error_code(Error::protocol_value_error));
+	EXPECT_EQ(err, make_error_code(errc::protocol_value_error));
 }
 
 }

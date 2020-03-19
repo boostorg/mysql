@@ -36,7 +36,7 @@ public:
 		}
 		else if (msg_type != 0)
 		{
-			err = make_error_code(Error::protocol_value_error);
+			err = make_error_code(errc::protocol_value_error);
 		}
 		else
 		{

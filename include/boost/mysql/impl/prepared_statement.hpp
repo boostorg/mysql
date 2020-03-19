@@ -18,7 +18,7 @@ void boost::mysql::prepared_statement<Stream>::check_num_params(
 	auto param_count = std::distance(first, last);
 	if (param_count != num_params())
 	{
-		err = detail::make_error_code(Error::wrong_num_params);
+		err = detail::make_error_code(errc::wrong_num_params);
 		info.set_message(detail::stringize(
 				"prepared_statement::execute: expected ", num_params(), " params, but got ", param_count));
 	}

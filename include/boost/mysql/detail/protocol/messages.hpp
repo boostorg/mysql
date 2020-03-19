@@ -300,13 +300,13 @@ struct get_struct_fields<com_stmt_close_packet>
 
 
 // serialization functions
-inline Error deserialize(ok_packet& output, DeserializationContext& ctx) noexcept;
-inline Error deserialize(handshake_packet& output, DeserializationContext& ctx) noexcept;
+inline errc deserialize(ok_packet& output, DeserializationContext& ctx) noexcept;
+inline errc deserialize(handshake_packet& output, DeserializationContext& ctx) noexcept;
 inline std::size_t get_size(const handshake_response_packet& value, const SerializationContext& ctx) noexcept;
 inline void serialize(const handshake_response_packet& value, SerializationContext& ctx) noexcept;
-inline Error deserialize(auth_switch_request_packet& output, DeserializationContext& ctx) noexcept;
-inline Error deserialize(column_definition_packet& output, DeserializationContext& ctx) noexcept;
-inline Error deserialize(com_stmt_prepare_ok_packet& output, DeserializationContext& ctx) noexcept;
+inline errc deserialize(auth_switch_request_packet& output, DeserializationContext& ctx) noexcept;
+inline errc deserialize(column_definition_packet& output, DeserializationContext& ctx) noexcept;
+inline errc deserialize(com_stmt_prepare_ok_packet& output, DeserializationContext& ctx) noexcept;
 
 template <typename FowardIterator>
 inline std::size_t get_size(const com_stmt_execute_packet<FowardIterator>& value, const SerializationContext& ctx) noexcept;

@@ -8,7 +8,7 @@ using boost::mysql::tcp_connection;
 using boost::mysql::error_info;
 using boost::mysql::error_code;
 using boost::mysql::detail::make_error_code;
-using boost::mysql::Error;
+using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
 using boost::mysql::owning_row;
@@ -22,8 +22,8 @@ class sync_errc : public network_functions
 	static auto impl(Callable&& cb) {
 		using R = decltype(cb(std::declval<error_code&>(), std::declval<error_info&>()));
 		network_result<R> res;
-		res.err = make_error_code(Error::no);
-		res.info.set_message("Error info not cleared correctly");
+		res.err = make_error_code(errc::no);
+		res.info.set_message("errc info not cleared correctly");
 		res.value = cb(res.err, res.info);
 		return res;
 	}

@@ -86,7 +86,7 @@ inline binary_protocol_value get_deserializable_type(
 } // mysql
 } // boost
 
-inline boost::mysql::Error boost::mysql::detail::deserialize_binary_value(
+inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
 	DeserializationContext& ctx,
 	const field_metadata& meta,
 	value& output
@@ -96,7 +96,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize_binary_value(
 	return std::visit([&output, &ctx](auto typed_protocol_value) {
 		using type = decltype(typed_protocol_value);
 		auto err = deserialize(typed_protocol_value, ctx);
-		if (err == Error::ok)
+		if (err == errc::ok)
 		{
 			if constexpr (std::is_constructible_v<value, type>) // not a value holder
 			{
@@ -135,7 +135,7 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
 	// Null bitmap
 	null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
 	const std::uint8_t* null_bitmap_begin = ctx.first();
-	if (!ctx.enough_size(null_bitmap.byte_count())) return make_error_code(Error::incomplete_message);
+	if (!ctx.enough_size(null_bitmap.byte_count())) return make_error_code(errc::incomplete_message);
 	ctx.advance(null_bitmap.byte_count());
 
 	// Actual values
@@ -148,12 +148,12 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
 		else
 		{
 			auto err = deserialize_binary_value(ctx, meta[i], output[i]);
-			if (err != Error::ok) return make_error_code(err);
+			if (err != errc::ok) return make_error_code(err);
 		}
 	}
 
 	// Check for remaining bytes
-	if (!ctx.empty()) return make_error_code(Error::extra_bytes);
+	if (!ctx.empty()) return make_error_code(errc::extra_bytes);
 
 	return error_code();
 }

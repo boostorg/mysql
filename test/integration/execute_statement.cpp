@@ -12,7 +12,7 @@ using namespace boost::mysql::test;
 using boost::mysql::value;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::Error;
+using boost::mysql::errc;
 using boost::mysql::tcp_resultset;
 using boost::mysql::tcp_prepared_statement;
 
@@ -45,7 +45,7 @@ TEST_P(ExecuteStatementTest, Iterator_MismatchedNumParams)
 	std::forward_list<value> params { value("item") };
 	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
 	auto result = GetParam()->execute_statement(stmt, params.begin(), params.end());
-	result.validate_error(Error::wrong_num_params, {"param", "2", "1", "statement", "execute"});
+	result.validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
 	EXPECT_FALSE(result.value.valid());
 }
 
@@ -54,7 +54,7 @@ TEST_P(ExecuteStatementTest, Iterator_ServerError)
 	std::forward_list<value> params { value("f0"), value("bad_date") };
 	auto stmt = conn.prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
 	auto result = GetParam()->execute_statement(stmt, params.begin(), params.end());
-	result.validate_error(Error::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
+	result.validate_error(errc::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
 	EXPECT_FALSE(result.value.valid());
 }
 
@@ -81,7 +81,7 @@ TEST_P(ExecuteStatementTest, Container_MismatchedNumParams)
 	std::vector<value> params { value("item") };
 	auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
 	auto result = GetParam()->execute_statement(stmt, params);
-	result.validate_error(Error::wrong_num_params, {"param", "2", "1", "statement", "execute"});
+	result.validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
 	EXPECT_FALSE(result.value.valid());
 }
 
@@ -89,7 +89,7 @@ TEST_P(ExecuteStatementTest, Container_ServerError)
 {
 	auto stmt = conn.prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
 	auto result = GetParam()->execute_statement(stmt, makevalues("f0", "bad_date"));
-	result.validate_error(Error::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
+	result.validate_error(errc::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
 	EXPECT_FALSE(result.value.valid());
 }
 

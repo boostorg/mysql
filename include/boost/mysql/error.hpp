@@ -8,7 +8,7 @@ namespace boost {
 namespace mysql {
 
 /// MySQL-specific error codes.
-enum class Error : int
+enum class errc : int
 {
 	// OK
 	ok = 0,

@@ -16,7 +16,7 @@ using namespace testing;
 using namespace std;
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
-using boost::mysql::Error;
+using boost::mysql::errc;
 using boost::mysql::collation;
 using boost::mysql::value;
 

@@ -15,9 +15,8 @@
 using namespace testing;
 using namespace boost::mysql::detail;
 using namespace boost::asio;
-namespace errc = boost::system::errc;
 using boost::mysql::error_code;
-using boost::mysql::Error;
+using boost::mysql::errc;
 
 namespace
 {
@@ -43,11 +42,11 @@ public:
 	void set_default_behavior()
 	{
 		ON_CALL(*this, read_buffer).WillByDefault(DoAll(
-			SetArgReferee<1>(errc::make_error_code(errc::timed_out)),
+			SetArgReferee<1>(make_error_code(boost::system::errc::timed_out)),
 			Return(0)
 		));
 		ON_CALL(*this, write_buffer).WillByDefault(DoAll(
-			SetArgReferee<1>(errc::make_error_code(errc::timed_out)),
+			SetArgReferee<1>(make_error_code(boost::system::errc::timed_out)),
 			Return(0)
 		));
 	}
@@ -217,7 +216,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_ShortReads_InvokesReadAgain)
 
 TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInHeader_ReturnsFailureErrorCode)
 {
-	auto expected_error = errc::make_error_code(errc::not_supported);
+	auto expected_error = make_error_code(boost::system::errc::not_supported);
 	EXPECT_CALL(stream, read_buffer)
 		.WillOnce(Invoke(read_failer(expected_error)));
 	chan.read(buffer, code);
@@ -226,7 +225,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInHeader_ReturnsFailureErrorCode)
 
 TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInPacket_ReturnsFailureErrorCode)
 {
-	auto expected_error = errc::make_error_code(errc::not_supported);
+	auto expected_error = make_error_code(boost::system::errc::not_supported);
 	EXPECT_CALL(stream, read_buffer)
 		.WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x00})))
 		.WillOnce(Invoke(read_failer(expected_error)));
@@ -240,7 +239,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateE
 		.WillByDefault(Invoke(make_read_handler()));
 	bytes_to_read = {0xff, 0xff, 0xff, 0x05};
 	chan.read(buffer, code);
-	EXPECT_EQ(code, make_error_code(Error::sequence_number_mismatch));
+	EXPECT_EQ(code, make_error_code(errc::sequence_number_mismatch));
 }
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSequenceNumber)
@@ -293,10 +292,10 @@ struct MysqlChannelWriteTest : public MysqlChannelFixture
 		};
 	}
 
-	static auto write_failer(errc::errc_t error)
+	static auto write_failer(boost::system::errc::errc_t error)
 	{
 		return [error](boost::asio::const_buffer, error_code& ec) {
-			ec = errc::make_error_code(error);
+			ec = make_error_code(error);
 			return 0;
 		};
 	}
@@ -354,18 +353,18 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_ShortWrites_WritesHeaderAndBuffer)
 TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInHeader_ReturnsErrorCode)
 {
 	ON_CALL(stream, write_buffer)
-		.WillByDefault(Invoke(write_failer(errc::broken_pipe)));
+		.WillByDefault(Invoke(write_failer(boost::system::errc::broken_pipe)));
 	chan.write(buffer(std::vector<uint8_t>(10, 0x01)), code);
-	EXPECT_EQ(code, errc::make_error_code(errc::broken_pipe));
+	EXPECT_EQ(code, make_error_code(boost::system::errc::broken_pipe));
 }
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInPacket_ReturnsErrorCode)
 {
 	EXPECT_CALL(stream, write_buffer)
 		.WillOnce(Return(4))
-		.WillOnce(Invoke(write_failer(errc::broken_pipe)));
+		.WillOnce(Invoke(write_failer(boost::system::errc::broken_pipe)));
 	chan.write(buffer(std::vector<uint8_t>(10, 0x01)), code);
-	EXPECT_EQ(code, errc::make_error_code(errc::broken_pipe));
+	EXPECT_EQ(code, make_error_code(boost::system::errc::broken_pipe));
 }
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceNumberNotZero_RespectsSequenceNumber)

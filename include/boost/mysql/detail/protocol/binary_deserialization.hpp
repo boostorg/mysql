@@ -11,7 +11,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline Error deserialize_binary_value(
+inline errc deserialize_binary_value(
 	DeserializationContext& ctx,
 	const field_metadata& meta,
 	value& output

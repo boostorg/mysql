@@ -51,11 +51,11 @@ boost::mysql::error_code boost::mysql::detail::channel<AsyncStream>::process_hea
 {
 	packet_header header;
 	DeserializationContext ctx (boost::asio::buffer(header_buffer_), capabilities(0)); // unaffected by capabilities
-	[[maybe_unused]] Error err = deserialize(header, ctx);
-	assert(err == Error::ok); // this should always succeed
+	[[maybe_unused]] errc err = deserialize(header, ctx);
+	assert(err == errc::ok); // this should always succeed
 	if (!process_sequence_number(header.sequence_number.value))
 	{
-		return make_error_code(Error::sequence_number_mismatch);
+		return make_error_code(errc::sequence_number_mismatch);
 	}
 	size_to_read = header.packet_size.value;
 	return error_code();

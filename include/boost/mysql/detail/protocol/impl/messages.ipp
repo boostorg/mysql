@@ -51,7 +51,7 @@ inline bool is_unsigned(
 } // mysql
 } // boost
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	ok_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -63,14 +63,14 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 		output.status_flags,
 		output.warnings
 	);
-	if (err == Error::ok && ctx.enough_size(1)) // message is optional, may be omitted
+	if (err == errc::ok && ctx.enough_size(1)) // message is optional, may be omitted
 	{
 		err = deserialize(output.info, ctx);
 	}
 	return err;
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	handshake_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -94,7 +94,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 		output.status_flags,
 		capability_flags_high
 	);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 
 	// Compose capabilities
 	auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&output.capability_falgs.value);
@@ -104,7 +104,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 
 	// Check minimum server capabilities to deserialize this frame
 	capabilities cap (output.capability_falgs.value);
-	if (!cap.has(CLIENT_PLUGIN_AUTH)) return Error::server_unsupported;
+	if (!cap.has(CLIENT_PLUGIN_AUTH)) return errc::server_unsupported;
 
 	// Deserialize the rest of the frame
 	err = deserialize_fields(
@@ -112,13 +112,13 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 		auth_plugin_data_len,
 		reserved
 	);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 	auto auth2_length = static_cast<std::uint8_t>(
 		std::max(13, auth_plugin_data_len.value - auth1_length));
 	err = ctx.copy(output.auth_plugin_data_buffer.data() + auth1_length, auth2_length);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 	err = deserialize(output.auth_plugin_name, ctx);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 
 	// Compose auth_plugin_data
 	memcpy(
@@ -131,7 +131,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 		auth1_length + auth2_length - 1 // discard trailing null byte
 	);
 
-	return Error::ok;
+	return errc::ok;
 }
 
 std::size_t boost::mysql::detail::get_size(
@@ -173,7 +173,7 @@ inline void boost::mysql::detail::serialize(
 	serialize(value.client_plugin_name, ctx);
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	auth_switch_request_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -189,7 +189,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 	return err;
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	column_definition_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -214,7 +214,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 	);
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	com_stmt_prepare_ok_packet& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -321,8 +321,8 @@ boost::mysql::error_code boost::mysql::detail::deserialize_message(
 )
 {
 	auto err = deserialize(output, ctx);
-	if (err != Error::ok) return make_error_code(err);
-	if (!ctx.empty()) return make_error_code(Error::extra_bytes);
+	if (err != errc::ok) return make_error_code(err);
+	if (!ctx.empty()) return make_error_code(errc::extra_bytes);
 	return error_code();
 }
 
@@ -335,7 +335,7 @@ boost::mysql::detail::deserialize_message_type(
 	int1 msg_type;
 	std::pair<mysql::error_code, std::uint8_t> res {};
 	auto err = deserialize(msg_type, ctx);
-	if (err == Error::ok)
+	if (err == errc::ok)
 	{
 		res.second = msg_type.value;
 	}
@@ -355,7 +355,7 @@ inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
 	auto code = deserialize_message(error_packet, ctx);
 	if (code) return code;
 	info.set_message(std::string(error_packet.error_message.value));
-	return make_error_code(static_cast<Error>(error_packet.error_code.value));
+	return make_error_code(static_cast<errc>(error_packet.error_code.value));
 }
 
 

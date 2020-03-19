@@ -40,12 +40,12 @@ public:
 	bool empty() const noexcept { return last_ == first_; }
 	bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
 	capabilities get_capabilities() const noexcept { return capabilities_; }
-	Error copy(void* to, std::size_t sz) noexcept
+	errc copy(void* to, std::size_t sz) noexcept
 	{
-		if (!enough_size(sz)) return Error::incomplete_message;
+		if (!enough_size(sz)) return errc::incomplete_message;
 		memcpy(to, first_, sz);
 		advance(sz);
-		return Error::ok;
+		return errc::ok;
 	}
 };
 
@@ -67,7 +67,7 @@ public:
 
 /**
  * Base forms:
- *  Error deserialize(T& output, DeserializationContext&) noexcept
+ *  errc deserialize(T& output, DeserializationContext&) noexcept
  *  void  serialize(const T& input, SerializationContext&) noexcept
  *  std::size_t get_size(const T& input, const SerializationContext&) noexcept
  */
@@ -131,7 +131,7 @@ template <std::size_t size> void native_to_little_inplace(string_fixed<size>&) n
 
 
 template <typename T>
-std::enable_if_t<is_fixed_size_v<T>, Error>
+std::enable_if_t<is_fixed_size_v<T>, errc>
 deserialize(T& output, DeserializationContext& ctx) noexcept
 {
 	static_assert(std::is_standard_layout_v<decltype(T::value)>);
@@ -139,7 +139,7 @@ deserialize(T& output, DeserializationContext& ctx) noexcept
 	constexpr auto size = get_fixed_size<T>::value;
 	if (!ctx.enough_size(size))
 	{
-		return Error::incomplete_message;
+		return errc::incomplete_message;
 	}
 
 	memset(&output.value, 0, sizeof(output.value));
@@ -147,7 +147,7 @@ deserialize(T& output, DeserializationContext& ctx) noexcept
 	little_to_native_inplace(output);
 	ctx.advance(size);
 
-	return Error::ok;
+	return errc::ok;
 }
 
 template <typename T>
@@ -166,11 +166,11 @@ get_size(T, const SerializationContext&) noexcept
 }
 
 // int_lenenc
-inline Error deserialize(int_lenenc& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(int_lenenc& output, DeserializationContext& ctx) noexcept
 {
 	int1 first_byte;
-	Error err = deserialize(first_byte, ctx);
-	if (err != Error::ok)
+	errc err = deserialize(first_byte, ctx);
+	if (err != errc::ok)
 	{
 		return err;
 	}
@@ -195,7 +195,7 @@ inline Error deserialize(int_lenenc& output, DeserializationContext& ctx) noexce
 	}
 	else
 	{
-		err = Error::ok;
+		err = errc::ok;
 		output.value = first_byte.value;
 	}
 	return err;
@@ -237,16 +237,16 @@ inline std::string_view get_string(ReadIterator from, std::size_t size)
 }
 
 // string_null
-inline Error deserialize(string_null& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(string_null& output, DeserializationContext& ctx) noexcept
 {
 	ReadIterator string_end = std::find(ctx.first(), ctx.last(), 0);
 	if (string_end == ctx.last())
 	{
-		return Error::incomplete_message;
+		return errc::incomplete_message;
 	}
 	output.value = get_string(ctx.first(), string_end-ctx.first());
 	ctx.set_first(string_end + 1); // skip the null terminator
-	return Error::ok;
+	return errc::ok;
 }
 inline void serialize(string_null input, SerializationContext& ctx) noexcept
 {
@@ -259,11 +259,11 @@ inline std::size_t get_size(string_null input, const SerializationContext&) noex
 }
 
 // string_eof
-inline Error deserialize(string_eof& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(string_eof& output, DeserializationContext& ctx) noexcept
 {
 	output.value = get_string(ctx.first(), ctx.last()-ctx.first());
 	ctx.set_first(ctx.last());
-	return Error::ok;
+	return errc::ok;
 }
 inline void serialize(string_eof input, SerializationContext& ctx) noexcept
 {
@@ -275,22 +275,22 @@ inline std::size_t get_size(string_eof input, const SerializationContext&) noexc
 }
 
 // string_lenenc
-inline Error deserialize(string_lenenc& output, DeserializationContext& ctx) noexcept
+inline errc deserialize(string_lenenc& output, DeserializationContext& ctx) noexcept
 {
 	int_lenenc length;
-	Error err = deserialize(length, ctx);
-	if (err != Error::ok)
+	errc err = deserialize(length, ctx);
+	if (err != errc::ok)
 	{
 		return err;
 	}
 	if (!ctx.enough_size(length.value))
 	{
-		return Error::incomplete_message;
+		return errc::incomplete_message;
 	}
 
 	output.value = get_string(ctx.first(), length.value);
 	ctx.advance(length.value);
-	return Error::ok;
+	return errc::ok;
 }
 inline void serialize(string_lenenc input, SerializationContext& ctx) noexcept
 {
@@ -308,16 +308,16 @@ inline std::size_t get_size(string_lenenc input, const SerializationContext& ctx
 
 // Enums
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-Error deserialize(T& output, DeserializationContext& ctx) noexcept
+errc deserialize(T& output, DeserializationContext& ctx) noexcept
 {
 	value_holder<std::underlying_type_t<T>> value;
-	Error err = deserialize(value, ctx);
-	if (err != Error::ok)
+	errc err = deserialize(value, ctx);
+	if (err != errc::ok)
 	{
 		return err;
 	}
 	output = static_cast<T>(value.value);
-	return Error::ok;
+	return errc::ok;
 }
 
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
@@ -335,10 +335,10 @@ std::size_t get_size(T, const SerializationContext&) noexcept
 
 // Floating points
 template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-Error deserialize(value_holder<T>& output, DeserializationContext& ctx) noexcept
+errc deserialize(value_holder<T>& output, DeserializationContext& ctx) noexcept
 {
 	// Size check
-	if (!ctx.enough_size(sizeof(T))) return Error::incomplete_message;
+	if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
 
 	// Endianness conversion
 	// Boost.Endian support for floats start at 1.71. TODO: maybe update requirements and CI
@@ -351,7 +351,7 @@ Error deserialize(value_holder<T>& output, DeserializationContext& ctx) noexcept
 	std::memcpy(&output.value, ctx.first(), sizeof(T));
 #endif
 	ctx.advance(sizeof(T));
-	return Error::ok;
+	return errc::ok;
 }
 
 template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
@@ -410,7 +410,7 @@ struct is_command : decltype(is_command_helper::get<T>(nullptr))
 };
 
 template <std::size_t index, typename T>
-Error deserialize_struct(
+errc deserialize_struct(
 	[[maybe_unused]] T& output,
 	[[maybe_unused]] DeserializationContext& ctx
 ) noexcept
@@ -418,13 +418,13 @@ Error deserialize_struct(
 	constexpr auto fields = get_struct_fields<T>::value;
 	if constexpr (index == std::tuple_size<decltype(fields)>::value)
 	{
-		return Error::ok;
+		return errc::ok;
 	}
 	else
 	{
 		constexpr auto pmem = std::get<index>(fields);
-		Error err = deserialize(output.*pmem, ctx);
-		if (err != Error::ok)
+		errc err = deserialize(output.*pmem, ctx);
+		if (err != errc::ok)
 		{
 			return err;
 		}
@@ -436,7 +436,7 @@ Error deserialize_struct(
 }
 
 template <typename T>
-std::enable_if_t<is_struct_with_fields<T>::value, Error>
+std::enable_if_t<is_struct_with_fields<T>::value, errc>
 deserialize(T& output, DeserializationContext& ctx) noexcept
 {
 	return deserialize_struct<0>(output, ctx);
@@ -503,13 +503,13 @@ get_size(const T& input, const SerializationContext& ctx) noexcept
 
 // Helper to write custom struct (de)serialize()
 template <typename FirstType>
-Error deserialize_fields(DeserializationContext& ctx, FirstType& field) noexcept { return deserialize(field, ctx); }
+errc deserialize_fields(DeserializationContext& ctx, FirstType& field) noexcept { return deserialize(field, ctx); }
 
 template <typename FirstType, typename... Types>
-Error deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&... fields_tail) noexcept
+errc deserialize_fields(DeserializationContext& ctx, FirstType& field, Types&... fields_tail) noexcept
 {
-	Error err = deserialize(field, ctx);
-	if (err == Error::ok)
+	errc err = deserialize(field, ctx);
+	if (err == errc::ok)
 	{
 		err = deserialize_fields(ctx, fields_tail...);
 	}
@@ -533,7 +533,7 @@ struct dummy_serializable
 };
 inline std::size_t get_size(dummy_serializable, const SerializationContext&) noexcept { return 0; }
 inline void serialize(dummy_serializable, SerializationContext&) noexcept {}
-inline Error deserialize(dummy_serializable, DeserializationContext&) noexcept { return Error::ok; }
+inline errc deserialize(dummy_serializable, DeserializationContext&) noexcept { return errc::ok; }
 
 } // detail
 } // mysql

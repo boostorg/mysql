@@ -16,7 +16,7 @@ using namespace date::literals;
 using boost::mysql::value;
 using boost::mysql::collation;
 using boost::mysql::error_code;
-using boost::mysql::Error;
+using boost::mysql::errc;
 
 namespace
 {
@@ -75,7 +75,7 @@ TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 	const auto& buffer = GetParam().from;
 	DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 	auto err = deserialize_binary_value(ctx, meta, actual_value);
-	EXPECT_EQ(err, Error::ok);
+	EXPECT_EQ(err, errc::ok);
 	EXPECT_EQ(actual_value, GetParam().expected);
 }
 
@@ -214,18 +214,18 @@ INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowTest, testing::Values(
 	)
 ), test_name_generator);
 
-// Error cases for deserialize_binary_row
+// errc cases for deserialize_binary_row
 struct BinaryRowErrorParam : named_param
 {
 	std::string name;
 	std::vector<std::uint8_t> from;
-	Error expected;
+	errc expected;
 	std::vector<protocol_field_type> types;
 
 	BinaryRowErrorParam(
 		std::string name,
 		std::vector<std::uint8_t> from,
-		Error expected,
+		errc expected,
 		std::vector<protocol_field_type> types
 	):
 		name(std::move(name)),
@@ -250,15 +250,15 @@ TEST_P(DeserializeBinaryRowErrorTest, ErrorCondition_ReturnsErrorCode)
 }
 
 INSTANTIATE_TEST_SUITE_P(Default, DeserializeBinaryRowErrorTest, testing::Values(
-	BinaryRowErrorParam("no_space_null_bitmap_1", {0x00}, Error::incomplete_message, {protocol_field_type::tiny}),
-	BinaryRowErrorParam("no_space_null_bitmap_2", {0x00, 0xfc}, Error::incomplete_message,
+	BinaryRowErrorParam("no_space_null_bitmap_1", {0x00}, errc::incomplete_message, {protocol_field_type::tiny}),
+	BinaryRowErrorParam("no_space_null_bitmap_2", {0x00, 0xfc}, errc::incomplete_message,
 			std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
-	BinaryRowErrorParam("no_space_value_single", {0x00, 0x00}, Error::incomplete_message, {protocol_field_type::tiny}),
-	BinaryRowErrorParam("no_space_value_last", {0x00, 0x00, 0x01}, Error::incomplete_message,
+	BinaryRowErrorParam("no_space_value_single", {0x00, 0x00}, errc::incomplete_message, {protocol_field_type::tiny}),
+	BinaryRowErrorParam("no_space_value_last", {0x00, 0x00, 0x01}, errc::incomplete_message,
 			std::vector<protocol_field_type>(2, protocol_field_type::tiny)),
-	BinaryRowErrorParam("no_space_value_middle", {0x00, 0x00, 0x01}, Error::incomplete_message,
+	BinaryRowErrorParam("no_space_value_middle", {0x00, 0x00, 0x01}, errc::incomplete_message,
 			std::vector<protocol_field_type>(3, protocol_field_type::tiny)),
-	BinaryRowErrorParam("extra_bytes", {0x00, 0x00, 0x01, 0x02}, Error::extra_bytes, {protocol_field_type::tiny})
+	BinaryRowErrorParam("extra_bytes", {0x00, 0x00, 0x01, 0x02}, errc::extra_bytes, {protocol_field_type::tiny})
 ), test_name_generator);
 
 

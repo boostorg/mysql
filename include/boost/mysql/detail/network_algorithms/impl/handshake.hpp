@@ -27,7 +27,7 @@ inline error_code deserialize_handshake(
 	if (err) return err;
 	if (msg_type == handshake_protocol_version_9)
 	{
-		return make_error_code(Error::server_unsupported);
+		return make_error_code(errc::server_unsupported);
 	}
 	else if (msg_type == error_packet_header)
 	{
@@ -35,7 +35,7 @@ inline error_code deserialize_handshake(
 	}
 	else if (msg_type != handshake_protocol_version_10)
 	{
-		return make_error_code(Error::protocol_value_error);
+		return make_error_code(errc::protocol_value_error);
 	}
 	return deserialize_message(output, ctx);
 }
@@ -56,7 +56,7 @@ public:
 		// Check challenge size
 		if (challenge.size() != mysql_native_password::challenge_length)
 		{
-			return make_error_code(Error::protocol_value_error);
+			return make_error_code(errc::protocol_value_error);
 		}
 
 		// Do the calculation
@@ -90,7 +90,7 @@ public:
 				mandatory_capabilities | capabilities(CLIENT_CONNECT_WITH_DB);
 		if (!server_caps.has_all(required_caps))
 		{
-			return make_error_code(Error::server_unsupported);
+			return make_error_code(errc::server_unsupported);
 		}
 		negotiated_caps_ = server_caps & (required_caps | optional_capabilities);
 		return error_code();
@@ -116,7 +116,7 @@ public:
 	{
 		if (request.plugin_name.value != mysql_native_password::plugin_name)
 		{
-			return make_error_code(Error::unknown_auth_plugin);
+			return make_error_code(errc::unknown_auth_plugin);
 		}
 		return calc.calculate(
 			params_.password,
@@ -177,7 +177,7 @@ public:
 		}
 		else if (msg_type != auth_switch_request_header)
 		{
-			return make_error_code(Error::protocol_value_error);
+			return make_error_code(errc::protocol_value_error);
 		}
 
 		// We have received an auth switch request. Deserialize it
@@ -212,7 +212,7 @@ public:
 		}
 		else if (msg_type != ok_packet_header)
 		{
-			return make_error_code(Error::protocol_value_error);
+			return make_error_code(errc::protocol_value_error);
 		}
 		return error_code();
 	}

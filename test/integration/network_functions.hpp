@@ -35,7 +35,7 @@ struct network_result
 	}
 
 	void validate_error(
-		Error expected_errc,
+		errc expected_errc,
 		const std::vector<std::string>& expected_msg
 	) const
 	{

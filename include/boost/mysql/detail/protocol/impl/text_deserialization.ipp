@@ -10,26 +10,26 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline Error deserialize_text_value_impl(
+inline errc deserialize_text_value_impl(
 	std::string_view from,
 	date& to
 )
 {
 	constexpr std::size_t size = 4 + 2 + 2 + 2; // year, month, day, separators
-	if (from.size() != size) return Error::protocol_value_error;
+	if (from.size() != size) return errc::protocol_value_error;
 	unsigned year, month, day;
 	char buffer [size + 1] {};
 	memcpy(buffer, from.data(), from.size());
 	int parsed = sscanf(buffer, "%4u-%2u-%2u", &year, &month, &day);
-	if (parsed != 3) return Error::protocol_value_error;
+	if (parsed != 3) return errc::protocol_value_error;
 	::date::year_month_day result (::date::year(year)/::date::month(month)/::date::day(day));
-	if (!result.ok()) return Error::protocol_value_error;
-	if (result > max_date || result < min_date) return Error::protocol_value_error;
+	if (!result.ok()) return errc::protocol_value_error;
+	if (result > max_date || result < min_date) return errc::protocol_value_error;
 	to = result;
-	return Error::ok;
+	return errc::ok;
 }
 
-inline Error deserialize_text_value_impl(
+inline errc deserialize_text_value_impl(
 	std::string_view from,
 	time& to,
 	unsigned decimals
@@ -39,7 +39,7 @@ inline Error deserialize_text_value_impl(
 	constexpr std::size_t min_size = 2 + 2 + 2 + 2; // hours, mins, seconds, no micros
 	constexpr std::size_t max_size = min_size + 1 + 1 + 7; // hour extra character, sign and micros
 	decimals = std::min(decimals, 6u);
-	if (from.size() < min_size || from.size() > max_size) return Error::protocol_value_error;
+	if (from.size() < min_size || from.size() > max_size) return errc::protocol_value_error;
 
 	// Parse it
 	int hours;
@@ -48,7 +48,7 @@ inline Error deserialize_text_value_impl(
 	memcpy(buffer, from.data(), from.size());
 	int parsed = decimals ? sscanf(buffer, "%4d:%2u:%2u.%6u", &hours, &minutes, &seconds, &micros) : // sign adds 1 char
 			                sscanf(buffer, "%4d:%2u:%2u", &hours, &minutes, &seconds);
-	if ((decimals && parsed != 4) || (!decimals && parsed != 3)) return Error::protocol_value_error;
+	if ((decimals && parsed != 4) || (!decimals && parsed != 3)) return errc::protocol_value_error;
 	micros *= static_cast<unsigned>(std::pow(10, 6 - decimals));
 	hours = std::abs(hours);
 	bool is_negative = from[0] == '-';
@@ -62,13 +62,13 @@ inline Error deserialize_text_value_impl(
 	}
 
 	// Range check
-	if (res > max_time || res < min_time) return Error::protocol_value_error;
+	if (res > max_time || res < min_time) return errc::protocol_value_error;
 
 	to = res;
-	return Error::ok;
+	return errc::ok;
 }
 
-inline Error deserialize_text_value_impl(
+inline errc deserialize_text_value_impl(
 	std::string_view from,
 	datetime& to,
 	unsigned decimals
@@ -78,46 +78,46 @@ inline Error deserialize_text_value_impl(
 	constexpr std::size_t min_size = 4 + 5*2 + 5; // year, month, day, hour, minute, seconds, separators
 	decimals = std::min(decimals, 6u);
 	std::size_t expected_size = min_size + (decimals ? decimals + 1 : 0);
-	if (from.size() != expected_size) return Error::protocol_value_error;
+	if (from.size() != expected_size) return errc::protocol_value_error;
 
 	// Date part
 	date dt;
 	auto err = deserialize_text_value_impl(from.substr(0, 10), dt);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 
 	// Time of day part
 	time time_of_day;
 	err = deserialize_text_value_impl(from.substr(11), time_of_day, decimals);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 	constexpr auto max_time_of_day = std::chrono::hours(24) - std::chrono::microseconds(1);
-	if (time_of_day < std::chrono::seconds(0) || time_of_day > max_time_of_day) return Error::protocol_value_error;
+	if (time_of_day < std::chrono::seconds(0) || time_of_day > max_time_of_day) return errc::protocol_value_error;
 
 	// Sum it up
 	to = dt + time_of_day;
-	return Error::ok;
+	return errc::ok;
 }
 
 
 template <typename T>
-std::enable_if_t<std::is_arithmetic_v<T>, Error>
+std::enable_if_t<std::is_arithmetic_v<T>, errc>
 deserialize_text_value_impl(std::string_view from, T& to)
 {
 	bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), to);
-	return ok ? Error::ok : Error::protocol_value_error;
+	return ok ? errc::ok : errc::protocol_value_error;
 }
 
-inline Error deserialize_text_value_impl(std::string_view from, std::string_view& to)
+inline errc deserialize_text_value_impl(std::string_view from, std::string_view& to)
 {
 	to = from;
-	return Error::ok;
+	return errc::ok;
 }
 
 template <typename T, typename... Args>
-Error deserialize_text_value_to_variant(std::string_view from, value& to, Args&&... args)
+errc deserialize_text_value_to_variant(std::string_view from, value& to, Args&&... args)
 {
 	T value;
 	auto err = deserialize_text_value_impl(from, value, std::forward<Args>(args)...);
-	if (err == Error::ok)
+	if (err == errc::ok)
 	{
 		to = value;
 	}
@@ -129,8 +129,8 @@ inline bool is_next_field_null(
 )
 {
 	int1 type_byte;
-	Error err = deserialize(type_byte, ctx);
-	if (err == Error::ok)
+	errc err = deserialize(type_byte, ctx);
+	if (err == errc::ok)
 	{
 		if (type_byte.value == 0xfb)
 		{
@@ -145,7 +145,7 @@ inline bool is_next_field_null(
 } // mysql
 } // boost
 
-inline boost::mysql::Error boost::mysql::detail::deserialize_text_value(
+inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
 	std::string_view from,
 	const field_metadata& meta,
 	value& output
@@ -214,13 +214,13 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
 		else
 		{
 			string_lenenc value_str;
-			Error err = deserialize(value_str, ctx);
-			if (err != Error::ok) return make_error_code(err);
+			errc err = deserialize(value_str, ctx);
+			if (err != errc::ok) return make_error_code(err);
 			err = deserialize_text_value(value_str.value, fields[i], output[i]);
-			if (err != Error::ok) return make_error_code(err);
+			if (err != errc::ok) return make_error_code(err);
 		}
 	}
-	if (!ctx.empty()) return make_error_code(Error::extra_bytes);
+	if (!ctx.empty()) return make_error_code(errc::extra_bytes);
 	return error_code();
 }
 

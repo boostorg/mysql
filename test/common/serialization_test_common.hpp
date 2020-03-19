@@ -96,7 +96,7 @@ public:
 	virtual ~TypeErasedValue() {}
 	virtual void serialize(SerializationContext& ctx) const = 0;
 	virtual std::size_t get_size(const SerializationContext& ctx) const = 0;
-	virtual Error deserialize(DeserializationContext& ctx) = 0;
+	virtual errc deserialize(DeserializationContext& ctx) = 0;
 	virtual std::shared_ptr<TypeErasedValue> default_construct() const = 0;
 	virtual bool equals(const TypeErasedValue& rhs) const = 0;
 	virtual void print(std::ostream& os) const = 0;
@@ -117,7 +117,7 @@ public:
 	TypeErasedValueImpl(const T& v): value_(v) {};
 	void serialize(SerializationContext& ctx) const override { ::boost::mysql::detail::serialize(value_, ctx); }
 	std::size_t get_size(const SerializationContext& ctx) const override { return ::boost::mysql::detail::get_size(value_, ctx); }
-	Error deserialize(DeserializationContext& ctx) override { return ::boost::mysql::detail::deserialize(value_, ctx); }
+	errc deserialize(DeserializationContext& ctx) override { return ::boost::mysql::detail::deserialize(value_, ctx); }
 	std::shared_ptr<TypeErasedValue> default_construct() const override
 	{
 		return std::make_shared<TypeErasedValueImpl<T>>(T{});
@@ -205,7 +205,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		auto err = actual_value->deserialize(ctx);
 
 		// No error
-		EXPECT_EQ(err, Error::ok);
+		EXPECT_EQ(err, errc::ok);
 
 		// Iterator advanced
 		EXPECT_EQ(ctx.first(), first + size);
@@ -224,7 +224,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		auto err = actual_value->deserialize(ctx);
 
 		// No error
-		EXPECT_EQ(err, Error::ok);
+		EXPECT_EQ(err, errc::ok);
 
 		// Iterator advanced
 		EXPECT_EQ(ctx.first(), first + GetParam().expected_buffer.size());
@@ -240,7 +240,7 @@ struct SerializationFixture : public testing::TestWithParam<SerializeParams>
 		DeserializationContext ctx (buffer.data(), buffer.data() + buffer.size() - 1, GetParam().caps);
 		auto actual_value = GetParam().value->default_construct();
 		auto err = actual_value->deserialize(ctx);
-		EXPECT_EQ(err, Error::incomplete_message);
+		EXPECT_EQ(err, errc::incomplete_message);
 	}
 };
 
@@ -274,19 +274,19 @@ TEST_P(FullSerializationTest, deserialize_extra_space) { deserialize_extra_space
 TEST_P(FullSerializationTest, deserialize_not_enough_space) { deserialize_not_enough_space_test(); }
 
 
-// Error tests
+// errc tests
 struct DeserializeErrorParams : test::named_param
 {
 	std::shared_ptr<TypeErasedValue> value;
 	std::vector<uint8_t> buffer;
 	std::string name;
-	Error expected_error;
+	errc expected_error;
 
 	template <typename T>
 	DeserializeErrorParams(
 		std::vector<uint8_t>&& buffer,
 		std::string&& test_name,
-		Error err = Error::incomplete_message
+		errc err = errc::incomplete_message
 	) :
 		value(std::make_shared<TypeErasedValueImpl<T>>(T{})),
 		buffer(std::move(buffer)),

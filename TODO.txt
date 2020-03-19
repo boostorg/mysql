@@ -2,7 +2,6 @@ Name change
 	Refactor file structucture for serialization and tests
 	Deserialize common should be in namespace mysql::test, not in detail
 	Rename (De)SerializationContext
-	Rename Error
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

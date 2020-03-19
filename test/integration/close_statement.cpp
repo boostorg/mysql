@@ -39,7 +39,7 @@ TEST_P(CloseStatementTest, ExistingOrClosedStatement)
 
 	// Verify close took effect
 	exec_result = net->execute_statement(stmt.value, {});
-	exec_result.validate_error(boost::mysql::Error::unknown_stmt_handler, {"unknown prepared statement"});
+	exec_result.validate_error(boost::mysql::errc::unknown_stmt_handler, {"unknown prepared statement"});
 }
 
 MYSQL_NETWORK_TEST_SUITE(CloseStatementTest);

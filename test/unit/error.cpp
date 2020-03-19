@@ -9,25 +9,25 @@
 #include "boost/mysql/error.hpp"
 
 using namespace testing;
-using boost::mysql::Error;
+using boost::mysql::errc;
 using boost::mysql::detail::error_to_string;
 
-TEST(Error, ErrorToString_Ok_ReturnsOk)
+TEST(errc, ErrorToString_Ok_ReturnsOk)
 {
-	EXPECT_STREQ(error_to_string(Error::ok), "no error");
+	EXPECT_STREQ(error_to_string(errc::ok), "no error");
 }
 
-TEST(Error, ErrorToString_MysqlAsioError_ReturnsDescription)
+TEST(errc, ErrorToString_MysqlAsioError_ReturnsDescription)
 {
-	EXPECT_STREQ(error_to_string(Error::sequence_number_mismatch), "Mismatched sequence numbers");
+	EXPECT_STREQ(error_to_string(errc::sequence_number_mismatch), "Mismatched sequence numbers");
 }
 
-TEST(Error, ErrorToString_ServerError_ReturnsEnumName)
+TEST(errc, ErrorToString_ServerError_ReturnsEnumName)
 {
-	EXPECT_STREQ(error_to_string(Error::bad_db_error), "bad_db_error");
+	EXPECT_STREQ(error_to_string(errc::bad_db_error), "bad_db_error");
 }
 
-TEST(Error, ErrorToString_UnknownError_ReturnsUnknown)
+TEST(errc, ErrorToString_UnknownError_ReturnsUnknown)
 {
-	EXPECT_STREQ(error_to_string(static_cast<Error>(0xfffefdfc)), "<unknown error>");
+	EXPECT_STREQ(error_to_string(static_cast<errc>(0xfffefdfc)), "<unknown error>");
 }

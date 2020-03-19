@@ -30,7 +30,7 @@ inline get_serializable_type_t<T> to_serializable_type(T input) noexcept
 }
 
 
-inline Error deserialize_binary_date(date& output, std::uint8_t length, DeserializationContext& ctx) noexcept
+inline errc deserialize_binary_date(date& output, std::uint8_t length, DeserializationContext& ctx) noexcept
 {
 	int2 year;
 	int1 month;
@@ -39,13 +39,13 @@ inline Error deserialize_binary_date(date& output, std::uint8_t length, Deserial
 	if (length >= 4) // if length is zero, year, month and day are zero
 	{
 		auto err = deserialize_fields(ctx, year, month, day);
-		if (err != Error::ok) return err;
+		if (err != errc::ok) return err;
 	}
 
 	// TODO: how does this handle zero dates?
 	::date::year_month_day ymd (::date::year(year.value), ::date::month(month.value), ::date::day(day.value));
 	output = date(ymd);
-	return Error::ok;
+	return errc::ok;
 }
 
 // Does not add the length prefix byte
@@ -151,14 +151,14 @@ inline void boost::mysql::detail::serialize(
 	serialize_binary_ymd(::date::year_month_day (input), ctx);
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	date& output,
 	DeserializationContext& ctx
 ) noexcept
 {
 	int1 length;
 	auto err = deserialize(length, ctx);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 	return deserialize_binary_date(output, length.value, ctx);
 }
 
@@ -200,7 +200,7 @@ inline void boost::mysql::detail::serialize(
 	}
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	datetime& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -214,27 +214,27 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 
 	// Deserialize length
 	auto err = deserialize(length, ctx);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 
 	// Based on length, deserialize the rest of the fields
 	err = deserialize_binary_date(date_part, length.value, ctx);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 	if (length.value >= 7)
 	{
 		err = deserialize_fields(ctx, hours, minutes, seconds);
-		if (err != Error::ok) return err;
+		if (err != errc::ok) return err;
 	}
 	if (length.value >= 11)
 	{
 		err = deserialize(micros, ctx);
-		if (err != Error::ok) return err;
+		if (err != errc::ok) return err;
 	}
 
 	// Compose the final datetime. Doing time of day and date separately to avoid overflow
 	auto time_of_day_part = std::chrono::hours(hours.value) + std::chrono::minutes(minutes.value) +
 		std::chrono::seconds(seconds.value) + std::chrono::microseconds(micros.value);
 	output = date_part + time_of_day_part;
-	return Error::ok;
+	return errc::ok;
 }
 
 // time
@@ -273,7 +273,7 @@ inline void boost::mysql::detail::serialize(
 	}
 }
 
-inline boost::mysql::Error boost::mysql::detail::deserialize(
+inline boost::mysql::errc boost::mysql::detail::deserialize(
 	time& output,
 	DeserializationContext& ctx
 ) noexcept
@@ -281,7 +281,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 	// Length
 	int1 length;
 	auto err = deserialize(length, ctx);
-	if (err != Error::ok) return err;
+	if (err != errc::ok) return err;
 
 	int1 is_negative (0);
 	int4 days (0);
@@ -300,12 +300,12 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 			minutes,
 			seconds
 		);
-		if (err != Error::ok) return err;
+		if (err != errc::ok) return err;
 	}
 	if (length.value >= 12)
 	{
 		err = deserialize(microseconds, ctx);
-		if (err != Error::ok) return err;
+		if (err != errc::ok) return err;
 	}
 
 	output = (is_negative.value ? -1 : 1) * (
@@ -315,7 +315,7 @@ inline boost::mysql::Error boost::mysql::detail::deserialize(
 		 std::chrono::seconds(seconds.value) +
 		 std::chrono::microseconds(microseconds.value)
 	);
-	return Error::ok;
+	return errc::ok;
 }
 
 // mysql::value

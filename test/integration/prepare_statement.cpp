@@ -10,7 +10,7 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::Error;
+using boost::mysql::errc;
 using boost::mysql::tcp_prepared_statement;
 using boost::mysql::tcp_connection;
 
@@ -39,10 +39,10 @@ TEST_P(PrepareStatementTest, OkWithParams)
 	EXPECT_EQ(stmt.value.num_params(), 2);
 }
 
-TEST_P(PrepareStatementTest, Error)
+TEST_P(PrepareStatementTest, errc)
 {
 	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
-	stmt.validate_error(Error::no_such_table, {"table", "doesn't exist", "bad_table"});
+	stmt.validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
 	EXPECT_FALSE(stmt.value.valid());
 }
 
