@@ -1,6 +1,11 @@
 Name change
-	Refactor file structucture for serialization and tests
-	Deserialize common should be in namespace mysql::test, not in detail
+	serialization_test_common
+		Should be in unit/
+		Should not be header only
+		Should not require including all messages
+		Should have things in namespace test, not detail
+	Split serialization tests into chunks following file structure
+	Try to make string_fixed just an array of chars instead of a value_holder
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

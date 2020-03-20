@@ -3,6 +3,7 @@
 
 #include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 #include "boost/mysql/detail/protocol/binary_deserialization.hpp"
+#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 
 namespace boost {
 namespace mysql {

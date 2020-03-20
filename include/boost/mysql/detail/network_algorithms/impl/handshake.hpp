@@ -1,10 +1,10 @@
 #ifndef MYSQL_ASIO_IMPL_HANDSHAKE_IPP
 #define MYSQL_ASIO_IMPL_HANDSHAKE_IPP
 
-#include "boost/mysql/detail/protocol/capabilities.hpp"
-#include "boost/mysql/detail/auth/mysql_native_password.hpp"
-#include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/network_algorithms/common.hpp"
+#include "boost/mysql/detail/auth/mysql_native_password.hpp"
+#include "boost/mysql/detail/protocol/capabilities.hpp"
+#include "boost/mysql/detail/protocol/handshake_messages.hpp"
 #include <boost/asio/yield.hpp>
 
 namespace boost {

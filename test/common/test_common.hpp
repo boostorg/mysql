@@ -3,6 +3,7 @@
 
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/row.hpp"
+#include "boost/mysql/error.hpp"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -87,7 +88,7 @@ inline void validate_string_contains(std::string value, const std::vector<std::s
 	}
 }
 
-inline void validate_error_info(const mysql::error_info& value, const std::vector<std::string>& to_check)
+inline void validate_error_info(const boost::mysql::error_info& value, const std::vector<std::string>& to_check)
 {
 	validate_string_contains(value.message(), to_check);
 }

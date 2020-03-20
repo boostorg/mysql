@@ -6,7 +6,7 @@
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/metadata.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
-#include "boost/mysql/detail/protocol/messages.hpp"
+#include "boost/mysql/detail/protocol/common_messages.hpp"
 
 namespace boost {
 namespace mysql {

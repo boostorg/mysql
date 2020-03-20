@@ -3,6 +3,7 @@
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 
 template <typename StreamType>
 void boost::mysql::detail::close_statement(

@@ -1,14 +1,17 @@
 #ifndef TEST_SERIALIZATION_TEST_COMMON_HPP_
 #define TEST_SERIALIZATION_TEST_COMMON_HPP_
 
-#include "boost/mysql/detail/protocol/messages.hpp"
+#include "boost/mysql/detail/protocol/serialization.hpp"
+#include "boost/mysql/detail/protocol/common_messages.hpp"
+#include "boost/mysql/detail/protocol/handshake_messages.hpp"
+#include "boost/mysql/detail/protocol/query_messages.hpp"
+#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
+#include "boost/mysql/value.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <any>
 #include <boost/type_index.hpp>
-#include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/value.hpp"
 #include "test_common.hpp"
 
 namespace boost {

@@ -6,8 +6,6 @@
  */
 
 #include "serialization_test_common.hpp"
-#include "boost/mysql/detail/protocol/messages.hpp"
-#include "boost/mysql/detail/protocol/binary_serialization.hpp"
 #include "test_common.hpp"
 #include <forward_list>
 #include <array>

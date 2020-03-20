@@ -3,6 +3,7 @@
 
 #include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
+#include "boost/mysql/detail/protocol/query_messages.hpp"
 
 template <typename StreamType>
 void boost::mysql::detail::execute_query(

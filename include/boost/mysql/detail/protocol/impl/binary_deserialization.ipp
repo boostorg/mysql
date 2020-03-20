@@ -2,6 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP_
 
 #include <variant>
+#include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
 #include "boost/mysql/detail/aux/tmp.hpp"
 

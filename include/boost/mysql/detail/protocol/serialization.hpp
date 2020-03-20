@@ -2,14 +2,14 @@
 #define MYSQL_ASIO_IMPL_SERIALIZATION_HPP
 
 #include <boost/endian/conversion.hpp>
-#include <boost/endian/buffers.hpp>
 #include <type_traits>
 #include <algorithm>
-#include <variant>
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/detail/protocol/serialization_context.hpp"
 #include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/aux/value_holder.hpp"
+#include "boost/mysql/detail/aux/get_struct_fields.hpp"
+#include "boost/mysql/detail/aux/bytestring.hpp"
+#include "boost/mysql/value.hpp"
 #include "boost/mysql/error.hpp"
 
 namespace boost {
@@ -26,34 +26,34 @@ namespace detail {
 
 // Fixed-size integers
 template <typename T>
-struct is_fixed_size
+struct is_fixed_size_int
 {
 	static constexpr bool value =
 		std::is_integral<get_value_type_t<T>>::value &&
 		std::is_base_of<value_holder<get_value_type_t<T>>, T>::value;
 };
 
-template <> struct is_fixed_size<int_lenenc> : std::false_type {};
+template <> struct is_fixed_size_int<int_lenenc> : std::false_type {};
 
-template <typename T> constexpr bool is_fixed_size_v = is_fixed_size<T>::value;
+template <typename T> constexpr bool is_fixed_size_v = is_fixed_size_int<T>::value;
 
 template <typename T>
-struct get_fixed_size
+struct get_int_size
 {
 	static_assert(is_fixed_size_v<T>);
 	static constexpr std::size_t value = sizeof(T::value);
 };
 
-template <> struct get_fixed_size<int3> { static constexpr std::size_t value = 3; };
-template <> struct get_fixed_size<int6> { static constexpr std::size_t value = 6; };
+template <> struct get_int_size<int3> { static constexpr std::size_t value = 3; };
+template <> struct get_int_size<int6> { static constexpr std::size_t value = 6; };
 
 template <typename T>
-std::enable_if_t<is_fixed_size<T>::value, errc>
+std::enable_if_t<is_fixed_size_int<T>::value, errc>
 deserialize(T& output, deserialization_context& ctx) noexcept
 {
 	static_assert(std::is_standard_layout_v<decltype(T::value)>);
 
-	constexpr auto size = get_fixed_size<T>::value;
+	constexpr auto size = get_int_size<T>::value;
 	if (!ctx.enough_size(size))
 	{
 		return errc::incomplete_message;
@@ -72,14 +72,14 @@ std::enable_if_t<is_fixed_size_v<T>>
 serialize(T input, serialization_context& ctx) noexcept
 {
 	boost::endian::native_to_little_inplace(input);
-	ctx.write(&input.value, get_fixed_size<T>::value);
+	ctx.write(&input.value, get_int_size<T>::value);
 }
 
 template <typename T>
 constexpr std::enable_if_t<is_fixed_size_v<T>, std::size_t>
 get_size(T, const serialization_context&) noexcept
 {
-	return get_fixed_size<T>::value;
+	return get_int_size<T>::value;
 }
 
 // int_lenenc
@@ -177,22 +177,70 @@ void serialize(T input, serialization_context& ctx) noexcept
 template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
 std::size_t get_size(T, const serialization_context&) noexcept
 {
-	return get_fixed_size<value_holder<std::underlying_type_t<T>>>::value;
+	return get_int_size<value_holder<std::underlying_type_t<T>>>::value;
 }
 
-
-// Structs. To allow a limited way of reflection, structs should
-// specialize get_struct_fields with a tuple of pointers to members,
-// thus defining which fields should be (de)serialized in the struct
-// and in which order
-struct not_a_struct_with_fields {}; // Tag indicating a type is not a struct with fields
+// Floating points
+static_assert(std::numeric_limits<float>::is_iec559);
+static_assert(std::numeric_limits<double>::is_iec559);
 
 template <typename T>
-struct get_struct_fields
+std::enable_if_t<std::is_floating_point_v<T>, errc>
+deserialize(T& output, deserialization_context& ctx) noexcept
 {
-	static constexpr not_a_struct_with_fields value {};
-};
+	// Size check
+	if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
 
+	// Endianness conversion
+	// Boost.Endian support for floats start at 1.71. TODO: maybe update requirements and CI
+#if BOOST_ENDIAN_BIG_BYTE
+	char buf [sizeof(T)];
+	std::memcpy(buf, ctx.first(), sizeof(T));
+	std::reverse(buf, buf + sizeof(T));
+	std::memcpy(&output, buf, sizeof(T));
+#else
+	std::memcpy(&output, ctx.first(), sizeof(T));
+#endif
+	ctx.advance(sizeof(T));
+	return errc::ok;
+}
+
+template <typename T>
+std::enable_if_t<std::is_floating_point_v<T>>
+serialize(T input, serialization_context& ctx) noexcept
+{
+	// Endianness conversion
+#if BOOST_ENDIAN_BIG_BYTE
+	char buf [sizeof(T)];
+	std::memcpy(buf, &input, sizeof(T));
+	std::reverse(buf, buf + sizeof(T));
+	ctx.write(buf, sizeof(T));
+#else
+	ctx.write(&input, sizeof(T));
+#endif
+}
+
+template <typename T>
+std::enable_if_t<std::is_floating_point_v<T>, std::size_t>
+get_size(T, const serialization_context&) noexcept
+{
+	return sizeof(T);
+}
+
+// Dates and times
+inline std::size_t get_size(const date& input, const serialization_context& ctx) noexcept;
+inline void serialize(const date& input, serialization_context& ctx) noexcept;
+inline errc deserialize(date& output, deserialization_context& ctx) noexcept;
+
+inline std::size_t get_size(const datetime& input, const serialization_context& ctx) noexcept;
+inline void serialize(const datetime& input, serialization_context& ctx) noexcept;
+inline errc deserialize(datetime& output, deserialization_context& ctx) noexcept;
+
+inline std::size_t get_size(const time& input, const serialization_context& ctx) noexcept;
+inline void serialize(const time& input, serialization_context& ctx) noexcept;
+inline errc deserialize(time& output, deserialization_context& ctx) noexcept;
+
+// Structs and commands (messages)
 template <typename T>
 struct is_struct_with_fields
 {
@@ -308,9 +356,39 @@ get_size(const T& input, const serialization_context& ctx) noexcept
 	return res;
 }
 
-// Helper to write custom struct (de)serialize()
+// Helper to serialize top-level messages
+template <typename Serializable, typename Allocator>
+void serialize_message(
+	const Serializable& input,
+	capabilities caps,
+	basic_bytestring<Allocator>& buffer
+);
+
+template <typename Deserializable>
+error_code deserialize_message(
+	Deserializable& output,
+	deserialization_context& ctx
+);
+
+
+
+
+// Dummy type to indicate no (de)serialization is required
+struct dummy_serializable
+{
+	explicit dummy_serializable(...) {} // Make it constructible from anything
+};
+inline std::size_t get_size(dummy_serializable, const serialization_context&) noexcept { return 0; }
+inline void serialize(dummy_serializable, serialization_context&) noexcept {}
+inline errc deserialize(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
+
+
+// Helpers for (de) serializing a set of fields
 template <typename FirstType>
-errc deserialize_fields(deserialization_context& ctx, FirstType& field) noexcept { return deserialize(field, ctx); }
+errc deserialize_fields(deserialization_context& ctx, FirstType& field) noexcept
+{
+	return deserialize(field, ctx);
+}
 
 template <typename FirstType, typename... Types>
 errc deserialize_fields(deserialization_context& ctx, FirstType& field, Types&... fields_tail) noexcept
@@ -324,7 +402,10 @@ errc deserialize_fields(deserialization_context& ctx, FirstType& field, Types&..
 }
 
 template <typename FirstType>
-void serialize_fields(serialization_context& ctx, const FirstType& field) noexcept { serialize(field, ctx); }
+void serialize_fields(serialization_context& ctx, const FirstType& field) noexcept
+{
+	serialize(field, ctx);
+}
 
 template <typename FirstType, typename... Types>
 void serialize_fields(serialization_context& ctx, const FirstType& field, const Types&... fields_tail)
@@ -333,14 +414,9 @@ void serialize_fields(serialization_context& ctx, const FirstType& field, const 
 	serialize_fields(ctx, fields_tail...);
 }
 
-// Dummy type to indicate no (de)serialization is required
-struct dummy_serializable
-{
-	explicit dummy_serializable(...) {} // Make it constructible from anything
-};
-inline std::size_t get_size(dummy_serializable, const serialization_context&) noexcept { return 0; }
-inline void serialize(dummy_serializable, serialization_context&) noexcept {}
-inline errc deserialize(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
+inline std::pair<error_code, std::uint8_t> deserialize_message_type(
+	deserialization_context& ctx
+);
 
 } // detail
 } // mysql

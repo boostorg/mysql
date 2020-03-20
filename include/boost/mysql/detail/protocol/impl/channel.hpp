@@ -5,7 +5,7 @@
 #include <boost/asio/write.hpp>
 #include <boost/beast/core/async_base.hpp>
 #include <cassert>
-#include "boost/mysql/detail/protocol/messages.hpp"
+#include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include <boost/asio/yield.hpp>
 

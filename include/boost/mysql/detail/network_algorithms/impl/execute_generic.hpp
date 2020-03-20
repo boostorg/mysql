@@ -1,8 +1,6 @@
 #ifndef INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_IPP_
 #define INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_IPP_
 
-#include "boost/mysql/detail/protocol/messages.hpp"
-#include "boost/mysql/detail/protocol/serialization.hpp"
 #include <optional>
 #include <boost/asio/yield.hpp>
 
