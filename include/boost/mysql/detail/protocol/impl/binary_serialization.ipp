@@ -2,6 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_SERIALIZATION_IPP_
 
 #include <type_traits>
+#include "boost/mysql/detail/protocol/float_serialization.hpp"
 
 namespace boost {
 namespace mysql {
@@ -18,8 +19,6 @@ template <> struct get_serializable_type<std::uint32_t> { using type = int4; };
 template <> struct get_serializable_type<std::int32_t> { using type = int4_signed; };
 template <> struct get_serializable_type<std::uint64_t> { using type = int8; };
 template <> struct get_serializable_type<std::int64_t> { using type = int8_signed; };
-template <> struct get_serializable_type<float> { using type = value_holder<float>; };
-template <> struct get_serializable_type<double> { using type = value_holder<double>; };
 template <> struct get_serializable_type<std::string_view> { using type = string_lenenc; };
 template <> struct get_serializable_type<std::nullptr_t> { using type = dummy_serializable; };
 

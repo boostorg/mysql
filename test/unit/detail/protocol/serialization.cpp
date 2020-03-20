@@ -125,17 +125,17 @@ INSTANTIATE_TEST_SUITE_P(Enums, FullSerializationTest, ::testing::Values(
 
 // Other binary values
 INSTANTIATE_TEST_SUITE_P(Float, FullSerializationTest, ::testing::Values(
-	SerializeParams(value_holder<float>(-4.2f), {0x66, 0x66, 0x86, 0xc0}, "fractional_negative"),
-	SerializeParams(value_holder<float>( 4.2f), {0x66, 0x66, 0x86, 0x40}, "fractional_positive"),
-	SerializeParams(value_holder<float>(3.14e20f), {0x01, 0x2d, 0x88, 0x61}, "positive_exp_positive_fractional"),
-	SerializeParams(value_holder<float>(0.0f), {0x00, 0x00, 0x00, 0x00}, "zero")
+	SerializeParams(-4.2f,    {0x66, 0x66, 0x86, 0xc0}, "fractional_negative"),
+	SerializeParams(4.2f,     {0x66, 0x66, 0x86, 0x40}, "fractional_positive"),
+	SerializeParams(3.14e20f, {0x01, 0x2d, 0x88, 0x61}, "positive_exp_positive_fractional"),
+	SerializeParams(0.0f,     {0x00, 0x00, 0x00, 0x00}, "zero")
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Double, FullSerializationTest, ::testing::Values(
-	SerializeParams(value_holder<double>(-4.2), {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0xc0}, "fractional_negative"),
-	SerializeParams(value_holder<double>( 4.2), {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0x40}, "fractional_positive"),
-	SerializeParams(value_holder<double>(3.14e200), {0xce, 0x46, 0x3c, 0x76, 0x9c, 0x68, 0x90, 0x69}, "positive_exp_positive_fractional"),
-	SerializeParams(value_holder<double>(0.0), {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, "zero")
+	SerializeParams(-4.2,     {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0xc0}, "fractional_negative"),
+	SerializeParams(4.2,      {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0x40}, "fractional_positive"),
+	SerializeParams(3.14e200, {0xce, 0x46, 0x3c, 0x76, 0x9c, 0x68, 0x90, 0x69}, "positive_exp_positive_fractional"),
+	SerializeParams(0.0,      {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, "zero")
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(Date, FullSerializationTest, ::testing::Values(

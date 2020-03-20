@@ -24,7 +24,7 @@ namespace detail {
  *  std::size_t get_size(const T& input, const SerializationContext&) noexcept
  */
 
-// Fixed-size types
+// Fixed-size integers
 template <typename T>
 struct is_fixed_size
 {
@@ -34,7 +34,6 @@ struct is_fixed_size
 };
 
 template <> struct is_fixed_size<int_lenenc> : std::false_type {};
-template <std::size_t N> struct is_fixed_size<string_fixed<N>>: std::true_type {};
 
 template <typename T> constexpr bool is_fixed_size_v = is_fixed_size<T>::value;
 
@@ -47,14 +46,6 @@ struct get_fixed_size
 
 template <> struct get_fixed_size<int3> { static constexpr std::size_t value = 3; };
 template <> struct get_fixed_size<int6> { static constexpr std::size_t value = 6; };
-template <std::size_t N> struct get_fixed_size<string_fixed<N>> { static constexpr std::size_t value = N; };
-
-template <typename T> void little_to_native_inplace(value_holder<T>& value) noexcept { boost::endian::little_to_native_inplace(value.value); }
-template <std::size_t size> void little_to_native_inplace(string_fixed<size>&) noexcept {}
-
-template <typename T> void native_to_little_inplace(value_holder<T>& value) noexcept { boost::endian::native_to_little_inplace(value.value); }
-template <std::size_t size> void native_to_little_inplace(string_fixed<size>&) noexcept {}
-
 
 template <typename T>
 std::enable_if_t<is_fixed_size<T>::value, errc>
@@ -70,7 +61,7 @@ deserialize(T& output, deserialization_context& ctx) noexcept
 
 	memset(&output.value, 0, sizeof(output.value));
 	memcpy(&output.value, ctx.first(), size);
-	little_to_native_inplace(output);
+	boost::endian::little_to_native_inplace(output);
 	ctx.advance(size);
 
 	return errc::ok;
@@ -80,7 +71,7 @@ template <typename T>
 std::enable_if_t<is_fixed_size_v<T>>
 serialize(T input, serialization_context& ctx) noexcept
 {
-	native_to_little_inplace(input);
+	boost::endian::native_to_little_inplace(input);
 	ctx.write(&input.value, get_fixed_size<T>::value);
 }
 
@@ -100,6 +91,31 @@ inline std::size_t get_size(int_lenenc input, const serialization_context&) noex
 inline std::string_view get_string(const std::uint8_t* from, std::size_t size)
 {
 	return std::string_view (reinterpret_cast<const char*>(from), size);
+}
+
+// string_fixed
+template <std::size_t N>
+errc deserialize(string_fixed<N>& output, deserialization_context& ctx) noexcept
+{
+	if (!ctx.enough_size(N))
+	{
+		return errc::incomplete_message;
+	}
+	memcpy(&output.value, ctx.first(), N);
+	ctx.advance(N);
+	return errc::ok;
+}
+
+template <std::size_t N>
+void serialize(const string_fixed<N>& input, serialization_context& ctx) noexcept
+{
+	ctx.write(input.value.data(), N);
+}
+
+template <std::size_t N>
+constexpr std::size_t get_size(const string_fixed<N>&, const serialization_context&) noexcept
+{
+	return N;
 }
 
 // string_null
@@ -164,49 +180,6 @@ std::size_t get_size(T, const serialization_context&) noexcept
 	return get_fixed_size<value_holder<std::underlying_type_t<T>>>::value;
 }
 
-// Floating points
-static_assert(std::numeric_limits<float>::is_iec559);
-static_assert(std::numeric_limits<double>::is_iec559);
-
-template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-errc deserialize(value_holder<T>& output, deserialization_context& ctx) noexcept
-{
-	// Size check
-	if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
-
-	// Endianness conversion
-	// Boost.Endian support for floats start at 1.71. TODO: maybe update requirements and CI
-#if BOOST_ENDIAN_BIG_BYTE
-	char buf [sizeof(T)];
-	std::memcpy(buf, ctx.first(), sizeof(T));
-	std::reverse(buf, buf + sizeof(T));
-	std::memcpy(&output.value, buf, sizeof(T));
-#else
-	std::memcpy(&output.value, ctx.first(), sizeof(T));
-#endif
-	ctx.advance(sizeof(T));
-	return errc::ok;
-}
-
-template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-void serialize(const value_holder<T>& input, serialization_context& ctx) noexcept
-{
-	// Endianness conversion
-#if BOOST_ENDIAN_BIG_BYTE
-	char buf [sizeof(T)];
-	std::memcpy(buf, &input.value, sizeof(T));
-	std::reverse(buf, buf + sizeof(T));
-	ctx.write(buf, sizeof(T));
-#else
-	ctx.write(&input.value, sizeof(T));
-#endif
-}
-
-template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
-std::size_t get_size(const value_holder<T>&, const serialization_context&) noexcept
-{
-	return sizeof(T);
-}
 
 // Structs. To allow a limited way of reflection, structs should
 // specialize get_struct_fields with a tuple of pointers to members,
@@ -363,7 +336,7 @@ void serialize_fields(serialization_context& ctx, const FirstType& field, const 
 // Dummy type to indicate no (de)serialization is required
 struct dummy_serializable
 {
-	dummy_serializable(...) {} // Make it constructible from anything
+	explicit dummy_serializable(...) {} // Make it constructible from anything
 };
 inline std::size_t get_size(dummy_serializable, const serialization_context&) noexcept { return 0; }
 inline void serialize(dummy_serializable, serialization_context&) noexcept {}

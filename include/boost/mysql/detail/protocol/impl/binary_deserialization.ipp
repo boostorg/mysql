@@ -19,8 +19,8 @@ using binary_protocol_value = std::variant<
 	int4_signed,
 	int8_signed,
 	string_lenenc,
-	value_holder<float>,
-	value_holder<double>,
+	float,
+	double,
 	date,
 	datetime,
 	time
@@ -52,9 +52,9 @@ inline binary_protocol_value get_deserializable_type(
     case protocol_field_type::longlong:
     	return get_int_deserializable_type<int8_signed, int8>(meta);
     case protocol_field_type::float_:
-    	return value_holder<float>();
+    	return float();
     case protocol_field_type::double_:
-    	return value_holder<double>();
+    	return double();
     case protocol_field_type::timestamp:
     case protocol_field_type::datetime:
     	return datetime();
@@ -105,6 +105,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
 			else if constexpr (is_one_of_v<type, int1, int2>)
 			{
 				// regular promotion would make this int32_t. Force it be uint32_t
+				// TODO: check here
 				output = std::uint32_t(typed_protocol_value.value);
 			}
 			else
