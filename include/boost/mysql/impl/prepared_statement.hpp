@@ -3,7 +3,7 @@
 
 #include "boost/mysql/detail/network_algorithms/execute_statement.hpp"
 #include "boost/mysql/detail/network_algorithms/close_statement.hpp"
-#include "boost/mysql/detail/aux/stringize.hpp"
+#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include <boost/beast/core/bind_handler.hpp>
 
 template <typename Stream>

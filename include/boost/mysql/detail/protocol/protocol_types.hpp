@@ -1,7 +1,7 @@
 #ifndef MYSQL_ASIO_IMPL_BASIC_TYPES_HPP
 #define MYSQL_ASIO_IMPL_BASIC_TYPES_HPP
 
-#include "boost/mysql/detail/aux/value_holder.hpp"
+#include "boost/mysql/detail/auxiliar/value_holder.hpp"
 #include <cstdint>
 #include <string_view>
 #include <array>

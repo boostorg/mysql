@@ -1,7 +1,7 @@
 #ifndef MYSQL_ASIO_IMPL_VALUE_HPP
 #define MYSQL_ASIO_IMPL_VALUE_HPP
 
-#include "boost/mysql/detail/aux/container_equals.hpp"
+#include "boost/mysql/detail/auxiliar/container_equals.hpp"
 
 namespace boost {
 namespace mysql {

@@ -2,7 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP_
 
 #include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/aux/get_struct_fields.hpp"
+#include "boost/mysql/detail/auxiliar/get_struct_fields.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/collation.hpp"
 #include "boost/mysql/error.hpp"

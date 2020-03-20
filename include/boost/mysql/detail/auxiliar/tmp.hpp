@@ -1,5 +1,5 @@
-#ifndef INCLUDE_BOOST_MYSQL_DETAIL_AUX_TMP_HPP_
-#define INCLUDE_BOOST_MYSQL_DETAIL_AUX_TMP_HPP_
+#ifndef INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_TMP_HPP_
+#define INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_TMP_HPP_
 
 #include <type_traits>
 
@@ -28,4 +28,4 @@ constexpr bool is_one_of_v = is_one_of<T, Types...>::value;
 } // boost
 
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUX_TMP_HPP_ */
+#endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_TMP_HPP_ */

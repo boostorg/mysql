@@ -1,8 +1,8 @@
 #ifndef MYSQL_ASIO_ROW_HPP
 #define MYSQL_ASIO_ROW_HPP
 
-#include "boost/mysql/detail/aux/bytestr.hpp"
-#include "boost/mysql/detail/aux/container_equals.hpp"
+#include "boost/mysql/detail/auxiliar/bytestring.hpp"
+#include "boost/mysql/detail/auxiliar/container_equals.hpp"
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/metadata.hpp"
 #include <algorithm>

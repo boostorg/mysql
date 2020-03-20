@@ -7,8 +7,8 @@
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/detail/protocol/serialization_context.hpp"
 #include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/aux/get_struct_fields.hpp"
-#include "boost/mysql/detail/aux/bytestr.hpp"
+#include "boost/mysql/detail/auxiliar/get_struct_fields.hpp"
+#include "boost/mysql/detail/auxiliar/bytestring.hpp"
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/error.hpp"
 

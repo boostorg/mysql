@@ -4,7 +4,7 @@
 #include <variant>
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
-#include "boost/mysql/detail/aux/tmp.hpp"
+#include "boost/mysql/detail/auxiliar/tmp.hpp"
 
 namespace boost {
 namespace mysql {
