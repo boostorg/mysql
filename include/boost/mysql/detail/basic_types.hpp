@@ -11,9 +11,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-using ReadIterator = const std::uint8_t*;
-using WriteIterator = std::uint8_t*;
-
 template <typename T>
 struct value_holder
 {

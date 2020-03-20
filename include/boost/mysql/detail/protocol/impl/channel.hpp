@@ -114,7 +114,7 @@ void boost::mysql::detail::channel<AsyncStream>::write(
 {
 	std::size_t transferred_size = 0;
 	auto bufsize = buffer.size();
-	auto first = static_cast<ReadIterator>(buffer.data());
+	auto first = static_cast<const std::uint8_t*>(buffer.data());
 
 	// If the packet is empty, we should still write the header, saying
 	// we are sending an empty packet.

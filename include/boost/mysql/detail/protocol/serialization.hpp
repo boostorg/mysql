@@ -3,67 +3,18 @@
 
 #include <boost/endian/conversion.hpp>
 #include <boost/endian/buffers.hpp>
-#include <boost/asio/buffer.hpp>
-#include <vector>
 #include <type_traits>
-#include <cassert>
 #include <algorithm>
 #include <variant>
 #include "boost/mysql/detail/basic_types.hpp"
-#include "boost/mysql/detail/protocol/capabilities.hpp"
+#include "boost/mysql/detail/protocol/serialization_context.hpp"
+#include "boost/mysql/detail/protocol/deserialization_context.hpp"
 #include "boost/mysql/error.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class deserialization_context
-{
-	ReadIterator first_;
-	ReadIterator last_;
-	capabilities capabilities_;
-public:
-	deserialization_context(ReadIterator first, ReadIterator last, capabilities caps) noexcept:
-		first_(first), last_(last), capabilities_(caps) { assert(last_ >= first_); };
-	deserialization_context(boost::asio::const_buffer buff, capabilities caps) noexcept:
-		deserialization_context(
-				static_cast<const std::uint8_t*>(buff.data()),
-				static_cast<const std::uint8_t*>(buff.data()) + buff.size(),
-				caps
-		) {};
-	ReadIterator first() const noexcept { return first_; }
-	ReadIterator last() const noexcept { return last_; }
-	void set_first(ReadIterator new_first) noexcept { first_ = new_first; assert(last_ >= first_); }
-	void advance(std::size_t sz) noexcept { first_ += sz; assert(last_ >= first_); }
-	void rewind(std::size_t sz) noexcept { first_ -= sz; }
-	std::size_t size() const noexcept { return last_ - first_; }
-	bool empty() const noexcept { return last_ == first_; }
-	bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
-	capabilities get_capabilities() const noexcept { return capabilities_; }
-	errc copy(void* to, std::size_t sz) noexcept
-	{
-		if (!enough_size(sz)) return errc::incomplete_message;
-		memcpy(to, first_, sz);
-		advance(sz);
-		return errc::ok;
-	}
-};
-
-class serialization_context
-{
-	WriteIterator first_;
-	capabilities capabilities_;
-public:
-	serialization_context(capabilities caps, WriteIterator first = nullptr) noexcept:
-		first_(first), capabilities_(caps) {};
-	WriteIterator first() const noexcept { return first_; }
-	void set_first(WriteIterator new_first) noexcept { first_ = new_first; }
-	void set_first(boost::asio::mutable_buffer buff) noexcept { first_ = static_cast<std::uint8_t*>(buff.data()); }
-	void advance(std::size_t size) noexcept { first_ += size; }
-	capabilities get_capabilities() const noexcept { return capabilities_; }
-	void write(const void* buffer, std::size_t size) noexcept { memcpy(first_, buffer, size); advance(size); }
-	void write(std::uint8_t elm) noexcept { *first_ = elm; ++first_; }
-};
 
 /**
  * Base forms:
@@ -131,7 +82,7 @@ template <std::size_t size> void native_to_little_inplace(string_fixed<size>&) n
 
 
 template <typename T>
-std::enable_if_t<is_fixed_size_v<T>, errc>
+std::enable_if_t<is_fixed_size<T>::value, errc>
 deserialize(T& output, deserialization_context& ctx) noexcept
 {
 	static_assert(std::is_standard_layout_v<decltype(T::value)>);
@@ -231,7 +182,7 @@ inline std::size_t get_size(int_lenenc input, const serialization_context&) noex
 }
 
 // Helper for strings
-inline std::string_view get_string(ReadIterator from, std::size_t size)
+inline std::string_view get_string(const std::uint8_t* from, std::size_t size)
 {
 	return std::string_view (reinterpret_cast<const char*>(from), size);
 }
@@ -239,7 +190,7 @@ inline std::string_view get_string(ReadIterator from, std::size_t size)
 // string_null
 inline errc deserialize(string_null& output, deserialization_context& ctx) noexcept
 {
-	ReadIterator string_end = std::find(ctx.first(), ctx.last(), 0);
+	auto string_end = std::find(ctx.first(), ctx.last(), 0);
 	if (string_end == ctx.last())
 	{
 		return errc::incomplete_message;
@@ -534,6 +485,9 @@ struct dummy_serializable
 inline std::size_t get_size(dummy_serializable, const serialization_context&) noexcept { return 0; }
 inline void serialize(dummy_serializable, serialization_context&) noexcept {}
 inline errc deserialize(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
+
+template <typename T>
+constexpr bool is_fixed_size_fn() { return is_fixed_size<T>::value; }
 
 } // detail
 } // mysql
