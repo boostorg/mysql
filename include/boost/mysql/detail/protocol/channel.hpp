@@ -2,7 +2,7 @@
 #define MYSQL_ASIO_IMPL_CHANNEL_HPP
 
 #include "boost/mysql/error.hpp"
-#include "boost/mysql/detail/aux/bytestring.hpp"
+#include "boost/mysql/detail/aux/bytestr.hpp"
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/async_result.hpp>
