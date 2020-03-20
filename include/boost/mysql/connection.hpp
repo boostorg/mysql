@@ -3,7 +3,7 @@
 
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/network_algorithms/handshake.hpp"
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/prepared_statement.hpp"

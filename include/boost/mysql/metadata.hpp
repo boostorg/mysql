@@ -2,7 +2,7 @@
 #define MYSQL_ASIO_METADATA_HPP
 
 #include "boost/mysql/detail/protocol/messages.hpp"
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/aux/bytestring.hpp"
 #include "boost/mysql/field_type.hpp"
 
 namespace boost {

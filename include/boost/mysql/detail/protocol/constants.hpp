@@ -1,7 +1,7 @@
 #ifndef MYSQL_ASIO_IMPL_CONSTANTS_HPP
 #define MYSQL_ASIO_IMPL_CONSTANTS_HPP
 
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/protocol/protocol_types.hpp"
 
 namespace boost {
 namespace mysql {

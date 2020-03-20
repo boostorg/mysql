@@ -1,10 +1,10 @@
 #ifndef MYSQL_ASIO_ROW_HPP
 #define MYSQL_ASIO_ROW_HPP
 
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/aux/bytestring.hpp"
+#include "boost/mysql/detail/aux/container_equals.hpp"
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/metadata.hpp"
-#include "boost/mysql/detail/aux/container_equals.hpp"
 #include <algorithm>
 
 namespace boost {

@@ -2,8 +2,9 @@
 #define MYSQL_ASIO_IMPL_MESSAGES_HPP
 
 #include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
+#include "boost/mysql/detail/aux/bytestring.hpp"
 #include "boost/mysql/collation.hpp"
 #include "boost/mysql/value.hpp"
 #include <string>

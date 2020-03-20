@@ -5,6 +5,7 @@
 #include "boost/mysql/metadata.hpp"
 #include "boost/mysql/detail/protocol/messages.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
+#include "boost/mysql/detail/aux/bytestring.hpp"
 #include "boost/mysql/detail/network_algorithms/common.hpp" // deserialize_row_fn
 #include <boost/asio/ip/tcp.hpp>
 #include <cassert>

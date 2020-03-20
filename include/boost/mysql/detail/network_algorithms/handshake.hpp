@@ -3,7 +3,7 @@
 
 #include <string_view>
 #include "boost/mysql/detail/protocol/channel.hpp"
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/collation.hpp"
 
 namespace boost {

@@ -6,9 +6,10 @@
 #include <type_traits>
 #include <algorithm>
 #include <variant>
-#include "boost/mysql/detail/basic_types.hpp"
+#include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/detail/protocol/serialization_context.hpp"
 #include "boost/mysql/detail/protocol/deserialization_context.hpp"
+#include "boost/mysql/detail/aux/value_holder.hpp"
 #include "boost/mysql/error.hpp"
 
 namespace boost {
@@ -24,39 +25,13 @@ namespace detail {
  */
 
 // Fixed-size types
-struct get_value_type_helper
-{
-    struct no_value_type {};
-
-    template <typename T>
-    static constexpr typename T::value_type get(typename T::value_type*);
-
-    template <typename T>
-    static constexpr no_value_type get(...);
-};
-
-template <typename T>
-struct get_value_type
-{
-    using type = decltype(get_value_type_helper().get<T>(nullptr));
-    using no_value_type = get_value_type_helper::no_value_type;
-};
-
 template <typename T>
 struct is_fixed_size
 {
-private:
-	using value_type = typename get_value_type<T>::type;
-public:
 	static constexpr bool value =
-			std::is_integral_v<value_type> &&
-			std::is_base_of_v<value_holder<value_type>, T>;
+		std::is_integral<get_value_type_t<T>>::value &&
+		std::is_base_of<value_holder<get_value_type_t<T>>, T>::value;
 };
-
-// Serialization of these types relies on this fact
-static_assert(std::numeric_limits<float>::is_iec559);
-static_assert(std::numeric_limits<double>::is_iec559);
-
 
 template <> struct is_fixed_size<int_lenenc> : std::false_type {};
 template <std::size_t N> struct is_fixed_size<string_fixed<N>>: std::true_type {};
@@ -117,69 +92,9 @@ get_size(T, const serialization_context&) noexcept
 }
 
 // int_lenenc
-inline errc deserialize(int_lenenc& output, deserialization_context& ctx) noexcept
-{
-	int1 first_byte;
-	errc err = deserialize(first_byte, ctx);
-	if (err != errc::ok)
-	{
-		return err;
-	}
-
-	if (first_byte.value == 0xFC)
-	{
-		int2 value;
-		err = deserialize(value, ctx);
-		output.value = value.value;
-	}
-	else if (first_byte.value == 0xFD)
-	{
-		int3 value;
-		err = deserialize(value, ctx);
-		output.value = value.value;
-	}
-	else if (first_byte.value == 0xFE)
-	{
-		int8 value;
-		err = deserialize(value, ctx);
-		output.value = value.value;
-	}
-	else
-	{
-		err = errc::ok;
-		output.value = first_byte.value;
-	}
-	return err;
-}
-inline void serialize(int_lenenc input, serialization_context& ctx) noexcept
-{
-	if (input.value < 251)
-	{
-		serialize(int1(static_cast<std::uint8_t>(input.value)), ctx);
-	}
-	else if (input.value < 0x10000)
-	{
-		ctx.write(0xfc);
-		serialize(int2(static_cast<std::uint16_t>(input.value)), ctx);
-	}
-	else if (input.value < 0x1000000)
-	{
-		ctx.write(0xfd);
-		serialize(int3(static_cast<std::uint32_t>(input.value)), ctx);
-	}
-	else
-	{
-		ctx.write(0xfe);
-		serialize(int8(static_cast<std::uint64_t>(input.value)), ctx);
-	}
-}
-inline std::size_t get_size(int_lenenc input, const serialization_context&) noexcept
-{
-	if (input.value < 251) return 1;
-	else if (input.value < 0x10000) return 3;
-	else if (input.value < 0x1000000) return 4;
-	else return 9;
-}
+inline errc deserialize(int_lenenc& output, deserialization_context& ctx) noexcept;
+inline void serialize(int_lenenc input, serialization_context& ctx) noexcept;
+inline std::size_t get_size(int_lenenc input, const serialization_context&) noexcept;
 
 // Helper for strings
 inline std::string_view get_string(const std::uint8_t* from, std::size_t size)
@@ -188,17 +103,7 @@ inline std::string_view get_string(const std::uint8_t* from, std::size_t size)
 }
 
 // string_null
-inline errc deserialize(string_null& output, deserialization_context& ctx) noexcept
-{
-	auto string_end = std::find(ctx.first(), ctx.last(), 0);
-	if (string_end == ctx.last())
-	{
-		return errc::incomplete_message;
-	}
-	output.value = get_string(ctx.first(), string_end-ctx.first());
-	ctx.set_first(string_end + 1); // skip the null terminator
-	return errc::ok;
-}
+inline errc deserialize(string_null& output, deserialization_context& ctx) noexcept;
 inline void serialize(string_null input, serialization_context& ctx) noexcept
 {
 	ctx.write(input.value.data(), input.value.size());
@@ -210,12 +115,7 @@ inline std::size_t get_size(string_null input, const serialization_context&) noe
 }
 
 // string_eof
-inline errc deserialize(string_eof& output, deserialization_context& ctx) noexcept
-{
-	output.value = get_string(ctx.first(), ctx.last()-ctx.first());
-	ctx.set_first(ctx.last());
-	return errc::ok;
-}
+inline errc deserialize(string_eof& output, deserialization_context& ctx) noexcept;
 inline void serialize(string_eof input, serialization_context& ctx) noexcept
 {
 	ctx.write(input.value.data(), input.value.size());
@@ -226,35 +126,15 @@ inline std::size_t get_size(string_eof input, const serialization_context&) noex
 }
 
 // string_lenenc
-inline errc deserialize(string_lenenc& output, deserialization_context& ctx) noexcept
-{
-	int_lenenc length;
-	errc err = deserialize(length, ctx);
-	if (err != errc::ok)
-	{
-		return err;
-	}
-	if (!ctx.enough_size(length.value))
-	{
-		return errc::incomplete_message;
-	}
-
-	output.value = get_string(ctx.first(), length.value);
-	ctx.advance(length.value);
-	return errc::ok;
-}
+inline errc deserialize(string_lenenc& output, deserialization_context& ctx) noexcept;
 inline void serialize(string_lenenc input, serialization_context& ctx) noexcept
 {
-	int_lenenc length;
-	length.value = input.value.size();
-	serialize(length, ctx);
+	serialize(int_lenenc(input.value.size()), ctx);
 	ctx.write(input.value.data(), input.value.size());
 }
 inline std::size_t get_size(string_lenenc input, const serialization_context& ctx) noexcept
 {
-	int_lenenc length;
-	length.value = input.value.size();
-	return get_size(length, ctx) + input.value.size();
+	return get_size(int_lenenc(input.value.size()), ctx) + input.value.size();
 }
 
 // Enums
@@ -285,6 +165,9 @@ std::size_t get_size(T, const serialization_context&) noexcept
 }
 
 // Floating points
+static_assert(std::numeric_limits<float>::is_iec559);
+static_assert(std::numeric_limits<double>::is_iec559);
+
 template <typename T, typename=std::enable_if_t<std::is_floating_point_v<T>>>
 errc deserialize(value_holder<T>& output, deserialization_context& ctx) noexcept
 {
@@ -486,11 +369,10 @@ inline std::size_t get_size(dummy_serializable, const serialization_context&) no
 inline void serialize(dummy_serializable, serialization_context&) noexcept {}
 inline errc deserialize(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
 
-template <typename T>
-constexpr bool is_fixed_size_fn() { return is_fixed_size<T>::value; }
-
 } // detail
 } // mysql
 } // boost
+
+#include "boost/mysql/detail/protocol/impl/serialization.ipp"
 
 #endif
