@@ -1,11 +1,9 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP_
 
-#include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/auxiliar/get_struct_fields.hpp"
+#include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/collation.hpp"
-#include "boost/mysql/error.hpp"
 #include <tuple>
 
 namespace boost {
@@ -103,8 +101,18 @@ struct get_struct_fields<column_definition_packet>
 	);
 };
 
-inline errc deserialize(ok_packet& output, deserialization_context& ctx) noexcept;
-inline errc deserialize(column_definition_packet& output, deserialization_context& ctx) noexcept;
+template <>
+struct serialization_traits<ok_packet, struct_tag> : noop_serialization_traits
+{
+	static inline errc deserialize_(ok_packet& output, deserialization_context& ctx) noexcept;
+};
+
+template <>
+struct serialization_traits<column_definition_packet, struct_tag> : noop_serialization_traits
+{
+	static inline errc deserialize_(column_definition_packet& output, deserialization_context& ctx) noexcept;
+};
+
 inline error_code process_error_packet(deserialization_context& ctx, error_info& info);
 
 } // detail

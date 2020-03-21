@@ -16,345 +16,199 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+struct no_serialization_tag {};
 
-/**
- * Base forms:
- *  errc deserialize(T& output, deserialization_context&) noexcept
- *  void  serialize(const T& input, SerializationContext&) noexcept
- *  std::size_t get_size(const T& input, const SerializationContext&) noexcept
- */
+template <typename T>
+struct get_serialization_tag;
+
+template <typename T, typename Tag=typename get_serialization_tag<T>::type>
+struct serialization_traits;
+
+template <typename T>
+errc deserialize(T& output, deserialization_context& ctx) noexcept
+{
+	return serialization_traits<T>::deserialize_(output, ctx);
+}
+
+template <typename T>
+void serialize(const T& input, serialization_context& ctx) noexcept
+{
+	serialization_traits<T>::serialize_(input, ctx);
+}
+
+template <typename T>
+std::size_t get_size(const T& input, const serialization_context& ctx) noexcept
+{
+	return serialization_traits<T>::get_size_(input, ctx);
+}
 
 // Fixed-size integers
+struct fixed_size_int_tag {};
+
 template <typename T>
-struct is_fixed_size_int
+constexpr bool is_fixed_size_int();
+
+template <typename T>
+struct serialization_traits<T, fixed_size_int_tag>
 {
-	static constexpr bool value =
-		std::is_integral<get_value_type_t<T>>::value &&
-		std::is_base_of<value_holder<get_value_type_t<T>>, T>::value;
+	static errc deserialize_(T& output, deserialization_context& ctx) noexcept;
+	static void serialize_(T input, serialization_context& ctx) noexcept;
+	static constexpr std::size_t get_size_(T, const serialization_context&) noexcept;
 };
-
-template <> struct is_fixed_size_int<int_lenenc> : std::false_type {};
-
-template <typename T> constexpr bool is_fixed_size_v = is_fixed_size_int<T>::value;
-
-template <typename T>
-struct get_int_size
-{
-	static_assert(is_fixed_size_v<T>);
-	static constexpr std::size_t value = sizeof(T::value);
-};
-
-template <> struct get_int_size<int3> { static constexpr std::size_t value = 3; };
-template <> struct get_int_size<int6> { static constexpr std::size_t value = 6; };
-
-template <typename T>
-std::enable_if_t<is_fixed_size_int<T>::value, errc>
-deserialize(T& output, deserialization_context& ctx) noexcept
-{
-	static_assert(std::is_standard_layout_v<decltype(T::value)>);
-
-	constexpr auto size = get_int_size<T>::value;
-	if (!ctx.enough_size(size))
-	{
-		return errc::incomplete_message;
-	}
-
-	memset(&output.value, 0, sizeof(output.value));
-	memcpy(&output.value, ctx.first(), size);
-	boost::endian::little_to_native_inplace(output);
-	ctx.advance(size);
-
-	return errc::ok;
-}
-
-template <typename T>
-std::enable_if_t<is_fixed_size_v<T>>
-serialize(T input, serialization_context& ctx) noexcept
-{
-	boost::endian::native_to_little_inplace(input);
-	ctx.write(&input.value, get_int_size<T>::value);
-}
-
-template <typename T>
-constexpr std::enable_if_t<is_fixed_size_v<T>, std::size_t>
-get_size(T, const serialization_context&) noexcept
-{
-	return get_int_size<T>::value;
-}
 
 // int_lenenc
-inline errc deserialize(int_lenenc& output, deserialization_context& ctx) noexcept;
-inline void serialize(int_lenenc input, serialization_context& ctx) noexcept;
-inline std::size_t get_size(int_lenenc input, const serialization_context&) noexcept;
-
-// Helper for strings
-inline std::string_view get_string(const std::uint8_t* from, std::size_t size)
+template <>
+struct serialization_traits<int_lenenc, no_serialization_tag>
 {
-	return std::string_view (reinterpret_cast<const char*>(from), size);
-}
+	static inline errc deserialize_(int_lenenc& output, deserialization_context& ctx) noexcept;
+	static inline void serialize_(int_lenenc input, serialization_context& ctx) noexcept;
+	static inline std::size_t get_size_(int_lenenc input, const serialization_context&) noexcept;
+};
+
 
 // string_fixed
 template <std::size_t N>
-errc deserialize(string_fixed<N>& output, deserialization_context& ctx) noexcept
+struct serialization_traits<string_fixed<N>, no_serialization_tag>
 {
-	if (!ctx.enough_size(N))
+	static errc deserialize_(string_fixed<N>& output, deserialization_context& ctx) noexcept;
+	static void serialize_(const string_fixed<N>& input, serialization_context& ctx) noexcept
 	{
-		return errc::incomplete_message;
+		ctx.write(input.value.data(), N);
 	}
-	memcpy(&output.value, ctx.first(), N);
-	ctx.advance(N);
-	return errc::ok;
-}
+	static constexpr std::size_t get_size_(const string_fixed<N>&, const serialization_context&) noexcept
+	{
+		return N;
+	}
+};
 
-template <std::size_t N>
-void serialize(const string_fixed<N>& input, serialization_context& ctx) noexcept
-{
-	ctx.write(input.value.data(), N);
-}
-
-template <std::size_t N>
-constexpr std::size_t get_size(const string_fixed<N>&, const serialization_context&) noexcept
-{
-	return N;
-}
 
 // string_null
-inline errc deserialize(string_null& output, deserialization_context& ctx) noexcept;
-inline void serialize(string_null input, serialization_context& ctx) noexcept
+template <>
+struct serialization_traits<string_null, no_serialization_tag>
 {
-	ctx.write(input.value.data(), input.value.size());
-	ctx.write(0); // null terminator
-}
-inline std::size_t get_size(string_null input, const serialization_context&) noexcept
-{
-	return input.value.size() + 1;
-}
+	static inline errc deserialize_(string_null& output, deserialization_context& ctx) noexcept;
+	static inline void serialize_(string_null input, serialization_context& ctx) noexcept
+	{
+		ctx.write(input.value.data(), input.value.size());
+		ctx.write(0); // null terminator
+	}
+	static inline std::size_t get_size_(string_null input, const serialization_context&) noexcept
+	{
+		return input.value.size() + 1;
+	}
+};
 
 // string_eof
-inline errc deserialize(string_eof& output, deserialization_context& ctx) noexcept;
-inline void serialize(string_eof input, serialization_context& ctx) noexcept
+template <>
+struct serialization_traits<string_eof, no_serialization_tag>
 {
-	ctx.write(input.value.data(), input.value.size());
-}
-inline std::size_t get_size(string_eof input, const serialization_context&) noexcept
-{
-	return input.value.size();
-}
+	static inline errc deserialize_(string_eof& output, deserialization_context& ctx) noexcept;
+	static inline void serialize_(string_eof input, serialization_context& ctx) noexcept
+	{
+		ctx.write(input.value.data(), input.value.size());
+	}
+	static inline std::size_t get_size_(string_eof input, const serialization_context&) noexcept
+	{
+		return input.value.size();
+	}
+};
 
 // string_lenenc
-inline errc deserialize(string_lenenc& output, deserialization_context& ctx) noexcept;
-inline void serialize(string_lenenc input, serialization_context& ctx) noexcept
+template <>
+struct serialization_traits<string_lenenc, no_serialization_tag>
 {
-	serialize(int_lenenc(input.value.size()), ctx);
-	ctx.write(input.value.data(), input.value.size());
-}
-inline std::size_t get_size(string_lenenc input, const serialization_context& ctx) noexcept
-{
-	return get_size(int_lenenc(input.value.size()), ctx) + input.value.size();
-}
+	static inline errc deserialize_(string_lenenc& output, deserialization_context& ctx) noexcept;
+	static inline void serialize_(string_lenenc input, serialization_context& ctx) noexcept
+	{
+		serialize(int_lenenc(input.value.size()), ctx);
+		ctx.write(input.value.data(), input.value.size());
+	}
+	static inline std::size_t get_size_(string_lenenc input, const serialization_context& ctx) noexcept
+	{
+		return get_size(int_lenenc(input.value.size()), ctx) + input.value.size();
+	}
+};
 
 // Enums
-template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-errc deserialize(T& output, deserialization_context& ctx) noexcept
+struct enum_tag {};
+
+template <typename T>
+struct serialization_traits<T, enum_tag>
 {
-	value_holder<std::underlying_type_t<T>> value;
-	errc err = deserialize(value, ctx);
-	if (err != errc::ok)
+	using underlying_type = std::underlying_type_t<T>;
+	using serializable_type = value_holder<underlying_type>;
+
+	static errc deserialize_(T& output, deserialization_context& ctx) noexcept;
+	static void serialize_(T input, serialization_context& ctx) noexcept
 	{
-		return err;
+		serialize(serializable_type(static_cast<underlying_type>(input)), ctx);
 	}
-	output = static_cast<T>(value.value);
-	return errc::ok;
-}
-
-template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-void serialize(T input, serialization_context& ctx) noexcept
-{
-	value_holder<std::underlying_type_t<T>> value {static_cast<std::underlying_type_t<T>>(input)};
-	serialize(value, ctx);
-}
-
-template <typename T, typename=std::enable_if_t<std::is_enum_v<T>>>
-std::size_t get_size(T, const serialization_context&) noexcept
-{
-	return get_int_size<value_holder<std::underlying_type_t<T>>>::value;
-}
+	static std::size_t get_size_(T, const serialization_context&) noexcept;
+};
 
 // Floating points
-static_assert(std::numeric_limits<float>::is_iec559);
-static_assert(std::numeric_limits<double>::is_iec559);
+struct floating_point_tag {};
 
 template <typename T>
-std::enable_if_t<std::is_floating_point_v<T>, errc>
-deserialize(T& output, deserialization_context& ctx) noexcept
+struct serialization_traits<T, floating_point_tag>
 {
-	// Size check
-	if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
+	static_assert(std::numeric_limits<T>::is_iec559);
+	static errc deserialize_(T& output, deserialization_context& ctx) noexcept;
+	static void serialize_(T input, serialization_context& ctx) noexcept;
+	static std::size_t get_size_(T, const serialization_context&) noexcept
+	{
+		return sizeof(T);
+	}
+};
 
-	// Endianness conversion
-	// Boost.Endian support for floats start at 1.71. TODO: maybe update requirements and CI
-#if BOOST_ENDIAN_BIG_BYTE
-	char buf [sizeof(T)];
-	std::memcpy(buf, ctx.first(), sizeof(T));
-	std::reverse(buf, buf + sizeof(T));
-	std::memcpy(&output, buf, sizeof(T));
-#else
-	std::memcpy(&output, ctx.first(), sizeof(T));
-#endif
-	ctx.advance(sizeof(T));
-	return errc::ok;
-}
-
-template <typename T>
-std::enable_if_t<std::is_floating_point_v<T>>
-serialize(T input, serialization_context& ctx) noexcept
-{
-	// Endianness conversion
-#if BOOST_ENDIAN_BIG_BYTE
-	char buf [sizeof(T)];
-	std::memcpy(buf, &input, sizeof(T));
-	std::reverse(buf, buf + sizeof(T));
-	ctx.write(buf, sizeof(T));
-#else
-	ctx.write(&input, sizeof(T));
-#endif
-}
-
-template <typename T>
-std::enable_if_t<std::is_floating_point_v<T>, std::size_t>
-get_size(T, const serialization_context&) noexcept
-{
-	return sizeof(T);
-}
 
 // Dates and times
-inline std::size_t get_size(const date& input, const serialization_context& ctx) noexcept;
-inline void serialize(const date& input, serialization_context& ctx) noexcept;
-inline errc deserialize(date& output, deserialization_context& ctx) noexcept;
+template <>
+struct serialization_traits<date, no_serialization_tag>
+{
+	static inline std::size_t get_size_(const date& input, const serialization_context& ctx) noexcept;
+	static inline void serialize_(const date& input, serialization_context& ctx) noexcept;
+	static inline errc deserialize_(date& output, deserialization_context& ctx) noexcept;
+};
 
-inline std::size_t get_size(const datetime& input, const serialization_context& ctx) noexcept;
-inline void serialize(const datetime& input, serialization_context& ctx) noexcept;
-inline errc deserialize(datetime& output, deserialization_context& ctx) noexcept;
+template <>
+struct serialization_traits<datetime, no_serialization_tag>
+{
+	static inline std::size_t get_size_(const datetime& input, const serialization_context& ctx) noexcept;
+	static inline void serialize_(const datetime& input, serialization_context& ctx) noexcept;
+	static inline errc deserialize_(datetime& output, deserialization_context& ctx) noexcept;
+};
 
-inline std::size_t get_size(const time& input, const serialization_context& ctx) noexcept;
-inline void serialize(const time& input, serialization_context& ctx) noexcept;
-inline errc deserialize(time& output, deserialization_context& ctx) noexcept;
+template <>
+struct serialization_traits<time, no_serialization_tag>
+{
+	static inline std::size_t get_size_(const time& input, const serialization_context& ctx) noexcept;
+	static inline void serialize_(const time& input, serialization_context& ctx) noexcept;
+	static inline errc deserialize_(time& output, deserialization_context& ctx) noexcept;
+};
 
 // Structs and commands (messages)
+struct struct_tag {};
+
 template <typename T>
-struct is_struct_with_fields
+constexpr bool is_struct_with_fields()
 {
-	static constexpr bool value = !std::is_same_v<
+	return !std::is_same_v<
 		std::decay_t<decltype(get_struct_fields<T>::value)>,
 		not_a_struct_with_fields
 	>;
+}
+
+
+
+
+template <typename T>
+struct serialization_traits<T, struct_tag>
+{
+	static errc deserialize_(T& output, deserialization_context& ctx) noexcept;
+	static void serialize_(const T& input, serialization_context& ctx) noexcept;
+	static std::size_t get_size_(const T& input, const serialization_context& ctx) noexcept;
 };
-
-struct is_command_helper
-{
-    template <typename T>
-    static constexpr std::true_type get(decltype(T::command_id)*);
-
-    template <typename T>
-    static constexpr std::false_type get(...);
-};
-
-template <typename T>
-struct is_command : decltype(is_command_helper::get<T>(nullptr))
-{
-};
-
-template <std::size_t index, typename T>
-errc deserialize_struct(
-	[[maybe_unused]] T& output,
-	[[maybe_unused]] deserialization_context& ctx
-) noexcept
-{
-	constexpr auto fields = get_struct_fields<T>::value;
-	if constexpr (index == std::tuple_size<decltype(fields)>::value)
-	{
-		return errc::ok;
-	}
-	else
-	{
-		constexpr auto pmem = std::get<index>(fields);
-		errc err = deserialize(output.*pmem, ctx);
-		if (err != errc::ok)
-		{
-			return err;
-		}
-		else
-		{
-			return deserialize_struct<index+1>(output, ctx);
-		}
-	}
-}
-
-template <typename T>
-std::enable_if_t<is_struct_with_fields<T>::value, errc>
-deserialize(T& output, deserialization_context& ctx) noexcept
-{
-	return deserialize_struct<0>(output, ctx);
-}
-
-template <std::size_t index, typename T>
-void serialize_struct(
-	[[maybe_unused]] const T& value,
-	[[maybe_unused]] serialization_context& ctx
-) noexcept
-{
-	constexpr auto fields = get_struct_fields<T>::value;
-	if constexpr (index < std::tuple_size<decltype(fields)>::value)
-	{
-		auto pmem = std::get<index>(fields);
-		serialize(value.*pmem, ctx);
-		serialize_struct<index+1>(value, ctx);
-	}
-}
-
-template <typename T>
-std::enable_if_t<is_struct_with_fields<T>::value>
-serialize(
-	[[maybe_unused]] const T& input,
-	[[maybe_unused]] serialization_context& ctx
-) noexcept
-{
-	// For commands, add the command ID. Commands are only sent by the client,
-	// so this is not considered in the deserialization functions.
-	if constexpr (is_command<T>::value)
-	{
-		serialize(int1(T::command_id), ctx);
-	}
-	serialize_struct<0>(input, ctx);
-}
-
-template <std::size_t index, typename T>
-std::size_t get_size_struct(
-	[[maybe_unused]] const T& input,
-	[[maybe_unused]] const serialization_context& ctx
-) noexcept
-{
-	constexpr auto fields = get_struct_fields<T>::value;
-	if constexpr (index == std::tuple_size<decltype(fields)>::value)
-	{
-		return 0;
-	}
-	else
-	{
-		constexpr auto pmem = std::get<index>(fields);
-		return get_size_struct<index+1>(input, ctx) +
-		       get_size(input.*pmem, ctx);
-	}
-}
-
-template <typename T>
-std::enable_if_t<is_struct_with_fields<T>::value, std::size_t>
-get_size(const T& input, const serialization_context& ctx) noexcept
-{
-	std::size_t res = is_command<T>::value ? 1 : 0;
-	res += get_size_struct<0>(input, ctx);
-	return res;
-}
 
 // Helper to serialize top-level messages
 template <typename Serializable, typename Allocator>
@@ -370,17 +224,30 @@ error_code deserialize_message(
 	deserialization_context& ctx
 );
 
-
-
-
 // Dummy type to indicate no (de)serialization is required
 struct dummy_serializable
 {
 	explicit dummy_serializable(...) {} // Make it constructible from anything
 };
-inline std::size_t get_size(dummy_serializable, const serialization_context&) noexcept { return 0; }
-inline void serialize(dummy_serializable, serialization_context&) noexcept {}
-inline errc deserialize(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
+
+/*struct noop_serialization_traits
+{
+	static inline std::size_t get_size_(dummy_serializable, const serialization_context&) noexcept { return 0; }
+	static inline void serialize_(dummy_serializable, serialization_context&) noexcept {}
+	static inline errc deserialize_(dummy_serializable, deserialization_context&) noexcept { return errc::ok; }
+};*/
+
+struct noop_serialization_traits
+{
+	static inline std::size_t get_size_(...) noexcept { return 0; }
+	static inline void serialize_(...) noexcept {}
+	static inline errc deserialize_(...) noexcept { return errc::ok; }
+};
+
+template <>
+struct serialization_traits<dummy_serializable, no_serialization_tag> : noop_serialization_traits
+{
+};
 
 
 // Helpers for (de) serializing a set of fields
@@ -418,10 +285,30 @@ inline std::pair<error_code, std::uint8_t> deserialize_message_type(
 	deserialization_context& ctx
 );
 
+template <typename T>
+struct get_serialization_tag : std::conditional<
+	is_fixed_size_int<T>(),
+	fixed_size_int_tag,
+	std::conditional_t<
+		std::is_floating_point<T>::value,
+		floating_point_tag,
+		std::conditional_t<
+			std::is_enum<T>::value,
+			enum_tag,
+			std::conditional_t<
+				is_struct_with_fields<T>(),
+				struct_tag,
+				no_serialization_tag
+			>
+		>
+	>
+> {};
+
 } // detail
 } // mysql
 } // boost
 
+#include "boost/mysql/detail/protocol/impl/serialization.hpp"
 #include "boost/mysql/detail/protocol/impl/serialization.ipp"
 
 #endif

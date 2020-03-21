@@ -5,6 +5,14 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline std::string_view get_string(
+	const std::uint8_t* from,
+	std::size_t size
+)
+{
+	return std::string_view(reinterpret_cast<const char*>(from), size);
+}
+
 inline errc deserialize_binary_date(
 	date& output,
 	std::uint8_t length,
@@ -110,7 +118,11 @@ struct broken_time
 } // mysql
 } // boost
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::int_lenenc,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	int_lenenc& output,
 	deserialization_context& ctx
 ) noexcept
@@ -148,7 +160,12 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	return err;
 }
 
-inline void boost::mysql::detail::serialize(
+
+inline void
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::int_lenenc,
+	boost::mysql::detail::no_serialization_tag
+>::serialize_(
 	int_lenenc input,
 	serialization_context& ctx
 ) noexcept
@@ -174,9 +191,13 @@ inline void boost::mysql::detail::serialize(
 	}
 }
 
-inline std::size_t boost::mysql::detail::get_size(
-	int_lenenc input, const
-	serialization_context&
+inline std::size_t
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::int_lenenc,
+	boost::mysql::detail::no_serialization_tag
+>::get_size_(
+	int_lenenc input,
+	const serialization_context&
 ) noexcept
 {
 	if (input.value < 251) return 1;
@@ -185,7 +206,11 @@ inline std::size_t boost::mysql::detail::get_size(
 	else return 9;
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::string_null,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	string_null& output,
 	deserialization_context& ctx
 ) noexcept
@@ -200,7 +225,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	return errc::ok;
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::string_eof,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	string_eof& output,
 	deserialization_context& ctx
 ) noexcept
@@ -210,7 +239,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	return errc::ok;
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::string_lenenc,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	string_lenenc& output,
 	deserialization_context& ctx
 ) noexcept
@@ -231,7 +264,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	return errc::ok;
 }
 
-inline std::size_t boost::mysql::detail::get_size(
+inline std::size_t
+boost::mysql::detail::serialization_traits<
+	boost::mysql::date,
+	boost::mysql::detail::no_serialization_tag
+>::get_size_(
 	const date&,
 	const serialization_context&
 ) noexcept
@@ -240,7 +277,11 @@ inline std::size_t boost::mysql::detail::get_size(
 	return 5; // length, year, month, day
 }
 
-inline void boost::mysql::detail::serialize(
+inline void
+boost::mysql::detail::serialization_traits<
+	boost::mysql::date,
+	boost::mysql::detail::no_serialization_tag
+>::serialize_(
 	const date& input,
 	serialization_context& ctx
 ) noexcept
@@ -250,7 +291,11 @@ inline void boost::mysql::detail::serialize(
 	serialize_binary_ymd(::date::year_month_day (input), ctx);
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::date,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	date& output,
 	deserialization_context& ctx
 ) noexcept
@@ -262,7 +307,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 }
 
 // datetime
-inline std::size_t boost::mysql::detail::get_size(
+inline std::size_t
+boost::mysql::detail::serialization_traits<
+	boost::mysql::datetime,
+	boost::mysql::detail::no_serialization_tag
+>::get_size_(
 	const datetime& input,
 	const serialization_context&
 ) noexcept
@@ -271,7 +320,11 @@ inline std::size_t boost::mysql::detail::get_size(
 	return dt.binary_serialized_length() + 1; // extra length prefix byte
 }
 
-inline void boost::mysql::detail::serialize(
+inline void
+boost::mysql::detail::serialization_traits<
+	boost::mysql::datetime,
+	boost::mysql::detail::no_serialization_tag
+>::serialize_(
 	const datetime& input,
 	serialization_context& ctx
 ) noexcept
@@ -299,7 +352,11 @@ inline void boost::mysql::detail::serialize(
 	}
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::datetime,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	datetime& output,
 	deserialization_context& ctx
 ) noexcept
@@ -337,7 +394,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 }
 
 // time
-inline std::size_t boost::mysql::detail::get_size(
+inline std::size_t
+boost::mysql::detail::serialization_traits<
+	boost::mysql::time,
+	boost::mysql::detail::no_serialization_tag
+>::get_size_(
 	const time& input,
 	const serialization_context&
 ) noexcept
@@ -345,7 +406,11 @@ inline std::size_t boost::mysql::detail::get_size(
 	return broken_time(input).binary_serialized_length() + 1; // length byte
 }
 
-inline void boost::mysql::detail::serialize(
+inline void
+boost::mysql::detail::serialization_traits<
+	boost::mysql::time,
+	boost::mysql::detail::no_serialization_tag
+>::serialize_(
 	const time& input,
 	serialization_context& ctx
 ) noexcept
@@ -372,7 +437,11 @@ inline void boost::mysql::detail::serialize(
 	}
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::time,
+	boost::mysql::detail::no_serialization_tag
+>::deserialize_(
 	time& output,
 	deserialization_context& ctx
 ) noexcept
@@ -417,33 +486,6 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	return errc::ok;
 }
 
-template <typename Serializable, typename Allocator>
-void boost::mysql::detail::serialize_message(
-	const Serializable& input,
-	capabilities caps,
-	basic_bytestring<Allocator>& buffer
-)
-{
-	serialization_context ctx (caps);
-	std::size_t size = get_size(input, ctx);
-	buffer.resize(size);
-	ctx.set_first(buffer.data());
-	serialize(input, ctx);
-	assert(ctx.first() == buffer.data() + buffer.size());
-}
-
-template <typename Deserializable>
-boost::mysql::error_code boost::mysql::detail::deserialize_message(
-	Deserializable& output,
-	deserialization_context& ctx
-)
-{
-	auto err = deserialize(output, ctx);
-	if (err != errc::ok) return make_error_code(err);
-	if (!ctx.empty()) return make_error_code(errc::extra_bytes);
-	return error_code();
-}
-
 inline std::pair<boost::mysql::error_code, std::uint8_t>
 boost::mysql::detail::deserialize_message_type(
 	deserialization_context& ctx
@@ -462,8 +504,6 @@ boost::mysql::detail::deserialize_message_type(
 	}
 	return res;
 }
-
-
 
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_IPP_ */

@@ -1,13 +1,9 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP_
 
-#include "boost/mysql/detail/protocol/protocol_types.hpp"
-#include "boost/mysql/detail/protocol/serialization_context.hpp"
-#include "boost/mysql/detail/protocol/deserialization_context.hpp"
+#include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/auxiliar/get_struct_fields.hpp"
 #include "boost/mysql/value.hpp"
-#include "boost/mysql/error.hpp"
 
 namespace boost {
 namespace mysql {
@@ -107,13 +103,20 @@ struct get_struct_fields<com_stmt_close_packet>
 	);
 };
 
-inline errc deserialize(com_stmt_prepare_ok_packet& output, deserialization_context& ctx) noexcept;
+template <>
+struct serialization_traits<com_stmt_prepare_ok_packet, struct_tag> : noop_serialization_traits
+{
+	static inline errc deserialize_(com_stmt_prepare_ok_packet& output, deserialization_context& ctx) noexcept;
+};
 
-template <typename FowardIterator>
-inline std::size_t get_size(const com_stmt_execute_packet<FowardIterator>& value, const serialization_context& ctx) noexcept;
-
-template <typename FowardIterator>
-inline void serialize(const com_stmt_execute_packet<FowardIterator>& input, serialization_context& ctx) noexcept;
+template <typename ForwardIterator>
+struct serialization_traits<com_stmt_execute_packet<ForwardIterator>, struct_tag>: noop_serialization_traits
+{
+	static inline std::size_t get_size_(const com_stmt_execute_packet<ForwardIterator>& value,
+			const serialization_context& ctx) noexcept;
+	static inline void serialize_(const com_stmt_execute_packet<ForwardIterator>& input,
+			serialization_context& ctx) noexcept;
+};
 
 } // detail
 } // mysql

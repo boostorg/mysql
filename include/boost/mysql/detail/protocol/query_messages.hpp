@@ -1,8 +1,7 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_QUERY_MESSAGES_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_QUERY_MESSAGES_HPP_
 
-#include "boost/mysql/detail/protocol/protocol_types.hpp"
-#include "boost/mysql/detail/auxiliar/get_struct_fields.hpp"
+#include "boost/mysql/detail/protocol/serialization.hpp"
 #include <tuple>
 
 namespace boost {

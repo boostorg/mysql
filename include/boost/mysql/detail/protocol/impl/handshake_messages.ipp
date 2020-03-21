@@ -1,9 +1,12 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_HANDSHAKE_MESSAGES_IPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_HANDSHAKE_MESSAGES_IPP_
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::handshake_packet,
+	boost::mysql::detail::struct_tag
+>::deserialize_(
 	handshake_packet& output,
 	deserialization_context& ctx
 ) noexcept
@@ -67,7 +70,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	return errc::ok;
 }
 
-std::size_t boost::mysql::detail::get_size(
+std::size_t
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::handshake_response_packet,
+	boost::mysql::detail::struct_tag
+>::get_size_(
 	const handshake_response_packet& value,
 	const serialization_context& ctx
 ) noexcept
@@ -87,7 +94,11 @@ std::size_t boost::mysql::detail::get_size(
 	return res;
 }
 
-inline void boost::mysql::detail::serialize(
+inline void
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::handshake_response_packet,
+	boost::mysql::detail::struct_tag
+>::serialize_(
 	const handshake_response_packet& value,
 	serialization_context& ctx
 ) noexcept
@@ -106,7 +117,11 @@ inline void boost::mysql::detail::serialize(
 	serialize(value.client_plugin_name, ctx);
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::auth_switch_request_packet,
+	boost::mysql::detail::struct_tag
+>::deserialize_(
 	auth_switch_request_packet& output,
 	deserialization_context& ctx
 ) noexcept

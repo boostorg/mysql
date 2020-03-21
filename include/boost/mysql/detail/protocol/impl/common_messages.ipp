@@ -1,9 +1,11 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_COMMON_MESSAGES_IPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_COMMON_MESSAGES_IPP_
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
-
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::ok_packet,
+	boost::mysql::detail::struct_tag
+>::deserialize_(
 	ok_packet& output,
 	deserialization_context& ctx
 ) noexcept
@@ -24,7 +26,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 	}
 }
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::column_definition_packet,
+	boost::mysql::detail::struct_tag
+>::deserialize_(
 	column_definition_packet& output,
 	deserialization_context& ctx
 ) noexcept

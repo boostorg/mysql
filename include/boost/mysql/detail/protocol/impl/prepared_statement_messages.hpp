@@ -1,7 +1,6 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_PREPARED_STATEMENT_MESSAGES_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_PREPARED_STATEMENT_MESSAGES_HPP_
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
 
 namespace boost {
@@ -88,7 +87,11 @@ inline void serialize_binary_value(
 } // mysql
 } // boost
 
-inline boost::mysql::errc boost::mysql::detail::deserialize(
+inline boost::mysql::errc
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::com_stmt_prepare_ok_packet,
+	boost::mysql::detail::struct_tag
+>::deserialize_(
 	com_stmt_prepare_ok_packet& output,
 	deserialization_context& ctx
 ) noexcept
@@ -105,7 +108,11 @@ inline boost::mysql::errc boost::mysql::detail::deserialize(
 }
 
 template <typename ForwardIterator>
-inline std::size_t boost::mysql::detail::get_size(
+inline std::size_t
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
+	boost::mysql::detail::struct_tag
+>::get_size_(
 	const com_stmt_execute_packet<ForwardIterator>& value,
 	const serialization_context& ctx
 ) noexcept
@@ -127,7 +134,11 @@ inline std::size_t boost::mysql::detail::get_size(
 }
 
 template <typename ForwardIterator>
-inline void boost::mysql::detail::serialize(
+inline void
+boost::mysql::detail::serialization_traits<
+	boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
+	boost::mysql::detail::struct_tag
+>::serialize_(
 	const com_stmt_execute_packet<ForwardIterator>& input,
 	serialization_context& ctx
 ) noexcept

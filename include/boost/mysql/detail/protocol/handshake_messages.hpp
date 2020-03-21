@@ -1,11 +1,7 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_HANDSHAKE_MESSAGES_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_HANDSHAKE_MESSAGES_HPP_
 
-#include "boost/mysql/detail/protocol/serialization_context.hpp"
-#include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/protocol/protocol_types.hpp"
-#include "boost/mysql/detail/auxiliar/get_struct_fields.hpp"
-#include "boost/mysql/error.hpp"
+#include "boost/mysql/detail/protocol/serialization.hpp"
 
 namespace boost {
 namespace mysql {
@@ -94,10 +90,24 @@ struct get_struct_fields<auth_switch_response_packet>
 	);
 };
 
-inline errc deserialize(handshake_packet& output, deserialization_context& ctx) noexcept;
-inline std::size_t get_size(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
-inline void serialize(const handshake_response_packet& value, serialization_context& ctx) noexcept;
-inline errc deserialize(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
+template <>
+struct serialization_traits<handshake_packet, struct_tag> : noop_serialization_traits
+{
+	static inline errc deserialize_(handshake_packet& output, deserialization_context& ctx) noexcept;
+};
+
+template <>
+struct serialization_traits<handshake_response_packet, struct_tag> : noop_serialization_traits
+{
+	static inline std::size_t get_size_(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
+	static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
+};
+
+template <>
+struct serialization_traits<auth_switch_request_packet, struct_tag> : noop_serialization_traits
+{
+	static inline errc deserialize_(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
+};
 
 
 } // detail

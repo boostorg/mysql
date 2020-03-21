@@ -1,8 +1,13 @@
 Name change
+    Get rid of get_struct_fields
+    Put serialization specializations together with the messages
+    Split serialization tests according to file structure
+    Split impls to impl header
+    Get rid of contexts files
+    Transform tags into an enum
 	serialization_test_common
 		Should be in unit/
 		Should not be header only
-		Should not require including all messages
 		Should have things in namespace test, not detail
 	Split serialization tests into chunks following file structure
 	Try to make string_fixed just an array of chars instead of a value_holder

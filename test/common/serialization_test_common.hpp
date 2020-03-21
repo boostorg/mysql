@@ -2,10 +2,6 @@
 #define TEST_SERIALIZATION_TEST_COMMON_HPP_
 
 #include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/handshake_messages.hpp"
-#include "boost/mysql/detail/protocol/query_messages.hpp"
-#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/value.hpp"
 #include <gtest/gtest.h>
@@ -49,7 +45,7 @@ bool equals_struct(const T& lhs, const T& rhs)
 }
 
 template <typename T>
-std::enable_if_t<is_struct_with_fields<T>::value, bool>
+std::enable_if_t<is_struct_with_fields<T>(), bool>
 operator==(const T& lhs, const T& rhs)
 {
 	return equals_struct<0>(lhs, rhs);
@@ -84,7 +80,7 @@ void print_struct(std::ostream& os, const T& value)
 }
 
 template <typename T>
-std::enable_if_t<is_struct_with_fields<T>::value, std::ostream&>
+std::enable_if_t<is_struct_with_fields<T>(), std::ostream&>
 operator<<(std::ostream& os, const T& value)
 {
 	os << boost::typeindex::type_id<T>().pretty_name() << "(\n";

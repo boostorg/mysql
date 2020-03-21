@@ -6,6 +6,10 @@
  */
 
 #include "serialization_test_common.hpp"
+#include "boost/mysql/detail/protocol/common_messages.hpp"
+#include "boost/mysql/detail/protocol/handshake_messages.hpp"
+#include "boost/mysql/detail/protocol/query_messages.hpp"
+#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include "test_common.hpp"
 #include <forward_list>
 #include <array>
