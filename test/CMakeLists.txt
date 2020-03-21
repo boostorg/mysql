@@ -17,7 +17,12 @@ endif()
 add_executable(
 	mysql_unittests
 	unit/detail/auth/mysql_native_password.cpp
+	unit/detail/protocol/serialization_test_common.cpp
 	unit/detail/protocol/serialization.cpp
+	unit/detail/protocol/common_messages.cpp
+	unit/detail/protocol/handshake_messages.cpp
+	unit/detail/protocol/query_messages.cpp
+	unit/detail/protocol/prepared_statement_messages.cpp
 	unit/detail/protocol/capabilities.cpp
 	unit/detail/protocol/text_deserialization.cpp
 	unit/detail/protocol/binary_deserialization.cpp

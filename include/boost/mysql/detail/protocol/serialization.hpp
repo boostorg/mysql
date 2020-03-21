@@ -77,7 +77,7 @@ struct serialization_traits<string_fixed<N>, serialization_tag::none>
 	static errc deserialize_(string_fixed<N>& output, deserialization_context& ctx) noexcept;
 	static void serialize_(const string_fixed<N>& input, serialization_context& ctx) noexcept
 	{
-		ctx.write(input.value.data(), N);
+		ctx.write(input.data(), N);
 	}
 	static constexpr std::size_t get_size_(const string_fixed<N>&, const serialization_context&) noexcept
 	{

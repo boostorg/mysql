@@ -204,7 +204,7 @@ boost::mysql::errc boost::mysql::detail::serialization_traits<
 	{
 		return errc::incomplete_message;
 	}
-	memcpy(&output.value, ctx.first(), N);
+	memcpy(output.data(), ctx.first(), N);
 	ctx.advance(N);
 	return errc::ok;
 }

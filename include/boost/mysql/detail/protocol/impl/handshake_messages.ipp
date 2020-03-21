@@ -34,8 +34,8 @@ boost::mysql::detail::serialization_traits<
 
 	// Compose capabilities
 	auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&output.capability_falgs.value);
-	memcpy(capabilities_begin, capability_flags_low.value.data(), 2);
-	memcpy(capabilities_begin + 2, capability_flags_high.value.data(), 2);
+	memcpy(capabilities_begin, capability_flags_low.data(), 2);
+	memcpy(capabilities_begin + 2, capability_flags_high.data(), 2);
 	boost::endian::little_to_native_inplace(output.capability_falgs.value);
 
 	// Check minimum server capabilities to deserialize this frame
@@ -59,7 +59,7 @@ boost::mysql::detail::serialization_traits<
 	// Compose auth_plugin_data
 	memcpy(
 		output.auth_plugin_data_buffer.data(),
-		auth_plugin_data_part_1.value.data(),
+		auth_plugin_data_part_1.data(),
 		auth1_length
 	);
 	output.auth_plugin_data.value = std::string_view(

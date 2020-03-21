@@ -25,14 +25,7 @@ struct int8_signed : value_holder<std::int64_t> { using value_holder::value_hold
 struct int_lenenc : value_holder<std::uint64_t> { using value_holder::value_holder; };
 
 template <std::size_t size>
-struct string_fixed : value_holder<std::array<char, size>>
-{
-	constexpr string_fixed() = default;
-	explicit string_fixed(const char (&v) [size])
-	{
-		std::memcpy(this->value.data(), v, size);
-	}
-};
+using string_fixed = std::array<char, size>;
 
 struct string_null : value_holder<std::string_view> { using value_holder::value_holder; };
 struct string_eof : value_holder<std::string_view> { using value_holder::value_holder; };

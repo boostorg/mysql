@@ -1,11 +1,3 @@
-Name change
-    Split serialization tests according to file structure
-	serialization_test_common
-		Should be in unit/
-		Should not be header only
-		Should have things in namespace test, not detail
-	Split serialization tests into chunks following file structure
-	Try to make string_fixed just an array of chars instead of a value_holder
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

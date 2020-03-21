@@ -11,27 +11,17 @@
 #include <boost/asio/buffer.hpp>
 #include <algorithm>
 #include "boost/mysql/detail/protocol/channel.hpp"
+#include "test_common.hpp"
 
 using namespace testing;
 using namespace boost::mysql::detail;
 using namespace boost::asio;
 using boost::mysql::error_code;
 using boost::mysql::errc;
+using boost::mysql::test::concat;
 
 namespace
 {
-
-void concat(std::vector<uint8_t>& lhs, boost::asio::const_buffer rhs)
-{
-	auto current_size = lhs.size();
-	lhs.resize(current_size + rhs.size());
-	memcpy(lhs.data() + current_size, rhs.data(), rhs.size());
-}
-
-void concat(std::vector<uint8_t>& lhs, const std::vector<uint8_t>& rhs)
-{
-	concat(lhs, boost::asio::buffer(rhs));
-}
 
 class MockStream
 {

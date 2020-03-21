@@ -4,6 +4,7 @@
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/row.hpp"
 #include "boost/mysql/error.hpp"
+#include <boost/asio/buffer.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -116,6 +117,27 @@ inline std::string buffer_diff(std::string_view s0, std::string_view s1)
 inline void compare_buffers(std::string_view s0, std::string_view s1, const char* msg = "")
 {
 	EXPECT_EQ(s0, s1) << msg << ":\n" << buffer_diff(s0, s1);
+}
+
+inline void concat(std::vector<std::uint8_t>& lhs, boost::asio::const_buffer rhs)
+{
+	auto current_size = lhs.size();
+	lhs.resize(current_size + rhs.size());
+	memcpy(lhs.data() + current_size, rhs.data(), rhs.size());
+}
+
+inline void concat(std::vector<std::uint8_t>& lhs, const std::vector<uint8_t>& rhs)
+{
+	concat(lhs, boost::asio::buffer(rhs));
+}
+
+inline std::vector<std::uint8_t> concat_copy(
+	std::vector<uint8_t>&& lhs,
+	const std::vector<uint8_t>& rhs
+)
+{
+	concat(lhs, rhs);
+	return std::move(lhs);
 }
 
 struct named_param {};
