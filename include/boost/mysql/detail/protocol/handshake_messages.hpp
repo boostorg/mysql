@@ -7,6 +7,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// initial handshake
 struct handshake_packet
 {
 	// int<1> 	protocol version 	Always 10
@@ -35,6 +36,14 @@ struct get_struct_fields<handshake_packet>
 	);
 };
 
+template <>
+struct serialization_traits<handshake_packet, serialization_tag::struct_with_fields> :
+	noop_serialize<handshake_packet>
+{
+	static inline errc deserialize_(handshake_packet& output, deserialization_context& ctx) noexcept;
+};
+
+// response
 struct handshake_response_packet
 {
 	int4 client_flag; // capabilities
@@ -62,6 +71,15 @@ struct get_struct_fields<handshake_response_packet>
 	);
 };
 
+template <>
+struct serialization_traits<handshake_response_packet, serialization_tag::struct_with_fields> :
+	noop_deserialize<handshake_response_packet>
+{
+	static inline std::size_t get_size_(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
+	static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
+};
+
+// auth switch request
 struct auth_switch_request_packet
 {
 	string_null plugin_name;
@@ -77,6 +95,7 @@ struct get_struct_fields<auth_switch_request_packet>
 	);
 };
 
+// response
 struct auth_switch_response_packet
 {
 	string_eof auth_plugin_data;
@@ -91,20 +110,8 @@ struct get_struct_fields<auth_switch_response_packet>
 };
 
 template <>
-struct serialization_traits<handshake_packet, struct_tag> : noop_serialization_traits
-{
-	static inline errc deserialize_(handshake_packet& output, deserialization_context& ctx) noexcept;
-};
-
-template <>
-struct serialization_traits<handshake_response_packet, struct_tag> : noop_serialization_traits
-{
-	static inline std::size_t get_size_(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
-	static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
-};
-
-template <>
-struct serialization_traits<auth_switch_request_packet, struct_tag> : noop_serialization_traits
+struct serialization_traits<auth_switch_request_packet, serialization_tag::struct_with_fields> :
+	noop_serialize<auth_switch_request_packet>
 {
 	static inline errc deserialize_(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
 };

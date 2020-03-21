@@ -5,7 +5,7 @@
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::handshake_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
 	handshake_packet& output,
 	deserialization_context& ctx
@@ -73,7 +73,7 @@ boost::mysql::detail::serialization_traits<
 std::size_t
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::handshake_response_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(
 	const handshake_response_packet& value,
 	const serialization_context& ctx
@@ -97,7 +97,7 @@ boost::mysql::detail::serialization_traits<
 inline void
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::handshake_response_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
 	const handshake_response_packet& value,
 	serialization_context& ctx
@@ -120,7 +120,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::auth_switch_request_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
 	auth_switch_request_packet& output,
 	deserialization_context& ctx

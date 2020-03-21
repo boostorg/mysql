@@ -4,7 +4,7 @@
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::ok_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
 	ok_packet& output,
 	deserialization_context& ctx
@@ -29,7 +29,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::column_definition_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
 	column_definition_packet& output,
 	deserialization_context& ctx

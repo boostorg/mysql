@@ -5,6 +5,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Helpers for fixed size ints
 template <typename T>
 constexpr std::size_t get_int_size()
 {
@@ -13,6 +14,7 @@ constexpr std::size_t get_int_size()
 		   std::is_same<T, int6>::value ? 6 : sizeof(T);
 }
 
+// Helpers for structs
 struct is_command_helper
 {
     template <typename T>
@@ -87,10 +89,50 @@ std::size_t get_size_struct(
 	}
 }
 
+// Helpers for (de)serialize_fields
+template <typename FirstType>
+errc deserialize_fields_helper(deserialization_context& ctx, FirstType& field) noexcept
+{
+	return deserialize(field, ctx);
+}
+
+template <typename FirstType, typename... Types>
+errc deserialize_fields_helper(
+	deserialization_context& ctx,
+	FirstType& field,
+	Types&... fields_tail
+) noexcept
+{
+	errc err = deserialize(field, ctx);
+	if (err == errc::ok)
+	{
+		err = deserialize_fields_helper(ctx, fields_tail...);
+	}
+	return err;
+}
+
+template <typename FirstType>
+void serialize_fields_helper(serialization_context& ctx, const FirstType& field) noexcept
+{
+	serialize(field, ctx);
+}
+
+template <typename FirstType, typename... Types>
+void serialize_fields_helper(
+	serialization_context& ctx,
+	const FirstType& field,
+	const Types&... fields_tail
+)
+{
+	serialize(field, ctx);
+	serialize_fields_helper(ctx, fields_tail...);
+}
+
 } // detail
 } // mysql
 } // boost
 
+// Fixed size ints
 template <typename T>
 constexpr bool boost::mysql::detail::is_fixed_size_int()
 {
@@ -104,7 +146,7 @@ template <typename T>
 boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::fixed_size_int_tag
+	boost::mysql::detail::serialization_tag::fixed_size_int
 >::deserialize_(
 	T& output,
 	deserialization_context& ctx
@@ -129,7 +171,7 @@ boost::mysql::detail::serialization_traits<
 template <typename T>
 void boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::fixed_size_int_tag
+	boost::mysql::detail::serialization_tag::fixed_size_int
 >::serialize_(
 	T input,
 	serialization_context& ctx
@@ -142,16 +184,17 @@ void boost::mysql::detail::serialization_traits<
 template <typename T>
 constexpr std::size_t boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::fixed_size_int_tag
+	boost::mysql::detail::serialization_tag::fixed_size_int
 >::get_size_(T, const serialization_context&) noexcept
 {
 	return get_int_size<T>();
 }
 
+// Fixed size strings
 template <std::size_t N>
 boost::mysql::errc boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::string_fixed<N>,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	string_fixed<N>& output,
 	deserialization_context& ctx
@@ -166,11 +209,12 @@ boost::mysql::errc boost::mysql::detail::serialization_traits<
 	return errc::ok;
 }
 
+// Enums
 template <typename T>
 boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::enum_tag
+	boost::mysql::detail::serialization_tag::enumeration
 >::deserialize_(
 	T& output,
 	deserialization_context& ctx
@@ -189,17 +233,18 @@ boost::mysql::detail::serialization_traits<
 template <typename T>
 std::size_t boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::enum_tag
+	boost::mysql::detail::serialization_tag::enumeration
 >::get_size_(T, const serialization_context&) noexcept
 {
 	return get_int_size<serializable_type>();
 }
 
+// Floating points
 template <typename T>
 boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::floating_point_tag
+	boost::mysql::detail::serialization_tag::floating_point
 >::deserialize_(T& output, deserialization_context& ctx) noexcept
 {
 	// Size check
@@ -223,7 +268,7 @@ template <typename T>
 void
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::floating_point_tag
+	boost::mysql::detail::serialization_tag::floating_point
 >::serialize_(T input, serialization_context& ctx) noexcept
 {
 	// Endianness conversion
@@ -237,11 +282,21 @@ boost::mysql::detail::serialization_traits<
 #endif
 }
 
+// Structs
+template <typename T>
+constexpr bool boost::mysql::detail::is_struct_with_fields()
+{
+	return !std::is_same_v<
+		std::decay_t<decltype(get_struct_fields<T>::value)>,
+		not_a_struct_with_fields
+	>;
+}
+
 template <typename T>
 boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(T& output, deserialization_context& ctx) noexcept
 {
 	return deserialize_struct<0>(output, ctx);
@@ -251,7 +306,7 @@ template <typename T>
 void
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
 	[[maybe_unused]] const T& input,
 	[[maybe_unused]] serialization_context& ctx
@@ -270,7 +325,7 @@ template <typename T>
 std::size_t
 boost::mysql::detail::serialization_traits<
 	T,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(const T& input, const serialization_context& ctx) noexcept
 {
 	std::size_t res = is_command<T>::value ? 1 : 0;
@@ -278,6 +333,7 @@ boost::mysql::detail::serialization_traits<
 	return res;
 }
 
+// Miscellanea
 template <typename Serializable, typename Allocator>
 void boost::mysql::detail::serialize_message(
 	const Serializable& input,
@@ -305,6 +361,36 @@ boost::mysql::error_code boost::mysql::detail::deserialize_message(
 	return error_code();
 }
 
+template <typename... Types>
+boost::mysql::errc
+boost::mysql::detail::deserialize_fields(
+	deserialization_context& ctx,
+	Types&... fields
+) noexcept
+{
+	return deserialize_fields_helper(ctx, fields...);
+}
+
+template <typename... Types>
+void boost::mysql::detail::serialize_fields(
+	serialization_context& ctx,
+	const Types&... fields
+) noexcept
+{
+	serialize_fields_helper(ctx, fields...);
+}
+
+template <typename T>
+constexpr boost::mysql::detail::serialization_tag
+boost::mysql::detail::get_serialization_tag()
+{
+	return
+		is_fixed_size_int<T>() ? serialization_tag::fixed_size_int :
+		std::is_floating_point<T>::value ? serialization_tag::floating_point :
+		std::is_enum<T>::value ? serialization_tag::enumeration :
+		is_struct_with_fields<T>() ? serialization_tag::struct_with_fields :
+		serialization_tag::none;
+}
 
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_HPP_ */

@@ -9,8 +9,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-
-// Commands (prepared statements)
+// prepare
 struct com_stmt_prepare_packet
 {
 	string_eof statement;
@@ -26,6 +25,7 @@ struct get_struct_fields<com_stmt_prepare_packet>
 	);
 };
 
+// response
 struct com_stmt_prepare_ok_packet
 {
 	// int1 status: must be 0
@@ -48,6 +48,15 @@ struct get_struct_fields<com_stmt_prepare_ok_packet>
 	);
 };
 
+template <>
+struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struct_with_fields> :
+	noop_serialize<com_stmt_prepare_ok_packet>
+{
+	static inline errc deserialize_(com_stmt_prepare_ok_packet& output,
+			deserialization_context& ctx) noexcept;
+};
+
+// execute
 template <typename ForwardIterator>
 struct com_stmt_execute_packet
 {
@@ -62,12 +71,6 @@ struct com_stmt_execute_packet
 	static constexpr std::uint8_t command_id = 0x17;
 };
 
-struct com_stmt_execute_param_meta_packet
-{
-	protocol_field_type type;
-	int1 unsigned_flag;
-};
-
 template <typename ForwardIterator>
 struct get_struct_fields<com_stmt_execute_packet<ForwardIterator>>
 {
@@ -79,6 +82,24 @@ struct get_struct_fields<com_stmt_execute_packet<ForwardIterator>>
 	);
 };
 
+template <typename ForwardIterator>
+struct serialization_traits<
+	com_stmt_execute_packet<ForwardIterator>,
+	serialization_tag::struct_with_fields
+> : noop_deserialize<com_stmt_execute_packet<ForwardIterator>>
+{
+	static inline std::size_t get_size_(const com_stmt_execute_packet<ForwardIterator>& value,
+			const serialization_context& ctx) noexcept;
+	static inline void serialize_(const com_stmt_execute_packet<ForwardIterator>& input,
+			serialization_context& ctx) noexcept;
+};
+
+struct com_stmt_execute_param_meta_packet
+{
+	protocol_field_type type;
+	int1 unsigned_flag;
+};
+
 template <>
 struct get_struct_fields<com_stmt_execute_param_meta_packet>
 {
@@ -88,6 +109,7 @@ struct get_struct_fields<com_stmt_execute_param_meta_packet>
 	);
 };
 
+// close
 struct com_stmt_close_packet
 {
 	int4 statement_id;
@@ -103,20 +125,6 @@ struct get_struct_fields<com_stmt_close_packet>
 	);
 };
 
-template <>
-struct serialization_traits<com_stmt_prepare_ok_packet, struct_tag> : noop_serialization_traits
-{
-	static inline errc deserialize_(com_stmt_prepare_ok_packet& output, deserialization_context& ctx) noexcept;
-};
-
-template <typename ForwardIterator>
-struct serialization_traits<com_stmt_execute_packet<ForwardIterator>, struct_tag>: noop_serialization_traits
-{
-	static inline std::size_t get_size_(const com_stmt_execute_packet<ForwardIterator>& value,
-			const serialization_context& ctx) noexcept;
-	static inline void serialize_(const com_stmt_execute_packet<ForwardIterator>& input,
-			serialization_context& ctx) noexcept;
-};
 
 } // detail
 } // mysql

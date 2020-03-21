@@ -10,6 +10,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// header
 struct packet_header
 {
 	int3 packet_size;
@@ -25,6 +26,7 @@ struct get_struct_fields<packet_header>
 	);
 };
 
+// ok packet
 struct ok_packet
 {
 	// header: int<1> 	header 	0x00 or 0xFE the OK packet header
@@ -48,6 +50,14 @@ struct get_struct_fields<ok_packet>
 	);
 };
 
+template <>
+struct serialization_traits<ok_packet, serialization_tag::struct_with_fields> :
+	noop_serialize<ok_packet>
+{
+	static inline errc deserialize_(ok_packet& output, deserialization_context& ctx) noexcept;
+};
+
+// err packet
 struct err_packet
 {
 	// int<1> 	header 	0xFF ERR packet header
@@ -68,6 +78,7 @@ struct get_struct_fields<err_packet>
 	);
 };
 
+// col def
 struct column_definition_packet
 {
 	string_lenenc catalog; // always "def"
@@ -102,18 +113,15 @@ struct get_struct_fields<column_definition_packet>
 };
 
 template <>
-struct serialization_traits<ok_packet, struct_tag> : noop_serialization_traits
-{
-	static inline errc deserialize_(ok_packet& output, deserialization_context& ctx) noexcept;
-};
-
-template <>
-struct serialization_traits<column_definition_packet, struct_tag> : noop_serialization_traits
+struct serialization_traits<column_definition_packet, serialization_tag::struct_with_fields> :
+	noop_serialize<column_definition_packet>
 {
 	static inline errc deserialize_(column_definition_packet& output, deserialization_context& ctx) noexcept;
 };
 
+// aux
 inline error_code process_error_packet(deserialization_context& ctx, error_info& info);
+
 
 } // detail
 } // mysql

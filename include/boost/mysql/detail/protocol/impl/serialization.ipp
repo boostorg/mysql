@@ -121,7 +121,7 @@ struct broken_time
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::int_lenenc,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	int_lenenc& output,
 	deserialization_context& ctx
@@ -164,7 +164,7 @@ boost::mysql::detail::serialization_traits<
 inline void
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::int_lenenc,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::serialize_(
 	int_lenenc input,
 	serialization_context& ctx
@@ -194,7 +194,7 @@ boost::mysql::detail::serialization_traits<
 inline std::size_t
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::int_lenenc,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::get_size_(
 	int_lenenc input,
 	const serialization_context&
@@ -209,7 +209,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::string_null,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	string_null& output,
 	deserialization_context& ctx
@@ -228,7 +228,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::string_eof,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	string_eof& output,
 	deserialization_context& ctx
@@ -242,7 +242,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::string_lenenc,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	string_lenenc& output,
 	deserialization_context& ctx
@@ -267,7 +267,7 @@ boost::mysql::detail::serialization_traits<
 inline std::size_t
 boost::mysql::detail::serialization_traits<
 	boost::mysql::date,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::get_size_(
 	const date&,
 	const serialization_context&
@@ -280,7 +280,7 @@ boost::mysql::detail::serialization_traits<
 inline void
 boost::mysql::detail::serialization_traits<
 	boost::mysql::date,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::serialize_(
 	const date& input,
 	serialization_context& ctx
@@ -294,7 +294,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::date,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	date& output,
 	deserialization_context& ctx
@@ -310,7 +310,7 @@ boost::mysql::detail::serialization_traits<
 inline std::size_t
 boost::mysql::detail::serialization_traits<
 	boost::mysql::datetime,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::get_size_(
 	const datetime& input,
 	const serialization_context&
@@ -323,7 +323,7 @@ boost::mysql::detail::serialization_traits<
 inline void
 boost::mysql::detail::serialization_traits<
 	boost::mysql::datetime,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::serialize_(
 	const datetime& input,
 	serialization_context& ctx
@@ -355,7 +355,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::datetime,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	datetime& output,
 	deserialization_context& ctx
@@ -397,7 +397,7 @@ boost::mysql::detail::serialization_traits<
 inline std::size_t
 boost::mysql::detail::serialization_traits<
 	boost::mysql::time,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::get_size_(
 	const time& input,
 	const serialization_context&
@@ -409,7 +409,7 @@ boost::mysql::detail::serialization_traits<
 inline void
 boost::mysql::detail::serialization_traits<
 	boost::mysql::time,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::serialize_(
 	const time& input,
 	serialization_context& ctx
@@ -440,7 +440,7 @@ boost::mysql::detail::serialization_traits<
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::time,
-	boost::mysql::detail::no_serialization_tag
+	boost::mysql::detail::serialization_tag::none
 >::deserialize_(
 	time& output,
 	deserialization_context& ctx

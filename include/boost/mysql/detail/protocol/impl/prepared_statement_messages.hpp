@@ -50,6 +50,18 @@ struct get_serializable_type { using type = T; };
 template <typename T>
 using get_serializable_type_t = typename get_serializable_type<T>::type;
 
+// Indicate no serialization is required
+struct dummy_serializable
+{
+	explicit dummy_serializable(std::nullptr_t) {}
+};
+
+template <>
+struct serialization_traits<dummy_serializable, serialization_tag::none> :
+	noop_serialize<dummy_serializable>
+{
+};
+
 template <> struct get_serializable_type<std::uint32_t> { using type = int4; };
 template <> struct get_serializable_type<std::int32_t> { using type = int4_signed; };
 template <> struct get_serializable_type<std::uint64_t> { using type = int8; };
@@ -90,7 +102,7 @@ inline void serialize_binary_value(
 inline boost::mysql::errc
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::com_stmt_prepare_ok_packet,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
 	com_stmt_prepare_ok_packet& output,
 	deserialization_context& ctx
@@ -111,7 +123,7 @@ template <typename ForwardIterator>
 inline std::size_t
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(
 	const com_stmt_execute_packet<ForwardIterator>& value,
 	const serialization_context& ctx
@@ -137,7 +149,7 @@ template <typename ForwardIterator>
 inline void
 boost::mysql::detail::serialization_traits<
 	boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
-	boost::mysql::detail::struct_tag
+	boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
 	const com_stmt_execute_packet<ForwardIterator>& input,
 	serialization_context& ctx
