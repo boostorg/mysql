@@ -14,7 +14,7 @@ using boost::mysql::error_info;
  * You can get this database by running db_setup.sql.
  * This example assumes you are connecting to a localhost MySQL server.
  *
- * This example uses asynchronous functions.
+ * This example uses asynchronous functions with callbacks.
  *
  * This example assumes you are already familiar with the basic concepts
  * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,

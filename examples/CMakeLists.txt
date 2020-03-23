@@ -13,7 +13,7 @@ function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 endfunction()
 
 _mysql_add_example(example_query_sync query_sync.cpp)
-_mysql_add_example(example_query_async query_async.cpp)
+_mysql_add_example(example_query_async_callbacks query_async_callbacks.cpp)
 _mysql_add_example(example_metadata metadata.cpp)
 _mysql_add_example(example_prepared_statements prepared_statements.cpp)
 
