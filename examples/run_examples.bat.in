@@ -1,0 +1,5 @@
+SET SCRIPTPATH=%~dp0
+
+mysql.exe -u root < "@SETUP_SCRIPT_PATH@"
+
+@BATCH_CONTENT@
