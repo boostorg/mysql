@@ -97,7 +97,7 @@ void boost::mysql::detail::prepare_statement(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::prepared_statement<StreamType>)
+	boost::mysql::detail::prepare_statement_signature<StreamType>
 )
 boost::mysql::detail::async_prepare_statement(
 	channel<StreamType>& chan,
@@ -105,10 +105,11 @@ boost::mysql::detail::async_prepare_statement(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, error_info, mysql::prepared_statement<StreamType>);
+	using HandlerSignature = prepare_statement_signature<StreamType>;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-	using PreparedStatementType = mysql::prepared_statement<StreamType>;
+	using PreparedStatementType = prepared_statement<StreamType>;
+	using HandlerArg = async_handler_arg<PreparedStatementType>;
 
 	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
 
@@ -129,27 +130,12 @@ boost::mysql::detail::async_prepare_statement(
 			processor_.process_request(statement);
 		}
 
-		bool process_response(bool cont)
-		{
-			error_info info;
-			error_code err;
-			processor_.process_response(err, info);
-			if (err)
-			{
-				this->complete(cont, err, info, PreparedStatementType());
-				return false;
-			}
-			else
-			{
-				return true;
-			}
-		}
-
 		void operator()(
 			error_code err,
 			bool cont=true
 		)
 		{
+			error_info info;
 			reenter(*this)
 			{
 				// Write message (already serialized at this point)
@@ -159,7 +145,7 @@ boost::mysql::detail::async_prepare_statement(
 				);
 				if (err)
 				{
-					this->complete(cont, err, error_info(), PreparedStatementType());
+					this->complete(cont, err, HandlerArg());
 					yield break;
 				}
 
@@ -170,14 +156,16 @@ boost::mysql::detail::async_prepare_statement(
 				);
 				if (err)
 				{
-					this->complete(cont, err, error_info(), PreparedStatementType());
+					this->complete(cont, err, HandlerArg());
 					yield break;
 				}
 
 				// Process response
-				if (!process_response(cont))
+				processor_.process_response(err, info);
+				if (err)
 				{
-					yield break; // already called complete()
+					this->complete(cont, err, HandlerArg(std::move(info)));
+					yield break;
 				}
 
 				// Server sends now one packet per parameter and field.
@@ -191,7 +179,7 @@ boost::mysql::detail::async_prepare_statement(
 					);
 					if (err)
 					{
-						this->complete(cont, err, error_info(), PreparedStatementType());
+						this->complete(cont, err, HandlerArg());
 						yield break;
 					}
 				}
@@ -200,8 +188,10 @@ boost::mysql::detail::async_prepare_statement(
 				this->complete(
 					cont,
 					err,
-					error_info(),
-					PreparedStatementType(processor_.get_channel(), processor_.get_response())
+					HandlerArg(PreparedStatementType(
+						processor_.get_channel(),
+						processor_.get_response())
+					)
 				);
 			}
 		}

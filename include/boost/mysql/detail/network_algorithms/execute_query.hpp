@@ -2,6 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_QUERY_HPP_
 
 #include "boost/mysql/detail/network_algorithms/common.hpp"
+#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 #include "boost/mysql/resultset.hpp"
 #include <string_view>
 
@@ -19,7 +20,7 @@ void execute_query(
 );
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<StreamType>))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
 async_execute_query(
 	channel<StreamType>& chan,
 	std::string_view query,

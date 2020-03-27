@@ -17,8 +17,11 @@ void prepare_statement(
 	prepared_statement<StreamType>& output
 );
 
+template <typename StreamType>
+using prepare_statement_signature = void(error_code, async_handler_arg<prepared_statement<StreamType>>);
+
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, prepared_statement<StreamType>))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature<StreamType>)
 async_prepare_statement(
 	channel<StreamType>& channel,
 	std::string_view statement,

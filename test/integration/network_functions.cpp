@@ -219,8 +219,12 @@ class async : public network_functions
 	template <typename R, typename Callable>
 	static network_result<R> impl(Callable&& cb) {
 		std::promise<network_result<R>> prom;
-		cb([&prom](error_code code, error_info info, auto retval) {
-			prom.set_value(network_result<R>{code, std::move(info), std::move(retval)});
+		cb([&prom](error_code code, auto retval) {
+			prom.set_value(network_result<R>{
+				code,
+				std::move(retval.error()),
+				std::move(retval.get())
+			});
 		});
 		return prom.get_future().get();
 	}

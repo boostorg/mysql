@@ -6,6 +6,7 @@
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset.hpp"
+#include "boost/mysql/async_handler_arg.hpp"
 #include "boost/mysql/prepared_statement.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
@@ -92,13 +93,16 @@ public:
 	/// Performs the MySQL-level handshake (synchronous with exceptions version).
 	void handshake(const connection_params& params);
 
+	/// Handler signature for handshake.
+	using handshake_signature = void(error_code, error_info);
+
 	/**
 	 * \brief Performs the MySQL-level handshake (asynchronous version).
 	 * \details The strings pointed to by params should be kept alive by the caller
 	 * until the operation completes, as no copy is made by the library.
 	 */
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
 	async_handshake(const connection_params& params, CompletionToken&& token);
 
 	/**
@@ -120,9 +124,12 @@ public:
 	/// Executes a SQL text query (sync with exceptions version).
 	resultset<Stream> query(std::string_view query_string);
 
+	/// Handler signature for query.
+	using query_signature = void(error_code, async_handler_arg<resultset<Stream>>);
+
 	/// Executes a SQL text query (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, resultset<Stream>))
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, query_signature)
 	async_query(std::string_view query_string, CompletionToken&& token);
 
 	/**
@@ -141,9 +148,13 @@ public:
 	/// Prepares a statement (sync with exceptions version).
 	prepared_statement<Stream> prepare_statement(std::string_view statement);
 
+	/// Handler signature for prepare_statement.
+	using prepare_statement_signature = void(error_code, async_handler_arg<prepared_statement<Stream>>);
+
 	/// Prepares a statement (async version).
 	template <typename CompletionToken>
-	auto async_prepare_statement(std::string_view statement, CompletionToken&& token);
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
+	async_prepare_statement(std::string_view statement, CompletionToken&& token);
 };
 
 /// A connection to MySQL over TCP.

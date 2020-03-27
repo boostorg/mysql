@@ -123,13 +123,14 @@ template <typename StreamType>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, const boost::mysql::row*)
+	typename boost::mysql::resultset<StreamType>::fetch_one_signature
 )
 boost::mysql::resultset<StreamType>::async_fetch_one(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, error_info, const row*);
+	using HandlerArg = async_handler_arg<const row*>;
+	using HandlerSignature = fetch_one_signature;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
@@ -155,7 +156,7 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 			{
 				if (resultset_.complete())
 				{
-					this->complete(cont, error_code(), error_info(), nullptr);
+					this->complete(cont, error_code(), HandlerArg(nullptr));
 				}
 				else
 				{
@@ -172,8 +173,9 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 					this->complete(
 						cont,
 						err,
-						std::move(info),
-						result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
+						result == detail::read_row_result::error ? HandlerArg(std::move(info)) :
+								result == detail::read_row_result::row ? HandlerArg(&resultset_.current_row_) :
+								HandlerArg(nullptr)
 					);
 				}
 			}
@@ -195,14 +197,15 @@ template <typename StreamType>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, std::vector<boost::mysql::owning_row>)
+	typename boost::mysql::resultset<StreamType>::fetch_many_signature
 )
 boost::mysql::resultset<StreamType>::async_fetch_many(
 	std::size_t count,
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, error_info, std::vector<owning_row>);
+	using HandlerArg = async_handler_arg<std::vector<owning_row>>;
+	using HandlerSignature = fetch_many_signature;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 
@@ -261,7 +264,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 					);
 					if (result == detail::read_row_result::error)
 					{
-						this->complete(cont, err, std::move(info), std::move(impl_->rows));
+						this->complete(cont, err, HandlerArg(std::move(info)));
 						yield break;
 					}
 					else if (result == detail::read_row_result::eof)
@@ -273,7 +276,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 						impl_->row_received();
 					}
 				}
-				this->complete(cont, err, error_info(), std::move(impl_->rows));
+				this->complete(cont, err, HandlerArg(std::move(impl_->rows)));
 			}
 		}
 	};
@@ -293,7 +296,7 @@ template <typename StreamType>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, std::vector<boost::mysql::owning_row>)
+	typename boost::mysql::resultset<StreamType>::fetch_all_signature
 )
 boost::mysql::resultset<StreamType>::async_fetch_all(
 	CompletionToken&& token

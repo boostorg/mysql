@@ -4,6 +4,7 @@
 #include <boost/asio/coroutine.hpp>
 #include <boost/beast/core/async_base.hpp>
 #include "boost/mysql/error.hpp"
+#include "boost/mysql/async_handler_arg.hpp"
 #include "boost/mysql/metadata.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/common_messages.hpp"

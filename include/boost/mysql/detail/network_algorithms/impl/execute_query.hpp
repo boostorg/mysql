@@ -1,7 +1,6 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP_
 
-#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
 #include "boost/mysql/detail/protocol/query_messages.hpp"
 
@@ -22,7 +21,7 @@ void boost::mysql::detail::execute_query(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::resultset<StreamType>)
+	boost::mysql::detail::execute_generic_signature<StreamType>
 )
 boost::mysql::detail::async_execute_query(
 	channel<StreamType>& chan,

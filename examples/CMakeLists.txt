@@ -1,4 +1,6 @@
 
+find_package(Boost REQUIRED COMPONENTS coroutine)
+
 function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 	add_executable(
 		${EXECUTABLE_NAME}
@@ -8,6 +10,7 @@ function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 		${EXECUTABLE_NAME}
 		PRIVATE
 		mysql_asio
+		Boost::coroutine
 	)
 	_mysql_set_target_warnings(${EXECUTABLE_NAME})
 endfunction()
@@ -15,6 +18,7 @@ endfunction()
 set(MYSQL_EXAMPLES
   query_sync
   query_async_callbacks
+  query_async_coroutines
   metadata
   prepared_statements
 )

@@ -2,6 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_PREPARED_STATEMENT_HPP_
 
 #include "boost/mysql/resultset.hpp"
+#include "boost/mysql/async_handler_arg.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include <optional>

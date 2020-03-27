@@ -1,7 +1,6 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_STATEMENT_HPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_STATEMENT_HPP_
 
-#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 #include "boost/mysql/detail/protocol/binary_deserialization.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 
@@ -48,7 +47,7 @@ void boost::mysql::detail::execute_statement(
 template <typename StreamType, typename ForwardIterator, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::resultset<StreamType>)
+	boost::mysql::detail::execute_generic_signature<StreamType>
 )
 boost::mysql::detail::async_execute_statement(
 	channel<StreamType>& chan,

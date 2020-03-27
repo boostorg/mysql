@@ -59,7 +59,7 @@ template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info)
+	typename boost::mysql::connection<Stream>::handshake_signature
 )
 boost::mysql::connection<Stream>::async_handshake(
 	const connection_params& params,
@@ -105,7 +105,7 @@ template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::resultset<Stream>)
+	typename boost::mysql::connection<Stream>::query_signature
 )
 boost::mysql::connection<Stream>::async_query(
 	std::string_view query_string,
@@ -148,7 +148,11 @@ boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepa
 
 template <typename Stream>
 template <typename CompletionToken>
-auto boost::mysql::connection<Stream>::async_prepare_statement(
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	typename boost::mysql::connection<Stream>::prepare_statement_signature
+)
+boost::mysql::connection<Stream>::async_prepare_statement(
 	std::string_view statement,
 	CompletionToken&& token
 )

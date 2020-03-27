@@ -8,6 +8,9 @@
 
 using boost::mysql::error_code;
 using boost::mysql::error_info;
+using boost::mysql::async_handler_arg;
+using boost::mysql::tcp_resultset;
+using boost::mysql::owning_row;
 
 /**
  * For this example, we will be using the 'mysql_asio_examples' database.
@@ -73,14 +76,15 @@ public:
 	void query_employees()
 	{
 		const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-		connection.async_query(sql, [this](error_code err, const error_info& info,
-										   boost::mysql::tcp_resultset&& result
+		connection.async_query(sql, [this](error_code err,
+										   async_handler_arg<tcp_resultset>&& result
 			) {
-			die_on_error(err, info);
-			resultset = std::move(result);
-			resultset.async_fetch_all([this](error_code err, const error_info& info, const auto& rows) {
-				die_on_error(err, info);
-				for (const auto& employee: rows)
+			die_on_error(err, result.error());
+			resultset = std::move(result.get());
+			resultset.async_fetch_all([this](error_code err,
+										     const async_handler_arg<std::vector<owning_row>>& rows) {
+				die_on_error(err, rows.error());
+				for (const auto& employee: rows.get())
 				{
 					print_employee(employee);
 				}
@@ -92,10 +96,10 @@ public:
 	void update_slacker()
 	{
 		const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](error_code err, const error_info& info,
-				                           [[maybe_unused]] boost::mysql::tcp_resultset&& result) {
-			die_on_error(err, info);
-			assert(result.fields().size() == 0);
+		connection.async_query(sql, [this](error_code err,
+				                           async_handler_arg<tcp_resultset>&& result) {
+			die_on_error(err, result.error());
+			assert(result.get().fields().size() == 0);
 			query_intern();
 		});
 	}
@@ -103,14 +107,15 @@ public:
 	void query_intern()
 	{
 		const char* sql = "SELECT salary FROM employee WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](const error_code& err, error_info info,
-										   boost::mysql::tcp_resultset&& result) {
-			die_on_error(err, info);
-			resultset = std::move(result);
-			resultset.async_fetch_all([](const error_code& err, error_info info, const auto& rows) {
-				die_on_error(err, info);
-				assert(rows.size() == 1);
-				[[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
+		connection.async_query(sql, [this](error_code err,
+										   async_handler_arg<tcp_resultset>&& result) {
+			die_on_error(err, result.error());
+			resultset = std::move(result.get());
+			resultset.async_fetch_all([](error_code err,
+										 const async_handler_arg<std::vector<owning_row>>& rows) {
+				die_on_error(err, rows.error());
+				assert(rows.get().size() == 1);
+				[[maybe_unused]] auto salary = std::get<double>(rows.get()[0].values()[0]);
 				assert(salary == 15000);
 			});
 		});

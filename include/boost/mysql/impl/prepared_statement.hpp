@@ -86,15 +86,15 @@ auto boost::mysql::prepared_statement<StreamType>::async_execute(
 	check_num_params(params_first, params_last, err, info);
 	if (err)
 	{
-		using HandlerSignature = void(error_code, error_info, resultset<StreamType>);
+		using HandlerArg = async_handler_arg<resultset<StreamType>>;
+		using HandlerSignature = void(error_code, HandlerArg);
 		boost::asio::async_completion<CompletionToken, HandlerSignature> completion (token);
 		return boost::asio::post(
 			channel_->next_layer().get_executor(),
 			boost::beast::bind_front_handler(
 				std::move(completion.completion_handler),
 				err,
-				std::move(info),
-				resultset<StreamType>()
+				HandlerArg(std::move(info))
 			)
 		);
 	}
