@@ -29,7 +29,7 @@ struct IntegTest : testing::Test
 		try
 		{
 			boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v4::loopback(), 3306);
-			conn.next_level().connect(endpoint);
+			conn.next_layer().connect(endpoint);
 		}
 		catch (...) // prevent terminate without an active exception on connect error
 		{
@@ -42,7 +42,7 @@ struct IntegTest : testing::Test
 	~IntegTest()
 	{
 		error_code code;
-		conn.next_level().close(code);
+		conn.next_layer().close(code);
 		guard.reset();
 		runner.join();
 	}

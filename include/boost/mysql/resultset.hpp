@@ -70,6 +70,12 @@ public:
 	resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
 		channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 
+	/// Retrieves the stream object associated with the underlying connection.
+	StreamType& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }
+
+	/// Retrieves the stream object associated with the underlying connection.
+	const StreamType& next_layer() const noexcept { assert(channel_); return channel_->next_layer(); }
+
 	/**
 	 * \brief Fetches a single row (sync with error code version).
 	 * \details The returned object will be nullptr if there are no more rows

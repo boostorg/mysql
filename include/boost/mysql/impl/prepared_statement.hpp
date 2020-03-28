@@ -74,7 +74,11 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
 
 template <typename StreamType>
 template <typename ForwardIterator, typename CompletionToken>
-auto boost::mysql::prepared_statement<StreamType>::async_execute(
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	typename boost::mysql::prepared_statement<StreamType>::execute_signature
+)
+boost::mysql::prepared_statement<StreamType>::async_execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last,
 	CompletionToken&& token
@@ -89,7 +93,8 @@ auto boost::mysql::prepared_statement<StreamType>::async_execute(
 		using HandlerArg = async_handler_arg<resultset<StreamType>>;
 		using HandlerSignature = void(error_code, HandlerArg);
 		boost::asio::async_completion<CompletionToken, HandlerSignature> completion (token);
-		return boost::asio::post(
+		// TODO: is executor correctly preserved here?
+		boost::asio::post(
 			channel_->next_layer().get_executor(),
 			boost::beast::bind_front_handler(
 				std::move(completion.completion_handler),
@@ -97,6 +102,7 @@ auto boost::mysql::prepared_statement<StreamType>::async_execute(
 				HandlerArg(std::move(info))
 			)
 		);
+		return completion.result.get();
 	}
 
 	// Actually execute the statement
@@ -133,7 +139,11 @@ void boost::mysql::prepared_statement<StreamType>::close()
 
 template <typename StreamType>
 template <typename CompletionToken>
-auto boost::mysql::prepared_statement<StreamType>::async_close(
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	typename boost::mysql::prepared_statement<StreamType>::close_signature
+)
+boost::mysql::prepared_statement<StreamType>::async_close(
 	CompletionToken&& token
 )
 {

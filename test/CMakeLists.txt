@@ -58,6 +58,8 @@ add_test(
 )
 
 # Integration testing
+find_package(Boost REQUIRED COMPONENTS coroutine)
+
 add_executable(
 	mysql_integrationtests
 	integration/metadata_validator.cpp
@@ -78,6 +80,7 @@ target_link_libraries(
 	gtest_main
 	gmock
 	mysql_asio
+	Boost::coroutine
 )
 target_include_directories(
 	mysql_integrationtests

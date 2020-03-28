@@ -68,7 +68,7 @@ void main_impl(int argc, char** argv)
 		boost::mysql::error_code ec;
 
 		// TCP connect
-		conn.next_level().async_connect(ep, yield[ec]);
+		conn.next_layer().async_connect(ep, yield[ec]);
 		check_error(ec);
 
 		// MySQL handshake

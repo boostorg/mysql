@@ -64,7 +64,7 @@ public:
 
 	void connect()
 	{
-		connection.next_level().async_connect(ep, [this](error_code err) {
+		connection.next_layer().async_connect(ep, [this](error_code err) {
 			die_on_error(err);
 			connection.async_handshake(conn_params, [this](error_code err, const error_info& info) {
 				die_on_error(err, info);

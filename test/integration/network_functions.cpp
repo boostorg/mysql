@@ -1,4 +1,5 @@
 #include "network_functions.hpp"
+#include <boost/asio/spawn.hpp>
 #include <future>
 
 using namespace boost::mysql::test;
@@ -12,6 +13,7 @@ using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
 using boost::mysql::owning_row;
+using boost::asio::yield_context;
 
 namespace
 {
@@ -214,7 +216,7 @@ public:
 	}
 };
 
-class async : public network_functions
+class async_callback : public network_functions
 {
 	template <typename R, typename Callable>
 	static network_result<R> impl(Callable&& cb) {
@@ -238,7 +240,7 @@ class async : public network_functions
 		return prom.get_future().get();
 	}
 public:
-	const char* name() const override { return "async"; }
+	const char* name() const override { return "async_callback"; }
 	network_result<no_result> handshake(
 		tcp_connection& conn,
 		const boost::mysql::connection_params& params
@@ -320,14 +322,125 @@ public:
 	}
 };
 
+class async_coroutine : public network_functions
+{
+	template <typename IoObj, typename Callable>
+	static auto impl(IoObj& obj, Callable&& cb) {
+		using R = typename decltype(cb(std::declval<yield_context>()))::value_type;
+		auto executor = obj.next_layer().get_executor();
+		std::promise<network_result<R>> prom;
+		boost::asio::spawn(executor, [&](yield_context yield) {
+			error_code ec;
+			auto result = cb(yield[ec]);
+			prom.set_value(network_result<R>{ec, std::move(result.error()), std::move(result.get())});
+		});
+		return prom.get_future().get();
+	}
+
+	template <typename IoObj, typename Callable>
+	static network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb) {
+		auto executor = obj.next_layer().get_executor();
+		std::promise<network_result<no_result>> prom;
+		boost::asio::spawn(executor, [&](yield_context yield) {
+			error_code ec;
+			error_info info = cb(yield[ec]);
+			prom.set_value(network_result<no_result>{ec, std::move(info), no_result()});
+		});
+		return prom.get_future().get();
+	}
+public:
+	const char* name() const override { return "async_coroutine"; }
+	network_result<no_result> handshake(
+		tcp_connection& conn,
+		const boost::mysql::connection_params& params
+	) override
+	{
+		return impl_no_result(conn, [&](yield_context yield) {
+			return conn.async_handshake(params, yield);
+		});
+	}
+	network_result<tcp_resultset> query(
+		tcp_connection& conn,
+		std::string_view query
+	) override
+	{
+		return impl(conn, [&](yield_context yield) {
+			return conn.async_query(query, yield);
+		});
+	}
+	network_result<tcp_prepared_statement> prepare_statement(
+		tcp_connection& conn,
+		std::string_view statement
+	) override
+	{
+		return impl(conn, [&](yield_context yield) {
+			return conn.async_prepare_statement(statement, yield);
+		});
+	}
+	network_result<tcp_resultset> execute_statement(
+		tcp_prepared_statement& stmt,
+		value_list_it params_first,
+		value_list_it params_last
+	) override
+	{
+		return impl(stmt, [&](yield_context yield) {
+			return stmt.async_execute(params_first, params_last, yield);
+		});
+	}
+	network_result<tcp_resultset> execute_statement(
+		tcp_prepared_statement& stmt,
+		const std::vector<value>& values
+	) override
+	{
+		return impl(stmt, [&](yield_context yield) {
+			return stmt.async_execute(values, yield);
+		});
+	}
+	network_result<no_result> close_statement(
+		tcp_prepared_statement& stmt
+	) override
+	{
+		return impl_no_result(stmt, [&](yield_context yield) {
+			return stmt.async_close(yield);
+		});
+	}
+	network_result<const row*> fetch_one(
+		tcp_resultset& r
+	) override
+	{
+		return impl(r, [&](yield_context yield) {
+			return r.async_fetch_one(yield);
+		});
+	}
+	network_result<std::vector<owning_row>> fetch_many(
+		tcp_resultset& r,
+		std::size_t count
+	) override
+	{
+		return impl(r, [&](yield_context yield) {
+			return r.async_fetch_many(count, yield);
+		});
+	}
+	network_result<std::vector<owning_row>> fetch_all(
+		tcp_resultset& r
+	) override
+	{
+		return impl(r, [&](yield_context yield) {
+			return r.async_fetch_all(yield);
+		});
+	}
+};
+
 // Global objects to be exposed
 sync_errc sync_errc_obj;
 sync_exc sync_exc_obj;
-async async_obj;
+async_callback async_callback_obj;
+async_coroutine async_coroutine_obj;
 
 }
 
 // Visible stuff
 boost::mysql::test::network_functions* boost::mysql::test::sync_errc_network_functions = &sync_errc_obj;
 boost::mysql::test::network_functions* boost::mysql::test::sync_exc_network_functions = &sync_exc_obj;
-boost::mysql::test::network_functions* boost::mysql::test::async_network_functions = &async_obj;
+boost::mysql::test::network_functions* boost::mysql::test::async_callback_network_functions = &async_callback_obj;
+boost::mysql::test::network_functions* boost::mysql::test::async_coroutine_network_functions = &async_coroutine_obj;

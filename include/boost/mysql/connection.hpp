@@ -67,7 +67,7 @@ class connection
 {
 	using channel_type = detail::channel<Stream>;
 
-	Stream next_level_;
+	Stream next_layer_;
 	channel_type channel_;
 public:
 	/**
@@ -76,16 +76,16 @@ public:
 	 */
 	template <typename... Args>
 	connection(Args&&... args) :
-		next_level_(std::forward<Args>(args)...),
-		channel_(next_level_)
+		next_layer_(std::forward<Args>(args)...),
+		channel_(next_layer_)
 	{
 	}
 
 	/// Retrieves the underlying Stream object.
-	Stream& next_level() { return next_level_; }
+	Stream& next_layer() { return next_layer_; }
 
 	/// Retrieves the underlying Stream object.
-	const Stream& next_level() const { return next_level_; }
+	const Stream& next_layer() const { return next_layer_; }
 
 	/// Performs the MySQL-level handshake (synchronous with error code version).
 	void handshake(const connection_params& params, error_code& ec, error_info& info);

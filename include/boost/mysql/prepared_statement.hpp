@@ -59,6 +59,12 @@ public:
 	prepared_statement(detail::channel<Stream>& chan, const detail::com_stmt_prepare_ok_packet& msg) noexcept:
 		channel_(&chan), stmt_msg_(msg) {}
 
+	/// Retrieves the stream object associated with the underlying connection.
+	Stream& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }
+
+	/// Retrieves the stream object associated with the underlying connection.
+	const Stream& next_layer() const noexcept { assert(channel_); return channel_->next_layer(); }
+
 	/// Returns true if the statement is not a default-constructed object.
 	bool valid() const noexcept { return channel_ != nullptr; }
 
@@ -86,13 +92,17 @@ public:
 		return execute(std::begin(params), std::end(params));
 	}
 
+	/// The handler signature for execute.
+	using execute_signature = void(error_code, async_handler_arg<resultset<Stream>>);
+
 	/**
 	 * \brief Executes a statement (collection, sync with exceptions code version).
 	 * \details It is **not** necessary to keep the collection of parameters or the
 	 * values they may point to alive.
 	 */
 	template <typename Collection, typename CompletionToken>
-	auto async_execute(const Collection& params, CompletionToken&& token) const
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
+	async_execute(const Collection& params, CompletionToken&& token) const
 	{
 		return async_execute(std::begin(params), std::end(params), std::forward<CompletionToken>(token));
 	}
@@ -118,7 +128,8 @@ public:
 	 * by the elements of the sequence need **not** be kept alive.
 	 */
 	template <typename ForwardIterator, typename CompletionToken>
-	auto async_execute(ForwardIterator params_first, ForwardIterator params_last, CompletionToken&& token) const;
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
+	async_execute(ForwardIterator params_first, ForwardIterator params_last, CompletionToken&& token) const;
 
 	/**
 	 * \brief Closes a prepared statement, deallocating it from the server (sync with error code version).
@@ -137,9 +148,13 @@ public:
 	/// Closes a prepared statement, deallocating it from the server (sync with exceptions version).
 	void close();
 
+	/// The handler signature for close.
+	using close_signature = void(error_code, error_info);
+
 	/// Closes a prepared statement, deallocating it from the server (async version).
 	template <typename CompletionToken>
-	auto async_close(CompletionToken&& token);
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
+	async_close(CompletionToken&& token);
 };
 
 /// A prepared statement associated to a TCP connection to the MySQL server.

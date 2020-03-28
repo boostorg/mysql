@@ -66,12 +66,14 @@ public:
 
 extern network_functions* sync_errc_network_functions;
 extern network_functions* sync_exc_network_functions;
-extern network_functions* async_network_functions;
+extern network_functions* async_callback_network_functions;
+extern network_functions* async_coroutine_network_functions;
 
 inline network_functions* all_network_functions [] = {
 	sync_errc_network_functions,
 	sync_exc_network_functions,
-	async_network_functions
+	async_callback_network_functions,
+	async_coroutine_network_functions
 };
 
 #define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \

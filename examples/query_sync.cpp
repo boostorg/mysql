@@ -65,7 +65,7 @@ void main_impl(int argc, char** argv)
 	 *    - Authenticating to the MySQL server.
 	 */
 	boost::mysql::tcp_connection conn (ctx);
-	conn.next_level().connect(ep); // next_level() returns a boost::asio::ip::tcp::socket
+	conn.next_layer().connect(ep); // next_level() returns a boost::asio::ip::tcp::socket
 	conn.handshake(params); // Authenticates to the MySQL server
 
 	/**

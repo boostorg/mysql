@@ -15,6 +15,7 @@ Handshake
 	SSL
 	compression
 Usability
+	Static asserts for completion tokens
 	Connection quit
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
