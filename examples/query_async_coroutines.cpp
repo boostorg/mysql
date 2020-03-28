@@ -91,6 +91,8 @@ void main_impl(int argc, char** argv)
 			print_employee(*row.get());
 		}
 	});
+
+	ctx.run();
 }
 
 int main(int argc, char** argv)
