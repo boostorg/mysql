@@ -1,5 +1,6 @@
 #include "network_functions.hpp"
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/use_future.hpp>
 #include <future>
 
 using namespace boost::mysql::test;
@@ -14,6 +15,7 @@ using boost::mysql::value;
 using boost::mysql::row;
 using boost::mysql::owning_row;
 using boost::asio::yield_context;
+using boost::asio::use_future;
 
 namespace
 {
@@ -23,10 +25,8 @@ class sync_errc : public network_functions
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
 		using R = decltype(cb(std::declval<error_code&>(), std::declval<error_info&>()));
-		network_result<R> res;
-		res.err = make_error_code(errc::no);
-		res.info.set_message("errc info not cleared correctly");
-		res.value = cb(res.err, res.info);
+		network_result<R> res (make_error_code(errc::no), error_info("errc info not cleared correctly"));
+		res.value = cb(res.err, *res.info);
 		return res;
 	}
 public:
@@ -127,7 +127,7 @@ class sync_exc : public network_functions
 		catch (const boost::system::system_error& err)
 		{
 			res.err = err.code();
-			res.info.set_message(err.what());
+			res.info = error_info(err.what());
 		}
 		return res;
 	}
@@ -222,11 +222,11 @@ class async_callback : public network_functions
 	static network_result<R> impl(Callable&& cb) {
 		std::promise<network_result<R>> prom;
 		cb([&prom](error_code code, auto retval) {
-			prom.set_value(network_result<R>{
+			prom.set_value(network_result<R>(
 				code,
 				std::move(retval.error()),
 				std::move(retval.get())
-			});
+			));
 		});
 		return prom.get_future().get();
 	}
@@ -235,7 +235,7 @@ class async_callback : public network_functions
 	static network_result<no_result> impl_no_result(Callable&& cb) {
 		std::promise<network_result<no_result>> prom;
 		cb([&prom](error_code code, error_info info) {
-			prom.set_value(network_result<no_result>{code, std::move(info), no_result()});
+			prom.set_value(network_result<no_result>(code, std::move(info)));
 		});
 		return prom.get_future().get();
 	}
@@ -327,12 +327,15 @@ class async_coroutine : public network_functions
 	template <typename IoObj, typename Callable>
 	static auto impl(IoObj& obj, Callable&& cb) {
 		using R = typename decltype(cb(std::declval<yield_context>()))::value_type;
-		auto executor = obj.next_layer().get_executor();
 		std::promise<network_result<R>> prom;
-		boost::asio::spawn(executor, [&](yield_context yield) {
+		boost::asio::spawn(obj.next_layer().get_executor(), [&](yield_context yield) {
 			error_code ec;
 			auto result = cb(yield[ec]);
-			prom.set_value(network_result<R>{ec, std::move(result.error()), std::move(result.get())});
+			prom.set_value(network_result<R>(
+				ec,
+				std::move(result.error()),
+				std::move(result.get())
+			));
 		});
 		return prom.get_future().get();
 	}
@@ -344,7 +347,7 @@ class async_coroutine : public network_functions
 		boost::asio::spawn(executor, [&](yield_context yield) {
 			error_code ec;
 			error_info info = cb(yield[ec]);
-			prom.set_value(network_result<no_result>{ec, std::move(info), no_result()});
+			prom.set_value(network_result<no_result>(ec, std::move(info)));
 		});
 		return prom.get_future().get();
 	}
@@ -431,11 +434,131 @@ public:
 	}
 };
 
+class async_future : public network_functions
+{
+	template <typename Callable>
+	static auto impl(Callable&& cb) {
+		// Callable returns a future<async_handler_arg<R>>
+		using R = typename decltype(cb().get())::value_type;
+		std::future<boost::mysql::async_handler_arg<R>> fut = cb();
+		try
+		{
+			auto result = fut.get();
+			return network_result<R>(
+				error_code(),
+				std::move(result.error()),  // the returned error_info should be empty
+				std::move(result.get())
+			);
+		}
+		catch (const boost::system::system_error& err)
+		{
+			// error_info is not available here, so we skip validation
+			return network_result<R>(err.code());
+		}
+	}
+
+	template <typename Callable>
+	static network_result<no_result> impl_no_result(Callable&& cb) {
+		std::future<error_info> fut = cb();
+		try
+		{
+			// This should be returning an empty error_info, so we validate that
+			return network_result<no_result>(error_code(), fut.get());
+		}
+		catch (const boost::system::system_error& err)
+		{
+			return network_result<no_result>(err.code());
+		}
+	}
+public:
+	const char* name() const override { return "async_future"; }
+	network_result<no_result> handshake(
+		tcp_connection& conn,
+		const boost::mysql::connection_params& params
+	) override
+	{
+		return impl_no_result([&] {
+			return conn.async_handshake(params, use_future);
+		});
+	}
+	network_result<tcp_resultset> query(
+		tcp_connection& conn,
+		std::string_view query
+	) override
+	{
+		return impl([&] {
+			return conn.async_query(query, use_future);
+		});
+	}
+	network_result<tcp_prepared_statement> prepare_statement(
+		tcp_connection& conn,
+		std::string_view statement
+	) override
+	{
+		return impl([&]{
+			return conn.async_prepare_statement(statement, use_future);
+		});
+	}
+	network_result<tcp_resultset> execute_statement(
+		tcp_prepared_statement& stmt,
+		value_list_it params_first,
+		value_list_it params_last
+	) override
+	{
+		return impl([&]{
+			return stmt.async_execute(params_first, params_last, use_future);
+		});
+	}
+	network_result<tcp_resultset> execute_statement(
+		tcp_prepared_statement& stmt,
+		const std::vector<value>& values
+	) override
+	{
+		return impl([&] {
+			return stmt.async_execute(values, use_future);
+		});
+	}
+	network_result<no_result> close_statement(
+		tcp_prepared_statement& stmt
+	) override
+	{
+		return impl_no_result([&] {
+			return stmt.async_close(use_future);
+		});
+	}
+	network_result<const row*> fetch_one(
+		tcp_resultset& r
+	) override
+	{
+		return impl([&] {
+			return r.async_fetch_one(use_future);
+		});
+	}
+	network_result<std::vector<owning_row>> fetch_many(
+		tcp_resultset& r,
+		std::size_t count
+	) override
+	{
+		return impl([&] {
+			return r.async_fetch_many(count, use_future);
+		});
+	}
+	network_result<std::vector<owning_row>> fetch_all(
+		tcp_resultset& r
+	) override
+	{
+		return impl([&] {
+			return r.async_fetch_all(use_future);
+		});
+	}
+};
+
 // Global objects to be exposed
 sync_errc sync_errc_obj;
 sync_exc sync_exc_obj;
 async_callback async_callback_obj;
 async_coroutine async_coroutine_obj;
+async_future async_future_obj;
 
 }
 
@@ -444,3 +567,4 @@ boost::mysql::test::network_functions* boost::mysql::test::sync_errc_network_fun
 boost::mysql::test::network_functions* boost::mysql::test::sync_exc_network_functions = &sync_exc_obj;
 boost::mysql::test::network_functions* boost::mysql::test::async_callback_network_functions = &async_callback_obj;
 boost::mysql::test::network_functions* boost::mysql::test::async_coroutine_network_functions = &async_coroutine_obj;
+boost::mysql::test::network_functions* boost::mysql::test::async_future_network_functions = &async_future_obj;

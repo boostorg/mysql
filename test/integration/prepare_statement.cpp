@@ -39,7 +39,7 @@ TEST_P(PrepareStatementTest, OkWithParams)
 	EXPECT_EQ(stmt.value.num_params(), 2);
 }
 
-TEST_P(PrepareStatementTest, errc)
+TEST_P(PrepareStatementTest, Error)
 {
 	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
 	stmt.validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});

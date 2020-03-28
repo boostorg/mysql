@@ -5,6 +5,7 @@
 #include "test_common.hpp"
 #include <gtest/gtest.h>
 #include <forward_list>
+#include <optional>
 
 namespace boost {
 namespace mysql {
@@ -16,13 +17,24 @@ template <typename T>
 struct network_result
 {
 	error_code err;
-	error_info info;
+	std::optional<error_info> info; // some async initiators (futures) don't support this
 	T value;
+
+	network_result() = default;
+
+	network_result(error_code ec, error_info info, T&& value = {}):
+		err(ec), info(std::move(info)), value(std::move(value)) {}
+
+	network_result(error_code ec, T&& value = {}):
+		err(ec), value(std::move(value)) {}
 
 	void validate_no_error() const
 	{
 		ASSERT_EQ(err, error_code());
-		EXPECT_EQ(info, error_info());
+		if (info)
+		{
+			EXPECT_EQ(*info, error_info());
+		}
 	}
 
 	void validate_error(
@@ -31,7 +43,10 @@ struct network_result
 	) const
 	{
 		EXPECT_EQ(err, expected_errc);
-		validate_string_contains(info.message(), expected_msg);
+		if (info)
+		{
+			validate_string_contains(info->message(), expected_msg);
+		}
 	}
 
 	void validate_error(
@@ -68,12 +83,14 @@ extern network_functions* sync_errc_network_functions;
 extern network_functions* sync_exc_network_functions;
 extern network_functions* async_callback_network_functions;
 extern network_functions* async_coroutine_network_functions;
+extern network_functions* async_future_network_functions;
 
 inline network_functions* all_network_functions [] = {
 	sync_errc_network_functions,
 	sync_exc_network_functions,
 	async_callback_network_functions,
-	async_coroutine_network_functions
+	async_coroutine_network_functions,
+	async_future_network_functions
 };
 
 #define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \

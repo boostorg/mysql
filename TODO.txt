@@ -2,10 +2,7 @@ Coroutines
 	Better explanation in examples about async_handler_arg
 	Unit test async_handler_arg
 	std::get for async_handler_arg
-	Signatures as typedefs?
-	Integ tests with coroutines
 	async_handler_arg docs
-	Integ tests with futures
 	Example with futures
 Multiresultset
 	Text protocol
@@ -15,6 +12,7 @@ Handshake
 	SSL
 	compression
 Usability
+	Should make_error_code be public?
 	Static asserts for completion tokens
 	Connection quit
 	Incomplete query reads: how does this affect further queries?

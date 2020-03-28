@@ -91,4 +91,6 @@ TEST_P(QueryTest, QueryAndFetch_AliasedTableAndField_MetadataCorrect)
 	validate_meta(result.value.fields(), {validator});
 }
 
+MYSQL_NETWORK_TEST_SUITE(QueryTest);
+
 } // anon namespace
