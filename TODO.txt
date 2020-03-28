@@ -1,8 +1,4 @@
 Coroutines
-	Better explanation in examples about async_handler_arg
-	Unit test async_handler_arg
-	std::get for async_handler_arg
-	async_handler_arg docs
 	Example with futures
 Multiresultset
 	Text protocol
