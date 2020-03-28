@@ -20,7 +20,7 @@ wget -q -O boost_download.zip ^
 bash -c "unzip -q boost_download.zip" || goto error
 cd boost_1_72_0
 cmd /c ".\bootstrap.bat --prefix=%BOOST_ROOT%" || goto error
-cmd /c ".\b2 install -d0 --prefix=%BOOST_ROOT% --with-system --with-coroutine" || goto error
+cmd /c ".\b2 install -d0 --prefix=%BOOST_ROOT% --with-libraries=system,context,thread,chrono" || goto error
 cd ..
 
 rem Build our project
