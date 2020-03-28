@@ -44,7 +44,7 @@ __osx_mysql_defaults: &__osx_mysql_defaults
   <<: *__osx_defaults
   before_install:
     - brew update
-    - brew install boost mysql
+    - brew install mysql
     - mysql.server start
     
 __osx_mariadb_defaults: &__osx_mariadb_defaults
