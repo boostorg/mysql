@@ -38,7 +38,7 @@ public:
 	error_info() = default;
 
 	/// Initialization constructor.
-	error_info(std::string&& err): msg_(std::move(err)) {}
+	error_info(std::string&& err) noexcept: msg_(std::move(err)) {}
 
 	/// Gets the error message.
 	const std::string& message() const noexcept { return msg_; }

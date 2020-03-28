@@ -2,6 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_ASYNC_HANDLER_ARG_HPP_
 
 #include "boost/mysql/error.hpp"
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -14,7 +15,7 @@ class async_handler_arg
 public:
 	using value_type = T;
 
-	constexpr async_handler_arg() noexcept = default;
+	constexpr async_handler_arg() = default;
 
 	constexpr async_handler_arg(error_info&& info):
 		err_(std::move(info)) {}
