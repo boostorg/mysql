@@ -12,6 +12,8 @@ class async_handler_arg
 	error_info err_;
 	T value_;
 public:
+	using value_type = T;
+
 	constexpr async_handler_arg() noexcept = default;
 
 	constexpr async_handler_arg(error_info&& info):

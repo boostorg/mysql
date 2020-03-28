@@ -2,6 +2,7 @@
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_VALUE_HOLDER_HPP_
 
 #include <utility>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -11,13 +12,16 @@ template <typename T>
 struct value_holder
 {
 	using value_type = T;
+	static_assert(std::is_nothrow_default_constructible_v<T>);
 
 	value_type value;
 
-	value_holder(): value{} {};
+	value_holder() noexcept: value{} {};
 
 	template <typename U>
-	explicit constexpr value_holder(U&& u): value(std::forward<U>(u)) {}
+	explicit constexpr value_holder(U&& u)
+		noexcept(std::is_nothrow_constructible_v<T, decltype(u)>):
+		value(std::forward<U>(u)) {}
 
 	constexpr bool operator==(const value_holder<T>& rhs) const { return value == rhs.value; }
 	constexpr bool operator!=(const value_holder<T>& rhs) const { return value != rhs.value; }
