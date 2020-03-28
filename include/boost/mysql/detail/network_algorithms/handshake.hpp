@@ -2,6 +2,7 @@
 #define MYSQL_ASIO_IMPL_HANDSHAKE_HPP
 
 #include <string_view>
+#include "boost/mysql/detail/network_algorithms/common.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/collation.hpp"
@@ -26,8 +27,10 @@ void hanshake(
 	error_info& info
 );
 
+using handshake_signature = empty_signature;
+
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
 async_handshake(
 	channel<StreamType>& channel,
 	const handshake_params& params,

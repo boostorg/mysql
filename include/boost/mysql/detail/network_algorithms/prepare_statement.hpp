@@ -18,7 +18,7 @@ void prepare_statement(
 );
 
 template <typename StreamType>
-using prepare_statement_signature = void(error_code, async_handler_arg<prepared_statement<StreamType>>);
+using prepare_statement_signature = r_handler_signature<prepared_statement<StreamType>>;
 
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature<StreamType>)

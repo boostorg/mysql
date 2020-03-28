@@ -86,7 +86,7 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
-	void(boost::mysql::error_code, boost::mysql::error_info, boost::mysql::detail::read_row_result)
+	boost::mysql::detail::read_row_signature
 )
 boost::mysql::detail::async_read_row(
 	deserialize_row_fn deserializer,
@@ -98,7 +98,7 @@ boost::mysql::detail::async_read_row(
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(mysql::error_code, mysql::detail::read_row_result);
+	using HandlerSignature = read_row_signature;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 

@@ -29,8 +29,10 @@ read_row_result read_row(
 	error_info& info
 );
 
+using read_row_signature = void(error_code, error_info, read_row_result);
+
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info, read_row_result))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, read_row_signature)
 async_read_row(
 	deserialize_row_fn deserializer,
 	channel<StreamType>& channel,

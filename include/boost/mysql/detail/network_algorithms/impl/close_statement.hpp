@@ -25,7 +25,10 @@ void boost::mysql::detail::close_statement(
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::error_info))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	boost::mysql::detail::close_signature
+)
 boost::mysql::detail::async_close_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
@@ -66,7 +69,7 @@ boost::mysql::detail::async_close_statement(
 		);
 	};
 
-	return boost::asio::async_initiate<CompletionToken, void(error_code, error_info)>(
+	return boost::asio::async_initiate<CompletionToken, close_signature>(
 			initiation, token, chan);
 }
 

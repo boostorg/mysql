@@ -276,14 +276,17 @@ void boost::mysql::detail::hanshake(
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::error_info))
+BOOST_ASIO_INITFN_RESULT_TYPE(
+	CompletionToken,
+	boost::mysql::detail::handshake_signature
+)
 boost::mysql::detail::async_handshake(
 	channel<StreamType>& chan,
 	const handshake_params& params,
 	CompletionToken&& token
 )
 {
-	using HandlerSignature = void(error_code, error_info);
+	using HandlerSignature = handshake_signature;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 

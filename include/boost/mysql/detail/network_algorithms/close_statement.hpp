@@ -15,8 +15,10 @@ void close_statement(
 	error_info& info
 );
 
+using close_signature = empty_signature;
+
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, error_info))
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
 async_close_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
