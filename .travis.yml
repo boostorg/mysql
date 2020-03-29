@@ -1,9 +1,3 @@
-__windows_defaults: &__windows_defaults
-  os: windows
-  language: sh # For some reason, language cpp will start an Ubuntu machine instead
-  script:
-    - cmd //c 'ci\build_windows.bat'
-    
 __linux_addons_defaults: &__linux_addons_defaults
   apt:
     update: true
@@ -62,30 +56,6 @@ language: cpp
 
 matrix:
   include:
-    - name: windows_msvc_x64_debug_mysql
-      <<: *__windows_defaults
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - TARGET_ARCH=x64
-        - DATABASE=mysql
-    - name: windows_msvc_x64_release_mysql
-      <<: *__windows_defaults
-      env:
-        - CMAKE_BUILD_TYPE=Release
-        - TARGET_ARCH=x64
-        - DATABASE=mysql
-    - name: windows_msvc_x64_debug_mariadb
-      <<: *__windows_defaults
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - TARGET_ARCH=x64
-        - DATABASE=mariadb
-    - name: windows_msvc_x64_release_mariadb
-      <<: *__windows_defaults
-      env:
-        - CMAKE_BUILD_TYPE=Release
-        - TARGET_ARCH=x64
-        - DATABASE=mariadb
     - name: linux_gcc_x64_debug_mysql
       <<: *__linux_mysql_defaults
       compiler: gcc
