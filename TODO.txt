@@ -1,5 +1,3 @@
-Coroutines
-	Example with futures
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
