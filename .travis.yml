@@ -51,7 +51,7 @@ __osx_mariadb_defaults: &__osx_mariadb_defaults
   <<: *__osx_defaults
   before_install:
     - brew update
-    - brew install boost mariadb
+    - brew install mariadb
     - mysql.server start
     - sudo mysql -u root < ci/root_user_setup.sql
 
