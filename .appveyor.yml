@@ -7,6 +7,7 @@ platform:
   - x64
 
 build_script:
+  - set PATH=C:\Program Files\MySQL\MySQL Server 5.7\bin;%PATH%
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
   - mkdir build
   - cd build

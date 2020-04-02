@@ -13,7 +13,13 @@ endif()
 # our test targets
 function(_mysql_common_target_settings TARGET_NAME)
 	if(MSVC)
-		target_compile_definitions(${TARGET_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0601)
+		target_compile_definitions(
+			${TARGET_NAME}
+			PRIVATE
+			_CRT_SECURE_NO_WARNINGS
+			_WIN32_WINNT=0x0601 # Warnings in Windows (TODO: find a better way?)
+			_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING # Warnings in C++17 for Asio
+		)
 		target_link_directories(${TARGET_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
 		target_compile_options(${TARGET_NAME} PRIVATE /bigobj)
 	else()
