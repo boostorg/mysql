@@ -12,7 +12,7 @@ function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 		mysql_asio
 		Boost::coroutine
 	)
-	_mysql_set_target_warnings(${EXECUTABLE_NAME})
+	_mysql_common_target_settings(${EXECUTABLE_NAME})
 endfunction()
 
 set(MYSQL_EXAMPLES

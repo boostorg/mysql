@@ -9,6 +9,7 @@ FetchContent_Declare(
 FetchContent_GetProperties(googletest)
 if(NOT googletest_POPULATED)
     FetchContent_Populate(googletest)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE) # Avoid GTest linking against wrong CRT
     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 endif()
 
@@ -51,7 +52,7 @@ target_link_libraries(
 	gmock
 	mysql_asio
 )
-_mysql_set_target_warnings(mysql_unittests)
+_mysql_common_target_settings(mysql_unittests)
 add_test(
 	NAME mysql_unittests
 	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_unittests

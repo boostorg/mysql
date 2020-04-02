@@ -11,7 +11,7 @@ endif()
 
 # Utility function to set warnings and other compile properties of
 # our test targets
-function(_mysql_set_target_warnings TARGET_NAME)
+function(_mysql_common_target_settings TARGET_NAME)
 	if(MSVC)
 		target_compile_definitions(${TARGET_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0601)
 		target_link_directories(${TARGET_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
