@@ -34,7 +34,7 @@ foreach(EXAMPLE_NAME ${MYSQL_EXAMPLES})
     set(EXECUTABLE_NAME "example_${EXAMPLE_NAME}")
     _mysql_add_example(${EXECUTABLE_NAME} "${EXAMPLE_NAME}.cpp")
     set(BASH_CONTENT "${BASH_CONTENT}./${EXECUTABLE_NAME} example_user example_password\n")
-    set(BATCH_CONTENT "${BATCH_CONTENT}${EXECUTABLE_NAME} example_user example_password\n")
+    set(BATCH_CONTENT "${BATCH_CONTENT}${EXECUTABLE_NAME} example_user example_password || exit /B 1\n")
 endforeach()
 
 configure_file(
