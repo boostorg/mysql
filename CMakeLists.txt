@@ -20,8 +20,9 @@ function(_mysql_common_target_settings TARGET_NAME)
 			_WIN32_WINNT=0x0601 # Warnings in Windows (TODO: find a better way?)
 			_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING # Warnings in C++17 for Asio
 		)
+		# For some reason, Appveyor setup needs this to link against coroutine
 		target_link_directories(${TARGET_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
-		target_compile_options(${TARGET_NAME} PRIVATE /bigobj)
+		target_compile_options(${TARGET_NAME} PRIVATE /bigobj) # Prevent failures on Windows
 	else()
 		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
 	endif()
