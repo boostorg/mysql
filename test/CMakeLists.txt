@@ -58,7 +58,7 @@ add_test(
 )
 
 # Integration testing
-find_package(Boost REQUIRED COMPONENTS coroutine date_time)
+find_package(Boost REQUIRED COMPONENTS coroutine)
 
 add_executable(
 	mysql_integrationtests
@@ -81,7 +81,6 @@ target_link_libraries(
 	gmock
 	mysql_asio
 	Boost::coroutine
-	Boost::date_time
 )
 target_include_directories(
 	mysql_integrationtests
