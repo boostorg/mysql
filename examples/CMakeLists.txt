@@ -1,5 +1,5 @@
 
-find_package(Boost REQUIRED COMPONENTS coroutine)
+find_package(Boost REQUIRED COMPONENTS coroutine date_time)
 
 function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 	add_executable(
@@ -11,6 +11,7 @@ function (_mysql_add_example EXECUTABLE_NAME CPPFILE)
 		PRIVATE
 		mysql_asio
 		Boost::coroutine
+		Boost::date_time
 	)
 	_mysql_set_target_warnings(${EXECUTABLE_NAME})
 endfunction()
