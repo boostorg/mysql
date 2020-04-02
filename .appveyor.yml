@@ -1,18 +1,16 @@
 image: Visual Studio 2019
 environment:
-  CTEST_OUTPUT_ON_FAILURE: 1
   matrix:
-  - arch: Win64
-platform: 
-  - x64
+    - CMAKE_BUILD_TYPE: Debug
 
 build_script:
+  - set CTEST_OUTPUT_ON_FAILURE=1
   - set PATH=C:\Program Files\MySQL\MySQL Server 5.7\bin;%PATH%
   - mysqladmin --user=root password -pPassword12! ""
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
   - mkdir build
   - cd build
-  - cmake -G Ninja -DBOOST_ROOT=C:\Libraries\boost_1_71_0 -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
+  - cmake -G Ninja -DBOOST_ROOT=C:\Libraries\boost_1_71_0 -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
   - cmake --build . -j
   - ctest
 
