@@ -229,42 +229,59 @@ public:
 
 class async_callback : public network_functions
 {
+	// This allows for two versions of the tests: one where we pass a
+	// non-nullptr error_info* to the initiating function, and another
+	// one where we pass nullptr.
+	bool use_errinfo_;
+
 	template <typename R, typename Callable>
-	static network_result<R> impl(Callable&& cb)
+	network_result<R> impl(Callable&& cb)
 	{
 		struct handler
 		{
 			std::promise<network_result<R>>& prom;
-			error_info& info;
+			error_info* info; // nullptr for !use_errinfo_
 
 			// For operations with a return type
 			void operator()(error_code code, R retval)
 			{
-				prom.set_value(network_result<R>(
-					code,
-					std::move(info),
-					std::move(retval)
-				));
+				if (info)
+				{
+					prom.set_value(network_result<R>(code, std::move(*info), std::move(retval)));
+				}
+				else
+				{
+					prom.set_value(network_result<R>(code, std::move(retval)));
+				}
 			}
 
 			// For operations without a return type (R=no_result)
 			void operator()(error_code code)
 			{
-				prom.set_value(network_result<R>(
-					code,
-					std::move(info)
-				));
+				if (info)
+				{
+					prom.set_value(network_result<R>(code, std::move(*info)));
+				}
+				else
+				{
+					prom.set_value(network_result<R>(code));
+				}
 			}
 		};
 
 		std::promise<network_result<R>> prom;
 		error_info info = make_initial_error_info();
-		cb(handler{prom, info}, &info);
+		error_info* infoptr = use_errinfo_ ? &info : nullptr;
+		cb(handler{prom, infoptr}, infoptr);
 		return prom.get_future().get();
 	}
 
 public:
-	const char* name() const override { return "async_callback"; }
+	async_callback(bool use_errinfo): use_errinfo_(use_errinfo) {}
+	const char* name() const override
+	{
+		return use_errinfo_ ? "async_callback_errinfo" : "async_callback_noerrinfo";
+	}
 	network_result<no_result> handshake(
 		tcp_connection& conn,
 		const boost::mysql::connection_params& params
@@ -348,8 +365,10 @@ public:
 
 class async_coroutine : public network_functions
 {
+	bool use_errinfo_;
+
 	template <typename IoObj, typename Callable>
-	static auto impl(IoObj& obj, Callable&& cb) {
+	auto impl(IoObj& obj, Callable&& cb) {
 		using R = decltype(cb(
 			std::declval<yield_context>(),
 			std::declval<error_info*>()
@@ -357,22 +376,29 @@ class async_coroutine : public network_functions
 
 		std::promise<network_result<R>> prom;
 
-		boost::asio::spawn(obj.next_layer().get_executor(), [&](yield_context yield) {
+		boost::asio::spawn(obj.next_layer().get_executor(), [&, this](yield_context yield) {
 			error_code ec = make_initial_error_code();
 			error_info info = make_initial_error_info();
-			R result = cb(yield[ec], &info);
-			prom.set_value(network_result<R>(
-				ec,
-				std::move(info),
-				std::move(result)
-			));
+			R result = cb(yield[ec], use_errinfo_ ? &info: nullptr);
+			if (use_errinfo_)
+			{
+				prom.set_value(network_result<R>(ec, std::move(info), std::move(result)));
+			}
+			else
+			{
+				prom.set_value(network_result<R>(ec, std::move(result)));
+			}
 		});
 
 		return prom.get_future().get();
 	}
 
 public:
-	const char* name() const override { return "async_coroutine"; }
+	async_coroutine(bool use_errinfo): use_errinfo_(use_errinfo) {}
+	const char* name() const override
+	{
+		return use_errinfo_ ? "async_coroutine_errinfo" : "async_coroutine_noerrinfo";
+	}
 	network_result<no_result> handshake(
 		tcp_connection& conn,
 		const boost::mysql::connection_params& params
@@ -494,7 +520,7 @@ class async_future : public network_functions
 		}
 	}
 public:
-	const char* name() const override { return "async_future"; }
+	const char* name() const override { return "async_future_noerrinfo"; }
 	network_result<no_result> handshake(
 		tcp_connection& conn,
 		const boost::mysql::connection_params& params
@@ -579,15 +605,19 @@ public:
 // Global objects to be exposed
 sync_errc sync_errc_obj;
 sync_exc sync_exc_obj;
-async_callback async_callback_obj;
-async_coroutine async_coroutine_obj;
+async_callback async_callback_errinfo_obj (true);
+async_callback async_callback_noerrinfo_obj (false);
+async_coroutine async_coroutine_errinfo_obj (true);
+async_coroutine async_coroutine_noerrinfo_obj (false);
 async_future async_future_obj;
 
 }
 
 // Visible stuff
-boost::mysql::test::network_functions* boost::mysql::test::sync_errc_network_functions = &sync_errc_obj;
-boost::mysql::test::network_functions* boost::mysql::test::sync_exc_network_functions = &sync_exc_obj;
-boost::mysql::test::network_functions* boost::mysql::test::async_callback_network_functions = &async_callback_obj;
-boost::mysql::test::network_functions* boost::mysql::test::async_coroutine_network_functions = &async_coroutine_obj;
-boost::mysql::test::network_functions* boost::mysql::test::async_future_network_functions = &async_future_obj;
+network_functions* boost::mysql::test::sync_errc_network_functions = &sync_errc_obj;
+network_functions* boost::mysql::test::sync_exc_network_functions = &sync_exc_obj;
+network_functions* boost::mysql::test::async_callback_errinfo_network_functions = &async_callback_errinfo_obj;
+network_functions* boost::mysql::test::async_callback_noerrinfo_network_functions = &async_callback_noerrinfo_obj;
+network_functions* boost::mysql::test::async_coroutine_errinfo_network_functions = &async_coroutine_errinfo_obj;
+network_functions* boost::mysql::test::async_coroutine_noerrinfo_network_functions = &async_coroutine_noerrinfo_obj;
+network_functions* boost::mysql::test::async_future_noerrinfo_network_functions = &async_future_obj;
