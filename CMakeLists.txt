@@ -29,7 +29,6 @@ function(_mysql_common_target_settings TARGET_NAME)
 		)
 		# For some reason, Appveyor setup needs this to link against coroutine
 		target_link_directories(${TARGET_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
-		set(ENV{PATH} "${Boost_LIBRARY_DIRS};$ENV{PATH}")
 		target_compile_options(${TARGET_NAME} PRIVATE /bigobj) # Prevent failures on Windows
 	else()
 		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
