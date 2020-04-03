@@ -283,7 +283,8 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 boost::mysql::detail::async_handshake(
 	channel<StreamType>& chan,
 	const handshake_params& params,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
 	using HandlerSignature = handshake_signature;
@@ -297,22 +298,26 @@ boost::mysql::detail::async_handshake(
 		channel<StreamType>& channel_;
 		handshake_processor processor_;
 		error_info info_;
+		error_info* output_info_;
 
 		Op(
 			HandlerType&& handler,
 			channel<StreamType>& channel,
-			const handshake_params& params
+			const handshake_params& params,
+			error_info* output_info
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
 			channel_(channel),
-			processor_(params)
+			processor_(params),
+			output_info_(output_info)
 		{
 		}
 
 		void complete(bool cont, error_code code)
 		{
 			channel_.set_current_capabilities(processor_.negotiated_capabilities());
-			BaseType::complete(cont, code, std::move(info_));
+			conditional_assign(output_info_, std::move(info_));
+			BaseType::complete(cont, code);
 		}
 
 		void operator()(
@@ -357,7 +362,6 @@ boost::mysql::detail::async_handshake(
 
 				// Process it
 				err = processor_.process_handshake_server_response(channel_.shared_buffer(), auth_complete, info_);
-				if (auth_complete) err.clear();
 				if (err || auth_complete)
 				{
 					complete(cont, err);
@@ -396,7 +400,8 @@ boost::mysql::detail::async_handshake(
 	Op(
 		std::move(initiator.completion_handler),
 		chan,
-		params
+		params,
+		info
 	)(error_code(), false);
 	return initiator.result.get();
 }

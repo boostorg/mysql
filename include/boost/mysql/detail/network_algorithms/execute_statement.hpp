@@ -28,7 +28,8 @@ async_execute_statement(
 	std::uint32_t statement_id,
 	ForwardIterator params_begin,
 	ForwardIterator params_end,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 );
 
 } // detail

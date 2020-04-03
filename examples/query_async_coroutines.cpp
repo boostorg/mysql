@@ -18,6 +18,23 @@ using boost::mysql::error_info;
  * This example assumes you are already familiar with the basic concepts
  * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
  * please have a look to the query_sync.cpp example.
+ *
+ * In this library, all asynchronous operations follow Boost.Asio universal
+ * asynchronous models, and thus may be used with callbacks, coroutines or futures.
+ * The handler signature is always one of:
+ *   - void(error_code): for operations that do not have a "return type" (e.g. handshake)
+ *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
+ *     T = resultset<StreamType>).
+ *
+ * All asynchronous operations accept a last optional error_info* parameter. error_info
+ * contains additional diagnostic information returned by the server. If you
+ * pass a non-nullptr value, it will be populated in case of error if any extra information
+ * is available.
+ *
+ * Design note: handler signatures in Boost.Asio should have two parameters, at
+ * most, and the first one should be an error_code - otherwise some of the asynchronous
+ * features (e.g. coroutines) won't work. This is why error_info is not part of any
+ * of the handler signatures.
  */
 
 void print_employee(const boost::mysql::row& employee)
@@ -74,38 +91,29 @@ void main_impl(int argc, char** argv)
 	 * the coroutine will resume in the point it was left.
 	 *
 	 * The return type of a coroutine is the second argument to the handler signature
-	 * for the asynchronous operation. For example, connection::connect has a handler
-	 * signature of void(error_code, error_info), so the coroutine return type is error_info.
+	 * for the asynchronous operation. For example, connection::query has a handler
+	 * signature of void(error_code, resultset<Stream>), so the coroutine return
+	 * type is resultset<Stream>.
 	 *
-	 * Coroutines are limited to returning a single argument, so all handler signatures
-	 * in boost::mysql are limited to two arguments. In boost::mysql, coroutines may return:
-	 *   - error_info. Provides additional information in case of error.
-	 *   - async_handler_arg<T>. A combination of a value of type T and an error_info.
-	 *     Used by functions like connection::async_query(), which has to transmit
-	 *     a resultset as a return value, in addition to the error_info.
 	 */
 	boost::asio::spawn(ctx.get_executor(), [&conn, ep, params](boost::asio::yield_context yield) {
-		// This error_code will be filled if an operation fails. We will check it
-		// for every operation we perform.
+		// This error_code and error_info will be filled if an
+		// operation fails. We will check them for every operation we perform.
 		boost::mysql::error_code ec;
+		boost::mysql::error_info additional_info;
 
 		// TCP connect
 		conn.next_layer().async_connect(ep, yield[ec]);
 		check_error(ec);
 
-		// MySQL handshake. Note that if the operation would fail,
-		// the returned error_info would contain additional information about what happened
-		boost::mysql::error_info errinfo = conn.async_handshake(params, yield[ec]);
-		check_error(ec, errinfo);
+		// MySQL handshake
+		conn.async_handshake(params, yield[ec], &additional_info);
+		check_error(ec, additional_info);
 
-		// Issue the query to the server. This returns an async_handler_arg<tcp_resultset>,
-		// which contains an error_info and a tcp_resultset. Call async_handler_arg::error()
-		// to obtain the error_info, which will contain additional info in case of error.
-		// async_handler_arg::get() returns the actual resultset.
+		// Issue the query to the server
 		const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-		boost::mysql::async_handler_arg<boost::mysql::tcp_resultset> result =
-				conn.async_query(sql, yield[ec]);
-		check_error(ec, result.error()); // The error_info
+		boost::mysql::tcp_resultset result = conn.async_query(sql, yield[ec], &additional_info);
+		check_error(ec, additional_info);
 
 		/**
 		 * Get all rows in the resultset. We will employ resultset::async_fetch_one(),
@@ -116,11 +124,10 @@ void main_impl(int argc, char** argv)
 		 */
 		while (true)
 		{
-			boost::mysql::async_handler_arg<const boost::mysql::row*> row =
-					result.get().async_fetch_one(yield[ec]);
-			check_error(ec, row.error());
-			if (!row.get()) break; // No more rows available
-			print_employee(*row.get());
+			const boost::mysql::row* row = result.async_fetch_one(yield[ec], &additional_info);
+			check_error(ec, additional_info);
+			if (!row) break; // No more rows available
+			print_employee(*row);
 		}
 	});
 

@@ -34,7 +34,8 @@ BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
 async_handshake(
 	channel<StreamType>& channel,
 	const handshake_params& params,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 );
 
 } // detail

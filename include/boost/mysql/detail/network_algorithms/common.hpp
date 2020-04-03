@@ -4,7 +4,6 @@
 #include <boost/asio/coroutine.hpp>
 #include <boost/beast/core/async_base.hpp>
 #include "boost/mysql/error.hpp"
-#include "boost/mysql/async_handler_arg.hpp"
 #include "boost/mysql/metadata.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/common_messages.hpp"
@@ -19,10 +18,10 @@ using deserialize_row_fn = error_code (*)(
 	std::vector<value>&
 );
 
-using empty_signature = void(error_code, error_info);
+using empty_signature = void(error_code);
 
 template <typename T>
-using r_handler_signature = void(error_code, async_handler_arg<T>);
+using r_handler_signature = void(error_code, T);
 
 } // detail
 } // mysql

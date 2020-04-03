@@ -81,38 +81,43 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 boost::mysql::prepared_statement<StreamType>::async_execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 ) const
 {
+	detail::conditional_clear(info);
+
 	// Check we got passed the right number of params
 	error_code err;
-	error_info info;
-	check_num_params(params_first, params_last, err, info);
+	error_info nonnull_info;
+	check_num_params(params_first, params_last, err, nonnull_info);
 	if (err)
 	{
-		using HandlerArg = async_handler_arg<resultset<StreamType>>;
-		using HandlerSignature = void(error_code, HandlerArg);
-		boost::asio::async_completion<CompletionToken, HandlerSignature> completion (token);
+		detail::conditional_assign(info, std::move(nonnull_info));
+		boost::asio::async_completion<CompletionToken, execute_signature> completion (token);
 		// TODO: is executor correctly preserved here?
 		boost::asio::post(
 			channel_->next_layer().get_executor(),
 			boost::beast::bind_front_handler(
 				std::move(completion.completion_handler),
 				err,
-				HandlerArg(std::move(info))
+				resultset<StreamType>()
 			)
 		);
 		return completion.result.get();
 	}
-
-	// Actually execute the statement
-	return detail::async_execute_statement(
-		*channel_,
-		stmt_msg_.statement_id.value,
-		params_first,
-		params_last,
-		std::forward<CompletionToken>(token)
-	);
+	else
+	{
+		// Actually execute the statement
+		return detail::async_execute_statement(
+			*channel_,
+			stmt_msg_.statement_id.value,
+			params_first,
+			params_last,
+			std::forward<CompletionToken>(token),
+			info
+		);
+	}
 }
 
 template <typename StreamType>
@@ -144,11 +149,18 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 	typename boost::mysql::prepared_statement<StreamType>::close_signature
 )
 boost::mysql::prepared_statement<StreamType>::async_close(
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
 	assert(valid());
-	return detail::async_close_statement(*channel_, id(), std::forward<CompletionToken>(token));
+	detail::conditional_clear(info);
+	return detail::async_close_statement(
+		*channel_,
+		id(),
+		std::forward<CompletionToken>(token),
+		info
+	);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_IMPL_PREPARED_STATEMENT_HPP_ */

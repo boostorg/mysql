@@ -61,6 +61,22 @@ inline void check_error_code(const error_code& code, const error_info& info)
 	}
 }
 
+inline void conditional_clear(error_info* info) noexcept
+{
+	if (info)
+	{
+		info->clear();
+	}
+}
+
+inline void conditional_assign(error_info* to, error_info&& from)
+{
+	if (to)
+	{
+		*to = std::move(from);
+	}
+}
+
 } // detail
 } // mysql
 } // boost

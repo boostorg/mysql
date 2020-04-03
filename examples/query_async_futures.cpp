@@ -7,7 +7,6 @@
 #include <thread>
 
 using boost::mysql::error_code;
-using boost::mysql::error_info;
 using boost::asio::use_future;
 
 /**
@@ -20,6 +19,23 @@ using boost::asio::use_future;
  * This example assumes you are already familiar with the basic concepts
  * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
  * please have a look to the query_sync.cpp example.
+ *
+ * In this library, all asynchronous operations follow Boost.Asio universal
+ * asynchronous models, and thus may be used with callbacks, coroutines or futures.
+ * The handler signature is always one of:
+ *   - void(error_code): for operations that do not have a "return type" (e.g. handshake)
+ *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
+ *     T = resultset<StreamType>).
+ *
+ * All asynchronous operations accept a last optional error_info* parameter. error_info
+ * contains additional diagnostic information returned by the server. If you
+ * pass a non-nullptr value, it will be populated in case of error if any extra information
+ * is available.
+ *
+ * Design note: handler signatures in Boost.Asio should have two parameters, at
+ * most, and the first one should be an error_code - otherwise some of the asynchronous
+ * features (e.g. coroutines) won't work. This is why error_info is not part of any
+ * of the handler signatures.
  */
 
 void print_employee(const boost::mysql::row& employee)
@@ -89,27 +105,14 @@ void main_impl(int argc, char** argv)
 	 * Perform the MySQL handshake. Calling async_handshake triggers the
 	 * operation, and calling future::get() blocks the current thread until
 	 * it completes. get() will throw an exception if the operation fails.
-	 *
-	 * For compatibility with other async methods, futures may return an
-	 * error_info object. However, this would only contain information
-	 * in case of error, and in that case get() would throw. Thus,
-	 * the returned error_info is always empty.
 	 */
-	std::future<boost::mysql::error_info> fut2 =
-			conn.async_handshake(params, use_future);
-	fut2.get();
+	fut = conn.async_handshake(params, use_future);
+	fut.get();
 
-
-	/**
-	 * Issue the query to the server. The returned value is an async_handler_arg<tcp_resultset>,
-	 * which is a resultset plus an error_info, which is also empty.
-	 */
+	// Issue the query to the server
 	const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-	std::future<boost::mysql::async_handler_arg<boost::mysql::tcp_resultset>> resultset_fut =
-			conn.async_query(sql, use_future);
-
-	// First get() is for the future, second is for the async_handler_arg
-	boost::mysql::tcp_resultset result = resultset_fut.get().get();
+	std::future<boost::mysql::tcp_resultset> resultset_fut = conn.async_query(sql, use_future);
+	boost::mysql::tcp_resultset result = resultset_fut.get();
 
 	/**
 	 * Get all rows in the resultset. We will employ resultset::async_fetch_one(),
@@ -118,7 +121,7 @@ void main_impl(int argc, char** argv)
 	 * rows remain valid until the next call to async_fetch_one(). When no more
 	 * rows are available, async_fetch_one returns nullptr.
 	 */
-	while (const boost::mysql::row* current_row = result.async_fetch_one(use_future).get().get())
+	while (const boost::mysql::row* current_row = result.async_fetch_one(use_future).get())
 	{
 		print_employee(*current_row);
 	}

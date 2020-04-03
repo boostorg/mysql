@@ -102,14 +102,14 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 boost::mysql::detail::async_prepare_statement(
 	channel<StreamType>& chan,
 	std::string_view statement,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
 	using HandlerSignature = prepare_statement_signature<StreamType>;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 	using PreparedStatementType = prepared_statement<StreamType>;
-	using HandlerArg = async_handler_arg<PreparedStatementType>;
 
 	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
 
@@ -117,15 +117,18 @@ boost::mysql::detail::async_prepare_statement(
 	{
 		prepare_statement_processor<StreamType> processor_;
 		unsigned remaining_meta_;
+		error_info* output_info_;
 
 		Op(
 			HandlerType&& handler,
 			channel<StreamType>& channel,
-			std::string_view statement
+			std::string_view statement,
+			error_info* output_info
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
 			processor_(channel),
-			remaining_meta_(0)
+			remaining_meta_(0),
+			output_info_(output_info)
 		{
 			processor_.process_request(statement);
 		}
@@ -145,7 +148,7 @@ boost::mysql::detail::async_prepare_statement(
 				);
 				if (err)
 				{
-					this->complete(cont, err, HandlerArg());
+					this->complete(cont, err, PreparedStatementType());
 					yield break;
 				}
 
@@ -156,7 +159,7 @@ boost::mysql::detail::async_prepare_statement(
 				);
 				if (err)
 				{
-					this->complete(cont, err, HandlerArg());
+					this->complete(cont, err, PreparedStatementType());
 					yield break;
 				}
 
@@ -164,7 +167,8 @@ boost::mysql::detail::async_prepare_statement(
 				processor_.process_response(err, info);
 				if (err)
 				{
-					this->complete(cont, err, HandlerArg(std::move(info)));
+					detail::conditional_assign(output_info_, std::move(info));
+					this->complete(cont, err, PreparedStatementType());
 					yield break;
 				}
 
@@ -179,7 +183,7 @@ boost::mysql::detail::async_prepare_statement(
 					);
 					if (err)
 					{
-						this->complete(cont, err, HandlerArg());
+						this->complete(cont, err, PreparedStatementType());
 						yield break;
 					}
 				}
@@ -188,10 +192,7 @@ boost::mysql::detail::async_prepare_statement(
 				this->complete(
 					cont,
 					err,
-					HandlerArg(PreparedStatementType(
-						processor_.get_channel(),
-						processor_.get_response())
-					)
+					PreparedStatementType(processor_.get_channel(), processor_.get_response())
 				);
 			}
 		}
@@ -200,7 +201,8 @@ boost::mysql::detail::async_prepare_statement(
 	Op(
 		std::move(initiator.completion_handler),
 		chan,
-		statement
+		statement,
+		info
 	)(error_code(), false);
 	return initiator.result.get();
 }

@@ -63,13 +63,16 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_handshake(
 	const connection_params& params,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
+	detail::conditional_clear(info);
 	return detail::async_handshake(
 		channel_,
 		detail::to_handshake_params(params),
-		std::forward<CompletionToken>(token)
+		std::forward<CompletionToken>(token),
+		info
 	);
 }
 
@@ -109,13 +112,16 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_query(
 	std::string_view query_string,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
+	detail::conditional_clear(info);
 	return detail::async_execute_query(
 		channel_,
 		query_string,
-		std::forward<CompletionToken>(token)
+		std::forward<CompletionToken>(token),
+		info
 	);
 }
 
@@ -154,10 +160,17 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_prepare_statement(
 	std::string_view statement,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
-	return detail::async_prepare_statement(channel_, statement, std::forward<CompletionToken>(token));
+	detail::conditional_clear(info);
+	return detail::async_prepare_statement(
+		channel_,
+		statement,
+		std::forward<CompletionToken>(token),
+		info
+	);
 }
 
 

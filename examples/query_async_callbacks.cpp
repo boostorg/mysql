@@ -8,7 +8,6 @@
 
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::async_handler_arg;
 using boost::mysql::tcp_resultset;
 using boost::mysql::owning_row;
 
@@ -22,6 +21,23 @@ using boost::mysql::owning_row;
  * This example assumes you are already familiar with the basic concepts
  * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
  * please have a look to the query_sync.cpp example.
+ *
+ * In this library, all asynchronous operations follow Boost.Asio universal
+ * asynchronous models, and thus may be used with callbacks, coroutines or futures.
+ * The handler signature is always one of:
+ *   - void(error_code): for operations that do not have a "return type" (e.g. handshake)
+ *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
+ *     T = resultset<StreamType>).
+ *
+ * All asynchronous operations accept a last optional error_info* parameter. error_info
+ * contains additional diagnostic information returned by the server. If you
+ * pass a non-nullptr value, it will be populated in case of error if any extra information
+ * is available.
+ *
+ * Design note: handler signatures in Boost.Asio should have two parameters, at
+ * most, and the first one should be an error_code - otherwise some of the asynchronous
+ * features (e.g. coroutines) won't work. This is why error_info is not part of any
+ * of the handler signatures.
  */
 
 void print_employee(const boost::mysql::row& employee)
@@ -47,11 +63,12 @@ void die_on_error(
 
 class application
 {
-	boost::asio::ip::tcp::endpoint ep;
-	boost::mysql::connection_params conn_params;
-	boost::asio::io_context ctx;
-	boost::mysql::tcp_connection connection;
-	boost::mysql::tcp_resultset resultset;
+	boost::asio::ip::tcp::endpoint ep;            // Physical endpoint to connect to
+	boost::mysql::connection_params conn_params;  // MySQL credentials and other connection config
+	boost::asio::io_context ctx;                  // boost::asio context
+	boost::mysql::tcp_connection connection;      // Represents the connection to the MySQL server
+	boost::mysql::tcp_resultset resultset;        // A result from a query
+	boost::mysql::error_info additional_info;     // Will be populated with additional information about any errors
 public:
 	application(const char* username, const char* password) :
 		ep (boost::asio::ip::address_v4::loopback(), boost::mysql::default_port),
@@ -66,59 +83,53 @@ public:
 	{
 		connection.next_layer().async_connect(ep, [this](error_code err) {
 			die_on_error(err);
-			connection.async_handshake(conn_params, [this](error_code err, const error_info& info) {
-				die_on_error(err, info);
+			connection.async_handshake(conn_params, [this](error_code err) {
+				die_on_error(err, additional_info);
 				query_employees();
-			});
+			}, &additional_info);
 		});
 	}
 
 	void query_employees()
 	{
 		const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-		connection.async_query(sql, [this](error_code err,
-										   async_handler_arg<tcp_resultset>&& result
-			) {
-			die_on_error(err, result.error());
-			resultset = std::move(result.get());
-			resultset.async_fetch_all([this](error_code err,
-										     const async_handler_arg<std::vector<owning_row>>& rows) {
-				die_on_error(err, rows.error());
-				for (const auto& employee: rows.get())
+		connection.async_query(sql, [this](error_code err, tcp_resultset&& result) {
+			die_on_error(err, additional_info);
+			resultset = std::move(result);
+			resultset.async_fetch_all([this](error_code err, const std::vector<owning_row>& rows) {
+				die_on_error(err, additional_info);
+				for (const auto& employee: rows)
 				{
 					print_employee(employee);
 				}
 				update_slacker();
-			});
-		});
+			}, &additional_info);
+		}, &additional_info);
 	}
 
 	void update_slacker()
 	{
 		const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](error_code err,
-				                           async_handler_arg<tcp_resultset>&& result) {
-			die_on_error(err, result.error());
-			assert(result.get().fields().size() == 0);
+		connection.async_query(sql, [this](error_code err, tcp_resultset&& result) {
+			die_on_error(err, additional_info);
+			assert(result.fields().size() == 0);
 			query_intern();
-		});
+		}, &additional_info);
 	}
 
 	void query_intern()
 	{
 		const char* sql = "SELECT salary FROM employee WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](error_code err,
-										   async_handler_arg<tcp_resultset>&& result) {
-			die_on_error(err, result.error());
-			resultset = std::move(result.get());
-			resultset.async_fetch_all([](error_code err,
-										 const async_handler_arg<std::vector<owning_row>>& rows) {
-				die_on_error(err, rows.error());
-				assert(rows.get().size() == 1);
-				[[maybe_unused]] auto salary = std::get<double>(rows.get()[0].values()[0]);
+		connection.async_query(sql, [this](error_code err, tcp_resultset&& result) {
+			die_on_error(err, additional_info);
+			resultset = std::move(result);
+			resultset.async_fetch_all([this](error_code err, const std::vector<owning_row>& rows) {
+				die_on_error(err, additional_info);
+				assert(rows.size() == 1);
+				[[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
 				assert(salary == 15000);
-			});
-		});
+			}, &additional_info);
+		}, &additional_info);
 	}
 
 	auto& context() { return ctx; }

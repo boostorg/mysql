@@ -22,7 +22,8 @@ BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
 async_close_statement(
 	channel<StreamType>& chan,
 	std::uint32_t statement_id,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 );
 
 } // detail

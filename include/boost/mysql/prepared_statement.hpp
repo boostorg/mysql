@@ -2,7 +2,6 @@
 #define INCLUDE_BOOST_MYSQL_PREPARED_STATEMENT_HPP_
 
 #include "boost/mysql/resultset.hpp"
-#include "boost/mysql/async_handler_arg.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include <optional>
@@ -93,7 +92,7 @@ public:
 	}
 
 	/// The handler signature for execute.
-	using execute_signature = void(error_code, async_handler_arg<resultset<Stream>>);
+	using execute_signature = void(error_code, resultset<Stream>);
 
 	/**
 	 * \brief Executes a statement (collection, sync with exceptions code version).
@@ -102,9 +101,14 @@ public:
 	 */
 	template <typename Collection, typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
-	async_execute(const Collection& params, CompletionToken&& token) const
+	async_execute(const Collection& params, CompletionToken&& token, error_info* info=nullptr) const
 	{
-		return async_execute(std::begin(params), std::end(params), std::forward<CompletionToken>(token));
+		return async_execute(
+			std::begin(params),
+			std::end(params),
+			std::forward<CompletionToken>(token),
+			info
+		);
 	}
 
 
@@ -129,7 +133,8 @@ public:
 	 */
 	template <typename ForwardIterator, typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
-	async_execute(ForwardIterator params_first, ForwardIterator params_last, CompletionToken&& token) const;
+	async_execute(ForwardIterator params_first, ForwardIterator params_last,
+			CompletionToken&& token, error_info* info=nullptr) const;
 
 	/**
 	 * \brief Closes a prepared statement, deallocating it from the server (sync with error code version).
@@ -149,12 +154,12 @@ public:
 	void close();
 
 	/// The handler signature for close.
-	using close_signature = void(error_code, error_info);
+	using close_signature = void(error_code);
 
 	/// Closes a prepared statement, deallocating it from the server (async version).
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
-	async_close(CompletionToken&& token);
+	async_close(CompletionToken&& token, error_info* info=nullptr);
 };
 
 /// A prepared statement associated to a TCP connection to the MySQL server.

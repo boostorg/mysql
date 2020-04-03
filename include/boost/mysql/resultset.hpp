@@ -3,7 +3,6 @@
 
 #include "boost/mysql/row.hpp"
 #include "boost/mysql/metadata.hpp"
-#include "boost/mysql/async_handler_arg.hpp"
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/auxiliar/bytestring.hpp"
@@ -120,28 +119,28 @@ public:
 	std::vector<owning_row> fetch_all();
 
 	/// Handler signature for fetch_one.
-	using fetch_one_signature = void(error_code, async_handler_arg<const row*>);
+	using fetch_one_signature = void(error_code, const row*);
 
 	/// Fetchs a single row (async version).
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
-	async_fetch_one(CompletionToken&& token);
+	async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
 
 	/// Handler signature for fetch_many.
-	using fetch_many_signature = void(error_code, async_handler_arg<std::vector<owning_row>>);
+	using fetch_many_signature = void(error_code, std::vector<owning_row>);
 
 	/// Fetches at most count rows (async version).
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
-	async_fetch_many(std::size_t count, CompletionToken&& token);
+	async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
 
 	/// Handler signature for fetch_all.
-	using fetch_all_signature = void(error_code, async_handler_arg<std::vector<owning_row>>);
+	using fetch_all_signature = void(error_code, std::vector<owning_row>);
 
 	/// Fetches all available rows (async version).
 	template <typename CompletionToken>
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
-	async_fetch_all(CompletionToken&& token);
+	async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
 
 	/**
 	 * \brief Returns whether this object represents a valid resultset.

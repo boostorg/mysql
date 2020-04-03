@@ -187,14 +187,14 @@ boost::mysql::detail::async_execute_generic(
 	deserialize_row_fn deserializer,
 	channel<StreamType>& chan,
 	const Serializable& request,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
-	using HandlerSignature = boost::mysql::detail::execute_generic_signature<StreamType>;
+	using HandlerSignature = execute_generic_signature<StreamType>;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
 	using ResultsetType = resultset<StreamType>;
-	using HandlerArg = async_handler_arg<ResultsetType>;
 
 	boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
 
@@ -202,15 +202,18 @@ boost::mysql::detail::async_execute_generic(
 	{
 		std::shared_ptr<execute_processor<StreamType>> processor_;
 		std::uint64_t remaining_fields_ {0};
+		error_info* output_info_;
 
 		Op(
 			HandlerType&& handler,
 			deserialize_row_fn deserializer,
 			channel<StreamType>& channel,
-			const Serializable& request
+			const Serializable& request,
+			error_info* output_info
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
-			processor_(std::make_shared<execute_processor<StreamType>>(deserializer, channel))
+			processor_(std::make_shared<execute_processor<StreamType>>(deserializer, channel)),
+			output_info_(output_info)
 		{
 			processor_->process_request(request);
 		}
@@ -230,7 +233,7 @@ boost::mysql::detail::async_execute_generic(
 				);
 				if (err)
 				{
-					this->complete(cont, err, HandlerArg());
+					this->complete(cont, err, ResultsetType());
 					yield break;
 				}
 
@@ -241,7 +244,7 @@ boost::mysql::detail::async_execute_generic(
 				);
 				if (err)
 				{
-					this->complete(cont, err, HandlerArg());
+					this->complete(cont, err, ResultsetType());
 					yield break;
 				}
 
@@ -249,7 +252,8 @@ boost::mysql::detail::async_execute_generic(
 				processor_->process_response(err, info);
 				if (err)
 				{
-					this->complete(cont, err, HandlerArg(std::move(info)));
+					conditional_assign(output_info_, std::move(info));
+					this->complete(cont, err, ResultsetType());
 					yield break;
 				}
 				remaining_fields_ = processor_->field_count();
@@ -270,7 +274,7 @@ boost::mysql::detail::async_execute_generic(
 
 					if (err)
 					{
-						this->complete(cont, err, HandlerArg());
+						this->complete(cont, err, ResultsetType());
 						yield break;
 					}
 
@@ -281,7 +285,7 @@ boost::mysql::detail::async_execute_generic(
 				this->complete(
 					cont,
 					error_code(),
-					HandlerArg(std::move(*processor_).create_resultset())
+					ResultsetType(std::move(*processor_).create_resultset())
 				);
 			}
 		}
@@ -291,7 +295,8 @@ boost::mysql::detail::async_execute_generic(
 		std::move(initiator.completion_handler),
 		deserializer,
 		chan,
-		request
+		request,
+		info
 	)(error_code(), false);
 	return initiator.result.get();
 }

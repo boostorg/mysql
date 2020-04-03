@@ -221,22 +221,24 @@ class async_callback : public network_functions
 	template <typename R, typename Callable>
 	static network_result<R> impl(Callable&& cb) {
 		std::promise<network_result<R>> prom;
-		cb([&prom](error_code code, auto retval) {
+		error_info info;
+		cb([&prom, &info](error_code code, R retval) {
 			prom.set_value(network_result<R>(
 				code,
-				std::move(retval.error()),
-				std::move(retval.get())
+				std::move(info),
+				std::move(retval)
 			));
-		});
+		}, &info);
 		return prom.get_future().get();
 	}
 
 	template <typename Callable>
 	static network_result<no_result> impl_no_result(Callable&& cb) {
 		std::promise<network_result<no_result>> prom;
-		cb([&prom](error_code code, error_info info) {
+		error_info info;
+		cb([&prom, &info](error_code code) {
 			prom.set_value(network_result<no_result>(code, std::move(info)));
-		});
+		}, &info);
 		return prom.get_future().get();
 	}
 public:
@@ -246,8 +248,8 @@ public:
 		const boost::mysql::connection_params& params
 	) override
 	{
-		return impl_no_result([&](auto&& token) {
-			return conn.async_handshake(params, std::forward<decltype(token)>(token));
+		return impl_no_result([&](auto&& token, error_info* info) {
+			return conn.async_handshake(params, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<tcp_resultset> query(
@@ -255,8 +257,8 @@ public:
 		std::string_view query
 	) override
 	{
-		return impl<tcp_resultset>([&](auto&& token) {
-			return conn.async_query(query, std::forward<decltype(token)>(token));
+		return impl<tcp_resultset>([&](auto&& token, error_info* info) {
+			return conn.async_query(query, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<tcp_prepared_statement> prepare_statement(
@@ -264,8 +266,8 @@ public:
 		std::string_view statement
 	) override
 	{
-		return impl<tcp_prepared_statement>([&conn, statement](auto&& token) {
-			return conn.async_prepare_statement(statement, std::forward<decltype(token)>(token));
+		return impl<tcp_prepared_statement>([&conn, statement](auto&& token, error_info* info) {
+			return conn.async_prepare_statement(statement, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<tcp_resultset> execute_statement(
@@ -274,8 +276,8 @@ public:
 		value_list_it params_last
 	) override
 	{
-		return impl<tcp_resultset>([&](auto&& token) {
-			return stmt.async_execute(params_first, params_last, std::forward<decltype(token)>(token));
+		return impl<tcp_resultset>([&](auto&& token, error_info* info) {
+			return stmt.async_execute(params_first, params_last, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<tcp_resultset> execute_statement(
@@ -283,24 +285,24 @@ public:
 		const std::vector<value>& values
 	) override
 	{
-		return impl<tcp_resultset>([&](auto&& token) {
-			return stmt.async_execute(values, std::forward<decltype(token)>(token));
+		return impl<tcp_resultset>([&](auto&& token, error_info* info) {
+			return stmt.async_execute(values, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<no_result> close_statement(
 		tcp_prepared_statement& stmt
 	) override
 	{
-		return impl_no_result([&](auto&& token) {
-			return stmt.async_close(std::forward<decltype(token)>(token));
+		return impl_no_result([&](auto&& token, error_info* info) {
+			return stmt.async_close(std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<const row*> fetch_one(
 		tcp_resultset& r
 	) override
 	{
-		return impl<const row*>([&](auto&& token) {
-			return r.async_fetch_one(std::forward<decltype(token)>(token));
+		return impl<const row*>([&](auto&& token, error_info* info) {
+			return r.async_fetch_one(std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
@@ -308,16 +310,16 @@ public:
 		std::size_t count
 	) override
 	{
-		return impl<std::vector<owning_row>>([&](auto&& token) {
-			return r.async_fetch_many(count, std::forward<decltype(token)>(token));
+		return impl<std::vector<owning_row>>([&](auto&& token, error_info* info) {
+			return r.async_fetch_many(count, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
 		tcp_resultset& r
 	) override
 	{
-		return impl<std::vector<owning_row>>([&](auto&& token) {
-			return r.async_fetch_all(std::forward<decltype(token)>(token));
+		return impl<std::vector<owning_row>>([&](auto&& token, error_info* info) {
+			return r.async_fetch_all(std::forward<decltype(token)>(token), info);
 		});
 	}
 };
@@ -326,15 +328,19 @@ class async_coroutine : public network_functions
 {
 	template <typename IoObj, typename Callable>
 	static auto impl(IoObj& obj, Callable&& cb) {
-		using R = typename decltype(cb(std::declval<yield_context>()))::value_type;
+		using R = decltype(cb(
+			std::declval<yield_context>(),
+			std::declval<error_info*>()
+		));
 		std::promise<network_result<R>> prom;
 		boost::asio::spawn(obj.next_layer().get_executor(), [&](yield_context yield) {
 			error_code ec;
-			auto result = cb(yield[ec]);
+			error_info info;
+			auto result = cb(yield[ec], &info);
 			prom.set_value(network_result<R>(
 				ec,
-				std::move(result.error()),
-				std::move(result.get())
+				std::move(info),
+				std::move(result)
 			));
 		});
 		return prom.get_future().get();
@@ -346,7 +352,8 @@ class async_coroutine : public network_functions
 		std::promise<network_result<no_result>> prom;
 		boost::asio::spawn(executor, [&](yield_context yield) {
 			error_code ec;
-			error_info info = cb(yield[ec]);
+			error_info info;
+			cb(yield[ec], &info);
 			prom.set_value(network_result<no_result>(ec, std::move(info)));
 		});
 		return prom.get_future().get();
@@ -358,8 +365,8 @@ public:
 		const boost::mysql::connection_params& params
 	) override
 	{
-		return impl_no_result(conn, [&](yield_context yield) {
-			return conn.async_handshake(params, yield);
+		return impl_no_result(conn, [&](yield_context yield, error_info* info) {
+			return conn.async_handshake(params, yield, info);
 		});
 	}
 	network_result<tcp_resultset> query(
@@ -367,8 +374,8 @@ public:
 		std::string_view query
 	) override
 	{
-		return impl(conn, [&](yield_context yield) {
-			return conn.async_query(query, yield);
+		return impl(conn, [&](yield_context yield, error_info* info) {
+			return conn.async_query(query, yield, info);
 		});
 	}
 	network_result<tcp_prepared_statement> prepare_statement(
@@ -376,8 +383,8 @@ public:
 		std::string_view statement
 	) override
 	{
-		return impl(conn, [&](yield_context yield) {
-			return conn.async_prepare_statement(statement, yield);
+		return impl(conn, [&](yield_context yield, error_info* info) {
+			return conn.async_prepare_statement(statement, yield, info);
 		});
 	}
 	network_result<tcp_resultset> execute_statement(
@@ -386,8 +393,8 @@ public:
 		value_list_it params_last
 	) override
 	{
-		return impl(stmt, [&](yield_context yield) {
-			return stmt.async_execute(params_first, params_last, yield);
+		return impl(stmt, [&](yield_context yield, error_info* info) {
+			return stmt.async_execute(params_first, params_last, yield, info);
 		});
 	}
 	network_result<tcp_resultset> execute_statement(
@@ -395,24 +402,24 @@ public:
 		const std::vector<value>& values
 	) override
 	{
-		return impl(stmt, [&](yield_context yield) {
-			return stmt.async_execute(values, yield);
+		return impl(stmt, [&](yield_context yield, error_info* info) {
+			return stmt.async_execute(values, yield, info);
 		});
 	}
 	network_result<no_result> close_statement(
 		tcp_prepared_statement& stmt
 	) override
 	{
-		return impl_no_result(stmt, [&](yield_context yield) {
-			return stmt.async_close(yield);
+		return impl_no_result(stmt, [&](yield_context yield, error_info* info) {
+			return stmt.async_close(yield, info);
 		});
 	}
 	network_result<const row*> fetch_one(
 		tcp_resultset& r
 	) override
 	{
-		return impl(r, [&](yield_context yield) {
-			return r.async_fetch_one(yield);
+		return impl(r, [&](yield_context yield, error_info* info) {
+			return r.async_fetch_one(yield, info);
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
@@ -420,34 +427,33 @@ public:
 		std::size_t count
 	) override
 	{
-		return impl(r, [&](yield_context yield) {
-			return r.async_fetch_many(count, yield);
+		return impl(r, [&](yield_context yield, error_info* info) {
+			return r.async_fetch_many(count, yield, info);
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
 		tcp_resultset& r
 	) override
 	{
-		return impl(r, [&](yield_context yield) {
-			return r.async_fetch_all(yield);
+		return impl(r, [&](yield_context yield, error_info* info) {
+			return r.async_fetch_all(yield, info);
 		});
 	}
 };
+
 
 class async_future : public network_functions
 {
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
-		// Callable returns a future<async_handler_arg<R>>
-		using R = typename decltype(cb().get())::value_type;
-		std::future<boost::mysql::async_handler_arg<R>> fut = cb();
+		using R = decltype(cb().get()); // Callable returns a future<R>
+		std::future<R> fut = cb();
 		try
 		{
-			auto result = fut.get();
+			// error_info is not available here, so we skip validation
 			return network_result<R>(
 				error_code(),
-				std::move(result.error()),  // the returned error_info should be empty
-				std::move(result.get())
+				std::move(fut.get())
 			);
 		}
 		catch (const boost::system::system_error& err)
@@ -459,14 +465,16 @@ class async_future : public network_functions
 
 	template <typename Callable>
 	static network_result<no_result> impl_no_result(Callable&& cb) {
-		std::future<error_info> fut = cb();
+		std::future<void> fut = cb();
 		try
 		{
-			// This should be returning an empty error_info, so we validate that
-			return network_result<no_result>(error_code(), fut.get());
+			// error_info is not available here, so we skip validation
+			fut.get();
+			return network_result<no_result>(error_code());
 		}
 		catch (const boost::system::system_error& err)
 		{
+			// error_info is not available here, so we skip validation
 			return network_result<no_result>(err.code());
 		}
 	}

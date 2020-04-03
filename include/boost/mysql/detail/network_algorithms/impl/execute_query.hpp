@@ -14,7 +14,14 @@ void boost::mysql::detail::execute_query(
 )
 {
 	com_query_packet request { string_eof(query) };
-	execute_generic(&deserialize_text_row, channel, request, output, err, info);
+	execute_generic(
+		&deserialize_text_row,
+		channel,
+		request,
+		output,
+		err,
+		info
+	);
 }
 
 
@@ -26,11 +33,18 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 boost::mysql::detail::async_execute_query(
 	channel<StreamType>& chan,
 	std::string_view query,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
 	com_query_packet request { string_eof(query) };
-	return async_execute_generic(&deserialize_text_row, chan, request, std::forward<CompletionToken>(token));
+	return async_execute_generic(
+		&deserialize_text_row,
+		chan,
+		request,
+		std::forward<CompletionToken>(token),
+		info
+	);
 }
 
 #include <boost/asio/unyield.hpp>

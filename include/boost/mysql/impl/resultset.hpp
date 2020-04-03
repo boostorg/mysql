@@ -126,10 +126,12 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 	typename boost::mysql::resultset<StreamType>::fetch_one_signature
 )
 boost::mysql::resultset<StreamType>::async_fetch_one(
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
-	using HandlerArg = async_handler_arg<const row*>;
+	detail::conditional_clear(info);
+
 	using HandlerSignature = fetch_one_signature;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
@@ -137,13 +139,18 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 	struct Op: BaseType, boost::asio::coroutine
 	{
 		resultset<StreamType>& resultset_;
+		error_info* output_info_;
 
 		Op(
 			HandlerType&& handler,
-			resultset<StreamType>& obj
+			resultset<StreamType>& obj,
+			error_info* output_info
 		):
 			BaseType(std::move(handler), obj.channel_->next_layer().get_executor()),
-			resultset_(obj) {};
+			resultset_(obj),
+			output_info_(output_info)
+		{
+		};
 
 		void operator()(
 			error_code err,
@@ -156,7 +163,7 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 			{
 				if (resultset_.complete())
 				{
-					this->complete(cont, error_code(), HandlerArg(nullptr));
+					this->complete(cont, error_code(), nullptr);
 				}
 				else
 				{
@@ -170,12 +177,11 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 						std::move(*this)
 					);
 					resultset_.eof_received_ = result == detail::read_row_result::eof;
+					detail::conditional_assign(output_info_, std::move(info));
 					this->complete(
 						cont,
 						err,
-						result == detail::read_row_result::error ? HandlerArg(std::move(info)) :
-								result == detail::read_row_result::row ? HandlerArg(&resultset_.current_row_) :
-								HandlerArg(nullptr)
+						result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
 					);
 				}
 			}
@@ -188,7 +194,8 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 
 	Op(
 		std::move(initiator.completion_handler),
-		*this
+		*this,
+		info
 	)(error_code(), error_info(), detail::read_row_result::error, false);
 	return initiator.result.get();
 }
@@ -201,10 +208,12 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 )
 boost::mysql::resultset<StreamType>::async_fetch_many(
 	std::size_t count,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
-	using HandlerArg = async_handler_arg<std::vector<owning_row>>;
+	detail::conditional_clear(info);
+
 	using HandlerSignature = fetch_many_signature;
 	using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
 	using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
@@ -216,15 +225,20 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 		detail::bytestring buffer;
 		std::vector<value> values;
 		std::size_t remaining;
+		error_info* output_info_;
 
-		OpImpl(resultset<StreamType>& obj, std::size_t count):
-			parent_resultset(obj), remaining(count) {};
+		OpImpl(resultset<StreamType>& obj, std::size_t count, error_info* output_info):
+			parent_resultset(obj),
+			remaining(count),
+			output_info_(output_info)
+		{
+		};
 
 		void row_received()
 		{
 			rows.emplace_back(std::move(values), std::move(buffer));
-			values = std::vector<value>{};
-			buffer = detail::bytestring{};
+			values = std::vector<value>();
+			buffer = detail::bytestring();
 			--remaining;
 		}
 	};
@@ -264,7 +278,8 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 					);
 					if (result == detail::read_row_result::error)
 					{
-						this->complete(cont, err, HandlerArg(std::move(info)));
+						detail::conditional_assign(impl_->output_info_, std::move(info));
+						this->complete(cont, err, std::move(impl_->rows));
 						yield break;
 					}
 					else if (result == detail::read_row_result::eof)
@@ -276,7 +291,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 						impl_->row_received();
 					}
 				}
-				this->complete(cont, err, HandlerArg(std::move(impl_->rows)));
+				this->complete(cont, err, std::move(impl_->rows));
 			}
 		}
 	};
@@ -287,7 +302,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 
 	Op(
 		std::move(initiator.completion_handler),
-		std::make_shared<OpImpl>(*this, count)
+		std::make_shared<OpImpl>(*this, count, info)
 	)(error_code(), error_info(), detail::read_row_result::error, false);
 	return initiator.result.get();
 }
@@ -299,12 +314,14 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 	typename boost::mysql::resultset<StreamType>::fetch_all_signature
 )
 boost::mysql::resultset<StreamType>::async_fetch_all(
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
 	return async_fetch_many(
 		std::numeric_limits<std::size_t>::max(),
-		std::forward<CompletionToken>(token)
+		std::forward<CompletionToken>(token),
+		info
 	);
 }
 

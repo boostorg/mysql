@@ -1,3 +1,10 @@
+Change sigs
+	Add tests with error_info*=nullptr
+	Make tests pass a non-empty error_info
+	Change async_fetch_one to not use coroutines
+	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
+	clear_errors() function to clear error_info and error_code at once
+	Concept checking for async completion tokens
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -26,16 +33,12 @@ Technical debt
 	Review async initiations
 		See if async_initiate is applicable
 		See if we can drop the dependence on beast
-		See if we can just declare the functions as auto
-		Test things with futures
 	Review close() of the stream on error
 	Review valid() for moved-from resultsets (should it return always true?)
 	Force the same number of values in each row as in fields()
 	CMake exporting?
 	Integration test for network errors (e.g. host unreachable)
-	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	Test zero dates
-	clear_errors() function to clear error_info and error_code at once
 	Rework deserialize_row_fn to allow cursors
 	Test prepared statement binding to procedure out params
 	More thorough testing for several NULLs in integration testing

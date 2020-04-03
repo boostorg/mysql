@@ -40,8 +40,14 @@ void boost::mysql::detail::execute_statement(
 	error_info& info
 )
 {
-	auto request = make_stmt_execute_packet(statement_id, params_begin, params_end);
-	execute_generic(&deserialize_binary_row, chan, request, output, err, info);
+	execute_generic(
+		&deserialize_binary_row,
+		chan,
+		make_stmt_execute_packet(statement_id, params_begin, params_end),
+		output,
+		err,
+		info
+	);
 }
 
 template <typename StreamType, typename ForwardIterator, typename CompletionToken>
@@ -54,11 +60,17 @@ boost::mysql::detail::async_execute_statement(
 	std::uint32_t statement_id,
 	ForwardIterator params_begin,
 	ForwardIterator params_end,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 )
 {
-	auto request = make_stmt_execute_packet(statement_id, params_begin, params_end);
-	return async_execute_generic(&deserialize_binary_row, chan, request, std::forward<CompletionToken>(token));
+	return async_execute_generic(
+		&deserialize_binary_row,
+		chan,
+		make_stmt_execute_packet(statement_id, params_begin, params_end),
+		std::forward<CompletionToken>(token),
+		info
+	);
 }
 
 

@@ -24,7 +24,8 @@ BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamT
 async_execute_query(
 	channel<StreamType>& chan,
 	std::string_view query,
-	CompletionToken&& token
+	CompletionToken&& token,
+	error_info* info
 );
 
 }
