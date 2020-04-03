@@ -1,6 +1,5 @@
 Change sigs
 	Add tests with error_info*=nullptr
-	Make tests pass a non-empty error_info
 	Change async_fetch_one to not use coroutines
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	clear_errors() function to clear error_info and error_code at once

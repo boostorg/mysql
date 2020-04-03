@@ -20,12 +20,18 @@ using boost::asio::use_future;
 namespace
 {
 
+// A non-empty error_info to verify that we correctly clear the message
+error_info make_initial_error_info()
+{
+	return error_info("Error info not cleared correctly");
+}
+
 class sync_errc : public network_functions
 {
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
 		using R = decltype(cb(std::declval<error_code&>(), std::declval<error_info&>()));
-		network_result<R> res (make_error_code(errc::no), error_info("errc info not cleared correctly"));
+		network_result<R> res (make_error_code(errc::no), make_initial_error_info());
 		res.value = cb(res.err, *res.info);
 		return res;
 	}
@@ -221,7 +227,7 @@ class async_callback : public network_functions
 	template <typename R, typename Callable>
 	static network_result<R> impl(Callable&& cb) {
 		std::promise<network_result<R>> prom;
-		error_info info;
+		error_info info = make_initial_error_info();
 		cb([&prom, &info](error_code code, R retval) {
 			prom.set_value(network_result<R>(
 				code,
@@ -235,7 +241,7 @@ class async_callback : public network_functions
 	template <typename Callable>
 	static network_result<no_result> impl_no_result(Callable&& cb) {
 		std::promise<network_result<no_result>> prom;
-		error_info info;
+		error_info info = make_initial_error_info();
 		cb([&prom, &info](error_code code) {
 			prom.set_value(network_result<no_result>(code, std::move(info)));
 		}, &info);
@@ -334,8 +340,8 @@ class async_coroutine : public network_functions
 		));
 		std::promise<network_result<R>> prom;
 		boost::asio::spawn(obj.next_layer().get_executor(), [&](yield_context yield) {
-			error_code ec;
-			error_info info;
+			error_code ec; // we don't clear this in our code, so no need to initialize it
+			error_info info = make_initial_error_info();
 			auto result = cb(yield[ec], &info);
 			prom.set_value(network_result<R>(
 				ec,
@@ -352,7 +358,7 @@ class async_coroutine : public network_functions
 		std::promise<network_result<no_result>> prom;
 		boost::asio::spawn(executor, [&](yield_context yield) {
 			error_code ec;
-			error_info info;
+			error_info info = make_initial_error_info();
 			cb(yield[ec], &info);
 			prom.set_value(network_result<no_result>(ec, std::move(info)));
 		});
