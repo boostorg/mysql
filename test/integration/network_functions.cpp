@@ -26,12 +26,17 @@ error_info make_initial_error_info()
 	return error_info("Error info not cleared correctly");
 }
 
+error_code make_initial_error_code()
+{
+	return make_error_code(errc::no);
+}
+
 class sync_errc : public network_functions
 {
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
 		using R = decltype(cb(std::declval<error_code&>(), std::declval<error_info&>()));
-		network_result<R> res (make_error_code(errc::no), make_initial_error_info());
+		network_result<R> res (make_initial_error_code(), make_initial_error_info());
 		res.value = cb(res.err, *res.info);
 		return res;
 	}
@@ -225,28 +230,39 @@ public:
 class async_callback : public network_functions
 {
 	template <typename R, typename Callable>
-	static network_result<R> impl(Callable&& cb) {
+	static network_result<R> impl(Callable&& cb)
+	{
+		struct handler
+		{
+			std::promise<network_result<R>>& prom;
+			error_info& info;
+
+			// For operations with a return type
+			void operator()(error_code code, R retval)
+			{
+				prom.set_value(network_result<R>(
+					code,
+					std::move(info),
+					std::move(retval)
+				));
+			}
+
+			// For operations without a return type (R=no_result)
+			void operator()(error_code code)
+			{
+				prom.set_value(network_result<R>(
+					code,
+					std::move(info)
+				));
+			}
+		};
+
 		std::promise<network_result<R>> prom;
 		error_info info = make_initial_error_info();
-		cb([&prom, &info](error_code code, R retval) {
-			prom.set_value(network_result<R>(
-				code,
-				std::move(info),
-				std::move(retval)
-			));
-		}, &info);
+		cb(handler{prom, info}, &info);
 		return prom.get_future().get();
 	}
 
-	template <typename Callable>
-	static network_result<no_result> impl_no_result(Callable&& cb) {
-		std::promise<network_result<no_result>> prom;
-		error_info info = make_initial_error_info();
-		cb([&prom, &info](error_code code) {
-			prom.set_value(network_result<no_result>(code, std::move(info)));
-		}, &info);
-		return prom.get_future().get();
-	}
 public:
 	const char* name() const override { return "async_callback"; }
 	network_result<no_result> handshake(
@@ -254,7 +270,7 @@ public:
 		const boost::mysql::connection_params& params
 	) override
 	{
-		return impl_no_result([&](auto&& token, error_info* info) {
+		return impl<no_result>([&](auto&& token, error_info* info) {
 			return conn.async_handshake(params, std::forward<decltype(token)>(token), info);
 		});
 	}
@@ -299,7 +315,7 @@ public:
 		tcp_prepared_statement& stmt
 	) override
 	{
-		return impl_no_result([&](auto&& token, error_info* info) {
+		return impl<no_result>([&](auto&& token, error_info* info) {
 			return stmt.async_close(std::forward<decltype(token)>(token), info);
 		});
 	}
@@ -338,32 +354,23 @@ class async_coroutine : public network_functions
 			std::declval<yield_context>(),
 			std::declval<error_info*>()
 		));
+
 		std::promise<network_result<R>> prom;
+
 		boost::asio::spawn(obj.next_layer().get_executor(), [&](yield_context yield) {
-			error_code ec; // we don't clear this in our code, so no need to initialize it
+			error_code ec = make_initial_error_code();
 			error_info info = make_initial_error_info();
-			auto result = cb(yield[ec], &info);
+			R result = cb(yield[ec], &info);
 			prom.set_value(network_result<R>(
 				ec,
 				std::move(info),
 				std::move(result)
 			));
 		});
+
 		return prom.get_future().get();
 	}
 
-	template <typename IoObj, typename Callable>
-	static network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb) {
-		auto executor = obj.next_layer().get_executor();
-		std::promise<network_result<no_result>> prom;
-		boost::asio::spawn(executor, [&](yield_context yield) {
-			error_code ec;
-			error_info info = make_initial_error_info();
-			cb(yield[ec], &info);
-			prom.set_value(network_result<no_result>(ec, std::move(info)));
-		});
-		return prom.get_future().get();
-	}
 public:
 	const char* name() const override { return "async_coroutine"; }
 	network_result<no_result> handshake(
@@ -371,8 +378,9 @@ public:
 		const boost::mysql::connection_params& params
 	) override
 	{
-		return impl_no_result(conn, [&](yield_context yield, error_info* info) {
-			return conn.async_handshake(params, yield, info);
+		return impl(conn, [&](yield_context yield, error_info* info) {
+			conn.async_handshake(params, yield, info);
+			return no_result();
 		});
 	}
 	network_result<tcp_resultset> query(
@@ -416,8 +424,9 @@ public:
 		tcp_prepared_statement& stmt
 	) override
 	{
-		return impl_no_result(stmt, [&](yield_context yield, error_info* info) {
-			return stmt.async_close(yield, info);
+		return impl(stmt, [&](yield_context yield, error_info* info) {
+			stmt.async_close(yield, info);
+			return no_result();
 		});
 	}
 	network_result<const row*> fetch_one(
@@ -459,7 +468,7 @@ class async_future : public network_functions
 			// error_info is not available here, so we skip validation
 			return network_result<R>(
 				error_code(),
-				std::move(fut.get())
+				fut.get()
 			);
 		}
 		catch (const boost::system::system_error& err)
