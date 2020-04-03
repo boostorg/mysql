@@ -2,6 +2,7 @@
 #define INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_IPP_
 
 #include <boost/asio/yield.hpp>
+#include <limits>
 
 namespace boost {
 namespace mysql {
@@ -13,7 +14,7 @@ class execute_processor
 	deserialize_row_fn deserializer_;
 	channel<StreamType>& channel_;
 	bytestring buffer_;
-	std::uint64_t field_count_ {};
+	std::size_t field_count_ {};
 	ok_packet ok_packet_;
 	std::vector<field_metadata> fields_;
 	std::vector<bytestring> field_buffers_;
@@ -66,9 +67,17 @@ public:
 			err = deserialize_message(num_fields, ctx);
 			if (err) return;
 
+			// For platforms where size_t is shorter than uint64_t,
+			// perform range check
+			if (num_fields.value > std::numeric_limits<std::size_t>::max())
+			{
+				err = make_error_code(errc::protocol_value_error);
+				return;
+			}
+
 			// Ensure we have fields, as field_count is indicative of
 			// a resultset with fields
-			field_count_ = num_fields.value;
+			field_count_ = static_cast<std::size_t>(num_fields.value);
 			if (field_count_ == 0)
 			{
 				err = make_error_code(errc::protocol_value_error);
@@ -118,7 +127,7 @@ public:
 	auto& get_channel() { return channel_; }
 	auto& get_buffer() { return buffer_; }
 
-	std::uint64_t field_count() const noexcept { return field_count_; }
+	std::size_t field_count() const noexcept { return field_count_; }
 };
 
 } // detail

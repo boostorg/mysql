@@ -1,6 +1,8 @@
 #ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_IPP_
 #define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_IPP_
 
+#include <limits>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -254,13 +256,18 @@ boost::mysql::detail::serialization_traits<
 	{
 		return err;
 	}
-	if (!ctx.enough_size(length.value))
+	if (length.value > std::numeric_limits<std::size_t>::max())
+	{
+		return errc::protocol_value_error;
+	}
+	auto len = static_cast<std::size_t>(length.value);
+	if (!ctx.enough_size(len))
 	{
 		return errc::incomplete_message;
 	}
 
-	output.value = get_string(ctx.first(), length.value);
-	ctx.advance(length.value);
+	output.value = get_string(ctx.first(), len);
+	ctx.advance(len);
 	return errc::ok;
 }
 
