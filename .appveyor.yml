@@ -1,27 +1,19 @@
 image: Visual Studio 2019
-
-for:
-  - environment:
-      CMAKE_BUILD_TYPE: Debug
-      ARCH: x64
-  - environment:
-      CMAKE_BUILD_TYPE: Release
-      ARCH: x64
-  - environment:
-      CMAKE_BUILD_TYPE: Debug
-      ARCH: x86
-  - environment:
-      CMAKE_BUILD_TYPE: Release
-      ARCH: x86
+configuration:
+  - Debug
+  - Release
+platform:
+  - x86
+  - x64
 
 
 build_script:
   - set PATH=C:\Program Files\MySQL\MySQL Server 5.7\bin;C:\Libraries\boost_1_71_0\lib64-msvc-14.2;%PATH%
   - mysqladmin --user=root password -pPassword12! ""
-  - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %ARCH%
+  - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
   - mkdir build
   - cd build
-  - cmake -G Ninja -DBOOST_ROOT=C:\Libraries\boost_1_71_0 -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
+  - cmake -G Ninja -DBOOST_ROOT=C:\Libraries\boost_1_71_0 -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
   - cmake --build . -j
 
 test_script:
