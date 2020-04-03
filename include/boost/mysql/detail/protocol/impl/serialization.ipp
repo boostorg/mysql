@@ -45,9 +45,9 @@ inline void serialize_binary_ymd(
 {
 	serialize_fields(
 		ctx,
-		int2(static_cast<int>(ymd.year())),
-		int1(static_cast<unsigned>(ymd.month())),
-		int1(static_cast<unsigned>(ymd.day()))
+		int2(static_cast<std::uint16_t>(static_cast<int>(ymd.year()))),
+		int1(static_cast<std::uint8_t>(static_cast<unsigned>(ymd.month()))),
+		int1(static_cast<std::uint8_t>(static_cast<unsigned>(ymd.day())))
 	);
 }
 
