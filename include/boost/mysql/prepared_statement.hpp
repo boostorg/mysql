@@ -2,7 +2,6 @@
 #define INCLUDE_BOOST_MYSQL_PREPARED_STATEMENT_HPP_
 
 #include "boost/mysql/resultset.hpp"
-#include "boost/mysql/async_init_result.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include <optional>
@@ -101,7 +100,7 @@ public:
 	 * values they may point to alive.
 	 */
 	template <typename Collection, typename CompletionToken>
-	async_init_result_t<CompletionToken, execute_signature>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
 	async_execute(const Collection& params, CompletionToken&& token, error_info* info=nullptr) const
 	{
 		return async_execute(
@@ -133,7 +132,7 @@ public:
 	 * by the elements of the sequence need **not** be kept alive.
 	 */
 	template <typename ForwardIterator, typename CompletionToken>
-	async_init_result_t<CompletionToken, execute_signature>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
 	async_execute(ForwardIterator params_first, ForwardIterator params_last,
 			CompletionToken&& token, error_info* info=nullptr) const;
 
@@ -159,7 +158,7 @@ public:
 
 	/// Closes a prepared statement, deallocating it from the server (async version).
 	template <typename CompletionToken>
-	async_init_result_t<CompletionToken, close_signature>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
 	async_close(CompletionToken&& token, error_info* info=nullptr);
 };
 

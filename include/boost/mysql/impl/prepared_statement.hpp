@@ -4,6 +4,7 @@
 #include "boost/mysql/detail/network_algorithms/execute_statement.hpp"
 #include "boost/mysql/detail/network_algorithms/close_statement.hpp"
 #include "boost/mysql/detail/auxiliar/stringize.hpp"
+#include "boost/mysql/detail/auxiliar/check_completion_token.hpp"
 #include <boost/beast/core/bind_handler.hpp>
 
 template <typename Stream>
@@ -74,10 +75,10 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
 
 template <typename StreamType>
 template <typename ForwardIterator, typename CompletionToken>
-boost::mysql::async_init_result_t<
+BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	typename boost::mysql::prepared_statement<StreamType>::execute_signature
->
+)
 boost::mysql::prepared_statement<StreamType>::async_execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last,
@@ -86,6 +87,7 @@ boost::mysql::prepared_statement<StreamType>::async_execute(
 ) const
 {
 	detail::conditional_clear(info);
+	detail::check_completion_token<CompletionToken, execute_signature>();
 
 	// Check we got passed the right number of params
 	error_code err;
@@ -144,10 +146,10 @@ void boost::mysql::prepared_statement<StreamType>::close()
 
 template <typename StreamType>
 template <typename CompletionToken>
-boost::mysql::async_init_result_t<
+BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	typename boost::mysql::prepared_statement<StreamType>::close_signature
->
+)
 boost::mysql::prepared_statement<StreamType>::async_close(
 	CompletionToken&& token,
 	error_info* info
@@ -155,6 +157,7 @@ boost::mysql::prepared_statement<StreamType>::async_close(
 {
 	assert(valid());
 	detail::conditional_clear(info);
+	detail::check_completion_token<CompletionToken, close_signature>();
 	return detail::async_close_statement(
 		*channel_,
 		id(),

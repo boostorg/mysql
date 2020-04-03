@@ -7,7 +7,6 @@
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/prepared_statement.hpp"
-#include "boost/mysql/async_init_result.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
 namespace boost {
@@ -102,7 +101,7 @@ public:
 	 * until the operation completes, as no copy is made by the library.
 	 */
 	template <typename CompletionToken>
-	async_init_result_t<CompletionToken, handshake_signature>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
 	async_handshake(const connection_params& params, CompletionToken&& token, error_info* info = nullptr);
 
 	/**
@@ -129,7 +128,7 @@ public:
 
 	/// Executes a SQL text query (async version).
 	template <typename CompletionToken>
-	async_init_result_t<CompletionToken, query_signature>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, query_signature)
 	async_query(std::string_view query_string, CompletionToken&& token, error_info* info=nullptr);
 
 	/**
@@ -153,7 +152,7 @@ public:
 
 	/// Prepares a statement (async version).
 	template <typename CompletionToken>
-	async_init_result_t<CompletionToken, prepare_statement_signature>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
 	async_prepare_statement(std::string_view statement, CompletionToken&& token, error_info* info=nullptr);
 };
 

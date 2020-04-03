@@ -4,6 +4,7 @@
 #include "boost/mysql/detail/network_algorithms/handshake.hpp"
 #include "boost/mysql/detail/network_algorithms/execute_query.hpp"
 #include "boost/mysql/detail/network_algorithms/prepare_statement.hpp"
+#include "boost/mysql/detail/auxiliar/check_completion_token.hpp"
 #include <boost/asio/buffer.hpp>
 
 namespace boost {
@@ -57,10 +58,10 @@ void boost::mysql::connection<Stream>::handshake(
 
 template <typename Stream>
 template <typename CompletionToken>
-boost::mysql::async_init_result_t<
+BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	typename boost::mysql::connection<Stream>::handshake_signature
->
+)
 boost::mysql::connection<Stream>::async_handshake(
 	const connection_params& params,
 	CompletionToken&& token,
@@ -68,6 +69,7 @@ boost::mysql::connection<Stream>::async_handshake(
 )
 {
 	detail::conditional_clear(info);
+	detail::check_completion_token<CompletionToken, handshake_signature>();
 	return detail::async_handshake(
 		channel_,
 		detail::to_handshake_params(params),
@@ -106,10 +108,10 @@ boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
 
 template <typename Stream>
 template <typename CompletionToken>
-boost::mysql::async_init_result_t<
+BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	typename boost::mysql::connection<Stream>::query_signature
->
+)
 boost::mysql::connection<Stream>::async_query(
 	std::string_view query_string,
 	CompletionToken&& token,
@@ -117,6 +119,7 @@ boost::mysql::connection<Stream>::async_query(
 )
 {
 	detail::conditional_clear(info);
+	detail::check_completion_token<CompletionToken, query_signature>();
 	return detail::async_execute_query(
 		channel_,
 		query_string,
@@ -154,10 +157,10 @@ boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepa
 
 template <typename Stream>
 template <typename CompletionToken>
-boost::mysql::async_init_result_t<
+BOOST_ASIO_INITFN_RESULT_TYPE(
 	CompletionToken,
 	typename boost::mysql::connection<Stream>::prepare_statement_signature
->
+)
 boost::mysql::connection<Stream>::async_prepare_statement(
 	std::string_view statement,
 	CompletionToken&& token,
@@ -165,6 +168,7 @@ boost::mysql::connection<Stream>::async_prepare_statement(
 )
 {
 	detail::conditional_clear(info);
+	detail::check_completion_token<CompletionToken, prepare_statement_signature>();
 	return detail::async_prepare_statement(
 		channel_,
 		statement,
