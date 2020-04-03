@@ -110,7 +110,7 @@ public:
 	void update_slacker()
 	{
 		const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
-		connection.async_query(sql, [this](error_code err, tcp_resultset&& result) {
+		connection.async_query(sql, [this](error_code err, [[maybe_unused]] tcp_resultset&& result) {
 			die_on_error(err, additional_info);
 			assert(result.fields().size() == 0);
 			query_intern();
