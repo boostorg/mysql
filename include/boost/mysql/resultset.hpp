@@ -3,6 +3,7 @@
 
 #include "boost/mysql/row.hpp"
 #include "boost/mysql/metadata.hpp"
+#include "boost/mysql/async_init_result.hpp"
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/auxiliar/bytestring.hpp"
@@ -123,7 +124,7 @@ public:
 
 	/// Fetchs a single row (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
+	async_init_result_t<CompletionToken, fetch_one_signature>
 	async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
 
 	/// Handler signature for fetch_many.
@@ -131,7 +132,7 @@ public:
 
 	/// Fetches at most count rows (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
+	async_init_result_t<CompletionToken, fetch_many_signature>
 	async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
 
 	/// Handler signature for fetch_all.
@@ -139,7 +140,7 @@ public:
 
 	/// Fetches all available rows (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
+	async_init_result_t<CompletionToken, fetch_all_signature>
 	async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
 
 	/**

@@ -1,7 +1,3 @@
-Change sigs
-	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
-	clear_errors() function to clear error_info and error_code at once
-	Concept checking for async completion tokens
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -11,7 +7,6 @@ Handshake
 	compression
 Usability
 	Should make_error_code be public?
-	Static asserts for completion tokens
 	Connection quit
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
@@ -26,7 +21,9 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
-	Concept checking
+	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
+	clear_errors() function to clear error_info and error_code at once
+	Concept checking for StreamType
 	Review async initiations
 		See if async_initiate is applicable
 		See if we can drop the dependence on beast

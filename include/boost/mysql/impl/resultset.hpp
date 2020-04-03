@@ -121,10 +121,10 @@ std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+boost::mysql::async_init_result_t<
 	CompletionToken,
 	typename boost::mysql::resultset<StreamType>::fetch_one_signature
-)
+>
 boost::mysql::resultset<StreamType>::async_fetch_one(
 	CompletionToken&& token,
 	error_info* info
@@ -202,10 +202,10 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+boost::mysql::async_init_result_t<
 	CompletionToken,
 	typename boost::mysql::resultset<StreamType>::fetch_many_signature
-)
+>
 boost::mysql::resultset<StreamType>::async_fetch_many(
 	std::size_t count,
 	CompletionToken&& token,
@@ -309,10 +309,10 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+boost::mysql::async_init_result_t<
 	CompletionToken,
 	typename boost::mysql::resultset<StreamType>::fetch_all_signature
-)
+>
 boost::mysql::resultset<StreamType>::async_fetch_all(
 	CompletionToken&& token,
 	error_info* info

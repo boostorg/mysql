@@ -74,10 +74,10 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
 
 template <typename StreamType>
 template <typename ForwardIterator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+boost::mysql::async_init_result_t<
 	CompletionToken,
 	typename boost::mysql::prepared_statement<StreamType>::execute_signature
-)
+>
 boost::mysql::prepared_statement<StreamType>::async_execute(
 	ForwardIterator params_first,
 	ForwardIterator params_last,
@@ -144,10 +144,10 @@ void boost::mysql::prepared_statement<StreamType>::close()
 
 template <typename StreamType>
 template <typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+boost::mysql::async_init_result_t<
 	CompletionToken,
 	typename boost::mysql::prepared_statement<StreamType>::close_signature
-)
+>
 boost::mysql::prepared_statement<StreamType>::async_close(
 	CompletionToken&& token,
 	error_info* info
