@@ -20,7 +20,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 	serialization_testcase(ok_packet{
 		int_lenenc(4), // affected rows
 		int_lenenc(0), // last insert ID
-		int2(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED), // server status
+		int2(static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED)), // server status
 		int2(0), // warnings
 		string_lenenc("Rows matched: 5  Changed: 4  Warnings: 0")
 	}, {
@@ -33,7 +33,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 	serialization_testcase(ok_packet{
 		int_lenenc(1), // affected rows
 		int_lenenc(6), // last insert ID
-		int2(SERVER_STATUS_AUTOCOMMIT), // server status
+		int2(static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT)), // server status
 		int2(0), // warnings
 		string_lenenc("")  // no message
 	},{
@@ -43,7 +43,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 	serialization_testcase(ok_packet{
 		int_lenenc(0), // affected rows
 		int_lenenc(0), // last insert ID
-		int2(SERVER_STATUS_AUTOCOMMIT), // server status
+		int2(static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT)), // server status
 		int2(0), // warnings
 		string_lenenc("")  // no message
 	}, {
