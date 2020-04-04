@@ -3,7 +3,6 @@ SSL
 	Add a new integ test that proves using every feature over a non-encrypted connection
 	Update README
 	Make ssl context in channel lazy
-	Consider if handshake_response may use default serialization
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

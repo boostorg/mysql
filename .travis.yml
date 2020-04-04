@@ -34,21 +34,6 @@ __osx_defaults: &__osx_defaults
   script:
     - bash -e -x ci/build_unix.sh
     
-__osx_mysql_defaults: &__osx_mysql_defaults
-  <<: *__osx_defaults
-  before_install:
-    - brew update
-    - brew install mysql
-    - mysql.server start
-    
-__osx_mariadb_defaults: &__osx_mariadb_defaults
-  <<: *__osx_defaults
-  before_install:
-    - brew update
-    - brew install mariadb
-    - mysql.server start
-    - sudo mysql -u root < ci/root_user_setup.sql
-
 __osx_cmake_options: &__osx_cmake_options "CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
 
 
@@ -97,22 +82,26 @@ matrix:
       env:
         - CMAKE_BUILD_TYPE=Release
     - name: osx_clang_x64_debug_mysql
-      <<: *__osx_mysql_defaults
+      <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
+        - DATABASE=mysql
     - name: osx_clang_x64_release_mysql
-      <<: *__osx_mysql_defaults
+      <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Release
+        - DATABASE=mysql
     - name: osx_clang_x64_debug_mariadb
-      <<: *__osx_mariadb_defaults
+      <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
+        - DATABASE=mariadb
     - name: osx_clang_x64_release_mariadb
-      <<: *__osx_mariadb_defaults
+      <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Release
+        - DATABASE=mariadb
