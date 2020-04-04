@@ -8,6 +8,9 @@ platform:
 
 
 build_script:
+  - cp ci\*.pem C:\
+  - cp ci\windows-ssl.cnf C:\my.cnf
+  - net stop MySQL57 && net start MySQL57
   - set PATH=C:\Program Files\MySQL\MySQL Server 5.7\bin;C:\Libraries\boost_1_71_0\lib64-msvc-14.2;C:\Libraries\boost_1_71_0\lib32-msvc-14.2;%PATH%
   - mysqladmin --user=root password -pPassword12! ""
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
