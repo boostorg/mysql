@@ -20,6 +20,7 @@ build_script:
   - mysqladmin --user=root password -pPassword12! ""
   - mysql -u root -e "SHOW VARIABLES LIKE 'have_ssl'"
   - mysql -u root -e "SHOW VARIABLES LIKE 'log_error'"
+  - type C:\mysql-log.txt
   - exit /B 1
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
   - mkdir build
