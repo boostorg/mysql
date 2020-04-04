@@ -17,6 +17,7 @@ struct handshake_params
 	std::string_view username;
 	std::string_view password;
 	std::string_view database;
+	bool use_ssl; // TODO: change this to an enum
 };
 
 template <typename StreamType>

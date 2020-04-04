@@ -96,6 +96,12 @@ public:
 		}
 		return res;
 	}
+
+	using lowest_layer_type = MockStream;
+	using executor_type = boost::asio::system_executor;
+
+	MockStream& lowest_layer() { return *this; }
+	executor_type get_executor() { return boost::asio::system_executor(); }
 };
 
 struct MysqlChannelFixture : public Test

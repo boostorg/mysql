@@ -79,6 +79,26 @@ struct serialization_traits<handshake_response_packet, serialization_tag::struct
 	static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
 };
 
+// SSL request
+struct ssl_request
+{
+	int4 client_flag;
+	int4 max_packet_size;
+	int1 character_set;
+	string_fixed<23> filler {};
+};
+
+template <>
+struct get_struct_fields<ssl_request>
+{
+	static constexpr auto value = std::make_tuple(
+		&ssl_request::client_flag,
+		&ssl_request::max_packet_size,
+		&ssl_request::character_set,
+		&ssl_request::filler
+	);
+};
+
 // auth switch request
 struct auth_switch_request_packet
 {

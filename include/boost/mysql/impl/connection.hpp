@@ -19,7 +19,8 @@ inline handshake_params to_handshake_params(
 		input.connection_collation,
 		input.username,
 		input.password,
-		input.database
+		input.database,
+		true
 	};
 }
 

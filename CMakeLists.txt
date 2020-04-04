@@ -70,6 +70,7 @@ target_link_libraries(
 	Boost::system
 	Threads::Threads
 	OpenSSL::Crypto
+	OpenSSL::SSL
 )
 target_include_directories(
 	mysql_asio

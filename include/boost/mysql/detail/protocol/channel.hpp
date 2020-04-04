@@ -6,6 +6,10 @@
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
 #include <array>
 
 namespace boost {
@@ -17,7 +21,9 @@ class channel
 {
 	// TODO: static asserts for AsyncStream concept
 	// TODO: actually we also require it to be SyncStream, name misleading
-	AsyncStream& next_layer_;
+	boost::asio::ssl::context ssl_ctx_;
+	boost::asio::ssl::stream<AsyncStream&> next_layer_;
+	bool ssl_active_ {false};
 	std::uint8_t sequence_number_ {0};
 	std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
 	bytestring shared_buff_; // for async ops
@@ -28,8 +34,24 @@ class channel
 
 	error_code process_header_read(std::uint32_t& size_to_read); // reads from header_buffer_
 	void process_header_write(std::uint32_t size_to_write); // writes to header_buffer_
+
+	template <typename BufferSeq>
+	std::size_t read_impl(BufferSeq&& buff, error_code& ec);
+
+	template <typename BufferSeq>
+	std::size_t write_impl(BufferSeq&& buff, error_code& ec);
+
+	template <typename BufferSeq, typename CompletionToken>
+	auto async_read_impl(BufferSeq&& buff, CompletionToken&& token);
+
+	template <typename BufferSeq, typename CompletionToken>
+	auto async_write_impl(BufferSeq&& buff, CompletionToken&& token);
 public:
-	channel(AsyncStream& stream): next_layer_ {stream} {};
+	channel(AsyncStream& stream):
+		ssl_ctx_(boost::asio::ssl::context::tls_client),
+		next_layer_ (stream, ssl_ctx_)
+	{
+	};
 
 	template <typename Allocator>
 	void read(basic_bytestring<Allocator>& buffer, error_code& code);
@@ -44,11 +66,17 @@ public:
 	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
 	async_write(boost::asio::const_buffer buffer, CompletionToken&& token);
 
+	void ssl_handshake(error_code& ec);
+
+	template <typename CompletionToken>
+	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+	async_ssl_handshake(CompletionToken&& token);
+
 	void reset_sequence_number(std::uint8_t value = 0) { sequence_number_ = value; }
 	std::uint8_t sequence_number() const { return sequence_number_; }
 
 	using stream_type = AsyncStream;
-	stream_type& next_layer() { return next_layer_; }
+	stream_type& next_layer() { return next_layer_.next_layer(); }
 
 	capabilities current_capabilities() const noexcept { return current_caps_; }
 	void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }

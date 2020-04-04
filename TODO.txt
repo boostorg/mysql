@@ -1,9 +1,16 @@
+SSL
+	Isolated connection_params class with SSL options
+	Add an integ test in handshake to verify non-encrypted connections
+	Add a new integ test that proves using every feature over a non-encrypted connection
+	Update README
+	Make ssl context in channel lazy
+	Create appropriate tests for SSL request
+	Consider if handshake_response may use default serialization
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
 Handshake
 	sha256_password auth plugin: absence may cause BadUser tests to fail in 8.0
-	SSL
 	compression
 Usability
 	Should make_error_code be public?

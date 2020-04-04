@@ -16,6 +16,11 @@ inline std::uint8_t get_collation_first_byte(collation value)
 	return static_cast<std::uint16_t>(value) % 0xff;
 }
 
+inline capabilities conditional_capability(bool condition, std::uint32_t cap)
+{
+	return capabilities(condition ? cap : 0);
+}
+
 inline error_code deserialize_handshake(
 	boost::asio::const_buffer buffer,
 	handshake_packet& output,
@@ -77,17 +82,19 @@ class handshake_processor
 {
 	handshake_params params_;
 	capabilities negotiated_caps_;
+	handshake_packet initial_packet_;
 public:
 	handshake_processor(const handshake_params& params): params_(params) {};
-	capabilities negotiated_capabilities() const { return negotiated_caps_; }
+	capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
+	const handshake_params& params() const noexcept { return params_; }
 
+	// Initial greeting processing
 	error_code process_capabilities(const handshake_packet& handshake)
 	{
 		capabilities server_caps (handshake.capability_falgs.value);
-		capabilities required_caps =
-				params_.database.empty() ?
-				mandatory_capabilities :
-				mandatory_capabilities | capabilities(CLIENT_CONNECT_WITH_DB);
+		capabilities required_caps = mandatory_capabilities |
+				conditional_capability(!params_.database.empty(), CLIENT_CONNECT_WITH_DB) |
+				conditional_capability(params_.use_ssl, CLIENT_SSL);
 		if (!server_caps.has_all(required_caps))
 		{
 			return make_error_code(errc::server_unsupported);
@@ -95,66 +102,60 @@ public:
 		negotiated_caps_ = server_caps & (required_caps | optional_capabilities);
 		return error_code();
 	}
-	void compose_handshake_response(
-		std::string_view auth_response,
-		handshake_response_packet& output
-	)
-	{
-		output.client_flag.value = negotiated_caps_.get();
-		output.max_packet_size.value = MAX_PACKET_SIZE;
-		output.character_set.value = get_collation_first_byte(params_.connection_collation);
-		output.username.value = params_.username;
-		output.auth_response.value = auth_response;
-		output.database.value = params_.database;
-		output.client_plugin_name.value = mysql_native_password::plugin_name;
-	}
-	error_code compute_auth_switch_response(
-		const auth_switch_request_packet& request,
-		auth_switch_response_packet& output,
-		auth_response_calculator& calc
-	)
-	{
-		if (request.plugin_name.value != mysql_native_password::plugin_name)
-		{
-			return make_error_code(errc::unknown_auth_plugin);
-		}
-		return calc.calculate(
-			params_.password,
-			request.auth_plugin_data.value,
-			output.auth_plugin_data.value
-		);
-	}
 
 	error_code process_handshake(bytestring& buffer, error_info& info)
 	{
 		// Deserialize server greeting
-		handshake_packet handshake;
-		auto err = deserialize_handshake(boost::asio::buffer(buffer), handshake, info);
+		auto err = deserialize_handshake(boost::asio::buffer(buffer), initial_packet_, info);
 		if (err) return err;
 
 		// Check capabilities
-		err = process_capabilities(handshake);
-		if (err) return err;
+		return process_capabilities(initial_packet_);
+	}
 
-		// Authentication
+	// Response to that initial greeting
+	void compose_ssl_request(bytestring& buffer)
+	{
+		ssl_request sslreq {
+			int4(negotiated_capabilities().get()),
+			int4(MAX_PACKET_SIZE),
+			int1(get_collation_first_byte(params_.connection_collation)),
+			{}
+		};
+
+		// Serialize and send
+		serialize_message(sslreq, negotiated_caps_, buffer);
+	}
+
+	error_code compose_handshake_response(bytestring& buffer)
+	{
+		// Authentication calculation
 		auth_response_calculator calc;
 		std::string_view auth_response;
-		if (handshake.auth_plugin_name.value == mysql_native_password::plugin_name)
+		if (initial_packet_.auth_plugin_name.value == mysql_native_password::plugin_name)
 		{
-			err = calc.calculate(params_.password, handshake.auth_plugin_data.value, auth_response);
+			auto err = calc.calculate(params_.password, initial_packet_.auth_plugin_data.value, auth_response);
 			if (err) return err;
 		}
 
 		// Compose response
-		handshake_response_packet response;
-		compose_handshake_response(auth_response, response);
+		handshake_response_packet response {
+			int4(negotiated_caps_.get()),
+			int4(MAX_PACKET_SIZE),
+			int1(get_collation_first_byte(params_.connection_collation)),
+			string_null(params_.username),
+			string_lenenc(auth_response),
+			string_null(params_.database),
+			string_null(mysql_native_password::plugin_name)
+		};
 
 		// Serialize
-		serialize_message(response, negotiated_capabilities(), buffer);
+		serialize_message(response, negotiated_caps_, buffer);
 
 		return error_code();
 	}
 
+	// Server handshake response
 	error_code process_handshake_server_response(
 		bytestring& buffer,
 		bool& auth_complete,
@@ -198,6 +199,24 @@ public:
 		return error_code();
 	}
 
+	// Auth switch
+	error_code compute_auth_switch_response(
+		const auth_switch_request_packet& request,
+		auth_switch_response_packet& output,
+		auth_response_calculator& calc
+	)
+	{
+		if (request.plugin_name.value != mysql_native_password::plugin_name)
+		{
+			return make_error_code(errc::unknown_auth_plugin);
+		}
+		return calc.calculate(
+			params_.password,
+			request.auth_plugin_data.value,
+			output.auth_plugin_data.value
+		);
+	}
+
 	error_code process_auth_switch_response(
 		boost::asio::const_buffer buffer,
 		error_info& info
@@ -238,8 +257,25 @@ void boost::mysql::detail::hanshake(
 	channel.read(channel.shared_buffer(), err);
 	if (err) return;
 
-	// Process server greeting
+	// Process server greeting (handshake)
 	err = processor.process_handshake(channel.shared_buffer(), info);
+	if (err) return;
+
+	// Setup SSL if required
+	if (params.use_ssl)
+	{
+		// Send SSL request
+		processor.compose_ssl_request(channel.shared_buffer());
+		channel.write(boost::asio::buffer(channel.shared_buffer()), err);
+		if (err) return;
+
+		// SSL handshake
+		channel.ssl_handshake(err);
+		if (err) return;
+	}
+
+	// Handshake response
+	err = processor.compose_handshake_response(channel.shared_buffer());
 	if (err) return;
 
 	// Send
@@ -253,12 +289,7 @@ void boost::mysql::detail::hanshake(
 	// Process it
 	bool auth_complete = false;
 	err = processor.process_handshake_server_response(channel.shared_buffer(), auth_complete, info);
-	if (err) return;
-	if (auth_complete)
-	{
-		err.clear();
-		return;
-	}
+	if (err || auth_complete) return;
 
 	// We received an auth switch response and we have the response ready to be sent
 	channel.write(boost::asio::buffer(channel.shared_buffer()), err);
@@ -338,6 +369,38 @@ boost::mysql::detail::async_handshake(
 
 				// Process server greeting
 				err = processor_.process_handshake(channel_.shared_buffer(), info_);
+				if (err)
+				{
+					complete(cont, err);
+					yield break;
+				}
+
+				// SSL
+				if (processor_.params().use_ssl)
+				{
+					// Send SSL request
+					processor_.compose_ssl_request(channel_.shared_buffer());
+					yield channel_.async_write(
+						boost::asio::buffer(channel_.shared_buffer()),
+						std::move(*this)
+					);
+					if (err)
+					{
+						complete(cont, err);
+						yield break;
+					}
+
+					// SSL handshake
+					yield channel_.async_ssl_handshake(std::move(*this));
+					if (err)
+					{
+						complete(cont, err);
+						yield break;
+					}
+				}
+
+				// Compose handshake response
+				err = processor_.compose_handshake_response(channel_.shared_buffer());
 				if (err)
 				{
 					complete(cont, err);
