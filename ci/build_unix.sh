@@ -5,11 +5,13 @@ cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
 	brew update
 	brew install $DATABASE
-	sudo cp ci/unix-ssl.cnf /etc/my.cnf
+	echo "\n!include $(pwd)/ci/unix-ssl.cnf" >> /etc/my.cnf
+	cat /etc/my.cnf
 	sudo mysql.server start
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
 	fi
+	cat /usr/local/var/mysql/Traviss-Mac.local.err
 else
 	sudo cp ci/unix-ssl.cnf /etc/mysql/conf.d/ssl.cnf
 	sudo service mysql restart
