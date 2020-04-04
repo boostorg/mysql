@@ -7,35 +7,11 @@
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/prepared_statement.hpp"
+#include "boost/mysql/connection_params.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
 namespace boost {
 namespace mysql {
-
-/**
- * \brief Parameters defining how to authenticate to a MySQL server.
- */
-struct connection_params
-{
-	std::string_view username; ///< Username to authenticate as.
-	std::string_view password; ///< Password for that username, possibly empty.
-	std::string_view database; ///< Database to use, or empty string for no database.
-	collation connection_collation; ///< The default character set and collation for the connection.
-
-	/// Initializing constructor
-	connection_params(
-		std::string_view username,
-		std::string_view password,
-		std::string_view db = "",
-		collation connection_col = collation::utf8_general_ci
-	) :
-		username(username),
-		password(password),
-		database(db),
-		connection_collation(connection_col)
-	{
-	}
-};
 
 /**
  * \brief A connection to a MySQL server.
