@@ -174,4 +174,36 @@ INSTANTIATE_TEST_SUITE_P(AuthSwitchResponse, SerializeTest, testing::Values(
 	}, "regular")
 ), test_name_generator);
 
+constexpr std::uint32_t ssl_request_caps =
+		CLIENT_LONG_FLAG |
+		CLIENT_LOCAL_FILES |
+		CLIENT_PROTOCOL_41 |
+		CLIENT_INTERACTIVE |
+		CLIENT_SSL |
+		CLIENT_TRANSACTIONS |
+		CLIENT_SECURE_CONNECTION |
+		CLIENT_MULTI_STATEMENTS |
+		CLIENT_MULTI_RESULTS |
+		CLIENT_PS_MULTI_RESULTS |
+		CLIENT_PLUGIN_AUTH |
+		CLIENT_CONNECT_ATTRS |
+		CLIENT_SESSION_TRACK |
+		(1UL << 29);
+
+INSTANTIATE_TEST_SUITE_P(SslRequest, SerializeTest, ::testing::Values(
+	serialization_testcase(ssl_request{
+		int4(ssl_request_caps),
+		int4(0x1000000),
+		int1(45),
+		string_fixed<23>{}
+	}, {
+
+		0x84, 0xae, 0x9f, 0x20, 0x00, 0x00, 0x00, 0x01,
+		0x2d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+	}, "default")
+), test_name_generator);
+
+
 } // anon namespace
