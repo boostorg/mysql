@@ -13,7 +13,6 @@ build_script:
   - cp ci\server-cert.pem C:\
   - cp ci\server-key.pem C:\
   - cp ci\windows-ssl.cnf C:\
-  - 'echo  >> "C:\Program Files\MySQL\MySQL Server 5.7\my.ini"'
   - 'echo !include C:\\windows-ssl.cnf >> "C:\Program Files\MySQL\MySQL Server 5.7\my.ini"'
   - type "C:\Program Files\MySQL\MySQL Server 5.7\my.ini"
   - net stop MySQL57 && net start MySQL57
