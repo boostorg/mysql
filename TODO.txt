@@ -28,6 +28,8 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
+	Copy operations for handshake
+	Review handshake auth_plugin_data - seems like buffer overrun is possible (auth data string_lenenc?)
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	clear_errors() function to clear error_info and error_code at once
 	Concept checking for StreamType

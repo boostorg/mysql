@@ -48,13 +48,14 @@ inline error_code deserialize_handshake(
 class auth_response_calculator
 {
 	std::array<std::uint8_t, mysql_native_password::response_length> auth_response_buffer_ {};
+	std::size_t size_ {};
 public:
-	error_code calculate(std::string_view password, std::string_view challenge, std::string_view& output)
+	error_code calculate(std::string_view password, std::string_view challenge)
 	{
 		// Blank password: we should just return an empty auth string
 		if (password.empty())
 		{
-			output = std::string_view();
+			size_ = 0;
 			return error_code();
 		}
 
@@ -70,11 +71,16 @@ public:
 			challenge.data(),
 			auth_response_buffer_.data()
 		);
-		output = std::string_view(
-			reinterpret_cast<const char*>(auth_response_buffer_.data()),
-			auth_response_buffer_.size()
-		);
+		size_ = auth_response_buffer_.size();
 		return error_code();
+	}
+
+	std::string_view response() const noexcept
+	{
+		return std::string_view(
+			reinterpret_cast<const char*>(auth_response_buffer_.data()),
+			size_
+		);
 	}
 };
 
@@ -82,7 +88,7 @@ class handshake_processor
 {
 	handshake_params params_;
 	capabilities negotiated_caps_;
-	handshake_packet initial_packet_;
+	auth_response_calculator auth_calc_;
 public:
 	handshake_processor(const handshake_params& params): params_(params) {};
 	capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
@@ -106,11 +112,16 @@ public:
 	error_code process_handshake(bytestring& buffer, error_info& info)
 	{
 		// Deserialize server greeting
-		auto err = deserialize_handshake(boost::asio::buffer(buffer), initial_packet_, info);
+		handshake_packet handshake;
+		auto err = deserialize_handshake(boost::asio::buffer(buffer), handshake, info);
 		if (err) return err;
 
 		// Check capabilities
-		return process_capabilities(initial_packet_);
+		err = process_capabilities(handshake);
+		if (err) return err;
+
+		// Compute auth response
+		return auth_calc_.calculate(params_.password, handshake.auth_plugin_data.value);
 	}
 
 	// Response to that initial greeting
@@ -127,32 +138,21 @@ public:
 		serialize_message(sslreq, negotiated_caps_, buffer);
 	}
 
-	error_code compose_handshake_response(bytestring& buffer)
+	void compose_handshake_response(bytestring& buffer)
 	{
-		// Authentication calculation
-		auth_response_calculator calc;
-		std::string_view auth_response;
-		if (initial_packet_.auth_plugin_name.value == mysql_native_password::plugin_name)
-		{
-			auto err = calc.calculate(params_.password, initial_packet_.auth_plugin_data.value, auth_response);
-			if (err) return err;
-		}
-
 		// Compose response
 		handshake_response_packet response {
 			int4(negotiated_caps_.get()),
 			int4(MAX_PACKET_SIZE),
 			int1(get_collation_first_byte(params_.connection_collation)),
 			string_null(params_.username),
-			string_lenenc(auth_response),
+			string_lenenc(auth_calc_.response()),
 			string_null(params_.database),
 			string_null(mysql_native_password::plugin_name)
 		};
 
 		// Serialize
 		serialize_message(response, negotiated_caps_, buffer);
-
-		return error_code();
 	}
 
 	// Server handshake response
@@ -210,11 +210,15 @@ public:
 		{
 			return make_error_code(errc::unknown_auth_plugin);
 		}
-		return calc.calculate(
+		auto err = calc.calculate(
 			params_.password,
-			request.auth_plugin_data.value,
-			output.auth_plugin_data.value
+			request.auth_plugin_data.value
 		);
+		if (!err)
+		{
+			output.auth_plugin_data.value = calc.response();
+		}
+		return err;
 	}
 
 	error_code process_auth_switch_response(
@@ -275,10 +279,7 @@ void boost::mysql::detail::hanshake(
 	}
 
 	// Handshake response
-	err = processor.compose_handshake_response(channel.shared_buffer());
-	if (err) return;
-
-	// Send
+	processor.compose_handshake_response(channel.shared_buffer());
 	channel.write(boost::asio::buffer(channel.shared_buffer()), err);
 	if (err) return;
 
@@ -399,15 +400,8 @@ boost::mysql::detail::async_handshake(
 					}
 				}
 
-				// Compose handshake response
-				err = processor_.compose_handshake_response(channel_.shared_buffer());
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
-				}
-
-				// Send
+				// Compose and send handshake response
+				processor_.compose_handshake_response(channel_.shared_buffer());
 				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
 				if (err)
 				{

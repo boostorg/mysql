@@ -16,7 +16,7 @@ boost::mysql::detail::serialization_traits<
 	string_fixed<2> capability_flags_low;
 	string_fixed<2> capability_flags_high;
 	int1 filler; // should be 0
-	int1 auth_plugin_data_len;
+	int1 auth_plugin_data_len; // TODO: double check this
 	string_fixed<10> reserved;
 
 	auto err = deserialize_fields(
