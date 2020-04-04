@@ -1,0 +1,4 @@
+[mariadb]
+ssl-ca=/tmp/ca-cert.pem
+ssl-cert=/tmp/server-cert.pem
+ssl-key=/tmp/server-key.pem
