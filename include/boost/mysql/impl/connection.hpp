@@ -7,27 +7,6 @@
 #include "boost/mysql/detail/auxiliar/check_completion_token.hpp"
 #include <boost/asio/buffer.hpp>
 
-namespace boost {
-namespace mysql {
-namespace detail {
-
-inline handshake_params to_handshake_params(
-	const connection_params& input
-)
-{
-	return detail::handshake_params {
-		input.connection_collation,
-		input.username,
-		input.password,
-		input.database,
-		true
-	};
-}
-
-} // detail
-} // mysql
-} // boost
-
 template <typename Stream>
 void boost::mysql::connection<Stream>::handshake(
 	const connection_params& params,
@@ -37,12 +16,7 @@ void boost::mysql::connection<Stream>::handshake(
 {
 	code.clear();
 	info.clear();
-	detail::hanshake(
-		channel_,
-		detail::to_handshake_params(params),
-		code,
-		info
-	);
+	detail::hanshake(channel_, params, code, info);
 	// TODO: should we close() the stream in case of error?
 }
 
@@ -73,7 +47,7 @@ boost::mysql::connection<Stream>::async_handshake(
 	detail::check_completion_token<CompletionToken, handshake_signature>();
 	return detail::async_handshake(
 		channel_,
-		detail::to_handshake_params(params),
+		params,
 		std::forward<CompletionToken>(token),
 		info
 	);

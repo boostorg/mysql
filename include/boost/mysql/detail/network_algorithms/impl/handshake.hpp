@@ -86,21 +86,21 @@ public:
 
 class handshake_processor
 {
-	handshake_params params_;
+	connection_params params_;
 	capabilities negotiated_caps_;
 	auth_response_calculator auth_calc_;
 public:
-	handshake_processor(const handshake_params& params): params_(params) {};
+	handshake_processor(const connection_params& params): params_(params) {};
 	capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
-	const handshake_params& params() const noexcept { return params_; }
+	const connection_params& params() const noexcept { return params_; }
 
 	// Initial greeting processing
 	error_code process_capabilities(const handshake_packet& handshake)
 	{
 		capabilities server_caps (handshake.capability_falgs.value);
 		capabilities required_caps = mandatory_capabilities |
-				conditional_capability(!params_.database.empty(), CLIENT_CONNECT_WITH_DB) |
-				conditional_capability(params_.use_ssl, CLIENT_SSL);
+				conditional_capability(!params_.database().empty(), CLIENT_CONNECT_WITH_DB) |
+				conditional_capability(params_.ssl().mode() == ssl_mode::require, CLIENT_SSL);
 		if (!server_caps.has_all(required_caps))
 		{
 			return make_error_code(errc::server_unsupported);
@@ -121,7 +121,7 @@ public:
 		if (err) return err;
 
 		// Compute auth response
-		return auth_calc_.calculate(params_.password, handshake.auth_plugin_data.value);
+		return auth_calc_.calculate(params_.password(), handshake.auth_plugin_data.value);
 	}
 
 	// Response to that initial greeting
@@ -129,8 +129,8 @@ public:
 	{
 		ssl_request sslreq {
 			int4(negotiated_capabilities().get()),
-			int4(MAX_PACKET_SIZE),
-			int1(get_collation_first_byte(params_.connection_collation)),
+			int4(static_cast<std::uint32_t>(MAX_PACKET_SIZE)),
+			int1(get_collation_first_byte(params_.connection_collation())),
 			{}
 		};
 
@@ -143,11 +143,11 @@ public:
 		// Compose response
 		handshake_response_packet response {
 			int4(negotiated_caps_.get()),
-			int4(MAX_PACKET_SIZE),
-			int1(get_collation_first_byte(params_.connection_collation)),
-			string_null(params_.username),
+			int4(static_cast<std::uint32_t>(MAX_PACKET_SIZE)),
+			int1(get_collation_first_byte(params_.connection_collation())),
+			string_null(params_.username()),
 			string_lenenc(auth_calc_.response()),
-			string_null(params_.database),
+			string_null(params_.database()),
 			string_null(mysql_native_password::plugin_name)
 		};
 
@@ -211,7 +211,7 @@ public:
 			return make_error_code(errc::unknown_auth_plugin);
 		}
 		auto err = calc.calculate(
-			params_.password,
+			params_.password(),
 			request.auth_plugin_data.value
 		);
 		if (!err)
@@ -249,7 +249,7 @@ public:
 template <typename StreamType>
 void boost::mysql::detail::hanshake(
 	channel<StreamType>& channel,
-	const handshake_params& params,
+	const connection_params& params,
 	error_code& err,
 	error_info& info
 )
@@ -266,7 +266,7 @@ void boost::mysql::detail::hanshake(
 	if (err) return;
 
 	// Setup SSL if required
-	if (params.use_ssl)
+	if (params.ssl().mode() == ssl_mode::require)
 	{
 		// Send SSL request
 		processor.compose_ssl_request(channel.shared_buffer());
@@ -314,7 +314,7 @@ BOOST_ASIO_INITFN_RESULT_TYPE(
 )
 boost::mysql::detail::async_handshake(
 	channel<StreamType>& chan,
-	const handshake_params& params,
+	const connection_params& params,
 	CompletionToken&& token,
 	error_info* info
 )
@@ -335,7 +335,7 @@ boost::mysql::detail::async_handshake(
 		Op(
 			HandlerType&& handler,
 			channel<StreamType>& channel,
-			const handshake_params& params,
+			const connection_params& params,
 			error_info* output_info
 		):
 			BaseType(std::move(handler), channel.next_layer().get_executor()),
@@ -377,7 +377,7 @@ boost::mysql::detail::async_handshake(
 				}
 
 				// SSL
-				if (processor_.params().use_ssl)
+				if (processor_.params().ssl().mode() == ssl_mode::require)
 				{
 					// Send SSL request
 					processor_.compose_ssl_request(channel_.shared_buffer());

@@ -35,22 +35,22 @@ TEST_P(HandshakeTest, FastAuthSuccessfulLogin)
 
 TEST_P(HandshakeTest, FastAuthSuccessfulLoginEmptyPassword)
 {
-	connection_params.username = "empty_password_user";
-	connection_params.password = "";
+	connection_params.set_username("empty_password_user");
+	connection_params.set_password("");
 	auto result = do_handshake();
 	result.validate_no_error();
 }
 
 TEST_P(HandshakeTest, FastAuthSuccessfulLoginNoDatabase)
 {
-	connection_params.database = "";
+	connection_params.set_database("");
 	auto result = do_handshake();
 	result.validate_no_error();
 }
 
 TEST_P(HandshakeTest, FastAuthBadUser)
 {
-	connection_params.username = "non_existing_user";
+	connection_params.set_username("non_existing_user");
 	auto result = do_handshake();
 	EXPECT_NE(result.err, error_code());
 	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
@@ -59,14 +59,14 @@ TEST_P(HandshakeTest, FastAuthBadUser)
 
 TEST_P(HandshakeTest, FastAuthBadPassword)
 {
-	connection_params.password = "bad_password";
+	connection_params.set_password("bad_password");
 	auto result = do_handshake();
 	result.validate_error(errc::access_denied_error, {"access denied", "integ_user"});
 }
 
 TEST_P(HandshakeTest, FastAuthBadDatabase)
 {
-	connection_params.database = "bad_database";
+	connection_params.set_database("bad_database");
 	auto result = do_handshake();
 	result.validate_error(errc::dbaccess_denied_error, {"database", "bad_database"});
 }
