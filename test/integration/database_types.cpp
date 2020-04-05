@@ -55,8 +55,10 @@ std::ostream& operator<<(std::ostream& os, const database_types_testcase& v)
 	return os << v.table << "." << v.field << "." << v.row_id;
 }
 
-struct DatabaseTypesTest : IntegTestAfterHandshake, WithParamInterface<database_types_testcase>
+struct DatabaseTypesTest : IntegTestAfterHandshake,
+						   WithParamInterface<database_types_testcase>
 {
+	DatabaseTypesTest(): IntegTestAfterHandshake(boost::mysql::ssl_mode::disable) {}
 };
 
 TEST_P(DatabaseTypesTest, Query_MetadataAndValueCorrect)

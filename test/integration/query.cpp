@@ -23,9 +23,9 @@ using boost::mysql::errc;
 namespace
 {
 
-struct QueryTest : public NetworkTest<>
+struct QueryTest : public NetworkTest
 {
-	auto do_query(std::string_view sql) { return GetParam()->query(conn, sql); }
+	auto do_query(std::string_view sql) { return GetParam().net->query(conn, sql); }
 };
 
 TEST_P(QueryTest, InsertQueryOk)

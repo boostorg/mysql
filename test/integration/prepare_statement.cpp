@@ -17,13 +17,13 @@ using boost::mysql::tcp_connection;
 namespace
 {
 
-struct PrepareStatementTest : public NetworkTest<>
+struct PrepareStatementTest : public NetworkTest
 {
 };
 
 TEST_P(PrepareStatementTest, OkNoParams)
 {
-	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table");
+	auto stmt = GetParam().net->prepare_statement(conn, "SELECT * FROM empty_table");
 	stmt.validate_no_error();
 	ASSERT_TRUE(stmt.value.valid());
 	EXPECT_GT(stmt.value.id(), 0u);
@@ -32,7 +32,7 @@ TEST_P(PrepareStatementTest, OkNoParams)
 
 TEST_P(PrepareStatementTest, OkWithParams)
 {
-	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM empty_table WHERE id IN (?, ?)");
+	auto stmt = GetParam().net->prepare_statement(conn, "SELECT * FROM empty_table WHERE id IN (?, ?)");
 	stmt.validate_no_error();
 	ASSERT_TRUE(stmt.value.valid());
 	EXPECT_GT(stmt.value.id(), 0u);
@@ -41,7 +41,7 @@ TEST_P(PrepareStatementTest, OkWithParams)
 
 TEST_P(PrepareStatementTest, Error)
 {
-	auto stmt = GetParam()->prepare_statement(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
+	auto stmt = GetParam().net->prepare_statement(conn, "SELECT * FROM bad_table WHERE id IN (?, ?)");
 	stmt.validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
 	EXPECT_FALSE(stmt.value.valid());
 }

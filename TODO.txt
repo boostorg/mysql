@@ -1,6 +1,4 @@
 SSL
-	Add an integ test in handshake to verify encrypted connections
-	Add a new integ test that proves using every feature over a non-encrypted connection
 	Update README
 	Make ssl context in channel lazy
 Multiresultset
@@ -25,6 +23,8 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
+	Review convention in test names
+	Review named_param
 	Copy operations for handshake
 	Review handshake auth_plugin_data - seems like buffer overrun is possible (auth data string_lenenc?)
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)

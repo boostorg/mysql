@@ -14,7 +14,7 @@ using boost::mysql::value;
 namespace
 {
 
-struct PreparedStatementLifecycleTest : NetworkTest<>
+struct PreparedStatementLifecycleTest : NetworkTest
 {
 	std::int64_t get_table_size(const std::string& table)
 	{
@@ -31,7 +31,7 @@ struct PreparedStatementLifecycleTest : NetworkTest<>
 
 TEST_P(PreparedStatementLifecycleTest, SelectWithParametersMultipleExecutions)
 {
-	auto* net = GetParam();
+	auto* net = GetParam().net;
 
 	// Prepare a statement
 	auto stmt = net->prepare_statement(
@@ -74,7 +74,7 @@ TEST_P(PreparedStatementLifecycleTest, SelectWithParametersMultipleExecutions)
 
 TEST_P(PreparedStatementLifecycleTest, InsertWithParametersMultipleExecutions)
 {
-	auto* net = GetParam();
+	auto* net = GetParam().net;
 
 	// Get the number of rows before insertion
 	auto rows_before = get_table_size("inserts_table");
@@ -111,7 +111,7 @@ TEST_P(PreparedStatementLifecycleTest, InsertWithParametersMultipleExecutions)
 
 TEST_P(PreparedStatementLifecycleTest, UpdateWithParametersMultipleExecutions)
 {
-	auto* net = GetParam();
+	auto* net = GetParam().net;
 
 	// Prepare a statement
 	auto stmt = net->prepare_statement(
@@ -147,7 +147,7 @@ TEST_P(PreparedStatementLifecycleTest, UpdateWithParametersMultipleExecutions)
 
 TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
 {
-	auto* net = GetParam();
+	auto* net = GetParam().net;
 
 	// Prepare an update
 	auto stmt_update = net->prepare_statement(
@@ -203,7 +203,7 @@ TEST_P(PreparedStatementLifecycleTest, MultipleStatements)
 
 TEST_P(PreparedStatementLifecycleTest, InsertWithNullValues)
 {
-	auto* net = GetParam();
+	auto* net = GetParam().net;
 
 	// Statement to perform the updates
 	auto stmt = net->prepare_statement(

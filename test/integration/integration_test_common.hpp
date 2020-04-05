@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include "boost/mysql/connection.hpp"
+#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <future>
@@ -47,8 +48,9 @@ struct IntegTest : testing::Test
 		runner.join();
 	}
 
-	void handshake()
+	void handshake(ssl_mode m = ssl_mode::require)
 	{
+		connection_params.set_ssl(ssl_options(m));
 		conn.handshake(connection_params);
 	}
 
@@ -91,17 +93,46 @@ struct IntegTest : testing::Test
 
 struct IntegTestAfterHandshake : IntegTest
 {
-	IntegTestAfterHandshake() { handshake(); }
+	IntegTestAfterHandshake(ssl_mode m = ssl_mode::require) { handshake(m); }
 };
 
-template <typename BaseType = IntegTestAfterHandshake>
-struct NetworkTest : public BaseType,
-					 public testing::WithParamInterface<network_functions*>
+struct network_testcase
 {
+	network_functions* net;
+	ssl_mode ssl;
+
+	std::string name() const
+	{
+		return detail::stringize(net->name(), '_', to_string(ssl));
+	}
+};
+
+inline std::vector<network_testcase> make_all_network_testcases()
+{
+	std::vector<network_testcase> res;
+	for (auto* net: all_network_functions)
+	{
+		for (auto ssl: {ssl_mode::require, ssl_mode::disable})
+		{
+			res.push_back(network_testcase{net, ssl});
+		}
+	}
+	return res;
+}
+
+struct NetworkTest : public IntegTestAfterHandshake,
+					 public testing::WithParamInterface<network_testcase>
+{
+	NetworkTest(): IntegTestAfterHandshake(GetParam().ssl) {}
 };
 
 } // test
 } // mysql
 } // boost
+
+#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
+	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
+		make_all_network_testcases() \
+	), [](const auto& param_info) { return param_info.param.name(); })
 
 #endif /* TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP_ */

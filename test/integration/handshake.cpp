@@ -22,18 +22,23 @@ using boost::mysql::error_code;
 namespace
 {
 
-struct HandshakeTest : public NetworkTest<IntegTest>
+struct HandshakeTest : public IntegTest,
+					   public testing::WithParamInterface<network_testcase>
 {
-	auto do_handshake() { return GetParam()->handshake(conn, connection_params); }
+	auto do_handshake()
+	{
+		connection_params.set_ssl(boost::mysql::ssl_options(GetParam().ssl));
+		return GetParam().net->handshake(conn, connection_params);
+	}
 };
 
-TEST_P(HandshakeTest, FastAuthSuccessfulLogin)
+TEST_P(HandshakeTest, SuccessfulLogin)
 {
 	auto result = do_handshake();
 	result.validate_no_error();
 }
 
-TEST_P(HandshakeTest, FastAuthSuccessfulLoginEmptyPassword)
+TEST_P(HandshakeTest, SuccessfulLoginEmptyPassword)
 {
 	connection_params.set_username("empty_password_user");
 	connection_params.set_password("");
@@ -41,14 +46,14 @@ TEST_P(HandshakeTest, FastAuthSuccessfulLoginEmptyPassword)
 	result.validate_no_error();
 }
 
-TEST_P(HandshakeTest, FastAuthSuccessfulLoginNoDatabase)
+TEST_P(HandshakeTest, SuccessfulLoginNoDatabase)
 {
 	connection_params.set_database("");
 	auto result = do_handshake();
 	result.validate_no_error();
 }
 
-TEST_P(HandshakeTest, FastAuthBadUser)
+TEST_P(HandshakeTest, BadUser)
 {
 	connection_params.set_username("non_existing_user");
 	auto result = do_handshake();
@@ -57,14 +62,14 @@ TEST_P(HandshakeTest, FastAuthBadUser)
 	// EXPECT_EQ(errc, make_error_code(mysql::errc::access_denied_error));
 }
 
-TEST_P(HandshakeTest, FastAuthBadPassword)
+TEST_P(HandshakeTest, BadPassword)
 {
 	connection_params.set_password("bad_password");
 	auto result = do_handshake();
 	result.validate_error(errc::access_denied_error, {"access denied", "integ_user"});
 }
 
-TEST_P(HandshakeTest, FastAuthBadDatabase)
+TEST_P(HandshakeTest, BadDatabase)
 {
 	connection_params.set_database("bad_database");
 	auto result = do_handshake();

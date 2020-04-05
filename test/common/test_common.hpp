@@ -4,6 +4,7 @@
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/row.hpp"
 #include "boost/mysql/error.hpp"
+#include "boost/mysql/connection_params.hpp"
 #include <boost/asio/buffer.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -12,6 +13,7 @@
 #include <sstream>
 #include <type_traits>
 #include <ostream>
+#include <cassert>
 
 namespace boost {
 namespace mysql {
@@ -138,6 +140,16 @@ inline std::vector<std::uint8_t> concat_copy(
 {
 	concat(lhs, rhs);
 	return std::move(lhs);
+}
+
+inline const char* to_string(ssl_mode m)
+{
+	switch (m)
+	{
+	case ssl_mode::disable: return "nossl";
+	case ssl_mode::require: return "ssl";
+	default: assert(false); return "";
+	}
 }
 
 struct named_param {};

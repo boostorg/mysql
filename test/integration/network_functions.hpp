@@ -97,11 +97,6 @@ inline network_functions* all_network_functions [] = {
 	async_future_noerrinfo_network_functions
 };
 
-#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
-	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
-		all_network_functions \
-	), [](const auto& param_info) { return param_info.param->name(); })
-
 
 } // test
 } // mysql

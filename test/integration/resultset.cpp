@@ -16,6 +16,7 @@ using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::tcp_resultset;
 using boost::mysql::tcp_connection;
+using boost::mysql::ssl_mode;
 namespace net = boost::asio;
 
 namespace
@@ -29,23 +30,25 @@ public:
 	virtual tcp_resultset generate(tcp_connection&, std::string_view) = 0;
 };
 
-struct ResultsetTestParam : named_param
+struct resultset_testcase : named_param, network_testcase
 {
 	resultset_generator* gen;
-	network_functions* net;
 
-	ResultsetTestParam(resultset_generator* gen, network_functions* net):
-		gen(gen), net(net) {}
+	resultset_testcase(network_testcase base, resultset_generator* gen):
+		network_testcase(base), gen(gen) {}
 };
 
-std::ostream& operator<<(std::ostream& os, const ResultsetTestParam& v)
+std::ostream& operator<<(std::ostream& os, const resultset_testcase& v)
 {
-	return os << v.gen->name() << '.' << v.net->name();
+	return os << v.gen->name() << '.'
+			  << v.net->name() << '.'
+			  << to_string(v.ssl);
 }
 
 struct ResultsetTest : public IntegTestAfterHandshake,
-					   public testing::WithParamInterface<ResultsetTestParam>
+					   public testing::WithParamInterface<resultset_testcase>
 {
+	ResultsetTest(): IntegTestAfterHandshake(GetParam().ssl) {}
 	auto do_generate(std::string_view query) { return GetParam().gen->generate(conn, query); }
 	auto do_fetch_one(tcp_resultset& r) { return GetParam().net->fetch_one(r); }
 	auto do_fetch_many(tcp_resultset& r, std::size_t count) { return GetParam().net->fetch_many(r, count); }
@@ -273,14 +276,14 @@ resultset_generator* all_resultset_generators [] = {
 	&binary_obj
 };
 
-std::vector<ResultsetTestParam> make_resultset_test_params()
+std::vector<resultset_testcase> make_all_resultset_testcases()
 {
-	std::vector<ResultsetTestParam> res;
+	std::vector<resultset_testcase> res;
 	for (auto* gen: all_resultset_generators)
 	{
-		for (auto* net: all_network_functions)
+		for (auto base: make_all_network_testcases())
 		{
-			res.push_back(ResultsetTestParam{gen, net});
+			res.push_back(resultset_testcase(base, gen));
 		}
 	}
 	return res;
@@ -288,7 +291,7 @@ std::vector<ResultsetTestParam> make_resultset_test_params()
 
 
 INSTANTIATE_TEST_SUITE_P(Default, ResultsetTest, testing::ValuesIn(
-	make_resultset_test_params()
+	make_all_resultset_testcases()
 ), test_name_generator);
 
 }

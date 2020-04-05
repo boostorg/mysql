@@ -12,13 +12,13 @@ using namespace boost::mysql::test;
 namespace
 {
 
-struct CloseStatementTest : NetworkTest<>
+struct CloseStatementTest : NetworkTest
 {
 };
 
 TEST_P(CloseStatementTest, ExistingOrClosedStatement)
 {
-	auto* net = GetParam();
+	auto* net = GetParam().net;
 
 	// Prepare a statement
 	auto stmt = net->prepare_statement(conn, "SELECT * FROM empty_table");
