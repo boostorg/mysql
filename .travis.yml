@@ -41,15 +41,67 @@ language: cpp
 
 matrix:
   include:
+    - name: linux_gcc_x64_debug_mysql
+      <<: *__linux_mysql_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+    - name: linux_gcc_x64_release_mysql
+      <<: *__linux_mysql_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: linux_clang_x64_debug_mysql
+      <<: *__linux_mysql_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+    - name: linux_clang_x64_release_mysql
+      <<: *__linux_mysql_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: linux_gcc_x64_debug_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+    - name: linux_gcc_x64_release_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: linux_clang_x64_debug_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+    - name: linux_clang_x64_release_mariadb
+      <<: *__linux_mariadb_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Release
     - name: osx_clang_x64_debug_mysql
       <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
+    - name: osx_clang_x64_release_mysql
+      <<: *__osx_defaults
+      env:
+        - *__osx_cmake_options
+        - CMAKE_BUILD_TYPE=Release
+        - DATABASE=mysql
     - name: osx_clang_x64_debug_mariadb
       <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
+        - DATABASE=mariadb
+    - name: osx_clang_x64_release_mariadb
+      <<: *__osx_defaults
+      env:
+        - *__osx_cmake_options
+        - CMAKE_BUILD_TYPE=Release
         - DATABASE=mariadb
