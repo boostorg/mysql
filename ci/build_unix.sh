@@ -7,11 +7,12 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	brew install $DATABASE
 	sudo bash -c "printf \"[mysqld]\n!include $(pwd)/ci/unix-ssl.cnf\n\" >> /etc/my.cnf"
 	sudo cat /etc/my.cnf
-	sudo mysql.server start
+	sudo mysql.server start || echo "Failed to start server!!"
+	cat /usr/local/var/mysql/Traviss-Mac.local.err
+	exit 1
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
 	fi
-	cat /usr/local/var/mysql/Traviss-Mac.local.err
 else
 	sudo cp ci/unix-ssl.cnf /etc/mysql/conf.d/ssl.cnf
 	sudo service mysql restart
