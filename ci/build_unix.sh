@@ -3,8 +3,8 @@
 
 cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
-	sudo brew update
-	sudo brew install $DATABASE
+	brew update
+	brew install $DATABASE
 	
 	if [ $DATABASE == "mariadb" ]; then
 		DATABASE_PREFIX=/usr/local/Cellar/mariadb/10.4.11
@@ -18,7 +18,8 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	
 	#sudo bash -c "printf \"[mysqld]\n!include $(pwd)/ci/unix-ssl.cnf\n\" >> /etc/my.cnf"
 	#sudo cat /etc/my.cnf
-	sudo mysql.server start
+	sudo cp ci/unix-ssl.cnf /etc/my.cnf
+	mysql.server start
 	
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
