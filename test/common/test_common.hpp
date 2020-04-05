@@ -146,8 +146,9 @@ inline const char* to_string(ssl_mode m)
 {
 	switch (m)
 	{
-	case ssl_mode::disable: return "nossl";
-	case ssl_mode::require: return "ssl";
+	case ssl_mode::disable: return "ssldisable";
+	case ssl_mode::enable: return "sslenable";
+	case ssl_mode::require: return "sslrequire";
 	default: assert(false); return "";
 	}
 }

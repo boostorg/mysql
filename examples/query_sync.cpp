@@ -55,9 +55,10 @@ void main_impl(int argc, char** argv)
 		argv[2],		       // password
 		"mysql_asio_examples"  // database to use; leave empty or omit the parameter for no database
 	);
-	// connection_params accepts an optional ssl_options argument describing
-	// whether to use TLS on the connection or not. By default, TLS is enabled
-	// and required.
+	// Note: by default, SSL will be used if the server supports it.
+	// connection_params accepts an optional ssl_options argument
+	// determining whether to use SSL or not. See ssl_options and ssl_mode
+	// documentation for further details on SSL.
 
 	boost::asio::io_context ctx;
 

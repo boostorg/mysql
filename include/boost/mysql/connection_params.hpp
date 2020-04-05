@@ -11,6 +11,7 @@ namespace mysql {
 enum class ssl_mode
 {
 	disable, ///< Never use TLS
+	enable,  ///< Use TLS if the server supports it, fall back to non-encrypted connection if it does not.
 	require  ///< Always use TLS; abort the connection if the server does not support it.
 };
 
@@ -25,9 +26,10 @@ class ssl_options
 public:
 	/**
 	 * \brief Default and initialization constructor.
-	 * \details By default, SSL is required for the connection to be established.
+	 * \details By default, SSL is enabled for the connection
+	 * if the server supports is (\ref ssl_mode::enable).
 	 */
-	explicit ssl_options(ssl_mode mode=ssl_mode::require) noexcept:
+	explicit ssl_options(ssl_mode mode=ssl_mode::enable) noexcept:
 		mode_(mode) {}
 
 	/// Retrieves the TLS mode to be used for the connection.

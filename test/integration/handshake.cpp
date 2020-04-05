@@ -30,27 +30,32 @@ struct HandshakeTest : public IntegTest,
 		connection_params.set_ssl(boost::mysql::ssl_options(GetParam().ssl));
 		return GetParam().net->handshake(conn, connection_params);
 	}
+
+	// does handshake and verifies it went OK
+	void do_handshake_ok()
+	{
+		auto result = do_handshake();
+		result.validate_no_error();
+		validate_ssl(GetParam().ssl);
+	}
 };
 
 TEST_P(HandshakeTest, SuccessfulLogin)
 {
-	auto result = do_handshake();
-	result.validate_no_error();
+	do_handshake_ok();
 }
 
 TEST_P(HandshakeTest, SuccessfulLoginEmptyPassword)
 {
 	connection_params.set_username("empty_password_user");
 	connection_params.set_password("");
-	auto result = do_handshake();
-	result.validate_no_error();
+	do_handshake_ok();
 }
 
 TEST_P(HandshakeTest, SuccessfulLoginNoDatabase)
 {
 	connection_params.set_database("");
-	auto result = do_handshake();
-	result.validate_no_error();
+	do_handshake_ok();
 }
 
 TEST_P(HandshakeTest, BadUser)
@@ -76,6 +81,9 @@ TEST_P(HandshakeTest, BadDatabase)
 	result.validate_error(errc::dbaccess_denied_error, {"database", "bad_database"});
 }
 
-MYSQL_NETWORK_TEST_SUITE(HandshakeTest);
+// This will run the handshake tests over all ssl_mode options available,
+// including ssl_mode::enable. We expect the same results as for ssl_mode::require
+MYSQL_NETWORK_TEST_SUITE_EX(HandshakeTest, true);
+
 
 } // anon namespace

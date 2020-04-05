@@ -93,19 +93,22 @@ public:
 	handshake_processor(const connection_params& params): params_(params) {};
 	capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
 	const connection_params& params() const noexcept { return params_; }
+	bool use_ssl() const noexcept { return negotiated_caps_.has(CLIENT_SSL); }
 
 	// Initial greeting processing
 	error_code process_capabilities(const handshake_packet& handshake)
 	{
+		auto ssl = params_.ssl().mode();
 		capabilities server_caps (handshake.capability_falgs.value);
 		capabilities required_caps = mandatory_capabilities |
 				conditional_capability(!params_.database().empty(), CLIENT_CONNECT_WITH_DB) |
-				conditional_capability(params_.ssl().mode() == ssl_mode::require, CLIENT_SSL);
+				conditional_capability(ssl == ssl_mode::require, CLIENT_SSL);
 		if (!server_caps.has_all(required_caps))
 		{
 			return make_error_code(errc::server_unsupported);
 		}
-		negotiated_caps_ = server_caps & (required_caps | optional_capabilities);
+		negotiated_caps_ = server_caps & (required_caps | optional_capabilities |
+				conditional_capability(ssl == ssl_mode::enable, CLIENT_SSL));
 		return error_code();
 	}
 
@@ -266,7 +269,7 @@ void boost::mysql::detail::hanshake(
 	if (err) return;
 
 	// Setup SSL if required
-	if (params.ssl().mode() == ssl_mode::require)
+	if (processor.use_ssl())
 	{
 		// Send SSL request
 		processor.compose_ssl_request(channel.shared_buffer());
@@ -380,7 +383,7 @@ boost::mysql::detail::async_handshake(
 				}
 
 				// SSL
-				if (processor_.params().ssl().mode() == ssl_mode::require)
+				if (processor_.use_ssl())
 				{
 					// Send SSL request
 					processor_.compose_ssl_request(channel_.shared_buffer());

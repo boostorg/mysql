@@ -62,6 +62,18 @@ public:
 	/// Retrieves the underlying Stream object.
 	const Stream& next_layer() const { return next_layer_; }
 
+	/**
+	 * \brief Returns whether the connection uses SSL or not.
+	 * \details Will always return false for connections that haven't been
+	 * established yet (handshake not run yet). If the handshake fails,
+	 * the return value is undefined.
+	 *
+	 * This function can be used to determine
+	 * whether you are using a SSL connection or not when using
+	 * optional SSL (ssl_mode::enable).
+	 */
+	bool uses_ssl() const noexcept { return channel_.ssl_active(); }
+
 	/// Performs the MySQL-level handshake (synchronous with error code version).
 	void handshake(const connection_params& params, error_code& ec, error_info& info);
 

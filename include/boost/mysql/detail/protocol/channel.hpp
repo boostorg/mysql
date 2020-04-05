@@ -45,7 +45,6 @@ class channel
 	error_code process_header_read(std::uint32_t& size_to_read); // reads from header_buffer_
 	void process_header_write(std::uint32_t size_to_write); // writes to header_buffer_
 
-	bool ssl_active() const noexcept { return ssl_block_.has_value(); }
 	void create_ssl_block() { ssl_block_.emplace(stream_); }
 
 	template <typename BufferSeq>
@@ -61,6 +60,8 @@ class channel
 	auto async_write_impl(BufferSeq&& buff, CompletionToken&& token);
 public:
 	channel(AsyncStream& stream): stream_(stream) {}
+
+	bool ssl_active() const noexcept { return ssl_block_.has_value(); }
 
 	template <typename Allocator>
 	void read(basic_bytestring<Allocator>& buffer, error_code& code);

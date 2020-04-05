@@ -52,6 +52,25 @@ struct IntegTest : testing::Test
 	{
 		connection_params.set_ssl(ssl_options(m));
 		conn.handshake(connection_params);
+		validate_ssl(m);
+	}
+
+	// Verifies that we are or are not using SSL, depending on what mode was requested.
+	void validate_ssl(ssl_mode m)
+	{
+		if (m == ssl_mode::enable || m == ssl_mode::require)
+		{
+			// All our test systems MUST support SSL to run these tests
+			EXPECT_TRUE(conn.uses_ssl());
+		}
+		else if (m == ssl_mode::disable)
+		{
+			EXPECT_FALSE(conn.uses_ssl());
+		}
+		else
+		{
+			assert(false); // unknown mode - programming error
+		}
 	}
 
 	void validate_eof(
@@ -107,7 +126,9 @@ struct network_testcase
 	}
 };
 
-inline std::vector<network_testcase> make_all_network_testcases()
+inline std::vector<network_testcase> make_all_network_testcases(
+	bool use_ssl_enable=false // set to true to add also ssl_mode::enable
+)
 {
 	std::vector<network_testcase> res;
 	for (auto* net: all_network_functions)
@@ -115,6 +136,10 @@ inline std::vector<network_testcase> make_all_network_testcases()
 		for (auto ssl: {ssl_mode::require, ssl_mode::disable})
 		{
 			res.push_back(network_testcase{net, ssl});
+		}
+		if (use_ssl_enable)
+		{
+			res.push_back(network_testcase{net, ssl_mode::enable});
 		}
 	}
 	return res;
@@ -130,9 +155,12 @@ struct NetworkTest : public IntegTestAfterHandshake,
 } // mysql
 } // boost
 
-#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
+#define MYSQL_NETWORK_TEST_SUITE_EX(TestSuiteName, use_ssl_enable) \
 	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
-		make_all_network_testcases() \
+		make_all_network_testcases(use_ssl_enable) \
 	), [](const auto& param_info) { return param_info.param.name(); })
+
+#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
+	MYSQL_NETWORK_TEST_SUITE_EX(TestSuiteName, false)
 
 #endif /* TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP_ */

@@ -1,5 +1,3 @@
-SSL
-	SSL mode "enable" (not being required)
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -23,6 +21,8 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
+	Integ tests for not enough capabilities
+	Integ tests for ssl_mode::enable and SSL not available
 	Review convention in test names
 	Review named_param
 	Copy operations for handshake
