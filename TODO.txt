@@ -1,12 +1,13 @@
 SSL
-	Update README
-	Make ssl context in channel lazy
+	Docs on SSL
+	Update example docs on SSL
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
 Handshake
 	sha256_password auth plugin: absence may cause BadUser tests to fail in 8.0
 	compression
+	SSL certificate & common name validation
 Usability
 	Should make_error_code be public?
 	Connection quit

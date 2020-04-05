@@ -64,8 +64,8 @@ Currently implemented:
 - User/password basic authentication (mysql_native_password). MySQL supports several
   authentication methods ("authentication plugins"). Only the mysql_native_password
   is supported yet.
+- Encrypted connections (TLS).
 
 Yet to be done (but it is on our list - PRs welcome):
 
 - Further authentication methods: caching_sha2_password, sha256_password...
-- SSL encrypted connections.
