@@ -1,6 +1,5 @@
 SSL
-	Docs on SSL
-	Update example docs on SSL
+	SSL mode "enable" (not being required)
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

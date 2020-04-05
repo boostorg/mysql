@@ -7,18 +7,30 @@
 namespace boost {
 namespace mysql {
 
+/// Determines whether to use TLS for the connection or not.
 enum class ssl_mode
 {
-	disable,
-	require
+	disable, ///< Never use TLS
+	require  ///< Always use TLS; abort the connection if the server does not support it.
 };
 
+/**
+ * \brief Connection options regarding TLS.
+ * \details At the moment, contains only the \ref ssl_mode, which
+ * indicates whether to use TLS on the connection or not.
+ */
 class ssl_options
 {
 	ssl_mode mode_;
 public:
+	/**
+	 * \brief Default and initialization constructor.
+	 * \details By default, SSL is required for the connection to be established.
+	 */
 	explicit ssl_options(ssl_mode mode=ssl_mode::require) noexcept:
 		mode_(mode) {}
+
+	/// Retrieves the TLS mode to be used for the connection.
 	ssl_mode mode() const noexcept { return mode_; }
 };
 
@@ -40,7 +52,7 @@ public:
 		std::string_view password,  ///< Password for that username, possibly empty.
 		std::string_view db = "",   ///< Database to use, or empty string for no database.
 		collation connection_col = collation::utf8_general_ci, ///< The default character set and collation for the connection.
-		const ssl_options& opts = ssl_options()
+		const ssl_options& opts = ssl_options() ///< The TLS options to use with this connection.
 	) :
 		username_(username),
 		password_(password),
