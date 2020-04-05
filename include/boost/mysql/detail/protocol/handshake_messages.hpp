@@ -136,6 +136,20 @@ struct serialization_traits<auth_switch_request_packet, serialization_tag::struc
 	static inline errc deserialize_(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
 };
 
+// more data (like auth switch request, but for the same plugin)
+struct auth_more_data_packet
+{
+	string_eof auth_plugin_data;
+};
+
+template <>
+struct get_struct_fields<auth_more_data_packet>
+{
+	static constexpr auto value = std::make_tuple(
+		&auth_more_data_packet::auth_plugin_data
+	);
+};
+
 
 } // detail
 } // mysql

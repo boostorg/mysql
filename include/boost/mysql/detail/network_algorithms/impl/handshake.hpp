@@ -2,9 +2,9 @@
 #define MYSQL_ASIO_IMPL_HANDSHAKE_IPP
 
 #include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/detail/auth/mysql_native_password.hpp"
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include "boost/mysql/detail/protocol/handshake_messages.hpp"
+#include "boost/mysql/detail/auth/auth.hpp"
 #include <boost/asio/yield.hpp>
 
 namespace boost {
@@ -45,44 +45,7 @@ inline error_code deserialize_handshake(
 	return deserialize_message(output, ctx);
 }
 
-class auth_response_calculator
-{
-	std::array<std::uint8_t, mysql_native_password::response_length> auth_response_buffer_ {};
-	std::size_t size_ {};
-public:
-	error_code calculate(std::string_view password, std::string_view challenge)
-	{
-		// Blank password: we should just return an empty auth string
-		if (password.empty())
-		{
-			size_ = 0;
-			return error_code();
-		}
 
-		// Check challenge size
-		if (challenge.size() != mysql_native_password::challenge_length)
-		{
-			return make_error_code(errc::protocol_value_error);
-		}
-
-		// Do the calculation
-		mysql_native_password::compute_auth_string(
-			password,
-			challenge.data(),
-			auth_response_buffer_.data()
-		);
-		size_ = auth_response_buffer_.size();
-		return error_code();
-	}
-
-	std::string_view response() const noexcept
-	{
-		return std::string_view(
-			reinterpret_cast<const char*>(auth_response_buffer_.data()),
-			size_
-		);
-	}
-};
 
 class handshake_processor
 {
@@ -124,7 +87,13 @@ public:
 		if (err) return err;
 
 		// Compute auth response
-		return auth_calc_.calculate(params_.password(), handshake.auth_plugin_data.value);
+		return auth_calc_.calculate(
+			handshake.auth_plugin_name.value,
+			params_.password(),
+			handshake.auth_plugin_data.value,
+			true, // unknown plugin is not an error at this step
+			use_ssl()
+		);
 	}
 
 	// Response to that initial greeting
@@ -151,7 +120,7 @@ public:
 			string_null(params_.username()),
 			string_lenenc(auth_calc_.response()),
 			string_null(params_.database()),
-			string_null(mysql_native_password::plugin_name)
+			string_null(auth_calc_.get_plugin_name())
 		};
 
 		// Serialize
@@ -179,27 +148,54 @@ public:
 		{
 			return process_error_packet(ctx, info);
 		}
-		else if (msg_type != auth_switch_request_header)
+		else if (msg_type == auth_switch_request_header)
+		{
+			// We have received an auth switch request. Deserialize it
+			auth_switch_request_packet auth_sw;
+			err = deserialize_message(auth_sw, ctx);
+			if (err) return err;
+
+			// Compute response
+			auth_switch_response_packet auth_sw_res;
+			auth_response_calculator calc;
+			err = compute_auth_switch_response(auth_sw, auth_sw_res, calc);
+			if (err) return err;
+
+			// Serialize
+			serialize_message(auth_sw_res, negotiated_caps_, buffer);
+
+			auth_complete = false;
+			return error_code();
+		}
+		else if (msg_type == auth_more_data_header)
+		{
+			// We have received an auth more data request. Deserialize it
+			auth_more_data_packet more_data;
+			err = deserialize_message(more_data, ctx);
+			if (err) return err;
+
+			// Compute response
+			auth_switch_response_packet auth_sw_res;
+			auth_response_calculator calc;
+			err = auth_calc_.calculate(
+				auth_calc_.get_plugin_name(),
+				params_.password(),
+				more_data.auth_plugin_data.value,
+				false, // unknown authentication plugin IS an error here
+				use_ssl()
+			);
+			if (err) return err;
+
+			auth_sw_res.auth_plugin_data.value = calc.response();
+			serialize_message(auth_sw_res, negotiated_caps_, buffer);
+
+			auth_complete = false;
+			return error_code();
+		}
+		else
 		{
 			return make_error_code(errc::protocol_value_error);
 		}
-
-		// We have received an auth switch request. Deserialize it
-		auth_switch_request_packet auth_sw;
-		err = deserialize_message(auth_sw, ctx);
-		if (err) return err;
-
-		// Compute response
-		auth_switch_response_packet auth_sw_res;
-		auth_response_calculator calc;
-		err = compute_auth_switch_response(auth_sw, auth_sw_res, calc);
-		if (err) return err;
-
-		// Serialize
-		serialize_message(auth_sw_res, negotiated_caps_, buffer);
-
-		auth_complete = false;
-		return error_code();
 	}
 
 	// Auth switch
@@ -209,13 +205,12 @@ public:
 		auth_response_calculator& calc
 	)
 	{
-		if (request.plugin_name.value != mysql_native_password::plugin_name)
-		{
-			return make_error_code(errc::unknown_auth_plugin);
-		}
 		auto err = calc.calculate(
+			request.plugin_name.value,
 			params_.password(),
-			request.auth_plugin_data.value
+			request.auth_plugin_data.value,
+			false, // unknown authentication plugin IS an error here
+			use_ssl()
 		);
 		if (!err)
 		{

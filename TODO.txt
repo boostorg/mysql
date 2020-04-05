@@ -1,8 +1,17 @@
+sha256_password auth plugin
+	Implement algorithm
+	Integ tests to use it
+	Skip integ tests in mariadb
+	Verify that with no SSL, sha256 fails (preferably without sending the password in plaintext)
+	Check the two (caching and no-caching)
+	absence may cause BadUser tests to fail in 8.0: remove corrective measures here
+	Test for an unknown auth plugin
+	Update readme
+	Unit test for auth_more_data
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
 Handshake
-	sha256_password auth plugin: absence may cause BadUser tests to fail in 8.0
 	compression
 	SSL certificate & common name validation
 Usability
