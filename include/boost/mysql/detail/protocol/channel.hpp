@@ -11,6 +11,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <array>
+#include <optional>
 
 namespace boost {
 namespace mysql {
@@ -21,9 +22,18 @@ class channel
 {
 	// TODO: static asserts for AsyncStream concept
 	// TODO: actually we also require it to be SyncStream, name misleading
-	boost::asio::ssl::context ssl_ctx_;
-	boost::asio::ssl::stream<AsyncStream&> next_layer_;
-	bool ssl_active_ {false};
+	struct ssl_block
+	{
+		boost::asio::ssl::context ctx;
+		boost::asio::ssl::stream<AsyncStream&> stream;
+
+		ssl_block(AsyncStream& base_stream):
+			ctx(boost::asio::ssl::context::tls_client),
+			stream (base_stream, ctx) {}
+	};
+
+	AsyncStream& stream_;
+	std::optional<ssl_block> ssl_block_;
 	std::uint8_t sequence_number_ {0};
 	std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
 	bytestring shared_buff_; // for async ops
@@ -34,6 +44,9 @@ class channel
 
 	error_code process_header_read(std::uint32_t& size_to_read); // reads from header_buffer_
 	void process_header_write(std::uint32_t size_to_write); // writes to header_buffer_
+
+	bool ssl_active() const noexcept { return ssl_block_.has_value(); }
+	void create_ssl_block() { ssl_block_.emplace(stream_); }
 
 	template <typename BufferSeq>
 	std::size_t read_impl(BufferSeq&& buff, error_code& ec);
@@ -47,11 +60,7 @@ class channel
 	template <typename BufferSeq, typename CompletionToken>
 	auto async_write_impl(BufferSeq&& buff, CompletionToken&& token);
 public:
-	channel(AsyncStream& stream):
-		ssl_ctx_(boost::asio::ssl::context::tls_client),
-		next_layer_ (stream, ssl_ctx_)
-	{
-	};
+	channel(AsyncStream& stream): stream_(stream) {}
 
 	template <typename Allocator>
 	void read(basic_bytestring<Allocator>& buffer, error_code& code);
@@ -76,7 +85,7 @@ public:
 	std::uint8_t sequence_number() const { return sequence_number_; }
 
 	using stream_type = AsyncStream;
-	stream_type& next_layer() { return next_layer_.next_layer(); }
+	stream_type& next_layer() { return stream_; }
 
 	capabilities current_capabilities() const noexcept { return current_caps_; }
 	void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }

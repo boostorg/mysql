@@ -78,13 +78,13 @@ std::size_t boost::mysql::detail::channel<AsyncStream>::read_impl(
 	error_code& ec
 )
 {
-	if (ssl_active_)
+	if (ssl_active())
 	{
-		return boost::asio::read(next_layer_, std::forward<BufferSeq>(buff), ec);
+		return boost::asio::read(ssl_block_->stream, std::forward<BufferSeq>(buff), ec);
 	}
 	else
 	{
-		return boost::asio::read(next_layer_.next_layer(), std::forward<BufferSeq>(buff), ec);
+		return boost::asio::read(stream_, std::forward<BufferSeq>(buff), ec);
 	}
 }
 
@@ -95,13 +95,13 @@ std::size_t boost::mysql::detail::channel<AsyncStream>::write_impl(
 	error_code& ec
 )
 {
-	if (ssl_active_)
+	if (ssl_active())
 	{
-		return boost::asio::write(next_layer_, std::forward<BufferSeq>(buff), ec);
+		return boost::asio::write(ssl_block_->stream, std::forward<BufferSeq>(buff), ec);
 	}
 	else
 	{
-		return boost::asio::write(next_layer_.next_layer(), std::forward<BufferSeq>(buff), ec);
+		return boost::asio::write(stream_, std::forward<BufferSeq>(buff), ec);
 	}
 }
 
@@ -112,10 +112,10 @@ auto boost::mysql::detail::channel<AsyncStream>::async_read_impl(
 	CompletionToken&& token
 )
 {
-	if (ssl_active_)
+	if (ssl_active())
 	{
 		return boost::asio::async_read(
-			next_layer_,
+			ssl_block_->stream,
 			std::forward<BufferSeq>(buff),
 			std::forward<CompletionToken>(token)
 		);
@@ -123,7 +123,7 @@ auto boost::mysql::detail::channel<AsyncStream>::async_read_impl(
 	else
 	{
 		return boost::asio::async_read(
-			next_layer_.next_layer(),
+			stream_,
 			std::forward<BufferSeq>(buff),
 			std::forward<CompletionToken>(token)
 		);
@@ -137,10 +137,10 @@ auto boost::mysql::detail::channel<AsyncStream>::async_write_impl(
 	CompletionToken&& token
 )
 {
-	if (ssl_active_)
+	if (ssl_active())
 	{
 		return boost::asio::async_write(
-			next_layer_,
+			ssl_block_->stream,
 			std::forward<BufferSeq>(buff),
 			std::forward<CompletionToken>(token)
 		);
@@ -148,7 +148,7 @@ auto boost::mysql::detail::channel<AsyncStream>::async_write_impl(
 	else
 	{
 		return boost::asio::async_write(
-			next_layer_.next_layer(),
+			stream_,
 			std::forward<BufferSeq>(buff),
 			std::forward<CompletionToken>(token)
 		);
@@ -234,7 +234,7 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 			channel<AsyncStream>& stream,
 			basic_bytestring<Allocator>& buffer
 		):
-			BaseType(std::move(handler), stream.next_layer_.get_executor()),
+			BaseType(std::move(handler), stream.next_layer().get_executor()),
 			stream_(stream),
 			buffer_(buffer)
 		{
@@ -316,7 +316,7 @@ boost::mysql::detail::channel<AsyncStream>::async_write(
 			channel<AsyncStream>& stream,
 			boost::asio::const_buffer buffer
 		):
-			BaseType(std::move(handler), stream.next_layer_.get_executor()),
+			BaseType(std::move(handler), stream.next_layer().get_executor()),
 			stream_(stream),
 			buffer_(buffer)
 		{
@@ -372,8 +372,8 @@ void boost::mysql::detail::channel<Stream>::ssl_handshake(
 	error_code& ec
 )
 {
-	ssl_active_ = true;
-	next_layer_.handshake(boost::asio::ssl::stream_base::client, ec);
+	create_ssl_block();
+	ssl_block_->stream.handshake(boost::asio::ssl::stream_base::client, ec);
 }
 
 template <typename Stream>
@@ -383,8 +383,8 @@ boost::mysql::detail::channel<Stream>::async_ssl_handshake(
 	CompletionToken&& token
 )
 {
-	ssl_active_ = true;
-	return next_layer_.async_handshake(
+	create_ssl_block();
+	return ssl_block_->stream.async_handshake(
 		boost::asio::ssl::stream_base::client,
 		std::forward<CompletionToken>(token)
 	);
