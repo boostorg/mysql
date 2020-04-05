@@ -3,8 +3,8 @@
 
 cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
-	brew update
-	brew install $DATABASE
+	sudo brew update
+	sudo brew install $DATABASE
 	
 	if [ $DATABASE == "mariadb" ]; then
 		DATABASE_PREFIX=/usr/local/Cellar/mariadb/10.4.11
