@@ -246,8 +246,15 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 			bool cont=true
 		)
 		{
-			std::uint32_t size_to_read = 0;
+			// Error checking
+			if (code)
+			{
+				this->complete(cont, code);
+				return;
+			}
 
+			// Non-error path
+			std::uint32_t size_to_read = 0;
 			reenter(*this)
 			{
 				do
@@ -257,14 +264,7 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 						std::move(*this)
 					);
 
-					if (code)
-					{
-						this->complete(cont, code);
-						yield break;
-					}
-
 					code = stream_.process_header_read(size_to_read);
-
 					if (code)
 					{
 						this->complete(cont, code);
@@ -277,12 +277,6 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 						boost::asio::buffer(buffer_.data() + total_transferred_size_, size_to_read),
 						std::move(*this)
 					);
-
-					if (code)
-					{
-						this->complete(cont, code);
-						yield break;
-					}
 
 					total_transferred_size_ += bytes_transferred;
 				} while (bytes_transferred == MAX_PACKET_SIZE);
@@ -334,8 +328,15 @@ boost::mysql::detail::channel<AsyncStream>::async_write(
 			bool cont=true
 		)
 		{
-			std::uint32_t size_to_write;
+			// Error handling
+			if (code)
+			{
+				this->complete(cont, code);
+				return;
+			}
 
+			// Non-error path
+			std::uint32_t size_to_write;
 			reenter(*this)
 			{
 				// Force write the packet header on an empty packet, at least.
@@ -351,12 +352,6 @@ boost::mysql::detail::channel<AsyncStream>::async_write(
 						},
 						std::move(*this)
 					);
-
-					if (code)
-					{
-						this->complete(cont, code);
-						yield break;
-					}
 
 					total_transferred_size_ += (bytes_transferred - 4); // header size
 

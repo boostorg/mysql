@@ -138,6 +138,14 @@ boost::mysql::detail::async_prepare_statement(
 			bool cont=true
 		)
 		{
+			// Error checking
+			if (err)
+			{
+				this->complete(cont, err, PreparedStatementType());
+				return;
+			}
+
+			// Regular coroutine body; if there has been an error, we don't get here
 			error_info info;
 			reenter(*this)
 			{
@@ -146,22 +154,12 @@ boost::mysql::detail::async_prepare_statement(
 					boost::asio::buffer(processor_.get_buffer()),
 					std::move(*this)
 				);
-				if (err)
-				{
-					this->complete(cont, err, PreparedStatementType());
-					yield break;
-				}
 
 				// Read response
 				yield processor_.get_channel().async_read(
 					processor_.get_buffer(),
 					std::move(*this)
 				);
-				if (err)
-				{
-					this->complete(cont, err, PreparedStatementType());
-					yield break;
-				}
 
 				// Process response
 				processor_.process_response(err, info);
@@ -181,11 +179,6 @@ boost::mysql::detail::async_prepare_statement(
 						processor_.get_buffer(),
 						std::move(*this)
 					);
-					if (err)
-					{
-						this->complete(cont, err, PreparedStatementType());
-						yield break;
-					}
 				}
 
 				// Compose response

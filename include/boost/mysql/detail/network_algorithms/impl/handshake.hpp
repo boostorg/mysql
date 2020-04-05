@@ -357,16 +357,19 @@ boost::mysql::detail::async_handshake(
 			bool cont=true
 		)
 		{
+			// Error checking
+			if (err)
+			{
+				complete(cont, err);
+				return;
+			}
+
+			// Non-error path
 			bool auth_complete = false;
 			reenter(*this)
 			{
 				// Read server greeting
 				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
-				}
 
 				// Process server greeting
 				err = processor_.process_handshake(channel_.shared_buffer(), info_);
@@ -385,37 +388,17 @@ boost::mysql::detail::async_handshake(
 						boost::asio::buffer(channel_.shared_buffer()),
 						std::move(*this)
 					);
-					if (err)
-					{
-						complete(cont, err);
-						yield break;
-					}
 
 					// SSL handshake
 					yield channel_.async_ssl_handshake(std::move(*this));
-					if (err)
-					{
-						complete(cont, err);
-						yield break;
-					}
 				}
 
 				// Compose and send handshake response
 				processor_.compose_handshake_response(channel_.shared_buffer());
 				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
-				}
 
 				// Receive response
 				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
-				}
 
 				// Process it
 				err = processor_.process_handshake_server_response(channel_.shared_buffer(), auth_complete, info_);
@@ -427,19 +410,9 @@ boost::mysql::detail::async_handshake(
 
 				// We received an auth switch response and we have the response ready to be sent
 				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
-				}
 
 				// Receive response
 				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
-				}
 
 				// Process it
 				err = processor_.process_auth_switch_response(boost::asio::buffer(channel_.shared_buffer()), info_);

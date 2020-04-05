@@ -223,6 +223,14 @@ boost::mysql::detail::async_execute_generic(
 			bool cont=true
 		)
 		{
+			// Error checking
+			if (err)
+			{
+				this->complete(cont, err, ResultsetType());
+				return;
+			}
+
+			// Non-error path
 			error_info info;
 			reenter(*this)
 			{
@@ -231,22 +239,12 @@ boost::mysql::detail::async_execute_generic(
 					boost::asio::buffer(processor_->get_buffer()),
 					std::move(*this)
 				);
-				if (err)
-				{
-					this->complete(cont, err, ResultsetType());
-					yield break;
-				}
 
 				// Read the response
 				yield processor_->get_channel().async_read(
 					processor_->get_buffer(),
 					std::move(*this)
 				);
-				if (err)
-				{
-					this->complete(cont, err, ResultsetType());
-					yield break;
-				}
 
 				// Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
 				processor_->process_response(err, info);
@@ -266,12 +264,9 @@ boost::mysql::detail::async_execute_generic(
 						processor_->get_buffer(),
 						std::move(*this)
 					);
-					if (!err)
-					{
-						// Process the message
-						err = processor_->process_field_definition();
-					}
 
+					// Process the message
+					err = processor_->process_field_definition();
 					if (err)
 					{
 						this->complete(cont, err, ResultsetType());
