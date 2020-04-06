@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11.0)
+cmake_minimum_required(VERSION 3.13.0) # Determined by requiring Boost 1.70
 project(mysql-asio)
 
 # If we are the top-level project, enable testing
@@ -41,7 +41,7 @@ set(_MYSQL_SHELL_EXT $<IF:$<PLATFORM_ID:Windows>,bat,sh>)
 # Dependencies
 include(FetchContent)
 
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost 1.70.0 REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 

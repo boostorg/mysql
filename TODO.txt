@@ -6,7 +6,6 @@ sha256_password auth plugin
 	Test for an unknown auth plugin
 	Update readme
 	Unit test for auth_more_data
-	Review min cmake version
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
