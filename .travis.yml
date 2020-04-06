@@ -5,6 +5,7 @@ __linux_addons_defaults: &__linux_addons_defaults
       - sourceline: 'ppa:mhier/libboost-latest'
     packages:
       - boost1.70
+      - python3
 
 __linux_defaults: &__linux_defaults
   os: linux
