@@ -45,7 +45,13 @@ inline error_code deserialize_handshake(
 	return deserialize_message(output, ctx);
 }
 
-
+enum class auth_result
+{
+	complete,
+	send_more_data,
+	wait_for_ok,
+	invalid
+};
 
 class handshake_processor
 {
@@ -91,7 +97,6 @@ public:
 			handshake.auth_plugin_name.value,
 			params_.password(),
 			handshake.auth_plugin_data.value,
-			true, // unknown plugin is not an error at this step
 			use_ssl()
 		);
 	}
@@ -130,7 +135,7 @@ public:
 	// Server handshake response
 	error_code process_handshake_server_response(
 		bytestring& buffer,
-		bool& auth_complete,
+		auth_result& result,
 		error_info& info
 	)
 	{
@@ -140,8 +145,7 @@ public:
 		if (msg_type == ok_packet_header)
 		{
 			// Auth success via fast auth path
-			// TODO: is this OK_Packet useful for anything?
-			auth_complete = true;
+			result = auth_result::complete;
 			return error_code();
 		}
 		else if (msg_type == error_packet_header)
@@ -157,14 +161,19 @@ public:
 
 			// Compute response
 			auth_switch_response_packet auth_sw_res;
-			auth_response_calculator calc;
-			err = compute_auth_switch_response(auth_sw, auth_sw_res, calc);
+			err = auth_calc_.calculate(
+				auth_sw.plugin_name.value,
+				params_.password(),
+				auth_sw.auth_plugin_data.value,
+				use_ssl()
+			);
 			if (err) return err;
+			auth_sw_res.auth_plugin_data.value = auth_calc_.response();
 
 			// Serialize
 			serialize_message(auth_sw_res, negotiated_caps_, buffer);
 
-			auth_complete = false;
+			result = auth_result::send_more_data;
 			return error_code();
 		}
 		else if (msg_type == auth_more_data_header)
@@ -174,22 +183,28 @@ public:
 			err = deserialize_message(more_data, ctx);
 			if (err) return err;
 
+			// TODO: refactor this
+			std::string_view data = more_data.auth_plugin_data.value;
+			if (data.size() == 1 && data[0] == 3)
+			{
+				result = auth_result::wait_for_ok;
+				return error_code();
+			}
+
 			// Compute response
 			auth_switch_response_packet auth_sw_res;
-			auth_response_calculator calc;
 			err = auth_calc_.calculate(
 				auth_calc_.get_plugin_name(),
 				params_.password(),
 				more_data.auth_plugin_data.value,
-				false, // unknown authentication plugin IS an error here
 				use_ssl()
 			);
 			if (err) return err;
 
-			auth_sw_res.auth_plugin_data.value = calc.response();
+			auth_sw_res.auth_plugin_data.value = auth_calc_.response();
 			serialize_message(auth_sw_res, negotiated_caps_, buffer);
 
-			auth_complete = false;
+			result = auth_result::send_more_data;
 			return error_code();
 		}
 		else
@@ -197,47 +212,6 @@ public:
 			return make_error_code(errc::protocol_value_error);
 		}
 	}
-
-	// Auth switch
-	error_code compute_auth_switch_response(
-		const auth_switch_request_packet& request,
-		auth_switch_response_packet& output,
-		auth_response_calculator& calc
-	)
-	{
-		auto err = calc.calculate(
-			request.plugin_name.value,
-			params_.password(),
-			request.auth_plugin_data.value,
-			false, // unknown authentication plugin IS an error here
-			use_ssl()
-		);
-		if (!err)
-		{
-			output.auth_plugin_data.value = calc.response();
-		}
-		return err;
-	}
-
-	error_code process_auth_switch_response(
-		boost::asio::const_buffer buffer,
-		error_info& info
-	)
-	{
-		deserialization_context ctx (boost::asio::buffer(buffer), negotiated_caps_);
-		auto [err, msg_type] = deserialize_message_type(ctx);
-		if (err) return err;
-		if (msg_type == error_packet_header)
-		{
-			return process_error_packet(ctx, info);
-		}
-		else if (msg_type != ok_packet_header)
-		{
-			return make_error_code(errc::protocol_value_error);
-		}
-		return error_code();
-	}
-
 };
 
 } // detail
@@ -281,26 +255,24 @@ void boost::mysql::detail::hanshake(
 	channel.write(boost::asio::buffer(channel.shared_buffer()), err);
 	if (err) return;
 
-	// Receive response
-	channel.read(channel.shared_buffer(), err);
-	if (err) return;
+	auth_result auth_outcome = auth_result::invalid;
+	while (auth_outcome != auth_result::complete)
+	{
+		// Receive response
+		channel.read(channel.shared_buffer(), err);
+		if (err) return;
 
-	// Process it
-	bool auth_complete = false;
-	err = processor.process_handshake_server_response(channel.shared_buffer(), auth_complete, info);
-	if (err || auth_complete) return;
+		// Process it
+		err = processor.process_handshake_server_response(channel.shared_buffer(), auth_outcome, info);
+		if (err) return;
 
-	// We received an auth switch response and we have the response ready to be sent
-	channel.write(boost::asio::buffer(channel.shared_buffer()), err);
-	if (err) return;
-
-	// Receive response
-	channel.read(channel.shared_buffer(), err);
-	if (err) return;
-
-	// Process it
-	err = processor.process_auth_switch_response(boost::asio::buffer(channel.shared_buffer()), info);
-	if (err) return;
+		if (auth_outcome == auth_result::send_more_data)
+		{
+			// We received an auth switch request and we have the response ready to be sent
+			channel.write(boost::asio::buffer(channel.shared_buffer()), err);
+			if (err) return;
+		}
+	};
 
 	channel.set_current_capabilities(processor.negotiated_capabilities());
 }
@@ -329,6 +301,7 @@ boost::mysql::detail::async_handshake(
 		handshake_processor processor_;
 		error_info info_;
 		error_info* output_info_;
+		auth_result auth_state_ {auth_result::invalid};
 
 		Op(
 			HandlerType&& handler,
@@ -363,7 +336,6 @@ boost::mysql::detail::async_handshake(
 			}
 
 			// Non-error path
-			bool auth_complete = false;
 			reenter(*this)
 			{
 				// Read server greeting
@@ -395,29 +367,31 @@ boost::mysql::detail::async_handshake(
 				processor_.compose_handshake_response(channel_.shared_buffer());
 				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
 
-				// Receive response
-				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
-
-				// Process it
-				err = processor_.process_handshake_server_response(channel_.shared_buffer(), auth_complete, info_);
-				if (err || auth_complete)
+				while (auth_state_ != auth_result::complete)
 				{
-					complete(cont, err);
-					yield break;
-				}
+					// Receive response
+					yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
 
-				// We received an auth switch response and we have the response ready to be sent
-				yield channel_.async_write(boost::asio::buffer(channel_.shared_buffer()), std::move(*this));
+					// Process it
+					err = processor_.process_handshake_server_response(
+						channel_.shared_buffer(),
+						auth_state_,
+						info_
+					);
+					if (err)
+					{
+						complete(cont, err);
+						yield break;
+					}
 
-				// Receive response
-				yield channel_.async_read(channel_.shared_buffer(), std::move(*this));
-
-				// Process it
-				err = processor_.process_auth_switch_response(boost::asio::buffer(channel_.shared_buffer()), info_);
-				if (err)
-				{
-					complete(cont, err);
-					yield break;
+					if (auth_state_ == auth_result::send_more_data)
+					{
+						// We received an auth switch response and we have the response ready to be sent
+						yield channel_.async_write(
+							boost::asio::buffer(channel_.shared_buffer()),
+							std::move(*this)
+						);
+					}
 				}
 
 				complete(cont, error_code());

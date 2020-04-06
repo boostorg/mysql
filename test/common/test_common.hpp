@@ -5,6 +5,7 @@
 #include "boost/mysql/row.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/connection_params.hpp"
+#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include <boost/asio/buffer.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -14,6 +15,7 @@
 #include <type_traits>
 #include <ostream>
 #include <cassert>
+#include <stdexcept>
 
 namespace boost {
 namespace mysql {
@@ -140,6 +142,17 @@ inline std::vector<std::uint8_t> concat_copy(
 {
 	concat(lhs, rhs);
 	return std::move(lhs);
+}
+
+inline void check_call(const char* command)
+{
+	int code = std::system(command);
+	if (code != 0) // we are assuming 0 means success
+	{
+		throw std::runtime_error(
+			detail::stringize("Command '", command, "' returned status code ", code)
+		);
+	}
 }
 
 inline const char* to_string(ssl_mode m)

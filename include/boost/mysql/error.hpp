@@ -23,6 +23,7 @@ enum class errc : int
 	server_unsupported,
 	protocol_value_error,
 	unknown_auth_plugin,
+	auth_plugin_requires_ssl,
 	wrong_num_params
 };
 

@@ -1,13 +1,16 @@
 sha256_password auth plugin
-	Implement algorithm
-	Integ tests to use it
-	Skip integ tests in mariadb
-	Verify that with no SSL, sha256 fails (preferably without sending the password in plaintext)
-	Check the two (caching and no-caching)
+	Tests to prove when auth method mismatch yes/no
+	Separate tests for SSL yes/no
+	Unit tests for auth calculator & refactor
+	Set error_info when there is an auth plugin involved
+		Unknown auth plugin
+		Auth plugin requires SSL
+	Skip integ tests in mariadb (devops)
 	absence may cause BadUser tests to fail in 8.0: remove corrective measures here
 	Test for an unknown auth plugin
 	Update readme
 	Unit test for auth_more_data
+	Integ tests for ssl_enable and YES/NO support for SSL (and maybe checking sha256 fails)
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

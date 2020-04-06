@@ -55,21 +55,22 @@ struct IntegTest : testing::Test
 		validate_ssl(m);
 	}
 
+	static bool should_use_ssl(ssl_mode m)
+	{
+		return m == ssl_mode::enable || m == ssl_mode::require;
+	}
+
 	// Verifies that we are or are not using SSL, depending on what mode was requested.
 	void validate_ssl(ssl_mode m)
 	{
-		if (m == ssl_mode::enable || m == ssl_mode::require)
+		if (should_use_ssl(m))
 		{
 			// All our test systems MUST support SSL to run these tests
 			EXPECT_TRUE(conn.uses_ssl());
 		}
-		else if (m == ssl_mode::disable)
-		{
-			EXPECT_FALSE(conn.uses_ssl());
-		}
 		else
 		{
-			assert(false); // unknown mode - programming error
+			EXPECT_FALSE(conn.uses_ssl());
 		}
 	}
 

@@ -9,6 +9,7 @@
 #include "integration_test_common.hpp"
 #include "test_common.hpp"
 #include <boost/asio/use_future.hpp>
+#include <cstdlib>
 
 namespace net = boost::asio;
 using namespace testing;
@@ -22,6 +23,11 @@ using boost::mysql::error_code;
 namespace
 {
 
+bool skip_sha256()
+{
+	return std::getenv("MYSQL_SKIP_SHA256_TESTS") != nullptr;
+}
+
 struct HandshakeTest : public IntegTest,
 					   public testing::WithParamInterface<network_testcase>
 {
@@ -29,6 +35,12 @@ struct HandshakeTest : public IntegTest,
 	{
 		connection_params.set_ssl(boost::mysql::ssl_options(GetParam().ssl));
 		return GetParam().net->handshake(conn, connection_params);
+	}
+
+	void set_credentials(std::string_view user, std::string_view password)
+	{
+		connection_params.set_username(user);
+		connection_params.set_password(password);
 	}
 
 	// does handshake and verifies it went OK
@@ -40,19 +52,60 @@ struct HandshakeTest : public IntegTest,
 	}
 };
 
-TEST_P(HandshakeTest, SuccessfulLogin)
+TEST_P(HandshakeTest, MysqlNativePassword_SuccessfulLogin)
 {
+	set_credentials("mysqlnp_user", "mysqlnp_password");
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, SuccessfulLoginEmptyPassword)
+TEST_P(HandshakeTest, MysqlNativePasswordEmptyPassword_SuccessfulLogin)
 {
-	connection_params.set_username("empty_password_user");
-	connection_params.set_password("");
+	set_credentials("mysqlnp_empty_password_user", "");
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, SuccessfulLoginNoDatabase)
+TEST_P(HandshakeTest, CachingSha256PasswordCacheHit_SuccessfulLogin)
+{
+	if (skip_sha256())
+	{
+		GTEST_SKIP();
+	}
+
+	set_credentials("csha2p_user", "csha2p_password");
+
+	// Force the server load the user into the cache
+	// Note: this should succeed even for non-TLS connections, as
+	// it uses the initial challenge, and does NOT send any plaintext password
+	check_call("mysql -u csha2p_user -pcsha2p_password -e \"\"");
+	do_handshake_ok();
+}
+
+TEST_P(HandshakeTest, CachingSha256PasswordCacheMiss_SuccessfulLogin)
+{
+	if (skip_sha256())
+	{
+		GTEST_SKIP();
+	}
+
+	set_credentials("csha2p_user", "csha2p_password");
+
+	// Force the server clear the user cache
+	check_call("mysql -u root -e \"FLUSH PRIVILEGES\"");
+
+	if (should_use_ssl(GetParam().ssl))
+	{
+		do_handshake_ok();
+	}
+	else
+	{
+		// A cache miss would force us send a plaintext password over
+		// a non-TLS connection, so we fail
+		auto result = do_handshake();
+		result.validate_error(errc::auth_plugin_requires_ssl, {});
+	}
+}
+
+TEST_P(HandshakeTest, NoDatabase_SuccessfulLogin)
 {
 	connection_params.set_database("");
 	do_handshake_ok();
