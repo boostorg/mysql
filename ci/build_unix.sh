@@ -15,6 +15,11 @@ else
 	sudo service mysql restart
 fi
 
+# Mariadb does not support SHA256 auth plugins
+if [ $DATABASE == "mariadb" ]; then
+	export MYSQL_SKIP_SHA256_TESTS=1
+fi
+
 
 mkdir -p build
 cd build
