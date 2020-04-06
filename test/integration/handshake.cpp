@@ -19,6 +19,7 @@ using boost::mysql::detail::make_error_code;
 using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::error_code;
+using boost::mysql::detail::stringize;
 
 namespace
 {
@@ -50,8 +51,19 @@ struct HandshakeTest : public IntegTest,
 		result.validate_no_error();
 		validate_ssl(GetParam().ssl);
 	}
+
+	void load_sha256_cache(const char* user, const char* password)
+	{
+		check_call(stringize("mysql -u ", user, " -p", password, " -e \"\""));
+	}
+
+	void clear_sha256_cache()
+	{
+		check_call("mysql -u root -e \"FLUSH PRIVILEGES\"");
+	}
 };
 
+// mysql_native_password
 TEST_P(HandshakeTest, MysqlNativePassword_SuccessfulLogin)
 {
 	set_credentials("mysqlnp_user", "mysqlnp_password");
@@ -64,7 +76,15 @@ TEST_P(HandshakeTest, MysqlNativePasswordEmptyPassword_SuccessfulLogin)
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, CachingSha256PasswordCacheHit_SuccessfulLogin)
+TEST_P(HandshakeTest, MysqlNativePasswordBadPassword_FailedLogin)
+{
+	set_credentials("mysqlnp_user", "bad_password");
+	auto result = do_handshake();
+	result.validate_error(errc::access_denied_error, {"access denied", "mysqlnp_user"});
+}
+
+// caching_sha2_password
+TEST_P(HandshakeTest, CachingSha2PasswordCacheHit_SuccessfulLogin)
 {
 	if (skip_sha256())
 	{
@@ -74,13 +94,14 @@ TEST_P(HandshakeTest, CachingSha256PasswordCacheHit_SuccessfulLogin)
 	set_credentials("csha2p_user", "csha2p_password");
 
 	// Force the server load the user into the cache
+	load_sha256_cache("csha2p_user", "csha2p_password");
+
 	// Note: this should succeed even for non-TLS connections, as
 	// it uses the initial challenge, and does NOT send any plaintext password
-	check_call("mysql -u csha2p_user -pcsha2p_password -e \"\"");
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, CachingSha256PasswordCacheMiss_SuccessfulLogin)
+TEST_P(HandshakeTest, CachingSha2PasswordCacheMiss_SuccessfulLoginIfSsl)
 {
 	if (skip_sha256())
 	{
@@ -89,8 +110,7 @@ TEST_P(HandshakeTest, CachingSha256PasswordCacheMiss_SuccessfulLogin)
 
 	set_credentials("csha2p_user", "csha2p_password");
 
-	// Force the server clear the user cache
-	check_call("mysql -u root -e \"FLUSH PRIVILEGES\"");
+	clear_sha256_cache();
 
 	if (should_use_ssl(GetParam().ssl))
 	{
@@ -103,6 +123,30 @@ TEST_P(HandshakeTest, CachingSha256PasswordCacheMiss_SuccessfulLogin)
 		auto result = do_handshake();
 		result.validate_error(errc::auth_plugin_requires_ssl, {});
 	}
+}
+
+TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheHit_SuccessfulLogin)
+{
+	if (skip_sha256())
+	{
+		GTEST_SKIP();
+	}
+
+	set_credentials("csha2p_empty_password_user", "");
+	load_sha256_cache("csha2p_empty_password_user", "");
+	do_handshake_ok();
+}
+
+TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheMiss_SuccessfulLogin)
+{
+	if (skip_sha256())
+	{
+		GTEST_SKIP();
+	}
+
+	set_credentials("csha2p_empty_password_user", "");
+	clear_sha256_cache();
+	do_handshake_ok();
 }
 
 TEST_P(HandshakeTest, NoDatabase_SuccessfulLogin)
@@ -118,13 +162,6 @@ TEST_P(HandshakeTest, BadUser)
 	EXPECT_NE(result.err, error_code());
 	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
 	// EXPECT_EQ(errc, make_error_code(mysql::errc::access_denied_error));
-}
-
-TEST_P(HandshakeTest, BadPassword)
-{
-	connection_params.set_password("bad_password");
-	auto result = do_handshake();
-	result.validate_error(errc::access_denied_error, {"access denied", "integ_user"});
 }
 
 TEST_P(HandshakeTest, BadDatabase)

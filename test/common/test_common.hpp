@@ -144,9 +144,9 @@ inline std::vector<std::uint8_t> concat_copy(
 	return std::move(lhs);
 }
 
-inline void check_call(const char* command)
+inline void check_call(const std::string& command)
 {
-	int code = std::system(command);
+	int code = std::system(command.c_str());
 	if (code != 0) // we are assuming 0 means success
 	{
 		throw std::runtime_error(
