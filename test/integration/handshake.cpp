@@ -24,11 +24,6 @@ using boost::mysql::detail::stringize;
 namespace
 {
 
-bool skip_sha256()
-{
-	return std::getenv("MYSQL_SKIP_SHA256_TESTS") != nullptr;
-}
-
 struct HandshakeTest : public IntegTest,
 					   public testing::WithParamInterface<network_testcase>
 {
@@ -75,6 +70,10 @@ struct HandshakeTest : public IntegTest,
 	}
 };
 
+// Tests ending in _RequiresSha256 require SHA256 functionality.
+// This is used by a calling script to exclude these tests on systems
+// that do not support this functionality
+
 // mysql_native_password
 TEST_P(HandshakeTest, MysqlNativePassword_SuccessfulLogin)
 {
@@ -96,13 +95,8 @@ TEST_P(HandshakeTest, MysqlNativePasswordBadPassword_FailedLogin)
 }
 
 // caching_sha2_password
-TEST_P(HandshakeTest, CachingSha2PasswordCacheHit_SuccessfulLogin)
+TEST_P(HandshakeTest, CachingSha2PasswordCacheHit_SuccessfulLogin_RequiresSha256)
 {
-	if (skip_sha256())
-	{
-		GTEST_SKIP();
-	}
-
 	set_credentials("csha2p_user", "csha2p_password");
 
 	// Force the server load the user into the cache
@@ -113,13 +107,8 @@ TEST_P(HandshakeTest, CachingSha2PasswordCacheHit_SuccessfulLogin)
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, CachingSha2PasswordCacheMiss_SuccessfulLoginIfSsl)
+TEST_P(HandshakeTest, CachingSha2PasswordCacheMiss_SuccessfulLoginIfSsl_RequiresSha256)
 {
-	if (skip_sha256())
-	{
-		GTEST_SKIP();
-	}
-
 	set_credentials("csha2p_user", "csha2p_password");
 
 	clear_sha256_cache();
@@ -137,33 +126,23 @@ TEST_P(HandshakeTest, CachingSha2PasswordCacheMiss_SuccessfulLoginIfSsl)
 	}
 }
 
-TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheHit_SuccessfulLogin)
+TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheHit_SuccessfulLogin_RequiresSha256)
 {
-	if (skip_sha256())
-	{
-		GTEST_SKIP();
-	}
-
 	set_credentials("csha2p_empty_password_user", "");
 	load_sha256_cache("csha2p_empty_password_user", "");
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheMiss_SuccessfulLogin)
+TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheMiss_SuccessfulLogin_RequiresSha256)
 {
-	if (skip_sha256())
-	{
-		GTEST_SKIP();
-	}
-
 	set_credentials("csha2p_empty_password_user", "");
 	clear_sha256_cache();
 	do_handshake_ok();
 }
 
-TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheMiss_FailedLogin)
+TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheMiss_FailedLogin_RequiresSha256)
 {
-	if (skip_sha256() || !should_use_ssl())
+	if (!should_use_ssl())
 	{
 		GTEST_SKIP();
 	}
@@ -174,9 +153,9 @@ TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheMiss_FailedLogin)
 	result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
 }
 
-TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheHit_FailedLogin)
+TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheHit_FailedLogin_RequiresSha256)
 {
-	if (skip_sha256() || !should_use_ssl())
+	if (!should_use_ssl())
 	{
 		GTEST_SKIP();
 	}

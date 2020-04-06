@@ -61,6 +61,7 @@ add_test(
 
 # Integration testing
 find_package(Boost REQUIRED COMPONENTS coroutine)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 add_executable(
 	mysql_integrationtests
@@ -92,5 +93,5 @@ target_include_directories(
 _mysql_common_target_settings(mysql_integrationtests)
 add_test(
 	NAME mysql_integrationtests
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/integration/run_tests.${_MYSQL_SHELL_EXT}
+	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/integration/run_tests.py
 )

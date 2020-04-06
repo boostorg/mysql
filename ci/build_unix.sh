@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# SHA256 functionality is only supported in MySQL 8+. From our
+# CI systems, only OSX has this version.
 
 cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
@@ -9,15 +11,12 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	mysql.server start # Note that running this with sudo fails
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
+	else
+		export MYSQL_HAS_SHA256=1
 	fi
 else
 	sudo cp ci/unix-ssl.cnf /etc/mysql/conf.d/ssl.cnf
 	sudo service mysql restart
-fi
-
-# Mariadb does not support SHA256 auth plugins
-if [ $DATABASE == "mariadb" ]; then
-	export MYSQL_SKIP_SHA256_TESTS=1
 fi
 
 
