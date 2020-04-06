@@ -4,7 +4,6 @@ sha256_password auth plugin
 		Unknown auth plugin
 		Auth plugin requires SSL
 	Skip integ tests in mariadb and MySQL 5 (devops)
-	absence may cause BadUser tests to fail in 8.0: remove corrective measures here
 	Test for an unknown auth plugin
 	Update readme
 	Unit test for auth_more_data

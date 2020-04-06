@@ -68,6 +68,11 @@ struct HandshakeTest : public IntegTest,
 	{
 		check_call("mysql -u root -e \"FLUSH PRIVILEGES\"");
 	}
+
+	bool should_use_ssl() const
+	{
+		return IntegTest::should_use_ssl(GetParam().ssl);
+	}
 };
 
 // mysql_native_password
@@ -119,7 +124,7 @@ TEST_P(HandshakeTest, CachingSha2PasswordCacheMiss_SuccessfulLoginIfSsl)
 
 	clear_sha256_cache();
 
-	if (should_use_ssl(GetParam().ssl))
+	if (should_use_ssl())
 	{
 		do_handshake_ok();
 	}
@@ -158,7 +163,7 @@ TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheMiss_SuccessfulLogin)
 
 TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheMiss_FailedLogin)
 {
-	if (skip_sha256() || !should_use_ssl(GetParam().ssl))
+	if (skip_sha256() || !should_use_ssl())
 	{
 		GTEST_SKIP();
 	}
@@ -171,7 +176,7 @@ TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheMiss_FailedLogin)
 
 TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheHit_FailedLogin)
 {
-	if (skip_sha256() || !should_use_ssl(GetParam().ssl))
+	if (skip_sha256() || !should_use_ssl())
 	{
 		GTEST_SKIP();
 	}
@@ -190,11 +195,13 @@ TEST_P(HandshakeTest, NoDatabase_SuccessfulLogin)
 
 TEST_P(HandshakeTest, BadUser)
 {
-	connection_params.set_username("non_existing_user");
+	if (!should_use_ssl())
+	{
+		GTEST_SKIP(); // unreliable without SSL. If default plugin is SHA256, this would fail with 'ssl required'
+	}
+	set_credentials("non_existing_user", "bad_password");
 	auto result = do_handshake();
-	EXPECT_NE(result.err, error_code());
-	// TODO: if default auth plugin is unknown, unknown auth plugin is returned instead of access denied
-	// EXPECT_EQ(errc, make_error_code(mysql::errc::access_denied_error));
+	result.validate_error(errc::access_denied_error, {"access denied", "non_existing_user"});
 }
 
 TEST_P(HandshakeTest, BadDatabase)
