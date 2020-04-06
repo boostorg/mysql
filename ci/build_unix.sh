@@ -17,6 +17,10 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 else
 	sudo cp ci/unix-ssl.cnf /etc/mysql/conf.d/ssl.cnf
 	sudo service mysql restart
+	wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
+	mkdir -p /tmp/cmake-latest
+	bash cmake-latest.sh --prefix=/tmp/cmake-latest --skip-license
+	export PATH=/tmp/cmake-latest/bin:$PATH
 fi
 
 
