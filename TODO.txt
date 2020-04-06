@@ -1,16 +1,15 @@
 sha256_password auth plugin
-	Tests to prove when auth method mismatch yes/no
-	Separate tests for SSL yes/no
 	Unit tests for auth calculator & refactor
 	Set error_info when there is an auth plugin involved
 		Unknown auth plugin
 		Auth plugin requires SSL
-	Skip integ tests in mariadb (devops)
+	Skip integ tests in mariadb and MySQL 5 (devops)
 	absence may cause BadUser tests to fail in 8.0: remove corrective measures here
 	Test for an unknown auth plugin
 	Update readme
 	Unit test for auth_more_data
 	Integ tests for ssl_enable and YES/NO support for SSL (and maybe checking sha256 fails)
+	Integ tests for different default auth plugins
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

@@ -52,9 +52,16 @@ struct HandshakeTest : public IntegTest,
 		validate_ssl(GetParam().ssl);
 	}
 
-	void load_sha256_cache(const char* user, const char* password)
+	void load_sha256_cache(const std::string& user, const std::string& password)
 	{
-		check_call(stringize("mysql -u ", user, " -p", password, " -e \"\""));
+		if (password.empty())
+		{
+			check_call(stringize("mysql -u ", user, " -e \"\""));
+		}
+		else
+		{
+			check_call(stringize("mysql -u ", user, " -p", password, " -e \"\""));
+		}
 	}
 
 	void clear_sha256_cache()
@@ -147,6 +154,32 @@ TEST_P(HandshakeTest, CachingSha2PasswordEmptyPasswordCacheMiss_SuccessfulLogin)
 	set_credentials("csha2p_empty_password_user", "");
 	clear_sha256_cache();
 	do_handshake_ok();
+}
+
+TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheMiss_FailedLogin)
+{
+	if (skip_sha256() || !should_use_ssl(GetParam().ssl))
+	{
+		GTEST_SKIP();
+	}
+
+	clear_sha256_cache();
+	set_credentials("csha2p_user", "bad_password");
+	auto result = do_handshake();
+	result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
+}
+
+TEST_P(HandshakeTest, CachingSha2PasswordBadPasswordCacheHit_FailedLogin)
+{
+	if (skip_sha256() || !should_use_ssl(GetParam().ssl))
+	{
+		GTEST_SKIP();
+	}
+
+	set_credentials("csha2p_user", "bad_password");
+	load_sha256_cache("csha2p_user", "csha2p_password");
+	auto result = do_handshake();
+	result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
 }
 
 TEST_P(HandshakeTest, NoDatabase_SuccessfulLogin)
