@@ -48,6 +48,12 @@ struct IntegTest : testing::Test
 		runner.join();
 	}
 
+	void set_credentials(std::string_view user, std::string_view password)
+	{
+		connection_params.set_username(user);
+		connection_params.set_password(password);
+	}
+
 	void handshake(ssl_mode m = ssl_mode::require)
 	{
 		connection_params.set_ssl(ssl_options(m));
@@ -127,9 +133,7 @@ struct network_testcase
 	}
 };
 
-inline std::vector<network_testcase> make_all_network_testcases(
-	bool use_ssl_enable=false // set to true to add also ssl_mode::enable
-)
+inline std::vector<network_testcase> make_all_network_testcases()
 {
 	std::vector<network_testcase> res;
 	for (auto* net: all_network_functions)
@@ -137,10 +141,6 @@ inline std::vector<network_testcase> make_all_network_testcases(
 		for (auto ssl: {ssl_mode::require, ssl_mode::disable})
 		{
 			res.push_back(network_testcase{net, ssl});
-		}
-		if (use_ssl_enable)
-		{
-			res.push_back(network_testcase{net, ssl_mode::enable});
 		}
 	}
 	return res;
@@ -156,12 +156,10 @@ struct NetworkTest : public IntegTestAfterHandshake,
 } // mysql
 } // boost
 
-#define MYSQL_NETWORK_TEST_SUITE_EX(TestSuiteName, use_ssl_enable) \
+#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
 	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
-		make_all_network_testcases(use_ssl_enable) \
+		make_all_network_testcases() \
 	), [](const auto& param_info) { return param_info.param.name(); })
 
-#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
-	MYSQL_NETWORK_TEST_SUITE_EX(TestSuiteName, false)
 
 #endif /* TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP_ */

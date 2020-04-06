@@ -3,12 +3,9 @@ sha256_password auth plugin
 	Set error_info when there is an auth plugin involved
 		Unknown auth plugin
 		Auth plugin requires SSL
-	Skip integ tests in mariadb and MySQL 5 (devops)
 	Test for an unknown auth plugin
 	Update readme
 	Unit test for auth_more_data
-	Integ tests for ssl_enable and YES/NO support for SSL (and maybe checking sha256 fails)
-	Integ tests for different default auth plugins
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -31,6 +28,7 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
+	Integ tests for different default auth plugins
 	Integ tests for not enough capabilities
 	Integ tests for ssl_mode::enable and SSL not available
 	Review convention in test names
