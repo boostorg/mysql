@@ -11,7 +11,7 @@ RECURSIVE               = YES
 EXCLUDE                 = ../include/boost/mysql/detail/ \
                           ../include/boost/mysql/impl/
 EXCLUDE_PATTERNS        = *.ipp
-EXAMPLE_PATH            = ../examples/
+EXAMPLE_PATH            = ../example/
 WARN_IF_UNDOCUMENTED    = NO
 
 SHOW_GROUPED_MEMB_INC   = YES
@@ -29,6 +29,7 @@ SUBGROUPING             = NO
 INLINE_GROUPED_CLASSES  = NO
 INLINE_SIMPLE_STRUCTS   = NO
 GENERATE_HTML           = YES
+GENERATE_XML            = YES
 
 GENERATE_TODOLIST       = NO
 GENERATE_TESTLIST       = NO

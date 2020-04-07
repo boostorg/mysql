@@ -86,7 +86,7 @@ target_compile_features(
 
 # Examples
 if(_MYSQL_TESTING_ENABLED)
-	add_subdirectory(examples)
+	add_subdirectory(example)
 endif()
 
 # Tests
