@@ -7,6 +7,7 @@ namespace boost {
 namespace mysql {
 
 /**
+ * \ingroup connparams
  * \brief A character set and a collation.
  * \details Names and ids for this enum correspond to the "Collation" and "Id"
  * fields returned by MySQL "SHOW COLLATION" statement.

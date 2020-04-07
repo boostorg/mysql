@@ -2,18 +2,26 @@
 #define MYSQL_ASIO_CONNECTION_HPP
 
 #include "boost/mysql/detail/protocol/channel.hpp"
-#include "boost/mysql/detail/network_algorithms/handshake.hpp"
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
+#include "boost/mysql/detail/network_algorithms/handshake.hpp"
+#include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/prepared_statement.hpp"
 #include "boost/mysql/connection_params.hpp"
 #include <boost/asio/ip/tcp.hpp>
 
+/**
+ * \defgroup connection Connection
+ * \brief Classes and functions related to establishing
+ * connections with the MySQL server.
+ */
+
 namespace boost {
 namespace mysql {
 
 /**
+ * \ingroup connection
  * \brief A connection to a MySQL server.
  * \details
  * This is the basic object to instantiate to use the MySQL-Asio library.
@@ -89,17 +97,17 @@ public:
 	 * until the operation completes, as no copy is made by the library.
 	 */
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
 	async_handshake(const connection_params& params, CompletionToken&& token, error_info* info = nullptr);
 
 	/**
 	 * \brief Executes a SQL text query (sync with error code version).
-	 * \detail Does not perform the actual retrieval of the data; use the various
+	 * \details Does not perform the actual retrieval of the data; use the various
 	 * fetch functions within resultset to achieve that.
+	 * \see resultset
 	 *
 	 * Note that query_string may contain any valid SQL, not just SELECT statements.
-	 * If your query does not return any data, then the resultset will be empty
-	 * (\see resultset for more details).
+	 * If your query does not return any data, then the resultset will be empty.
 	 *
 	 * \warning After query() has returned, you should read the entire resultset
 	 * before calling any function that involves communication with the server over this
@@ -116,7 +124,7 @@ public:
 
 	/// Executes a SQL text query (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, query_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, query_signature)
 	async_query(std::string_view query_string, CompletionToken&& token, error_info* info=nullptr);
 
 	/**
@@ -140,16 +148,22 @@ public:
 
 	/// Prepares a statement (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
 	async_prepare_statement(std::string_view statement, CompletionToken&& token, error_info* info=nullptr);
 };
 
-/// A connection to MySQL over TCP.
+/**
+ * \ingroup connection
+ * \brief A connection to MySQL over a TCP socket.
+ */
 using tcp_connection = connection<boost::asio::ip::tcp::socket>;
 
 // TODO: UNIX socket connection
 
-/// The default TCP port for the MySQL protocol.
+/**
+ * \ingroup connection
+ * \brief The default TCP port for the MySQL protocol.
+ */
 constexpr unsigned short default_port = 3306;
 
 } // mysql

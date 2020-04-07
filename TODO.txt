@@ -1,3 +1,9 @@
+Docs
+	Home page
+	Examples
+	Make undocumented enum values show
+	Autogen
+	Read the docs
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

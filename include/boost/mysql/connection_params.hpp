@@ -4,10 +4,19 @@
 #include <string_view>
 #include "boost/mysql/collation.hpp"
 
+/**
+ * \defgroup connparams Connection parameters
+ * \ingroup connection
+ * \brief Parameters for estabilishing the connection to the MySQL server.
+ */
+
 namespace boost {
 namespace mysql {
 
-/// Determines whether to use TLS for the connection or not.
+/**
+ * \ingroup connparams
+ * \brief Determines whether to use TLS for the connection or not.
+ */
 enum class ssl_mode
 {
 	disable, ///< Never use TLS
@@ -16,8 +25,9 @@ enum class ssl_mode
 };
 
 /**
+ * \ingroup connparams
  * \brief Connection options regarding TLS.
- * \details At the moment, contains only the \ref ssl_mode, which
+ * \details At the moment, contains only the ssl_mode, which
  * indicates whether to use TLS on the connection or not.
  */
 class ssl_options
@@ -27,7 +37,7 @@ public:
 	/**
 	 * \brief Default and initialization constructor.
 	 * \details By default, SSL is enabled for the connection
-	 * if the server supports is (\ref ssl_mode::enable).
+	 * if the server supports is (ssl_mode::enable).
 	 */
 	explicit ssl_options(ssl_mode mode=ssl_mode::enable) noexcept:
 		mode_(mode) {}
@@ -38,6 +48,7 @@ public:
 
 
 /**
+ * \ingroup connparams
  * \brief Parameters defining how to authenticate to a MySQL server.
  */
 class connection_params
@@ -95,8 +106,8 @@ public:
 	void set_ssl(const ssl_options& value) noexcept { ssl_ = value; }
 };
 
-}
-}
+} // mysql
+} // boost
 
 
 
