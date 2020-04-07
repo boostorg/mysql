@@ -7,6 +7,7 @@ namespace boost {
 namespace mysql {
 
 /**
+ * \ingroup resultsets
  * \brief Represents the type of a MySQL field.
  * \details Unless otherwise noted, the names in this enumeration
  * directly correspond to the names of the types you would use in

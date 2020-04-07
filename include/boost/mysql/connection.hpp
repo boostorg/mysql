@@ -17,6 +17,11 @@
  * connections with the MySQL server.
  */
 
+/**
+ * \namespace boost The Boost C++ libraries namespace.
+ * \namespace boost::mysql The MySQL Boost library namespace.
+ */
+
 namespace boost {
 namespace mysql {
 

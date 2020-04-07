@@ -9,6 +9,7 @@ namespace boost {
 namespace mysql {
 
 /**
+ * \ingroup resultsets
  * \brief Holds metadata about a field in a SQL query.
  * \details All strings point into externally owned memory. The object
  * will be valid while the parent object is alive (typically, a resultset object).
@@ -31,21 +32,21 @@ public:
 
 	/**
 	 * \brief Returns the name of the virtual table the field belongs to.
-	 * \detail If the table was aliased, this will be the name of the alias
+	 * \details If the table was aliased, this will be the name of the alias
 	 * (e.g. in "SELECT * FROM employees emp", table() will be "emp").
 	 */
 	std::string_view table() const noexcept { return msg_.table.value; }
 
 	/**
 	 * \brief Returns the name of the physical table the field belongs to.
-	 * \detail E.g. in "SELECT * FROM employees emp",
+	 * \details E.g. in "SELECT * FROM employees emp",
 	 * original_table() will be "employees".
 	 */
 	std::string_view original_table() const noexcept { return msg_.org_table.value; }
 
 	/**
 	 * \brief Returns the actual name of the field.
-	 * \detail If the field was aliased, this will be the name of the alias
+	 * \details If the field was aliased, this will be the name of the alias
 	 * (e.g. in "SELECT id AS employee_id FROM employees",
 	 * field_name() will be "employee_id").
 	 */
@@ -53,7 +54,7 @@ public:
 
 	/**
 	 * \brief Returns the original (physical) name of the field.
-	 * \detail E.g. in "SELECT id AS employee_id FROM employees",
+	 * \details E.g. in "SELECT id AS employee_id FROM employees",
 	 * original_field_name() will be "id".
 	 */
 	std::string_view original_field_name() const noexcept { return msg_.org_name.value; }

@@ -11,6 +11,7 @@ namespace boost {
 namespace mysql {
 
 /**
+ * \ingroup resultsets
  * \brief Represents a row returned from a query.
  * \details Call row::values() to get the actual sequence of mysql::value.
  * There will be the same number of values and in the same order as fields
@@ -38,8 +39,9 @@ public:
 };
 
 /**
+ * \ingroup resultsets
  * \brief A row that owns a chunk of memory for its string values.
- * \detail Default constructible and movable, but not copyable.
+ * \details Default constructible and movable, but not copyable.
  */
 class owning_row : public row
 {
@@ -55,13 +57,22 @@ public:
 	~owning_row() = default;
 };
 
-/// Compares two rows.
+/**
+ * \relates row
+ * \brief Compares two rows.
+ */
 inline bool operator==(const row& lhs, const row& rhs) { return lhs.values() == rhs.values(); }
 
-/// Compares two rows.
+/**
+ * \relates row
+ * \brief Compares two rows.
+ */
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 
-/// Streams a row.
+/**
+ * \relates row
+ * \brief Streams a row.
+ */
 inline std::ostream& operator<<(std::ostream& os, const row& value)
 {
 	os << '{';

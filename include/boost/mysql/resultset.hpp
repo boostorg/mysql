@@ -7,13 +7,20 @@
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/auxiliar/bytestring.hpp"
 #include "boost/mysql/detail/network_algorithms/common.hpp" // deserialize_row_fn
+#include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <cassert>
+
+/**
+ * \defgroup resultsets Resultsets
+ * \brief Classes and functions related to resultsets.
+ */
 
 namespace boost {
 namespace mysql {
 
 /**
+ * \ingroup resultsets
  * \brief Represents tabular data retrieved from the MySQL server.
  * \details Returned as the result of a query (\see connection::query).
  *
@@ -123,7 +130,7 @@ public:
 
 	/// Fetchs a single row (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
 	async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
 
 	/// Handler signature for fetch_many.
@@ -131,7 +138,7 @@ public:
 
 	/// Fetches at most count rows (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
 	async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
 
 	/// Handler signature for fetch_all.
@@ -139,7 +146,7 @@ public:
 
 	/// Fetches all available rows (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
 	async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
 
 	/**
@@ -190,7 +197,10 @@ public:
 	// TODO: status flags accessors
 };
 
-/// Specialization of resultset for TCP sockets.
+/**
+ * \ingroup resultsets
+ * \brief Specialization of a resultset associated with a boost::mysql::tcp_connection.
+ */
 using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
 
 } // mysql

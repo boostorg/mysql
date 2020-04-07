@@ -4,22 +4,32 @@
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
+#include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include <optional>
+
+/**
+ * \defgroup stmt Prepared statements
+ * \brief Classes and functions related to prepared statements.
+ */
 
 namespace boost {
 namespace mysql {
 
-/// Convenience constant to use within prepared_statement::execute with statements without parameters.
+/**
+ * \ingroup stmt
+ * \brief Convenience constant to use within prepared_statement::execute with statements without parameters.
+ */
 constexpr std::array<value, 0> no_statement_params {};
 
 /**
+ * \ingroup stmt
  * \brief Represents a prepared statement.
  * \details This class is a handle to a server-side prepared statement.
  *
  * The main use of a prepared statement is executing it using prepared_statement::execute.
  * When calling this method, you must pass in **exactly** as many parameters as
  * the statement has. You may pass in the parameters as a collection of
- * mysql::value's or as an iterator range pointing to mysql::value's.
+ * boost::mysql::value's or as an iterator range pointing to boost::mysql::value's.
  *
  * Execution of a statement results in a mysql::resultset. The same considerations
  * as with connection::query apply. In particular, **you should read the entire
@@ -76,7 +86,8 @@ public:
 	/**
 	 * \brief Executes a statement (collection, sync with error code version).
 	 * \details Collection should be a sequence for which std::begin() and
-	 * std::end() return forward iterators to a valid mysql::value range.
+	 * std::end() return forward iterators to a valid boost::mysql::value range.
+	 * Use no_statement_params to execute a statement with no params.
 	 */
 	template <typename Collection>
 	resultset<Stream> execute(const Collection& params, error_code& err, error_info& info) const
@@ -100,7 +111,7 @@ public:
 	 * values they may point to alive.
 	 */
 	template <typename Collection, typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
 	async_execute(const Collection& params, CompletionToken&& token, error_info* info=nullptr) const
 	{
 		return async_execute(
@@ -116,7 +127,7 @@ public:
 	 * \brief Executes a statement (iterator, sync with error code version).
 	 * \details params_first and params_last should point to a valid range, identifying
 	 * the parameters to be used. They should be forward iterators, at least. The value_type
-	 * of these iterators should be convertible to mysql::value.
+	 * of these iterators should be convertible to boost::mysql::value.
 	 */
 	template <typename ForwardIterator>
 	resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last,
@@ -132,7 +143,7 @@ public:
 	 * by the elements of the sequence need **not** be kept alive.
 	 */
 	template <typename ForwardIterator, typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
 	async_execute(ForwardIterator params_first, ForwardIterator params_last,
 			CompletionToken&& token, error_info* info=nullptr) const;
 
@@ -158,11 +169,14 @@ public:
 
 	/// Closes a prepared statement, deallocating it from the server (async version).
 	template <typename CompletionToken>
-	BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
+	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, close_signature)
 	async_close(CompletionToken&& token, error_info* info=nullptr);
 };
 
-/// A prepared statement associated to a TCP connection to the MySQL server.
+/**
+ * \ingroup stmt
+ * \brief A prepared statement associated to a boost::mysql::tcp_connection.
+ */
 using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
 
 } // mysql

@@ -10,24 +10,40 @@
 #include <array>
 #include <vector>
 
+/**
+ * \defgroup values Values, rows and resultsets
+ * \brief Classes and functions related to the representation of
+ * database values, rows and resultsets.
+ */
+
 namespace boost {
 namespace mysql {
 
-/// Type representing MySQL DATE data type.
+/**
+ * \ingroup values
+ * \brief Type representing MySQL DATE data type.
+ */
 using date = ::date::sys_days;
 
-/// Type representing MySQL DATETIME and TIMESTAMP data types.
+/**
+ * \ingroup values
+ * \brief Type representing MySQL DATETIME and TIMESTAMP data types.
+ */
 using datetime = ::date::sys_time<std::chrono::microseconds>;
 
-/// Type representing MySQL TIME data type.
+/**
+ * \ingroup values
+ * \brief Type representing MySQL TIME data type.
+ */
 using time = std::chrono::microseconds;
 
 /**
+ * \ingroup values
  * \brief Represents a value in the database of any of the allowed types.
  * \details If a value is NULL, the type of the variant will be nullptr_t.
  *
  * If a value is a string, the type will be string_view, and it will
- * point to a externally owned piece of memory. That implies that mysql::value
+ * point to a externally owned piece of memory. That implies that boost::mysql::value
  * does **NOT** own its string memory (saving copies).
  *
  * MySQL types BIT and GEOMETRY do not have direct support yet.
@@ -47,19 +63,29 @@ using value = std::variant<
 	std::nullptr_t     // Any of the above when the value is NULL
 >;
 
-/// Tests for equality (type and value).
+/**
+ * \ingroup values
+ * \brief Tests for equality (type and value).
+ */
 inline bool operator==(const value& lhs, const value& rhs);
 
-/// Tests for inequality (type and value).
+/**
+ * \ingroup values
+ * \brief Tests for inequality (type and value).
+ */
 inline bool operator!=(const value& lhs, const value& rhs) { return !(lhs == rhs); }
 
 inline bool operator==(const std::vector<value>& lhs, const std::vector<value>& rhs);
 inline bool operator!=(const std::vector<value>& lhs, const std::vector<value>& rhs) { return !(lhs == rhs); }
 
-/// Streams a value.
+/**
+ * \ingroup values
+ * \brief Streams a value.
+ */
 inline std::ostream& operator<<(std::ostream& os, const value& value);
 
 /**
+ * \ingroup values
  * \brief Creates an array of mysql::value out of the passed in arguments.
  * \details Each argument creates an element in the array. It should be possible
  * to construct a mysql::value out of every single argument passed in.
