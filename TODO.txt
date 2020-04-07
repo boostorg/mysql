@@ -1,11 +1,10 @@
-Docs
-	Make undocumented enum values show
-	Autogen
-	Read the docs
-Better user manual
+Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
 	Try to include Readme instead of copying it
+	BoostBook
+	Automate the process
+	Make undocumented enum values show (for collation)
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

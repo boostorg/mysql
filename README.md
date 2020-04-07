@@ -44,14 +44,8 @@ Finally, link your target against the **mysql_asio** interface library, and you 
 
 ## Documentation and examples
 
-There are some examples under the examples/ folder in this repository. Please start
-by looking into query_sync.cpp, as this one demonstrates the basic concepts in the library.
-
-There is no online documentation (yet!). Please check the Doxygen-style comments in the source
-code.
-
-Header files within include/mysql are public. Header files within include/mysql/impl are
-private and their content may (and will) change over time with no backwards-compatibility guarantee.
+You can check the online user manual and reference [here](https://anarthal.github.io/boost-mysql-docs/index.html).
+The user manual contains a tutorial and several examples.
 
 ## Features
 
