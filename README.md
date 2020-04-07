@@ -36,7 +36,7 @@ Finally, link your target against the **mysql_asio** interface library, and you 
     - Boost.Lexical_Cast.
     - Boost.Endian.
 - OpenSSL.
-- CMake 3.11.0 or higher, if using CMake to build against the library (this is the preferred way).
+- CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
 - Howard Hinnant's date library (https://github.com/HowardHinnant/date) v2.4.1 or higher.
   If you are using CMake to link against MySQL-Asio (the preferred way), it will be fetched automatically.
   (no need for a manual download).
@@ -61,11 +61,12 @@ Currently implemented:
   (as opposed to prepared statements, see below).
 - Prepared statements. MySQL refers to this as the "binary protocol", as the result
   of executing a prepared statement is sent in binary format rather than in text.
-- User/password basic authentication (mysql_native_password). MySQL supports several
-  authentication methods ("authentication plugins"). Only the mysql_native_password
-  is supported yet.
+- Authentication methods (authentication plugins): mysql_native_password and
+  caching_sha2_password. These are the default methods in MySQL 5 and MySQL 8,
+  respectively.
 - Encrypted connections (TLS).
 
 Yet to be done (but it is on our list - PRs welcome):
 
-- Further authentication methods: caching_sha2_password, sha256_password...
+- Further authentication methods: sha256_password
+- Multi-resultset: begin able to specify several semicolon-separated queries. 
