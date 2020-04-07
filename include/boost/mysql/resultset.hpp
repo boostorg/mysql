@@ -22,7 +22,8 @@ namespace mysql {
 /**
  * \ingroup resultsets
  * \brief Represents tabular data retrieved from the MySQL server.
- * \details Returned as the result of a query (\see connection::query).
+ * \details Returned as the result of a query (see connection::query,
+ * prepared_statement::execute).
  *
  * A resultset does not read all the retrieved information into memory
  * directly. Instead, you use fetch_one, fetch_many

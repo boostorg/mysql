@@ -1,9 +1,9 @@
-# MySQL-Asio
+# Boost.MySQL (MySQL-Asio)
 
 TravisCI: [![Build Status](https://travis-ci.com/anarthal/mysql-asio.png?branch=master)](https://github.com/anarthal/mysql-asio)
 AppVeyor: [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql-asio/branch/master)
 
-MySQL-Asio is a C++17 client for the MySQL database server, based on Boost.Asio.
+Boost.MySQL is a C++17 client for the MySQL database server, based on Boost.Asio.
 
 ## Why another MySQL C++ client?
 
@@ -21,9 +21,9 @@ As this is a header-only library, you do not need to build it. However, as it
 has a bunch of dependencies, we suggest you use CMake to pull them in as you build
 your application.
 
-Download MySQL-Asio and make it available to your CMake script (we suggest you use
+Download Boost.MySQL and make it available to your CMake script (we suggest you use
 CMake's FetchContent module to do this), and then call add_subdirectory() on the
-MySQL-Asio root directory. This will look for all the required dependencies.
+Boost.MySQL root directory. This will look for all the required dependencies.
 
 Finally, link your target against the **mysql_asio** interface library, and you will be done!
 
@@ -38,7 +38,7 @@ Finally, link your target against the **mysql_asio** interface library, and you 
 - OpenSSL.
 - CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
 - Howard Hinnant's date library (https://github.com/HowardHinnant/date) v2.4.1 or higher.
-  If you are using CMake to link against MySQL-Asio (the preferred way), it will be fetched automatically.
+  If you are using CMake to link against Boost.MySQL (the preferred way), it will be fetched automatically.
   (no need for a manual download).
 - Tested with MySQL v5.7.29, MySQL v8.0.19, MariaDB v10.3 and MariaDB v10.5.
 

@@ -1,0 +1,97 @@
+PROJECT_NAME            = "Boost.MySQL"
+PROJECT_BRIEF           = "A Boost.Asio-based client for MySQL"
+PROJECT_LOGO            = boost.png
+PROJECT_NUMBER          = 0.0.1
+
+QUIET                   = YES
+OUTPUT_DIRECTORY        = ../build-docs
+INPUT                   = ../include main_page.hpp
+FILE_PATTERNS           = *.hpp *.cpp
+RECURSIVE               = YES
+EXCLUDE                 = ../include/boost/mysql/detail/ \
+                          ../include/boost/mysql/impl/
+EXCLUDE_PATTERNS        = *.ipp
+EXAMPLE_PATH            = ../examples/
+WARN_IF_UNDOCUMENTED    = NO
+
+SHOW_GROUPED_MEMB_INC   = YES
+BRIEF_MEMBER_DESC       = YES
+REPEAT_BRIEF            = YES
+ALWAYS_DETAILED_SEC     = NO
+INLINE_INHERITED_MEMB   = NO
+JAVADOC_AUTOBRIEF       = YES
+QT_AUTOBRIEF            = YES
+MULTILINE_CPP_IS_BRIEF  = YES
+INHERIT_DOCS            = NO
+SEPARATE_MEMBER_PAGES   = NO
+DISTRIBUTE_GROUP_DOC    = NO
+SUBGROUPING             = NO
+INLINE_GROUPED_CLASSES  = NO
+INLINE_SIMPLE_STRUCTS   = NO
+GENERATE_HTML           = YES
+
+GENERATE_TODOLIST       = NO
+GENERATE_TESTLIST       = NO
+GENERATE_BUGLIST        = NO
+GENERATE_DEPRECATEDLIST = NO
+SHOW_USED_FILES         = NO
+SHOW_FILES              = YES
+SHOW_NAMESPACES         = YES
+LAYOUT_FILE             = doxygen_layout.xml
+
+CLASS_DIAGRAMS          = NO
+HAVE_DOT                = NO
+
+HIDE_UNDOC_RELATIONS    = YES
+HIDE_UNDOC_MEMBERS      = YES
+HIDE_UNDOC_CLASSES      = YES
+HIDE_FRIEND_COMPOUNDS   = YES
+HIDE_IN_BODY_DOCS       = NO
+INTERNAL_DOCS           = YES
+HIDE_SCOPE_NAMES        = NO
+SHOW_INCLUDE_FILES      = NO
+FORCE_LOCAL_INCLUDES    = NO
+INLINE_INFO             = NO
+SORT_MEMBER_DOCS        = NO
+SORT_BRIEF_DOCS         = NO
+SORT_MEMBERS_CTORS_1ST  = NO
+SORT_GROUP_NAMES        = NO
+SORT_BY_SCOPE_NAME      = YES
+
+
+ALPHABETICAL_INDEX      = NO
+COLS_IN_ALPHA_INDEX     = 1
+
+# Preprocessing
+ENABLE_PREPROCESSING    = YES
+MACRO_EXPANSION         = YES
+EXPAND_ONLY_PREDEF      = NO
+SEARCH_INCLUDES         = YES
+INCLUDE_PATH            = ../include
+INCLUDE_FILE_PATTERNS   =
+PREDEFINED              = BOOST_MYSQL_DOXYGEN
+SKIP_FUNCTION_MACROS    = NO
+
+# Source browsing
+SOURCE_BROWSER          = NO
+INLINE_SOURCES          = NO
+STRIP_CODE_COMMENTS     = NO
+REFERENCED_BY_RELATION  = NO
+REFERENCES_RELATION     = NO
+REFERENCES_LINK_SOURCE  = NO
+USE_HTAGS               = NO
+VERBATIM_HEADERS        = NO
+
+# HTML output
+HTML_OUTPUT             = html
+HTML_FILE_EXTENSION     = .html
+
+HTML_COLORSTYLE_HUE     = 225
+HTML_COLORSTYLE_SAT     = 100
+HTML_COLORSTYLE_GAMMA   = 66
+HTML_TIMESTAMP          = NO
+HTML_DYNAMIC_SECTIONS   = YES
+HTML_INDEX_NUM_ENTRIES  = 0 # Fully expand trees in the Indexes by default
+DISABLE_INDEX           = YES
+GENERATE_TREEVIEW       = YES
+TREEVIEW_WIDTH          = 270

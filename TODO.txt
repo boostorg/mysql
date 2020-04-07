@@ -4,6 +4,10 @@ Docs
 	Make undocumented enum values show
 	Autogen
 	Read the docs
+Better user manual
+	Breaking up the tutorial in pieces
+	Explaining the different overloads and async methods available
+	Try to include Readme instead of copying it
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
