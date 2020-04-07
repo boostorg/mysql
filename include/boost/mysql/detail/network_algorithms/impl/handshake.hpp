@@ -4,7 +4,7 @@
 #include "boost/mysql/detail/network_algorithms/common.hpp"
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include "boost/mysql/detail/protocol/handshake_messages.hpp"
-#include "boost/mysql/detail/auth/auth.hpp"
+#include "boost/mysql/detail/auth/auth_calculator.hpp"
 #include <boost/asio/yield.hpp>
 
 namespace boost {
@@ -45,6 +45,16 @@ inline error_code deserialize_handshake(
 	return deserialize_message(output, ctx);
 }
 
+// When receiving an auth response from the server, several things can happen:
+//  - An OK packet. It means we are done with the auth phase. auth_result::complete.
+//  - An auth switch response. It means we should change the auth plugin,
+//    recalculate the auth response and send it back. auth_result::send_more_data.
+//  - An auth more data. Same as auth switch response, but without changing
+//    the authentication plugin. Also auth_result::send_more_data.
+//  - An auth more data with a challenge equals to fast_auth_complete_challenge.
+//    This means auth is complete and we should wait for an OK packet (auth_result::wait_for_ok).
+//    I have no clue why the server sends this instead of just an OK packet. It
+//    happens just for caching_sha2_password.
 enum class auth_result
 {
 	complete,
@@ -57,7 +67,7 @@ class handshake_processor
 {
 	connection_params params_;
 	capabilities negotiated_caps_;
-	auth_response_calculator auth_calc_;
+	auth_calculator auth_calc_;
 public:
 	handshake_processor(const connection_params& params): params_(params) {};
 	capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
@@ -125,7 +135,7 @@ public:
 			string_null(params_.username()),
 			string_lenenc(auth_calc_.response()),
 			string_null(params_.database()),
-			string_null(auth_calc_.get_plugin_name())
+			string_null(auth_calc_.plugin_name())
 		};
 
 		// Serialize
@@ -183,26 +193,27 @@ public:
 			err = deserialize_message(more_data, ctx);
 			if (err) return err;
 
-			// TODO: refactor this
-			std::string_view data = more_data.auth_plugin_data.value;
-			if (data.size() == 1 && data[0] == 3)
+			std::string_view challenge = more_data.auth_plugin_data.value;
+			if (challenge == fast_auth_complete_challenge)
 			{
 				result = auth_result::wait_for_ok;
 				return error_code();
 			}
 
 			// Compute response
-			auth_switch_response_packet auth_sw_res;
 			err = auth_calc_.calculate(
-				auth_calc_.get_plugin_name(),
+				auth_calc_.plugin_name(),
 				params_.password(),
-				more_data.auth_plugin_data.value,
+				challenge,
 				use_ssl()
 			);
 			if (err) return err;
 
-			auth_sw_res.auth_plugin_data.value = auth_calc_.response();
-			serialize_message(auth_sw_res, negotiated_caps_, buffer);
+			serialize_message(
+				auth_switch_response_packet {string_eof(auth_calc_.response())},
+				negotiated_caps_,
+				buffer
+			);
 
 			result = auth_result::send_more_data;
 			return error_code();

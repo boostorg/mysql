@@ -1,11 +1,9 @@
 sha256_password auth plugin
-	Unit tests for auth calculator & refactor
 	Set error_info when there is an auth plugin involved
 		Unknown auth plugin
 		Auth plugin requires SSL
 	Test for an unknown auth plugin
 	Update readme
-	Unit test for auth_more_data
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)

@@ -3,20 +3,21 @@
 
 #include <cstdint>
 #include <string_view>
-#include <array>
+#include "boost/mysql/error.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 namespace mysql_native_password {
 
-constexpr const char* plugin_name = "mysql_native_password";
-constexpr std::size_t challenge_length = 20;
-constexpr std::size_t response_length = 20;
-
-// challenge must point to challenge_length bytes of data
-// output must point to response_length bytes of data
-inline void compute_auth_string(std::string_view password, const void* challenge, void* output);
+// Authorization for this plugin is always challenge (nonce) -> response
+// (hashed password).
+inline error_code compute_response(
+	std::string_view password,
+	std::string_view challenge,
+	bool use_ssl,
+	std::string& output
+);
 
 
 } // mysql_native_password

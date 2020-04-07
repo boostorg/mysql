@@ -4,8 +4,18 @@
 #include <openssl/sha.h>
 #include <cstring>
 
+namespace boost {
+namespace mysql {
+namespace detail {
+namespace mysql_native_password {
+
+constexpr std::size_t challenge_length = 20;
+constexpr std::size_t response_length = 20;
+
+// challenge must point to challenge_length bytes of data
+// output must point to response_length bytes of data
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-inline void boost::mysql::detail::mysql_native_password::compute_auth_string(
+inline void compute_auth_string(
 	std::string_view password,
 	const void* challenge,
 	void* output
@@ -31,7 +41,35 @@ inline void boost::mysql::detail::mysql_native_password::compute_auth_string(
 	}
 }
 
+} // mysql_native_password
+} // detail
+} // mysql
+} // boost
 
+
+inline boost::mysql::error_code
+boost::mysql::detail::mysql_native_password::compute_response(
+	std::string_view password,
+	std::string_view challenge,
+	bool, // use_ssl
+	std::string& output
+)
+{
+	// Check challenge size
+	if (challenge.size() != challenge_length)
+	{
+		return make_error_code(errc::protocol_value_error);
+	}
+
+	// Do the calculation
+	output.resize(response_length);
+	compute_auth_string(
+		password,
+		challenge.data(),
+		output.data()
+	);
+	return error_code();
+}
 
 
 

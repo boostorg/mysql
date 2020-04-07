@@ -17,8 +17,7 @@ endif()
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
 	mysql_unittests
-	unit/detail/auth/mysql_native_password.cpp
-	unit/detail/auth/caching_sha2_password.cpp
+	unit/detail/auth/auth_calculator.cpp
 	unit/detail/protocol/serialization_test_common.cpp
 	unit/detail/protocol/serialization.cpp
 	unit/detail/protocol/common_messages.cpp

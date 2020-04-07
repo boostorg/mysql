@@ -205,5 +205,13 @@ INSTANTIATE_TEST_SUITE_P(SslRequest, SerializeTest, ::testing::Values(
 	}, "default")
 ), test_name_generator);
 
+INSTANTIATE_TEST_SUITE_P(AuthMoreData, DeserializeTest, ::testing::Values(
+	serialization_testcase(auth_more_data_packet{
+		string_eof("abc")
+	}, {
+		0x61, 0x62, 0x63
+	}, "default")
+), test_name_generator);
+
 
 } // anon namespace
