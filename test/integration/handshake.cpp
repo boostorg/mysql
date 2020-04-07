@@ -106,6 +106,13 @@ TEST_P(MiscSslIndifferentHandshakeTest, BadDatabase_FailedLogin)
 	result.validate_error(errc::dbaccess_denied_error, {"database", "bad_database"});
 }
 
+TEST_P(MiscSslIndifferentHandshakeTest, UnknownAuthPlugin_FailedLogin_RequiresSha256)
+{
+	set_credentials("sha2p_user", "sha2p_password");
+	auto result = do_handshake();
+	result.validate_error(errc::unknown_auth_plugin, {});
+}
+
 MYSQL_NETWORK_TEST_SUITE(MiscSslIndifferentHandshakeTest);
 
 // caching_sha2_password

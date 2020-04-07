@@ -2,7 +2,6 @@ sha256_password auth plugin
 	Set error_info when there is an auth plugin involved
 		Unknown auth plugin
 		Auth plugin requires SSL
-	Test for an unknown auth plugin
 	Update readme
 Multiresultset
 	Text protocol
