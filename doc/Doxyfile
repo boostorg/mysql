@@ -1,6 +1,6 @@
 PROJECT_NAME            = "Boost.MySQL"
 PROJECT_BRIEF           = "A Boost.Asio-based client for MySQL"
-PROJECT_LOGO            = boost.png
+PROJECT_LOGO            = proposed_for_boost.svg
 PROJECT_NUMBER          = 0.0.1
 
 QUIET                   = YES
