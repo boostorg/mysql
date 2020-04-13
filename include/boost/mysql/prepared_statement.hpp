@@ -6,6 +6,8 @@
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include <optional>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 
 /**
  * \defgroup stmt Prepared statements
@@ -178,6 +180,10 @@ public:
  * \brief A prepared statement associated to a boost::mysql::tcp_connection.
  */
 using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
+
+#if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
+using unix_prepared_statement = prepared_statement<boost::asio::local::stream_protocol::socket>;
+#endif
 
 } // mysql
 } // boost

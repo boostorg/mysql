@@ -1,3 +1,9 @@
+UNIX socket
+	Network functions for UNIX sockets (generic would be better)
+	Test suite for UNIX sockets (and maybe SSL too)
+	Conditionally build/run stuff for UNIX sockets
+	Config files for CIs to know where UNIX socket is
+	Docs
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -19,15 +25,19 @@ Usability
 	Metadata in rows: being able to index by name
 	Iterators for sync resultset iteration
 	Consideration of timezones
+	Timeouts
+	Retries
+	Connection pool
 	Types
 		Decimal
 		Bit
 		Geometry
-	UNIX socket connection
 	connection::connect that handles TCP/Unix and MySQL connect
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
+	Bad serialize(value.value) somewhere
+	Valgrindize
 	Integ tests for different default auth plugins
 	Integ tests for not enough capabilities
 	Integ tests for ssl_mode::enable and SSL not available

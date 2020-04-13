@@ -9,6 +9,7 @@
 #include "boost/mysql/detail/network_algorithms/common.hpp" // deserialize_row_fn
 #include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <cassert>
 
 /**
@@ -203,6 +204,10 @@ public:
  * \brief Specialization of a resultset associated with a boost::mysql::tcp_connection.
  */
 using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
+
+#if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
+using unix_resultset = resultset<boost::asio::local::stream_protocol::socket>;
+#endif
 
 } // mysql
 } // boost

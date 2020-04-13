@@ -22,6 +22,7 @@ set(MYSQL_EXAMPLES
   query_async_futures
   metadata
   prepared_statements
+  unix_socket
 )
 
 # We will autogenerate run_examples.bat and run_examples.sh, which will
