@@ -4,6 +4,7 @@ UNIX socket
 	Conditionally build/run stuff for UNIX sockets
 	Config files for CIs to know where UNIX socket is
 	Docs
+	Example in docs
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available

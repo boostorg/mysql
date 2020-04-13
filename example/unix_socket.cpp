@@ -23,6 +23,12 @@ void print_employee(const boost::mysql::row& employee)
 			  << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
 }
 
+// UNIX sockets are only available in, er, UNIX systems. Typedefs for
+// UNIX socket-based connections are only available in UNIX systems.
+// Check for BOOST_ASIO_HAS_LOCAL_SOCKETS to know if UNIX socket
+// typedefs are available in your system.
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+
 void main_impl(int argc, char** argv)
 {
 	if (argc != 3 && argc != 4)
@@ -84,6 +90,15 @@ void main_impl(int argc, char** argv)
 	[[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
 	assert(salary == 10000);
 }
+
+#else
+
+void main_impl(int, char**)
+{
+	std::cout << "Sorry, your system does not support UNIX sockets" << std::endl;
+}
+
+#endif
 
 int main(int argc, char** argv)
 {
