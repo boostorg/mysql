@@ -90,6 +90,12 @@
  * \subsection metadata Metadata
  * This example demonstrates inspecting the metadata of a resultset.
  * \include metadata.cpp
+ *
+ * \subsection unix_socket UNIX domain sockets
+ * This example demonstrates connecting to a MySQL server over
+ * a UNIX domain socket. It employs synchronous functions with
+ * exceptions.
+ * \include unix_socket.cpp
  */
 
 
