@@ -7,6 +7,33 @@
 #include <forward_list>
 #include <optional>
 
+/**
+ * A mechanism to test all variants of a network algorithm (e.g. synchronous
+ * with exceptions, asynchronous with coroutines...) without writing
+ * the same test several times.
+ *
+ * All network algorithm variants are transformed to a single one: a synchronous
+ * one, returning a network_result<T>. A network_result<T> contains a T, an error_code
+ * and an error_info. network_functions is an interface, which each variant implements.
+ * Instead of directly calling connection, prepared_statement and resultset network
+ * functions directly, tests use the network_functions interface. Tests are then
+ * parameterized (e.g. TEST_P) and run over all possible implementations of
+ * network_functions.
+ *
+ * To make things more interesting, network_functions interface is also a template,
+ * allowing tests to be run over different stream types (e.g. TCP, UNIX sockets...).
+ * Use BOOST_MYSQL_NETWORK_TEST* macros and NetworkTest<Stream> to achieve this.
+ *
+ * The following variants are currently supported:
+ *  - Synchronous with error codes.
+ *  - Synchronous with exceptions.
+ *  - Asynchronous, with callbacks, with error_info.
+ *  - Asynchronous, with callbacks, without error_info.
+ *  - Asynchronous, with coroutines, with error_info.
+ *  - Asynchronous, with coroutines, without error_info.
+ *  - Asynchronous, with futures.
+ */
+
 namespace boost {
 namespace mysql {
 namespace test {

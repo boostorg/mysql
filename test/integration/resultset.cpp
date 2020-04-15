@@ -23,6 +23,7 @@ namespace net = boost::asio;
 namespace
 {
 
+// Interface to generate a resultset
 template <typename Stream>
 class resultset_generator
 {
@@ -33,28 +34,66 @@ public:
 };
 
 template <typename Stream>
-struct resultset_testcase : named_param,
-							network_testcase<Stream>
+class text_resultset_generator : public resultset_generator<Stream>
 {
-	resultset_generator<Stream>* gen;
-
-	resultset_testcase(network_testcase<Stream> base, resultset_generator<Stream>* gen):
-		network_testcase<Stream>(base), gen(gen) {}
+public:
+	const char* name() const override { return "text"; }
+	resultset<Stream> generate(connection<Stream>& conn, std::string_view query) override
+	{
+		return conn.query(query);
+	}
 };
 
 template <typename Stream>
-std::ostream& operator<<(std::ostream& os, const resultset_testcase<Stream>& v)
+class binary_resultset_generator : public resultset_generator<Stream>
 {
-	return os << v.gen->name() << '.'
-			  << v.net->name() << '.'
-			  << to_string(v.ssl);
-}
+public:
+	const char* name() const override { return "binary"; }
+	resultset<Stream> generate(connection<Stream>& conn, std::string_view query) override
+	{
+		return conn.prepare_statement(query).execute(boost::mysql::no_statement_params);
+	}
+};
+
+template <typename Stream> text_resultset_generator<Stream> text_obj;
+template <typename Stream> binary_resultset_generator<Stream> binary_obj;
+
+// Test parameter
+template <typename Stream>
+struct resultset_testcase : network_testcase_with_ssl<Stream>
+{
+	resultset_generator<Stream>* gen;
+
+	resultset_testcase(network_testcase_with_ssl<Stream> base, resultset_generator<Stream>* gen):
+		network_testcase_with_ssl<Stream>(base), gen(gen) {}
+
+	std::string name() const
+	{
+		return network_testcase_with_ssl<Stream>::name() + '_' + gen->name();
+	}
+
+	static std::vector<resultset_testcase<Stream>> make_all()
+	{
+		resultset_generator<Stream>* all_resultset_generators [] = {
+			&text_obj<Stream>,
+			&binary_obj<Stream>
+		};
+
+		std::vector<resultset_testcase<Stream>> res;
+		for (auto* gen: all_resultset_generators)
+		{
+			for (auto base: network_testcase_with_ssl<Stream>::make_all())
+			{
+				res.push_back(resultset_testcase<Stream>(base, gen));
+			}
+		}
+		return res;
+	}
+};
 
 template <typename Stream>
-struct ResultsetTest : public IntegTestAfterHandshake<Stream>,
-					   public testing::WithParamInterface<resultset_testcase<Stream>>
+struct ResultsetTest : public NetworkTest<Stream, resultset_testcase<Stream>, true>
 {
-	ResultsetTest(): IntegTestAfterHandshake<Stream>(this->GetParam().ssl) {}
 	auto do_generate(std::string_view query) { return this->GetParam().gen->generate(this->conn, query); }
 	auto do_fetch_one(resultset<Stream>& r) { return this->GetParam().net->fetch_one(r); }
 	auto do_fetch_many(resultset<Stream>& r, std::size_t count) { return this->GetParam().net->fetch_many(r, count); }
@@ -252,80 +291,19 @@ struct ResultsetTest : public IntegTestAfterHandshake<Stream>,
 	}
 };
 
-using ResultsetTestTCP = ResultsetTest<boost::asio::ip::tcp::socket>;
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-using ResultsetTestUNIX = ResultsetTest<boost::asio::local::stream_protocol::socket>;
-#endif
+BOOST_MYSQL_NETWORK_TEST_SUITE(ResultsetTest);
 
-MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_NoResults)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_OneRow)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_TwoRows)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_NoResults)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_MoreRowsThanCount)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_LessRowsThanCount)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_SameRowsAsCount)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_CountEqualsOne)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchAll_NoResults)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchAll_OneRow)
-MYSQL_NETWORK_TEST(ResultsetTest, FetchAll_SeveralRows)
-
-
-// Instantiate the test suites
-template <typename Stream>
-class text_resultset_generator : public resultset_generator<Stream>
-{
-public:
-	const char* name() const override { return "text"; }
-	resultset<Stream> generate(connection<Stream>& conn, std::string_view query) override
-	{
-		return conn.query(query);
-	}
-};
-
-template <typename Stream>
-class binary_resultset_generator : public resultset_generator<Stream>
-{
-public:
-	const char* name() const override { return "binary"; }
-	resultset<Stream> generate(connection<Stream>& conn, std::string_view query) override
-	{
-		return conn.prepare_statement(query).execute(boost::mysql::no_statement_params);
-	}
-};
-
-template <typename Stream> text_resultset_generator<Stream> text_obj;
-template <typename Stream> binary_resultset_generator<Stream> binary_obj;
-
-
-template <typename Stream>
-std::vector<resultset_testcase<Stream>> make_all_resultset_testcases()
-{
-	resultset_generator<Stream>* all_resultset_generators [] = {
-		&text_obj<Stream>,
-		&binary_obj<Stream>
-	};
-
-	std::vector<resultset_testcase<Stream>> res;
-	for (auto* gen: all_resultset_generators)
-	{
-		for (auto base: make_all_network_testcases<Stream>())
-		{
-			res.push_back(resultset_testcase<Stream>(base, gen));
-		}
-	}
-	return res;
-}
-
-
-INSTANTIATE_TEST_SUITE_P(Default, ResultsetTestTCP, testing::ValuesIn(
-	make_all_resultset_testcases<boost::asio::ip::tcp::socket>()
-), test_name_generator);
-
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-INSTANTIATE_TEST_SUITE_P(Default, ResultsetTestUNIX, testing::ValuesIn(
-	make_all_resultset_testcases<boost::asio::local::stream_protocol::socket>()
-), test_name_generator);
-#endif
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_NoResults)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_OneRow)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_TwoRows)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_NoResults)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_MoreRowsThanCount)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_LessRowsThanCount)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_SameRowsAsCount)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchMany_CountEqualsOne)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchAll_NoResults)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchAll_OneRow)
+BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchAll_SeveralRows)
 
 }
 

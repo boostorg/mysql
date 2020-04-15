@@ -1,8 +1,4 @@
 UNIX socket
-	Test suite for UNIX sockets
-		Rework names to be BOOST_ and not NETWORK_
-	Unify test name generators
-	Conditionally build/run stuff for UNIX sockets
 	Config files for CIs to know where UNIX socket is
 	Docs
 	Example in docs

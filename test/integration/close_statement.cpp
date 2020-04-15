@@ -44,8 +44,8 @@ struct CloseStatementTest : NetworkTest<Stream>
 	}
 };
 
-MYSQL_NETWORK_TEST_SUITE2(CloseStatementTest)
-MYSQL_NETWORK_TEST(CloseStatementTest, ExistingOrClosedStatement)
+BOOST_MYSQL_NETWORK_TEST_SUITE(CloseStatementTest)
+BOOST_MYSQL_NETWORK_TEST(CloseStatementTest, ExistingOrClosedStatement)
 
 
 }

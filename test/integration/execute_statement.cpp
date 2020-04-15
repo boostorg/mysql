@@ -111,21 +111,24 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
 	}
 };
 
-MYSQL_NETWORK_TEST_SUITE2(ExecuteStatementTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(ExecuteStatementTest);
 
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_OkNoParams)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_OkWithParams)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_MismatchedNumParams)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_ServerError)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_OkNoParams)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_OkWithParams)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_MismatchedNumParams)
-MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_ServerError)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_OkNoParams)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_OkWithParams)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_MismatchedNumParams)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_ServerError)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_OkNoParams)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_OkWithParams)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_MismatchedNumParams)
+BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_ServerError)
 
 
 
 // Other containers
-struct ExecuteStatementOtherContainersTest : IntegTestAfterHandshake<boost::asio::ip::tcp::socket> {};
+struct ExecuteStatementOtherContainersTest : IntegTest<boost::asio::ip::tcp::socket>
+{
+	ExecuteStatementOtherContainersTest() { handshake(boost::mysql::ssl_mode::disable); }
+};
 
 TEST_F(ExecuteStatementOtherContainersTest, NoParams_CanUseNoStatementParamsVariable)
 {

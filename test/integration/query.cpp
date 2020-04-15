@@ -94,14 +94,14 @@ struct QueryTest : public NetworkTest<Stream>
 	}
 };
 
-MYSQL_NETWORK_TEST_SUITE2(QueryTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(QueryTest);
 
-MYSQL_NETWORK_TEST(QueryTest, InsertQueryOk)
-MYSQL_NETWORK_TEST(QueryTest, InsertQueryFailed)
-MYSQL_NETWORK_TEST(QueryTest, UpdateQueryOk)
-MYSQL_NETWORK_TEST(QueryTest, SelectOk)
-MYSQL_NETWORK_TEST(QueryTest, SelectQueryFailed)
-MYSQL_NETWORK_TEST(QueryTest, QueryAndFetch_AliasedTableAndField_MetadataCorrect)
+BOOST_MYSQL_NETWORK_TEST(QueryTest, InsertQueryOk)
+BOOST_MYSQL_NETWORK_TEST(QueryTest, InsertQueryFailed)
+BOOST_MYSQL_NETWORK_TEST(QueryTest, UpdateQueryOk)
+BOOST_MYSQL_NETWORK_TEST(QueryTest, SelectOk)
+BOOST_MYSQL_NETWORK_TEST(QueryTest, SelectQueryFailed)
+BOOST_MYSQL_NETWORK_TEST(QueryTest, QueryAndFetch_AliasedTableAndField_MetadataCorrect)
 
 
 } // anon namespace

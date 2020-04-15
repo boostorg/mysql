@@ -55,10 +55,14 @@ std::ostream& operator<<(std::ostream& os, const database_types_testcase& v)
 	return os << v.table << "." << v.field << "." << v.row_id;
 }
 
-struct DatabaseTypesTest : IntegTestAfterHandshake<boost::asio::ip::tcp::socket>,
-						   WithParamInterface<database_types_testcase>
+// Note: NetworkTest with do_handshake=true requires GetParam() to have an ssl data member
+struct DatabaseTypesTest :
+	NetworkTest<boost::asio::ip::tcp::socket, database_types_testcase, false>
 {
-	DatabaseTypesTest(): IntegTestAfterHandshake(boost::mysql::ssl_mode::disable) {}
+	DatabaseTypesTest()
+	{
+		handshake(boost::mysql::ssl_mode::disable);
+	}
 };
 
 TEST_P(DatabaseTypesTest, Query_MetadataAndValueCorrect)

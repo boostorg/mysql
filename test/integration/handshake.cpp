@@ -31,8 +31,8 @@ namespace
 
 // Handshake tests not depending on whether we use SSL or not
 template <typename Stream>
-struct SslIndifferentHandshakeTest : public IntegTest<Stream>,
-									 public testing::WithParamInterface<network_testcase<Stream>>
+struct SslIndifferentHandshakeTest :
+	NetworkTest<Stream, network_testcase_with_ssl<Stream>, false>
 {
 	auto do_handshake()
 	{
@@ -50,8 +50,7 @@ struct SslIndifferentHandshakeTest : public IntegTest<Stream>,
 };
 
 template <typename Stream>
-struct SslSensitiveHandshakeTest : public IntegTest<Stream>,
-								   public testing::WithParamInterface<network_functions<Stream>*>
+struct SslSensitiveHandshakeTest : NetworkTest<Stream, network_testcase<Stream>, false>
 {
 	void set_ssl(ssl_mode m)
 	{
@@ -60,7 +59,7 @@ struct SslSensitiveHandshakeTest : public IntegTest<Stream>,
 
 	auto do_handshake()
 	{
-		return this->GetParam()->handshake(this->conn, this->connection_params);
+		return this->GetParam().net->handshake(this->conn, this->connection_params);
 	}
 
 	void do_handshake_ok(ssl_mode m)
@@ -96,11 +95,11 @@ struct MysqlNativePasswordHandshakeTest : SslIndifferentHandshakeTest<Stream>
 	}
 };
 
-MYSQL_NETWORK_TEST_SUITE2(MysqlNativePasswordHandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(MysqlNativePasswordHandshakeTest);
 
-MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, RegularUser_SuccessfulLogin)
-MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, EmptyPassword_SuccessfulLogin)
-MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, BadPassword_FailedLogin)
+BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, RegularUser_SuccessfulLogin)
+BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, EmptyPassword_SuccessfulLogin)
+BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, BadPassword_FailedLogin)
 
 
 // Other handshake tests not depending on SSL mode
@@ -129,11 +128,11 @@ struct MiscSslIndifferentHandshakeTest : SslIndifferentHandshakeTest<Stream>
 	}
 };
 
-MYSQL_NETWORK_TEST_SUITE2(MiscSslIndifferentHandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslIndifferentHandshakeTest);
 
-MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, NoDatabase_SuccessfulLogin)
-MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, BadDatabase_FailedLogin)
-MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, UnknownAuthPlugin_FailedLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, NoDatabase_SuccessfulLogin)
+BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, BadDatabase_FailedLogin)
+BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, UnknownAuthPlugin_FailedLogin_RequiresSha256)
 
 // caching_sha2_password
 template <typename Stream>
@@ -239,20 +238,18 @@ struct CachingSha2HandshakeTest : SslSensitiveHandshakeTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS(CachingSha2HandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(CachingSha2HandshakeTest);
 
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheHit_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheHit_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheMiss_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheMiss_FailedLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOnCacheHit_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOffCacheHit_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOnCacheMiss_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOffCacheMiss_SuccessfulLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, BadPasswordSslOnCacheMiss_FailedLogin_RequiresSha256)
-MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, BadPasswordSslOnCacheHit_FailedLogin_RequiresSha256)
-
-BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(CachingSha2HandshakeTest, make_all_network_functions);
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheHit_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheHit_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheMiss_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheMiss_FailedLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOnCacheHit_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOffCacheHit_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOnCacheMiss_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOffCacheMiss_SuccessfulLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, BadPasswordSslOnCacheMiss_FailedLogin_RequiresSha256)
+BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, BadPasswordSslOnCacheHit_FailedLogin_RequiresSha256)
 
 // Misc tests that are sensitive on SSL
 template <typename Stream>
@@ -277,11 +274,9 @@ struct MiscSslSensitiveHandshakeTest : SslSensitiveHandshakeTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS(MiscSslSensitiveHandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslSensitiveHandshakeTest);
 
-MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, BadUser_FailedLogin)
-MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, SslEnable_SuccessfulLogin)
-
-BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(MiscSslSensitiveHandshakeTest, make_all_network_functions)
+BOOST_MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, BadUser_FailedLogin)
+BOOST_MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, SslEnable_SuccessfulLogin)
 
 } // anon namespace

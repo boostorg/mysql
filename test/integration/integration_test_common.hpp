@@ -31,6 +31,15 @@ inline void physical_connect(unix_connection& conn)
 }
 #endif
 
+/**
+ * The base of all integration tests. The fixture constructor creates
+ * a connection, an asio io_context and a thread to run it. It also
+ * performs the physical connect on the connection's underlying stream.
+ *
+ * The fixture is template-parameterized by a stream type, so that
+ * tests can be run using several stream types. For a new stream type,
+ * define a physical_connect() function applicable to that stream.
+ */
 template <typename Stream>
 struct IntegTest : testing::Test
 {
@@ -133,63 +142,93 @@ struct IntegTest : testing::Test
 
 };
 
-template <typename Stream>
-struct IntegTestAfterHandshake : IntegTest<Stream>
-{
-	IntegTestAfterHandshake(ssl_mode m = ssl_mode::require) { this->handshake(m); }
-};
-
+// To be used as test parameter, when a test case should be run
+// over all different network_function's.
 template <typename Stream>
 struct network_testcase
+{
+	network_functions<Stream>* net;
+
+	std::string name() const { return net->name(); }
+
+	static std::vector<network_testcase<Stream>> make_all()
+	{
+		std::vector<network_testcase<Stream>> res;
+		for (auto* net: make_all_network_functions<Stream>())
+		{
+			res.push_back(network_testcase<Stream>{net});
+		}
+		return res;
+	}
+};
+
+// To be used as test parameter, when a test should be run over
+// all network_function's and ssl_mode's
+template <typename Stream>
+struct network_testcase_with_ssl
 {
 	network_functions<Stream>* net;
 	ssl_mode ssl;
 
 	std::string name() const
 	{
-		return detail::stringize(net->name(), '_', to_string(ssl));
+		return detail::stringize(this->net->name(), '_', to_string(ssl));
+	}
+
+	static std::vector<network_testcase_with_ssl<Stream>> make_all()
+	{
+		std::vector<network_testcase_with_ssl<Stream>> res;
+		for (auto* net: make_all_network_functions<Stream>())
+		{
+			for (auto ssl: {ssl_mode::require, ssl_mode::disable})
+			{
+				res.push_back(network_testcase_with_ssl<Stream>{net, ssl});
+			}
+		}
+		return res;
 	}
 };
 
-template <typename Stream>
-inline std::vector<network_testcase<Stream>> make_all_network_testcases()
+/**
+ * The base class for tests to be run over multiple stream types
+ * and multiple parameters (typically network_function's and ssl_mode's).
+ *
+ * To define test cases, please do:
+ *  1. Select a (possibly template) test parameter (e.g. network_testcase_with_ssl).
+ *     The test parameter should have a std::string name() method, and a static
+ *     std::vector<ParameterType> make_all() method, that returns a vector with
+ *     all test parameters to use.
+ *  2. Declare a test fixture, as a struct inheriting from NetworkTest. It should be
+ *     a template, parameterized just by the stream type.
+ *  3. Define the tests, as methods of the fixture. They should have void() signature.
+ *  4. Use BOOST_MYSQL_NETWORK_TEST_SUITE(FixtureName) to instantiate the test suite.
+ *     This will create as many suites as stream types officially supported, and call
+ *     INSTANTIATE_TEST_SUITE_P. For example, for a test suite MySuite, it may generate
+ *     suites MySuiteTCP and MySuiteUNIX, for TCP and UNIX sockets.
+ *  5. Use BOOST_MYSQL_NETWORK_TEST(FixtureName, TestName) for each test you defined
+ *     as method of the fixture. This will call TEST_P once for each supported stream,
+ *     calling the method you defined in the fixture.
+ */
+template <
+	typename Stream,
+	typename Param=network_testcase_with_ssl<Stream>,
+	bool do_handshake=true
+>
+struct NetworkTest : public IntegTest<Stream>,
+					 public testing::WithParamInterface<Param>
 {
-	std::vector<network_testcase<Stream>> res;
-	for (auto* net: make_all_network_functions<Stream>())
+	NetworkTest()
 	{
-		for (auto ssl: {ssl_mode::require, ssl_mode::disable})
+		if constexpr (do_handshake)
 		{
-			res.push_back(network_testcase<Stream>{net, ssl});
+			this->handshake(this->GetParam().ssl);
 		}
 	}
-	return res;
-}
-
-template <typename Stream>
-struct NetworkTest : public IntegTestAfterHandshake<Stream>,
-					 public testing::WithParamInterface<network_testcase<Stream>>
-{
-	NetworkTest(): IntegTestAfterHandshake<Stream>(NetworkTest::GetParam().ssl) {}
-};
-
-struct universal_name_generator
-{
-	template <typename T, typename=std::enable_if_t<!std::is_pointer_v<T>>>
-	std::string operator()(const T& v) const { return v.name(); }
-
-	template <typename T>
-	std::string operator()(const T* v) const { return v->name(); }
 };
 
 } // test
 } // mysql
 } // boost
-
-// Old
-#define MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
-	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName, testing::ValuesIn( \
-		make_all_network_testcases<typename TestSuiteName::stream_type>() \
-	), [](const auto& param_info) { return param_info.param.name(); })
 
 // Typedefs
 #define BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_HELPER(TestSuiteName, Suffix, Stream) \
@@ -210,49 +249,49 @@ struct universal_name_generator
 	BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_UNIX(TestSuiteName)
 
 // Test definition
-#define MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, Suffix) \
+#define BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, Suffix) \
 	TEST_P(TestSuiteName##Suffix, TestName) { this->TestName(); }
 
-#define MYSQL_NETWORK_TEST_TCP(TestSuiteName, TestName) \
-	MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, TCP)
+#define BOOST_MYSQL_NETWORK_TEST_TCP(TestSuiteName, TestName) \
+	BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, TCP)
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-#define MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName) \
-	MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, UNIX)
+#define BOOST_MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName) \
+	BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, UNIX)
 #else
-#define MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName)
+#define BOOST_MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName)
 #endif
 
-#define MYSQL_NETWORK_TEST(TestSuiteName, TestName) \
-	MYSQL_NETWORK_TEST_TCP(TestSuiteName, TestName) \
-	MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName)
+#define BOOST_MYSQL_NETWORK_TEST(TestSuiteName, TestName) \
+	BOOST_MYSQL_NETWORK_TEST_TCP(TestSuiteName, TestName) \
+	BOOST_MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName)
 
 // Test suite instantiation
-#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, Generator, Suffix) \
+#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, Suffix) \
 	INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName##Suffix, testing::ValuesIn( \
-		Generator<typename TestSuiteName##Suffix::stream_type>() \
+		TestSuiteName##Suffix::ParamType::make_all() \
 	), [](const auto& param_info) { \
-		return ::boost::mysql::test::universal_name_generator()(param_info.param); \
+		return param_info.param.name(); \
 	});
 
-#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_TCP(TestSuiteName, Generator) \
-	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, Generator, TCP)
+#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_TCP(TestSuiteName) \
+	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, TCP)
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName, Generator) \
-	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, Generator, UNIX)
+#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName) \
+	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, UNIX)
 #else
-#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName, Generator)
+#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName)
 #endif
 
-#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(TestSuiteName, Generator) \
-	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_TCP(TestSuiteName, Generator) \
-	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName, Generator)
+#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(TestSuiteName) \
+	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_TCP(TestSuiteName) \
+	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName)
 
 // Typedefs + Instantiation
-#define MYSQL_NETWORK_TEST_SUITE2(TestSuiteName) \
+#define BOOST_MYSQL_NETWORK_TEST_SUITE(TestSuiteName) \
 	BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS(TestSuiteName) \
-	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(TestSuiteName, make_all_network_testcases)
+	BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(TestSuiteName)
 
 
 
