@@ -1,4 +1,4 @@
-#ifndef TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP_
+           #ifndef TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP_
 #define TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP_
 
 #include "boost/mysql/connection.hpp"
@@ -60,43 +60,35 @@ struct network_result
 
 using value_list_it = std::forward_list<value>::const_iterator;
 
+template <typename Stream>
 class network_functions
 {
 public:
+	using connection_type = connection<Stream>;
+	using prepared_statement_type = prepared_statement<Stream>;
+	using resultset_type = resultset<Stream>;
+
 	virtual ~network_functions() = default;
 	virtual const char* name() const = 0;
-	virtual network_result<no_result> handshake(tcp_connection&, const connection_params&) = 0;
-	virtual network_result<tcp_resultset> query(tcp_connection&, std::string_view query) = 0;
-	virtual network_result<tcp_prepared_statement> prepare_statement(
-			tcp_connection&, std::string_view statement) = 0;
-	virtual network_result<tcp_resultset> execute_statement(
-			tcp_prepared_statement&, value_list_it params_first, value_list_it params_last) = 0;
-	virtual network_result<tcp_resultset> execute_statement(
-			tcp_prepared_statement&, const std::vector<value>&) = 0;
-	virtual network_result<no_result> close_statement(tcp_prepared_statement&) = 0;
-	virtual network_result<const row*> fetch_one(tcp_resultset&) = 0;
-	virtual network_result<std::vector<owning_row>> fetch_many(tcp_resultset&, std::size_t count) = 0;
-	virtual network_result<std::vector<owning_row>> fetch_all(tcp_resultset&) = 0;
+	virtual network_result<no_result> handshake(connection_type&, const connection_params&) = 0;
+	virtual network_result<resultset_type> query(connection_type&, std::string_view query) = 0;
+	virtual network_result<prepared_statement_type> prepare_statement(
+			connection_type&, std::string_view statement) = 0;
+	virtual network_result<resultset_type> execute_statement(
+			prepared_statement_type&, value_list_it params_first, value_list_it params_last) = 0;
+	virtual network_result<resultset_type> execute_statement(
+			prepared_statement_type&, const std::vector<value>&) = 0;
+	virtual network_result<no_result> close_statement(prepared_statement_type&) = 0;
+	virtual network_result<const row*> fetch_one(resultset_type&) = 0;
+	virtual network_result<std::vector<owning_row>> fetch_many(resultset_type&, std::size_t count) = 0;
+	virtual network_result<std::vector<owning_row>> fetch_all(resultset_type&) = 0;
 };
 
-extern network_functions* sync_errc_network_functions;
-extern network_functions* sync_exc_network_functions;
-extern network_functions* async_callback_errinfo_network_functions;
-extern network_functions* async_callback_noerrinfo_network_functions;
-extern network_functions* async_coroutine_errinfo_network_functions;
-extern network_functions* async_coroutine_noerrinfo_network_functions;
-extern network_functions* async_future_noerrinfo_network_functions;
+template <typename Stream>
+using network_function_array = std::array<network_functions<Stream>*, 7>;
 
-inline network_functions* all_network_functions [] = {
-	sync_errc_network_functions,
-	sync_exc_network_functions,
-	async_callback_errinfo_network_functions,
-	async_callback_noerrinfo_network_functions,
-	async_coroutine_errinfo_network_functions,
-	async_coroutine_noerrinfo_network_functions,
-	async_future_noerrinfo_network_functions
-};
-
+template <typename Stream>
+network_function_array<Stream> make_all_network_functions();
 
 } // test
 } // mysql

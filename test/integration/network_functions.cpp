@@ -1,12 +1,10 @@
 #include "network_functions.hpp"
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/use_future.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <future>
 
 using namespace boost::mysql::test;
-using boost::mysql::tcp_prepared_statement;
-using boost::mysql::tcp_resultset;
-using boost::mysql::tcp_connection;
 using boost::mysql::error_info;
 using boost::mysql::error_code;
 using boost::mysql::detail::make_error_code;
@@ -31,7 +29,8 @@ error_code make_initial_error_code()
 	return make_error_code(errc::no);
 }
 
-class sync_errc : public network_functions
+template <typename Stream>
+class sync_errc : public network_functions<Stream>
 {
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
@@ -41,9 +40,13 @@ class sync_errc : public network_functions
 		return res;
 	}
 public:
+	using connection_type = typename network_functions<Stream>::connection_type;
+	using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
+	using resultset_type = typename network_functions<Stream>::resultset_type;
+
 	const char* name() const override { return "sync_errc"; }
 	network_result<no_result> handshake(
-		tcp_connection& conn,
+		connection_type& conn,
 		const boost::mysql::connection_params& params
 	) override
 	{
@@ -52,8 +55,8 @@ public:
 			return no_result();
 		});
 	}
-	network_result<tcp_resultset> query(
-		tcp_connection& conn,
+	network_result<resultset_type> query(
+		connection_type& conn,
 		std::string_view query
 	) override
 	{
@@ -61,8 +64,8 @@ public:
 			return conn.query(query, code, info);
 		});
 	}
-	network_result<tcp_prepared_statement> prepare_statement(
-		tcp_connection& conn,
+	network_result<prepared_statement_type> prepare_statement(
+		connection_type& conn,
 		std::string_view statement
 	) override
 	{
@@ -70,8 +73,8 @@ public:
 			return conn.prepare_statement(statement, err, info);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		value_list_it params_first,
 		value_list_it params_last
 	) override
@@ -80,8 +83,8 @@ public:
 			return stmt.execute(params_first, params_last, err, info);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		const std::vector<value>& values
 	) override
 	{
@@ -90,7 +93,7 @@ public:
 		});
 	}
 	network_result<no_result> close_statement(
-		tcp_prepared_statement& stmt
+		prepared_statement_type& stmt
 	) override
 	{
 		return impl([&](error_code& code, error_info& info) {
@@ -99,7 +102,7 @@ public:
 		});
 	}
 	network_result<const row*> fetch_one(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl([&](error_code& code, error_info& info) {
@@ -107,7 +110,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
-		tcp_resultset& r,
+		resultset_type& r,
 		std::size_t count
 	) override
 	{
@@ -116,7 +119,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl([&](error_code& code, error_info& info) {
@@ -125,7 +128,8 @@ public:
 	}
 };
 
-class sync_exc : public network_functions
+template <typename Stream>
+class sync_exc : public network_functions<Stream>
 {
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
@@ -143,9 +147,13 @@ class sync_exc : public network_functions
 		return res;
 	}
 public:
+	using connection_type = typename network_functions<Stream>::connection_type;
+	using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
+	using resultset_type = typename network_functions<Stream>::resultset_type;
+
 	const char* name() const override { return "sync_exc"; }
 	network_result<no_result> handshake(
-		tcp_connection& conn,
+		connection_type& conn,
 		const boost::mysql::connection_params& params
 	) override
 	{
@@ -154,8 +162,8 @@ public:
 			return no_result();
 		});
 	}
-	network_result<tcp_resultset> query(
-		tcp_connection& conn,
+	network_result<resultset_type> query(
+		connection_type& conn,
 		std::string_view query
 	) override
 	{
@@ -163,8 +171,8 @@ public:
 			return conn.query(query);
 		});
 	}
-	network_result<tcp_prepared_statement> prepare_statement(
-		tcp_connection& conn,
+	network_result<prepared_statement_type> prepare_statement(
+		connection_type& conn,
 		std::string_view statement
 	) override
 	{
@@ -172,8 +180,8 @@ public:
 			return conn.prepare_statement(statement);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		value_list_it params_first,
 		value_list_it params_last
 	) override
@@ -182,8 +190,8 @@ public:
 			return stmt.execute(params_first, params_last);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		const std::vector<value>& values
 	) override
 	{
@@ -192,7 +200,7 @@ public:
 		});
 	}
 	network_result<no_result> close_statement(
-		tcp_prepared_statement& stmt
+		prepared_statement_type& stmt
 	) override
 	{
 		return impl([&] {
@@ -201,7 +209,7 @@ public:
 		});
 	}
 	network_result<const row*> fetch_one(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl([&] {
@@ -209,7 +217,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
-		tcp_resultset& r,
+		resultset_type& r,
 		std::size_t count
 	) override
 	{
@@ -218,7 +226,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl([&] {
@@ -227,7 +235,8 @@ public:
 	}
 };
 
-class async_callback : public network_functions
+template <typename Stream>
+class async_callback : public network_functions<Stream>
 {
 	// This allows for two versions of the tests: one where we pass a
 	// non-nullptr error_info* to the initiating function, and another
@@ -277,13 +286,17 @@ class async_callback : public network_functions
 	}
 
 public:
+	using connection_type = typename network_functions<Stream>::connection_type;
+	using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
+	using resultset_type = typename network_functions<Stream>::resultset_type;
+
 	async_callback(bool use_errinfo): use_errinfo_(use_errinfo) {}
 	const char* name() const override
 	{
 		return use_errinfo_ ? "async_callback_errinfo" : "async_callback_noerrinfo";
 	}
 	network_result<no_result> handshake(
-		tcp_connection& conn,
+		connection_type& conn,
 		const boost::mysql::connection_params& params
 	) override
 	{
@@ -291,45 +304,45 @@ public:
 			return conn.async_handshake(params, std::forward<decltype(token)>(token), info);
 		});
 	}
-	network_result<tcp_resultset> query(
-		tcp_connection& conn,
+	network_result<resultset_type> query(
+		connection_type& conn,
 		std::string_view query
 	) override
 	{
-		return impl<tcp_resultset>([&](auto&& token, error_info* info) {
+		return impl<resultset_type>([&](auto&& token, error_info* info) {
 			return conn.async_query(query, std::forward<decltype(token)>(token), info);
 		});
 	}
-	network_result<tcp_prepared_statement> prepare_statement(
-		tcp_connection& conn,
+	network_result<prepared_statement_type> prepare_statement(
+		connection_type& conn,
 		std::string_view statement
 	) override
 	{
-		return impl<tcp_prepared_statement>([&conn, statement](auto&& token, error_info* info) {
+		return impl<prepared_statement_type>([&conn, statement](auto&& token, error_info* info) {
 			return conn.async_prepare_statement(statement, std::forward<decltype(token)>(token), info);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		value_list_it params_first,
 		value_list_it params_last
 	) override
 	{
-		return impl<tcp_resultset>([&](auto&& token, error_info* info) {
+		return impl<resultset_type>([&](auto&& token, error_info* info) {
 			return stmt.async_execute(params_first, params_last, std::forward<decltype(token)>(token), info);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		const std::vector<value>& values
 	) override
 	{
-		return impl<tcp_resultset>([&](auto&& token, error_info* info) {
+		return impl<resultset_type>([&](auto&& token, error_info* info) {
 			return stmt.async_execute(values, std::forward<decltype(token)>(token), info);
 		});
 	}
 	network_result<no_result> close_statement(
-		tcp_prepared_statement& stmt
+		prepared_statement_type& stmt
 	) override
 	{
 		return impl<no_result>([&](auto&& token, error_info* info) {
@@ -337,7 +350,7 @@ public:
 		});
 	}
 	network_result<const row*> fetch_one(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl<const row*>([&](auto&& token, error_info* info) {
@@ -345,7 +358,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
-		tcp_resultset& r,
+		resultset_type& r,
 		std::size_t count
 	) override
 	{
@@ -354,7 +367,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl<std::vector<owning_row>>([&](auto&& token, error_info* info) {
@@ -363,7 +376,8 @@ public:
 	}
 };
 
-class async_coroutine : public network_functions
+template <typename Stream>
+class async_coroutine : public network_functions<Stream>
 {
 	bool use_errinfo_;
 
@@ -394,13 +408,17 @@ class async_coroutine : public network_functions
 	}
 
 public:
+	using connection_type = typename network_functions<Stream>::connection_type;
+	using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
+	using resultset_type = typename network_functions<Stream>::resultset_type;
+
 	async_coroutine(bool use_errinfo): use_errinfo_(use_errinfo) {}
 	const char* name() const override
 	{
 		return use_errinfo_ ? "async_coroutine_errinfo" : "async_coroutine_noerrinfo";
 	}
 	network_result<no_result> handshake(
-		tcp_connection& conn,
+		connection_type& conn,
 		const boost::mysql::connection_params& params
 	) override
 	{
@@ -409,8 +427,8 @@ public:
 			return no_result();
 		});
 	}
-	network_result<tcp_resultset> query(
-		tcp_connection& conn,
+	network_result<resultset_type> query(
+		connection_type& conn,
 		std::string_view query
 	) override
 	{
@@ -418,8 +436,8 @@ public:
 			return conn.async_query(query, yield, info);
 		});
 	}
-	network_result<tcp_prepared_statement> prepare_statement(
-		tcp_connection& conn,
+	network_result<prepared_statement_type> prepare_statement(
+		connection_type& conn,
 		std::string_view statement
 	) override
 	{
@@ -427,8 +445,8 @@ public:
 			return conn.async_prepare_statement(statement, yield, info);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		value_list_it params_first,
 		value_list_it params_last
 	) override
@@ -437,8 +455,8 @@ public:
 			return stmt.async_execute(params_first, params_last, yield, info);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		const std::vector<value>& values
 	) override
 	{
@@ -447,7 +465,7 @@ public:
 		});
 	}
 	network_result<no_result> close_statement(
-		tcp_prepared_statement& stmt
+		prepared_statement_type& stmt
 	) override
 	{
 		return impl(stmt, [&](yield_context yield, error_info* info) {
@@ -456,7 +474,7 @@ public:
 		});
 	}
 	network_result<const row*> fetch_one(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl(r, [&](yield_context yield, error_info* info) {
@@ -464,7 +482,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
-		tcp_resultset& r,
+		resultset_type& r,
 		std::size_t count
 	) override
 	{
@@ -473,7 +491,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl(r, [&](yield_context yield, error_info* info) {
@@ -482,8 +500,8 @@ public:
 	}
 };
 
-
-class async_future : public network_functions
+template <typename Stream>
+class async_future : public network_functions<Stream>
 {
 	template <typename Callable>
 	static auto impl(Callable&& cb) {
@@ -520,9 +538,13 @@ class async_future : public network_functions
 		}
 	}
 public:
+	using connection_type = typename network_functions<Stream>::connection_type;
+	using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
+	using resultset_type = typename network_functions<Stream>::resultset_type;
+
 	const char* name() const override { return "async_future_noerrinfo"; }
 	network_result<no_result> handshake(
-		tcp_connection& conn,
+		connection_type& conn,
 		const boost::mysql::connection_params& params
 	) override
 	{
@@ -530,8 +552,8 @@ public:
 			return conn.async_handshake(params, use_future);
 		});
 	}
-	network_result<tcp_resultset> query(
-		tcp_connection& conn,
+	network_result<resultset_type> query(
+		connection_type& conn,
 		std::string_view query
 	) override
 	{
@@ -539,8 +561,8 @@ public:
 			return conn.async_query(query, use_future);
 		});
 	}
-	network_result<tcp_prepared_statement> prepare_statement(
-		tcp_connection& conn,
+	network_result<prepared_statement_type> prepare_statement(
+		connection_type& conn,
 		std::string_view statement
 	) override
 	{
@@ -548,8 +570,8 @@ public:
 			return conn.async_prepare_statement(statement, use_future);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		value_list_it params_first,
 		value_list_it params_last
 	) override
@@ -558,8 +580,8 @@ public:
 			return stmt.async_execute(params_first, params_last, use_future);
 		});
 	}
-	network_result<tcp_resultset> execute_statement(
-		tcp_prepared_statement& stmt,
+	network_result<resultset_type> execute_statement(
+		prepared_statement_type& stmt,
 		const std::vector<value>& values
 	) override
 	{
@@ -568,7 +590,7 @@ public:
 		});
 	}
 	network_result<no_result> close_statement(
-		tcp_prepared_statement& stmt
+		prepared_statement_type& stmt
 	) override
 	{
 		return impl_no_result([&] {
@@ -576,7 +598,7 @@ public:
 		});
 	}
 	network_result<const row*> fetch_one(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl([&] {
@@ -584,7 +606,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_many(
-		tcp_resultset& r,
+		resultset_type& r,
 		std::size_t count
 	) override
 	{
@@ -593,7 +615,7 @@ public:
 		});
 	}
 	network_result<std::vector<owning_row>> fetch_all(
-		tcp_resultset& r
+		resultset_type& r
 	) override
 	{
 		return impl([&] {
@@ -603,21 +625,37 @@ public:
 };
 
 // Global objects to be exposed
-sync_errc sync_errc_obj;
-sync_exc sync_exc_obj;
-async_callback async_callback_errinfo_obj (true);
-async_callback async_callback_noerrinfo_obj (false);
-async_coroutine async_coroutine_errinfo_obj (true);
-async_coroutine async_coroutine_noerrinfo_obj (false);
-async_future async_future_obj;
+template <typename Stream> sync_errc<Stream> sync_errc_obj;
+template <typename Stream> sync_exc<Stream> sync_exc_obj;
+template <typename Stream> async_callback<Stream> async_callback_errinfo_obj (true);
+template <typename Stream> async_callback<Stream> async_callback_noerrinfo_obj (false);
+template <typename Stream> async_coroutine<Stream> async_coroutine_errinfo_obj (true);
+template <typename Stream> async_coroutine<Stream> async_coroutine_noerrinfo_obj (false);
+template <typename Stream> async_future<Stream> async_future_obj;
+
 
 }
 
 // Visible stuff
-network_functions* boost::mysql::test::sync_errc_network_functions = &sync_errc_obj;
-network_functions* boost::mysql::test::sync_exc_network_functions = &sync_exc_obj;
-network_functions* boost::mysql::test::async_callback_errinfo_network_functions = &async_callback_errinfo_obj;
-network_functions* boost::mysql::test::async_callback_noerrinfo_network_functions = &async_callback_noerrinfo_obj;
-network_functions* boost::mysql::test::async_coroutine_errinfo_network_functions = &async_coroutine_errinfo_obj;
-network_functions* boost::mysql::test::async_coroutine_noerrinfo_network_functions = &async_coroutine_noerrinfo_obj;
-network_functions* boost::mysql::test::async_future_noerrinfo_network_functions = &async_future_obj;
+template <typename Stream>
+boost::mysql::test::network_function_array<Stream>
+boost::mysql::test::make_all_network_functions()
+{
+	return {
+		&sync_errc_obj<Stream>,
+		&sync_exc_obj<Stream>,
+		&async_callback_errinfo_obj<Stream>,
+		&async_callback_noerrinfo_obj<Stream>,
+		&async_coroutine_errinfo_obj<Stream>,
+		&async_coroutine_noerrinfo_obj<Stream>,
+		&async_future_obj<Stream>
+	};
+}
+
+template boost::mysql::test::network_function_array<boost::asio::ip::tcp::socket>
+boost::mysql::test::make_all_network_functions();
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+template boost::mysql::test::network_function_array<boost::asio::local::stream_protocol::socket>
+boost::mysql::test::make_all_network_functions();
+#endif

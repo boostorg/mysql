@@ -1,6 +1,7 @@
 UNIX socket
-	Network functions for UNIX sockets (generic would be better)
-	Test suite for UNIX sockets (and maybe SSL too)
+	Test suite for UNIX sockets
+		Rework names to be BOOST_ and not NETWORK_
+	Unify test name generators
 	Conditionally build/run stuff for UNIX sockets
 	Config files for CIs to know where UNIX socket is
 	Docs
