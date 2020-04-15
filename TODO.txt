@@ -1,5 +1,4 @@
 UNIX socket
-	Config files for CIs to know where UNIX socket is
 	Docs
 	Example in docs
 Better docs
