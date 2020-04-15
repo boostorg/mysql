@@ -1,6 +1,3 @@
-UNIX socket
-	Docs
-	Example in docs
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -25,6 +22,7 @@ Usability
 	Timeouts
 	Retries
 	Connection pool
+	Prepared statements: being able to specify how many rows to fetch from server (use cursors)
 	Types
 		Decimal
 		Bit
