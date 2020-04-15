@@ -182,7 +182,13 @@ public:
 using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
+
+/**
+ * \ingroup stmt
+ * \brief A prepared statement associated to a boost::mysql::unix_connection.
+ */
 using unix_prepared_statement = prepared_statement<boost::asio::local::stream_protocol::socket>;
+
 #endif
 
 } // mysql

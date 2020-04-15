@@ -206,7 +206,13 @@ public:
 using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
+
+/**
+ * \ingroup resultsets
+ * \brief Specialization of a resultset associated with a boost::mysql::unix_connection.
+ */
 using unix_resultset = resultset<boost::asio::local::stream_protocol::socket>;
+
 #endif
 
 } // mysql

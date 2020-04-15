@@ -165,7 +165,13 @@ public:
 using tcp_connection = connection<boost::asio::ip::tcp::socket>;
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
+
+/**
+ * \ingroup connection
+ * \brief A connection to MySQL over a UNIX domain socket.
+ */
 using unix_connection = connection<boost::asio::local::stream_protocol::socket>;
+
 #endif
 
 /**
