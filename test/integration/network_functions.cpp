@@ -624,16 +624,6 @@ public:
 	}
 };
 
-// Global objects to be exposed
-template <typename Stream> sync_errc<Stream> sync_errc_obj;
-template <typename Stream> sync_exc<Stream> sync_exc_obj;
-template <typename Stream> async_callback<Stream> async_callback_errinfo_obj (true);
-template <typename Stream> async_callback<Stream> async_callback_noerrinfo_obj (false);
-template <typename Stream> async_coroutine<Stream> async_coroutine_errinfo_obj (true);
-template <typename Stream> async_coroutine<Stream> async_coroutine_noerrinfo_obj (false);
-template <typename Stream> async_future<Stream> async_future_obj;
-
-
 }
 
 // Visible stuff
@@ -641,14 +631,22 @@ template <typename Stream>
 boost::mysql::test::network_function_array<Stream>
 boost::mysql::test::make_all_network_functions()
 {
+	static sync_errc<Stream> sync_errc_obj;
+	static sync_exc<Stream> sync_exc_obj;
+	static async_callback<Stream> async_callback_errinfo_obj (true);
+	static async_callback<Stream> async_callback_noerrinfo_obj (false);
+	static async_coroutine<Stream> async_coroutine_errinfo_obj (true);
+	static async_coroutine<Stream> async_coroutine_noerrinfo_obj (false);
+	static async_future<Stream> async_future_obj;
+
 	return {
-		&sync_errc_obj<Stream>,
-		&sync_exc_obj<Stream>,
-		&async_callback_errinfo_obj<Stream>,
-		&async_callback_noerrinfo_obj<Stream>,
-		&async_coroutine_errinfo_obj<Stream>,
-		&async_coroutine_noerrinfo_obj<Stream>,
-		&async_future_obj<Stream>
+		&sync_errc_obj,
+		&sync_exc_obj,
+		&async_callback_errinfo_obj,
+		&async_callback_noerrinfo_obj,
+		&async_coroutine_errinfo_obj,
+		&async_coroutine_noerrinfo_obj,
+		&async_future_obj
 	};
 }
 
