@@ -51,7 +51,7 @@ struct PrepareStatementTest : public NetworkTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(PrepareStatementTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(PrepareStatementTest)
 
 BOOST_MYSQL_NETWORK_TEST(PrepareStatementTest, OkNoParams)
 BOOST_MYSQL_NETWORK_TEST(PrepareStatementTest, OkWithParams)

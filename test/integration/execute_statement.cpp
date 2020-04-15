@@ -111,7 +111,7 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(ExecuteStatementTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(ExecuteStatementTest)
 
 BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_OkNoParams)
 BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Iterator_OkWithParams)

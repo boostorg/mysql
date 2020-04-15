@@ -95,7 +95,7 @@ struct MysqlNativePasswordHandshakeTest : SslIndifferentHandshakeTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(MysqlNativePasswordHandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(MysqlNativePasswordHandshakeTest)
 
 BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, RegularUser_SuccessfulLogin)
 BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, EmptyPassword_SuccessfulLogin)
@@ -128,7 +128,7 @@ struct MiscSslIndifferentHandshakeTest : SslIndifferentHandshakeTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslIndifferentHandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslIndifferentHandshakeTest)
 
 BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, NoDatabase_SuccessfulLogin)
 BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, BadDatabase_FailedLogin)
@@ -238,7 +238,7 @@ struct CachingSha2HandshakeTest : SslSensitiveHandshakeTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(CachingSha2HandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(CachingSha2HandshakeTest)
 
 BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheHit_SuccessfulLogin_RequiresSha256)
 BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheHit_SuccessfulLogin_RequiresSha256)
@@ -274,7 +274,7 @@ struct MiscSslSensitiveHandshakeTest : SslSensitiveHandshakeTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslSensitiveHandshakeTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslSensitiveHandshakeTest)
 
 BOOST_MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, BadUser_FailedLogin)
 BOOST_MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, SslEnable_SuccessfulLogin)

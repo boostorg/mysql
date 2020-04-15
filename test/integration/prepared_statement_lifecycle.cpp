@@ -232,7 +232,7 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(PreparedStatementLifecycleTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(PreparedStatementLifecycleTest)
 
 BOOST_MYSQL_NETWORK_TEST(PreparedStatementLifecycleTest, SelectWithParametersMultipleExecutions)
 BOOST_MYSQL_NETWORK_TEST(PreparedStatementLifecycleTest, InsertWithParametersMultipleExecutions)

@@ -94,7 +94,7 @@ struct QueryTest : public NetworkTest<Stream>
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(QueryTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(QueryTest)
 
 BOOST_MYSQL_NETWORK_TEST(QueryTest, InsertQueryOk)
 BOOST_MYSQL_NETWORK_TEST(QueryTest, InsertQueryFailed)

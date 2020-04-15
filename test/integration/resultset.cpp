@@ -291,7 +291,7 @@ struct ResultsetTest : public NetworkTest<Stream, resultset_testcase<Stream>, tr
 	}
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(ResultsetTest);
+BOOST_MYSQL_NETWORK_TEST_SUITE(ResultsetTest)
 
 BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_NoResults)
 BOOST_MYSQL_NETWORK_TEST(ResultsetTest, FetchOne_OneRow)
