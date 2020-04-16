@@ -16,6 +16,7 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	fi
 else
 	sudo cp ci/unix-ci.cnf /etc/mysql/$DATABASE.conf.d/99-ci.cnf
+	find /etc/mysql/ -type f | xargs -I {} sudo bash -c "echo ---Printing {} && cat {}"
 	sudo service mysql restart
 	wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
 	mkdir -p /tmp/cmake-latest
