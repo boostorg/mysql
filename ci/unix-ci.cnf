@@ -3,7 +3,7 @@ ssl-ca=/tmp/ca-cert.pem
 ssl-cert=/tmp/server-cert.pem
 ssl-key=/tmp/server-key.pem
 log_error=/tmp/mysql-log.txt
-socket=/tmp/mysql.sock
+socket=/var/run/mysqld/mysqld.sock
 
 [client]
-socket=/tmp/mysql.sock
+socket=/var/run/mysqld/mysqld.sock

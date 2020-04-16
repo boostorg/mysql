@@ -8,6 +8,7 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	brew update
 	brew install $DATABASE
 	cp ci/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
+	sudo mkdir -p /var/run/mysqld/
 	mysql.server start # Note that running this with sudo fails
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
@@ -15,10 +16,7 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 		export MYSQL_HAS_SHA256=1
 	fi
 else
-	# Inclusion order in config files is undefined, so we append to the main config file
-	PRINTF_STRING="\n!include $(pwd)/ci/unix-ci.cnf\n\n"
-	sudo bash -c "printf \"$PRINTF_STRING\" >> /etc/mysql/my.cnf"
-	find /etc/mysql/ -type f | xargs -I {} sudo bash -c "echo ---Printing {} && cat {}"
+	sudo cp ci/unix-ci.cnf /etc/mysql/conf.d/
 	sudo service mysql restart
 	wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
 	mkdir -p /tmp/cmake-latest

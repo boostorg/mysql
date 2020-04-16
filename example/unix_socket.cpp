@@ -9,7 +9,7 @@
  * You can get this database by running db_setup.sql.
  * This example assumes you are connecting to MySQL server using
  * a UNIX socket. The socket path can be configured using command line
- * arguments, and defaults to /tmp/mysql.sock
+ * arguments, and defaults to /var/run/mysqld/mysqld.sock
  *
  * This example uses synchronous functions and handles errors using exceptions.
  */
@@ -37,7 +37,7 @@ void main_impl(int argc, char** argv)
 		exit(1);
 	}
 
-	const char* socket_path = "/tmp/mysql.sock";
+	const char* socket_path = "/var/run/mysqld/mysqld.sock";
 	if (argc == 4)
 	{
 		socket_path = argv[3];

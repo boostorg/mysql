@@ -26,7 +26,7 @@ inline void physical_connect(tcp_connection& conn)
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 inline void physical_connect(unix_connection& conn)
 {
-	boost::asio::local::stream_protocol::endpoint endpoint ("/tmp/mysql.sock");
+	boost::asio::local::stream_protocol::endpoint endpoint ("/var/run/mysqld/mysqld.sock");
 	conn.next_layer().connect(endpoint);
 }
 #endif
