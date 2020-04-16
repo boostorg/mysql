@@ -90,7 +90,58 @@ target_include_directories(
 	common
 )
 _mysql_common_target_settings(mysql_integrationtests)
+
+# Regular integration tests
 add_test(
 	NAME mysql_integrationtests
-	COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/integration/run_tests.py
+	COMMAND 
+		${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+		"--gtest_filter=-*RequiresSha256*" # Exclude anything using SHA256
 )
+
+if (NOT DEFINED ENV{MYSQL_SKIP_DB_SETUP})
+	add_test(
+		NAME mysql_integrationtests_setup
+		COMMAND
+			${Python3_EXECUTABLE} 
+			${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
+			${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
+	)
+	set_tests_properties(
+		mysql_integrationtests_setup 
+		PROPERTIES FIXTURES_SETUP mysql_integrationtests_fixture
+	)
+	
+	set_tests_properties(
+		mysql_integrationtests
+		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
+	)
+endif()
+
+# SHA256 tests 
+if (DEFINED ENV{MYSQL_HAS_SHA256})
+	# Setup
+	add_test(
+		NAME mysql_integrationtests_sha256_setup
+		COMMAND
+			${Python3_EXECUTABLE} 
+			${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
+			${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup_sha256.sql
+	)
+	set_tests_properties(
+		mysql_integrationtests_sha256_setup 
+		PROPERTIES FIXTURES_SETUP mysql_integrationtests_sha256_fixture
+	)
+	
+	# Actual tests
+	add_test(
+		NAME mysql_integrationtests_sha256
+		COMMAND 
+			${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+			"--gtest_filter=*RequiresSha256*" # Run only SHA256 stuff
+	)
+	set_tests_properties(
+		mysql_integrationtests_sha256
+		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_sha256_fixture
+	)
+endif()
