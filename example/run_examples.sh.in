@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -e
-
-mysql -u root < "@SETUP_SCRIPT_PATH@"
-
-@BASH_CONTENT@
