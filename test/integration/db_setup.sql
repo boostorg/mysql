@@ -1,6 +1,6 @@
 -- Connection system variables
 SET NAMES utf8;
-SET global max_connections = 1000;
+SET global max_connections = 10000;
 
 -- Database
 DROP DATABASE IF EXISTS awesome;
