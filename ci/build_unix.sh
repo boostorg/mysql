@@ -9,6 +9,7 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	brew install $DATABASE
 	cp ci/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
 	sudo mkdir -p /var/run/mysqld/
+	sudo chmod 777 /var/run/mysqld/
 	mysql.server start # Note that running this with sudo fails
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
