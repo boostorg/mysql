@@ -60,6 +60,10 @@ Currently implemented:
   caching_sha2_password. These are the default methods in MySQL 5 and MySQL 8,
   respectively.
 - Encrypted connections (TLS).
+- TCP and UNIX socket connections. The implementation is based on Boost.Asio
+  SyncStream and AsyncStream concepts, so it is generic and can be used with
+  any stream that fulfills these concept's requirements. There are user-friendly
+  typedefs and regression tests for TCP and UNIX socket streams.
 
 Yet to be done (but it is on our list - PRs welcome):
 
