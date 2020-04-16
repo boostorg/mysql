@@ -15,7 +15,9 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 		export MYSQL_HAS_SHA256=1
 	fi
 else
-	sudo cp ci/unix-ci.cnf /etc/mysql/$DATABASE.conf.d/99-ci.cnf
+	# Inclusion order in config files is undefined, so we append to the main config file
+	PRINTF_STRING="\n!include $(pwd)/ci/unix-ci.cnf\n\n"
+	sudo bash -c "printf \"$PRINTF_STRING\" >> /etc/mysql/my.cnf"
 	find /etc/mysql/ -type f | xargs -I {} sudo bash -c "echo ---Printing {} && cat {}"
 	sudo service mysql restart
 	wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
