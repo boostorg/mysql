@@ -47,3 +47,7 @@ foreach(EXAMPLE_NAME ${MYSQL_EXAMPLES})
 	set_tests_properties(${TEST_NAME} PROPERTIES FIXTURES_REQUIRED mysql_examples_fixture)
 endforeach()
 
+set_tests_properties(
+	mysql_example_query_async_coroutines
+	PROPERTIES LABELS "NoMemcheck"
+)

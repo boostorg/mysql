@@ -1,0 +1,105 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   ...
+   obj:/*/libssl.so*
+   ...
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Value8
+   ...
+   obj:/*/libssl.so*
+   ...
+}
+
+{
+   libssl_internal_threads
+   Memcheck:Cond
+   ...
+   obj:/*libcrypto.so*
+}
+
+{
+   libssl_internal_threads
+   Memcheck:Value8
+   ...
+   obj:/*libcrypto.so*
+}
+
+{
+   asio_ssl_handshake_sync
+   Memcheck:Param
+   sendmsg(msg.msg_iov[0])
+   ...
+   fun:_ZN5boost4asio3ssl6stream*handshake*
+   fun:_ZN5boost5mysql6detail7channel*ssl_handshake*
+   ...
+}
+
+{
+   asio_ssl_handshake_async
+   Memcheck:Param
+   sendmsg(msg.msg_iov[0])
+   ...
+   fun:_ZN5boost4asio3ssl6detail5io_op*
+   fun:_ZN5boost4asio3ssl6detail8async_io*
+}
+
+{
+   asio_ssl_handshake_async
+   Memcheck:Param
+   sendmsg(msg.msg_iov[0])
+   ...
+   fun:_ZN5boost4asio*async_write_some*ssl*io_op*handshake_op*
+}
+
+{
+   gtest_print_nonprintable_object
+   Memcheck:Value8
+   ...
+   fun:_ZN7testing9internal220PrintBytesInObjectToEPKhmPSo
+   ...
+}
+
+{
+   gtest_print_nonprintable_object
+   Memcheck:Cond
+   ...
+   fun:_ZN7testing9internal220PrintBytesInObjectToEPKhmPSo
+   ...
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   ...
+   obj:/*python3*
+   ...
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Value8
+   ...
+   obj:/*python3*
+   ...
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Addr4
+   ...
+   obj:/*python3*
+   ...
+}
+
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   obj:/*python3*
+   ...
+}

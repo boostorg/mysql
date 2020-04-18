@@ -98,6 +98,17 @@ add_test(
 		${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
 		"--gtest_filter=-*RequiresSha256*" # Exclude anything using SHA256
 )
+set_tests_properties(
+	mysql_integrationtests
+	PROPERTIES LABELS "NoMemcheck"
+)
+
+add_test(
+	NAME mysql_integrationtests_memcheck
+	COMMAND 
+		${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+		"--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*"
+)
 
 if (NOT DEFINED ENV{MYSQL_SKIP_DB_SETUP})
 	add_test(
@@ -114,6 +125,10 @@ if (NOT DEFINED ENV{MYSQL_SKIP_DB_SETUP})
 	
 	set_tests_properties(
 		mysql_integrationtests
+		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
+	)
+	set_tests_properties(
+		mysql_integrationtests_memcheck
 		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
 	)
 endif()
@@ -144,4 +159,11 @@ if (DEFINED ENV{MYSQL_HAS_SHA256})
 		mysql_integrationtests_sha256
 		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_sha256_fixture
 	)
+	
+	set_tests_properties(
+		mysql_integrationtests_sha256
+		mysql_integrationtests_sha256_setup
+		PROPERTIES LABELS "NoMemcheck"
+	)
 endif()
+

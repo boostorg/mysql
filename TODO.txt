@@ -1,6 +1,9 @@
 Sanitize
-	Rework tests so they are called directly from CMake
 	Valgrindize
+		Don't run memtest only tests on regular run
+		Make ctest print the memory problems
+		More robust valgrind_make_initialized...
+		Refactor CMake
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake
 	Test zero dates
@@ -39,6 +42,7 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
+	Formatting
 	Random input tests
 	Code coverage
 	Test dashboard

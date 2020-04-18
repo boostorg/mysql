@@ -93,3 +93,5 @@ endif()
 if(_MYSQL_TESTING_ENABLED)
 	add_subdirectory(test)
 endif()
+
+
