@@ -6,7 +6,7 @@
 cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
 	brew update
-	brew install $DATABASE
+	brew install $DATABASE valgrind
 	cp ci/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
 	sudo mkdir -p /var/run/mysqld/
 	sudo chmod 777 /var/run/mysqld/

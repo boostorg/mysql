@@ -6,6 +6,7 @@ __linux_addons_defaults: &__linux_addons_defaults
     packages:
       - boost1.70
       - python3
+      - valgrind
 
 __linux_defaults: &__linux_defaults
   os: linux
