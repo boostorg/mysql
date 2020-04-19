@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.13.0) # Determined by requiring Boost 1.70
 project(mysql-asio)
 
+# We require having access to cmake/ in the module path
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+
 # If we are the top-level project, enable testing
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
@@ -8,6 +11,9 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     	set(_MYSQL_TESTING_ENABLED ON)
     endif()
 endif()
+
+option(BOOST_MYSQL_VALGRIND_TESTS OFF "Whether to run Valgrind tests or not (requires Valgrind)")
+mark_as_advanced(BOOST_MYSQL_VALGRIND_TESTS)
 
 # Utility function to set warnings and other compile properties of
 # our test targets
@@ -93,5 +99,3 @@ endif()
 if(_MYSQL_TESTING_ENABLED)
 	add_subdirectory(test)
 endif()
-
-

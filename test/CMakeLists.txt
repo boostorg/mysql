@@ -13,6 +13,11 @@ if(NOT googletest_POPULATED)
     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 endif()
 
+# Valgrind
+if (BOOST_MYSQL_VALGRIND_TESTS)
+	find_package(Mysqlvalgrind REQUIRED)
+endif()
+
 # Unit testing. We do not use gtest_discover_tests because
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
@@ -53,10 +58,18 @@ target_link_libraries(
 	mysql_asio
 )
 _mysql_common_target_settings(mysql_unittests)
-add_test(
-	NAME mysql_unittests
-	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_unittests
-)
+
+if (BOOST_MYSQL_VALGRIND_TESTS)
+	Mysqlvalgrind_AddMemcheckTest(
+		NAME mysql_unittests_memcheck
+		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_unittests
+	)
+else()
+	add_test(
+		NAME mysql_unittests
+		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_unittests
+	)
+endif()
 
 # Integration testing
 find_package(Boost REQUIRED COMPONENTS coroutine)
@@ -91,6 +104,20 @@ target_include_directories(
 )
 _mysql_common_target_settings(mysql_integrationtests)
 
+# Integration test setup
+add_test(
+	NAME mysql_integrationtests_setup
+	COMMAND
+		${Python3_EXECUTABLE} 
+		${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
+		${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
+		-s BOOST_MYSQL_SKIP_DB_SETUP # If this is defined we will skip setup (just for development)
+	)
+set_tests_properties(
+	mysql_integrationtests_setup 
+	PROPERTIES FIXTURES_SETUP mysql_integrationtests_fixture
+)
+
 # Regular integration tests
 add_test(
 	NAME mysql_integrationtests
@@ -100,32 +127,24 @@ add_test(
 )
 set_tests_properties(
 	mysql_integrationtests
-	PROPERTIES LABELS "NoMemcheck"
+	PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
 )
 
-add_test(
-	NAME mysql_integrationtests_memcheck
-	COMMAND 
-		${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
-		"--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*"
-)
-
-if (NOT DEFINED ENV{MYSQL_SKIP_DB_SETUP})
-	add_test(
-		NAME mysql_integrationtests_setup
-		COMMAND
-			${Python3_EXECUTABLE} 
-			${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
-			${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
-	)
-	set_tests_properties(
-		mysql_integrationtests_setup 
-		PROPERTIES FIXTURES_SETUP mysql_integrationtests_fixture
-	)
+# If we are using memcheck, then run a subset of the integration tests
+# under valgrind. Coroutine tests don't work well under Valgrind, and
+# SSL tests are too slow
+if (BOOST_MYSQL_VALGRIND_TESTS)
+	if (DEFINED ENV{BOOST_MYSQL_HAS_SHA256})
+		set(GTEST_FILTER "--gtest_filter=-*sslrequire*:*coroutine*")
+	else()
+		set(GTEST_FILTER "--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*")
+	endif()
 	
-	set_tests_properties(
-		mysql_integrationtests
-		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
+	add_test(
+		NAME mysql_integrationtests_memcheck
+		COMMAND 
+			${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+			${GTEST_FILTER}
 	)
 	set_tests_properties(
 		mysql_integrationtests_memcheck
@@ -134,7 +153,7 @@ if (NOT DEFINED ENV{MYSQL_SKIP_DB_SETUP})
 endif()
 
 # SHA256 tests 
-if (DEFINED ENV{MYSQL_HAS_SHA256})
+if (DEFINED ENV{BOOST_MYSQL_HAS_SHA256})
 	# Setup
 	add_test(
 		NAME mysql_integrationtests_sha256_setup
@@ -142,10 +161,11 @@ if (DEFINED ENV{MYSQL_HAS_SHA256})
 			${Python3_EXECUTABLE} 
 			${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
 			${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup_sha256.sql
+			-s BOOST_MYSQL_SKIP_DB_SETUP
 	)
 	set_tests_properties(
 		mysql_integrationtests_sha256_setup 
-		PROPERTIES FIXTURES_SETUP mysql_integrationtests_sha256_fixture
+		PROPERTIES FIXTURES_SETUP "mysql_integrationtests_fixture;mysql_integrationtests_sha256_fixture"
 	)
 	
 	# Actual tests
@@ -159,11 +179,4 @@ if (DEFINED ENV{MYSQL_HAS_SHA256})
 		mysql_integrationtests_sha256
 		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_sha256_fixture
 	)
-	
-	set_tests_properties(
-		mysql_integrationtests_sha256
-		mysql_integrationtests_sha256_setup
-		PROPERTIES LABELS "NoMemcheck"
-	)
 endif()
-

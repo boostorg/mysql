@@ -91,7 +91,7 @@
    <insert_a_suppression_name_here>
    Memcheck:Addr4
    ...
-   obj:/*python3*
+   obj:/*python2*
    ...
 }
 

@@ -1,9 +1,10 @@
 Sanitize
 	Valgrindize
-		Don't run memtest only tests on regular run
-		Make ctest print the memory problems
-		More robust valgrind_make_initialized...
+		Make valgrind_make_initialized in a separate file and conditional to BOOST_MYSQL_VALGRIND_TESTS
+		Build the library with the Valgrind include and define if BOOST_MYSQL_VALGRIND_TESTS
+		Use -DBOOST_MYSQL_VALGRIND_TESTS in the appropriate CIs
 		Refactor CMake
+		Rename env variables MYSQL_SHA256 in CIs
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake
 	Test zero dates
