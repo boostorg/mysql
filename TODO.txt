@@ -2,7 +2,6 @@ Sanitize
 	Valgrindize
 		Use -DBOOST_MYSQL_VALGRIND_TESTS in the appropriate CIs
 		Refactor CMake
-		Rename env variables MYSQL_SHA256 in CIs
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake
 	Test zero dates

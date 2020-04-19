@@ -14,7 +14,7 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 	if [ $DATABASE == "mariadb" ]; then
 		sudo mysql -u root < ci/root_user_setup.sql
 	else
-		export MYSQL_HAS_SHA256=1
+		export BOOST_MYSQL_HAS_SHA256=1
 	fi
 else
 	sudo cp ci/unix-ci.cnf /etc/mysql/conf.d/
