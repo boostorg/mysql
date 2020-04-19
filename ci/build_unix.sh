@@ -28,5 +28,8 @@ fi
 
 mkdir -p build
 cd build
-cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE $CMAKE_OPTIONS .. 
+cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+	$(if [ "$CMAKE_BUILD_TYPE" == "Debug" ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
+	$CMAKE_OPTIONS \
+	.. 
 make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test

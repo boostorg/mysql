@@ -1,7 +1,7 @@
 Sanitize
 	Valgrindize
-		Use -DBOOST_MYSQL_VALGRIND_TESTS in the appropriate CIs
 		Refactor CMake
+		Use -DBOOST_MYSQL_VALGRIND_TESTS in the appropriate CIs: check Linux & OSX debug
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake
 	Test zero dates
