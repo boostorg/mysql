@@ -10,6 +10,7 @@ Sanitize
 	Test zero dates
 	Review handshake auth_plugin_data - seems like buffer overrun is possible (auth data string_lenenc?)
 	Rename "awesome" database (yeah, we know it's awesome)
+	include boost mysql.hpp
 	Connection quit
 Better docs
 	Breaking up the tutorial in pieces
