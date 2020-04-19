@@ -90,6 +90,15 @@ target_compile_features(
 	cxx_std_17
 )
 
+if (BOOST_MYSQL_VALGRIND_TESTS)
+	find_package(Mysqlvalgrind REQUIRED)
+	target_link_libraries(
+		mysql_asio
+		INTERFACE
+		Mysqlvalgrind::Mysqlvalgrind
+	)
+endif()
+
 # Examples
 if(_MYSQL_TESTING_ENABLED)
 	add_subdirectory(example)

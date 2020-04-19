@@ -6,19 +6,17 @@ find_path(Mysqlvalgrind_INCLUDE_DIR "valgrind/memcheck.h")
 # Inform CMake of the results
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-  Mysqlvalgrind
-  FOUND_VAR Mysqlvalgrind_FOUND
-  REQUIRED_VARS
+    Mysqlvalgrind
+    DEFAULT_MSG
     Mysqlvalgrind_EXECUTABLE
     Mysqlvalgrind_INCLUDE_DIR
 )
 
 # Valgrind includes
 if(Mysqlvalgrind_FOUND AND NOT TARGET Mysqlvalgrind::Mysqlvalgrind)
-  add_library(Mysqlvalgrind::Mysqlvalgrind UNKNOWN IMPORTED)
-  set_target_properties(Mysqlvalgrind::Mysqlvalgrind PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${Mysqlvalgrind_INCLUDE_DIR}"
-  )
+    add_library(Mysqlvalgrind::Mysqlvalgrind INTERFACE IMPORTED)
+    target_include_directories(Mysqlvalgrind::Mysqlvalgrind INTERFACE ${Mysqlvalgrind_INCLUDE_DIR})
+    target_compile_definitions(Mysqlvalgrind::Mysqlvalgrind INTERFACE BOOST_MYSQL_VALGRIND_TESTS)
 endif()
 
 if (Mysqlvalgrind_FOUND AND NOT COMMAND MysqlValgrind_AddTest)

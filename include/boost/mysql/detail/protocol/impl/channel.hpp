@@ -5,9 +5,8 @@
 #include <cassert>
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
+#include "boost/mysql/detail/auxiliar/valgrind.hpp"
 #include <boost/asio/yield.hpp>
-
-#include <valgrind/memcheck.h>
 
 namespace boost {
 namespace mysql {
@@ -22,11 +21,6 @@ inline std::uint32_t compute_size_to_write(
 		MAX_PACKET_SIZE,
 		buffer_size - transferred_size
 	));
-}
-
-inline void mark_as_initialized(boost::asio::const_buffer buff)
-{
-	VALGRIND_MAKE_MEM_DEFINED(buff.data(), buff.size());
 }
 
 } // detail
@@ -173,19 +167,27 @@ void boost::mysql::detail::channel<AsyncStream>::read(
 	std::uint32_t size_to_read = 0;
 	buffer.clear();
 	code.clear();
+	auto header_buff = boost::asio::buffer(header_buffer_);
 
 	do
 	{
-		read_impl(boost::asio::buffer(header_buffer_), code);
-		mark_as_initialized(boost::asio::buffer(header_buffer_));
+		// Read header
+		read_impl(header_buff, code);
+		valgrind_make_mem_defined(header_buff);
 		if (code) return;
+
+		// See how many bytes we should be reading
 		code = process_header_read(size_to_read);
 		if (code) return;
+
+		// Read the rest of the message
 		buffer.resize(buffer.size() + size_to_read);
-		read_impl(boost::asio::buffer(buffer.data() + transferred_size, size_to_read), code);
-		mark_as_initialized(boost::asio::buffer(buffer.data() + transferred_size, size_to_read));
+		auto read_buffer = boost::asio::buffer(buffer.data() + transferred_size, size_to_read);
+		read_impl(read_buffer, code);
+		valgrind_make_mem_defined(read_buffer);
 		if (code) return;
 		transferred_size += size_to_read;
+
 	} while (size_to_read == MAX_PACKET_SIZE);
 }
 
@@ -272,7 +274,7 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 						boost::asio::buffer(stream_.header_buffer_),
 						std::move(*this)
 					);
-					mark_as_initialized(boost::asio::buffer(stream_.header_buffer_));
+					valgrind_make_mem_defined(boost::asio::buffer(stream_.header_buffer_));
 
 					code = stream_.process_header_read(size_to_read);
 					if (code)
@@ -287,7 +289,9 @@ boost::mysql::detail::channel<AsyncStream>::async_read(
 						boost::asio::buffer(buffer_.data() + total_transferred_size_, size_to_read),
 						std::move(*this)
 					);
-					mark_as_initialized(boost::asio::buffer(buffer_.data() + total_transferred_size_, bytes_transferred));
+					valgrind_make_mem_defined(
+						boost::asio::buffer(buffer_.data() + total_transferred_size_, bytes_transferred)
+					);
 
 					total_transferred_size_ += bytes_transferred;
 				} while (bytes_transferred == MAX_PACKET_SIZE);
