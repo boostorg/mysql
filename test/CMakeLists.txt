@@ -13,11 +13,6 @@ if(NOT googletest_POPULATED)
     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
 endif()
 
-# Valgrind
-if (BOOST_MYSQL_VALGRIND_TESTS)
-	find_package(Mysqlvalgrind REQUIRED)
-endif()
-
 # Unit testing. We do not use gtest_discover_tests because
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
@@ -73,7 +68,6 @@ endif()
 
 # Integration testing
 find_package(Boost REQUIRED COMPONENTS coroutine)
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 add_executable(
 	mysql_integrationtests
@@ -105,17 +99,11 @@ target_include_directories(
 _mysql_common_target_settings(mysql_integrationtests)
 
 # Integration test setup
-add_test(
-	NAME mysql_integrationtests_setup
-	COMMAND
-		${Python3_EXECUTABLE} 
-		${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
-		${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
-		-s BOOST_MYSQL_SKIP_DB_SETUP # If this is defined we will skip setup (just for development)
-	)
-set_tests_properties(
-	mysql_integrationtests_setup 
-	PROPERTIES FIXTURES_SETUP mysql_integrationtests_fixture
+_mysql_sql_setup_fixture(
+	TEST_NAME    mysql_integrationtests_setup
+	FIXTURE_NAME mysql_integrationtests_fixture
+	SQL_FILE     ${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
+	SKIP_VAR     BOOST_MYSQL_SKIP_DB_SETUP
 )
 
 # Regular integration tests
@@ -155,17 +143,11 @@ endif()
 # SHA256 tests 
 if (DEFINED ENV{BOOST_MYSQL_HAS_SHA256})
 	# Setup
-	add_test(
-		NAME mysql_integrationtests_sha256_setup
-		COMMAND
-			${Python3_EXECUTABLE} 
-			${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
-			${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup_sha256.sql
-			-s BOOST_MYSQL_SKIP_DB_SETUP
-	)
-	set_tests_properties(
-		mysql_integrationtests_sha256_setup 
-		PROPERTIES FIXTURES_SETUP "mysql_integrationtests_fixture;mysql_integrationtests_sha256_fixture"
+	_mysql_sql_setup_fixture(
+		TEST_NAME    mysql_integrationtests_sha256_setup
+		FIXTURE_NAME mysql_integrationtests_sha256_fixture
+		SQL_FILE     ${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup_sha256.sql
+		SKIP_VAR     BOOST_MYSQL_SKIP_DB_SETUP
 	)
 	
 	# Actual tests
@@ -177,6 +159,7 @@ if (DEFINED ENV{BOOST_MYSQL_HAS_SHA256})
 	)
 	set_tests_properties(
 		mysql_integrationtests_sha256
-		PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_sha256_fixture
+		PROPERTIES FIXTURES_REQUIRED 
+		"mysql_integrationtests_fixture;mysql_integrationtests_sha256_fixture"
 	)
 endif()

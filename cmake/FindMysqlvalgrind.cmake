@@ -38,7 +38,7 @@ if (Mysqlvalgrind_FOUND AND NOT COMMAND MysqlValgrind_AddTest)
 				${Mysqlvalgrind_EXECUTABLE}
 				--leak-check=full 
 				--error-limit=yes
-				--suppressions=${CMAKE_SOURCE_DIR}/test/common/valgrind_suppressions.txt 
+				--suppressions=${CMAKE_SOURCE_DIR}/tools/valgrind_suppressions.txt 
 				--error-exitcode=1
 				--gen-suppressions=all
 				${AddMemcheckTest_COMMAND}

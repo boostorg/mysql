@@ -12,37 +12,12 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     endif()
 endif()
 
+# Valgrind tests and Valgrind-friendly code (e.g. mark SSL buffers as initialized)
 option(BOOST_MYSQL_VALGRIND_TESTS OFF "Whether to run Valgrind tests or not (requires Valgrind)")
 mark_as_advanced(BOOST_MYSQL_VALGRIND_TESTS)
 
-# Utility function to set warnings and other compile properties of
-# our test targets
-function(_mysql_common_target_settings TARGET_NAME)
-	if(MSVC)
-		if (WIN32 AND CMAKE_SYSTEM_VERSION)
-	        set(WINNT_VERSION ${CMAKE_SYSTEM_VERSION})
-	        string(REPLACE "." "" WINNT_VERSION ${WINNT_VERSION})
-	        string(REGEX REPLACE "([0-9])" "0\\1" WINNT_VERSION ${WINNT_VERSION})
-	
-	        set(WINNT_VERSION "0x${WINNT_VERSION}")
-	    endif()
-		target_compile_definitions(
-			${TARGET_NAME}
-			PRIVATE
-			_CRT_SECURE_NO_WARNINGS
-			_WIN32_WINNT=${WINNT_VERSION} # Silence warnings in Windows
-			_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING # Warnings in C++17 for Asio
-		)
-		# For some reason, Appveyor setup needs this to link against coroutine
-		target_link_directories(${TARGET_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
-		target_compile_options(${TARGET_NAME} PRIVATE /bigobj) # Prevent failures on Windows
-	else()
-		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
-	endif()
-	set_target_properties(${TARGET_NAME} PROPERTIES CXX_EXTENSIONS OFF) # disable extensions
-endfunction()
-
-set(_MYSQL_SHELL_EXT $<IF:$<PLATFORM_ID:Windows>,bat,sh>)
+# Some common utilities
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
 
 # Dependencies
 include(FetchContent)
@@ -50,6 +25,10 @@ include(FetchContent)
 find_package(Boost 1.70.0 REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+
+if (BOOST_MYSQL_VALGRIND_TESTS)
+	find_package(Mysqlvalgrind REQUIRED)
+endif()
 
 # Date
 FetchContent_Declare(
@@ -91,7 +70,6 @@ target_compile_features(
 )
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
-	find_package(Mysqlvalgrind REQUIRED)
 	target_link_libraries(
 		mysql_asio
 		INTERFACE
@@ -99,12 +77,9 @@ if (BOOST_MYSQL_VALGRIND_TESTS)
 	)
 endif()
 
-# Examples
+# Examples and tests
 if(_MYSQL_TESTING_ENABLED)
+	include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
 	add_subdirectory(example)
-endif()
-
-# Tests
-if(_MYSQL_TESTING_ENABLED)
 	add_subdirectory(test)
 endif()

@@ -1,11 +1,7 @@
 
 find_package(Boost REQUIRED COMPONENTS coroutine)
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-if (BOOST_MYSQL_VALGRIND_TESTS)
-	find_package(Mysqlvalgrind REQUIRED)
-endif()
-
+# Compile the example
 function (_mysql_build_example EXECUTABLE_NAME CPPFILE)
 	add_executable(
 		${EXECUTABLE_NAME}
@@ -20,6 +16,7 @@ function (_mysql_build_example EXECUTABLE_NAME CPPFILE)
 	_mysql_common_target_settings(${EXECUTABLE_NAME})
 endfunction()
 
+# Run it as a test
 function (_mysql_test_example EXECUTABLE_NAME)
 	set(EXECUTABLE_PATH ${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE_NAME})
     set(TEST_NAME "mysql_${EXECUTABLE_NAME}")
@@ -30,6 +27,7 @@ function (_mysql_test_example EXECUTABLE_NAME)
 	set_tests_properties(${TEST_NAME} PROPERTIES FIXTURES_REQUIRED mysql_examples_fixture)
 endfunction()
 
+# Run it as a test using Valgrind
 function (_mysql_memcheck_example EXECUTABLE_NAME)
 	set(EXECUTABLE_PATH ${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE_NAME})
     set(TEST_NAME "mysql_${EXECUTABLE_NAME}_memcheck")
@@ -40,30 +38,30 @@ function (_mysql_memcheck_example EXECUTABLE_NAME)
 	set_tests_properties(${TEST_NAME} PROPERTIES FIXTURES_REQUIRED mysql_examples_fixture)
 endfunction()
 
+# The list of all the examples we have
 set(MYSQL_EXAMPLES
-  query_sync
-  query_async_callbacks
-  query_async_coroutines
-  query_async_futures
-  metadata
-  prepared_statements
-  unix_socket
+    query_sync
+    query_async_callbacks
+    query_async_coroutines
+    query_async_futures
+    metadata
+    prepared_statements
+    unix_socket
 )
 
+# The examples we do NOT want to ever memcheck
 set(MYSQL_EXAMPLES_NOMEMCHECK
-  query_async_coroutines
+    query_async_coroutines
 )
 
-# Examples setup
-add_test(
-	NAME mysql_examples_setup
-	COMMAND
-		${Python3_EXECUTABLE} 
-		${CMAKE_SOURCE_DIR}/test/common/run_sql.py 
-		${CMAKE_CURRENT_SOURCE_DIR}/db_setup.sql
+# Run setup
+_mysql_sql_setup_fixture(
+	TEST_NAME mysql_examples_setup
+	FIXTURE_NAME mysql_examples_fixture
+	SQL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/db_setup.sql
 )
-set_tests_properties(mysql_examples_setup PROPERTIES FIXTURES_SETUP mysql_examples_fixture)
 
+# Build and run examples
 foreach(EXAMPLE_NAME ${MYSQL_EXAMPLES})
     set(EXECUTABLE_NAME "example_${EXAMPLE_NAME}")
 
