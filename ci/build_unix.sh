@@ -6,7 +6,7 @@
 cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
 	brew update
-	brew install $DATABASE valgrind
+	brew install $DATABASE
 	cp ci/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
 	sudo mkdir -p /var/run/mysqld/
 	sudo chmod 777 /var/run/mysqld/
@@ -29,7 +29,7 @@ fi
 mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-	$(if [ "$CMAKE_BUILD_TYPE" == "Debug" ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
+	$(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
 	$CMAKE_OPTIONS \
 	.. 
 make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test

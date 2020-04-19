@@ -49,6 +49,7 @@ matrix:
       env:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
+        - USE_VALGRIND=1
     - name: linux_gcc_x64_release_mysql
       <<: *__linux_mysql_defaults
       compiler: gcc
@@ -61,6 +62,7 @@ matrix:
       env:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
+        - USE_VALGRIND=1
     - name: linux_clang_x64_release_mysql
       <<: *__linux_mysql_defaults
       compiler: clang
@@ -73,6 +75,7 @@ matrix:
       env:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mariadb
+        - USE_VALGRIND=1
     - name: linux_gcc_x64_release_mariadb
       <<: *__linux_mariadb_defaults
       compiler: gcc
@@ -85,6 +88,7 @@ matrix:
       env:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mariadb
+        - USE_VALGRIND=1
     - name: linux_clang_x64_release_mariadb
       <<: *__linux_mariadb_defaults
       compiler: clang
