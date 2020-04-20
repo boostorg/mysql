@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/connection.hpp"
+#include "boost/mysql/mysql.hpp"
 #include <boost/asio/io_service.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>

@@ -3,7 +3,6 @@ Sanitize
 	Copy operations for handshake
 	Test zero dates
 	Review handshake auth_plugin_data - seems like buffer overrun is possible (auth data string_lenenc?)
-	include boost mysql.hpp
 	Connection quit
 Better docs
 	Breaking up the tutorial in pieces
