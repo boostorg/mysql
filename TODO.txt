@@ -1,3 +1,9 @@
+Codecov
+    Option in CMake
+    Use the option in CIs; add lcov package to CIs
+    Badge in README
+    Coverage with clang
+    Use option in CIs; use in OSX
 Sanitize
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake
@@ -36,9 +42,7 @@ Usability
 	connection::run_sql that hides the resultset concept
 Consider if header-only is a good idea
 Technical debt
-	Formatting
 	Random input tests
-	Code coverage
 	Test dashboard
 	Sanitizers
 	Format checker

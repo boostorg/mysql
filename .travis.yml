@@ -14,6 +14,7 @@ __linux_addons_defaults: &__linux_addons_defaults
       - boost1.70
       - python3
       - valgrind
+      - lcov
 
 __linux_defaults: &__linux_defaults
   os: linux
@@ -57,6 +58,7 @@ matrix:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
         - USE_VALGRIND=1
+        - USE_COVERAGE=1
     - name: linux_gcc_x64_release_mysql
       <<: *__linux_mysql_defaults
       compiler: gcc
@@ -70,6 +72,7 @@ matrix:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
         - USE_VALGRIND=1
+        - USE_COVERAGE=1
     - name: linux_clang_x64_release_mysql
       <<: *__linux_mysql_defaults
       compiler: clang
@@ -83,6 +86,7 @@ matrix:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mariadb
         - USE_VALGRIND=1
+        - USE_COVERAGE=1
     - name: linux_gcc_x64_release_mariadb
       <<: *__linux_mariadb_defaults
       compiler: gcc
@@ -96,6 +100,7 @@ matrix:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mariadb
         - USE_VALGRIND=1
+        - USE_COVERAGE=1
     - name: linux_clang_x64_release_mariadb
       <<: *__linux_mariadb_defaults
       compiler: clang
@@ -108,6 +113,7 @@ matrix:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
+        - USE_COVERAGE=1
     - name: osx_clang_x64_release_mysql
       <<: *__osx_defaults
       env:
@@ -120,6 +126,7 @@ matrix:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mariadb
+        - USE_COVERAGE=1
     - name: osx_clang_x64_release_mariadb
       <<: *__osx_defaults
       env:

@@ -13,7 +13,7 @@
 cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
     brew update
-    brew install $DATABASE
+    brew install $DATABASE lcov
     cp ci/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
     sudo mkdir -p /var/run/mysqld/
     sudo chmod 777 /var/run/mysqld/
@@ -37,6 +37,20 @@ mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
     $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
+    $(if [ $USE_COVERAGE ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
     $CMAKE_OPTIONS \
     .. 
 make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test
+
+# Coverage collection
+if [ $USE_COVERAGE ]; then
+    if [ "$TRAVIS_COMPILER" == "clang" ]; then
+        GCOV_TOOL="$TRAVIS_BUILD_DIR/ci/clang-gcov.sh"
+    else
+        GCOV_TOOL=gcov
+    fi;
+    lcov --capture --directory . -o coverage.info --gcov-tool "$GCOV_TOOL"
+    lcov -o coverage.info --extract coverage.info "**include/boost/mysql/**"
+    curl -s https://codecov.io/bash -o codecov.sh
+    bash +x codecov.sh -f coverage.info
+fi

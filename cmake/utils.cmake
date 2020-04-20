@@ -30,4 +30,10 @@ function(_mysql_common_target_settings TARGET_NAME)
         target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
     endif()
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_EXTENSIONS OFF) # disable extensions
+    
+    # Coverage
+    if (BOOST_MYSQL_COVERAGE)
+        target_compile_options(${TARGET_NAME} PRIVATE --coverage)
+        target_link_options(${TARGET_NAME} PRIVATE --coverage)
+    endif()
 endfunction()
