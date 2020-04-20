@@ -1,10 +1,7 @@
 Sanitize
 	Include guards and copyrights
-		Include guards
-		Headers
-		Cpps
-		CMakes
-		Other stuff			
+	License/License_1_0
+	Tabs to spaces
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake
 	Test zero dates
