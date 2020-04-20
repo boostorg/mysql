@@ -23,32 +23,32 @@ namespace mysql {
  */
 enum class field_type
 {
-	tinyint,      ///< TINYINT (signed and unsigned).
-	smallint,     ///< SMALLINT (signed and unsigned).
-	mediumint,    ///< MEDIUMINT (signed and unsigned).
-	int_,         ///< Plain INT (signed and unsigned).
-	bigint,       ///< BIGINT (signed and unsigned).
-	float_,       ///< FLOAT (warning: FLOAT(p) where p >= 24 creates a DOUBLE column).
-	double_,      ///< DOUBLE
-	decimal,      ///< DECIMAL
-	bit,          ///< BIT
-	year,         ///< YEAR
-	time,         ///< TIME
-	date,         ///< DATE
-	datetime,     ///< DATETIME
-	timestamp,    ///< TIMESTAMP
-	char_,        ///< CHAR (any length)
-	varchar,      ///< VARCHAR (any length)
-	binary,       ///< BINARY (any length)
-	varbinary,    ///< VARBINARY (any length)
-	text,         ///< TINYTEXT, TEXT, MEDIUMTEXT and LONGTEXT
-	blob,         ///< TINYBLOB, BLOB, MEDIUMBLOB and LONGBLOB
-	enum_,        ///< ENUM
-	set,          ///< SET
-	geometry,     ///< GEOMETRY
+    tinyint,      ///< TINYINT (signed and unsigned).
+    smallint,     ///< SMALLINT (signed and unsigned).
+    mediumint,    ///< MEDIUMINT (signed and unsigned).
+    int_,         ///< Plain INT (signed and unsigned).
+    bigint,       ///< BIGINT (signed and unsigned).
+    float_,       ///< FLOAT (warning: FLOAT(p) where p >= 24 creates a DOUBLE column).
+    double_,      ///< DOUBLE
+    decimal,      ///< DECIMAL
+    bit,          ///< BIT
+    year,         ///< YEAR
+    time,         ///< TIME
+    date,         ///< DATE
+    datetime,     ///< DATETIME
+    timestamp,    ///< TIMESTAMP
+    char_,        ///< CHAR (any length)
+    varchar,      ///< VARCHAR (any length)
+    binary,       ///< BINARY (any length)
+    varbinary,    ///< VARBINARY (any length)
+    text,         ///< TINYTEXT, TEXT, MEDIUMTEXT and LONGTEXT
+    blob,         ///< TINYBLOB, BLOB, MEDIUMBLOB and LONGBLOB
+    enum_,        ///< ENUM
+    set,          ///< SET
+    geometry,     ///< GEOMETRY
 
-	unknown,      ///< None of the known types; maybe a new MySQL type we have no knowledge of.
-	_not_computed,
+    unknown,      ///< None of the known types; maybe a new MySQL type we have no knowledge of.
+    _not_computed,
 };
 
 } // mysql

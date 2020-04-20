@@ -19,15 +19,15 @@ namespace mysql {
 namespace detail {
 
 inline errc deserialize_text_value(
-	std::string_view from,
-	const field_metadata& meta,
-	value& output
+    std::string_view from,
+    const field_metadata& meta,
+    value& output
 );
 
 inline error_code deserialize_text_row(
-	deserialization_context& ctx,
-	const std::vector<field_metadata>& meta,
-	std::vector<value>& output
+    deserialization_context& ctx,
+    const std::vector<field_metadata>& meta,
+    std::vector<value>& output
 );
 
 } // detail

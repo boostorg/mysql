@@ -26,29 +26,29 @@ if(Mysqlvalgrind_FOUND AND NOT TARGET Mysqlvalgrind::Mysqlvalgrind)
 endif()
 
 if (Mysqlvalgrind_FOUND AND NOT COMMAND MysqlValgrind_AddTest)
-	function(Mysqlvalgrind_AddMemcheckTest)
-		set(options "")
-    	set(oneValueArgs NAME)
-    	set(multiValueArgs COMMAND)
-    	cmake_parse_arguments(
-    		AddMemcheckTest
-    		"${options}" 
-    		"${oneValueArgs}"
+    function(Mysqlvalgrind_AddMemcheckTest)
+        set(options "")
+        set(oneValueArgs NAME)
+        set(multiValueArgs COMMAND)
+        cmake_parse_arguments(
+            AddMemcheckTest
+            "${options}" 
+            "${oneValueArgs}"
             "${multiValueArgs}"
             ${ARGN}
         )
         
-		add_test(
-			NAME ${AddMemcheckTest_NAME}
-			COMMAND 
-				${Mysqlvalgrind_EXECUTABLE}
-				--leak-check=full 
-				--error-limit=yes
-				--suppressions=${CMAKE_SOURCE_DIR}/tools/valgrind_suppressions.txt 
-				--error-exitcode=1
-				--gen-suppressions=all
-				${AddMemcheckTest_COMMAND}
-		)
-	endfunction() 
+        add_test(
+            NAME ${AddMemcheckTest_NAME}
+            COMMAND 
+                ${Mysqlvalgrind_EXECUTABLE}
+                --leak-check=full 
+                --error-limit=yes
+                --suppressions=${CMAKE_SOURCE_DIR}/tools/valgrind_suppressions.txt 
+                --error-exitcode=1
+                --gen-suppressions=all
+                ${AddMemcheckTest_COMMAND}
+        )
+    endfunction() 
 endif()
 

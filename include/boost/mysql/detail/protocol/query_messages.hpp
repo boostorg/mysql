@@ -17,17 +17,17 @@ namespace detail {
 
 struct com_query_packet
 {
-	string_eof query;
+    string_eof query;
 
-	static constexpr std::uint8_t command_id = 3;
+    static constexpr std::uint8_t command_id = 3;
 };
 
 template <>
 struct get_struct_fields<com_query_packet>
 {
-	static constexpr auto value = std::make_tuple(
-		&com_query_packet::query
-	);
+    static constexpr auto value = std::make_tuple(
+        &com_query_packet::query
+    );
 };
 
 }

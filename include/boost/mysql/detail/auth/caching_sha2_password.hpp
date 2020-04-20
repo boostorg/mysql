@@ -27,10 +27,10 @@ namespace caching_sha2_password {
 // auth without an SSL connection, but that requires the server public key,
 // and we do not implement that.
 inline error_code compute_response(
-	std::string_view password,
-	std::string_view challenge,
-	bool use_ssl,
-	std::string& output
+    std::string_view password,
+    std::string_view challenge,
+    bool use_ssl,
+    std::string& output
 );
 
 } // caching_sha2_password

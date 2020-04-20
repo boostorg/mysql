@@ -17,13 +17,13 @@ namespace detail {
 template <typename T, typename Head, typename... Tail>
 struct is_one_of
 {
-	static constexpr bool value = std::is_same_v<T, Head> || is_one_of<T, Tail...>::value;
+    static constexpr bool value = std::is_same_v<T, Head> || is_one_of<T, Tail...>::value;
 };
 
 template <typename T, typename Head>
 struct is_one_of<T, Head>
 {
-	static constexpr bool value = std::is_same_v<T, Head>;
+    static constexpr bool value = std::is_same_v<T, Head>;
 };
 
 

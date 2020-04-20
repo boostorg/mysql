@@ -20,10 +20,10 @@ namespace mysql_native_password {
 // Authorization for this plugin is always challenge (nonce) -> response
 // (hashed password).
 inline error_code compute_response(
-	std::string_view password,
-	std::string_view challenge,
-	bool use_ssl,
-	std::string& output
+    std::string_view password,
+    std::string_view challenge,
+    bool use_ssl,
+    std::string& output
 );
 
 

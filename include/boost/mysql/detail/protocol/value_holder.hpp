@@ -18,20 +18,20 @@ namespace detail {
 template <typename T>
 struct value_holder
 {
-	using value_type = T;
-	static_assert(std::is_nothrow_default_constructible_v<T>);
+    using value_type = T;
+    static_assert(std::is_nothrow_default_constructible_v<T>);
 
-	value_type value;
+    value_type value;
 
-	value_holder() noexcept: value{} {};
+    value_holder() noexcept: value{} {};
 
-	template <typename U>
-	explicit constexpr value_holder(U&& u)
-		noexcept(std::is_nothrow_constructible_v<T, decltype(u)>):
-		value(std::forward<U>(u)) {}
+    template <typename U>
+    explicit constexpr value_holder(U&& u)
+        noexcept(std::is_nothrow_constructible_v<T, decltype(u)>):
+        value(std::forward<U>(u)) {}
 
-	constexpr bool operator==(const value_holder<T>& rhs) const { return value == rhs.value; }
-	constexpr bool operator!=(const value_holder<T>& rhs) const { return value != rhs.value; }
+    constexpr bool operator==(const value_holder<T>& rhs) const { return value == rhs.value; }
+    constexpr bool operator!=(const value_holder<T>& rhs) const { return value != rhs.value; }
 };
 
 // Operations on value holders

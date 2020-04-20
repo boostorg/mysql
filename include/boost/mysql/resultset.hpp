@@ -62,148 +62,148 @@ namespace mysql {
  * resultset, other than assignment. Resultsets are movable but not copyable.
  */
 template <
-	typename StreamType
+    typename StreamType
 >
 class resultset
 {
-	using channel_type = detail::channel<StreamType>;
+    using channel_type = detail::channel<StreamType>;
 
-	detail::deserialize_row_fn deserializer_ {};
-	channel_type* channel_;
-	detail::resultset_metadata meta_;
-	row current_row_;
-	detail::bytestring buffer_;
-	detail::ok_packet ok_packet_;
-	bool eof_received_ {false};
+    detail::deserialize_row_fn deserializer_ {};
+    channel_type* channel_;
+    detail::resultset_metadata meta_;
+    row current_row_;
+    detail::bytestring buffer_;
+    detail::ok_packet ok_packet_;
+    bool eof_received_ {false};
 public:
-	/// Default constructor.
-	resultset(): channel_(nullptr) {};
+    /// Default constructor.
+    resultset(): channel_(nullptr) {};
 
-	// Private, do not use
-	resultset(channel_type& channel, detail::resultset_metadata&& meta, detail::deserialize_row_fn deserializer):
-		deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
-	resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
-		channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
+    // Private, do not use
+    resultset(channel_type& channel, detail::resultset_metadata&& meta, detail::deserialize_row_fn deserializer):
+        deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
+    resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
+        channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 
-	/// Retrieves the stream object associated with the underlying connection.
-	StreamType& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }
+    /// Retrieves the stream object associated with the underlying connection.
+    StreamType& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }
 
-	/// Retrieves the stream object associated with the underlying connection.
-	const StreamType& next_layer() const noexcept { assert(channel_); return channel_->next_layer(); }
+    /// Retrieves the stream object associated with the underlying connection.
+    const StreamType& next_layer() const noexcept { assert(channel_); return channel_->next_layer(); }
 
-	/**
-	 * \brief Fetches a single row (sync with error code version).
-	 * \details The returned object will be nullptr if there are no more rows
-	 * to be read. Calling fetch_one on a complete resultset returns nullptr.
-	 *
-	 * The returned row points into memory owned by the resultset. Destroying
-	 * or moving the resultset object invalidates the returned row. Calling
-	 * any of the fetch methods again does also invalidate the returned row.
-	 * fetch_one is the fetch method that performs the less memory allocations
-	 * of the three.
-	 */
-	const row* fetch_one(error_code& err, error_info& info);
+    /**
+     * \brief Fetches a single row (sync with error code version).
+     * \details The returned object will be nullptr if there are no more rows
+     * to be read. Calling fetch_one on a complete resultset returns nullptr.
+     *
+     * The returned row points into memory owned by the resultset. Destroying
+     * or moving the resultset object invalidates the returned row. Calling
+     * any of the fetch methods again does also invalidate the returned row.
+     * fetch_one is the fetch method that performs the less memory allocations
+     * of the three.
+     */
+    const row* fetch_one(error_code& err, error_info& info);
 
-	/// Fetches a single row (sync with exceptions version).
-	const row* fetch_one();
+    /// Fetches a single row (sync with exceptions version).
+    const row* fetch_one();
 
-	/**
-	 * \brief Fetches at most count rows (sync with error code version).
-	 * \details The returned rows are guaranteed to be valid as long as the
-	 * resultset is alive. Contrary to fetch_one, subsequent calls to any of
-	 * the fetch methods do not invalidate the returned rows.
-	 *
-	 * Only if count is **greater** than the available number of rows,
-	 * the resultset will be completed.
-	 */
-	std::vector<owning_row> fetch_many(std::size_t count, error_code& err, error_info& info);
+    /**
+     * \brief Fetches at most count rows (sync with error code version).
+     * \details The returned rows are guaranteed to be valid as long as the
+     * resultset is alive. Contrary to fetch_one, subsequent calls to any of
+     * the fetch methods do not invalidate the returned rows.
+     *
+     * Only if count is **greater** than the available number of rows,
+     * the resultset will be completed.
+     */
+    std::vector<owning_row> fetch_many(std::size_t count, error_code& err, error_info& info);
 
-	/// Fetches at most count rows (sync with exceptions version).
-	std::vector<owning_row> fetch_many(std::size_t count);
+    /// Fetches at most count rows (sync with exceptions version).
+    std::vector<owning_row> fetch_many(std::size_t count);
 
-	/**
-	 * \brief Fetches all available rows (sync with error code version).
-	 * \details The returned rows are guaranteed to be valid as long as the
-	 * resultset is alive. Contrary to fetch_one, subsequent calls to any of
-	 * the fetch methods do not invalidate the returned rows.
-	 *
-	 * The resultset is guaranteed to be complete() after this call returns.
-	 */
-	std::vector<owning_row> fetch_all(error_code& err, error_info& info);
+    /**
+     * \brief Fetches all available rows (sync with error code version).
+     * \details The returned rows are guaranteed to be valid as long as the
+     * resultset is alive. Contrary to fetch_one, subsequent calls to any of
+     * the fetch methods do not invalidate the returned rows.
+     *
+     * The resultset is guaranteed to be complete() after this call returns.
+     */
+    std::vector<owning_row> fetch_all(error_code& err, error_info& info);
 
-	/// Fetches all available rows (sync with exceptions version).
-	std::vector<owning_row> fetch_all();
+    /// Fetches all available rows (sync with exceptions version).
+    std::vector<owning_row> fetch_all();
 
-	/// Handler signature for fetch_one.
-	using fetch_one_signature = void(error_code, const row*);
+    /// Handler signature for fetch_one.
+    using fetch_one_signature = void(error_code, const row*);
 
-	/// Fetchs a single row (async version).
-	template <typename CompletionToken>
-	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
-	async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
+    /// Fetchs a single row (async version).
+    template <typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
+    async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
 
-	/// Handler signature for fetch_many.
-	using fetch_many_signature = void(error_code, std::vector<owning_row>);
+    /// Handler signature for fetch_many.
+    using fetch_many_signature = void(error_code, std::vector<owning_row>);
 
-	/// Fetches at most count rows (async version).
-	template <typename CompletionToken>
-	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
-	async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
+    /// Fetches at most count rows (async version).
+    template <typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
+    async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
 
-	/// Handler signature for fetch_all.
-	using fetch_all_signature = void(error_code, std::vector<owning_row>);
+    /// Handler signature for fetch_all.
+    using fetch_all_signature = void(error_code, std::vector<owning_row>);
 
-	/// Fetches all available rows (async version).
-	template <typename CompletionToken>
-	BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
-	async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
+    /// Fetches all available rows (async version).
+    template <typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
+    async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
 
-	/**
-	 * \brief Returns whether this object represents a valid resultset.
-	 * \details Returns false for default-constructed resultsets. It is
-	 * undefined to call any member function on an invalid resultset,
-	 * except assignment.
-	 */
-	bool valid() const noexcept { return channel_ != nullptr; }
+    /**
+     * \brief Returns whether this object represents a valid resultset.
+     * \details Returns false for default-constructed resultsets. It is
+     * undefined to call any member function on an invalid resultset,
+     * except assignment.
+     */
+    bool valid() const noexcept { return channel_ != nullptr; }
 
-	/// Returns whether the resultset has been completely read or not.
-	bool complete() const noexcept { return eof_received_; }
+    /// Returns whether the resultset has been completely read or not.
+    bool complete() const noexcept { return eof_received_; }
 
-	/**
-	 * \brief Returns metadata about the fields in the query.
-	 * \details There will be as many field_metadata objects as fields
-	 * in the SQL query, and in the same order. For SQL statements
-	 * that do not return values (like UPDATEs), it will be empty.
-	 * \see field_metadata for more details.
-	 */
-	const std::vector<field_metadata>& fields() const noexcept { return meta_.fields(); }
+    /**
+     * \brief Returns metadata about the fields in the query.
+     * \details There will be as many field_metadata objects as fields
+     * in the SQL query, and in the same order. For SQL statements
+     * that do not return values (like UPDATEs), it will be empty.
+     * \see field_metadata for more details.
+     */
+    const std::vector<field_metadata>& fields() const noexcept { return meta_.fields(); }
 
-	/**
-	 * \brief The number of rows affected by the SQL that generated this resultset.
-	 * \warning The resultset **must be complete** before calling this function.
-	 */
-	std::uint64_t affected_rows() const noexcept { assert(complete()); return ok_packet_.affected_rows.value; }
+    /**
+     * \brief The number of rows affected by the SQL that generated this resultset.
+     * \warning The resultset **must be complete** before calling this function.
+     */
+    std::uint64_t affected_rows() const noexcept { assert(complete()); return ok_packet_.affected_rows.value; }
 
-	/**
-	 * \brief The last insert ID produced by the SQL that generated this resultset.
-	 * \warning The resultset **must be complete** before calling this function.
-	 */
-	std::uint64_t last_insert_id() const noexcept { assert(complete()); return ok_packet_.last_insert_id.value; }
+    /**
+     * \brief The last insert ID produced by the SQL that generated this resultset.
+     * \warning The resultset **must be complete** before calling this function.
+     */
+    std::uint64_t last_insert_id() const noexcept { assert(complete()); return ok_packet_.last_insert_id.value; }
 
-	/**
-	 * \brief The number of warnings produced by the SQL that generated this resultset.
-	 * \warning The resultset **must be complete** before calling this function.
-	 */
-	unsigned warning_count() const noexcept { assert(complete()); return ok_packet_.warnings.value; }
+    /**
+     * \brief The number of warnings produced by the SQL that generated this resultset.
+     * \warning The resultset **must be complete** before calling this function.
+     */
+    unsigned warning_count() const noexcept { assert(complete()); return ok_packet_.warnings.value; }
 
-	/**
-	 * \brief Additionat text information about the execution of
-	 *        the SQL that generated this resultset.
-	 * \warning The resultset **must be complete** before calling this function.
-	 */
-	std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
+    /**
+     * \brief Additionat text information about the execution of
+     *        the SQL that generated this resultset.
+     * \warning The resultset **must be complete** before calling this function.
+     */
+    std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
 
-	// TODO: status flags accessors
+    // TODO: status flags accessors
 };
 
 /**

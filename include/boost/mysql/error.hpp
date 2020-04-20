@@ -30,20 +30,20 @@ namespace mysql {
  */
 enum class errc : int
 {
-	ok = 0, ///< No error.
+    ok = 0, ///< No error.
 
-	// Server returned errors
-	#include "boost/mysql/impl/server_error_enum.hpp"
+    // Server returned errors
+    #include "boost/mysql/impl/server_error_enum.hpp"
 
-	// Protocol errors
-	incomplete_message = 0x10000, ///< An incomplete message was received from the server.
-	extra_bytes, ///< Unexpected extra bytes at the end of a message were received.
-	sequence_number_mismatch, ///< A sequence number mismatched happened.
-	server_unsupported, ///< The server does not support the minimum required capabilities to establish the connection.
-	protocol_value_error, ///< An unexpected value was found in a server-received message.
-	unknown_auth_plugin, ///< The user employs an authentication plugin not known to this library.
-	auth_plugin_requires_ssl, ///< The authentication plugin requires the connection to use SSL.
-	wrong_num_params ///< The number of parameters passed to the prepared statement does not match the number of actual parameters.
+    // Protocol errors
+    incomplete_message = 0x10000, ///< An incomplete message was received from the server.
+    extra_bytes, ///< Unexpected extra bytes at the end of a message were received.
+    sequence_number_mismatch, ///< A sequence number mismatched happened.
+    server_unsupported, ///< The server does not support the minimum required capabilities to establish the connection.
+    protocol_value_error, ///< An unexpected value was found in a server-received message.
+    unknown_auth_plugin, ///< The user employs an authentication plugin not known to this library.
+    auth_plugin_requires_ssl, ///< The authentication plugin requires the connection to use SSL.
+    wrong_num_params ///< The number of parameters passed to the prepared statement does not match the number of actual parameters.
 };
 
 /**
@@ -61,22 +61,22 @@ using error_code = boost::system::error_code;
  */
 class error_info
 {
-	std::string msg_;
+    std::string msg_;
 public:
-	/// Default constructor.
-	error_info() = default;
+    /// Default constructor.
+    error_info() = default;
 
-	/// Initialization constructor.
-	error_info(std::string&& err) noexcept: msg_(std::move(err)) {}
+    /// Initialization constructor.
+    error_info(std::string&& err) noexcept: msg_(std::move(err)) {}
 
-	/// Gets the error message.
-	const std::string& message() const noexcept { return msg_; }
+    /// Gets the error message.
+    const std::string& message() const noexcept { return msg_; }
 
-	/// Sets the error message.
-	void set_message(std::string&& err) { msg_ = std::move(err); }
+    /// Sets the error message.
+    void set_message(std::string&& err) { msg_ = std::move(err); }
 
-	/// Restores the object to its initial state.
-	void clear() noexcept { msg_.clear(); }
+    /// Restores the object to its initial state.
+    void clear() noexcept { msg_.clear(); }
 };
 
 /**

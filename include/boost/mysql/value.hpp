@@ -57,17 +57,17 @@ using time = std::chrono::microseconds;
  * They are represented as binary strings.
  */
 using value = std::variant<
-	std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
-	std::int64_t,      // signed BIGINT
-	std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, YEAR
-	std::uint64_t,     // unsigned BIGINT
-	std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
-	float,             // FLOAT
-	double,            // DOUBLE
-	date,              // DATE
-	datetime,          // DATETIME, TIMESTAMP
-	time,              // TIME
-	std::nullptr_t     // Any of the above when the value is NULL
+    std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
+    std::int64_t,      // signed BIGINT
+    std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, YEAR
+    std::uint64_t,     // unsigned BIGINT
+    std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+    float,             // FLOAT
+    double,            // DOUBLE
+    date,              // DATE
+    datetime,          // DATETIME, TIMESTAMP
+    time,              // TIME
+    std::nullptr_t     // Any of the above when the value is NULL
 >;
 
 /**

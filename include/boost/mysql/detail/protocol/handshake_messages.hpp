@@ -17,144 +17,144 @@ namespace detail {
 // initial handshake
 struct handshake_packet
 {
-	// int<1> 	protocol version 	Always 10
-	string_null server_version;
-	int4 connection_id;
-	string_lenenc auth_plugin_data; // not an actual protocol field, the merge of two fields
-	int4 capability_falgs; // merge of the two parts - not an actual field
-	int1 character_set; // default server a_protocol_character_set, only the lower 8-bits
-	int2 status_flags; // server_status_flags
-	string_null auth_plugin_name;
+    // int<1>     protocol version     Always 10
+    string_null server_version;
+    int4 connection_id;
+    string_lenenc auth_plugin_data; // not an actual protocol field, the merge of two fields
+    int4 capability_falgs; // merge of the two parts - not an actual field
+    int1 character_set; // default server a_protocol_character_set, only the lower 8-bits
+    int2 status_flags; // server_status_flags
+    string_null auth_plugin_name;
 
-	std::array<char, 8 + 0xff> auth_plugin_data_buffer; // not an actual protocol field, the merge of two fields
+    std::array<char, 8 + 0xff> auth_plugin_data_buffer; // not an actual protocol field, the merge of two fields
 };
 
 template <>
 struct get_struct_fields<handshake_packet>
 {
-	static constexpr auto value = std::make_tuple(
-		&handshake_packet::server_version,
-		&handshake_packet::connection_id,
-		&handshake_packet::auth_plugin_data,
-		&handshake_packet::capability_falgs,
-		&handshake_packet::character_set,
-		&handshake_packet::status_flags,
-		&handshake_packet::auth_plugin_name
-	);
+    static constexpr auto value = std::make_tuple(
+        &handshake_packet::server_version,
+        &handshake_packet::connection_id,
+        &handshake_packet::auth_plugin_data,
+        &handshake_packet::capability_falgs,
+        &handshake_packet::character_set,
+        &handshake_packet::status_flags,
+        &handshake_packet::auth_plugin_name
+    );
 };
 
 template <>
 struct serialization_traits<handshake_packet, serialization_tag::struct_with_fields> :
-	noop_serialize<handshake_packet>
+    noop_serialize<handshake_packet>
 {
-	static inline errc deserialize_(handshake_packet& output, deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(handshake_packet& output, deserialization_context& ctx) noexcept;
 };
 
 // response
 struct handshake_response_packet
 {
-	int4 client_flag; // capabilities
-	int4 max_packet_size;
-	int1 character_set;
-	// string[23] 	filler 	filler to the size of the handhshake response packet. All 0s.
-	string_null username;
-	string_lenenc auth_response; // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
-	string_null database; // only to be serialized if CLIENT_CONNECT_WITH_DB
-	string_null client_plugin_name; // we require CLIENT_PLUGIN_AUTH
-	// TODO: CLIENT_CONNECT_ATTRS
+    int4 client_flag; // capabilities
+    int4 max_packet_size;
+    int1 character_set;
+    // string[23]     filler     filler to the size of the handhshake response packet. All 0s.
+    string_null username;
+    string_lenenc auth_response; // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
+    string_null database; // only to be serialized if CLIENT_CONNECT_WITH_DB
+    string_null client_plugin_name; // we require CLIENT_PLUGIN_AUTH
+    // TODO: CLIENT_CONNECT_ATTRS
 };
 
 template <>
 struct get_struct_fields<handshake_response_packet>
 {
-	static constexpr auto value = std::make_tuple(
-		&handshake_response_packet::client_flag,
-		&handshake_response_packet::max_packet_size,
-		&handshake_response_packet::character_set,
-		&handshake_response_packet::username,
-		&handshake_response_packet::auth_response,
-		&handshake_response_packet::database,
-		&handshake_response_packet::client_plugin_name
-	);
+    static constexpr auto value = std::make_tuple(
+        &handshake_response_packet::client_flag,
+        &handshake_response_packet::max_packet_size,
+        &handshake_response_packet::character_set,
+        &handshake_response_packet::username,
+        &handshake_response_packet::auth_response,
+        &handshake_response_packet::database,
+        &handshake_response_packet::client_plugin_name
+    );
 };
 
 template <>
 struct serialization_traits<handshake_response_packet, serialization_tag::struct_with_fields> :
-	noop_deserialize<handshake_response_packet>
+    noop_deserialize<handshake_response_packet>
 {
-	static inline std::size_t get_size_(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
-	static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
+    static inline std::size_t get_size_(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
+    static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
 };
 
 // SSL request
 struct ssl_request
 {
-	int4 client_flag;
-	int4 max_packet_size;
-	int1 character_set;
-	string_fixed<23> filler {};
+    int4 client_flag;
+    int4 max_packet_size;
+    int1 character_set;
+    string_fixed<23> filler {};
 };
 
 template <>
 struct get_struct_fields<ssl_request>
 {
-	static constexpr auto value = std::make_tuple(
-		&ssl_request::client_flag,
-		&ssl_request::max_packet_size,
-		&ssl_request::character_set,
-		&ssl_request::filler
-	);
+    static constexpr auto value = std::make_tuple(
+        &ssl_request::client_flag,
+        &ssl_request::max_packet_size,
+        &ssl_request::character_set,
+        &ssl_request::filler
+    );
 };
 
 // auth switch request
 struct auth_switch_request_packet
 {
-	string_null plugin_name;
-	string_eof auth_plugin_data;
+    string_null plugin_name;
+    string_eof auth_plugin_data;
 };
 
 template <>
 struct get_struct_fields<auth_switch_request_packet>
 {
-	static constexpr auto value = std::make_tuple(
-		&auth_switch_request_packet::plugin_name,
-		&auth_switch_request_packet::auth_plugin_data
-	);
+    static constexpr auto value = std::make_tuple(
+        &auth_switch_request_packet::plugin_name,
+        &auth_switch_request_packet::auth_plugin_data
+    );
 };
 
 // response
 struct auth_switch_response_packet
 {
-	string_eof auth_plugin_data;
+    string_eof auth_plugin_data;
 };
 
 template <>
 struct get_struct_fields<auth_switch_response_packet>
 {
-	static constexpr auto value = std::make_tuple(
-		&auth_switch_response_packet::auth_plugin_data
-	);
+    static constexpr auto value = std::make_tuple(
+        &auth_switch_response_packet::auth_plugin_data
+    );
 };
 
 template <>
 struct serialization_traits<auth_switch_request_packet, serialization_tag::struct_with_fields> :
-	noop_serialize<auth_switch_request_packet>
+    noop_serialize<auth_switch_request_packet>
 {
-	static inline errc deserialize_(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
 };
 
 // more data (like auth switch request, but for the same plugin)
 struct auth_more_data_packet
 {
-	string_eof auth_plugin_data;
+    string_eof auth_plugin_data;
 };
 
 template <>
 struct get_struct_fields<auth_more_data_packet>
 {
-	static constexpr auto value = std::make_tuple(
-		&auth_more_data_packet::auth_plugin_data
-	);
+    static constexpr auto value = std::make_tuple(
+        &auth_more_data_packet::auth_plugin_data
+    );
 };
 
 

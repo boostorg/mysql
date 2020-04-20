@@ -32,35 +32,35 @@ static_assert(time::max() >= max_time);
 
 struct print_visitor
 {
-	std::ostream& os;
+    std::ostream& os;
 
-	print_visitor(std::ostream& os): os(os) {};
+    print_visitor(std::ostream& os): os(os) {};
 
-	template <typename T>
-	void operator()(const T& value) const { os << value; }
+    template <typename T>
+    void operator()(const T& value) const { os << value; }
 
-	void operator()(const date& value) const { ::date::operator<<(os, value); }
-	void operator()(const time& value) const
-	{
-		char buffer [100] {};
-		const char* sign = value < std::chrono::microseconds(0) ? "-" : "";
-		auto hours = std::abs(std::chrono::duration_cast<std::chrono::hours>(value).count());
-		auto mins = std::abs(std::chrono::duration_cast<std::chrono::minutes>(value % std::chrono::hours(1)).count());
-		auto secs = std::abs(std::chrono::duration_cast<std::chrono::seconds>(value % std::chrono::minutes(1)).count());
-		auto micros = std::abs((value % std::chrono::seconds(1)).count());
+    void operator()(const date& value) const { ::date::operator<<(os, value); }
+    void operator()(const time& value) const
+    {
+        char buffer [100] {};
+        const char* sign = value < std::chrono::microseconds(0) ? "-" : "";
+        auto hours = std::abs(std::chrono::duration_cast<std::chrono::hours>(value).count());
+        auto mins = std::abs(std::chrono::duration_cast<std::chrono::minutes>(value % std::chrono::hours(1)).count());
+        auto secs = std::abs(std::chrono::duration_cast<std::chrono::seconds>(value % std::chrono::minutes(1)).count());
+        auto micros = std::abs((value % std::chrono::seconds(1)).count());
 
-		snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u:%06u",
-			sign,
-			static_cast<int>(hours),
-			static_cast<unsigned>(mins),
-			static_cast<unsigned>(secs),
-			static_cast<unsigned>(micros)
-		);
+        snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u:%06u",
+            sign,
+            static_cast<int>(hours),
+            static_cast<unsigned>(mins),
+            static_cast<unsigned>(secs),
+            static_cast<unsigned>(micros)
+        );
 
-		os << buffer;
-	}
-	void operator()(const datetime& value) const { ::date::operator<<(os, value); }
-	void operator()(std::nullptr_t) const { os << "<NULL>"; }
+        os << buffer;
+    }
+    void operator()(const datetime& value) const { ::date::operator<<(os, value); }
+    void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 
 } // detail
@@ -68,41 +68,41 @@ struct print_visitor
 } // boost
 
 inline bool boost::mysql::operator==(
-	const value& lhs,
-	const value& rhs
+    const value& lhs,
+    const value& rhs
 )
 {
-	if (lhs.index() != rhs.index()) return false;
-	return std::visit([&lhs](const auto& rhs_value) {
-		using T = std::decay_t<decltype(rhs_value)>;
-		return std::get<T>(lhs) == rhs_value;
-	}, rhs);
+    if (lhs.index() != rhs.index()) return false;
+    return std::visit([&lhs](const auto& rhs_value) {
+        using T = std::decay_t<decltype(rhs_value)>;
+        return std::get<T>(lhs) == rhs_value;
+    }, rhs);
 }
 
 inline bool boost::mysql::operator==(
-	const std::vector<value>& lhs,
-	const std::vector<value>& rhs
+    const std::vector<value>& lhs,
+    const std::vector<value>& rhs
 )
 {
-	return detail::container_equals(lhs, rhs);
+    return detail::container_equals(lhs, rhs);
 }
 
 inline std::ostream& boost::mysql::operator<<(
-	std::ostream& os,
-	const value& value
+    std::ostream& os,
+    const value& value
 )
 {
-	std::visit(detail::print_visitor(os), value);
-	return os;
+    std::visit(detail::print_visitor(os), value);
+    return os;
 }
 
 template <typename... Types>
 std::array<boost::mysql::value, sizeof...(Types)>
 boost::mysql::make_values(
-	Types&&... args
+    Types&&... args
 )
 {
-	return std::array<value, sizeof...(Types)>{value(std::forward<Types>(args))...};
+    return std::array<value, sizeof...(Types)>{value(std::forward<Types>(args))...};
 }
 
 

@@ -16,147 +16,147 @@
 
 template <typename Stream>
 void boost::mysql::connection<Stream>::handshake(
-	const connection_params& params,
-	error_code& code,
-	error_info& info
+    const connection_params& params,
+    error_code& code,
+    error_info& info
 )
 {
-	code.clear();
-	info.clear();
-	detail::hanshake(channel_, params, code, info);
-	// TODO: should we close() the stream in case of error?
+    code.clear();
+    info.clear();
+    detail::hanshake(channel_, params, code, info);
+    // TODO: should we close() the stream in case of error?
 }
 
 template <typename Stream>
 void boost::mysql::connection<Stream>::handshake(
-	const connection_params& params
+    const connection_params& params
 )
 {
-	error_code code;
-	error_info info;
-	handshake(params, code, info);
-	detail::check_error_code(code, info);
+    error_code code;
+    error_info info;
+    handshake(params, code, info);
+    detail::check_error_code(code, info);
 }
 
 template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
-	CompletionToken,
-	typename boost::mysql::connection<Stream>::handshake_signature
+    CompletionToken,
+    typename boost::mysql::connection<Stream>::handshake_signature
 )
 boost::mysql::connection<Stream>::async_handshake(
-	const connection_params& params,
-	CompletionToken&& token,
-	error_info* info
+    const connection_params& params,
+    CompletionToken&& token,
+    error_info* info
 )
 {
-	detail::conditional_clear(info);
-	detail::check_completion_token<CompletionToken, handshake_signature>();
-	return detail::async_handshake(
-		channel_,
-		params,
-		std::forward<CompletionToken>(token),
-		info
-	);
+    detail::conditional_clear(info);
+    detail::check_completion_token<CompletionToken, handshake_signature>();
+    return detail::async_handshake(
+        channel_,
+        params,
+        std::forward<CompletionToken>(token),
+        info
+    );
 }
 
 // Query
 template <typename Stream>
 boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
-	std::string_view query_string,
-	error_code& err,
-	error_info& info
+    std::string_view query_string,
+    error_code& err,
+    error_info& info
 )
 {
-	err.clear();
-	info.clear();
-	resultset<Stream> res;
-	detail::execute_query(channel_, query_string, res, err, info);
-	return res;
+    err.clear();
+    info.clear();
+    resultset<Stream> res;
+    detail::execute_query(channel_, query_string, res, err, info);
+    return res;
 }
 
 template <typename Stream>
 boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
-	std::string_view query_string
+    std::string_view query_string
 )
 {
-	resultset<Stream> res;
-	error_code err;
-	error_info info;
-	detail::execute_query(channel_, query_string, res, err, info);
-	detail::check_error_code(err, info);
-	return res;
+    resultset<Stream> res;
+    error_code err;
+    error_info info;
+    detail::execute_query(channel_, query_string, res, err, info);
+    detail::check_error_code(err, info);
+    return res;
 }
 
 template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
-	CompletionToken,
-	typename boost::mysql::connection<Stream>::query_signature
+    CompletionToken,
+    typename boost::mysql::connection<Stream>::query_signature
 )
 boost::mysql::connection<Stream>::async_query(
-	std::string_view query_string,
-	CompletionToken&& token,
-	error_info* info
+    std::string_view query_string,
+    CompletionToken&& token,
+    error_info* info
 )
 {
-	detail::conditional_clear(info);
-	detail::check_completion_token<CompletionToken, query_signature>();
-	return detail::async_execute_query(
-		channel_,
-		query_string,
-		std::forward<CompletionToken>(token),
-		info
-	);
+    detail::conditional_clear(info);
+    detail::check_completion_token<CompletionToken, query_signature>();
+    return detail::async_execute_query(
+        channel_,
+        query_string,
+        std::forward<CompletionToken>(token),
+        info
+    );
 }
 
 template <typename Stream>
 boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepare_statement(
-	std::string_view statement,
-	error_code& err,
-	error_info& info
+    std::string_view statement,
+    error_code& err,
+    error_info& info
 )
 {
-	mysql::prepared_statement<Stream> res;
-	err.clear();
-	info.clear();
-	detail::prepare_statement(channel_, statement, err, info, res);
-	return res;
+    mysql::prepared_statement<Stream> res;
+    err.clear();
+    info.clear();
+    detail::prepare_statement(channel_, statement, err, info, res);
+    return res;
 }
 
 template <typename Stream>
 boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepare_statement(
-	std::string_view statement
+    std::string_view statement
 )
 {
-	mysql::prepared_statement<Stream> res;
-	error_code err;
-	error_info info;
-	detail::prepare_statement(channel_, statement, err, info, res);
-	detail::check_error_code(err, info);
-	return res;
+    mysql::prepared_statement<Stream> res;
+    error_code err;
+    error_info info;
+    detail::prepare_statement(channel_, statement, err, info, res);
+    detail::check_error_code(err, info);
+    return res;
 }
 
 template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
-	CompletionToken,
-	typename boost::mysql::connection<Stream>::prepare_statement_signature
+    CompletionToken,
+    typename boost::mysql::connection<Stream>::prepare_statement_signature
 )
 boost::mysql::connection<Stream>::async_prepare_statement(
-	std::string_view statement,
-	CompletionToken&& token,
-	error_info* info
+    std::string_view statement,
+    CompletionToken&& token,
+    error_info* info
 )
 {
-	detail::conditional_clear(info);
-	detail::check_completion_token<CompletionToken, prepare_statement_signature>();
-	return detail::async_prepare_statement(
-		channel_,
-		statement,
-		std::forward<CompletionToken>(token),
-		info
-	);
+    detail::conditional_clear(info);
+    detail::check_completion_token<CompletionToken, prepare_statement_signature>();
+    return detail::async_prepare_statement(
+        channel_,
+        statement,
+        std::forward<CompletionToken>(token),
+        info
+    );
 }
 
 

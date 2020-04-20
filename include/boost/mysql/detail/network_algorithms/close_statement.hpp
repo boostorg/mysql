@@ -16,10 +16,10 @@ namespace detail {
 
 template <typename StreamType>
 void close_statement(
-	channel<StreamType>& chan,
-	std::uint32_t statement_id,
-	error_code& code,
-	error_info& info
+    channel<StreamType>& chan,
+    std::uint32_t statement_id,
+    error_code& code,
+    error_info& info
 );
 
 using close_signature = empty_signature;
@@ -27,10 +27,10 @@ using close_signature = empty_signature;
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_signature)
 async_close_statement(
-	channel<StreamType>& chan,
-	std::uint32_t statement_id,
-	CompletionToken&& token,
-	error_info* info
+    channel<StreamType>& chan,
+    std::uint32_t statement_id,
+    CompletionToken&& token,
+    error_info* info
 );
 
 } // detail

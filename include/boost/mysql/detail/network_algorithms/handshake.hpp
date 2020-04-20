@@ -21,10 +21,10 @@ namespace detail {
 
 template <typename StreamType>
 void hanshake(
-	channel<StreamType>& channel,
-	const connection_params& params,
-	error_code& err,
-	error_info& info
+    channel<StreamType>& channel,
+    const connection_params& params,
+    error_code& err,
+    error_info& info
 );
 
 using handshake_signature = empty_signature;
@@ -32,10 +32,10 @@ using handshake_signature = empty_signature;
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
 async_handshake(
-	channel<StreamType>& channel,
-	const connection_params& params,
-	CompletionToken&& token,
-	error_info* info
+    channel<StreamType>& channel,
+    const connection_params& params,
+    CompletionToken&& token,
+    error_info* info
 );
 
 } // detail

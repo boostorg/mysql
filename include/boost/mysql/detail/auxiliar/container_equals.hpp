@@ -17,16 +17,16 @@ namespace detail {
 
 template <typename TLeft, typename TRight>
 inline bool container_equals(
-	const std::vector<TLeft>& lhs,
-	const std::vector<TRight>& rhs
+    const std::vector<TLeft>& lhs,
+    const std::vector<TRight>& rhs
 )
 {
-	if (lhs.size() != rhs.size()) return false;
-	return std::equal(
-		lhs.begin(),
-		lhs.end(),
-		rhs.begin()
-	);
+    if (lhs.size() != rhs.size()) return false;
+    return std::equal(
+        lhs.begin(),
+        lhs.end(),
+        rhs.begin()
+    );
 }
 
 } // detail

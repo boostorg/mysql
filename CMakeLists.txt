@@ -15,7 +15,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
     if(BUILD_TESTING)
-    	set(_MYSQL_TESTING_ENABLED ON)
+        set(_MYSQL_TESTING_ENABLED ON)
     endif()
 endif()
 
@@ -34,7 +34,7 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
-	find_package(Mysqlvalgrind REQUIRED)
+    find_package(Mysqlvalgrind REQUIRED)
 endif()
 
 # Date
@@ -58,35 +58,35 @@ add_library(
 
 target_link_libraries(
     mysql_asio
-	INTERFACE
-	Boost::system
-	Threads::Threads
-	OpenSSL::Crypto
-	OpenSSL::SSL
+    INTERFACE
+    Boost::system
+    Threads::Threads
+    OpenSSL::Crypto
+    OpenSSL::SSL
 )
 target_include_directories(
-	mysql_asio
-	INTERFACE
-	include
-	${date_SOURCE_DIR}/include
+    mysql_asio
+    INTERFACE
+    include
+    ${date_SOURCE_DIR}/include
 )
 target_compile_features(
-	mysql_asio
-	INTERFACE
-	cxx_std_17
+    mysql_asio
+    INTERFACE
+    cxx_std_17
 )
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
-	target_link_libraries(
-		mysql_asio
-		INTERFACE
-		Mysqlvalgrind::Mysqlvalgrind
-	)
+    target_link_libraries(
+        mysql_asio
+        INTERFACE
+        Mysqlvalgrind::Mysqlvalgrind
+    )
 endif()
 
 # Examples and tests
 if(_MYSQL_TESTING_ENABLED)
-	include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
-	add_subdirectory(example)
-	add_subdirectory(test)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
+    add_subdirectory(example)
+    add_subdirectory(test)
 endif()

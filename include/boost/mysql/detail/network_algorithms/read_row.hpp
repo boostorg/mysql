@@ -19,21 +19,21 @@ namespace detail {
 
 enum class read_row_result
 {
-	error,
-	row,
-	eof
+    error,
+    row,
+    eof
 };
 
 template <typename StreamType>
 read_row_result read_row(
-	deserialize_row_fn deserializer,
-	channel<StreamType>& channel,
-	const std::vector<field_metadata>& meta,
-	bytestring& buffer,
-	std::vector<value>& output_values,
-	ok_packet& output_ok_packet,
-	error_code& err,
-	error_info& info
+    deserialize_row_fn deserializer,
+    channel<StreamType>& channel,
+    const std::vector<field_metadata>& meta,
+    bytestring& buffer,
+    std::vector<value>& output_values,
+    ok_packet& output_ok_packet,
+    error_code& err,
+    error_info& info
 );
 
 using read_row_signature = void(error_code, error_info, read_row_result);
@@ -41,13 +41,13 @@ using read_row_signature = void(error_code, error_info, read_row_result);
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, read_row_signature)
 async_read_row(
-	deserialize_row_fn deserializer,
-	channel<StreamType>& channel,
-	const std::vector<field_metadata>& meta,
-	bytestring& buffer,
-	std::vector<value>& output_values,
-	ok_packet& output_ok_packet,
-	CompletionToken&& token
+    deserialize_row_fn deserializer,
+    channel<StreamType>& channel,
+    const std::vector<field_metadata>& meta,
+    bytestring& buffer,
+    std::vector<value>& output_values,
+    ok_packet& output_ok_packet,
+    CompletionToken&& token
 );
 
 

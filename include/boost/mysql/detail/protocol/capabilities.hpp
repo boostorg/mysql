@@ -46,17 +46,17 @@ constexpr std::uint32_t CLIENT_REMEMBER_OPTIONS = (1UL << 31); // Don't reset th
 
 class capabilities
 {
-	std::uint32_t value_;
+    std::uint32_t value_;
 public:
-	constexpr explicit capabilities(std::uint32_t value=0) noexcept : value_(value) {};
-	constexpr std::uint32_t get() const noexcept { return value_; }
-	constexpr void set(std::uint32_t value) noexcept { value_ = value; }
-	constexpr bool has(std::uint32_t cap) const noexcept { return value_ & cap; }
-	constexpr bool has_all(capabilities other) const noexcept { return (value_ & other.get()) == other.get(); }
-	constexpr capabilities operator|(capabilities rhs) const noexcept { return capabilities(value_ | rhs.value_); }
-	constexpr capabilities operator&(capabilities rhs) const noexcept { return capabilities(value_ & rhs.value_); }
-	constexpr bool operator==(const capabilities& rhs) const noexcept { return value_ == rhs.value_; }
-	constexpr bool operator!=(const capabilities& rhs) const noexcept { return value_ != rhs.value_; }
+    constexpr explicit capabilities(std::uint32_t value=0) noexcept : value_(value) {};
+    constexpr std::uint32_t get() const noexcept { return value_; }
+    constexpr void set(std::uint32_t value) noexcept { value_ = value; }
+    constexpr bool has(std::uint32_t cap) const noexcept { return value_ & cap; }
+    constexpr bool has_all(capabilities other) const noexcept { return (value_ & other.get()) == other.get(); }
+    constexpr capabilities operator|(capabilities rhs) const noexcept { return capabilities(value_ | rhs.value_); }
+    constexpr capabilities operator&(capabilities rhs) const noexcept { return capabilities(value_ & rhs.value_); }
+    constexpr bool operator==(const capabilities& rhs) const noexcept { return value_ == rhs.value_; }
+    constexpr bool operator!=(const capabilities& rhs) const noexcept { return value_ != rhs.value_; }
 };
 
 /*
@@ -98,11 +98,11 @@ public:
  */
 
 constexpr capabilities mandatory_capabilities {
-	CLIENT_PROTOCOL_41 |
-	CLIENT_PLUGIN_AUTH |
-	CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-	CLIENT_DEPRECATE_EOF |
-	CLIENT_SECURE_CONNECTION
+    CLIENT_PROTOCOL_41 |
+    CLIENT_PLUGIN_AUTH |
+    CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+    CLIENT_DEPRECATE_EOF |
+    CLIENT_SECURE_CONNECTION
 };
 
 constexpr capabilities optional_capabilities {0};

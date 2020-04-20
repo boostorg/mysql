@@ -19,20 +19,20 @@ namespace detail {
 
 template <typename StreamType>
 void execute_query(
-	channel<StreamType>& channel,
-	std::string_view query,
-	resultset<StreamType>& output,
-	error_code& err,
-	error_info& info
+    channel<StreamType>& channel,
+    std::string_view query,
+    resultset<StreamType>& output,
+    error_code& err,
+    error_info& info
 );
 
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
 async_execute_query(
-	channel<StreamType>& chan,
-	std::string_view query,
-	CompletionToken&& token,
-	error_info* info
+    channel<StreamType>& chan,
+    std::string_view query,
+    CompletionToken&& token,
+    error_info* info
 );
 
 }

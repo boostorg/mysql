@@ -17,11 +17,11 @@ namespace mysql {
 namespace detail {
 
 inline void valgrind_make_mem_defined(
-	[[maybe_unused]] boost::asio::const_buffer buff
+    [[maybe_unused]] boost::asio::const_buffer buff
 )
 {
 #ifdef BOOST_MYSQL_VALGRIND_TESTS
-	VALGRIND_MAKE_MEM_DEFINED(buff.data(), buff.size());
+    VALGRIND_MAKE_MEM_DEFINED(buff.data(), buff.size());
 #endif
 }
 

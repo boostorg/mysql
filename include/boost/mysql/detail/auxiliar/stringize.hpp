@@ -18,9 +18,9 @@ namespace detail {
 template <typename... Types>
 std::string stringize(const Types&... inputs)
 {
-	std::ostringstream ss;
-	(ss << ... << inputs);
-	return ss.str();
+    std::ostringstream ss;
+    (ss << ... << inputs);
+    return ss.str();
 }
 
 } // detail

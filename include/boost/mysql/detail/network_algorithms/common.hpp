@@ -20,9 +20,9 @@ namespace mysql {
 namespace detail {
 
 using deserialize_row_fn = error_code (*)(
-	deserialization_context&,
-	const std::vector<field_metadata>&,
-	std::vector<value>&
+    deserialization_context&,
+    const std::vector<field_metadata>&,
+    std::vector<value>&
 );
 
 using empty_signature = void(error_code);

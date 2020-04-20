@@ -17,7 +17,7 @@ namespace system {
 template <>
 struct is_error_code_enum<mysql::errc>
 {
-	static constexpr bool value = true;
+    static constexpr bool value = true;
 };
 
 } // system
@@ -27,61 +27,61 @@ namespace detail {
 
 inline const char* error_to_string(errc error) noexcept
 {
-	switch (error)
-	{
-	case errc::ok: return "no error";
-	case errc::incomplete_message: return "The message read was incomplete (not enough bytes to fully decode it)";
-	case errc::extra_bytes: return "Extra bytes at the end of the message";
-	case errc::sequence_number_mismatch: return "Mismatched sequence numbers";
-	case errc::server_unsupported: return "The server does not implement the minimum features to be supported";
-	case errc::protocol_value_error: return "A field in a message had an unexpected value";
-	case errc::unknown_auth_plugin: return "The user employs an authentication plugin unknown to the client";
-	case errc::wrong_num_params: return "The provided parameter count does not match the prepared statement parameter count";
+    switch (error)
+    {
+    case errc::ok: return "no error";
+    case errc::incomplete_message: return "The message read was incomplete (not enough bytes to fully decode it)";
+    case errc::extra_bytes: return "Extra bytes at the end of the message";
+    case errc::sequence_number_mismatch: return "Mismatched sequence numbers";
+    case errc::server_unsupported: return "The server does not implement the minimum features to be supported";
+    case errc::protocol_value_error: return "A field in a message had an unexpected value";
+    case errc::unknown_auth_plugin: return "The user employs an authentication plugin unknown to the client";
+    case errc::wrong_num_params: return "The provided parameter count does not match the prepared statement parameter count";
 
-	#include "boost/mysql/impl/server_error_descriptions.hpp"
+    #include "boost/mysql/impl/server_error_descriptions.hpp"
 
-	default: return "<unknown error>";
-	}
+    default: return "<unknown error>";
+    }
 }
 
 class mysql_error_category_t : public boost::system::error_category
 {
 public:
-	const char* name() const noexcept final override { return "mysql"; }
-	std::string message(int ev) const final override
-	{
-		return error_to_string(static_cast<errc>(ev));
-	}
+    const char* name() const noexcept final override { return "mysql"; }
+    std::string message(int ev) const final override
+    {
+        return error_to_string(static_cast<errc>(ev));
+    }
 };
 inline mysql_error_category_t mysql_error_category;
 
 inline boost::system::error_code make_error_code(errc error)
 {
-	return boost::system::error_code(static_cast<int>(error), mysql_error_category);
+    return boost::system::error_code(static_cast<int>(error), mysql_error_category);
 }
 
 inline void check_error_code(const error_code& code, const error_info& info)
 {
-	if (code)
-	{
-		throw boost::system::system_error(code, info.message());
-	}
+    if (code)
+    {
+        throw boost::system::system_error(code, info.message());
+    }
 }
 
 inline void conditional_clear(error_info* info) noexcept
 {
-	if (info)
-	{
-		info->clear();
-	}
+    if (info)
+    {
+        info->clear();
+    }
 }
 
 inline void conditional_assign(error_info* to, error_info&& from)
 {
-	if (to)
-	{
-		*to = std::move(from);
-	}
+    if (to)
+    {
+        *to = std::move(from);
+    }
 }
 
 } // detail
