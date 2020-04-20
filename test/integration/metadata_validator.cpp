@@ -42,7 +42,7 @@ void meta_validator::validate(
 ) const
 {
     // Fixed fields
-    EXPECT_EQ(value.database(), "awesome");
+    EXPECT_EQ(value.database(), "boost_mysql_integtests");
     EXPECT_EQ(value.table(), table_);
     EXPECT_EQ(value.original_table(), org_table_);
     EXPECT_EQ(value.field_name(), field_);

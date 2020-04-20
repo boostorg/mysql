@@ -56,7 +56,7 @@ target_link_libraries(
     gtest
     gtest_main
     gmock
-    mysql_asio
+    Boost_mysql
 )
 _mysql_common_target_settings(mysql_unittests)
 
@@ -94,7 +94,7 @@ target_link_libraries(
     gtest
     gtest_main
     gmock
-    mysql_asio
+    Boost_mysql
     Boost::coroutine
 )
 target_include_directories(

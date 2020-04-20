@@ -52,12 +52,12 @@ endif()
 
 # Interface library (header-only)
 add_library(
-    mysql_asio
+    Boost_mysql
     INTERFACE
 )
 
 target_link_libraries(
-    mysql_asio
+    Boost_mysql
     INTERFACE
     Boost::system
     Threads::Threads
@@ -65,20 +65,20 @@ target_link_libraries(
     OpenSSL::SSL
 )
 target_include_directories(
-    mysql_asio
+    Boost_mysql
     INTERFACE
     include
     ${date_SOURCE_DIR}/include
 )
 target_compile_features(
-    mysql_asio
+    Boost_mysql
     INTERFACE
     cxx_std_17
 )
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
     target_link_libraries(
-        mysql_asio
+        Boost_mysql
         INTERFACE
         Mysqlvalgrind::Mysqlvalgrind
     )

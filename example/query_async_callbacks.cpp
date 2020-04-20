@@ -18,7 +18,7 @@ using boost::mysql::tcp_resultset;
 using boost::mysql::owning_row;
 
 /**
- * For this example, we will be using the 'mysql_asio_examples' database.
+ * For this example, we will be using the 'boost_mysql_examples' database.
  * You can get this database by running db_setup.sql.
  * This example assumes you are connecting to a localhost MySQL server.
  *
@@ -78,7 +78,7 @@ class application
 public:
     application(const char* username, const char* password) :
         ep (boost::asio::ip::address_v4::loopback(), boost::mysql::default_port),
-        conn_params(username, password, "mysql_asio_examples"),
+        conn_params(username, password, "boost_mysql_examples"),
         connection(ctx)
     {
     }

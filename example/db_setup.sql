@@ -9,9 +9,9 @@
 SET NAMES utf8;
 
 -- Database
-DROP DATABASE IF EXISTS mysql_asio_examples;
-CREATE DATABASE mysql_asio_examples;
-USE mysql_asio_examples;
+DROP DATABASE IF EXISTS boost_mysql_examples;
+CREATE DATABASE boost_mysql_examples;
+USE boost_mysql_examples;
 
 -- Tables
 CREATE TABLE company(
@@ -45,4 +45,4 @@ INSERT INTO employee (first_name, last_name, salary, company_id) VALUES
 DROP USER IF EXISTS 'example_user'@'localhost';
 CREATE USER 'example_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
 ALTER USER 'example_user'@'localhost' IDENTIFIED BY 'example_password';
-GRANT ALL PRIVILEGES ON mysql_asio_examples.* TO 'example_user'@'localhost';
+GRANT ALL PRIVILEGES ON boost_mysql_examples.* TO 'example_user'@'localhost';

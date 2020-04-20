@@ -16,7 +16,7 @@ function (_mysql_build_example EXECUTABLE_NAME CPPFILE)
     target_link_libraries(
         ${EXECUTABLE_NAME}
         PRIVATE
-        mysql_asio
+        Boost_mysql
         Boost::coroutine
     )
     _mysql_common_target_settings(${EXECUTABLE_NAME})

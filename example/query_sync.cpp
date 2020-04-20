@@ -11,7 +11,7 @@
 #include <iostream>
 
 /**
- * For this example, we will be using the 'mysql_asio_examples' database.
+ * For this example, we will be using the 'boost_mysql_examples' database.
  * You can get this database by running db_setup.sql.
  * This example assumes you are connecting to a localhost MySQL server.
  *
@@ -59,7 +59,7 @@ void main_impl(int argc, char** argv)
     boost::mysql::connection_params params (
         argv[1],               // username
         argv[2],               // password
-        "mysql_asio_examples"  // database to use; leave empty or omit the parameter for no database
+        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
     );
     // Note: by default, SSL will be used if the server supports it.
     // connection_params accepts an optional ssl_options argument

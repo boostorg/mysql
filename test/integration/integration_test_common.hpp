@@ -52,7 +52,11 @@ struct IntegTest : testing::Test
 {
     using stream_type = Stream;
 
-    mysql::connection_params connection_params {"integ_user", "integ_password", "awesome"};
+    mysql::connection_params connection_params {
+        "integ_user",
+        "integ_password",
+        "boost_mysql_integtests"
+    };
     boost::asio::io_context ctx;
     mysql::connection<Stream> conn {ctx};
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard { ctx.get_executor() };

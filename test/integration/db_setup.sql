@@ -10,9 +10,9 @@ SET NAMES utf8;
 SET global max_connections = 10000;
 
 -- Database
-DROP DATABASE IF EXISTS awesome;
-CREATE DATABASE awesome;
-USE awesome;
+DROP DATABASE IF EXISTS boost_mysql_integtests;
+CREATE DATABASE boost_mysql_integtests;
+USE boost_mysql_integtests;
 
 -- Tables
 CREATE TABLE inserts_table (
@@ -376,16 +376,16 @@ INSERT INTO types_flags VALUES
 DROP USER IF EXISTS 'integ_user'@'localhost';
 CREATE USER 'integ_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
 ALTER USER 'integ_user'@'localhost' IDENTIFIED BY 'integ_password';
-GRANT ALL PRIVILEGES ON awesome.* TO 'integ_user'@'localhost';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'integ_user'@'localhost';
 
 DROP USER IF EXISTS 'mysqlnp_user'@'localhost';
 CREATE USER 'mysqlnp_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
 ALTER USER 'mysqlnp_user'@'localhost' IDENTIFIED BY 'mysqlnp_password';
-GRANT ALL PRIVILEGES ON awesome.* TO 'mysqlnp_user'@'localhost';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_user'@'localhost';
 
 DROP USER IF EXISTS 'mysqlnp_empty_password_user'@'localhost';
 CREATE USER 'mysqlnp_empty_password_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
 ALTER USER 'mysqlnp_empty_password_user'@'localhost' IDENTIFIED BY '';
-GRANT ALL PRIVILEGES ON awesome.* TO 'mysqlnp_empty_password_user'@'localhost';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_empty_password_user'@'localhost';
 
 FLUSH PRIVILEGES;

@@ -11,7 +11,7 @@
 #include <iostream>
 
 /**
- * For this example, we will be using the 'mysql_asio_examples' database.
+ * For this example, we will be using the 'boost_mysql_examples' database.
  * You can get this database by running db_setup.sql.
  * This example assumes you are connecting to a localhost MySQL server.
  *
@@ -32,7 +32,7 @@ void main_impl(int argc, char** argv)
 
     // Connection params (host, port, user, password, database)
     boost::asio::ip::tcp::endpoint ep (boost::asio::ip::address_v4::loopback(), boost::mysql::default_port);
-    boost::mysql::connection_params params (argv[1], argv[2], "mysql_asio_examples");
+    boost::mysql::connection_params params (argv[1], argv[2], "boost_mysql_examples");
 
     // TCP and MySQL level connect
     boost::asio::io_context ctx;
@@ -58,7 +58,7 @@ void main_impl(int argc, char** argv)
     assert(result.fields().size() == 2);
 
     [[maybe_unused]] const boost::mysql::field_metadata& company_name = result.fields()[0];
-    assert(company_name.database() == "mysql_asio_examples");  // database name
+    assert(company_name.database() == "boost_mysql_examples"); // database name
     assert(company_name.table() == "comp");                    // the alias we assigned to the table in the query
     assert(company_name.original_table() == "company");        // the original table name
     assert(company_name.field_name() == "company_name");       // the name of the field in the query
@@ -69,7 +69,7 @@ void main_impl(int argc, char** argv)
     assert(company_name.is_not_null());                        // field may not be NULL
 
     [[maybe_unused]] const boost::mysql::field_metadata& employee_id = result.fields()[1];
-    assert(employee_id.database() == "mysql_asio_examples");// database name
+    assert(employee_id.database() == "boost_mysql_examples"); // database name
     assert(employee_id.table() == "emp");                   // the alias we assigned to the table in the query
     assert(employee_id.original_table() == "employee");     // the original table name
     assert(employee_id.field_name() == "employee_id");      // the name of the field in the query
