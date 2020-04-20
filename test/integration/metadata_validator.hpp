@@ -1,5 +1,12 @@
-#ifndef TEST_INTEGRATION_METADATA_VALIDATOR_HPP_
-#define TEST_INTEGRATION_METADATA_VALIDATOR_HPP_
+//
+// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_TEST_INTEGRATION_METADATA_VALIDATOR_HPP
+#define BOOST_MYSQL_TEST_INTEGRATION_METADATA_VALIDATOR_HPP
 
 #include "boost/mysql/metadata.hpp"
 #include <vector>

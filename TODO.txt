@@ -1,6 +1,4 @@
 Sanitize
-	Include guards and copyrights
-	License/License_1_0
 	Tabs to spaces
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake

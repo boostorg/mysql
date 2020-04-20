@@ -1,5 +1,12 @@
-#ifndef INCLUDE_BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP_
-#define INCLUDE_BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP_
+//
+// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP
+#define BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP
 
 #include <cstddef>
 #include <string_view>

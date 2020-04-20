@@ -1,5 +1,12 @@
-#ifndef MYSQL_ASIO_IMPL_DESERIALIZE_ROW_HPP
-#define MYSQL_ASIO_IMPL_DESERIALIZE_ROW_HPP
+//
+// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_TEXT_DESERIALIZATION_HPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_TEXT_DESERIALIZATION_HPP
 
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/error.hpp"

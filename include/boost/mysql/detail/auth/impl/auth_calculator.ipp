@@ -1,5 +1,12 @@
-#ifndef INCLUDE_BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP_
-#define INCLUDE_BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP_
+//
+// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP
+#define BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP
 
 #include "boost/mysql/detail/auth/mysql_native_password.hpp"
 #include "boost/mysql/detail/auth/caching_sha2_password.hpp"

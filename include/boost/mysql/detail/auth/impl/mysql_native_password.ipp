@@ -1,5 +1,12 @@
-#ifndef MYSQL_ASIO_IMPL_AUTH_IPP
-#define MYSQL_ASIO_IMPL_AUTH_IPP
+//
+// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_DETAIL_AUTH_IMPL_MYSQL_NATIVE_PASSWORD_IPP
+#define BOOST_MYSQL_DETAIL_AUTH_IMPL_MYSQL_NATIVE_PASSWORD_IPP
 
 #include <openssl/sha.h>
 #include <cstring>

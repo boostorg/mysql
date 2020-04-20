@@ -1,5 +1,12 @@
-#ifndef TEST_SERIALIZATION_TEST_COMMON_HPP_
-#define TEST_SERIALIZATION_TEST_COMMON_HPP_
+//
+// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_COMMON_HPP
+#define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_COMMON_HPP
 
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"

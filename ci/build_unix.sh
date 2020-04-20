@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
 
 # SHA256 functionality is only supported in MySQL 8+. From our
 # CI systems, only OSX has this version.
