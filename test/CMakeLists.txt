@@ -23,6 +23,7 @@ endif()
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
     mysql_unittests
+    unit/detail/auxiliar/static_string.cpp
     unit/detail/auth/auth_calculator.cpp
     unit/detail/protocol/serialization_test_common.cpp
     unit/detail/protocol/serialization.cpp

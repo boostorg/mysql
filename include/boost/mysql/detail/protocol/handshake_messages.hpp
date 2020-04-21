@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_HANDSHAKE_MESSAGES_HPP
 
 #include "boost/mysql/detail/protocol/serialization.hpp"
+#include "boost/mysql/detail/auxiliar/static_string.hpp"
 
 namespace boost {
 namespace mysql {
@@ -17,16 +18,16 @@ namespace detail {
 // initial handshake
 struct handshake_packet
 {
+    using auth_buffer_type = static_string<8 + 0xff>;
+
     // int<1>     protocol version     Always 10
     string_null server_version;
     int4 connection_id;
-    string_lenenc auth_plugin_data; // not an actual protocol field, the merge of two fields
+    auth_buffer_type auth_plugin_data; // not an actual protocol field, the merge of two fields
     int4 capability_falgs; // merge of the two parts - not an actual field
     int1 character_set; // default server a_protocol_character_set, only the lower 8-bits
     int2 status_flags; // server_status_flags
     string_null auth_plugin_name;
-
-    std::array<char, 8 + 0xff> auth_plugin_data_buffer; // not an actual protocol field, the merge of two fields
 };
 
 template <>

@@ -49,30 +49,29 @@ boost::mysql::detail::serialization_traits<
     capabilities cap (output.capability_falgs.value);
     if (!cap.has(CLIENT_PLUGIN_AUTH)) return errc::server_unsupported;
 
-    // Deserialize the rest of the frame
+    // Deserialize following fields
     err = deserialize_fields(
         ctx,
         auth_plugin_data_len,
         reserved
     );
     if (err != errc::ok) return err;
+
+    // Auth plugin data, second part
     auto auth2_length = static_cast<std::uint8_t>(
         std::max(13, auth_plugin_data_len.value - auth1_length));
-    err = ctx.copy(output.auth_plugin_data_buffer.data() + auth1_length, auth2_length);
-    if (err != errc::ok) return err;
+    const void* auth2_data = ctx.first();
+    if (!ctx.enough_size(auth2_length)) return errc::incomplete_message;
+    ctx.advance(auth2_length);
+
+    // Auth plugin name
     err = deserialize(output.auth_plugin_name, ctx);
     if (err != errc::ok) return err;
 
     // Compose auth_plugin_data
-    memcpy(
-        output.auth_plugin_data_buffer.data(),
-        auth_plugin_data_part_1.data(),
-        auth1_length
-    );
-    output.auth_plugin_data.value = std::string_view(
-        output.auth_plugin_data_buffer.data(),
-        auth1_length + auth2_length - 1 // discard trailing null byte
-    );
+    output.auth_plugin_data.clear();
+    output.auth_plugin_data.append(auth_plugin_data_part_1.data(), auth1_length);
+    output.auth_plugin_data.append(auth2_data, auth2_length - 1); // discard an extra trailing NULL byte
 
     return errc::ok;
 }

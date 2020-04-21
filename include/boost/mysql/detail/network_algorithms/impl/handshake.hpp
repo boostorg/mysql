@@ -113,7 +113,7 @@ public:
         return auth_calc_.calculate(
             handshake.auth_plugin_name.value,
             params_.password(),
-            handshake.auth_plugin_data.value,
+            handshake.auth_plugin_data.value(),
             use_ssl()
         );
     }

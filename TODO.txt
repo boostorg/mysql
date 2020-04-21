@@ -1,7 +1,5 @@
 Sanitize
-	Copy operations for handshake
 	Test zero dates
-	Review handshake auth_plugin_data - seems like buffer overrun is possible (auth data string_lenenc?)
 	Connection quit
 Better docs
 	Breaking up the tutorial in pieces
@@ -38,7 +36,6 @@ Technical debt
 	Random input tests
 	Test dashboard
 	Sanitizers
-	Format checker
 	Integ tests for different default auth plugins
 	Integ tests for not enough capabilities
 	Integ tests for ssl_mode::enable and SSL not available
