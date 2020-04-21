@@ -26,7 +26,7 @@ class static_string
     std::array<char, max_size> buffer_;
     std::size_t size_;
 
-    void size_check(std::size_t sz) const noexcept { assert(sz <= max_size); }
+    void size_check([[maybe_unused]] std::size_t sz) const noexcept { assert(sz <= max_size); }
 public:
     static_string() noexcept: size_(0) {}
     static_string(std::string_view value) noexcept : size_(value.size())
