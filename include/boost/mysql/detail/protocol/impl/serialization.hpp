@@ -169,7 +169,7 @@ boost::mysql::detail::serialization_traits<
 
     memset(&output.value, 0, sizeof(output.value));
     memcpy(&output.value, ctx.first(), size);
-    boost::endian::little_to_native_inplace(output);
+    boost::endian::little_to_native_inplace(output.value);
     ctx.advance(size);
 
     return errc::ok;
@@ -184,7 +184,7 @@ void boost::mysql::detail::serialization_traits<
     serialization_context& ctx
 ) noexcept
 {
-    boost::endian::native_to_little_inplace(input);
+    boost::endian::native_to_little_inplace(input.value);
     ctx.write(&input.value, get_int_size<T>());
 }
 
