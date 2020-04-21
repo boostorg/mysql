@@ -17,7 +17,7 @@ TEST(errc, ErrorToString_Ok_ReturnsOk)
     EXPECT_STREQ(error_to_string(errc::ok), "no error");
 }
 
-TEST(errc, ErrorToString_MysqlAsioError_ReturnsDescription)
+TEST(errc, ErrorToString_ClientError_ReturnsDescription)
 {
     EXPECT_STREQ(error_to_string(errc::sequence_number_mismatch), "Mismatched sequence numbers");
 }
@@ -27,7 +27,17 @@ TEST(errc, ErrorToString_ServerError_ReturnsEnumName)
     EXPECT_STREQ(error_to_string(errc::bad_db_error), "bad_db_error");
 }
 
-TEST(errc, ErrorToString_UnknownError_ReturnsUnknown)
+TEST(errc, ErrorToString_UnknownErrorOutOfRange_ReturnsUnknown)
 {
     EXPECT_STREQ(error_to_string(static_cast<errc>(0xfffefdfc)), "<unknown error>");
+}
+
+TEST(errc, ErrorToString_UnknownErrorServerRange_ReturnsUnknown)
+{
+    EXPECT_STREQ(error_to_string(static_cast<errc>(1009)), "<unknown error>");
+}
+
+TEST(errc, ErrorToString_UnknownErrorBetweenServerAndClientRange_ReturnsUnknown)
+{
+    EXPECT_STREQ(error_to_string(static_cast<errc>(5000)), "<unknown error>");
 }

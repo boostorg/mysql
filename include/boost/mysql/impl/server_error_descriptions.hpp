@@ -8,1387 +8,1387 @@
 #ifndef BOOST_MYSQL_IMPL_SERVER_ERROR_DESCRIPTIONS_HPP
 #define BOOST_MYSQL_IMPL_SERVER_ERROR_DESCRIPTIONS_HPP
 
-case errc::no: return "no";
-case errc::yes: return "yes";
-case errc::cant_create_file: return "cant_create_file";
-case errc::cant_create_table: return "cant_create_table";
-case errc::cant_create_db: return "cant_create_db";
-case errc::db_create_exists: return "db_create_exists";
-case errc::db_drop_exists: return "db_drop_exists";
-case errc::db_drop_rmdir: return "db_drop_rmdir";
-case errc::cant_find_system_rec: return "cant_find_system_rec";
-case errc::cant_get_stat: return "cant_get_stat";
-case errc::cant_lock: return "cant_lock";
-case errc::cant_open_file: return "cant_open_file";
-case errc::file_not_found: return "file_not_found";
-case errc::cant_read_dir: return "cant_read_dir";
-case errc::checkread: return "checkread";
-case errc::dup_key: return "dup_key";
-case errc::error_on_read: return "error_on_read";
-case errc::error_on_rename: return "error_on_rename";
-case errc::error_on_write: return "error_on_write";
-case errc::file_used: return "file_used";
-case errc::filsort_abort: return "filsort_abort";
-case errc::get_errno: return "get_errno";
-case errc::illegal_ha: return "illegal_ha";
-case errc::key_not_found: return "key_not_found";
-case errc::not_form_file: return "not_form_file";
-case errc::not_keyfile: return "not_keyfile";
-case errc::old_keyfile: return "old_keyfile";
-case errc::open_as_readonly: return "open_as_readonly";
-case errc::outofmemory: return "outofmemory";
-case errc::out_of_sortmemory: return "out_of_sortmemory";
-case errc::con_count_error: return "con_count_error";
-case errc::out_of_resources: return "out_of_resources";
-case errc::bad_host_error: return "bad_host_error";
-case errc::handshake_error: return "handshake_error";
-case errc::dbaccess_denied_error: return "dbaccess_denied_error";
-case errc::access_denied_error: return "access_denied_error";
-case errc::no_db_error: return "no_db_error";
-case errc::unknown_com_error: return "unknown_com_error";
-case errc::bad_null_error: return "bad_null_error";
-case errc::bad_db_error: return "bad_db_error";
-case errc::table_exists_error: return "table_exists_error";
-case errc::bad_table_error: return "bad_table_error";
-case errc::non_uniq_error: return "non_uniq_error";
-case errc::server_shutdown: return "server_shutdown";
-case errc::bad_field_error: return "bad_field_error";
-case errc::wrong_field_with_group: return "wrong_field_with_group";
-case errc::wrong_group_field: return "wrong_group_field";
-case errc::wrong_sum_select: return "wrong_sum_select";
-case errc::wrong_value_count: return "wrong_value_count";
-case errc::too_long_ident: return "too_long_ident";
-case errc::dup_fieldname: return "dup_fieldname";
-case errc::dup_keyname: return "dup_keyname";
-case errc::dup_entry: return "dup_entry";
-case errc::wrong_field_spec: return "wrong_field_spec";
-case errc::parse_error: return "parse_error";
-case errc::empty_query: return "empty_query";
-case errc::nonuniq_table: return "nonuniq_table";
-case errc::invalid_default: return "invalid_default";
-case errc::multiple_pri_key: return "multiple_pri_key";
-case errc::too_many_keys: return "too_many_keys";
-case errc::too_many_key_parts: return "too_many_key_parts";
-case errc::too_long_key: return "too_long_key";
-case errc::key_column_does_not_exits: return "key_column_does_not_exits";
-case errc::blob_used_as_key: return "blob_used_as_key";
-case errc::too_big_fieldlength: return "too_big_fieldlength";
-case errc::wrong_auto_key: return "wrong_auto_key";
-case errc::ready: return "ready";
-case errc::shutdown_complete: return "shutdown_complete";
-case errc::forcing_close: return "forcing_close";
-case errc::ipsock_error: return "ipsock_error";
-case errc::no_such_index: return "no_such_index";
-case errc::wrong_field_terminators: return "wrong_field_terminators";
-case errc::blobs_and_no_terminated: return "blobs_and_no_terminated";
-case errc::textfile_not_readable: return "textfile_not_readable";
-case errc::file_exists_error: return "file_exists_error";
-case errc::load_info: return "load_info";
-case errc::alter_info: return "alter_info";
-case errc::wrong_sub_key: return "wrong_sub_key";
-case errc::cant_remove_all_fields: return "cant_remove_all_fields";
-case errc::cant_drop_field_or_key: return "cant_drop_field_or_key";
-case errc::insert_info: return "insert_info";
-case errc::update_table_used: return "update_table_used";
-case errc::no_such_thread: return "no_such_thread";
-case errc::kill_denied_error: return "kill_denied_error";
-case errc::no_tables_used: return "no_tables_used";
-case errc::too_big_set: return "too_big_set";
-case errc::no_unique_logfile: return "no_unique_logfile";
-case errc::table_not_locked_for_write: return "table_not_locked_for_write";
-case errc::table_not_locked: return "table_not_locked";
-case errc::blob_cant_have_default: return "blob_cant_have_default";
-case errc::wrong_db_name: return "wrong_db_name";
-case errc::wrong_table_name: return "wrong_table_name";
-case errc::too_big_select: return "too_big_select";
-case errc::unknown_error: return "unknown_error";
-case errc::unknown_procedure: return "unknown_procedure";
-case errc::wrong_paramcount_to_procedure: return "wrong_paramcount_to_procedure";
-case errc::wrong_parameters_to_procedure: return "wrong_parameters_to_procedure";
-case errc::unknown_table: return "unknown_table";
-case errc::field_specified_twice: return "field_specified_twice";
-case errc::invalid_group_func_use: return "invalid_group_func_use";
-case errc::unsupported_extension: return "unsupported_extension";
-case errc::table_must_have_columns: return "table_must_have_columns";
-case errc::record_file_full: return "record_file_full";
-case errc::unknown_character_set: return "unknown_character_set";
-case errc::too_many_tables: return "too_many_tables";
-case errc::too_many_fields: return "too_many_fields";
-case errc::too_big_rowsize: return "too_big_rowsize";
-case errc::stack_overrun: return "stack_overrun";
-case errc::wrong_outer_join_unused: return "wrong_outer_join_unused";
-case errc::null_column_in_index: return "null_column_in_index";
-case errc::cant_find_udf: return "cant_find_udf";
-case errc::cant_initialize_udf: return "cant_initialize_udf";
-case errc::udf_no_paths: return "udf_no_paths";
-case errc::udf_exists: return "udf_exists";
-case errc::cant_open_library: return "cant_open_library";
-case errc::cant_find_dl_entry: return "cant_find_dl_entry";
-case errc::function_not_defined: return "function_not_defined";
-case errc::host_is_blocked: return "host_is_blocked";
-case errc::host_not_privileged: return "host_not_privileged";
-case errc::password_anonymous_user: return "password_anonymous_user";
-case errc::password_not_allowed: return "password_not_allowed";
-case errc::password_no_match: return "password_no_match";
-case errc::update_info: return "update_info";
-case errc::cant_create_thread: return "cant_create_thread";
-case errc::wrong_value_count_on_row: return "wrong_value_count_on_row";
-case errc::cant_reopen_table: return "cant_reopen_table";
-case errc::invalid_use_of_null: return "invalid_use_of_null";
-case errc::regexp_error: return "regexp_error";
-case errc::mix_of_group_func_and_fields: return "mix_of_group_func_and_fields";
-case errc::nonexisting_grant: return "nonexisting_grant";
-case errc::tableaccess_denied_error: return "tableaccess_denied_error";
-case errc::columnaccess_denied_error: return "columnaccess_denied_error";
-case errc::illegal_grant_for_table: return "illegal_grant_for_table";
-case errc::grant_wrong_host_or_user: return "grant_wrong_host_or_user";
-case errc::no_such_table: return "no_such_table";
-case errc::nonexisting_table_grant: return "nonexisting_table_grant";
-case errc::not_allowed_command: return "not_allowed_command";
-case errc::syntax_error: return "syntax_error";
-case errc::aborting_connection: return "aborting_connection";
-case errc::net_packet_too_large: return "net_packet_too_large";
-case errc::net_read_error_from_pipe: return "net_read_error_from_pipe";
-case errc::net_fcntl_error: return "net_fcntl_error";
-case errc::net_packets_out_of_order: return "net_packets_out_of_order";
-case errc::net_uncompress_error: return "net_uncompress_error";
-case errc::net_read_error: return "net_read_error";
-case errc::net_read_interrupted: return "net_read_interrupted";
-case errc::net_error_on_write: return "net_error_on_write";
-case errc::net_write_interrupted: return "net_write_interrupted";
-case errc::too_long_string: return "too_long_string";
-case errc::table_cant_handle_blob: return "table_cant_handle_blob";
-case errc::table_cant_handle_auto_increment: return "table_cant_handle_auto_increment";
-case errc::wrong_column_name: return "wrong_column_name";
-case errc::wrong_key_column: return "wrong_key_column";
-case errc::wrong_mrg_table: return "wrong_mrg_table";
-case errc::dup_unique: return "dup_unique";
-case errc::blob_key_without_length: return "blob_key_without_length";
-case errc::primary_cant_have_null: return "primary_cant_have_null";
-case errc::too_many_rows: return "too_many_rows";
-case errc::requires_primary_key: return "requires_primary_key";
-case errc::update_without_key_in_safe_mode: return "update_without_key_in_safe_mode";
-case errc::key_does_not_exits: return "key_does_not_exits";
-case errc::check_no_such_table: return "check_no_such_table";
-case errc::check_not_implemented: return "check_not_implemented";
-case errc::cant_do_this_during_an_transaction: return "cant_do_this_during_an_transaction";
-case errc::error_during_commit: return "error_during_commit";
-case errc::error_during_rollback: return "error_during_rollback";
-case errc::error_during_flush_logs: return "error_during_flush_logs";
-case errc::new_aborting_connection: return "new_aborting_connection";
-case errc::master: return "master";
-case errc::master_net_read: return "master_net_read";
-case errc::master_net_write: return "master_net_write";
-case errc::ft_matching_key_not_found: return "ft_matching_key_not_found";
-case errc::lock_or_active_transaction: return "lock_or_active_transaction";
-case errc::unknown_system_variable: return "unknown_system_variable";
-case errc::crashed_on_usage: return "crashed_on_usage";
-case errc::crashed_on_repair: return "crashed_on_repair";
-case errc::warning_not_complete_rollback: return "warning_not_complete_rollback";
-case errc::trans_cache_full: return "trans_cache_full";
-case errc::slave_not_running: return "slave_not_running";
-case errc::bad_slave: return "bad_slave";
-case errc::master_info: return "master_info";
-case errc::slave_thread: return "slave_thread";
-case errc::too_many_user_connections: return "too_many_user_connections";
-case errc::set_constants_only: return "set_constants_only";
-case errc::lock_wait_timeout: return "lock_wait_timeout";
-case errc::lock_table_full: return "lock_table_full";
-case errc::read_only_transaction: return "read_only_transaction";
-case errc::wrong_arguments: return "wrong_arguments";
-case errc::no_permission_to_create_user: return "no_permission_to_create_user";
-case errc::lock_deadlock: return "lock_deadlock";
-case errc::table_cant_handle_ft: return "table_cant_handle_ft";
-case errc::cannot_add_foreign: return "cannot_add_foreign";
-case errc::no_referenced_row: return "no_referenced_row";
-case errc::row_is_referenced: return "row_is_referenced";
-case errc::connect_to_master: return "connect_to_master";
-case errc::error_when_executing_command: return "error_when_executing_command";
-case errc::wrong_usage: return "wrong_usage";
-case errc::wrong_number_of_columns_in_select: return "wrong_number_of_columns_in_select";
-case errc::cant_update_with_readlock: return "cant_update_with_readlock";
-case errc::mixing_not_allowed: return "mixing_not_allowed";
-case errc::dup_argument: return "dup_argument";
-case errc::user_limit_reached: return "user_limit_reached";
-case errc::specific_access_denied_error: return "specific_access_denied_error";
-case errc::local_variable: return "local_variable";
-case errc::global_variable: return "global_variable";
-case errc::no_default: return "no_default";
-case errc::wrong_value_for_var: return "wrong_value_for_var";
-case errc::wrong_type_for_var: return "wrong_type_for_var";
-case errc::var_cant_be_read: return "var_cant_be_read";
-case errc::cant_use_option_here: return "cant_use_option_here";
-case errc::not_supported_yet: return "not_supported_yet";
-case errc::master_fatal_error_reading_binlog: return "master_fatal_error_reading_binlog";
-case errc::slave_ignored_table: return "slave_ignored_table";
-case errc::incorrect_global_local_var: return "incorrect_global_local_var";
-case errc::wrong_fk_def: return "wrong_fk_def";
-case errc::key_ref_do_not_match_table_ref: return "key_ref_do_not_match_table_ref";
-case errc::operand_columns: return "operand_columns";
-case errc::subquery_no_1_row: return "subquery_no_1_row";
-case errc::unknown_stmt_handler: return "unknown_stmt_handler";
-case errc::corrupt_help_db: return "corrupt_help_db";
-case errc::auto_convert: return "auto_convert";
-case errc::illegal_reference: return "illegal_reference";
-case errc::derived_must_have_alias: return "derived_must_have_alias";
-case errc::select_reduced: return "select_reduced";
-case errc::tablename_not_allowed_here: return "tablename_not_allowed_here";
-case errc::not_supported_auth_mode: return "not_supported_auth_mode";
-case errc::spatial_cant_have_null: return "spatial_cant_have_null";
-case errc::collation_charset_mismatch: return "collation_charset_mismatch";
-case errc::too_big_for_uncompress: return "too_big_for_uncompress";
-case errc::zlib_z_mem_error: return "zlib_z_mem_error";
-case errc::zlib_z_buf_error: return "zlib_z_buf_error";
-case errc::zlib_z_data_error: return "zlib_z_data_error";
-case errc::cut_value_group_concat: return "cut_value_group_concat";
-case errc::warn_too_few_records: return "warn_too_few_records";
-case errc::warn_too_many_records: return "warn_too_many_records";
-case errc::warn_null_to_notnull: return "warn_null_to_notnull";
-case errc::warn_data_out_of_range: return "warn_data_out_of_range";
-case errc::warn_using_other_handler: return "warn_using_other_handler";
-case errc::cant_aggregate_2collations: return "cant_aggregate_2collations";
-case errc::revoke_grants: return "revoke_grants";
-case errc::cant_aggregate_3collations: return "cant_aggregate_3collations";
-case errc::cant_aggregate_ncollations: return "cant_aggregate_ncollations";
-case errc::variable_is_not_struct: return "variable_is_not_struct";
-case errc::unknown_collation: return "unknown_collation";
-case errc::slave_ignored_ssl_params: return "slave_ignored_ssl_params";
-case errc::warn_field_resolved: return "warn_field_resolved";
-case errc::bad_slave_until_cond: return "bad_slave_until_cond";
-case errc::missing_skip_slave: return "missing_skip_slave";
-case errc::until_cond_ignored: return "until_cond_ignored";
-case errc::wrong_name_for_index: return "wrong_name_for_index";
-case errc::wrong_name_for_catalog: return "wrong_name_for_catalog";
-case errc::bad_ft_column: return "bad_ft_column";
-case errc::unknown_key_cache: return "unknown_key_cache";
-case errc::warn_hostname_wont_work: return "warn_hostname_wont_work";
-case errc::unknown_storage_engine: return "unknown_storage_engine";
-case errc::warn_deprecated_syntax: return "warn_deprecated_syntax";
-case errc::non_updatable_table: return "non_updatable_table";
-case errc::feature_disabled: return "feature_disabled";
-case errc::option_prevents_statement: return "option_prevents_statement";
-case errc::duplicated_value_in_type: return "duplicated_value_in_type";
-case errc::truncated_wrong_value: return "truncated_wrong_value";
-case errc::invalid_on_update: return "invalid_on_update";
-case errc::unsupported_ps: return "unsupported_ps";
-case errc::get_errmsg: return "get_errmsg";
-case errc::get_temporary_errmsg: return "get_temporary_errmsg";
-case errc::unknown_time_zone: return "unknown_time_zone";
-case errc::warn_invalid_timestamp: return "warn_invalid_timestamp";
-case errc::invalid_character_string: return "invalid_character_string";
-case errc::warn_allowed_packet_overflowed: return "warn_allowed_packet_overflowed";
-case errc::conflicting_declarations: return "conflicting_declarations";
-case errc::sp_no_recursive_create: return "sp_no_recursive_create";
-case errc::sp_already_exists: return "sp_already_exists";
-case errc::sp_does_not_exist: return "sp_does_not_exist";
-case errc::sp_drop_failed: return "sp_drop_failed";
-case errc::sp_store_failed: return "sp_store_failed";
-case errc::sp_lilabel_mismatch: return "sp_lilabel_mismatch";
-case errc::sp_label_redefine: return "sp_label_redefine";
-case errc::sp_label_mismatch: return "sp_label_mismatch";
-case errc::sp_uninit_var: return "sp_uninit_var";
-case errc::sp_badselect: return "sp_badselect";
-case errc::sp_badreturn: return "sp_badreturn";
-case errc::sp_badstatement: return "sp_badstatement";
-case errc::update_log_deprecated_ignored: return "update_log_deprecated_ignored";
-case errc::update_log_deprecated_translated: return "update_log_deprecated_translated";
-case errc::query_interrupted: return "query_interrupted";
-case errc::sp_wrong_no_of_args: return "sp_wrong_no_of_args";
-case errc::sp_cond_mismatch: return "sp_cond_mismatch";
-case errc::sp_noreturn: return "sp_noreturn";
-case errc::sp_noreturnend: return "sp_noreturnend";
-case errc::sp_bad_cursor_query: return "sp_bad_cursor_query";
-case errc::sp_bad_cursor_select: return "sp_bad_cursor_select";
-case errc::sp_cursor_mismatch: return "sp_cursor_mismatch";
-case errc::sp_cursor_already_open: return "sp_cursor_already_open";
-case errc::sp_cursor_not_open: return "sp_cursor_not_open";
-case errc::sp_undeclared_var: return "sp_undeclared_var";
-case errc::sp_wrong_no_of_fetch_args: return "sp_wrong_no_of_fetch_args";
-case errc::sp_fetch_no_data: return "sp_fetch_no_data";
-case errc::sp_dup_param: return "sp_dup_param";
-case errc::sp_dup_var: return "sp_dup_var";
-case errc::sp_dup_cond: return "sp_dup_cond";
-case errc::sp_dup_curs: return "sp_dup_curs";
-case errc::sp_cant_alter: return "sp_cant_alter";
-case errc::sp_subselect_nyi: return "sp_subselect_nyi";
-case errc::stmt_not_allowed_in_sf_or_trg: return "stmt_not_allowed_in_sf_or_trg";
-case errc::sp_varcond_after_curshndlr: return "sp_varcond_after_curshndlr";
-case errc::sp_cursor_after_handler: return "sp_cursor_after_handler";
-case errc::sp_case_not_found: return "sp_case_not_found";
-case errc::fparser_too_big_file: return "fparser_too_big_file";
-case errc::fparser_bad_header: return "fparser_bad_header";
-case errc::fparser_eof_in_comment: return "fparser_eof_in_comment";
-case errc::fparser_error_in_parameter: return "fparser_error_in_parameter";
-case errc::fparser_eof_in_unknown_parameter: return "fparser_eof_in_unknown_parameter";
-case errc::view_no_explain: return "view_no_explain";
-case errc::wrong_object: return "wrong_object";
-case errc::nonupdateable_column: return "nonupdateable_column";
-case errc::view_select_clause: return "view_select_clause";
-case errc::view_select_variable: return "view_select_variable";
-case errc::view_select_tmptable: return "view_select_tmptable";
-case errc::view_wrong_list: return "view_wrong_list";
-case errc::warn_view_merge: return "warn_view_merge";
-case errc::warn_view_without_key: return "warn_view_without_key";
-case errc::view_invalid: return "view_invalid";
-case errc::sp_no_drop_sp: return "sp_no_drop_sp";
-case errc::trg_already_exists: return "trg_already_exists";
-case errc::trg_does_not_exist: return "trg_does_not_exist";
-case errc::trg_on_view_or_temp_table: return "trg_on_view_or_temp_table";
-case errc::trg_cant_change_row: return "trg_cant_change_row";
-case errc::trg_no_such_row_in_trg: return "trg_no_such_row_in_trg";
-case errc::no_default_for_field: return "no_default_for_field";
-case errc::division_by_zero: return "division_by_zero";
-case errc::truncated_wrong_value_for_field: return "truncated_wrong_value_for_field";
-case errc::illegal_value_for_type: return "illegal_value_for_type";
-case errc::view_nonupd_check: return "view_nonupd_check";
-case errc::view_check_failed: return "view_check_failed";
-case errc::procaccess_denied_error: return "procaccess_denied_error";
-case errc::relay_log_fail: return "relay_log_fail";
-case errc::unknown_target_binlog: return "unknown_target_binlog";
-case errc::io_err_log_index_read: return "io_err_log_index_read";
-case errc::binlog_purge_prohibited: return "binlog_purge_prohibited";
-case errc::fseek_fail: return "fseek_fail";
-case errc::binlog_purge_fatal_err: return "binlog_purge_fatal_err";
-case errc::log_in_use: return "log_in_use";
-case errc::log_purge_unknown_err: return "log_purge_unknown_err";
-case errc::relay_log_init: return "relay_log_init";
-case errc::no_binary_logging: return "no_binary_logging";
-case errc::reserved_syntax: return "reserved_syntax";
-case errc::ps_many_param: return "ps_many_param";
-case errc::key_part_0: return "key_part_0";
-case errc::view_checksum: return "view_checksum";
-case errc::view_multiupdate: return "view_multiupdate";
-case errc::view_no_insert_field_list: return "view_no_insert_field_list";
-case errc::view_delete_merge_view: return "view_delete_merge_view";
-case errc::cannot_user: return "cannot_user";
-case errc::xaer_nota: return "xaer_nota";
-case errc::xaer_inval: return "xaer_inval";
-case errc::xaer_rmfail: return "xaer_rmfail";
-case errc::xaer_outside: return "xaer_outside";
-case errc::xaer_rmerr: return "xaer_rmerr";
-case errc::xa_rbrollback: return "xa_rbrollback";
-case errc::nonexisting_proc_grant: return "nonexisting_proc_grant";
-case errc::proc_auto_grant_fail: return "proc_auto_grant_fail";
-case errc::proc_auto_revoke_fail: return "proc_auto_revoke_fail";
-case errc::data_too_long: return "data_too_long";
-case errc::sp_bad_sqlstate: return "sp_bad_sqlstate";
-case errc::startup: return "startup";
-case errc::load_from_fixed_size_rows_to_var: return "load_from_fixed_size_rows_to_var";
-case errc::cant_create_user_with_grant: return "cant_create_user_with_grant";
-case errc::wrong_value_for_type: return "wrong_value_for_type";
-case errc::table_def_changed: return "table_def_changed";
-case errc::sp_dup_handler: return "sp_dup_handler";
-case errc::sp_not_var_arg: return "sp_not_var_arg";
-case errc::sp_no_retset: return "sp_no_retset";
-case errc::cant_create_geometry_object: return "cant_create_geometry_object";
-case errc::binlog_unsafe_routine: return "binlog_unsafe_routine";
-case errc::binlog_create_routine_need_super: return "binlog_create_routine_need_super";
-case errc::stmt_has_no_open_cursor: return "stmt_has_no_open_cursor";
-case errc::commit_not_allowed_in_sf_or_trg: return "commit_not_allowed_in_sf_or_trg";
-case errc::no_default_for_view_field: return "no_default_for_view_field";
-case errc::sp_no_recursion: return "sp_no_recursion";
-case errc::too_big_scale: return "too_big_scale";
-case errc::too_big_precision: return "too_big_precision";
-case errc::m_bigger_than_d: return "m_bigger_than_d";
-case errc::wrong_lock_of_system_table: return "wrong_lock_of_system_table";
-case errc::connect_to_foreign_data_source: return "connect_to_foreign_data_source";
-case errc::query_on_foreign_data_source: return "query_on_foreign_data_source";
-case errc::foreign_data_source_doesnt_exist: return "foreign_data_source_doesnt_exist";
-case errc::foreign_data_string_invalid_cant_create: return "foreign_data_string_invalid_cant_create";
-case errc::foreign_data_string_invalid: return "foreign_data_string_invalid";
-case errc::trg_in_wrong_schema: return "trg_in_wrong_schema";
-case errc::stack_overrun_need_more: return "stack_overrun_need_more";
-case errc::too_long_body: return "too_long_body";
-case errc::warn_cant_drop_default_keycache: return "warn_cant_drop_default_keycache";
-case errc::too_big_displaywidth: return "too_big_displaywidth";
-case errc::xaer_dupid: return "xaer_dupid";
-case errc::datetime_function_overflow: return "datetime_function_overflow";
-case errc::cant_update_used_table_in_sf_or_trg: return "cant_update_used_table_in_sf_or_trg";
-case errc::view_prevent_update: return "view_prevent_update";
-case errc::ps_no_recursion: return "ps_no_recursion";
-case errc::sp_cant_set_autocommit: return "sp_cant_set_autocommit";
-case errc::view_frm_no_user: return "view_frm_no_user";
-case errc::view_other_user: return "view_other_user";
-case errc::no_such_user: return "no_such_user";
-case errc::forbid_schema_change: return "forbid_schema_change";
-case errc::row_is_referenced_2: return "row_is_referenced_2";
-case errc::no_referenced_row_2: return "no_referenced_row_2";
-case errc::sp_bad_var_shadow: return "sp_bad_var_shadow";
-case errc::trg_no_definer: return "trg_no_definer";
-case errc::old_file_format: return "old_file_format";
-case errc::sp_recursion_limit: return "sp_recursion_limit";
-case errc::sp_wrong_name: return "sp_wrong_name";
-case errc::table_needs_upgrade: return "table_needs_upgrade";
-case errc::sp_no_aggregate: return "sp_no_aggregate";
-case errc::max_prepared_stmt_count_reached: return "max_prepared_stmt_count_reached";
-case errc::view_recursive: return "view_recursive";
-case errc::non_grouping_field_used: return "non_grouping_field_used";
-case errc::table_cant_handle_spkeys: return "table_cant_handle_spkeys";
-case errc::no_triggers_on_system_schema: return "no_triggers_on_system_schema";
-case errc::removed_spaces: return "removed_spaces";
-case errc::autoinc_read_failed: return "autoinc_read_failed";
-case errc::username: return "username";
-case errc::hostname: return "hostname";
-case errc::wrong_string_length: return "wrong_string_length";
-case errc::non_insertable_table: return "non_insertable_table";
-case errc::admin_wrong_mrg_table: return "admin_wrong_mrg_table";
-case errc::too_high_level_of_nesting_for_select: return "too_high_level_of_nesting_for_select";
-case errc::name_becomes_empty: return "name_becomes_empty";
-case errc::ambiguous_field_term: return "ambiguous_field_term";
-case errc::foreign_server_exists: return "foreign_server_exists";
-case errc::foreign_server_doesnt_exist: return "foreign_server_doesnt_exist";
-case errc::illegal_ha_create_option: return "illegal_ha_create_option";
-case errc::partition_requires_values_error: return "partition_requires_values_error";
-case errc::partition_wrong_values_error: return "partition_wrong_values_error";
-case errc::partition_maxvalue_error: return "partition_maxvalue_error";
-case errc::partition_wrong_no_part_error: return "partition_wrong_no_part_error";
-case errc::partition_wrong_no_subpart_error: return "partition_wrong_no_subpart_error";
-case errc::wrong_expr_in_partition_func_error: return "wrong_expr_in_partition_func_error";
-case errc::field_not_found_part_error: return "field_not_found_part_error";
-case errc::inconsistent_partition_info_error: return "inconsistent_partition_info_error";
-case errc::partition_func_not_allowed_error: return "partition_func_not_allowed_error";
-case errc::partitions_must_be_defined_error: return "partitions_must_be_defined_error";
-case errc::range_not_increasing_error: return "range_not_increasing_error";
-case errc::inconsistent_type_of_functions_error: return "inconsistent_type_of_functions_error";
-case errc::multiple_def_const_in_list_part_error: return "multiple_def_const_in_list_part_error";
-case errc::partition_entry_error: return "partition_entry_error";
-case errc::mix_handler_error: return "mix_handler_error";
-case errc::partition_not_defined_error: return "partition_not_defined_error";
-case errc::too_many_partitions_error: return "too_many_partitions_error";
-case errc::subpartition_error: return "subpartition_error";
-case errc::cant_create_handler_file: return "cant_create_handler_file";
-case errc::blob_field_in_part_func_error: return "blob_field_in_part_func_error";
-case errc::unique_key_need_all_fields_in_pf: return "unique_key_need_all_fields_in_pf";
-case errc::no_parts_error: return "no_parts_error";
-case errc::partition_mgmt_on_nonpartitioned: return "partition_mgmt_on_nonpartitioned";
-case errc::foreign_key_on_partitioned: return "foreign_key_on_partitioned";
-case errc::drop_partition_non_existent: return "drop_partition_non_existent";
-case errc::drop_last_partition: return "drop_last_partition";
-case errc::coalesce_only_on_hash_partition: return "coalesce_only_on_hash_partition";
-case errc::reorg_hash_only_on_same_no: return "reorg_hash_only_on_same_no";
-case errc::reorg_no_param_error: return "reorg_no_param_error";
-case errc::only_on_range_list_partition: return "only_on_range_list_partition";
-case errc::add_partition_subpart_error: return "add_partition_subpart_error";
-case errc::add_partition_no_new_partition: return "add_partition_no_new_partition";
-case errc::coalesce_partition_no_partition: return "coalesce_partition_no_partition";
-case errc::reorg_partition_not_exist: return "reorg_partition_not_exist";
-case errc::same_name_partition: return "same_name_partition";
-case errc::no_binlog_error: return "no_binlog_error";
-case errc::consecutive_reorg_partitions: return "consecutive_reorg_partitions";
-case errc::reorg_outside_range: return "reorg_outside_range";
-case errc::partition_function_failure: return "partition_function_failure";
-case errc::limited_part_range: return "limited_part_range";
-case errc::plugin_is_not_loaded: return "plugin_is_not_loaded";
-case errc::wrong_value: return "wrong_value";
-case errc::no_partition_for_given_value: return "no_partition_for_given_value";
-case errc::filegroup_option_only_once: return "filegroup_option_only_once";
-case errc::create_filegroup_failed: return "create_filegroup_failed";
-case errc::drop_filegroup_failed: return "drop_filegroup_failed";
-case errc::tablespace_auto_extend_error: return "tablespace_auto_extend_error";
-case errc::wrong_size_number: return "wrong_size_number";
-case errc::size_overflow_error: return "size_overflow_error";
-case errc::alter_filegroup_failed: return "alter_filegroup_failed";
-case errc::binlog_row_logging_failed: return "binlog_row_logging_failed";
-case errc::event_already_exists: return "event_already_exists";
-case errc::event_does_not_exist: return "event_does_not_exist";
-case errc::event_interval_not_positive_or_too_big: return "event_interval_not_positive_or_too_big";
-case errc::event_ends_before_starts: return "event_ends_before_starts";
-case errc::event_exec_time_in_the_past: return "event_exec_time_in_the_past";
-case errc::event_same_name: return "event_same_name";
-case errc::drop_index_fk: return "drop_index_fk";
-case errc::warn_deprecated_syntax_with_ver: return "warn_deprecated_syntax_with_ver";
-case errc::cant_lock_log_table: return "cant_lock_log_table";
-case errc::foreign_duplicate_key_old_unused: return "foreign_duplicate_key_old_unused";
-case errc::col_count_doesnt_match_please_update: return "col_count_doesnt_match_please_update";
-case errc::stored_function_prevents_switch_binlog_format: return "stored_function_prevents_switch_binlog_format";
-case errc::partition_no_temporary: return "partition_no_temporary";
-case errc::partition_const_domain_error: return "partition_const_domain_error";
-case errc::partition_function_is_not_allowed: return "partition_function_is_not_allowed";
-case errc::null_in_values_less_than: return "null_in_values_less_than";
-case errc::wrong_partition_name: return "wrong_partition_name";
-case errc::cant_change_tx_characteristics: return "cant_change_tx_characteristics";
-case errc::dup_entry_autoincrement_case: return "dup_entry_autoincrement_case";
-case errc::event_set_var_error: return "event_set_var_error";
-case errc::partition_merge_error: return "partition_merge_error";
-case errc::base64_decode_error: return "base64_decode_error";
-case errc::event_recursion_forbidden: return "event_recursion_forbidden";
-case errc::only_integers_allowed: return "only_integers_allowed";
-case errc::unsuported_log_engine: return "unsuported_log_engine";
-case errc::bad_log_statement: return "bad_log_statement";
-case errc::cant_rename_log_table: return "cant_rename_log_table";
-case errc::wrong_paramcount_to_native_fct: return "wrong_paramcount_to_native_fct";
-case errc::wrong_parameters_to_native_fct: return "wrong_parameters_to_native_fct";
-case errc::wrong_parameters_to_stored_fct: return "wrong_parameters_to_stored_fct";
-case errc::native_fct_name_collision: return "native_fct_name_collision";
-case errc::dup_entry_with_key_name: return "dup_entry_with_key_name";
-case errc::binlog_purge_emfile: return "binlog_purge_emfile";
-case errc::event_cannot_create_in_the_past: return "event_cannot_create_in_the_past";
-case errc::event_cannot_alter_in_the_past: return "event_cannot_alter_in_the_past";
-case errc::no_partition_for_given_value_silent: return "no_partition_for_given_value_silent";
-case errc::binlog_unsafe_statement: return "binlog_unsafe_statement";
-case errc::binlog_fatal_error: return "binlog_fatal_error";
-case errc::binlog_logging_impossible: return "binlog_logging_impossible";
-case errc::view_no_creation_ctx: return "view_no_creation_ctx";
-case errc::view_invalid_creation_ctx: return "view_invalid_creation_ctx";
-case errc::trg_corrupted_file: return "trg_corrupted_file";
-case errc::trg_no_creation_ctx: return "trg_no_creation_ctx";
-case errc::trg_invalid_creation_ctx: return "trg_invalid_creation_ctx";
-case errc::event_invalid_creation_ctx: return "event_invalid_creation_ctx";
-case errc::trg_cant_open_table: return "trg_cant_open_table";
-case errc::no_format_description_event_before_binlog_statement: return "no_format_description_event_before_binlog_statement";
-case errc::slave_corrupt_event: return "slave_corrupt_event";
-case errc::log_purge_no_file: return "log_purge_no_file";
-case errc::xa_rbtimeout: return "xa_rbtimeout";
-case errc::xa_rbdeadlock: return "xa_rbdeadlock";
-case errc::need_reprepare: return "need_reprepare";
-case errc::plugin_delete_builtin: return "plugin_delete_builtin";
-case errc::variable_is_readonly: return "variable_is_readonly";
-case errc::warn_engine_transaction_rollback: return "warn_engine_transaction_rollback";
-case errc::slave_heartbeat_value_out_of_range: return "slave_heartbeat_value_out_of_range";
-case errc::ndb_replication_schema_error: return "ndb_replication_schema_error";
-case errc::conflict_fn_parse_error: return "conflict_fn_parse_error";
-case errc::exceptions_write_error: return "exceptions_write_error";
-case errc::too_long_table_comment: return "too_long_table_comment";
-case errc::too_long_field_comment: return "too_long_field_comment";
-case errc::func_inexistent_name_collision: return "func_inexistent_name_collision";
-case errc::database_name: return "database_name";
-case errc::table_name: return "table_name";
-case errc::partition_name: return "partition_name";
-case errc::subpartition_name: return "subpartition_name";
-case errc::temporary_name: return "temporary_name";
-case errc::renamed_name: return "renamed_name";
-case errc::too_many_concurrent_trxs: return "too_many_concurrent_trxs";
-case errc::debug_sync_timeout: return "debug_sync_timeout";
-case errc::debug_sync_hit_limit: return "debug_sync_hit_limit";
-case errc::dup_signal_set: return "dup_signal_set";
-case errc::signal_warn: return "signal_warn";
-case errc::signal_not_found: return "signal_not_found";
-case errc::signal_exception: return "signal_exception";
-case errc::resignal_without_active_handler: return "resignal_without_active_handler";
-case errc::signal_bad_condition_type: return "signal_bad_condition_type";
-case errc::cond_item_too_long: return "cond_item_too_long";
-case errc::unknown_locale: return "unknown_locale";
-case errc::slave_ignore_server_ids: return "slave_ignore_server_ids";
-case errc::same_name_partition_field: return "same_name_partition_field";
-case errc::partition_column_list_error: return "partition_column_list_error";
-case errc::wrong_type_column_value_error: return "wrong_type_column_value_error";
-case errc::too_many_partition_func_fields_error: return "too_many_partition_func_fields_error";
-case errc::maxvalue_in_values_in: return "maxvalue_in_values_in";
-case errc::too_many_values_error: return "too_many_values_error";
-case errc::row_single_partition_field_error: return "row_single_partition_field_error";
-case errc::field_type_not_allowed_as_partition_field: return "field_type_not_allowed_as_partition_field";
-case errc::partition_fields_too_long: return "partition_fields_too_long";
-case errc::binlog_row_engine_and_stmt_engine: return "binlog_row_engine_and_stmt_engine";
-case errc::binlog_row_mode_and_stmt_engine: return "binlog_row_mode_and_stmt_engine";
-case errc::binlog_unsafe_and_stmt_engine: return "binlog_unsafe_and_stmt_engine";
-case errc::binlog_row_injection_and_stmt_engine: return "binlog_row_injection_and_stmt_engine";
-case errc::binlog_stmt_mode_and_row_engine: return "binlog_stmt_mode_and_row_engine";
-case errc::binlog_row_injection_and_stmt_mode: return "binlog_row_injection_and_stmt_mode";
-case errc::binlog_multiple_engines_and_self_logging_engine: return "binlog_multiple_engines_and_self_logging_engine";
-case errc::binlog_unsafe_limit: return "binlog_unsafe_limit";
-case errc::binlog_unsafe_system_table: return "binlog_unsafe_system_table";
-case errc::binlog_unsafe_autoinc_columns: return "binlog_unsafe_autoinc_columns";
-case errc::binlog_unsafe_udf: return "binlog_unsafe_udf";
-case errc::binlog_unsafe_system_variable: return "binlog_unsafe_system_variable";
-case errc::binlog_unsafe_system_function: return "binlog_unsafe_system_function";
-case errc::binlog_unsafe_nontrans_after_trans: return "binlog_unsafe_nontrans_after_trans";
-case errc::message_and_statement: return "message_and_statement";
-case errc::slave_cant_create_conversion: return "slave_cant_create_conversion";
-case errc::inside_transaction_prevents_switch_binlog_format: return "inside_transaction_prevents_switch_binlog_format";
-case errc::path_length: return "path_length";
-case errc::warn_deprecated_syntax_no_replacement: return "warn_deprecated_syntax_no_replacement";
-case errc::wrong_native_table_structure: return "wrong_native_table_structure";
-case errc::wrong_perfschema_usage: return "wrong_perfschema_usage";
-case errc::warn_i_s_skipped_table: return "warn_i_s_skipped_table";
-case errc::inside_transaction_prevents_switch_binlog_direct: return "inside_transaction_prevents_switch_binlog_direct";
-case errc::stored_function_prevents_switch_binlog_direct: return "stored_function_prevents_switch_binlog_direct";
-case errc::spatial_must_have_geom_col: return "spatial_must_have_geom_col";
-case errc::too_long_index_comment: return "too_long_index_comment";
-case errc::lock_aborted: return "lock_aborted";
-case errc::data_out_of_range: return "data_out_of_range";
-case errc::wrong_spvar_type_in_limit: return "wrong_spvar_type_in_limit";
-case errc::binlog_unsafe_multiple_engines_and_self_logging_engine: return "binlog_unsafe_multiple_engines_and_self_logging_engine";
-case errc::binlog_unsafe_mixed_statement: return "binlog_unsafe_mixed_statement";
-case errc::inside_transaction_prevents_switch_sql_log_bin: return "inside_transaction_prevents_switch_sql_log_bin";
-case errc::stored_function_prevents_switch_sql_log_bin: return "stored_function_prevents_switch_sql_log_bin";
-case errc::failed_read_from_par_file: return "failed_read_from_par_file";
-case errc::values_is_not_int_type_error: return "values_is_not_int_type_error";
-case errc::access_denied_no_password_error: return "access_denied_no_password_error";
-case errc::set_password_auth_plugin: return "set_password_auth_plugin";
-case errc::truncate_illegal_fk: return "truncate_illegal_fk";
-case errc::plugin_is_permanent: return "plugin_is_permanent";
-case errc::slave_heartbeat_value_out_of_range_min: return "slave_heartbeat_value_out_of_range_min";
-case errc::slave_heartbeat_value_out_of_range_max: return "slave_heartbeat_value_out_of_range_max";
-case errc::stmt_cache_full: return "stmt_cache_full";
-case errc::multi_update_key_conflict: return "multi_update_key_conflict";
-case errc::table_needs_rebuild: return "table_needs_rebuild";
-case errc::index_column_too_long: return "index_column_too_long";
-case errc::error_in_trigger_body: return "error_in_trigger_body";
-case errc::error_in_unknown_trigger_body: return "error_in_unknown_trigger_body";
-case errc::index_corrupt: return "index_corrupt";
-case errc::undo_record_too_big: return "undo_record_too_big";
-case errc::binlog_unsafe_insert_ignore_select: return "binlog_unsafe_insert_ignore_select";
-case errc::binlog_unsafe_insert_select_update: return "binlog_unsafe_insert_select_update";
-case errc::binlog_unsafe_replace_select: return "binlog_unsafe_replace_select";
-case errc::binlog_unsafe_create_ignore_select: return "binlog_unsafe_create_ignore_select";
-case errc::binlog_unsafe_create_replace_select: return "binlog_unsafe_create_replace_select";
-case errc::binlog_unsafe_update_ignore: return "binlog_unsafe_update_ignore";
-case errc::plugin_no_uninstall: return "plugin_no_uninstall";
-case errc::plugin_no_install: return "plugin_no_install";
-case errc::binlog_unsafe_write_autoinc_select: return "binlog_unsafe_write_autoinc_select";
-case errc::binlog_unsafe_create_select_autoinc: return "binlog_unsafe_create_select_autoinc";
-case errc::binlog_unsafe_insert_two_keys: return "binlog_unsafe_insert_two_keys";
-case errc::table_in_fk_check: return "table_in_fk_check";
-case errc::unsupported_engine: return "unsupported_engine";
-case errc::binlog_unsafe_autoinc_not_first: return "binlog_unsafe_autoinc_not_first";
-case errc::cannot_load_from_table_v2: return "cannot_load_from_table_v2";
-case errc::master_delay_value_out_of_range: return "master_delay_value_out_of_range";
-case errc::only_fd_and_rbr_events_allowed_in_binlog_statement: return "only_fd_and_rbr_events_allowed_in_binlog_statement";
-case errc::partition_exchange_different_option: return "partition_exchange_different_option";
-case errc::partition_exchange_part_table: return "partition_exchange_part_table";
-case errc::partition_exchange_temp_table: return "partition_exchange_temp_table";
-case errc::partition_instead_of_subpartition: return "partition_instead_of_subpartition";
-case errc::unknown_partition: return "unknown_partition";
-case errc::tables_different_metadata: return "tables_different_metadata";
-case errc::row_does_not_match_partition: return "row_does_not_match_partition";
-case errc::binlog_cache_size_greater_than_max: return "binlog_cache_size_greater_than_max";
-case errc::warn_index_not_applicable: return "warn_index_not_applicable";
-case errc::partition_exchange_foreign_key: return "partition_exchange_foreign_key";
-case errc::rpl_info_data_too_long: return "rpl_info_data_too_long";
-case errc::binlog_stmt_cache_size_greater_than_max: return "binlog_stmt_cache_size_greater_than_max";
-case errc::cant_update_table_in_create_table_select: return "cant_update_table_in_create_table_select";
-case errc::partition_clause_on_nonpartitioned: return "partition_clause_on_nonpartitioned";
-case errc::row_does_not_match_given_partition_set: return "row_does_not_match_given_partition_set";
-case errc::change_rpl_info_repository_failure: return "change_rpl_info_repository_failure";
-case errc::warning_not_complete_rollback_with_created_temp_table: return "warning_not_complete_rollback_with_created_temp_table";
-case errc::warning_not_complete_rollback_with_dropped_temp_table: return "warning_not_complete_rollback_with_dropped_temp_table";
-case errc::mts_feature_is_not_supported: return "mts_feature_is_not_supported";
-case errc::mts_updated_dbs_greater_max: return "mts_updated_dbs_greater_max";
-case errc::mts_cant_parallel: return "mts_cant_parallel";
-case errc::mts_inconsistent_data: return "mts_inconsistent_data";
-case errc::fulltext_not_supported_with_partitioning: return "fulltext_not_supported_with_partitioning";
-case errc::da_invalid_condition_number: return "da_invalid_condition_number";
-case errc::insecure_plain_text: return "insecure_plain_text";
-case errc::insecure_change_master: return "insecure_change_master";
-case errc::foreign_duplicate_key_with_child_info: return "foreign_duplicate_key_with_child_info";
-case errc::foreign_duplicate_key_without_child_info: return "foreign_duplicate_key_without_child_info";
-case errc::sqlthread_with_secure_slave: return "sqlthread_with_secure_slave";
-case errc::table_has_no_ft: return "table_has_no_ft";
-case errc::variable_not_settable_in_sf_or_trigger: return "variable_not_settable_in_sf_or_trigger";
-case errc::variable_not_settable_in_transaction: return "variable_not_settable_in_transaction";
-case errc::set_statement_cannot_invoke_function: return "set_statement_cannot_invoke_function";
-case errc::gtid_next_cant_be_automatic_if_gtid_next_list_is_non_null: return "gtid_next_cant_be_automatic_if_gtid_next_list_is_non_null";
-case errc::malformed_gtid_set_specification: return "malformed_gtid_set_specification";
-case errc::malformed_gtid_set_encoding: return "malformed_gtid_set_encoding";
-case errc::malformed_gtid_specification: return "malformed_gtid_specification";
-case errc::gno_exhausted: return "gno_exhausted";
-case errc::bad_slave_auto_position: return "bad_slave_auto_position";
-case errc::auto_position_requires_gtid_mode_not_off: return "auto_position_requires_gtid_mode_not_off";
-case errc::cant_do_implicit_commit_in_trx_when_gtid_next_is_set: return "cant_do_implicit_commit_in_trx_when_gtid_next_is_set";
-case errc::gtid_mode_on_requires_enforce_gtid_consistency_on: return "gtid_mode_on_requires_enforce_gtid_consistency_on";
-case errc::cant_set_gtid_next_to_gtid_when_gtid_mode_is_off: return "cant_set_gtid_next_to_gtid_when_gtid_mode_is_off";
-case errc::cant_set_gtid_next_to_anonymous_when_gtid_mode_is_on: return "cant_set_gtid_next_to_anonymous_when_gtid_mode_is_on";
-case errc::cant_set_gtid_next_list_to_non_null_when_gtid_mode_is_off: return "cant_set_gtid_next_list_to_non_null_when_gtid_mode_is_off";
-case errc::gtid_unsafe_non_transactional_table: return "gtid_unsafe_non_transactional_table";
-case errc::gtid_unsafe_create_select: return "gtid_unsafe_create_select";
-case errc::gtid_mode_can_only_change_one_step_at_a_time: return "gtid_mode_can_only_change_one_step_at_a_time";
-case errc::master_has_purged_required_gtids: return "master_has_purged_required_gtids";
-case errc::cant_set_gtid_next_when_owning_gtid: return "cant_set_gtid_next_when_owning_gtid";
-case errc::unknown_explain_format: return "unknown_explain_format";
-case errc::cant_execute_in_read_only_transaction: return "cant_execute_in_read_only_transaction";
-case errc::too_long_table_partition_comment: return "too_long_table_partition_comment";
-case errc::slave_configuration: return "slave_configuration";
-case errc::innodb_ft_limit: return "innodb_ft_limit";
-case errc::innodb_no_ft_temp_table: return "innodb_no_ft_temp_table";
-case errc::innodb_ft_wrong_docid_column: return "innodb_ft_wrong_docid_column";
-case errc::innodb_ft_wrong_docid_index: return "innodb_ft_wrong_docid_index";
-case errc::innodb_online_log_too_big: return "innodb_online_log_too_big";
-case errc::unknown_alter_algorithm: return "unknown_alter_algorithm";
-case errc::unknown_alter_lock: return "unknown_alter_lock";
-case errc::mts_change_master_cant_run_with_gaps: return "mts_change_master_cant_run_with_gaps";
-case errc::mts_recovery_failure: return "mts_recovery_failure";
-case errc::mts_reset_workers: return "mts_reset_workers";
-case errc::col_count_doesnt_match_corrupted_v2: return "col_count_doesnt_match_corrupted_v2";
-case errc::slave_silent_retry_transaction: return "slave_silent_retry_transaction";
-case errc::discard_fk_checks_running: return "discard_fk_checks_running";
-case errc::table_schema_mismatch: return "table_schema_mismatch";
-case errc::table_in_system_tablespace: return "table_in_system_tablespace";
-case errc::io_read_error: return "io_read_error";
-case errc::io_write_error: return "io_write_error";
-case errc::tablespace_missing: return "tablespace_missing";
-case errc::tablespace_exists: return "tablespace_exists";
-case errc::tablespace_discarded: return "tablespace_discarded";
-case errc::internal_error: return "internal_error";
-case errc::innodb_import_error: return "innodb_import_error";
-case errc::innodb_index_corrupt: return "innodb_index_corrupt";
-case errc::invalid_year_column_length: return "invalid_year_column_length";
-case errc::not_valid_password: return "not_valid_password";
-case errc::must_change_password: return "must_change_password";
-case errc::fk_no_index_child: return "fk_no_index_child";
-case errc::fk_no_index_parent: return "fk_no_index_parent";
-case errc::fk_fail_add_system: return "fk_fail_add_system";
-case errc::fk_cannot_open_parent: return "fk_cannot_open_parent";
-case errc::fk_incorrect_option: return "fk_incorrect_option";
-case errc::fk_dup_name: return "fk_dup_name";
-case errc::password_format: return "password_format";
-case errc::fk_column_cannot_drop: return "fk_column_cannot_drop";
-case errc::fk_column_cannot_drop_child: return "fk_column_cannot_drop_child";
-case errc::fk_column_not_null: return "fk_column_not_null";
-case errc::dup_index: return "dup_index";
-case errc::fk_column_cannot_change: return "fk_column_cannot_change";
-case errc::fk_column_cannot_change_child: return "fk_column_cannot_change_child";
-case errc::malformed_packet: return "malformed_packet";
-case errc::read_only_mode: return "read_only_mode";
-case errc::gtid_next_type_undefined_gtid: return "gtid_next_type_undefined_gtid";
-case errc::variable_not_settable_in_sp: return "variable_not_settable_in_sp";
-case errc::cant_set_gtid_purged_when_gtid_executed_is_not_empty: return "cant_set_gtid_purged_when_gtid_executed_is_not_empty";
-case errc::cant_set_gtid_purged_when_owned_gtids_is_not_empty: return "cant_set_gtid_purged_when_owned_gtids_is_not_empty";
-case errc::gtid_purged_was_changed: return "gtid_purged_was_changed";
-case errc::gtid_executed_was_changed: return "gtid_executed_was_changed";
-case errc::binlog_stmt_mode_and_no_repl_tables: return "binlog_stmt_mode_and_no_repl_tables";
-case errc::alter_operation_not_supported: return "alter_operation_not_supported";
-case errc::alter_operation_not_supported_reason: return "alter_operation_not_supported_reason";
-case errc::alter_operation_not_supported_reason_copy: return "alter_operation_not_supported_reason_copy";
-case errc::alter_operation_not_supported_reason_partition: return "alter_operation_not_supported_reason_partition";
-case errc::alter_operation_not_supported_reason_fk_rename: return "alter_operation_not_supported_reason_fk_rename";
-case errc::alter_operation_not_supported_reason_column_type: return "alter_operation_not_supported_reason_column_type";
-case errc::alter_operation_not_supported_reason_fk_check: return "alter_operation_not_supported_reason_fk_check";
-case errc::alter_operation_not_supported_reason_nopk: return "alter_operation_not_supported_reason_nopk";
-case errc::alter_operation_not_supported_reason_autoinc: return "alter_operation_not_supported_reason_autoinc";
-case errc::alter_operation_not_supported_reason_hidden_fts: return "alter_operation_not_supported_reason_hidden_fts";
-case errc::alter_operation_not_supported_reason_change_fts: return "alter_operation_not_supported_reason_change_fts";
-case errc::alter_operation_not_supported_reason_fts: return "alter_operation_not_supported_reason_fts";
-case errc::sql_slave_skip_counter_not_settable_in_gtid_mode: return "sql_slave_skip_counter_not_settable_in_gtid_mode";
-case errc::dup_unknown_in_index: return "dup_unknown_in_index";
-case errc::ident_causes_too_long_path: return "ident_causes_too_long_path";
-case errc::alter_operation_not_supported_reason_not_null: return "alter_operation_not_supported_reason_not_null";
-case errc::must_change_password_login: return "must_change_password_login";
-case errc::row_in_wrong_partition: return "row_in_wrong_partition";
-case errc::mts_event_bigger_pending_jobs_size_max: return "mts_event_bigger_pending_jobs_size_max";
-case errc::binlog_logical_corruption: return "binlog_logical_corruption";
-case errc::warn_purge_log_in_use: return "warn_purge_log_in_use";
-case errc::warn_purge_log_is_active: return "warn_purge_log_is_active";
-case errc::auto_increment_conflict: return "auto_increment_conflict";
-case errc::slave_mi_init_repository: return "slave_mi_init_repository";
-case errc::slave_rli_init_repository: return "slave_rli_init_repository";
-case errc::access_denied_change_user_error: return "access_denied_change_user_error";
-case errc::innodb_read_only: return "innodb_read_only";
-case errc::stop_slave_sql_thread_timeout: return "stop_slave_sql_thread_timeout";
-case errc::stop_slave_io_thread_timeout: return "stop_slave_io_thread_timeout";
-case errc::table_corrupt: return "table_corrupt";
-case errc::temp_file_write_failure: return "temp_file_write_failure";
-case errc::innodb_ft_aux_not_hex_id: return "innodb_ft_aux_not_hex_id";
-case errc::old_temporals_upgraded: return "old_temporals_upgraded";
-case errc::innodb_forced_recovery: return "innodb_forced_recovery";
-case errc::aes_invalid_iv: return "aes_invalid_iv";
-case errc::plugin_cannot_be_uninstalled: return "plugin_cannot_be_uninstalled";
-case errc::gtid_unsafe_binlog_splittable_statement_and_assigned_gtid: return "gtid_unsafe_binlog_splittable_statement_and_assigned_gtid";
-case errc::slave_has_more_gtids_than_master: return "slave_has_more_gtids_than_master";
-case errc::missing_key: return "missing_key";
-case errc::file_corrupt: return "file_corrupt";
-case errc::error_on_master: return "error_on_master";
-case errc::storage_engine_not_loaded: return "storage_engine_not_loaded";
-case errc::get_stacked_da_without_active_handler: return "get_stacked_da_without_active_handler";
-case errc::warn_legacy_syntax_converted: return "warn_legacy_syntax_converted";
-case errc::binlog_unsafe_fulltext_plugin: return "binlog_unsafe_fulltext_plugin";
-case errc::cannot_discard_temporary_table: return "cannot_discard_temporary_table";
-case errc::fk_depth_exceeded: return "fk_depth_exceeded";
-case errc::col_count_doesnt_match_please_update_v2: return "col_count_doesnt_match_please_update_v2";
-case errc::warn_trigger_doesnt_have_created: return "warn_trigger_doesnt_have_created";
-case errc::referenced_trg_does_not_exist: return "referenced_trg_does_not_exist";
-case errc::explain_not_supported: return "explain_not_supported";
-case errc::invalid_field_size: return "invalid_field_size";
-case errc::missing_ha_create_option: return "missing_ha_create_option";
-case errc::engine_out_of_memory: return "engine_out_of_memory";
-case errc::password_expire_anonymous_user: return "password_expire_anonymous_user";
-case errc::slave_sql_thread_must_stop: return "slave_sql_thread_must_stop";
-case errc::no_ft_materialized_subquery: return "no_ft_materialized_subquery";
-case errc::innodb_undo_log_full: return "innodb_undo_log_full";
-case errc::invalid_argument_for_logarithm: return "invalid_argument_for_logarithm";
-case errc::slave_channel_io_thread_must_stop: return "slave_channel_io_thread_must_stop";
-case errc::warn_open_temp_tables_must_be_zero: return "warn_open_temp_tables_must_be_zero";
-case errc::warn_only_master_log_file_no_pos: return "warn_only_master_log_file_no_pos";
-case errc::query_timeout: return "query_timeout";
-case errc::non_ro_select_disable_timer: return "non_ro_select_disable_timer";
-case errc::dup_list_entry: return "dup_list_entry";
-case errc::aggregate_order_for_union: return "aggregate_order_for_union";
-case errc::aggregate_order_non_agg_query: return "aggregate_order_non_agg_query";
-case errc::slave_worker_stopped_previous_thd_error: return "slave_worker_stopped_previous_thd_error";
-case errc::dont_support_slave_preserve_commit_order: return "dont_support_slave_preserve_commit_order";
-case errc::server_offline_mode: return "server_offline_mode";
-case errc::gis_different_srids: return "gis_different_srids";
-case errc::gis_unsupported_argument: return "gis_unsupported_argument";
-case errc::gis_unknown_error: return "gis_unknown_error";
-case errc::gis_unknown_exception: return "gis_unknown_exception";
-case errc::gis_invalid_data: return "gis_invalid_data";
-case errc::boost_geometry_empty_input_exception: return "boost_geometry_empty_input_exception";
-case errc::boost_geometry_centroid_exception: return "boost_geometry_centroid_exception";
-case errc::boost_geometry_overlay_invalid_input_exception: return "boost_geometry_overlay_invalid_input_exception";
-case errc::boost_geometry_turn_info_exception: return "boost_geometry_turn_info_exception";
-case errc::boost_geometry_self_intersection_point_exception: return "boost_geometry_self_intersection_point_exception";
-case errc::boost_geometry_unknown_exception: return "boost_geometry_unknown_exception";
-case errc::std_bad_alloc_error: return "std_bad_alloc_error";
-case errc::std_domain_error: return "std_domain_error";
-case errc::std_length_error: return "std_length_error";
-case errc::std_invalid_argument: return "std_invalid_argument";
-case errc::std_out_of_range_error: return "std_out_of_range_error";
-case errc::std_overflow_error: return "std_overflow_error";
-case errc::std_range_error: return "std_range_error";
-case errc::std_underflow_error: return "std_underflow_error";
-case errc::std_logic_error: return "std_logic_error";
-case errc::std_runtime_error: return "std_runtime_error";
-case errc::std_unknown_exception: return "std_unknown_exception";
-case errc::gis_data_wrong_endianess: return "gis_data_wrong_endianess";
-case errc::change_master_password_length: return "change_master_password_length";
-case errc::user_lock_wrong_name: return "user_lock_wrong_name";
-case errc::user_lock_deadlock: return "user_lock_deadlock";
-case errc::replace_inaccessible_rows: return "replace_inaccessible_rows";
-case errc::alter_operation_not_supported_reason_gis: return "alter_operation_not_supported_reason_gis";
-case errc::illegal_user_var: return "illegal_user_var";
-case errc::gtid_mode_off: return "gtid_mode_off";
-case errc::incorrect_type: return "incorrect_type";
-case errc::field_in_order_not_select: return "field_in_order_not_select";
-case errc::aggregate_in_order_not_select: return "aggregate_in_order_not_select";
-case errc::invalid_rpl_wild_table_filter_pattern: return "invalid_rpl_wild_table_filter_pattern";
-case errc::net_ok_packet_too_large: return "net_ok_packet_too_large";
-case errc::invalid_json_data: return "invalid_json_data";
-case errc::invalid_geojson_missing_member: return "invalid_geojson_missing_member";
-case errc::invalid_geojson_wrong_type: return "invalid_geojson_wrong_type";
-case errc::invalid_geojson_unspecified: return "invalid_geojson_unspecified";
-case errc::dimension_unsupported: return "dimension_unsupported";
-case errc::slave_channel_does_not_exist: return "slave_channel_does_not_exist";
-case errc::slave_channel_name_invalid_or_too_long: return "slave_channel_name_invalid_or_too_long";
-case errc::slave_new_channel_wrong_repository: return "slave_new_channel_wrong_repository";
-case errc::slave_multiple_channels_cmd: return "slave_multiple_channels_cmd";
-case errc::slave_max_channels_exceeded: return "slave_max_channels_exceeded";
-case errc::slave_channel_must_stop: return "slave_channel_must_stop";
-case errc::slave_channel_not_running: return "slave_channel_not_running";
-case errc::slave_channel_was_running: return "slave_channel_was_running";
-case errc::slave_channel_was_not_running: return "slave_channel_was_not_running";
-case errc::slave_channel_sql_thread_must_stop: return "slave_channel_sql_thread_must_stop";
-case errc::slave_channel_sql_skip_counter: return "slave_channel_sql_skip_counter";
-case errc::wrong_field_with_group_v2: return "wrong_field_with_group_v2";
-case errc::mix_of_group_func_and_fields_v2: return "mix_of_group_func_and_fields_v2";
-case errc::warn_deprecated_sysvar_update: return "warn_deprecated_sysvar_update";
-case errc::warn_deprecated_sqlmode: return "warn_deprecated_sqlmode";
-case errc::cannot_log_partial_drop_database_with_gtid: return "cannot_log_partial_drop_database_with_gtid";
-case errc::group_replication_configuration: return "group_replication_configuration";
-case errc::group_replication_running: return "group_replication_running";
-case errc::group_replication_applier_init_error: return "group_replication_applier_init_error";
-case errc::group_replication_stop_applier_thread_timeout: return "group_replication_stop_applier_thread_timeout";
-case errc::group_replication_communication_layer_session_error: return "group_replication_communication_layer_session_error";
-case errc::group_replication_communication_layer_join_error: return "group_replication_communication_layer_join_error";
-case errc::before_dml_validation_error: return "before_dml_validation_error";
-case errc::prevents_variable_without_rbr: return "prevents_variable_without_rbr";
-case errc::run_hook_error: return "run_hook_error";
-case errc::transaction_rollback_during_commit: return "transaction_rollback_during_commit";
-case errc::generated_column_function_is_not_allowed: return "generated_column_function_is_not_allowed";
-case errc::unsupported_alter_inplace_on_virtual_column: return "unsupported_alter_inplace_on_virtual_column";
-case errc::wrong_fk_option_for_generated_column: return "wrong_fk_option_for_generated_column";
-case errc::non_default_value_for_generated_column: return "non_default_value_for_generated_column";
-case errc::unsupported_action_on_generated_column: return "unsupported_action_on_generated_column";
-case errc::generated_column_non_prior: return "generated_column_non_prior";
-case errc::dependent_by_generated_column: return "dependent_by_generated_column";
-case errc::generated_column_ref_auto_inc: return "generated_column_ref_auto_inc";
-case errc::feature_not_available: return "feature_not_available";
-case errc::cant_set_gtid_mode: return "cant_set_gtid_mode";
-case errc::cant_use_auto_position_with_gtid_mode_off: return "cant_use_auto_position_with_gtid_mode_off";
-case errc::cant_enforce_gtid_consistency_with_ongoing_gtid_violating_tx: return "cant_enforce_gtid_consistency_with_ongoing_gtid_violating_tx";
-case errc::enforce_gtid_consistency_warn_with_ongoing_gtid_violating_tx: return "enforce_gtid_consistency_warn_with_ongoing_gtid_violating_tx";
-case errc::account_has_been_locked: return "account_has_been_locked";
-case errc::wrong_tablespace_name: return "wrong_tablespace_name";
-case errc::tablespace_is_not_empty: return "tablespace_is_not_empty";
-case errc::wrong_file_name: return "wrong_file_name";
-case errc::boost_geometry_inconsistent_turns_exception: return "boost_geometry_inconsistent_turns_exception";
-case errc::warn_optimizer_hint_syntax_error: return "warn_optimizer_hint_syntax_error";
-case errc::warn_bad_max_execution_time: return "warn_bad_max_execution_time";
-case errc::warn_unsupported_max_execution_time: return "warn_unsupported_max_execution_time";
-case errc::warn_conflicting_hint: return "warn_conflicting_hint";
-case errc::warn_unknown_qb_name: return "warn_unknown_qb_name";
-case errc::unresolved_hint_name: return "unresolved_hint_name";
-case errc::warn_on_modifying_gtid_executed_table: return "warn_on_modifying_gtid_executed_table";
-case errc::pluggable_protocol_command_not_supported: return "pluggable_protocol_command_not_supported";
-case errc::locking_service_wrong_name: return "locking_service_wrong_name";
-case errc::locking_service_deadlock: return "locking_service_deadlock";
-case errc::locking_service_timeout: return "locking_service_timeout";
-case errc::gis_max_points_in_geometry_overflowed: return "gis_max_points_in_geometry_overflowed";
-case errc::sql_mode_merged: return "sql_mode_merged";
-case errc::vtoken_plugin_token_mismatch: return "vtoken_plugin_token_mismatch";
-case errc::vtoken_plugin_token_not_found: return "vtoken_plugin_token_not_found";
-case errc::cant_set_variable_when_owning_gtid: return "cant_set_variable_when_owning_gtid";
-case errc::slave_channel_operation_not_allowed: return "slave_channel_operation_not_allowed";
-case errc::invalid_json_text: return "invalid_json_text";
-case errc::invalid_json_text_in_param: return "invalid_json_text_in_param";
-case errc::invalid_json_binary_data: return "invalid_json_binary_data";
-case errc::invalid_json_path: return "invalid_json_path";
-case errc::invalid_json_charset: return "invalid_json_charset";
-case errc::invalid_json_charset_in_function: return "invalid_json_charset_in_function";
-case errc::invalid_type_for_json: return "invalid_type_for_json";
-case errc::invalid_cast_to_json: return "invalid_cast_to_json";
-case errc::invalid_json_path_charset: return "invalid_json_path_charset";
-case errc::invalid_json_path_wildcard: return "invalid_json_path_wildcard";
-case errc::json_value_too_big: return "json_value_too_big";
-case errc::json_key_too_big: return "json_key_too_big";
-case errc::json_used_as_key: return "json_used_as_key";
-case errc::json_vacuous_path: return "json_vacuous_path";
-case errc::json_bad_one_or_all_arg: return "json_bad_one_or_all_arg";
-case errc::numeric_json_value_out_of_range: return "numeric_json_value_out_of_range";
-case errc::invalid_json_value_for_cast: return "invalid_json_value_for_cast";
-case errc::json_document_too_deep: return "json_document_too_deep";
-case errc::json_document_null_key: return "json_document_null_key";
-case errc::secure_transport_required: return "secure_transport_required";
-case errc::no_secure_transports_configured: return "no_secure_transports_configured";
-case errc::disabled_storage_engine: return "disabled_storage_engine";
-case errc::user_does_not_exist: return "user_does_not_exist";
-case errc::user_already_exists: return "user_already_exists";
-case errc::audit_api_abort: return "audit_api_abort";
-case errc::invalid_json_path_array_cell: return "invalid_json_path_array_cell";
-case errc::bufpool_resize_inprogress: return "bufpool_resize_inprogress";
-case errc::feature_disabled_see_doc: return "feature_disabled_see_doc";
-case errc::server_isnt_available: return "server_isnt_available";
-case errc::session_was_killed: return "session_was_killed";
-case errc::capacity_exceeded: return "capacity_exceeded";
-case errc::capacity_exceeded_in_range_optimizer: return "capacity_exceeded_in_range_optimizer";
-case errc::cant_wait_for_executed_gtid_set_while_owning_a_gtid: return "cant_wait_for_executed_gtid_set_while_owning_a_gtid";
-case errc::cannot_add_foreign_base_col_virtual: return "cannot_add_foreign_base_col_virtual";
-case errc::cannot_create_virtual_index_constraint: return "cannot_create_virtual_index_constraint";
-case errc::error_on_modifying_gtid_executed_table: return "error_on_modifying_gtid_executed_table";
-case errc::lock_refused_by_engine: return "lock_refused_by_engine";
-case errc::unsupported_alter_online_on_virtual_column: return "unsupported_alter_online_on_virtual_column";
-case errc::master_key_rotation_not_supported_by_se: return "master_key_rotation_not_supported_by_se";
-case errc::master_key_rotation_binlog_failed: return "master_key_rotation_binlog_failed";
-case errc::master_key_rotation_se_unavailable: return "master_key_rotation_se_unavailable";
-case errc::tablespace_cannot_encrypt: return "tablespace_cannot_encrypt";
-case errc::invalid_encryption_option: return "invalid_encryption_option";
-case errc::cannot_find_key_in_keyring: return "cannot_find_key_in_keyring";
-case errc::capacity_exceeded_in_parser: return "capacity_exceeded_in_parser";
-case errc::unsupported_alter_encryption_inplace: return "unsupported_alter_encryption_inplace";
-case errc::keyring_udf_keyring_service_error: return "keyring_udf_keyring_service_error";
-case errc::user_column_old_length: return "user_column_old_length";
-case errc::cant_reset_master: return "cant_reset_master";
-case errc::group_replication_max_group_size: return "group_replication_max_group_size";
-case errc::cannot_add_foreign_base_col_stored: return "cannot_add_foreign_base_col_stored";
-case errc::table_referenced: return "table_referenced";
-case errc::xa_retry: return "xa_retry";
-case errc::keyring_aws_udf_aws_kms_error: return "keyring_aws_udf_aws_kms_error";
-case errc::binlog_unsafe_xa: return "binlog_unsafe_xa";
-case errc::udf_error: return "udf_error";
-case errc::keyring_migration_failure: return "keyring_migration_failure";
-case errc::keyring_access_denied_error: return "keyring_access_denied_error";
-case errc::keyring_migration_status: return "keyring_migration_status";
-case errc::audit_log_udf_read_invalid_max_array_length_arg_value: return "audit_log_udf_read_invalid_max_array_length_arg_value";
-case errc::unsupport_compressed_temporary_table: return "unsupport_compressed_temporary_table";
-case errc::acl_operation_failed: return "acl_operation_failed";
-case errc::unsupported_index_algorithm: return "unsupported_index_algorithm";
-case errc::no_such_db: return "no_such_db";
-case errc::too_big_enum: return "too_big_enum";
-case errc::too_long_set_enum_value: return "too_long_set_enum_value";
-case errc::invalid_dd_object: return "invalid_dd_object";
-case errc::updating_dd_table: return "updating_dd_table";
-case errc::invalid_dd_object_id: return "invalid_dd_object_id";
-case errc::invalid_dd_object_name: return "invalid_dd_object_name";
-case errc::tablespace_missing_with_name: return "tablespace_missing_with_name";
-case errc::too_long_routine_comment: return "too_long_routine_comment";
-case errc::sp_load_failed: return "sp_load_failed";
-case errc::invalid_bitwise_operands_size: return "invalid_bitwise_operands_size";
-case errc::invalid_bitwise_aggregate_operands_size: return "invalid_bitwise_aggregate_operands_size";
-case errc::warn_unsupported_hint: return "warn_unsupported_hint";
-case errc::unexpected_geometry_type: return "unexpected_geometry_type";
-case errc::srs_parse_error: return "srs_parse_error";
-case errc::srs_proj_parameter_missing: return "srs_proj_parameter_missing";
-case errc::warn_srs_not_found: return "warn_srs_not_found";
-case errc::srs_not_cartesian: return "srs_not_cartesian";
-case errc::srs_not_cartesian_undefined: return "srs_not_cartesian_undefined";
-case errc::pk_index_cant_be_invisible: return "pk_index_cant_be_invisible";
-case errc::unknown_authid: return "unknown_authid";
-case errc::failed_role_grant: return "failed_role_grant";
-case errc::open_role_tables: return "open_role_tables";
-case errc::failed_default_roles: return "failed_default_roles";
-case errc::components_no_scheme: return "components_no_scheme";
-case errc::components_no_scheme_service: return "components_no_scheme_service";
-case errc::components_cant_load: return "components_cant_load";
-case errc::role_not_granted: return "role_not_granted";
-case errc::failed_revoke_role: return "failed_revoke_role";
-case errc::rename_role: return "rename_role";
-case errc::components_cant_acquire_service_implementation: return "components_cant_acquire_service_implementation";
-case errc::components_cant_satisfy_dependency: return "components_cant_satisfy_dependency";
-case errc::components_load_cant_register_service_implementation: return "components_load_cant_register_service_implementation";
-case errc::components_load_cant_initialize: return "components_load_cant_initialize";
-case errc::components_unload_not_loaded: return "components_unload_not_loaded";
-case errc::components_unload_cant_deinitialize: return "components_unload_cant_deinitialize";
-case errc::components_cant_release_service: return "components_cant_release_service";
-case errc::components_unload_cant_unregister_service: return "components_unload_cant_unregister_service";
-case errc::components_cant_unload: return "components_cant_unload";
-case errc::warn_unload_the_not_persisted: return "warn_unload_the_not_persisted";
-case errc::component_table_incorrect: return "component_table_incorrect";
-case errc::component_manipulate_row_failed: return "component_manipulate_row_failed";
-case errc::components_unload_duplicate_in_group: return "components_unload_duplicate_in_group";
-case errc::cant_set_gtid_purged_due_sets_constraints: return "cant_set_gtid_purged_due_sets_constraints";
-case errc::cannot_lock_user_management_caches: return "cannot_lock_user_management_caches";
-case errc::srs_not_found: return "srs_not_found";
-case errc::variable_not_persisted: return "variable_not_persisted";
-case errc::is_query_invalid_clause: return "is_query_invalid_clause";
-case errc::unable_to_store_statistics: return "unable_to_store_statistics";
-case errc::no_system_schema_access: return "no_system_schema_access";
-case errc::no_system_tablespace_access: return "no_system_tablespace_access";
-case errc::no_system_table_access: return "no_system_table_access";
-case errc::no_system_table_access_for_dictionary_table: return "no_system_table_access_for_dictionary_table";
-case errc::no_system_table_access_for_system_table: return "no_system_table_access_for_system_table";
-case errc::no_system_table_access_for_table: return "no_system_table_access_for_table";
-case errc::invalid_option_key: return "invalid_option_key";
-case errc::invalid_option_value: return "invalid_option_value";
-case errc::invalid_option_key_value_pair: return "invalid_option_key_value_pair";
-case errc::invalid_option_start_character: return "invalid_option_start_character";
-case errc::invalid_option_end_character: return "invalid_option_end_character";
-case errc::invalid_option_characters: return "invalid_option_characters";
-case errc::duplicate_option_key: return "duplicate_option_key";
-case errc::warn_srs_not_found_axis_order: return "warn_srs_not_found_axis_order";
-case errc::no_access_to_native_fct: return "no_access_to_native_fct";
-case errc::reset_master_to_value_out_of_range: return "reset_master_to_value_out_of_range";
-case errc::unresolved_table_lock: return "unresolved_table_lock";
-case errc::duplicate_table_lock: return "duplicate_table_lock";
-case errc::binlog_unsafe_skip_locked: return "binlog_unsafe_skip_locked";
-case errc::binlog_unsafe_nowait: return "binlog_unsafe_nowait";
-case errc::lock_nowait: return "lock_nowait";
-case errc::cte_recursive_requires_union: return "cte_recursive_requires_union";
-case errc::cte_recursive_requires_nonrecursive_first: return "cte_recursive_requires_nonrecursive_first";
-case errc::cte_recursive_forbids_aggregation: return "cte_recursive_forbids_aggregation";
-case errc::cte_recursive_forbidden_join_order: return "cte_recursive_forbidden_join_order";
-case errc::cte_recursive_requires_single_reference: return "cte_recursive_requires_single_reference";
-case errc::switch_tmp_engine: return "switch_tmp_engine";
-case errc::window_no_such_window: return "window_no_such_window";
-case errc::window_circularity_in_window_graph: return "window_circularity_in_window_graph";
-case errc::window_no_child_partitioning: return "window_no_child_partitioning";
-case errc::window_no_inherit_frame: return "window_no_inherit_frame";
-case errc::window_no_redefine_order_by: return "window_no_redefine_order_by";
-case errc::window_frame_start_illegal: return "window_frame_start_illegal";
-case errc::window_frame_end_illegal: return "window_frame_end_illegal";
-case errc::window_frame_illegal: return "window_frame_illegal";
-case errc::window_range_frame_order_type: return "window_range_frame_order_type";
-case errc::window_range_frame_temporal_type: return "window_range_frame_temporal_type";
-case errc::window_range_frame_numeric_type: return "window_range_frame_numeric_type";
-case errc::window_range_bound_not_constant: return "window_range_bound_not_constant";
-case errc::window_duplicate_name: return "window_duplicate_name";
-case errc::window_illegal_order_by: return "window_illegal_order_by";
-case errc::window_invalid_window_func_use: return "window_invalid_window_func_use";
-case errc::window_invalid_window_func_alias_use: return "window_invalid_window_func_alias_use";
-case errc::window_nested_window_func_use_in_window_spec: return "window_nested_window_func_use_in_window_spec";
-case errc::window_rows_interval_use: return "window_rows_interval_use";
-case errc::window_no_group_order_unused: return "window_no_group_order_unused";
-case errc::window_explain_json: return "window_explain_json";
-case errc::window_function_ignores_frame: return "window_function_ignores_frame";
-case errc::wl9236_now_unused: return "wl9236_now_unused";
-case errc::invalid_no_of_args: return "invalid_no_of_args";
-case errc::field_in_grouping_not_group_by: return "field_in_grouping_not_group_by";
-case errc::too_long_tablespace_comment: return "too_long_tablespace_comment";
-case errc::engine_cant_drop_table: return "engine_cant_drop_table";
-case errc::engine_cant_drop_missing_table: return "engine_cant_drop_missing_table";
-case errc::tablespace_dup_filename: return "tablespace_dup_filename";
-case errc::db_drop_rmdir2: return "db_drop_rmdir2";
-case errc::imp_no_files_matched: return "imp_no_files_matched";
-case errc::imp_schema_does_not_exist: return "imp_schema_does_not_exist";
-case errc::imp_table_already_exists: return "imp_table_already_exists";
-case errc::imp_incompatible_mysqld_version: return "imp_incompatible_mysqld_version";
-case errc::imp_incompatible_dd_version: return "imp_incompatible_dd_version";
-case errc::imp_incompatible_sdi_version: return "imp_incompatible_sdi_version";
-case errc::warn_invalid_hint: return "warn_invalid_hint";
-case errc::var_does_not_exist: return "var_does_not_exist";
-case errc::longitude_out_of_range: return "longitude_out_of_range";
-case errc::latitude_out_of_range: return "latitude_out_of_range";
-case errc::not_implemented_for_geographic_srs: return "not_implemented_for_geographic_srs";
-case errc::illegal_privilege_level: return "illegal_privilege_level";
-case errc::no_system_view_access: return "no_system_view_access";
-case errc::component_filter_flabbergasted: return "component_filter_flabbergasted";
-case errc::part_expr_too_long: return "part_expr_too_long";
-case errc::udf_drop_dynamically_registered: return "udf_drop_dynamically_registered";
-case errc::unable_to_store_column_statistics: return "unable_to_store_column_statistics";
-case errc::unable_to_update_column_statistics: return "unable_to_update_column_statistics";
-case errc::unable_to_drop_column_statistics: return "unable_to_drop_column_statistics";
-case errc::unable_to_build_histogram: return "unable_to_build_histogram";
-case errc::mandatory_role: return "mandatory_role";
-case errc::missing_tablespace_file: return "missing_tablespace_file";
-case errc::persist_only_access_denied_error: return "persist_only_access_denied_error";
-case errc::cmd_need_super: return "cmd_need_super";
-case errc::path_in_datadir: return "path_in_datadir";
-case errc::clone_ddl_in_progress: return "clone_ddl_in_progress";
-case errc::clone_too_many_concurrent_clones: return "clone_too_many_concurrent_clones";
-case errc::applier_log_event_validation_error: return "applier_log_event_validation_error";
-case errc::cte_max_recursion_depth: return "cte_max_recursion_depth";
-case errc::not_hint_updatable_variable: return "not_hint_updatable_variable";
-case errc::credentials_contradict_to_history: return "credentials_contradict_to_history";
-case errc::warning_password_history_clauses_void: return "warning_password_history_clauses_void";
-case errc::client_does_not_support: return "client_does_not_support";
-case errc::i_s_skipped_tablespace: return "i_s_skipped_tablespace";
-case errc::tablespace_engine_mismatch: return "tablespace_engine_mismatch";
-case errc::wrong_srid_for_column: return "wrong_srid_for_column";
-case errc::cannot_alter_srid_due_to_index: return "cannot_alter_srid_due_to_index";
-case errc::warn_binlog_partial_updates_disabled: return "warn_binlog_partial_updates_disabled";
-case errc::warn_binlog_v1_row_events_disabled: return "warn_binlog_v1_row_events_disabled";
-case errc::warn_binlog_partial_updates_suggests_partial_images: return "warn_binlog_partial_updates_suggests_partial_images";
-case errc::could_not_apply_json_diff: return "could_not_apply_json_diff";
-case errc::corrupted_json_diff: return "corrupted_json_diff";
-case errc::resource_group_exists: return "resource_group_exists";
-case errc::resource_group_not_exists: return "resource_group_not_exists";
-case errc::invalid_vcpu_id: return "invalid_vcpu_id";
-case errc::invalid_vcpu_range: return "invalid_vcpu_range";
-case errc::invalid_thread_priority: return "invalid_thread_priority";
-case errc::disallowed_operation: return "disallowed_operation";
-case errc::resource_group_busy: return "resource_group_busy";
-case errc::resource_group_disabled: return "resource_group_disabled";
-case errc::feature_unsupported: return "feature_unsupported";
-case errc::attribute_ignored: return "attribute_ignored";
-case errc::invalid_thread_id: return "invalid_thread_id";
-case errc::resource_group_bind_failed: return "resource_group_bind_failed";
-case errc::invalid_use_of_force_option: return "invalid_use_of_force_option";
-case errc::group_replication_command_failure: return "group_replication_command_failure";
-case errc::sdi_operation_failed: return "sdi_operation_failed";
-case errc::missing_json_table_value: return "missing_json_table_value";
-case errc::wrong_json_table_value: return "wrong_json_table_value";
-case errc::tf_must_have_alias: return "tf_must_have_alias";
-case errc::tf_forbidden_join_type: return "tf_forbidden_join_type";
-case errc::jt_value_out_of_range: return "jt_value_out_of_range";
-case errc::jt_max_nested_path: return "jt_max_nested_path";
-case errc::password_expiration_not_supported_by_auth_method: return "password_expiration_not_supported_by_auth_method";
-case errc::invalid_geojson_crs_not_top_level: return "invalid_geojson_crs_not_top_level";
-case errc::bad_null_error_not_ignored: return "bad_null_error_not_ignored";
-case errc::disk_full_nowait: return "disk_full_nowait";
-case errc::parse_error_in_digest_fn: return "parse_error_in_digest_fn";
-case errc::undisclosed_parse_error_in_digest_fn: return "undisclosed_parse_error_in_digest_fn";
-case errc::schema_dir_exists: return "schema_dir_exists";
-case errc::schema_dir_missing: return "schema_dir_missing";
-case errc::schema_dir_create_failed: return "schema_dir_create_failed";
-case errc::schema_dir_unknown: return "schema_dir_unknown";
-case errc::only_implemented_for_srid_0_and_4326: return "only_implemented_for_srid_0_and_4326";
-case errc::binlog_expire_log_days_and_secs_used_together: return "binlog_expire_log_days_and_secs_used_together";
-case errc::regexp_buffer_overflow: return "regexp_buffer_overflow";
-case errc::regexp_illegal_argument: return "regexp_illegal_argument";
-case errc::regexp_index_outofbounds_error: return "regexp_index_outofbounds_error";
-case errc::regexp_internal_error: return "regexp_internal_error";
-case errc::regexp_rule_syntax: return "regexp_rule_syntax";
-case errc::regexp_bad_escape_sequence: return "regexp_bad_escape_sequence";
-case errc::regexp_unimplemented: return "regexp_unimplemented";
-case errc::regexp_mismatched_paren: return "regexp_mismatched_paren";
-case errc::regexp_bad_interval: return "regexp_bad_interval";
-case errc::regexp_max_lt_min: return "regexp_max_lt_min";
-case errc::regexp_invalid_back_ref: return "regexp_invalid_back_ref";
-case errc::regexp_look_behind_limit: return "regexp_look_behind_limit";
-case errc::regexp_missing_close_bracket: return "regexp_missing_close_bracket";
-case errc::regexp_invalid_range: return "regexp_invalid_range";
-case errc::regexp_stack_overflow: return "regexp_stack_overflow";
-case errc::regexp_time_out: return "regexp_time_out";
-case errc::regexp_pattern_too_big: return "regexp_pattern_too_big";
-case errc::cant_set_error_log_service: return "cant_set_error_log_service";
-case errc::empty_pipeline_for_error_log_service: return "empty_pipeline_for_error_log_service";
-case errc::component_filter_diagnostics: return "component_filter_diagnostics";
-case errc::not_implemented_for_cartesian_srs: return "not_implemented_for_cartesian_srs";
-case errc::not_implemented_for_projected_srs: return "not_implemented_for_projected_srs";
-case errc::nonpositive_radius: return "nonpositive_radius";
-case errc::restart_server_failed: return "restart_server_failed";
-case errc::srs_missing_mandatory_attribute: return "srs_missing_mandatory_attribute";
-case errc::srs_multiple_attribute_definitions: return "srs_multiple_attribute_definitions";
-case errc::srs_name_cant_be_empty_or_whitespace: return "srs_name_cant_be_empty_or_whitespace";
-case errc::srs_organization_cant_be_empty_or_whitespace: return "srs_organization_cant_be_empty_or_whitespace";
-case errc::srs_id_already_exists: return "srs_id_already_exists";
-case errc::warn_srs_id_already_exists: return "warn_srs_id_already_exists";
-case errc::cant_modify_srid_0: return "cant_modify_srid_0";
-case errc::warn_reserved_srid_range: return "warn_reserved_srid_range";
-case errc::cant_modify_srs_used_by_column: return "cant_modify_srs_used_by_column";
-case errc::srs_invalid_character_in_attribute: return "srs_invalid_character_in_attribute";
-case errc::srs_attribute_string_too_long: return "srs_attribute_string_too_long";
-case errc::deprecated_utf8_alias: return "deprecated_utf8_alias";
-case errc::deprecated_national: return "deprecated_national";
-case errc::invalid_default_utf8mb4_collation: return "invalid_default_utf8mb4_collation";
-case errc::unable_to_collect_log_status: return "unable_to_collect_log_status";
-case errc::reserved_tablespace_name: return "reserved_tablespace_name";
-case errc::unable_to_set_option: return "unable_to_set_option";
-case errc::slave_possibly_diverged_after_ddl: return "slave_possibly_diverged_after_ddl";
-case errc::srs_not_geographic: return "srs_not_geographic";
-case errc::polygon_too_large: return "polygon_too_large";
-case errc::spatial_unique_index: return "spatial_unique_index";
-case errc::index_type_not_supported_for_spatial_index: return "index_type_not_supported_for_spatial_index";
-case errc::fk_cannot_drop_parent: return "fk_cannot_drop_parent";
-case errc::geometry_param_longitude_out_of_range: return "geometry_param_longitude_out_of_range";
-case errc::geometry_param_latitude_out_of_range: return "geometry_param_latitude_out_of_range";
-case errc::fk_cannot_use_virtual_column: return "fk_cannot_use_virtual_column";
-case errc::fk_no_column_parent: return "fk_no_column_parent";
-case errc::cant_set_error_suppression_list: return "cant_set_error_suppression_list";
-case errc::srs_geogcs_invalid_axes: return "srs_geogcs_invalid_axes";
-case errc::srs_invalid_semi_major_axis: return "srs_invalid_semi_major_axis";
-case errc::srs_invalid_inverse_flattening: return "srs_invalid_inverse_flattening";
-case errc::srs_invalid_angular_unit: return "srs_invalid_angular_unit";
-case errc::srs_invalid_prime_meridian: return "srs_invalid_prime_meridian";
-case errc::transform_source_srs_not_supported: return "transform_source_srs_not_supported";
-case errc::transform_target_srs_not_supported: return "transform_target_srs_not_supported";
-case errc::transform_source_srs_missing_towgs84: return "transform_source_srs_missing_towgs84";
-case errc::transform_target_srs_missing_towgs84: return "transform_target_srs_missing_towgs84";
-case errc::temp_table_prevents_switch_session_binlog_format: return "temp_table_prevents_switch_session_binlog_format";
-case errc::temp_table_prevents_switch_global_binlog_format: return "temp_table_prevents_switch_global_binlog_format";
-case errc::running_applier_prevents_switch_global_binlog_format: return "running_applier_prevents_switch_global_binlog_format";
-case errc::client_gtid_unsafe_create_drop_temp_table_in_trx_in_sbr: return "client_gtid_unsafe_create_drop_temp_table_in_trx_in_sbr";
-case errc::table_without_pk: return "table_without_pk";
-case errc::warn_data_truncated_functional_index: return "warn_data_truncated_functional_index";
-case errc::warn_data_out_of_range_functional_index: return "warn_data_out_of_range_functional_index";
-case errc::functional_index_on_json_or_geometry_function: return "functional_index_on_json_or_geometry_function";
-case errc::functional_index_ref_auto_increment: return "functional_index_ref_auto_increment";
-case errc::cannot_drop_column_functional_index: return "cannot_drop_column_functional_index";
-case errc::functional_index_primary_key: return "functional_index_primary_key";
-case errc::functional_index_on_lob: return "functional_index_on_lob";
-case errc::functional_index_function_is_not_allowed: return "functional_index_function_is_not_allowed";
-case errc::fulltext_functional_index: return "fulltext_functional_index";
-case errc::spatial_functional_index: return "spatial_functional_index";
-case errc::wrong_key_column_functional_index: return "wrong_key_column_functional_index";
-case errc::functional_index_on_field: return "functional_index_on_field";
-case errc::generated_column_named_function_is_not_allowed: return "generated_column_named_function_is_not_allowed";
-case errc::generated_column_row_value: return "generated_column_row_value";
-case errc::generated_column_variables: return "generated_column_variables";
-case errc::dependent_by_default_generated_value: return "dependent_by_default_generated_value";
-case errc::default_val_generated_non_prior: return "default_val_generated_non_prior";
-case errc::default_val_generated_ref_auto_inc: return "default_val_generated_ref_auto_inc";
-case errc::default_val_generated_function_is_not_allowed: return "default_val_generated_function_is_not_allowed";
-case errc::default_val_generated_named_function_is_not_allowed: return "default_val_generated_named_function_is_not_allowed";
-case errc::default_val_generated_row_value: return "default_val_generated_row_value";
-case errc::default_val_generated_variables: return "default_val_generated_variables";
-case errc::default_as_val_generated: return "default_as_val_generated";
-case errc::unsupported_action_on_default_val_generated: return "unsupported_action_on_default_val_generated";
-case errc::gtid_unsafe_alter_add_col_with_default_expression: return "gtid_unsafe_alter_add_col_with_default_expression";
-case errc::fk_cannot_change_engine: return "fk_cannot_change_engine";
-case errc::warn_deprecated_user_set_expr: return "warn_deprecated_user_set_expr";
-case errc::warn_deprecated_utf8mb3_collation: return "warn_deprecated_utf8mb3_collation";
-case errc::warn_deprecated_nested_comment_syntax: return "warn_deprecated_nested_comment_syntax";
-case errc::fk_incompatible_columns: return "fk_incompatible_columns";
-case errc::gr_hold_wait_timeout: return "gr_hold_wait_timeout";
-case errc::gr_hold_killed: return "gr_hold_killed";
-case errc::gr_hold_member_status_error: return "gr_hold_member_status_error";
-case errc::rpl_encryption_failed_to_fetch_key: return "rpl_encryption_failed_to_fetch_key";
-case errc::rpl_encryption_key_not_found: return "rpl_encryption_key_not_found";
-case errc::rpl_encryption_keyring_invalid_key: return "rpl_encryption_keyring_invalid_key";
-case errc::rpl_encryption_header_error: return "rpl_encryption_header_error";
-case errc::rpl_encryption_failed_to_rotate_logs: return "rpl_encryption_failed_to_rotate_logs";
-case errc::rpl_encryption_key_exists_unexpected: return "rpl_encryption_key_exists_unexpected";
-case errc::rpl_encryption_failed_to_generate_key: return "rpl_encryption_failed_to_generate_key";
-case errc::rpl_encryption_failed_to_store_key: return "rpl_encryption_failed_to_store_key";
-case errc::rpl_encryption_failed_to_remove_key: return "rpl_encryption_failed_to_remove_key";
-case errc::rpl_encryption_unable_to_change_option: return "rpl_encryption_unable_to_change_option";
-case errc::rpl_encryption_master_key_recovery_failed: return "rpl_encryption_master_key_recovery_failed";
-case errc::slow_log_mode_ignored_when_not_logging_to_file: return "slow_log_mode_ignored_when_not_logging_to_file";
-case errc::grp_trx_consistency_not_allowed: return "grp_trx_consistency_not_allowed";
-case errc::grp_trx_consistency_before: return "grp_trx_consistency_before";
-case errc::grp_trx_consistency_after_on_trx_begin: return "grp_trx_consistency_after_on_trx_begin";
-case errc::grp_trx_consistency_begin_not_allowed: return "grp_trx_consistency_begin_not_allowed";
-case errc::functional_index_row_value_is_not_allowed: return "functional_index_row_value_is_not_allowed";
-case errc::rpl_encryption_failed_to_encrypt: return "rpl_encryption_failed_to_encrypt";
-case errc::page_tracking_not_started: return "page_tracking_not_started";
-case errc::page_tracking_range_not_tracked: return "page_tracking_range_not_tracked";
-case errc::page_tracking_cannot_purge: return "page_tracking_cannot_purge";
-case errc::rpl_encryption_cannot_rotate_binlog_master_key: return "rpl_encryption_cannot_rotate_binlog_master_key";
-case errc::binlog_master_key_recovery_out_of_combination: return "binlog_master_key_recovery_out_of_combination";
-case errc::binlog_master_key_rotation_fail_to_operate_key: return "binlog_master_key_rotation_fail_to_operate_key";
-case errc::binlog_master_key_rotation_fail_to_rotate_logs: return "binlog_master_key_rotation_fail_to_rotate_logs";
-case errc::binlog_master_key_rotation_fail_to_reencrypt_log: return "binlog_master_key_rotation_fail_to_reencrypt_log";
-case errc::binlog_master_key_rotation_fail_to_cleanup_unused_keys: return "binlog_master_key_rotation_fail_to_cleanup_unused_keys";
-case errc::binlog_master_key_rotation_fail_to_cleanup_aux_key: return "binlog_master_key_rotation_fail_to_cleanup_aux_key";
-case errc::non_boolean_expr_for_check_constraint: return "non_boolean_expr_for_check_constraint";
-case errc::column_check_constraint_references_other_column: return "column_check_constraint_references_other_column";
-case errc::check_constraint_named_function_is_not_allowed: return "check_constraint_named_function_is_not_allowed";
-case errc::check_constraint_function_is_not_allowed: return "check_constraint_function_is_not_allowed";
-case errc::check_constraint_variables: return "check_constraint_variables";
-case errc::check_constraint_row_value: return "check_constraint_row_value";
-case errc::check_constraint_refers_auto_increment_column: return "check_constraint_refers_auto_increment_column";
-case errc::check_constraint_violated: return "check_constraint_violated";
-case errc::check_constraint_refers_unknown_column: return "check_constraint_refers_unknown_column";
-case errc::check_constraint_not_found: return "check_constraint_not_found";
-case errc::check_constraint_dup_name: return "check_constraint_dup_name";
-case errc::check_constraint_clause_using_fk_refer_action_column: return "check_constraint_clause_using_fk_refer_action_column";
-case errc::invalid_encryption_request: return "invalid_encryption_request";
-case errc::cannot_set_table_encryption: return "cannot_set_table_encryption";
-case errc::cannot_set_database_encryption: return "cannot_set_database_encryption";
-case errc::cannot_set_tablespace_encryption: return "cannot_set_tablespace_encryption";
-case errc::tablespace_cannot_be_encrypted: return "tablespace_cannot_be_encrypted";
-case errc::tablespace_cannot_be_decrypted: return "tablespace_cannot_be_decrypted";
-case errc::tablespace_type_unknown: return "tablespace_type_unknown";
-case errc::target_tablespace_unencrypted: return "target_tablespace_unencrypted";
-case errc::cannot_use_encryption_clause: return "cannot_use_encryption_clause";
-case errc::invalid_multiple_clauses: return "invalid_multiple_clauses";
-case errc::unsupported_use_of_grant_as: return "unsupported_use_of_grant_as";
-case errc::uknown_auth_id_or_access_denied_for_grant_as: return "uknown_auth_id_or_access_denied_for_grant_as";
-case errc::dependent_by_functional_index: return "dependent_by_functional_index";
-case errc::plugin_not_early: return "plugin_not_early";
-case errc::innodb_redo_log_archive_start_subdir_path: return "innodb_redo_log_archive_start_subdir_path";
-case errc::innodb_redo_log_archive_start_timeout: return "innodb_redo_log_archive_start_timeout";
-case errc::innodb_redo_log_archive_dirs_invalid: return "innodb_redo_log_archive_dirs_invalid";
-case errc::innodb_redo_log_archive_label_not_found: return "innodb_redo_log_archive_label_not_found";
-case errc::innodb_redo_log_archive_dir_empty: return "innodb_redo_log_archive_dir_empty";
-case errc::innodb_redo_log_archive_no_such_dir: return "innodb_redo_log_archive_no_such_dir";
-case errc::innodb_redo_log_archive_dir_clash: return "innodb_redo_log_archive_dir_clash";
-case errc::innodb_redo_log_archive_dir_permissions: return "innodb_redo_log_archive_dir_permissions";
-case errc::innodb_redo_log_archive_file_create: return "innodb_redo_log_archive_file_create";
-case errc::innodb_redo_log_archive_active: return "innodb_redo_log_archive_active";
-case errc::innodb_redo_log_archive_inactive: return "innodb_redo_log_archive_inactive";
-case errc::innodb_redo_log_archive_failed: return "innodb_redo_log_archive_failed";
-case errc::innodb_redo_log_archive_session: return "innodb_redo_log_archive_session";
-case errc::std_regex_error: return "std_regex_error";
-case errc::invalid_json_type: return "invalid_json_type";
-case errc::cannot_convert_string: return "cannot_convert_string";
-case errc::dependent_by_partition_func: return "dependent_by_partition_func";
-case errc::warn_deprecated_float_auto_increment: return "warn_deprecated_float_auto_increment";
-case errc::rpl_cant_stop_slave_while_locked_backup: return "rpl_cant_stop_slave_while_locked_backup";
-case errc::warn_deprecated_float_digits: return "warn_deprecated_float_digits";
-case errc::warn_deprecated_float_unsigned: return "warn_deprecated_float_unsigned";
-case errc::warn_deprecated_integer_display_width: return "warn_deprecated_integer_display_width";
-case errc::warn_deprecated_zerofill: return "warn_deprecated_zerofill";
-case errc::clone_donor: return "clone_donor";
-case errc::clone_protocol: return "clone_protocol";
-case errc::clone_donor_version: return "clone_donor_version";
-case errc::clone_os: return "clone_os";
-case errc::clone_platform: return "clone_platform";
-case errc::clone_charset: return "clone_charset";
-case errc::clone_config: return "clone_config";
-case errc::clone_sys_config: return "clone_sys_config";
-case errc::clone_plugin_match: return "clone_plugin_match";
-case errc::clone_loopback: return "clone_loopback";
-case errc::clone_encryption: return "clone_encryption";
-case errc::clone_disk_space: return "clone_disk_space";
-case errc::clone_in_progress: return "clone_in_progress";
-case errc::clone_disallowed: return "clone_disallowed";
-case errc::cannot_grant_roles_to_anonymous_user: return "cannot_grant_roles_to_anonymous_user";
-case errc::secondary_engine_plugin: return "secondary_engine_plugin";
-case errc::second_password_cannot_be_empty: return "second_password_cannot_be_empty";
-case errc::db_access_denied: return "db_access_denied";
-case errc::da_auth_id_with_system_user_priv_in_mandatory_roles: return "da_auth_id_with_system_user_priv_in_mandatory_roles";
-case errc::da_rpl_gtid_table_cannot_open: return "da_rpl_gtid_table_cannot_open";
-case errc::geometry_in_unknown_length_unit: return "geometry_in_unknown_length_unit";
-case errc::da_plugin_install_error: return "da_plugin_install_error";
-case errc::no_session_temp: return "no_session_temp";
-case errc::da_unknown_error_number: return "da_unknown_error_number";
-case errc::column_change_size: return "column_change_size";
-case errc::regexp_invalid_capture_group_name: return "regexp_invalid_capture_group_name";
-case errc::da_ssl_library_error: return "da_ssl_library_error";
-case errc::secondary_engine: return "secondary_engine";
-case errc::secondary_engine_ddl: return "secondary_engine_ddl";
-case errc::incorrect_current_password: return "incorrect_current_password";
-case errc::missing_current_password: return "missing_current_password";
-case errc::current_password_not_required: return "current_password_not_required";
-case errc::password_cannot_be_retained_on_plugin_change: return "password_cannot_be_retained_on_plugin_change";
-case errc::current_password_cannot_be_retained: return "current_password_cannot_be_retained";
-case errc::partial_revokes_exist: return "partial_revokes_exist";
-case errc::cannot_grant_system_priv_to_mandatory_role: return "cannot_grant_system_priv_to_mandatory_role";
-case errc::xa_replication_filters: return "xa_replication_filters";
-case errc::unsupported_sql_mode: return "unsupported_sql_mode";
-case errc::regexp_invalid_flag: return "regexp_invalid_flag";
-case errc::partial_revoke_and_db_grant_both_exists: return "partial_revoke_and_db_grant_both_exists";
-case errc::unit_not_found: return "unit_not_found";
-case errc::invalid_json_value_for_func_index: return "invalid_json_value_for_func_index";
-case errc::json_value_out_of_range_for_func_index: return "json_value_out_of_range_for_func_index";
-case errc::exceeded_mv_keys_num: return "exceeded_mv_keys_num";
-case errc::exceeded_mv_keys_space: return "exceeded_mv_keys_space";
-case errc::functional_index_data_is_too_long: return "functional_index_data_is_too_long";
-case errc::wrong_mvi_value: return "wrong_mvi_value";
-case errc::warn_func_index_not_applicable: return "warn_func_index_not_applicable";
-case errc::grp_rpl_udf_error: return "grp_rpl_udf_error";
-case errc::update_gtid_purged_with_gr: return "update_gtid_purged_with_gr";
-case errc::grouping_on_timestamp_in_dst: return "grouping_on_timestamp_in_dst";
-case errc::table_name_causes_too_long_path: return "table_name_causes_too_long_path";
-case errc::audit_log_insufficient_privilege: return "audit_log_insufficient_privilege";
-case errc::da_grp_rpl_started_auto_rejoin: return "da_grp_rpl_started_auto_rejoin";
+ { errc::no, "no" },
+ { errc::yes, "yes" },
+ { errc::cant_create_file, "cant_create_file" },
+ { errc::cant_create_table, "cant_create_table" },
+ { errc::cant_create_db, "cant_create_db" },
+ { errc::db_create_exists, "db_create_exists" },
+ { errc::db_drop_exists, "db_drop_exists" },
+ { errc::db_drop_rmdir, "db_drop_rmdir" },
+ { errc::cant_find_system_rec, "cant_find_system_rec" },
+ { errc::cant_get_stat, "cant_get_stat" },
+ { errc::cant_lock, "cant_lock" },
+ { errc::cant_open_file, "cant_open_file" },
+ { errc::file_not_found, "file_not_found" },
+ { errc::cant_read_dir, "cant_read_dir" },
+ { errc::checkread, "checkread" },
+ { errc::dup_key, "dup_key" },
+ { errc::error_on_read, "error_on_read" },
+ { errc::error_on_rename, "error_on_rename" },
+ { errc::error_on_write, "error_on_write" },
+ { errc::file_used, "file_used" },
+ { errc::filsort_abort, "filsort_abort" },
+ { errc::get_errno, "get_errno" },
+ { errc::illegal_ha, "illegal_ha" },
+ { errc::key_not_found, "key_not_found" },
+ { errc::not_form_file, "not_form_file" },
+ { errc::not_keyfile, "not_keyfile" },
+ { errc::old_keyfile, "old_keyfile" },
+ { errc::open_as_readonly, "open_as_readonly" },
+ { errc::outofmemory, "outofmemory" },
+ { errc::out_of_sortmemory, "out_of_sortmemory" },
+ { errc::con_count_error, "con_count_error" },
+ { errc::out_of_resources, "out_of_resources" },
+ { errc::bad_host_error, "bad_host_error" },
+ { errc::handshake_error, "handshake_error" },
+ { errc::dbaccess_denied_error, "dbaccess_denied_error" },
+ { errc::access_denied_error, "access_denied_error" },
+ { errc::no_db_error, "no_db_error" },
+ { errc::unknown_com_error, "unknown_com_error" },
+ { errc::bad_null_error, "bad_null_error" },
+ { errc::bad_db_error, "bad_db_error" },
+ { errc::table_exists_error, "table_exists_error" },
+ { errc::bad_table_error, "bad_table_error" },
+ { errc::non_uniq_error, "non_uniq_error" },
+ { errc::server_shutdown, "server_shutdown" },
+ { errc::bad_field_error, "bad_field_error" },
+ { errc::wrong_field_with_group, "wrong_field_with_group" },
+ { errc::wrong_group_field, "wrong_group_field" },
+ { errc::wrong_sum_select, "wrong_sum_select" },
+ { errc::wrong_value_count, "wrong_value_count" },
+ { errc::too_long_ident, "too_long_ident" },
+ { errc::dup_fieldname, "dup_fieldname" },
+ { errc::dup_keyname, "dup_keyname" },
+ { errc::dup_entry, "dup_entry" },
+ { errc::wrong_field_spec, "wrong_field_spec" },
+ { errc::parse_error, "parse_error" },
+ { errc::empty_query, "empty_query" },
+ { errc::nonuniq_table, "nonuniq_table" },
+ { errc::invalid_default, "invalid_default" },
+ { errc::multiple_pri_key, "multiple_pri_key" },
+ { errc::too_many_keys, "too_many_keys" },
+ { errc::too_many_key_parts, "too_many_key_parts" },
+ { errc::too_long_key, "too_long_key" },
+ { errc::key_column_does_not_exits, "key_column_does_not_exits" },
+ { errc::blob_used_as_key, "blob_used_as_key" },
+ { errc::too_big_fieldlength, "too_big_fieldlength" },
+ { errc::wrong_auto_key, "wrong_auto_key" },
+ { errc::ready, "ready" },
+ { errc::shutdown_complete, "shutdown_complete" },
+ { errc::forcing_close, "forcing_close" },
+ { errc::ipsock_error, "ipsock_error" },
+ { errc::no_such_index, "no_such_index" },
+ { errc::wrong_field_terminators, "wrong_field_terminators" },
+ { errc::blobs_and_no_terminated, "blobs_and_no_terminated" },
+ { errc::textfile_not_readable, "textfile_not_readable" },
+ { errc::file_exists_error, "file_exists_error" },
+ { errc::load_info, "load_info" },
+ { errc::alter_info, "alter_info" },
+ { errc::wrong_sub_key, "wrong_sub_key" },
+ { errc::cant_remove_all_fields, "cant_remove_all_fields" },
+ { errc::cant_drop_field_or_key, "cant_drop_field_or_key" },
+ { errc::insert_info, "insert_info" },
+ { errc::update_table_used, "update_table_used" },
+ { errc::no_such_thread, "no_such_thread" },
+ { errc::kill_denied_error, "kill_denied_error" },
+ { errc::no_tables_used, "no_tables_used" },
+ { errc::too_big_set, "too_big_set" },
+ { errc::no_unique_logfile, "no_unique_logfile" },
+ { errc::table_not_locked_for_write, "table_not_locked_for_write" },
+ { errc::table_not_locked, "table_not_locked" },
+ { errc::blob_cant_have_default, "blob_cant_have_default" },
+ { errc::wrong_db_name, "wrong_db_name" },
+ { errc::wrong_table_name, "wrong_table_name" },
+ { errc::too_big_select, "too_big_select" },
+ { errc::unknown_error, "unknown_error" },
+ { errc::unknown_procedure, "unknown_procedure" },
+ { errc::wrong_paramcount_to_procedure, "wrong_paramcount_to_procedure" },
+ { errc::wrong_parameters_to_procedure, "wrong_parameters_to_procedure" },
+ { errc::unknown_table, "unknown_table" },
+ { errc::field_specified_twice, "field_specified_twice" },
+ { errc::invalid_group_func_use, "invalid_group_func_use" },
+ { errc::unsupported_extension, "unsupported_extension" },
+ { errc::table_must_have_columns, "table_must_have_columns" },
+ { errc::record_file_full, "record_file_full" },
+ { errc::unknown_character_set, "unknown_character_set" },
+ { errc::too_many_tables, "too_many_tables" },
+ { errc::too_many_fields, "too_many_fields" },
+ { errc::too_big_rowsize, "too_big_rowsize" },
+ { errc::stack_overrun, "stack_overrun" },
+ { errc::wrong_outer_join_unused, "wrong_outer_join_unused" },
+ { errc::null_column_in_index, "null_column_in_index" },
+ { errc::cant_find_udf, "cant_find_udf" },
+ { errc::cant_initialize_udf, "cant_initialize_udf" },
+ { errc::udf_no_paths, "udf_no_paths" },
+ { errc::udf_exists, "udf_exists" },
+ { errc::cant_open_library, "cant_open_library" },
+ { errc::cant_find_dl_entry, "cant_find_dl_entry" },
+ { errc::function_not_defined, "function_not_defined" },
+ { errc::host_is_blocked, "host_is_blocked" },
+ { errc::host_not_privileged, "host_not_privileged" },
+ { errc::password_anonymous_user, "password_anonymous_user" },
+ { errc::password_not_allowed, "password_not_allowed" },
+ { errc::password_no_match, "password_no_match" },
+ { errc::update_info, "update_info" },
+ { errc::cant_create_thread, "cant_create_thread" },
+ { errc::wrong_value_count_on_row, "wrong_value_count_on_row" },
+ { errc::cant_reopen_table, "cant_reopen_table" },
+ { errc::invalid_use_of_null, "invalid_use_of_null" },
+ { errc::regexp_error, "regexp_error" },
+ { errc::mix_of_group_func_and_fields, "mix_of_group_func_and_fields" },
+ { errc::nonexisting_grant, "nonexisting_grant" },
+ { errc::tableaccess_denied_error, "tableaccess_denied_error" },
+ { errc::columnaccess_denied_error, "columnaccess_denied_error" },
+ { errc::illegal_grant_for_table, "illegal_grant_for_table" },
+ { errc::grant_wrong_host_or_user, "grant_wrong_host_or_user" },
+ { errc::no_such_table, "no_such_table" },
+ { errc::nonexisting_table_grant, "nonexisting_table_grant" },
+ { errc::not_allowed_command, "not_allowed_command" },
+ { errc::syntax_error, "syntax_error" },
+ { errc::aborting_connection, "aborting_connection" },
+ { errc::net_packet_too_large, "net_packet_too_large" },
+ { errc::net_read_error_from_pipe, "net_read_error_from_pipe" },
+ { errc::net_fcntl_error, "net_fcntl_error" },
+ { errc::net_packets_out_of_order, "net_packets_out_of_order" },
+ { errc::net_uncompress_error, "net_uncompress_error" },
+ { errc::net_read_error, "net_read_error" },
+ { errc::net_read_interrupted, "net_read_interrupted" },
+ { errc::net_error_on_write, "net_error_on_write" },
+ { errc::net_write_interrupted, "net_write_interrupted" },
+ { errc::too_long_string, "too_long_string" },
+ { errc::table_cant_handle_blob, "table_cant_handle_blob" },
+ { errc::table_cant_handle_auto_increment, "table_cant_handle_auto_increment" },
+ { errc::wrong_column_name, "wrong_column_name" },
+ { errc::wrong_key_column, "wrong_key_column" },
+ { errc::wrong_mrg_table, "wrong_mrg_table" },
+ { errc::dup_unique, "dup_unique" },
+ { errc::blob_key_without_length, "blob_key_without_length" },
+ { errc::primary_cant_have_null, "primary_cant_have_null" },
+ { errc::too_many_rows, "too_many_rows" },
+ { errc::requires_primary_key, "requires_primary_key" },
+ { errc::update_without_key_in_safe_mode, "update_without_key_in_safe_mode" },
+ { errc::key_does_not_exits, "key_does_not_exits" },
+ { errc::check_no_such_table, "check_no_such_table" },
+ { errc::check_not_implemented, "check_not_implemented" },
+ { errc::cant_do_this_during_an_transaction, "cant_do_this_during_an_transaction" },
+ { errc::error_during_commit, "error_during_commit" },
+ { errc::error_during_rollback, "error_during_rollback" },
+ { errc::error_during_flush_logs, "error_during_flush_logs" },
+ { errc::new_aborting_connection, "new_aborting_connection" },
+ { errc::master, "master" },
+ { errc::master_net_read, "master_net_read" },
+ { errc::master_net_write, "master_net_write" },
+ { errc::ft_matching_key_not_found, "ft_matching_key_not_found" },
+ { errc::lock_or_active_transaction, "lock_or_active_transaction" },
+ { errc::unknown_system_variable, "unknown_system_variable" },
+ { errc::crashed_on_usage, "crashed_on_usage" },
+ { errc::crashed_on_repair, "crashed_on_repair" },
+ { errc::warning_not_complete_rollback, "warning_not_complete_rollback" },
+ { errc::trans_cache_full, "trans_cache_full" },
+ { errc::slave_not_running, "slave_not_running" },
+ { errc::bad_slave, "bad_slave" },
+ { errc::master_info, "master_info" },
+ { errc::slave_thread, "slave_thread" },
+ { errc::too_many_user_connections, "too_many_user_connections" },
+ { errc::set_constants_only, "set_constants_only" },
+ { errc::lock_wait_timeout, "lock_wait_timeout" },
+ { errc::lock_table_full, "lock_table_full" },
+ { errc::read_only_transaction, "read_only_transaction" },
+ { errc::wrong_arguments, "wrong_arguments" },
+ { errc::no_permission_to_create_user, "no_permission_to_create_user" },
+ { errc::lock_deadlock, "lock_deadlock" },
+ { errc::table_cant_handle_ft, "table_cant_handle_ft" },
+ { errc::cannot_add_foreign, "cannot_add_foreign" },
+ { errc::no_referenced_row, "no_referenced_row" },
+ { errc::row_is_referenced, "row_is_referenced" },
+ { errc::connect_to_master, "connect_to_master" },
+ { errc::error_when_executing_command, "error_when_executing_command" },
+ { errc::wrong_usage, "wrong_usage" },
+ { errc::wrong_number_of_columns_in_select, "wrong_number_of_columns_in_select" },
+ { errc::cant_update_with_readlock, "cant_update_with_readlock" },
+ { errc::mixing_not_allowed, "mixing_not_allowed" },
+ { errc::dup_argument, "dup_argument" },
+ { errc::user_limit_reached, "user_limit_reached" },
+ { errc::specific_access_denied_error, "specific_access_denied_error" },
+ { errc::local_variable, "local_variable" },
+ { errc::global_variable, "global_variable" },
+ { errc::no_default, "no_default" },
+ { errc::wrong_value_for_var, "wrong_value_for_var" },
+ { errc::wrong_type_for_var, "wrong_type_for_var" },
+ { errc::var_cant_be_read, "var_cant_be_read" },
+ { errc::cant_use_option_here, "cant_use_option_here" },
+ { errc::not_supported_yet, "not_supported_yet" },
+ { errc::master_fatal_error_reading_binlog, "master_fatal_error_reading_binlog" },
+ { errc::slave_ignored_table, "slave_ignored_table" },
+ { errc::incorrect_global_local_var, "incorrect_global_local_var" },
+ { errc::wrong_fk_def, "wrong_fk_def" },
+ { errc::key_ref_do_not_match_table_ref, "key_ref_do_not_match_table_ref" },
+ { errc::operand_columns, "operand_columns" },
+ { errc::subquery_no_1_row, "subquery_no_1_row" },
+ { errc::unknown_stmt_handler, "unknown_stmt_handler" },
+ { errc::corrupt_help_db, "corrupt_help_db" },
+ { errc::auto_convert, "auto_convert" },
+ { errc::illegal_reference, "illegal_reference" },
+ { errc::derived_must_have_alias, "derived_must_have_alias" },
+ { errc::select_reduced, "select_reduced" },
+ { errc::tablename_not_allowed_here, "tablename_not_allowed_here" },
+ { errc::not_supported_auth_mode, "not_supported_auth_mode" },
+ { errc::spatial_cant_have_null, "spatial_cant_have_null" },
+ { errc::collation_charset_mismatch, "collation_charset_mismatch" },
+ { errc::too_big_for_uncompress, "too_big_for_uncompress" },
+ { errc::zlib_z_mem_error, "zlib_z_mem_error" },
+ { errc::zlib_z_buf_error, "zlib_z_buf_error" },
+ { errc::zlib_z_data_error, "zlib_z_data_error" },
+ { errc::cut_value_group_concat, "cut_value_group_concat" },
+ { errc::warn_too_few_records, "warn_too_few_records" },
+ { errc::warn_too_many_records, "warn_too_many_records" },
+ { errc::warn_null_to_notnull, "warn_null_to_notnull" },
+ { errc::warn_data_out_of_range, "warn_data_out_of_range" },
+ { errc::warn_using_other_handler, "warn_using_other_handler" },
+ { errc::cant_aggregate_2collations, "cant_aggregate_2collations" },
+ { errc::revoke_grants, "revoke_grants" },
+ { errc::cant_aggregate_3collations, "cant_aggregate_3collations" },
+ { errc::cant_aggregate_ncollations, "cant_aggregate_ncollations" },
+ { errc::variable_is_not_struct, "variable_is_not_struct" },
+ { errc::unknown_collation, "unknown_collation" },
+ { errc::slave_ignored_ssl_params, "slave_ignored_ssl_params" },
+ { errc::warn_field_resolved, "warn_field_resolved" },
+ { errc::bad_slave_until_cond, "bad_slave_until_cond" },
+ { errc::missing_skip_slave, "missing_skip_slave" },
+ { errc::until_cond_ignored, "until_cond_ignored" },
+ { errc::wrong_name_for_index, "wrong_name_for_index" },
+ { errc::wrong_name_for_catalog, "wrong_name_for_catalog" },
+ { errc::bad_ft_column, "bad_ft_column" },
+ { errc::unknown_key_cache, "unknown_key_cache" },
+ { errc::warn_hostname_wont_work, "warn_hostname_wont_work" },
+ { errc::unknown_storage_engine, "unknown_storage_engine" },
+ { errc::warn_deprecated_syntax, "warn_deprecated_syntax" },
+ { errc::non_updatable_table, "non_updatable_table" },
+ { errc::feature_disabled, "feature_disabled" },
+ { errc::option_prevents_statement, "option_prevents_statement" },
+ { errc::duplicated_value_in_type, "duplicated_value_in_type" },
+ { errc::truncated_wrong_value, "truncated_wrong_value" },
+ { errc::invalid_on_update, "invalid_on_update" },
+ { errc::unsupported_ps, "unsupported_ps" },
+ { errc::get_errmsg, "get_errmsg" },
+ { errc::get_temporary_errmsg, "get_temporary_errmsg" },
+ { errc::unknown_time_zone, "unknown_time_zone" },
+ { errc::warn_invalid_timestamp, "warn_invalid_timestamp" },
+ { errc::invalid_character_string, "invalid_character_string" },
+ { errc::warn_allowed_packet_overflowed, "warn_allowed_packet_overflowed" },
+ { errc::conflicting_declarations, "conflicting_declarations" },
+ { errc::sp_no_recursive_create, "sp_no_recursive_create" },
+ { errc::sp_already_exists, "sp_already_exists" },
+ { errc::sp_does_not_exist, "sp_does_not_exist" },
+ { errc::sp_drop_failed, "sp_drop_failed" },
+ { errc::sp_store_failed, "sp_store_failed" },
+ { errc::sp_lilabel_mismatch, "sp_lilabel_mismatch" },
+ { errc::sp_label_redefine, "sp_label_redefine" },
+ { errc::sp_label_mismatch, "sp_label_mismatch" },
+ { errc::sp_uninit_var, "sp_uninit_var" },
+ { errc::sp_badselect, "sp_badselect" },
+ { errc::sp_badreturn, "sp_badreturn" },
+ { errc::sp_badstatement, "sp_badstatement" },
+ { errc::update_log_deprecated_ignored, "update_log_deprecated_ignored" },
+ { errc::update_log_deprecated_translated, "update_log_deprecated_translated" },
+ { errc::query_interrupted, "query_interrupted" },
+ { errc::sp_wrong_no_of_args, "sp_wrong_no_of_args" },
+ { errc::sp_cond_mismatch, "sp_cond_mismatch" },
+ { errc::sp_noreturn, "sp_noreturn" },
+ { errc::sp_noreturnend, "sp_noreturnend" },
+ { errc::sp_bad_cursor_query, "sp_bad_cursor_query" },
+ { errc::sp_bad_cursor_select, "sp_bad_cursor_select" },
+ { errc::sp_cursor_mismatch, "sp_cursor_mismatch" },
+ { errc::sp_cursor_already_open, "sp_cursor_already_open" },
+ { errc::sp_cursor_not_open, "sp_cursor_not_open" },
+ { errc::sp_undeclared_var, "sp_undeclared_var" },
+ { errc::sp_wrong_no_of_fetch_args, "sp_wrong_no_of_fetch_args" },
+ { errc::sp_fetch_no_data, "sp_fetch_no_data" },
+ { errc::sp_dup_param, "sp_dup_param" },
+ { errc::sp_dup_var, "sp_dup_var" },
+ { errc::sp_dup_cond, "sp_dup_cond" },
+ { errc::sp_dup_curs, "sp_dup_curs" },
+ { errc::sp_cant_alter, "sp_cant_alter" },
+ { errc::sp_subselect_nyi, "sp_subselect_nyi" },
+ { errc::stmt_not_allowed_in_sf_or_trg, "stmt_not_allowed_in_sf_or_trg" },
+ { errc::sp_varcond_after_curshndlr, "sp_varcond_after_curshndlr" },
+ { errc::sp_cursor_after_handler, "sp_cursor_after_handler" },
+ { errc::sp_case_not_found, "sp_case_not_found" },
+ { errc::fparser_too_big_file, "fparser_too_big_file" },
+ { errc::fparser_bad_header, "fparser_bad_header" },
+ { errc::fparser_eof_in_comment, "fparser_eof_in_comment" },
+ { errc::fparser_error_in_parameter, "fparser_error_in_parameter" },
+ { errc::fparser_eof_in_unknown_parameter, "fparser_eof_in_unknown_parameter" },
+ { errc::view_no_explain, "view_no_explain" },
+ { errc::wrong_object, "wrong_object" },
+ { errc::nonupdateable_column, "nonupdateable_column" },
+ { errc::view_select_clause, "view_select_clause" },
+ { errc::view_select_variable, "view_select_variable" },
+ { errc::view_select_tmptable, "view_select_tmptable" },
+ { errc::view_wrong_list, "view_wrong_list" },
+ { errc::warn_view_merge, "warn_view_merge" },
+ { errc::warn_view_without_key, "warn_view_without_key" },
+ { errc::view_invalid, "view_invalid" },
+ { errc::sp_no_drop_sp, "sp_no_drop_sp" },
+ { errc::trg_already_exists, "trg_already_exists" },
+ { errc::trg_does_not_exist, "trg_does_not_exist" },
+ { errc::trg_on_view_or_temp_table, "trg_on_view_or_temp_table" },
+ { errc::trg_cant_change_row, "trg_cant_change_row" },
+ { errc::trg_no_such_row_in_trg, "trg_no_such_row_in_trg" },
+ { errc::no_default_for_field, "no_default_for_field" },
+ { errc::division_by_zero, "division_by_zero" },
+ { errc::truncated_wrong_value_for_field, "truncated_wrong_value_for_field" },
+ { errc::illegal_value_for_type, "illegal_value_for_type" },
+ { errc::view_nonupd_check, "view_nonupd_check" },
+ { errc::view_check_failed, "view_check_failed" },
+ { errc::procaccess_denied_error, "procaccess_denied_error" },
+ { errc::relay_log_fail, "relay_log_fail" },
+ { errc::unknown_target_binlog, "unknown_target_binlog" },
+ { errc::io_err_log_index_read, "io_err_log_index_read" },
+ { errc::binlog_purge_prohibited, "binlog_purge_prohibited" },
+ { errc::fseek_fail, "fseek_fail" },
+ { errc::binlog_purge_fatal_err, "binlog_purge_fatal_err" },
+ { errc::log_in_use, "log_in_use" },
+ { errc::log_purge_unknown_err, "log_purge_unknown_err" },
+ { errc::relay_log_init, "relay_log_init" },
+ { errc::no_binary_logging, "no_binary_logging" },
+ { errc::reserved_syntax, "reserved_syntax" },
+ { errc::ps_many_param, "ps_many_param" },
+ { errc::key_part_0, "key_part_0" },
+ { errc::view_checksum, "view_checksum" },
+ { errc::view_multiupdate, "view_multiupdate" },
+ { errc::view_no_insert_field_list, "view_no_insert_field_list" },
+ { errc::view_delete_merge_view, "view_delete_merge_view" },
+ { errc::cannot_user, "cannot_user" },
+ { errc::xaer_nota, "xaer_nota" },
+ { errc::xaer_inval, "xaer_inval" },
+ { errc::xaer_rmfail, "xaer_rmfail" },
+ { errc::xaer_outside, "xaer_outside" },
+ { errc::xaer_rmerr, "xaer_rmerr" },
+ { errc::xa_rbrollback, "xa_rbrollback" },
+ { errc::nonexisting_proc_grant, "nonexisting_proc_grant" },
+ { errc::proc_auto_grant_fail, "proc_auto_grant_fail" },
+ { errc::proc_auto_revoke_fail, "proc_auto_revoke_fail" },
+ { errc::data_too_long, "data_too_long" },
+ { errc::sp_bad_sqlstate, "sp_bad_sqlstate" },
+ { errc::startup, "startup" },
+ { errc::load_from_fixed_size_rows_to_var, "load_from_fixed_size_rows_to_var" },
+ { errc::cant_create_user_with_grant, "cant_create_user_with_grant" },
+ { errc::wrong_value_for_type, "wrong_value_for_type" },
+ { errc::table_def_changed, "table_def_changed" },
+ { errc::sp_dup_handler, "sp_dup_handler" },
+ { errc::sp_not_var_arg, "sp_not_var_arg" },
+ { errc::sp_no_retset, "sp_no_retset" },
+ { errc::cant_create_geometry_object, "cant_create_geometry_object" },
+ { errc::binlog_unsafe_routine, "binlog_unsafe_routine" },
+ { errc::binlog_create_routine_need_super, "binlog_create_routine_need_super" },
+ { errc::stmt_has_no_open_cursor, "stmt_has_no_open_cursor" },
+ { errc::commit_not_allowed_in_sf_or_trg, "commit_not_allowed_in_sf_or_trg" },
+ { errc::no_default_for_view_field, "no_default_for_view_field" },
+ { errc::sp_no_recursion, "sp_no_recursion" },
+ { errc::too_big_scale, "too_big_scale" },
+ { errc::too_big_precision, "too_big_precision" },
+ { errc::m_bigger_than_d, "m_bigger_than_d" },
+ { errc::wrong_lock_of_system_table, "wrong_lock_of_system_table" },
+ { errc::connect_to_foreign_data_source, "connect_to_foreign_data_source" },
+ { errc::query_on_foreign_data_source, "query_on_foreign_data_source" },
+ { errc::foreign_data_source_doesnt_exist, "foreign_data_source_doesnt_exist" },
+ { errc::foreign_data_string_invalid_cant_create, "foreign_data_string_invalid_cant_create" },
+ { errc::foreign_data_string_invalid, "foreign_data_string_invalid" },
+ { errc::trg_in_wrong_schema, "trg_in_wrong_schema" },
+ { errc::stack_overrun_need_more, "stack_overrun_need_more" },
+ { errc::too_long_body, "too_long_body" },
+ { errc::warn_cant_drop_default_keycache, "warn_cant_drop_default_keycache" },
+ { errc::too_big_displaywidth, "too_big_displaywidth" },
+ { errc::xaer_dupid, "xaer_dupid" },
+ { errc::datetime_function_overflow, "datetime_function_overflow" },
+ { errc::cant_update_used_table_in_sf_or_trg, "cant_update_used_table_in_sf_or_trg" },
+ { errc::view_prevent_update, "view_prevent_update" },
+ { errc::ps_no_recursion, "ps_no_recursion" },
+ { errc::sp_cant_set_autocommit, "sp_cant_set_autocommit" },
+ { errc::view_frm_no_user, "view_frm_no_user" },
+ { errc::view_other_user, "view_other_user" },
+ { errc::no_such_user, "no_such_user" },
+ { errc::forbid_schema_change, "forbid_schema_change" },
+ { errc::row_is_referenced_2, "row_is_referenced_2" },
+ { errc::no_referenced_row_2, "no_referenced_row_2" },
+ { errc::sp_bad_var_shadow, "sp_bad_var_shadow" },
+ { errc::trg_no_definer, "trg_no_definer" },
+ { errc::old_file_format, "old_file_format" },
+ { errc::sp_recursion_limit, "sp_recursion_limit" },
+ { errc::sp_wrong_name, "sp_wrong_name" },
+ { errc::table_needs_upgrade, "table_needs_upgrade" },
+ { errc::sp_no_aggregate, "sp_no_aggregate" },
+ { errc::max_prepared_stmt_count_reached, "max_prepared_stmt_count_reached" },
+ { errc::view_recursive, "view_recursive" },
+ { errc::non_grouping_field_used, "non_grouping_field_used" },
+ { errc::table_cant_handle_spkeys, "table_cant_handle_spkeys" },
+ { errc::no_triggers_on_system_schema, "no_triggers_on_system_schema" },
+ { errc::removed_spaces, "removed_spaces" },
+ { errc::autoinc_read_failed, "autoinc_read_failed" },
+ { errc::username, "username" },
+ { errc::hostname, "hostname" },
+ { errc::wrong_string_length, "wrong_string_length" },
+ { errc::non_insertable_table, "non_insertable_table" },
+ { errc::admin_wrong_mrg_table, "admin_wrong_mrg_table" },
+ { errc::too_high_level_of_nesting_for_select, "too_high_level_of_nesting_for_select" },
+ { errc::name_becomes_empty, "name_becomes_empty" },
+ { errc::ambiguous_field_term, "ambiguous_field_term" },
+ { errc::foreign_server_exists, "foreign_server_exists" },
+ { errc::foreign_server_doesnt_exist, "foreign_server_doesnt_exist" },
+ { errc::illegal_ha_create_option, "illegal_ha_create_option" },
+ { errc::partition_requires_values_error, "partition_requires_values_error" },
+ { errc::partition_wrong_values_error, "partition_wrong_values_error" },
+ { errc::partition_maxvalue_error, "partition_maxvalue_error" },
+ { errc::partition_wrong_no_part_error, "partition_wrong_no_part_error" },
+ { errc::partition_wrong_no_subpart_error, "partition_wrong_no_subpart_error" },
+ { errc::wrong_expr_in_partition_func_error, "wrong_expr_in_partition_func_error" },
+ { errc::field_not_found_part_error, "field_not_found_part_error" },
+ { errc::inconsistent_partition_info_error, "inconsistent_partition_info_error" },
+ { errc::partition_func_not_allowed_error, "partition_func_not_allowed_error" },
+ { errc::partitions_must_be_defined_error, "partitions_must_be_defined_error" },
+ { errc::range_not_increasing_error, "range_not_increasing_error" },
+ { errc::inconsistent_type_of_functions_error, "inconsistent_type_of_functions_error" },
+ { errc::multiple_def_const_in_list_part_error, "multiple_def_const_in_list_part_error" },
+ { errc::partition_entry_error, "partition_entry_error" },
+ { errc::mix_handler_error, "mix_handler_error" },
+ { errc::partition_not_defined_error, "partition_not_defined_error" },
+ { errc::too_many_partitions_error, "too_many_partitions_error" },
+ { errc::subpartition_error, "subpartition_error" },
+ { errc::cant_create_handler_file, "cant_create_handler_file" },
+ { errc::blob_field_in_part_func_error, "blob_field_in_part_func_error" },
+ { errc::unique_key_need_all_fields_in_pf, "unique_key_need_all_fields_in_pf" },
+ { errc::no_parts_error, "no_parts_error" },
+ { errc::partition_mgmt_on_nonpartitioned, "partition_mgmt_on_nonpartitioned" },
+ { errc::foreign_key_on_partitioned, "foreign_key_on_partitioned" },
+ { errc::drop_partition_non_existent, "drop_partition_non_existent" },
+ { errc::drop_last_partition, "drop_last_partition" },
+ { errc::coalesce_only_on_hash_partition, "coalesce_only_on_hash_partition" },
+ { errc::reorg_hash_only_on_same_no, "reorg_hash_only_on_same_no" },
+ { errc::reorg_no_param_error, "reorg_no_param_error" },
+ { errc::only_on_range_list_partition, "only_on_range_list_partition" },
+ { errc::add_partition_subpart_error, "add_partition_subpart_error" },
+ { errc::add_partition_no_new_partition, "add_partition_no_new_partition" },
+ { errc::coalesce_partition_no_partition, "coalesce_partition_no_partition" },
+ { errc::reorg_partition_not_exist, "reorg_partition_not_exist" },
+ { errc::same_name_partition, "same_name_partition" },
+ { errc::no_binlog_error, "no_binlog_error" },
+ { errc::consecutive_reorg_partitions, "consecutive_reorg_partitions" },
+ { errc::reorg_outside_range, "reorg_outside_range" },
+ { errc::partition_function_failure, "partition_function_failure" },
+ { errc::limited_part_range, "limited_part_range" },
+ { errc::plugin_is_not_loaded, "plugin_is_not_loaded" },
+ { errc::wrong_value, "wrong_value" },
+ { errc::no_partition_for_given_value, "no_partition_for_given_value" },
+ { errc::filegroup_option_only_once, "filegroup_option_only_once" },
+ { errc::create_filegroup_failed, "create_filegroup_failed" },
+ { errc::drop_filegroup_failed, "drop_filegroup_failed" },
+ { errc::tablespace_auto_extend_error, "tablespace_auto_extend_error" },
+ { errc::wrong_size_number, "wrong_size_number" },
+ { errc::size_overflow_error, "size_overflow_error" },
+ { errc::alter_filegroup_failed, "alter_filegroup_failed" },
+ { errc::binlog_row_logging_failed, "binlog_row_logging_failed" },
+ { errc::event_already_exists, "event_already_exists" },
+ { errc::event_does_not_exist, "event_does_not_exist" },
+ { errc::event_interval_not_positive_or_too_big, "event_interval_not_positive_or_too_big" },
+ { errc::event_ends_before_starts, "event_ends_before_starts" },
+ { errc::event_exec_time_in_the_past, "event_exec_time_in_the_past" },
+ { errc::event_same_name, "event_same_name" },
+ { errc::drop_index_fk, "drop_index_fk" },
+ { errc::warn_deprecated_syntax_with_ver, "warn_deprecated_syntax_with_ver" },
+ { errc::cant_lock_log_table, "cant_lock_log_table" },
+ { errc::foreign_duplicate_key_old_unused, "foreign_duplicate_key_old_unused" },
+ { errc::col_count_doesnt_match_please_update, "col_count_doesnt_match_please_update" },
+ { errc::stored_function_prevents_switch_binlog_format, "stored_function_prevents_switch_binlog_format" },
+ { errc::partition_no_temporary, "partition_no_temporary" },
+ { errc::partition_const_domain_error, "partition_const_domain_error" },
+ { errc::partition_function_is_not_allowed, "partition_function_is_not_allowed" },
+ { errc::null_in_values_less_than, "null_in_values_less_than" },
+ { errc::wrong_partition_name, "wrong_partition_name" },
+ { errc::cant_change_tx_characteristics, "cant_change_tx_characteristics" },
+ { errc::dup_entry_autoincrement_case, "dup_entry_autoincrement_case" },
+ { errc::event_set_var_error, "event_set_var_error" },
+ { errc::partition_merge_error, "partition_merge_error" },
+ { errc::base64_decode_error, "base64_decode_error" },
+ { errc::event_recursion_forbidden, "event_recursion_forbidden" },
+ { errc::only_integers_allowed, "only_integers_allowed" },
+ { errc::unsuported_log_engine, "unsuported_log_engine" },
+ { errc::bad_log_statement, "bad_log_statement" },
+ { errc::cant_rename_log_table, "cant_rename_log_table" },
+ { errc::wrong_paramcount_to_native_fct, "wrong_paramcount_to_native_fct" },
+ { errc::wrong_parameters_to_native_fct, "wrong_parameters_to_native_fct" },
+ { errc::wrong_parameters_to_stored_fct, "wrong_parameters_to_stored_fct" },
+ { errc::native_fct_name_collision, "native_fct_name_collision" },
+ { errc::dup_entry_with_key_name, "dup_entry_with_key_name" },
+ { errc::binlog_purge_emfile, "binlog_purge_emfile" },
+ { errc::event_cannot_create_in_the_past, "event_cannot_create_in_the_past" },
+ { errc::event_cannot_alter_in_the_past, "event_cannot_alter_in_the_past" },
+ { errc::no_partition_for_given_value_silent, "no_partition_for_given_value_silent" },
+ { errc::binlog_unsafe_statement, "binlog_unsafe_statement" },
+ { errc::binlog_fatal_error, "binlog_fatal_error" },
+ { errc::binlog_logging_impossible, "binlog_logging_impossible" },
+ { errc::view_no_creation_ctx, "view_no_creation_ctx" },
+ { errc::view_invalid_creation_ctx, "view_invalid_creation_ctx" },
+ { errc::trg_corrupted_file, "trg_corrupted_file" },
+ { errc::trg_no_creation_ctx, "trg_no_creation_ctx" },
+ { errc::trg_invalid_creation_ctx, "trg_invalid_creation_ctx" },
+ { errc::event_invalid_creation_ctx, "event_invalid_creation_ctx" },
+ { errc::trg_cant_open_table, "trg_cant_open_table" },
+ { errc::no_format_description_event_before_binlog_statement, "no_format_description_event_before_binlog_statement" },
+ { errc::slave_corrupt_event, "slave_corrupt_event" },
+ { errc::log_purge_no_file, "log_purge_no_file" },
+ { errc::xa_rbtimeout, "xa_rbtimeout" },
+ { errc::xa_rbdeadlock, "xa_rbdeadlock" },
+ { errc::need_reprepare, "need_reprepare" },
+ { errc::plugin_delete_builtin, "plugin_delete_builtin" },
+ { errc::variable_is_readonly, "variable_is_readonly" },
+ { errc::warn_engine_transaction_rollback, "warn_engine_transaction_rollback" },
+ { errc::slave_heartbeat_value_out_of_range, "slave_heartbeat_value_out_of_range" },
+ { errc::ndb_replication_schema_error, "ndb_replication_schema_error" },
+ { errc::conflict_fn_parse_error, "conflict_fn_parse_error" },
+ { errc::exceptions_write_error, "exceptions_write_error" },
+ { errc::too_long_table_comment, "too_long_table_comment" },
+ { errc::too_long_field_comment, "too_long_field_comment" },
+ { errc::func_inexistent_name_collision, "func_inexistent_name_collision" },
+ { errc::database_name, "database_name" },
+ { errc::table_name, "table_name" },
+ { errc::partition_name, "partition_name" },
+ { errc::subpartition_name, "subpartition_name" },
+ { errc::temporary_name, "temporary_name" },
+ { errc::renamed_name, "renamed_name" },
+ { errc::too_many_concurrent_trxs, "too_many_concurrent_trxs" },
+ { errc::debug_sync_timeout, "debug_sync_timeout" },
+ { errc::debug_sync_hit_limit, "debug_sync_hit_limit" },
+ { errc::dup_signal_set, "dup_signal_set" },
+ { errc::signal_warn, "signal_warn" },
+ { errc::signal_not_found, "signal_not_found" },
+ { errc::signal_exception, "signal_exception" },
+ { errc::resignal_without_active_handler, "resignal_without_active_handler" },
+ { errc::signal_bad_condition_type, "signal_bad_condition_type" },
+ { errc::cond_item_too_long, "cond_item_too_long" },
+ { errc::unknown_locale, "unknown_locale" },
+ { errc::slave_ignore_server_ids, "slave_ignore_server_ids" },
+ { errc::same_name_partition_field, "same_name_partition_field" },
+ { errc::partition_column_list_error, "partition_column_list_error" },
+ { errc::wrong_type_column_value_error, "wrong_type_column_value_error" },
+ { errc::too_many_partition_func_fields_error, "too_many_partition_func_fields_error" },
+ { errc::maxvalue_in_values_in, "maxvalue_in_values_in" },
+ { errc::too_many_values_error, "too_many_values_error" },
+ { errc::row_single_partition_field_error, "row_single_partition_field_error" },
+ { errc::field_type_not_allowed_as_partition_field, "field_type_not_allowed_as_partition_field" },
+ { errc::partition_fields_too_long, "partition_fields_too_long" },
+ { errc::binlog_row_engine_and_stmt_engine, "binlog_row_engine_and_stmt_engine" },
+ { errc::binlog_row_mode_and_stmt_engine, "binlog_row_mode_and_stmt_engine" },
+ { errc::binlog_unsafe_and_stmt_engine, "binlog_unsafe_and_stmt_engine" },
+ { errc::binlog_row_injection_and_stmt_engine, "binlog_row_injection_and_stmt_engine" },
+ { errc::binlog_stmt_mode_and_row_engine, "binlog_stmt_mode_and_row_engine" },
+ { errc::binlog_row_injection_and_stmt_mode, "binlog_row_injection_and_stmt_mode" },
+ { errc::binlog_multiple_engines_and_self_logging_engine, "binlog_multiple_engines_and_self_logging_engine" },
+ { errc::binlog_unsafe_limit, "binlog_unsafe_limit" },
+ { errc::binlog_unsafe_system_table, "binlog_unsafe_system_table" },
+ { errc::binlog_unsafe_autoinc_columns, "binlog_unsafe_autoinc_columns" },
+ { errc::binlog_unsafe_udf, "binlog_unsafe_udf" },
+ { errc::binlog_unsafe_system_variable, "binlog_unsafe_system_variable" },
+ { errc::binlog_unsafe_system_function, "binlog_unsafe_system_function" },
+ { errc::binlog_unsafe_nontrans_after_trans, "binlog_unsafe_nontrans_after_trans" },
+ { errc::message_and_statement, "message_and_statement" },
+ { errc::slave_cant_create_conversion, "slave_cant_create_conversion" },
+ { errc::inside_transaction_prevents_switch_binlog_format, "inside_transaction_prevents_switch_binlog_format" },
+ { errc::path_length, "path_length" },
+ { errc::warn_deprecated_syntax_no_replacement, "warn_deprecated_syntax_no_replacement" },
+ { errc::wrong_native_table_structure, "wrong_native_table_structure" },
+ { errc::wrong_perfschema_usage, "wrong_perfschema_usage" },
+ { errc::warn_i_s_skipped_table, "warn_i_s_skipped_table" },
+ { errc::inside_transaction_prevents_switch_binlog_direct, "inside_transaction_prevents_switch_binlog_direct" },
+ { errc::stored_function_prevents_switch_binlog_direct, "stored_function_prevents_switch_binlog_direct" },
+ { errc::spatial_must_have_geom_col, "spatial_must_have_geom_col" },
+ { errc::too_long_index_comment, "too_long_index_comment" },
+ { errc::lock_aborted, "lock_aborted" },
+ { errc::data_out_of_range, "data_out_of_range" },
+ { errc::wrong_spvar_type_in_limit, "wrong_spvar_type_in_limit" },
+ { errc::binlog_unsafe_multiple_engines_and_self_logging_engine, "binlog_unsafe_multiple_engines_and_self_logging_engine" },
+ { errc::binlog_unsafe_mixed_statement, "binlog_unsafe_mixed_statement" },
+ { errc::inside_transaction_prevents_switch_sql_log_bin, "inside_transaction_prevents_switch_sql_log_bin" },
+ { errc::stored_function_prevents_switch_sql_log_bin, "stored_function_prevents_switch_sql_log_bin" },
+ { errc::failed_read_from_par_file, "failed_read_from_par_file" },
+ { errc::values_is_not_int_type_error, "values_is_not_int_type_error" },
+ { errc::access_denied_no_password_error, "access_denied_no_password_error" },
+ { errc::set_password_auth_plugin, "set_password_auth_plugin" },
+ { errc::truncate_illegal_fk, "truncate_illegal_fk" },
+ { errc::plugin_is_permanent, "plugin_is_permanent" },
+ { errc::slave_heartbeat_value_out_of_range_min, "slave_heartbeat_value_out_of_range_min" },
+ { errc::slave_heartbeat_value_out_of_range_max, "slave_heartbeat_value_out_of_range_max" },
+ { errc::stmt_cache_full, "stmt_cache_full" },
+ { errc::multi_update_key_conflict, "multi_update_key_conflict" },
+ { errc::table_needs_rebuild, "table_needs_rebuild" },
+ { errc::index_column_too_long, "index_column_too_long" },
+ { errc::error_in_trigger_body, "error_in_trigger_body" },
+ { errc::error_in_unknown_trigger_body, "error_in_unknown_trigger_body" },
+ { errc::index_corrupt, "index_corrupt" },
+ { errc::undo_record_too_big, "undo_record_too_big" },
+ { errc::binlog_unsafe_insert_ignore_select, "binlog_unsafe_insert_ignore_select" },
+ { errc::binlog_unsafe_insert_select_update, "binlog_unsafe_insert_select_update" },
+ { errc::binlog_unsafe_replace_select, "binlog_unsafe_replace_select" },
+ { errc::binlog_unsafe_create_ignore_select, "binlog_unsafe_create_ignore_select" },
+ { errc::binlog_unsafe_create_replace_select, "binlog_unsafe_create_replace_select" },
+ { errc::binlog_unsafe_update_ignore, "binlog_unsafe_update_ignore" },
+ { errc::plugin_no_uninstall, "plugin_no_uninstall" },
+ { errc::plugin_no_install, "plugin_no_install" },
+ { errc::binlog_unsafe_write_autoinc_select, "binlog_unsafe_write_autoinc_select" },
+ { errc::binlog_unsafe_create_select_autoinc, "binlog_unsafe_create_select_autoinc" },
+ { errc::binlog_unsafe_insert_two_keys, "binlog_unsafe_insert_two_keys" },
+ { errc::table_in_fk_check, "table_in_fk_check" },
+ { errc::unsupported_engine, "unsupported_engine" },
+ { errc::binlog_unsafe_autoinc_not_first, "binlog_unsafe_autoinc_not_first" },
+ { errc::cannot_load_from_table_v2, "cannot_load_from_table_v2" },
+ { errc::master_delay_value_out_of_range, "master_delay_value_out_of_range" },
+ { errc::only_fd_and_rbr_events_allowed_in_binlog_statement, "only_fd_and_rbr_events_allowed_in_binlog_statement" },
+ { errc::partition_exchange_different_option, "partition_exchange_different_option" },
+ { errc::partition_exchange_part_table, "partition_exchange_part_table" },
+ { errc::partition_exchange_temp_table, "partition_exchange_temp_table" },
+ { errc::partition_instead_of_subpartition, "partition_instead_of_subpartition" },
+ { errc::unknown_partition, "unknown_partition" },
+ { errc::tables_different_metadata, "tables_different_metadata" },
+ { errc::row_does_not_match_partition, "row_does_not_match_partition" },
+ { errc::binlog_cache_size_greater_than_max, "binlog_cache_size_greater_than_max" },
+ { errc::warn_index_not_applicable, "warn_index_not_applicable" },
+ { errc::partition_exchange_foreign_key, "partition_exchange_foreign_key" },
+ { errc::rpl_info_data_too_long, "rpl_info_data_too_long" },
+ { errc::binlog_stmt_cache_size_greater_than_max, "binlog_stmt_cache_size_greater_than_max" },
+ { errc::cant_update_table_in_create_table_select, "cant_update_table_in_create_table_select" },
+ { errc::partition_clause_on_nonpartitioned, "partition_clause_on_nonpartitioned" },
+ { errc::row_does_not_match_given_partition_set, "row_does_not_match_given_partition_set" },
+ { errc::change_rpl_info_repository_failure, "change_rpl_info_repository_failure" },
+ { errc::warning_not_complete_rollback_with_created_temp_table, "warning_not_complete_rollback_with_created_temp_table" },
+ { errc::warning_not_complete_rollback_with_dropped_temp_table, "warning_not_complete_rollback_with_dropped_temp_table" },
+ { errc::mts_feature_is_not_supported, "mts_feature_is_not_supported" },
+ { errc::mts_updated_dbs_greater_max, "mts_updated_dbs_greater_max" },
+ { errc::mts_cant_parallel, "mts_cant_parallel" },
+ { errc::mts_inconsistent_data, "mts_inconsistent_data" },
+ { errc::fulltext_not_supported_with_partitioning, "fulltext_not_supported_with_partitioning" },
+ { errc::da_invalid_condition_number, "da_invalid_condition_number" },
+ { errc::insecure_plain_text, "insecure_plain_text" },
+ { errc::insecure_change_master, "insecure_change_master" },
+ { errc::foreign_duplicate_key_with_child_info, "foreign_duplicate_key_with_child_info" },
+ { errc::foreign_duplicate_key_without_child_info, "foreign_duplicate_key_without_child_info" },
+ { errc::sqlthread_with_secure_slave, "sqlthread_with_secure_slave" },
+ { errc::table_has_no_ft, "table_has_no_ft" },
+ { errc::variable_not_settable_in_sf_or_trigger, "variable_not_settable_in_sf_or_trigger" },
+ { errc::variable_not_settable_in_transaction, "variable_not_settable_in_transaction" },
+ { errc::set_statement_cannot_invoke_function, "set_statement_cannot_invoke_function" },
+ { errc::gtid_next_cant_be_automatic_if_gtid_next_list_is_non_null, "gtid_next_cant_be_automatic_if_gtid_next_list_is_non_null" },
+ { errc::malformed_gtid_set_specification, "malformed_gtid_set_specification" },
+ { errc::malformed_gtid_set_encoding, "malformed_gtid_set_encoding" },
+ { errc::malformed_gtid_specification, "malformed_gtid_specification" },
+ { errc::gno_exhausted, "gno_exhausted" },
+ { errc::bad_slave_auto_position, "bad_slave_auto_position" },
+ { errc::auto_position_requires_gtid_mode_not_off, "auto_position_requires_gtid_mode_not_off" },
+ { errc::cant_do_implicit_commit_in_trx_when_gtid_next_is_set, "cant_do_implicit_commit_in_trx_when_gtid_next_is_set" },
+ { errc::gtid_mode_on_requires_enforce_gtid_consistency_on, "gtid_mode_on_requires_enforce_gtid_consistency_on" },
+ { errc::cant_set_gtid_next_to_gtid_when_gtid_mode_is_off, "cant_set_gtid_next_to_gtid_when_gtid_mode_is_off" },
+ { errc::cant_set_gtid_next_to_anonymous_when_gtid_mode_is_on, "cant_set_gtid_next_to_anonymous_when_gtid_mode_is_on" },
+ { errc::cant_set_gtid_next_list_to_non_null_when_gtid_mode_is_off, "cant_set_gtid_next_list_to_non_null_when_gtid_mode_is_off" },
+ { errc::gtid_unsafe_non_transactional_table, "gtid_unsafe_non_transactional_table" },
+ { errc::gtid_unsafe_create_select, "gtid_unsafe_create_select" },
+ { errc::gtid_mode_can_only_change_one_step_at_a_time, "gtid_mode_can_only_change_one_step_at_a_time" },
+ { errc::master_has_purged_required_gtids, "master_has_purged_required_gtids" },
+ { errc::cant_set_gtid_next_when_owning_gtid, "cant_set_gtid_next_when_owning_gtid" },
+ { errc::unknown_explain_format, "unknown_explain_format" },
+ { errc::cant_execute_in_read_only_transaction, "cant_execute_in_read_only_transaction" },
+ { errc::too_long_table_partition_comment, "too_long_table_partition_comment" },
+ { errc::slave_configuration, "slave_configuration" },
+ { errc::innodb_ft_limit, "innodb_ft_limit" },
+ { errc::innodb_no_ft_temp_table, "innodb_no_ft_temp_table" },
+ { errc::innodb_ft_wrong_docid_column, "innodb_ft_wrong_docid_column" },
+ { errc::innodb_ft_wrong_docid_index, "innodb_ft_wrong_docid_index" },
+ { errc::innodb_online_log_too_big, "innodb_online_log_too_big" },
+ { errc::unknown_alter_algorithm, "unknown_alter_algorithm" },
+ { errc::unknown_alter_lock, "unknown_alter_lock" },
+ { errc::mts_change_master_cant_run_with_gaps, "mts_change_master_cant_run_with_gaps" },
+ { errc::mts_recovery_failure, "mts_recovery_failure" },
+ { errc::mts_reset_workers, "mts_reset_workers" },
+ { errc::col_count_doesnt_match_corrupted_v2, "col_count_doesnt_match_corrupted_v2" },
+ { errc::slave_silent_retry_transaction, "slave_silent_retry_transaction" },
+ { errc::discard_fk_checks_running, "discard_fk_checks_running" },
+ { errc::table_schema_mismatch, "table_schema_mismatch" },
+ { errc::table_in_system_tablespace, "table_in_system_tablespace" },
+ { errc::io_read_error, "io_read_error" },
+ { errc::io_write_error, "io_write_error" },
+ { errc::tablespace_missing, "tablespace_missing" },
+ { errc::tablespace_exists, "tablespace_exists" },
+ { errc::tablespace_discarded, "tablespace_discarded" },
+ { errc::internal_error, "internal_error" },
+ { errc::innodb_import_error, "innodb_import_error" },
+ { errc::innodb_index_corrupt, "innodb_index_corrupt" },
+ { errc::invalid_year_column_length, "invalid_year_column_length" },
+ { errc::not_valid_password, "not_valid_password" },
+ { errc::must_change_password, "must_change_password" },
+ { errc::fk_no_index_child, "fk_no_index_child" },
+ { errc::fk_no_index_parent, "fk_no_index_parent" },
+ { errc::fk_fail_add_system, "fk_fail_add_system" },
+ { errc::fk_cannot_open_parent, "fk_cannot_open_parent" },
+ { errc::fk_incorrect_option, "fk_incorrect_option" },
+ { errc::fk_dup_name, "fk_dup_name" },
+ { errc::password_format, "password_format" },
+ { errc::fk_column_cannot_drop, "fk_column_cannot_drop" },
+ { errc::fk_column_cannot_drop_child, "fk_column_cannot_drop_child" },
+ { errc::fk_column_not_null, "fk_column_not_null" },
+ { errc::dup_index, "dup_index" },
+ { errc::fk_column_cannot_change, "fk_column_cannot_change" },
+ { errc::fk_column_cannot_change_child, "fk_column_cannot_change_child" },
+ { errc::malformed_packet, "malformed_packet" },
+ { errc::read_only_mode, "read_only_mode" },
+ { errc::gtid_next_type_undefined_gtid, "gtid_next_type_undefined_gtid" },
+ { errc::variable_not_settable_in_sp, "variable_not_settable_in_sp" },
+ { errc::cant_set_gtid_purged_when_gtid_executed_is_not_empty, "cant_set_gtid_purged_when_gtid_executed_is_not_empty" },
+ { errc::cant_set_gtid_purged_when_owned_gtids_is_not_empty, "cant_set_gtid_purged_when_owned_gtids_is_not_empty" },
+ { errc::gtid_purged_was_changed, "gtid_purged_was_changed" },
+ { errc::gtid_executed_was_changed, "gtid_executed_was_changed" },
+ { errc::binlog_stmt_mode_and_no_repl_tables, "binlog_stmt_mode_and_no_repl_tables" },
+ { errc::alter_operation_not_supported, "alter_operation_not_supported" },
+ { errc::alter_operation_not_supported_reason, "alter_operation_not_supported_reason" },
+ { errc::alter_operation_not_supported_reason_copy, "alter_operation_not_supported_reason_copy" },
+ { errc::alter_operation_not_supported_reason_partition, "alter_operation_not_supported_reason_partition" },
+ { errc::alter_operation_not_supported_reason_fk_rename, "alter_operation_not_supported_reason_fk_rename" },
+ { errc::alter_operation_not_supported_reason_column_type, "alter_operation_not_supported_reason_column_type" },
+ { errc::alter_operation_not_supported_reason_fk_check, "alter_operation_not_supported_reason_fk_check" },
+ { errc::alter_operation_not_supported_reason_nopk, "alter_operation_not_supported_reason_nopk" },
+ { errc::alter_operation_not_supported_reason_autoinc, "alter_operation_not_supported_reason_autoinc" },
+ { errc::alter_operation_not_supported_reason_hidden_fts, "alter_operation_not_supported_reason_hidden_fts" },
+ { errc::alter_operation_not_supported_reason_change_fts, "alter_operation_not_supported_reason_change_fts" },
+ { errc::alter_operation_not_supported_reason_fts, "alter_operation_not_supported_reason_fts" },
+ { errc::sql_slave_skip_counter_not_settable_in_gtid_mode, "sql_slave_skip_counter_not_settable_in_gtid_mode" },
+ { errc::dup_unknown_in_index, "dup_unknown_in_index" },
+ { errc::ident_causes_too_long_path, "ident_causes_too_long_path" },
+ { errc::alter_operation_not_supported_reason_not_null, "alter_operation_not_supported_reason_not_null" },
+ { errc::must_change_password_login, "must_change_password_login" },
+ { errc::row_in_wrong_partition, "row_in_wrong_partition" },
+ { errc::mts_event_bigger_pending_jobs_size_max, "mts_event_bigger_pending_jobs_size_max" },
+ { errc::binlog_logical_corruption, "binlog_logical_corruption" },
+ { errc::warn_purge_log_in_use, "warn_purge_log_in_use" },
+ { errc::warn_purge_log_is_active, "warn_purge_log_is_active" },
+ { errc::auto_increment_conflict, "auto_increment_conflict" },
+ { errc::slave_mi_init_repository, "slave_mi_init_repository" },
+ { errc::slave_rli_init_repository, "slave_rli_init_repository" },
+ { errc::access_denied_change_user_error, "access_denied_change_user_error" },
+ { errc::innodb_read_only, "innodb_read_only" },
+ { errc::stop_slave_sql_thread_timeout, "stop_slave_sql_thread_timeout" },
+ { errc::stop_slave_io_thread_timeout, "stop_slave_io_thread_timeout" },
+ { errc::table_corrupt, "table_corrupt" },
+ { errc::temp_file_write_failure, "temp_file_write_failure" },
+ { errc::innodb_ft_aux_not_hex_id, "innodb_ft_aux_not_hex_id" },
+ { errc::old_temporals_upgraded, "old_temporals_upgraded" },
+ { errc::innodb_forced_recovery, "innodb_forced_recovery" },
+ { errc::aes_invalid_iv, "aes_invalid_iv" },
+ { errc::plugin_cannot_be_uninstalled, "plugin_cannot_be_uninstalled" },
+ { errc::gtid_unsafe_binlog_splittable_statement_and_assigned_gtid, "gtid_unsafe_binlog_splittable_statement_and_assigned_gtid" },
+ { errc::slave_has_more_gtids_than_master, "slave_has_more_gtids_than_master" },
+ { errc::missing_key, "missing_key" },
+ { errc::file_corrupt, "file_corrupt" },
+ { errc::error_on_master, "error_on_master" },
+ { errc::storage_engine_not_loaded, "storage_engine_not_loaded" },
+ { errc::get_stacked_da_without_active_handler, "get_stacked_da_without_active_handler" },
+ { errc::warn_legacy_syntax_converted, "warn_legacy_syntax_converted" },
+ { errc::binlog_unsafe_fulltext_plugin, "binlog_unsafe_fulltext_plugin" },
+ { errc::cannot_discard_temporary_table, "cannot_discard_temporary_table" },
+ { errc::fk_depth_exceeded, "fk_depth_exceeded" },
+ { errc::col_count_doesnt_match_please_update_v2, "col_count_doesnt_match_please_update_v2" },
+ { errc::warn_trigger_doesnt_have_created, "warn_trigger_doesnt_have_created" },
+ { errc::referenced_trg_does_not_exist, "referenced_trg_does_not_exist" },
+ { errc::explain_not_supported, "explain_not_supported" },
+ { errc::invalid_field_size, "invalid_field_size" },
+ { errc::missing_ha_create_option, "missing_ha_create_option" },
+ { errc::engine_out_of_memory, "engine_out_of_memory" },
+ { errc::password_expire_anonymous_user, "password_expire_anonymous_user" },
+ { errc::slave_sql_thread_must_stop, "slave_sql_thread_must_stop" },
+ { errc::no_ft_materialized_subquery, "no_ft_materialized_subquery" },
+ { errc::innodb_undo_log_full, "innodb_undo_log_full" },
+ { errc::invalid_argument_for_logarithm, "invalid_argument_for_logarithm" },
+ { errc::slave_channel_io_thread_must_stop, "slave_channel_io_thread_must_stop" },
+ { errc::warn_open_temp_tables_must_be_zero, "warn_open_temp_tables_must_be_zero" },
+ { errc::warn_only_master_log_file_no_pos, "warn_only_master_log_file_no_pos" },
+ { errc::query_timeout, "query_timeout" },
+ { errc::non_ro_select_disable_timer, "non_ro_select_disable_timer" },
+ { errc::dup_list_entry, "dup_list_entry" },
+ { errc::aggregate_order_for_union, "aggregate_order_for_union" },
+ { errc::aggregate_order_non_agg_query, "aggregate_order_non_agg_query" },
+ { errc::slave_worker_stopped_previous_thd_error, "slave_worker_stopped_previous_thd_error" },
+ { errc::dont_support_slave_preserve_commit_order, "dont_support_slave_preserve_commit_order" },
+ { errc::server_offline_mode, "server_offline_mode" },
+ { errc::gis_different_srids, "gis_different_srids" },
+ { errc::gis_unsupported_argument, "gis_unsupported_argument" },
+ { errc::gis_unknown_error, "gis_unknown_error" },
+ { errc::gis_unknown_exception, "gis_unknown_exception" },
+ { errc::gis_invalid_data, "gis_invalid_data" },
+ { errc::boost_geometry_empty_input_exception, "boost_geometry_empty_input_exception" },
+ { errc::boost_geometry_centroid_exception, "boost_geometry_centroid_exception" },
+ { errc::boost_geometry_overlay_invalid_input_exception, "boost_geometry_overlay_invalid_input_exception" },
+ { errc::boost_geometry_turn_info_exception, "boost_geometry_turn_info_exception" },
+ { errc::boost_geometry_self_intersection_point_exception, "boost_geometry_self_intersection_point_exception" },
+ { errc::boost_geometry_unknown_exception, "boost_geometry_unknown_exception" },
+ { errc::std_bad_alloc_error, "std_bad_alloc_error" },
+ { errc::std_domain_error, "std_domain_error" },
+ { errc::std_length_error, "std_length_error" },
+ { errc::std_invalid_argument, "std_invalid_argument" },
+ { errc::std_out_of_range_error, "std_out_of_range_error" },
+ { errc::std_overflow_error, "std_overflow_error" },
+ { errc::std_range_error, "std_range_error" },
+ { errc::std_underflow_error, "std_underflow_error" },
+ { errc::std_logic_error, "std_logic_error" },
+ { errc::std_runtime_error, "std_runtime_error" },
+ { errc::std_unknown_exception, "std_unknown_exception" },
+ { errc::gis_data_wrong_endianess, "gis_data_wrong_endianess" },
+ { errc::change_master_password_length, "change_master_password_length" },
+ { errc::user_lock_wrong_name, "user_lock_wrong_name" },
+ { errc::user_lock_deadlock, "user_lock_deadlock" },
+ { errc::replace_inaccessible_rows, "replace_inaccessible_rows" },
+ { errc::alter_operation_not_supported_reason_gis, "alter_operation_not_supported_reason_gis" },
+ { errc::illegal_user_var, "illegal_user_var" },
+ { errc::gtid_mode_off, "gtid_mode_off" },
+ { errc::incorrect_type, "incorrect_type" },
+ { errc::field_in_order_not_select, "field_in_order_not_select" },
+ { errc::aggregate_in_order_not_select, "aggregate_in_order_not_select" },
+ { errc::invalid_rpl_wild_table_filter_pattern, "invalid_rpl_wild_table_filter_pattern" },
+ { errc::net_ok_packet_too_large, "net_ok_packet_too_large" },
+ { errc::invalid_json_data, "invalid_json_data" },
+ { errc::invalid_geojson_missing_member, "invalid_geojson_missing_member" },
+ { errc::invalid_geojson_wrong_type, "invalid_geojson_wrong_type" },
+ { errc::invalid_geojson_unspecified, "invalid_geojson_unspecified" },
+ { errc::dimension_unsupported, "dimension_unsupported" },
+ { errc::slave_channel_does_not_exist, "slave_channel_does_not_exist" },
+ { errc::slave_channel_name_invalid_or_too_long, "slave_channel_name_invalid_or_too_long" },
+ { errc::slave_new_channel_wrong_repository, "slave_new_channel_wrong_repository" },
+ { errc::slave_multiple_channels_cmd, "slave_multiple_channels_cmd" },
+ { errc::slave_max_channels_exceeded, "slave_max_channels_exceeded" },
+ { errc::slave_channel_must_stop, "slave_channel_must_stop" },
+ { errc::slave_channel_not_running, "slave_channel_not_running" },
+ { errc::slave_channel_was_running, "slave_channel_was_running" },
+ { errc::slave_channel_was_not_running, "slave_channel_was_not_running" },
+ { errc::slave_channel_sql_thread_must_stop, "slave_channel_sql_thread_must_stop" },
+ { errc::slave_channel_sql_skip_counter, "slave_channel_sql_skip_counter" },
+ { errc::wrong_field_with_group_v2, "wrong_field_with_group_v2" },
+ { errc::mix_of_group_func_and_fields_v2, "mix_of_group_func_and_fields_v2" },
+ { errc::warn_deprecated_sysvar_update, "warn_deprecated_sysvar_update" },
+ { errc::warn_deprecated_sqlmode, "warn_deprecated_sqlmode" },
+ { errc::cannot_log_partial_drop_database_with_gtid, "cannot_log_partial_drop_database_with_gtid" },
+ { errc::group_replication_configuration, "group_replication_configuration" },
+ { errc::group_replication_running, "group_replication_running" },
+ { errc::group_replication_applier_init_error, "group_replication_applier_init_error" },
+ { errc::group_replication_stop_applier_thread_timeout, "group_replication_stop_applier_thread_timeout" },
+ { errc::group_replication_communication_layer_session_error, "group_replication_communication_layer_session_error" },
+ { errc::group_replication_communication_layer_join_error, "group_replication_communication_layer_join_error" },
+ { errc::before_dml_validation_error, "before_dml_validation_error" },
+ { errc::prevents_variable_without_rbr, "prevents_variable_without_rbr" },
+ { errc::run_hook_error, "run_hook_error" },
+ { errc::transaction_rollback_during_commit, "transaction_rollback_during_commit" },
+ { errc::generated_column_function_is_not_allowed, "generated_column_function_is_not_allowed" },
+ { errc::unsupported_alter_inplace_on_virtual_column, "unsupported_alter_inplace_on_virtual_column" },
+ { errc::wrong_fk_option_for_generated_column, "wrong_fk_option_for_generated_column" },
+ { errc::non_default_value_for_generated_column, "non_default_value_for_generated_column" },
+ { errc::unsupported_action_on_generated_column, "unsupported_action_on_generated_column" },
+ { errc::generated_column_non_prior, "generated_column_non_prior" },
+ { errc::dependent_by_generated_column, "dependent_by_generated_column" },
+ { errc::generated_column_ref_auto_inc, "generated_column_ref_auto_inc" },
+ { errc::feature_not_available, "feature_not_available" },
+ { errc::cant_set_gtid_mode, "cant_set_gtid_mode" },
+ { errc::cant_use_auto_position_with_gtid_mode_off, "cant_use_auto_position_with_gtid_mode_off" },
+ { errc::cant_enforce_gtid_consistency_with_ongoing_gtid_violating_tx, "cant_enforce_gtid_consistency_with_ongoing_gtid_violating_tx" },
+ { errc::enforce_gtid_consistency_warn_with_ongoing_gtid_violating_tx, "enforce_gtid_consistency_warn_with_ongoing_gtid_violating_tx" },
+ { errc::account_has_been_locked, "account_has_been_locked" },
+ { errc::wrong_tablespace_name, "wrong_tablespace_name" },
+ { errc::tablespace_is_not_empty, "tablespace_is_not_empty" },
+ { errc::wrong_file_name, "wrong_file_name" },
+ { errc::boost_geometry_inconsistent_turns_exception, "boost_geometry_inconsistent_turns_exception" },
+ { errc::warn_optimizer_hint_syntax_error, "warn_optimizer_hint_syntax_error" },
+ { errc::warn_bad_max_execution_time, "warn_bad_max_execution_time" },
+ { errc::warn_unsupported_max_execution_time, "warn_unsupported_max_execution_time" },
+ { errc::warn_conflicting_hint, "warn_conflicting_hint" },
+ { errc::warn_unknown_qb_name, "warn_unknown_qb_name" },
+ { errc::unresolved_hint_name, "unresolved_hint_name" },
+ { errc::warn_on_modifying_gtid_executed_table, "warn_on_modifying_gtid_executed_table" },
+ { errc::pluggable_protocol_command_not_supported, "pluggable_protocol_command_not_supported" },
+ { errc::locking_service_wrong_name, "locking_service_wrong_name" },
+ { errc::locking_service_deadlock, "locking_service_deadlock" },
+ { errc::locking_service_timeout, "locking_service_timeout" },
+ { errc::gis_max_points_in_geometry_overflowed, "gis_max_points_in_geometry_overflowed" },
+ { errc::sql_mode_merged, "sql_mode_merged" },
+ { errc::vtoken_plugin_token_mismatch, "vtoken_plugin_token_mismatch" },
+ { errc::vtoken_plugin_token_not_found, "vtoken_plugin_token_not_found" },
+ { errc::cant_set_variable_when_owning_gtid, "cant_set_variable_when_owning_gtid" },
+ { errc::slave_channel_operation_not_allowed, "slave_channel_operation_not_allowed" },
+ { errc::invalid_json_text, "invalid_json_text" },
+ { errc::invalid_json_text_in_param, "invalid_json_text_in_param" },
+ { errc::invalid_json_binary_data, "invalid_json_binary_data" },
+ { errc::invalid_json_path, "invalid_json_path" },
+ { errc::invalid_json_charset, "invalid_json_charset" },
+ { errc::invalid_json_charset_in_function, "invalid_json_charset_in_function" },
+ { errc::invalid_type_for_json, "invalid_type_for_json" },
+ { errc::invalid_cast_to_json, "invalid_cast_to_json" },
+ { errc::invalid_json_path_charset, "invalid_json_path_charset" },
+ { errc::invalid_json_path_wildcard, "invalid_json_path_wildcard" },
+ { errc::json_value_too_big, "json_value_too_big" },
+ { errc::json_key_too_big, "json_key_too_big" },
+ { errc::json_used_as_key, "json_used_as_key" },
+ { errc::json_vacuous_path, "json_vacuous_path" },
+ { errc::json_bad_one_or_all_arg, "json_bad_one_or_all_arg" },
+ { errc::numeric_json_value_out_of_range, "numeric_json_value_out_of_range" },
+ { errc::invalid_json_value_for_cast, "invalid_json_value_for_cast" },
+ { errc::json_document_too_deep, "json_document_too_deep" },
+ { errc::json_document_null_key, "json_document_null_key" },
+ { errc::secure_transport_required, "secure_transport_required" },
+ { errc::no_secure_transports_configured, "no_secure_transports_configured" },
+ { errc::disabled_storage_engine, "disabled_storage_engine" },
+ { errc::user_does_not_exist, "user_does_not_exist" },
+ { errc::user_already_exists, "user_already_exists" },
+ { errc::audit_api_abort, "audit_api_abort" },
+ { errc::invalid_json_path_array_cell, "invalid_json_path_array_cell" },
+ { errc::bufpool_resize_inprogress, "bufpool_resize_inprogress" },
+ { errc::feature_disabled_see_doc, "feature_disabled_see_doc" },
+ { errc::server_isnt_available, "server_isnt_available" },
+ { errc::session_was_killed, "session_was_killed" },
+ { errc::capacity_exceeded, "capacity_exceeded" },
+ { errc::capacity_exceeded_in_range_optimizer, "capacity_exceeded_in_range_optimizer" },
+ { errc::cant_wait_for_executed_gtid_set_while_owning_a_gtid, "cant_wait_for_executed_gtid_set_while_owning_a_gtid" },
+ { errc::cannot_add_foreign_base_col_virtual, "cannot_add_foreign_base_col_virtual" },
+ { errc::cannot_create_virtual_index_constraint, "cannot_create_virtual_index_constraint" },
+ { errc::error_on_modifying_gtid_executed_table, "error_on_modifying_gtid_executed_table" },
+ { errc::lock_refused_by_engine, "lock_refused_by_engine" },
+ { errc::unsupported_alter_online_on_virtual_column, "unsupported_alter_online_on_virtual_column" },
+ { errc::master_key_rotation_not_supported_by_se, "master_key_rotation_not_supported_by_se" },
+ { errc::master_key_rotation_binlog_failed, "master_key_rotation_binlog_failed" },
+ { errc::master_key_rotation_se_unavailable, "master_key_rotation_se_unavailable" },
+ { errc::tablespace_cannot_encrypt, "tablespace_cannot_encrypt" },
+ { errc::invalid_encryption_option, "invalid_encryption_option" },
+ { errc::cannot_find_key_in_keyring, "cannot_find_key_in_keyring" },
+ { errc::capacity_exceeded_in_parser, "capacity_exceeded_in_parser" },
+ { errc::unsupported_alter_encryption_inplace, "unsupported_alter_encryption_inplace" },
+ { errc::keyring_udf_keyring_service_error, "keyring_udf_keyring_service_error" },
+ { errc::user_column_old_length, "user_column_old_length" },
+ { errc::cant_reset_master, "cant_reset_master" },
+ { errc::group_replication_max_group_size, "group_replication_max_group_size" },
+ { errc::cannot_add_foreign_base_col_stored, "cannot_add_foreign_base_col_stored" },
+ { errc::table_referenced, "table_referenced" },
+ { errc::xa_retry, "xa_retry" },
+ { errc::keyring_aws_udf_aws_kms_error, "keyring_aws_udf_aws_kms_error" },
+ { errc::binlog_unsafe_xa, "binlog_unsafe_xa" },
+ { errc::udf_error, "udf_error" },
+ { errc::keyring_migration_failure, "keyring_migration_failure" },
+ { errc::keyring_access_denied_error, "keyring_access_denied_error" },
+ { errc::keyring_migration_status, "keyring_migration_status" },
+ { errc::audit_log_udf_read_invalid_max_array_length_arg_value, "audit_log_udf_read_invalid_max_array_length_arg_value" },
+ { errc::unsupport_compressed_temporary_table, "unsupport_compressed_temporary_table" },
+ { errc::acl_operation_failed, "acl_operation_failed" },
+ { errc::unsupported_index_algorithm, "unsupported_index_algorithm" },
+ { errc::no_such_db, "no_such_db" },
+ { errc::too_big_enum, "too_big_enum" },
+ { errc::too_long_set_enum_value, "too_long_set_enum_value" },
+ { errc::invalid_dd_object, "invalid_dd_object" },
+ { errc::updating_dd_table, "updating_dd_table" },
+ { errc::invalid_dd_object_id, "invalid_dd_object_id" },
+ { errc::invalid_dd_object_name, "invalid_dd_object_name" },
+ { errc::tablespace_missing_with_name, "tablespace_missing_with_name" },
+ { errc::too_long_routine_comment, "too_long_routine_comment" },
+ { errc::sp_load_failed, "sp_load_failed" },
+ { errc::invalid_bitwise_operands_size, "invalid_bitwise_operands_size" },
+ { errc::invalid_bitwise_aggregate_operands_size, "invalid_bitwise_aggregate_operands_size" },
+ { errc::warn_unsupported_hint, "warn_unsupported_hint" },
+ { errc::unexpected_geometry_type, "unexpected_geometry_type" },
+ { errc::srs_parse_error, "srs_parse_error" },
+ { errc::srs_proj_parameter_missing, "srs_proj_parameter_missing" },
+ { errc::warn_srs_not_found, "warn_srs_not_found" },
+ { errc::srs_not_cartesian, "srs_not_cartesian" },
+ { errc::srs_not_cartesian_undefined, "srs_not_cartesian_undefined" },
+ { errc::pk_index_cant_be_invisible, "pk_index_cant_be_invisible" },
+ { errc::unknown_authid, "unknown_authid" },
+ { errc::failed_role_grant, "failed_role_grant" },
+ { errc::open_role_tables, "open_role_tables" },
+ { errc::failed_default_roles, "failed_default_roles" },
+ { errc::components_no_scheme, "components_no_scheme" },
+ { errc::components_no_scheme_service, "components_no_scheme_service" },
+ { errc::components_cant_load, "components_cant_load" },
+ { errc::role_not_granted, "role_not_granted" },
+ { errc::failed_revoke_role, "failed_revoke_role" },
+ { errc::rename_role, "rename_role" },
+ { errc::components_cant_acquire_service_implementation, "components_cant_acquire_service_implementation" },
+ { errc::components_cant_satisfy_dependency, "components_cant_satisfy_dependency" },
+ { errc::components_load_cant_register_service_implementation, "components_load_cant_register_service_implementation" },
+ { errc::components_load_cant_initialize, "components_load_cant_initialize" },
+ { errc::components_unload_not_loaded, "components_unload_not_loaded" },
+ { errc::components_unload_cant_deinitialize, "components_unload_cant_deinitialize" },
+ { errc::components_cant_release_service, "components_cant_release_service" },
+ { errc::components_unload_cant_unregister_service, "components_unload_cant_unregister_service" },
+ { errc::components_cant_unload, "components_cant_unload" },
+ { errc::warn_unload_the_not_persisted, "warn_unload_the_not_persisted" },
+ { errc::component_table_incorrect, "component_table_incorrect" },
+ { errc::component_manipulate_row_failed, "component_manipulate_row_failed" },
+ { errc::components_unload_duplicate_in_group, "components_unload_duplicate_in_group" },
+ { errc::cant_set_gtid_purged_due_sets_constraints, "cant_set_gtid_purged_due_sets_constraints" },
+ { errc::cannot_lock_user_management_caches, "cannot_lock_user_management_caches" },
+ { errc::srs_not_found, "srs_not_found" },
+ { errc::variable_not_persisted, "variable_not_persisted" },
+ { errc::is_query_invalid_clause, "is_query_invalid_clause" },
+ { errc::unable_to_store_statistics, "unable_to_store_statistics" },
+ { errc::no_system_schema_access, "no_system_schema_access" },
+ { errc::no_system_tablespace_access, "no_system_tablespace_access" },
+ { errc::no_system_table_access, "no_system_table_access" },
+ { errc::no_system_table_access_for_dictionary_table, "no_system_table_access_for_dictionary_table" },
+ { errc::no_system_table_access_for_system_table, "no_system_table_access_for_system_table" },
+ { errc::no_system_table_access_for_table, "no_system_table_access_for_table" },
+ { errc::invalid_option_key, "invalid_option_key" },
+ { errc::invalid_option_value, "invalid_option_value" },
+ { errc::invalid_option_key_value_pair, "invalid_option_key_value_pair" },
+ { errc::invalid_option_start_character, "invalid_option_start_character" },
+ { errc::invalid_option_end_character, "invalid_option_end_character" },
+ { errc::invalid_option_characters, "invalid_option_characters" },
+ { errc::duplicate_option_key, "duplicate_option_key" },
+ { errc::warn_srs_not_found_axis_order, "warn_srs_not_found_axis_order" },
+ { errc::no_access_to_native_fct, "no_access_to_native_fct" },
+ { errc::reset_master_to_value_out_of_range, "reset_master_to_value_out_of_range" },
+ { errc::unresolved_table_lock, "unresolved_table_lock" },
+ { errc::duplicate_table_lock, "duplicate_table_lock" },
+ { errc::binlog_unsafe_skip_locked, "binlog_unsafe_skip_locked" },
+ { errc::binlog_unsafe_nowait, "binlog_unsafe_nowait" },
+ { errc::lock_nowait, "lock_nowait" },
+ { errc::cte_recursive_requires_union, "cte_recursive_requires_union" },
+ { errc::cte_recursive_requires_nonrecursive_first, "cte_recursive_requires_nonrecursive_first" },
+ { errc::cte_recursive_forbids_aggregation, "cte_recursive_forbids_aggregation" },
+ { errc::cte_recursive_forbidden_join_order, "cte_recursive_forbidden_join_order" },
+ { errc::cte_recursive_requires_single_reference, "cte_recursive_requires_single_reference" },
+ { errc::switch_tmp_engine, "switch_tmp_engine" },
+ { errc::window_no_such_window, "window_no_such_window" },
+ { errc::window_circularity_in_window_graph, "window_circularity_in_window_graph" },
+ { errc::window_no_child_partitioning, "window_no_child_partitioning" },
+ { errc::window_no_inherit_frame, "window_no_inherit_frame" },
+ { errc::window_no_redefine_order_by, "window_no_redefine_order_by" },
+ { errc::window_frame_start_illegal, "window_frame_start_illegal" },
+ { errc::window_frame_end_illegal, "window_frame_end_illegal" },
+ { errc::window_frame_illegal, "window_frame_illegal" },
+ { errc::window_range_frame_order_type, "window_range_frame_order_type" },
+ { errc::window_range_frame_temporal_type, "window_range_frame_temporal_type" },
+ { errc::window_range_frame_numeric_type, "window_range_frame_numeric_type" },
+ { errc::window_range_bound_not_constant, "window_range_bound_not_constant" },
+ { errc::window_duplicate_name, "window_duplicate_name" },
+ { errc::window_illegal_order_by, "window_illegal_order_by" },
+ { errc::window_invalid_window_func_use, "window_invalid_window_func_use" },
+ { errc::window_invalid_window_func_alias_use, "window_invalid_window_func_alias_use" },
+ { errc::window_nested_window_func_use_in_window_spec, "window_nested_window_func_use_in_window_spec" },
+ { errc::window_rows_interval_use, "window_rows_interval_use" },
+ { errc::window_no_group_order_unused, "window_no_group_order_unused" },
+ { errc::window_explain_json, "window_explain_json" },
+ { errc::window_function_ignores_frame, "window_function_ignores_frame" },
+ { errc::wl9236_now_unused, "wl9236_now_unused" },
+ { errc::invalid_no_of_args, "invalid_no_of_args" },
+ { errc::field_in_grouping_not_group_by, "field_in_grouping_not_group_by" },
+ { errc::too_long_tablespace_comment, "too_long_tablespace_comment" },
+ { errc::engine_cant_drop_table, "engine_cant_drop_table" },
+ { errc::engine_cant_drop_missing_table, "engine_cant_drop_missing_table" },
+ { errc::tablespace_dup_filename, "tablespace_dup_filename" },
+ { errc::db_drop_rmdir2, "db_drop_rmdir2" },
+ { errc::imp_no_files_matched, "imp_no_files_matched" },
+ { errc::imp_schema_does_not_exist, "imp_schema_does_not_exist" },
+ { errc::imp_table_already_exists, "imp_table_already_exists" },
+ { errc::imp_incompatible_mysqld_version, "imp_incompatible_mysqld_version" },
+ { errc::imp_incompatible_dd_version, "imp_incompatible_dd_version" },
+ { errc::imp_incompatible_sdi_version, "imp_incompatible_sdi_version" },
+ { errc::warn_invalid_hint, "warn_invalid_hint" },
+ { errc::var_does_not_exist, "var_does_not_exist" },
+ { errc::longitude_out_of_range, "longitude_out_of_range" },
+ { errc::latitude_out_of_range, "latitude_out_of_range" },
+ { errc::not_implemented_for_geographic_srs, "not_implemented_for_geographic_srs" },
+ { errc::illegal_privilege_level, "illegal_privilege_level" },
+ { errc::no_system_view_access, "no_system_view_access" },
+ { errc::component_filter_flabbergasted, "component_filter_flabbergasted" },
+ { errc::part_expr_too_long, "part_expr_too_long" },
+ { errc::udf_drop_dynamically_registered, "udf_drop_dynamically_registered" },
+ { errc::unable_to_store_column_statistics, "unable_to_store_column_statistics" },
+ { errc::unable_to_update_column_statistics, "unable_to_update_column_statistics" },
+ { errc::unable_to_drop_column_statistics, "unable_to_drop_column_statistics" },
+ { errc::unable_to_build_histogram, "unable_to_build_histogram" },
+ { errc::mandatory_role, "mandatory_role" },
+ { errc::missing_tablespace_file, "missing_tablespace_file" },
+ { errc::persist_only_access_denied_error, "persist_only_access_denied_error" },
+ { errc::cmd_need_super, "cmd_need_super" },
+ { errc::path_in_datadir, "path_in_datadir" },
+ { errc::clone_ddl_in_progress, "clone_ddl_in_progress" },
+ { errc::clone_too_many_concurrent_clones, "clone_too_many_concurrent_clones" },
+ { errc::applier_log_event_validation_error, "applier_log_event_validation_error" },
+ { errc::cte_max_recursion_depth, "cte_max_recursion_depth" },
+ { errc::not_hint_updatable_variable, "not_hint_updatable_variable" },
+ { errc::credentials_contradict_to_history, "credentials_contradict_to_history" },
+ { errc::warning_password_history_clauses_void, "warning_password_history_clauses_void" },
+ { errc::client_does_not_support, "client_does_not_support" },
+ { errc::i_s_skipped_tablespace, "i_s_skipped_tablespace" },
+ { errc::tablespace_engine_mismatch, "tablespace_engine_mismatch" },
+ { errc::wrong_srid_for_column, "wrong_srid_for_column" },
+ { errc::cannot_alter_srid_due_to_index, "cannot_alter_srid_due_to_index" },
+ { errc::warn_binlog_partial_updates_disabled, "warn_binlog_partial_updates_disabled" },
+ { errc::warn_binlog_v1_row_events_disabled, "warn_binlog_v1_row_events_disabled" },
+ { errc::warn_binlog_partial_updates_suggests_partial_images, "warn_binlog_partial_updates_suggests_partial_images" },
+ { errc::could_not_apply_json_diff, "could_not_apply_json_diff" },
+ { errc::corrupted_json_diff, "corrupted_json_diff" },
+ { errc::resource_group_exists, "resource_group_exists" },
+ { errc::resource_group_not_exists, "resource_group_not_exists" },
+ { errc::invalid_vcpu_id, "invalid_vcpu_id" },
+ { errc::invalid_vcpu_range, "invalid_vcpu_range" },
+ { errc::invalid_thread_priority, "invalid_thread_priority" },
+ { errc::disallowed_operation, "disallowed_operation" },
+ { errc::resource_group_busy, "resource_group_busy" },
+ { errc::resource_group_disabled, "resource_group_disabled" },
+ { errc::feature_unsupported, "feature_unsupported" },
+ { errc::attribute_ignored, "attribute_ignored" },
+ { errc::invalid_thread_id, "invalid_thread_id" },
+ { errc::resource_group_bind_failed, "resource_group_bind_failed" },
+ { errc::invalid_use_of_force_option, "invalid_use_of_force_option" },
+ { errc::group_replication_command_failure, "group_replication_command_failure" },
+ { errc::sdi_operation_failed, "sdi_operation_failed" },
+ { errc::missing_json_table_value, "missing_json_table_value" },
+ { errc::wrong_json_table_value, "wrong_json_table_value" },
+ { errc::tf_must_have_alias, "tf_must_have_alias" },
+ { errc::tf_forbidden_join_type, "tf_forbidden_join_type" },
+ { errc::jt_value_out_of_range, "jt_value_out_of_range" },
+ { errc::jt_max_nested_path, "jt_max_nested_path" },
+ { errc::password_expiration_not_supported_by_auth_method, "password_expiration_not_supported_by_auth_method" },
+ { errc::invalid_geojson_crs_not_top_level, "invalid_geojson_crs_not_top_level" },
+ { errc::bad_null_error_not_ignored, "bad_null_error_not_ignored" },
+ { errc::disk_full_nowait, "disk_full_nowait" },
+ { errc::parse_error_in_digest_fn, "parse_error_in_digest_fn" },
+ { errc::undisclosed_parse_error_in_digest_fn, "undisclosed_parse_error_in_digest_fn" },
+ { errc::schema_dir_exists, "schema_dir_exists" },
+ { errc::schema_dir_missing, "schema_dir_missing" },
+ { errc::schema_dir_create_failed, "schema_dir_create_failed" },
+ { errc::schema_dir_unknown, "schema_dir_unknown" },
+ { errc::only_implemented_for_srid_0_and_4326, "only_implemented_for_srid_0_and_4326" },
+ { errc::binlog_expire_log_days_and_secs_used_together, "binlog_expire_log_days_and_secs_used_together" },
+ { errc::regexp_buffer_overflow, "regexp_buffer_overflow" },
+ { errc::regexp_illegal_argument, "regexp_illegal_argument" },
+ { errc::regexp_index_outofbounds_error, "regexp_index_outofbounds_error" },
+ { errc::regexp_internal_error, "regexp_internal_error" },
+ { errc::regexp_rule_syntax, "regexp_rule_syntax" },
+ { errc::regexp_bad_escape_sequence, "regexp_bad_escape_sequence" },
+ { errc::regexp_unimplemented, "regexp_unimplemented" },
+ { errc::regexp_mismatched_paren, "regexp_mismatched_paren" },
+ { errc::regexp_bad_interval, "regexp_bad_interval" },
+ { errc::regexp_max_lt_min, "regexp_max_lt_min" },
+ { errc::regexp_invalid_back_ref, "regexp_invalid_back_ref" },
+ { errc::regexp_look_behind_limit, "regexp_look_behind_limit" },
+ { errc::regexp_missing_close_bracket, "regexp_missing_close_bracket" },
+ { errc::regexp_invalid_range, "regexp_invalid_range" },
+ { errc::regexp_stack_overflow, "regexp_stack_overflow" },
+ { errc::regexp_time_out, "regexp_time_out" },
+ { errc::regexp_pattern_too_big, "regexp_pattern_too_big" },
+ { errc::cant_set_error_log_service, "cant_set_error_log_service" },
+ { errc::empty_pipeline_for_error_log_service, "empty_pipeline_for_error_log_service" },
+ { errc::component_filter_diagnostics, "component_filter_diagnostics" },
+ { errc::not_implemented_for_cartesian_srs, "not_implemented_for_cartesian_srs" },
+ { errc::not_implemented_for_projected_srs, "not_implemented_for_projected_srs" },
+ { errc::nonpositive_radius, "nonpositive_radius" },
+ { errc::restart_server_failed, "restart_server_failed" },
+ { errc::srs_missing_mandatory_attribute, "srs_missing_mandatory_attribute" },
+ { errc::srs_multiple_attribute_definitions, "srs_multiple_attribute_definitions" },
+ { errc::srs_name_cant_be_empty_or_whitespace, "srs_name_cant_be_empty_or_whitespace" },
+ { errc::srs_organization_cant_be_empty_or_whitespace, "srs_organization_cant_be_empty_or_whitespace" },
+ { errc::srs_id_already_exists, "srs_id_already_exists" },
+ { errc::warn_srs_id_already_exists, "warn_srs_id_already_exists" },
+ { errc::cant_modify_srid_0, "cant_modify_srid_0" },
+ { errc::warn_reserved_srid_range, "warn_reserved_srid_range" },
+ { errc::cant_modify_srs_used_by_column, "cant_modify_srs_used_by_column" },
+ { errc::srs_invalid_character_in_attribute, "srs_invalid_character_in_attribute" },
+ { errc::srs_attribute_string_too_long, "srs_attribute_string_too_long" },
+ { errc::deprecated_utf8_alias, "deprecated_utf8_alias" },
+ { errc::deprecated_national, "deprecated_national" },
+ { errc::invalid_default_utf8mb4_collation, "invalid_default_utf8mb4_collation" },
+ { errc::unable_to_collect_log_status, "unable_to_collect_log_status" },
+ { errc::reserved_tablespace_name, "reserved_tablespace_name" },
+ { errc::unable_to_set_option, "unable_to_set_option" },
+ { errc::slave_possibly_diverged_after_ddl, "slave_possibly_diverged_after_ddl" },
+ { errc::srs_not_geographic, "srs_not_geographic" },
+ { errc::polygon_too_large, "polygon_too_large" },
+ { errc::spatial_unique_index, "spatial_unique_index" },
+ { errc::index_type_not_supported_for_spatial_index, "index_type_not_supported_for_spatial_index" },
+ { errc::fk_cannot_drop_parent, "fk_cannot_drop_parent" },
+ { errc::geometry_param_longitude_out_of_range, "geometry_param_longitude_out_of_range" },
+ { errc::geometry_param_latitude_out_of_range, "geometry_param_latitude_out_of_range" },
+ { errc::fk_cannot_use_virtual_column, "fk_cannot_use_virtual_column" },
+ { errc::fk_no_column_parent, "fk_no_column_parent" },
+ { errc::cant_set_error_suppression_list, "cant_set_error_suppression_list" },
+ { errc::srs_geogcs_invalid_axes, "srs_geogcs_invalid_axes" },
+ { errc::srs_invalid_semi_major_axis, "srs_invalid_semi_major_axis" },
+ { errc::srs_invalid_inverse_flattening, "srs_invalid_inverse_flattening" },
+ { errc::srs_invalid_angular_unit, "srs_invalid_angular_unit" },
+ { errc::srs_invalid_prime_meridian, "srs_invalid_prime_meridian" },
+ { errc::transform_source_srs_not_supported, "transform_source_srs_not_supported" },
+ { errc::transform_target_srs_not_supported, "transform_target_srs_not_supported" },
+ { errc::transform_source_srs_missing_towgs84, "transform_source_srs_missing_towgs84" },
+ { errc::transform_target_srs_missing_towgs84, "transform_target_srs_missing_towgs84" },
+ { errc::temp_table_prevents_switch_session_binlog_format, "temp_table_prevents_switch_session_binlog_format" },
+ { errc::temp_table_prevents_switch_global_binlog_format, "temp_table_prevents_switch_global_binlog_format" },
+ { errc::running_applier_prevents_switch_global_binlog_format, "running_applier_prevents_switch_global_binlog_format" },
+ { errc::client_gtid_unsafe_create_drop_temp_table_in_trx_in_sbr, "client_gtid_unsafe_create_drop_temp_table_in_trx_in_sbr" },
+ { errc::table_without_pk, "table_without_pk" },
+ { errc::warn_data_truncated_functional_index, "warn_data_truncated_functional_index" },
+ { errc::warn_data_out_of_range_functional_index, "warn_data_out_of_range_functional_index" },
+ { errc::functional_index_on_json_or_geometry_function, "functional_index_on_json_or_geometry_function" },
+ { errc::functional_index_ref_auto_increment, "functional_index_ref_auto_increment" },
+ { errc::cannot_drop_column_functional_index, "cannot_drop_column_functional_index" },
+ { errc::functional_index_primary_key, "functional_index_primary_key" },
+ { errc::functional_index_on_lob, "functional_index_on_lob" },
+ { errc::functional_index_function_is_not_allowed, "functional_index_function_is_not_allowed" },
+ { errc::fulltext_functional_index, "fulltext_functional_index" },
+ { errc::spatial_functional_index, "spatial_functional_index" },
+ { errc::wrong_key_column_functional_index, "wrong_key_column_functional_index" },
+ { errc::functional_index_on_field, "functional_index_on_field" },
+ { errc::generated_column_named_function_is_not_allowed, "generated_column_named_function_is_not_allowed" },
+ { errc::generated_column_row_value, "generated_column_row_value" },
+ { errc::generated_column_variables, "generated_column_variables" },
+ { errc::dependent_by_default_generated_value, "dependent_by_default_generated_value" },
+ { errc::default_val_generated_non_prior, "default_val_generated_non_prior" },
+ { errc::default_val_generated_ref_auto_inc, "default_val_generated_ref_auto_inc" },
+ { errc::default_val_generated_function_is_not_allowed, "default_val_generated_function_is_not_allowed" },
+ { errc::default_val_generated_named_function_is_not_allowed, "default_val_generated_named_function_is_not_allowed" },
+ { errc::default_val_generated_row_value, "default_val_generated_row_value" },
+ { errc::default_val_generated_variables, "default_val_generated_variables" },
+ { errc::default_as_val_generated, "default_as_val_generated" },
+ { errc::unsupported_action_on_default_val_generated, "unsupported_action_on_default_val_generated" },
+ { errc::gtid_unsafe_alter_add_col_with_default_expression, "gtid_unsafe_alter_add_col_with_default_expression" },
+ { errc::fk_cannot_change_engine, "fk_cannot_change_engine" },
+ { errc::warn_deprecated_user_set_expr, "warn_deprecated_user_set_expr" },
+ { errc::warn_deprecated_utf8mb3_collation, "warn_deprecated_utf8mb3_collation" },
+ { errc::warn_deprecated_nested_comment_syntax, "warn_deprecated_nested_comment_syntax" },
+ { errc::fk_incompatible_columns, "fk_incompatible_columns" },
+ { errc::gr_hold_wait_timeout, "gr_hold_wait_timeout" },
+ { errc::gr_hold_killed, "gr_hold_killed" },
+ { errc::gr_hold_member_status_error, "gr_hold_member_status_error" },
+ { errc::rpl_encryption_failed_to_fetch_key, "rpl_encryption_failed_to_fetch_key" },
+ { errc::rpl_encryption_key_not_found, "rpl_encryption_key_not_found" },
+ { errc::rpl_encryption_keyring_invalid_key, "rpl_encryption_keyring_invalid_key" },
+ { errc::rpl_encryption_header_error, "rpl_encryption_header_error" },
+ { errc::rpl_encryption_failed_to_rotate_logs, "rpl_encryption_failed_to_rotate_logs" },
+ { errc::rpl_encryption_key_exists_unexpected, "rpl_encryption_key_exists_unexpected" },
+ { errc::rpl_encryption_failed_to_generate_key, "rpl_encryption_failed_to_generate_key" },
+ { errc::rpl_encryption_failed_to_store_key, "rpl_encryption_failed_to_store_key" },
+ { errc::rpl_encryption_failed_to_remove_key, "rpl_encryption_failed_to_remove_key" },
+ { errc::rpl_encryption_unable_to_change_option, "rpl_encryption_unable_to_change_option" },
+ { errc::rpl_encryption_master_key_recovery_failed, "rpl_encryption_master_key_recovery_failed" },
+ { errc::slow_log_mode_ignored_when_not_logging_to_file, "slow_log_mode_ignored_when_not_logging_to_file" },
+ { errc::grp_trx_consistency_not_allowed, "grp_trx_consistency_not_allowed" },
+ { errc::grp_trx_consistency_before, "grp_trx_consistency_before" },
+ { errc::grp_trx_consistency_after_on_trx_begin, "grp_trx_consistency_after_on_trx_begin" },
+ { errc::grp_trx_consistency_begin_not_allowed, "grp_trx_consistency_begin_not_allowed" },
+ { errc::functional_index_row_value_is_not_allowed, "functional_index_row_value_is_not_allowed" },
+ { errc::rpl_encryption_failed_to_encrypt, "rpl_encryption_failed_to_encrypt" },
+ { errc::page_tracking_not_started, "page_tracking_not_started" },
+ { errc::page_tracking_range_not_tracked, "page_tracking_range_not_tracked" },
+ { errc::page_tracking_cannot_purge, "page_tracking_cannot_purge" },
+ { errc::rpl_encryption_cannot_rotate_binlog_master_key, "rpl_encryption_cannot_rotate_binlog_master_key" },
+ { errc::binlog_master_key_recovery_out_of_combination, "binlog_master_key_recovery_out_of_combination" },
+ { errc::binlog_master_key_rotation_fail_to_operate_key, "binlog_master_key_rotation_fail_to_operate_key" },
+ { errc::binlog_master_key_rotation_fail_to_rotate_logs, "binlog_master_key_rotation_fail_to_rotate_logs" },
+ { errc::binlog_master_key_rotation_fail_to_reencrypt_log, "binlog_master_key_rotation_fail_to_reencrypt_log" },
+ { errc::binlog_master_key_rotation_fail_to_cleanup_unused_keys, "binlog_master_key_rotation_fail_to_cleanup_unused_keys" },
+ { errc::binlog_master_key_rotation_fail_to_cleanup_aux_key, "binlog_master_key_rotation_fail_to_cleanup_aux_key" },
+ { errc::non_boolean_expr_for_check_constraint, "non_boolean_expr_for_check_constraint" },
+ { errc::column_check_constraint_references_other_column, "column_check_constraint_references_other_column" },
+ { errc::check_constraint_named_function_is_not_allowed, "check_constraint_named_function_is_not_allowed" },
+ { errc::check_constraint_function_is_not_allowed, "check_constraint_function_is_not_allowed" },
+ { errc::check_constraint_variables, "check_constraint_variables" },
+ { errc::check_constraint_row_value, "check_constraint_row_value" },
+ { errc::check_constraint_refers_auto_increment_column, "check_constraint_refers_auto_increment_column" },
+ { errc::check_constraint_violated, "check_constraint_violated" },
+ { errc::check_constraint_refers_unknown_column, "check_constraint_refers_unknown_column" },
+ { errc::check_constraint_not_found, "check_constraint_not_found" },
+ { errc::check_constraint_dup_name, "check_constraint_dup_name" },
+ { errc::check_constraint_clause_using_fk_refer_action_column, "check_constraint_clause_using_fk_refer_action_column" },
+ { errc::invalid_encryption_request, "invalid_encryption_request" },
+ { errc::cannot_set_table_encryption, "cannot_set_table_encryption" },
+ { errc::cannot_set_database_encryption, "cannot_set_database_encryption" },
+ { errc::cannot_set_tablespace_encryption, "cannot_set_tablespace_encryption" },
+ { errc::tablespace_cannot_be_encrypted, "tablespace_cannot_be_encrypted" },
+ { errc::tablespace_cannot_be_decrypted, "tablespace_cannot_be_decrypted" },
+ { errc::tablespace_type_unknown, "tablespace_type_unknown" },
+ { errc::target_tablespace_unencrypted, "target_tablespace_unencrypted" },
+ { errc::cannot_use_encryption_clause, "cannot_use_encryption_clause" },
+ { errc::invalid_multiple_clauses, "invalid_multiple_clauses" },
+ { errc::unsupported_use_of_grant_as, "unsupported_use_of_grant_as" },
+ { errc::uknown_auth_id_or_access_denied_for_grant_as, "uknown_auth_id_or_access_denied_for_grant_as" },
+ { errc::dependent_by_functional_index, "dependent_by_functional_index" },
+ { errc::plugin_not_early, "plugin_not_early" },
+ { errc::innodb_redo_log_archive_start_subdir_path, "innodb_redo_log_archive_start_subdir_path" },
+ { errc::innodb_redo_log_archive_start_timeout, "innodb_redo_log_archive_start_timeout" },
+ { errc::innodb_redo_log_archive_dirs_invalid, "innodb_redo_log_archive_dirs_invalid" },
+ { errc::innodb_redo_log_archive_label_not_found, "innodb_redo_log_archive_label_not_found" },
+ { errc::innodb_redo_log_archive_dir_empty, "innodb_redo_log_archive_dir_empty" },
+ { errc::innodb_redo_log_archive_no_such_dir, "innodb_redo_log_archive_no_such_dir" },
+ { errc::innodb_redo_log_archive_dir_clash, "innodb_redo_log_archive_dir_clash" },
+ { errc::innodb_redo_log_archive_dir_permissions, "innodb_redo_log_archive_dir_permissions" },
+ { errc::innodb_redo_log_archive_file_create, "innodb_redo_log_archive_file_create" },
+ { errc::innodb_redo_log_archive_active, "innodb_redo_log_archive_active" },
+ { errc::innodb_redo_log_archive_inactive, "innodb_redo_log_archive_inactive" },
+ { errc::innodb_redo_log_archive_failed, "innodb_redo_log_archive_failed" },
+ { errc::innodb_redo_log_archive_session, "innodb_redo_log_archive_session" },
+ { errc::std_regex_error, "std_regex_error" },
+ { errc::invalid_json_type, "invalid_json_type" },
+ { errc::cannot_convert_string, "cannot_convert_string" },
+ { errc::dependent_by_partition_func, "dependent_by_partition_func" },
+ { errc::warn_deprecated_float_auto_increment, "warn_deprecated_float_auto_increment" },
+ { errc::rpl_cant_stop_slave_while_locked_backup, "rpl_cant_stop_slave_while_locked_backup" },
+ { errc::warn_deprecated_float_digits, "warn_deprecated_float_digits" },
+ { errc::warn_deprecated_float_unsigned, "warn_deprecated_float_unsigned" },
+ { errc::warn_deprecated_integer_display_width, "warn_deprecated_integer_display_width" },
+ { errc::warn_deprecated_zerofill, "warn_deprecated_zerofill" },
+ { errc::clone_donor, "clone_donor" },
+ { errc::clone_protocol, "clone_protocol" },
+ { errc::clone_donor_version, "clone_donor_version" },
+ { errc::clone_os, "clone_os" },
+ { errc::clone_platform, "clone_platform" },
+ { errc::clone_charset, "clone_charset" },
+ { errc::clone_config, "clone_config" },
+ { errc::clone_sys_config, "clone_sys_config" },
+ { errc::clone_plugin_match, "clone_plugin_match" },
+ { errc::clone_loopback, "clone_loopback" },
+ { errc::clone_encryption, "clone_encryption" },
+ { errc::clone_disk_space, "clone_disk_space" },
+ { errc::clone_in_progress, "clone_in_progress" },
+ { errc::clone_disallowed, "clone_disallowed" },
+ { errc::cannot_grant_roles_to_anonymous_user, "cannot_grant_roles_to_anonymous_user" },
+ { errc::secondary_engine_plugin, "secondary_engine_plugin" },
+ { errc::second_password_cannot_be_empty, "second_password_cannot_be_empty" },
+ { errc::db_access_denied, "db_access_denied" },
+ { errc::da_auth_id_with_system_user_priv_in_mandatory_roles, "da_auth_id_with_system_user_priv_in_mandatory_roles" },
+ { errc::da_rpl_gtid_table_cannot_open, "da_rpl_gtid_table_cannot_open" },
+ { errc::geometry_in_unknown_length_unit, "geometry_in_unknown_length_unit" },
+ { errc::da_plugin_install_error, "da_plugin_install_error" },
+ { errc::no_session_temp, "no_session_temp" },
+ { errc::da_unknown_error_number, "da_unknown_error_number" },
+ { errc::column_change_size, "column_change_size" },
+ { errc::regexp_invalid_capture_group_name, "regexp_invalid_capture_group_name" },
+ { errc::da_ssl_library_error, "da_ssl_library_error" },
+ { errc::secondary_engine, "secondary_engine" },
+ { errc::secondary_engine_ddl, "secondary_engine_ddl" },
+ { errc::incorrect_current_password, "incorrect_current_password" },
+ { errc::missing_current_password, "missing_current_password" },
+ { errc::current_password_not_required, "current_password_not_required" },
+ { errc::password_cannot_be_retained_on_plugin_change, "password_cannot_be_retained_on_plugin_change" },
+ { errc::current_password_cannot_be_retained, "current_password_cannot_be_retained" },
+ { errc::partial_revokes_exist, "partial_revokes_exist" },
+ { errc::cannot_grant_system_priv_to_mandatory_role, "cannot_grant_system_priv_to_mandatory_role" },
+ { errc::xa_replication_filters, "xa_replication_filters" },
+ { errc::unsupported_sql_mode, "unsupported_sql_mode" },
+ { errc::regexp_invalid_flag, "regexp_invalid_flag" },
+ { errc::partial_revoke_and_db_grant_both_exists, "partial_revoke_and_db_grant_both_exists" },
+ { errc::unit_not_found, "unit_not_found" },
+ { errc::invalid_json_value_for_func_index, "invalid_json_value_for_func_index" },
+ { errc::json_value_out_of_range_for_func_index, "json_value_out_of_range_for_func_index" },
+ { errc::exceeded_mv_keys_num, "exceeded_mv_keys_num" },
+ { errc::exceeded_mv_keys_space, "exceeded_mv_keys_space" },
+ { errc::functional_index_data_is_too_long, "functional_index_data_is_too_long" },
+ { errc::wrong_mvi_value, "wrong_mvi_value" },
+ { errc::warn_func_index_not_applicable, "warn_func_index_not_applicable" },
+ { errc::grp_rpl_udf_error, "grp_rpl_udf_error" },
+ { errc::update_gtid_purged_with_gr, "update_gtid_purged_with_gr" },
+ { errc::grouping_on_timestamp_in_dst, "grouping_on_timestamp_in_dst" },
+ { errc::table_name_causes_too_long_path, "table_name_causes_too_long_path" },
+ { errc::audit_log_insufficient_privilege, "audit_log_insufficient_privilege" },
+ { errc::da_grp_rpl_started_auto_rejoin, "da_grp_rpl_started_auto_rejoin" },
 
 #endif

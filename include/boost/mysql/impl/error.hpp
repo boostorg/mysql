@@ -10,6 +10,7 @@
 
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
+#include <algorithm>
 
 namespace boost {
 namespace system {
@@ -25,23 +26,34 @@ struct is_error_code_enum<mysql::errc>
 namespace mysql {
 namespace detail {
 
+struct error_entry
+{
+    errc value;
+    const char* message;
+};
+
+constexpr error_entry all_errors [] = {
+    { errc::ok, "no error" },
+    { errc::incomplete_message, "The message read was incomplete (not enough bytes to fully decode it)" },
+    { errc::extra_bytes, "Extra bytes at the end of the message" },
+    { errc::sequence_number_mismatch, "Mismatched sequence numbers" },
+    { errc::server_unsupported, "The server does not implement the minimum features to be supported" },
+    { errc::protocol_value_error, "A field in a message had an unexpected value" },
+    { errc::unknown_auth_plugin, "The user employs an authentication plugin unknown to the client" },
+    { errc::wrong_num_params, "The provided parameter count does not match the prepared statement parameter count" },
+
+#include "boost/mysql/impl/server_error_descriptions.hpp"
+
+};
+
 inline const char* error_to_string(errc error) noexcept
 {
-    switch (error)
-    {
-    case errc::ok: return "no error";
-    case errc::incomplete_message: return "The message read was incomplete (not enough bytes to fully decode it)";
-    case errc::extra_bytes: return "Extra bytes at the end of the message";
-    case errc::sequence_number_mismatch: return "Mismatched sequence numbers";
-    case errc::server_unsupported: return "The server does not implement the minimum features to be supported";
-    case errc::protocol_value_error: return "A field in a message had an unexpected value";
-    case errc::unknown_auth_plugin: return "The user employs an authentication plugin unknown to the client";
-    case errc::wrong_num_params: return "The provided parameter count does not match the prepared statement parameter count";
-
-    #include "boost/mysql/impl/server_error_descriptions.hpp"
-
-    default: return "<unknown error>";
-    }
+    auto it = std::find_if(
+        std::begin(all_errors),
+        std::end(all_errors),
+        [error] (error_entry ent) { return error == ent.value; }
+    );
+    return it == std::end(all_errors) ? "<unknown error>" : it->message;
 }
 
 class mysql_error_category_t : public boost::system::error_category
