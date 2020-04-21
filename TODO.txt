@@ -1,9 +1,3 @@
-Codecov
-    Option in CMake
-    Use the option in CIs; add lcov package to CIs
-    Badge in README
-    Coverage with clang
-    Use option in CIs; use in OSX
 Sanitize
 	Bad serialize(value.value) somewhere
 	Copy operations for handshake

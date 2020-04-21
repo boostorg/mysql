@@ -44,13 +44,22 @@ make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test
 
 # Coverage collection
 if [ $USE_COVERAGE ]; then
-    if [ "$TRAVIS_COMPILER" == "clang" ]; then
-        GCOV_TOOL="$TRAVIS_BUILD_DIR/ci/clang-gcov.sh"
+    # Select the gcov tool to use
+    if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        GCOV_TOOL="$TRAVIS_BUILD_DIR/ci/clang-gcov-osx.sh"
+    elif [ "$TRAVIS_COMPILER" == "clang" ]; then
+        GCOV_TOOL="$TRAVIS_BUILD_DIR/ci/clang-gcov-linux.sh"
     else
         GCOV_TOOL=gcov
     fi;
+    
+    # Generate an adequate coverage.info file to upload. Codecov's
+    # default is to compute coverage for tests and examples, too, which
+    # is not correct
     lcov --capture --directory . -o coverage.info --gcov-tool "$GCOV_TOOL"
     lcov -o coverage.info --extract coverage.info "**include/boost/mysql/**"
+    
+    # Upload the results
     curl -s https://codecov.io/bash -o codecov.sh
     bash +x codecov.sh -f coverage.info
 fi
