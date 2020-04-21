@@ -133,6 +133,15 @@ public:
             return r.fetch_all(code, info);
         });
     }
+    network_result<no_result> quit(
+        connection_type& conn
+    ) override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            conn.quit(code, info);
+            return no_result();
+        });
+    }
 };
 
 template <typename Stream>
@@ -238,6 +247,15 @@ public:
     {
         return impl([&] {
             return r.fetch_all();
+        });
+    }
+    network_result<no_result> quit(
+        connection_type& conn
+    ) override
+    {
+        return impl([&] {
+            conn.quit();
+            return no_result();
         });
     }
 };
@@ -381,6 +399,14 @@ public:
             return r.async_fetch_all(std::forward<decltype(token)>(token), info);
         });
     }
+    network_result<no_result> quit(
+        connection_type& conn
+    ) override
+    {
+        return impl<no_result>([&](auto&& token, error_info* info) {
+            return conn.async_quit(std::forward<decltype(token)>(token), info);
+        });
+    }
 };
 
 template <typename Stream>
@@ -505,6 +531,15 @@ public:
             return r.async_fetch_all(yield, info);
         });
     }
+    network_result<no_result> quit(
+        connection_type& conn
+    ) override
+    {
+        return impl(conn, [&](yield_context yield, error_info* info) {
+            conn.async_quit(yield, info);
+            return no_result();
+        });
+    }
 };
 
 template <typename Stream>
@@ -627,6 +662,14 @@ public:
     {
         return impl([&] {
             return r.async_fetch_all(use_future);
+        });
+    }
+    network_result<no_result> quit(
+        connection_type& conn
+    ) override
+    {
+        return impl_no_result([&] {
+            return conn.async_quit(use_future);
         });
     }
 };

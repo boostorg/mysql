@@ -102,8 +102,6 @@ public:
     bytestring& shared_buffer() noexcept { return shared_buff_; }
 };
 
-template <typename ChannelType>
-using channel_stream_type = typename ChannelType::stream_type;
 
 } // detail
 } // mysql

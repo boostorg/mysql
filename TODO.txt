@@ -1,6 +1,13 @@
 Sanitize
 	Test zero dates
 	Connection quit
+	   Serialization test for quit message
+	   Connection close
+	   Integ test for close
+	   Make integ tests do quit/close when possible
+	   Quit docs
+	   Close docs
+	   clear_errors() function to clear error_info and error_code at once
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -42,7 +49,6 @@ Technical debt
 	Review convention in test names
 	Review named_param
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
-	clear_errors() function to clear error_info and error_code at once
 	Concept checking for StreamType
 	Review async initiations
 		See if async_initiate is applicable

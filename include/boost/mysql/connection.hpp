@@ -163,6 +163,15 @@ public:
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
     async_prepare_statement(std::string_view statement, CompletionToken&& token, error_info* info=nullptr);
+
+    void quit(error_code&, error_info&);
+    void quit();
+
+    using quit_signature = void(error_code);
+
+    template <typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, quit_signature)
+    async_quit(CompletionToken&& token, error_info* info=nullptr);
 };
 
 /**

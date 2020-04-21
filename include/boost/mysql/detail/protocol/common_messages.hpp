@@ -126,6 +126,18 @@ struct serialization_traits<column_definition_packet, serialization_tag::struct_
     static inline errc deserialize_(column_definition_packet& output, deserialization_context& ctx) noexcept;
 };
 
+// connection quit
+struct quit_packet
+{
+    static constexpr std::uint8_t command_id = 0x01;
+};
+
+template <>
+struct get_struct_fields<quit_packet>
+{
+    static constexpr auto value = std::make_tuple();
+};
+
 // aux
 inline error_code process_error_packet(deserialization_context& ctx, error_info& info);
 

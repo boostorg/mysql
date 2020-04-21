@@ -88,6 +88,7 @@ add_executable(
     integration/resultset.cpp
     integration/prepared_statement_lifecycle.cpp
     integration/database_types.cpp
+    integration/quit_connection.cpp
 )
 target_link_libraries(
     mysql_integrationtests
