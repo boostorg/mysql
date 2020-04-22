@@ -136,33 +136,29 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
     error_info* info
 )
 {
+    assert(valid());
     detail::conditional_clear(info);
     detail::check_completion_token<CompletionToken, fetch_one_signature>();
 
-    using HandlerSignature = fetch_one_signature;
-    using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-    using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-
-    struct Op: BaseType, boost::asio::coroutine
+    struct op: detail::async_op<StreamType, CompletionToken, fetch_one_signature, op>
     {
         resultset<StreamType>& resultset_;
-        error_info* output_info_;
 
-        Op(
-            HandlerType&& handler,
-            resultset<StreamType>& obj,
-            error_info* output_info
+        op(
+            boost::asio::async_completion<CompletionToken, fetch_one_signature>& completion,
+            detail::channel<StreamType>& chan,
+            error_info* output_info,
+            resultset<StreamType>& obj
         ):
-            BaseType(std::move(handler), obj.channel_->next_layer().get_executor()),
-            resultset_(obj),
-            output_info_(output_info)
+            detail::async_op<StreamType, CompletionToken, fetch_one_signature, op>(completion, chan, output_info),
+            resultset_(obj)
         {
         };
 
         void operator()(
             error_code err,
-            error_info info,
-            detail::read_row_result result,
+            error_info info={},
+            detail::read_row_result result=detail::read_row_result::error,
             bool cont=true
         )
         {
@@ -171,40 +167,29 @@ boost::mysql::resultset<StreamType>::async_fetch_one(
                 if (resultset_.complete())
                 {
                     this->complete(cont, error_code(), nullptr);
+                    yield break;
                 }
-                else
-                {
-                    yield detail::async_read_row(
-                        resultset_.deserializer_,
-                        *resultset_.channel_,
-                        resultset_.meta_.fields(),
-                        resultset_.buffer_,
-                        resultset_.current_row_.values(),
-                        resultset_.ok_packet_,
-                        std::move(*this)
-                    );
-                    resultset_.eof_received_ = result == detail::read_row_result::eof;
-                    detail::conditional_assign(output_info_, std::move(info));
-                    this->complete(
-                        cont,
-                        err,
-                        result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
-                    );
-                }
+                yield detail::async_read_row(
+                    resultset_.deserializer_,
+                    *resultset_.channel_,
+                    resultset_.meta_.fields(),
+                    resultset_.buffer_,
+                    resultset_.current_row_.values(),
+                    resultset_.ok_packet_,
+                    std::move(*this)
+                );
+                resultset_.eof_received_ = result == detail::read_row_result::eof;
+                detail::conditional_assign(this->get_output_info(), std::move(info));
+                this->complete(
+                    cont,
+                    err,
+                    result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
+                );
             }
         }
     };
 
-    assert(valid());
-
-    boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
-
-    Op(
-        std::move(initiator.completion_handler),
-        *this,
-        info
-    )(error_code(), error_info(), detail::read_row_result::error, false);
-    return initiator.result.get();
+    return op::initiate(std::forward<CompletionToken>(token), *channel_, info, *this);
 }
 
 template <typename StreamType>
@@ -219,26 +204,21 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
     error_info* info
 )
 {
+    assert(valid());
     detail::conditional_clear(info);
     detail::check_completion_token<CompletionToken, fetch_many_signature>();
 
-    using HandlerSignature = fetch_many_signature;
-    using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-    using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-
-    struct OpImpl
+    struct op_impl
     {
         resultset<StreamType>& parent_resultset;
         std::vector<owning_row> rows;
         detail::bytestring buffer;
         std::vector<value> values;
         std::size_t remaining;
-        error_info* output_info_;
 
-        OpImpl(resultset<StreamType>& obj, std::size_t count, error_info* output_info):
+        op_impl(resultset<StreamType>& obj, std::size_t count):
             parent_resultset(obj),
-            remaining(count),
-            output_info_(output_info)
+            remaining(count)
         {
         };
 
@@ -251,23 +231,27 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
         }
     };
 
-    struct Op: BaseType, boost::asio::coroutine
+    struct op : detail::async_op<StreamType, CompletionToken, fetch_many_signature, op>
     {
-        std::shared_ptr<OpImpl> impl_;
+        std::shared_ptr<op_impl> impl_;
 
-        Op(
-            HandlerType&& handler,
-            std::shared_ptr<OpImpl>&& impl
-        ):
-            BaseType(std::move(handler), impl->parent_resultset.channel_->next_layer().get_executor()),
-            impl_(std::move(impl))
+        op(
+            boost::asio::async_completion<CompletionToken, fetch_many_signature>& completion,
+            detail::channel<StreamType>& chan,
+            error_info* output_info,
+            resultset<StreamType>& obj,
+            std::size_t count
+        ) :
+            detail::async_op<StreamType, CompletionToken, fetch_many_signature, op>(
+                    completion, chan, output_info),
+            impl_(std::make_shared<op_impl>(obj, count))
         {
         };
 
         void operator()(
             error_code err,
-            error_info info,
-            detail::read_row_result result,
+            error_info info={},
+            detail::read_row_result result=detail::read_row_result::error,
             bool cont=true
         )
         {
@@ -277,7 +261,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
                 {
                     yield detail::async_read_row(
                         impl_->parent_resultset.deserializer_,
-                        *impl_->parent_resultset.channel_,
+                        this->get_channel(),
                         impl_->parent_resultset.meta_.fields(),
                         impl_->buffer,
                         impl_->values,
@@ -286,7 +270,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
                     );
                     if (result == detail::read_row_result::error)
                     {
-                        detail::conditional_assign(impl_->output_info_, std::move(info));
+                        detail::conditional_assign(this->get_output_info(), std::move(info));
                         this->complete(cont, err, std::move(impl_->rows));
                         yield break;
                     }
@@ -304,15 +288,7 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
         }
     };
 
-    assert(valid());
-
-    boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
-
-    Op(
-        std::move(initiator.completion_handler),
-        std::make_shared<OpImpl>(*this, count, info)
-    )(error_code(), error_info(), detail::read_row_result::error, false);
-    return initiator.result.get();
+    return op::initiate(std::forward<CompletionToken>(token), *channel_, info, *this, count);
 }
 
 template <typename StreamType>

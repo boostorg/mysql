@@ -8,12 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_COMMON_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_COMMON_HPP
 
-#include <boost/asio/coroutine.hpp>
-#include <boost/beast/core/async_base.hpp>
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/metadata.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/common_messages.hpp"
+#include "boost/mysql/detail/network_algorithms/async_op.hpp"
 
 namespace boost {
 namespace mysql {

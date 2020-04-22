@@ -113,29 +113,23 @@ boost::mysql::detail::async_prepare_statement(
     error_info* info
 )
 {
-    using HandlerSignature = prepare_statement_signature<StreamType>;
-    using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-    using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-    using PreparedStatementType = prepared_statement<StreamType>;
+    using handler_signature = prepare_statement_signature<StreamType>;
+    using stmt_type = prepared_statement<StreamType>;
 
-    boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
-
-    struct Op: BaseType, boost::asio::coroutine
+    struct op : async_op<StreamType, CompletionToken, handler_signature, op>
     {
         prepare_statement_processor<StreamType> processor_;
         unsigned remaining_meta_;
-        error_info* output_info_;
 
-        Op(
-            HandlerType&& handler,
-            channel<StreamType>& channel,
-            std::string_view statement,
-            error_info* output_info
-        ):
-            BaseType(std::move(handler), channel.next_layer().get_executor()),
-            processor_(channel),
-            remaining_meta_(0),
-            output_info_(output_info)
+        op(
+            boost::asio::async_completion<CompletionToken, handler_signature>& completion,
+            channel<StreamType>& chan,
+            error_info* output_info,
+            std::string_view statement
+        ) :
+            async_op<StreamType, CompletionToken, handler_signature, op>(completion, chan, output_info),
+            processor_(chan),
+            remaining_meta_(0)
         {
             processor_.process_request(statement);
         }
@@ -148,7 +142,7 @@ boost::mysql::detail::async_prepare_statement(
             // Error checking
             if (err)
             {
-                this->complete(cont, err, PreparedStatementType());
+                this->complete(cont, err, stmt_type());
                 return;
             }
 
@@ -157,23 +151,17 @@ boost::mysql::detail::async_prepare_statement(
             reenter(*this)
             {
                 // Write message (already serialized at this point)
-                yield processor_.get_channel().async_write(
-                    boost::asio::buffer(processor_.get_buffer()),
-                    std::move(*this)
-                );
+                yield this->async_write(processor_.get_buffer());
 
                 // Read response
-                yield processor_.get_channel().async_read(
-                    processor_.get_buffer(),
-                    std::move(*this)
-                );
+                yield this->async_read(processor_.get_buffer());
 
                 // Process response
                 processor_.process_response(err, info);
                 if (err)
                 {
-                    detail::conditional_assign(output_info_, std::move(info));
-                    this->complete(cont, err, PreparedStatementType());
+                    detail::conditional_assign(this->get_output_info(), std::move(info));
+                    this->complete(cont, err, stmt_type());
                     yield break;
                 }
 
@@ -182,29 +170,20 @@ boost::mysql::detail::async_prepare_statement(
                 remaining_meta_ = processor_.get_num_metadata_packets();
                 for (; remaining_meta_ > 0; --remaining_meta_)
                 {
-                    yield processor_.get_channel().async_read(
-                        processor_.get_buffer(),
-                        std::move(*this)
-                    );
+                    yield this->async_read(processor_.get_buffer());
                 }
 
                 // Compose response
                 this->complete(
                     cont,
                     err,
-                    PreparedStatementType(processor_.get_channel(), processor_.get_response())
+                    stmt_type(processor_.get_channel(), processor_.get_response())
                 );
             }
         }
     };
 
-    Op(
-        std::move(initiator.completion_handler),
-        chan,
-        statement,
-        info
-    )(error_code(), false);
-    return initiator.result.get();
+    return op::initiate(std::forward<CompletionToken>(token), chan, info, statement);
 }
 
 #include <boost/asio/unyield.hpp>

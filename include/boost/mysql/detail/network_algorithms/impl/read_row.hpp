@@ -105,31 +105,26 @@ boost::mysql::detail::async_read_row(
     CompletionToken&& token
 )
 {
-    using HandlerSignature = read_row_signature;
-    using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-    using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-
-    struct Op: BaseType, boost::asio::coroutine
+    struct op : async_op<StreamType, CompletionToken, read_row_signature, op>
     {
         deserialize_row_fn deserializer_;
-        channel<StreamType>& channel_;
         const std::vector<field_metadata>& meta_;
         bytestring& buffer_;
         std::vector<value>& output_values_;
         ok_packet& output_ok_packet_;
 
-        Op(
-            HandlerType&& handler,
+        op(
+            boost::asio::async_completion<CompletionToken, read_row_signature>& completion,
+            channel<StreamType>& chan,
+            error_info* output_info,
             deserialize_row_fn deserializer,
-            channel<StreamType>& channel,
             const std::vector<field_metadata>& meta,
             bytestring& buffer,
             std::vector<value>& output_values,
             ok_packet& output_ok_packet
-        ):
-            BaseType(std::move(handler), channel.next_layer().get_executor()),
+        ) :
+            async_op<StreamType, CompletionToken, read_row_signature, op>(completion, chan, output_info),
             deserializer_(deserializer),
-            channel_(channel),
             meta_(meta),
             buffer_(buffer),
             output_values_(output_values),
@@ -137,53 +132,53 @@ boost::mysql::detail::async_read_row(
         {
         }
 
-        void process_result(bool cont)
-        {
-            error_code err;
-            error_info info;
-            auto result = process_read_message(
-                deserializer_,
-                channel_.current_capabilities(),
-                meta_,
-                buffer_,
-                output_values_,
-                output_ok_packet_,
-                err,
-                info
-            );
-            this->complete(cont, err, info, result);
-        }
-
         void operator()(
             error_code err,
             bool cont=true
         )
         {
+            error_info info;
+            read_row_result result = read_row_result::error;
+
+            // Error checking
+            if (err)
+            {
+                this->complete(cont, err, info, result);
+                return;
+            }
+
+            // Normal path
             reenter(*this)
             {
-                yield channel_.async_read(buffer_, std::move(*this));
-                if (err)
-                {
-                    this->complete(cont, err, error_info(), read_row_result::error);
-                    yield break;
-                }
-                process_result(cont);
+                // Read the message
+                yield this->async_read(buffer_);
+
+                // Process it
+                result = process_read_message(
+                    deserializer_,
+                    this->get_channel().current_capabilities(),
+                    meta_,
+                    buffer_,
+                    output_values_,
+                    output_ok_packet_,
+                    err,
+                    info
+                );
+                this->complete(cont, err, std::move(info), result);
             }
         }
     };
 
-    boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
-
-    Op(
-        std::move(initiator.completion_handler),
-        deserializer,
+    return op::initiate(
+        std::forward<CompletionToken>(token),
         chan,
+        nullptr, // no output error_info*
+        deserializer,
         meta,
         buffer,
         output_values,
         output_ok_packet
-    )(error_code(), false);
-    return initiator.result.get();
+    );
 }
 
 #include <boost/asio/unyield.hpp>

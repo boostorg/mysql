@@ -17,7 +17,7 @@ namespace detail {
 
 template <typename StreamType>
 void prepare_statement(
-    ::boost::mysql::detail::channel<StreamType>& channel,
+    channel<StreamType>& chan,
     std::string_view statement,
     error_code& err,
     error_info& info,
@@ -30,7 +30,7 @@ using prepare_statement_signature = void(error_code, prepared_statement<StreamTy
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature<StreamType>)
 async_prepare_statement(
-    channel<StreamType>& channel,
+    channel<StreamType>& chan,
     std::string_view statement,
     CompletionToken&& token,
     error_info* info

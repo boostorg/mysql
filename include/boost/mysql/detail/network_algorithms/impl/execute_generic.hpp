@@ -197,29 +197,23 @@ boost::mysql::detail::async_execute_generic(
     error_info* info
 )
 {
-    using HandlerSignature = execute_generic_signature<StreamType>;
-    using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-    using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-    using ResultsetType = resultset<StreamType>;
+    using handler_signature = execute_generic_signature<StreamType>;
+    using resultset_type = resultset<StreamType>;
 
-    boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
-
-    struct Op: BaseType, boost::asio::coroutine
+    struct op : async_op<StreamType, CompletionToken, handler_signature, op>
     {
         std::shared_ptr<execute_processor<StreamType>> processor_;
         std::uint64_t remaining_fields_ {0};
-        error_info* output_info_;
 
-        Op(
-            HandlerType&& handler,
+        op(
+            boost::asio::async_completion<CompletionToken, handler_signature>& initiator,
+            channel<StreamType>& chan,
+            error_info* output_info,
             deserialize_row_fn deserializer,
-            channel<StreamType>& channel,
-            const Serializable& request,
-            error_info* output_info
-        ):
-            BaseType(std::move(handler), channel.next_layer().get_executor()),
-            processor_(std::make_shared<execute_processor<StreamType>>(deserializer, channel)),
-            output_info_(output_info)
+            const Serializable& request
+        ) :
+            async_op<StreamType, CompletionToken, handler_signature, op>(initiator, chan, output_info),
+            processor_(std::make_shared<execute_processor<StreamType>>(deserializer, chan))
         {
             processor_->process_request(request);
         }
@@ -232,7 +226,7 @@ boost::mysql::detail::async_execute_generic(
             // Error checking
             if (err)
             {
-                this->complete(cont, err, ResultsetType());
+                this->complete(cont, err, resultset_type());
                 return;
             }
 
@@ -241,23 +235,17 @@ boost::mysql::detail::async_execute_generic(
             reenter(*this)
             {
                 // The request message has already been composed in the ctor. Send it
-                yield processor_->get_channel().async_write(
-                    boost::asio::buffer(processor_->get_buffer()),
-                    std::move(*this)
-                );
+                yield this->async_write(processor_->get_buffer());
 
                 // Read the response
-                yield processor_->get_channel().async_read(
-                    processor_->get_buffer(),
-                    std::move(*this)
-                );
+                yield this->async_read(processor_->get_buffer());
 
                 // Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
                 processor_->process_response(err, info);
                 if (err)
                 {
-                    conditional_assign(output_info_, std::move(info));
-                    this->complete(cont, err, ResultsetType());
+                    conditional_assign(this->get_output_info(), std::move(info));
+                    this->complete(cont, err, resultset_type());
                     yield break;
                 }
                 remaining_fields_ = processor_->field_count();
@@ -266,16 +254,13 @@ boost::mysql::detail::async_execute_generic(
                 while (remaining_fields_ > 0)
                 {
                     // Read the field definition packet
-                    yield processor_->get_channel().async_read(
-                        processor_->get_buffer(),
-                        std::move(*this)
-                    );
+                    yield this->async_read(processor_->get_buffer());
 
                     // Process the message
                     err = processor_->process_field_definition();
                     if (err)
                     {
-                        this->complete(cont, err, ResultsetType());
+                        this->complete(cont, err, resultset_type());
                         yield break;
                     }
 
@@ -286,20 +271,14 @@ boost::mysql::detail::async_execute_generic(
                 this->complete(
                     cont,
                     error_code(),
-                    ResultsetType(std::move(*processor_).create_resultset())
+                    resultset_type(std::move(*processor_).create_resultset())
                 );
             }
         }
     };
 
-    Op(
-        std::move(initiator.completion_handler),
-        deserializer,
-        chan,
-        request,
-        info
-    )(error_code(), false);
-    return initiator.result.get();
+    return op::initiate(std::forward<CompletionToken>(token),
+            chan, info, deserializer, request);
 }
 
 #include <boost/asio/unyield.hpp>

@@ -1,10 +1,16 @@
 Sanitize
 	Test zero dates
 	Connection quit
-	   clear_errors() function to clear error_info and error_code at once
-	   Base class for async stuff
+	   Base class for async stuff: make it usable for channel
     Connection connect
+        Close/quit to channel
+        Integration test for network errors (e.g. host unreachable)
+    Class with an error info, error code and a check method
+    Change read_row_result async signature to use error_info*
+    Attempt to remove shared_ptr's from ops
+    Replace yields by asio macros
 Better docs
+    Wandbox
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
 	Try to include Readme instead of copying it
@@ -34,7 +40,7 @@ Usability
 		Geometry
 	connection::connect that handles TCP/Unix and MySQL connect
 	connection::run_sql that hides the resultset concept
-Consider if header-only is a good idea
+    Option for separate compilation
 Technical debt
 	Random input tests
 	Test dashboard
@@ -46,14 +52,10 @@ Technical debt
 	Review named_param
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	Concept checking for StreamType
-	Review async initiations
-		See if async_initiate is applicable
-		See if we can drop the dependence on beast
-	Review close() of the stream on error
+	See if we can drop the dependence on beast
 	Review valid() for moved-from resultsets (should it return always true?)
 	Force the same number of values in each row as in fields()
 	CMake exporting?
-	Integration test for network errors (e.g. host unreachable)
 	Rework deserialize_row_fn to allow cursors
 	Test prepared statement binding to procedure out params
 	More thorough testing for several NULLs in integration testing

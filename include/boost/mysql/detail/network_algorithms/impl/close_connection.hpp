@@ -59,27 +59,9 @@ boost::mysql::detail::async_close_connection(
     error_info* info
 )
 {
-    using HandlerSignature = close_connection_signature;
-    using HandlerType = BOOST_ASIO_HANDLER_TYPE(CompletionToken, HandlerSignature);
-    using BaseType = boost::beast::async_base<HandlerType, typename StreamType::executor_type>;
-
-    boost::asio::async_completion<CompletionToken, HandlerSignature> initiator(token);
-
-    struct Op: BaseType, boost::asio::coroutine
+    struct op : async_op<StreamType, CompletionToken, close_connection_signature, op>
     {
-        channel<StreamType>& channel_;
-        error_info* output_info_;
-
-        Op(
-            HandlerType&& handler,
-            channel<StreamType>& channel,
-            error_info* output_info
-        ):
-            BaseType(std::move(handler), channel.next_layer().get_executor()),
-            channel_(channel),
-            output_info_(output_info)
-        {
-        }
+        using async_op<StreamType, CompletionToken, close_connection_signature, op>::async_op;
 
         void operator()(
             error_code err,
@@ -89,7 +71,7 @@ boost::mysql::detail::async_close_connection(
             error_code close_err;
             reenter(*this)
             {
-                if (!channel_.next_layer().is_open())
+                if (!this->get_channel().next_layer().is_open())
                 {
                     this->complete(cont, error_code());
                     yield break;
@@ -97,19 +79,18 @@ boost::mysql::detail::async_close_connection(
 
                 // We call close regardless of the quit outcome
                 // There are no async versions of shutdown or close
-                yield async_quit_connection(channel_, std::move(*this), output_info_);
-                close_err = close_channel(channel_);
+                yield async_quit_connection(
+                    this->get_channel(),
+                    std::move(*this),
+                    this->get_output_info()
+                );
+                close_err = close_channel(this->get_channel());
                 this->complete(cont, err ? err : close_err);
             }
         }
     };
 
-    Op(
-        std::move(initiator.completion_handler),
-        chan,
-        info
-    )(error_code(), false);
-    return initiator.result.get();
+    return op::initiate(std::forward<CompletionToken>(token), chan, info);
 }
 
 #include <boost/asio/unyield.hpp>
