@@ -78,6 +78,9 @@ void main_impl(int argc, char** argv)
     assert(employee_id.is_primary_key());                   // field is a primary key
     assert(employee_id.is_auto_increment());                // we declared the field as AUTO_INCREMENT
     assert(employee_id.is_not_null());                      // field cannot be NULL
+
+    // Close the connection
+    conn.close();
 }
 
 int main(int argc, char** argv)

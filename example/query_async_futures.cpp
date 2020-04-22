@@ -132,6 +132,9 @@ void main_impl(int argc, char** argv)
         print_employee(*current_row);
     }
 
+    // Notify the MySQL server we want to quit, then close the underlying connection.
+    conn.async_close(use_future).get();
+
     // application dtor. stops io_context and then joins the thread
 }
 

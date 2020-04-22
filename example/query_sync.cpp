@@ -111,6 +111,11 @@ void main_impl(int argc, char** argv)
     assert(rows.size() == 1);
     [[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
     assert(salary == 10000);
+
+    // Close the connection. This notifies the MySQL we want to log out
+    // and then closes the underlying socket. This operation implies a network
+    // transfer and thus can fail
+    conn.close();
 }
 
 int main(int argc, char** argv)

@@ -130,6 +130,9 @@ void main_impl(int argc, char** argv)
      */
     salary_updater.close();
     salary_getter.close();
+
+    // Close the connection
+    conn.close();
 }
 
 int main(int argc, char** argv)

@@ -135,6 +135,10 @@ void main_impl(int argc, char** argv)
             if (!row) break; // No more rows available
             print_employee(*row);
         }
+
+        // Notify the MySQL server we want to quit, then close the underlying connection.
+        conn.async_close(yield[ec], &additional_info);
+        check_error(ec, additional_info);
     });
 
     // Don't forget to call run()! Otherwise, your program

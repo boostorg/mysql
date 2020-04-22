@@ -134,7 +134,16 @@ public:
                 assert(rows.size() == 1);
                 [[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
                 assert(salary == 15000);
+                close();
             }, &additional_info);
+        }, &additional_info);
+    }
+
+    void close()
+    {
+        // Notify the MySQL server we want to quit and then close the socket
+        connection.async_close([this](error_code err) {
+            die_on_error(err, additional_info);
         }, &additional_info);
     }
 

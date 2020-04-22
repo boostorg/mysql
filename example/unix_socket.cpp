@@ -95,6 +95,9 @@ void main_impl(int argc, char** argv)
     assert(rows.size() == 1);
     [[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
     assert(salary == 10000);
+
+    // Notify the MySQL server we want to quit, then close the underlying connection.
+    conn.close();
 }
 
 #else
