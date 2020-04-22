@@ -1,10 +1,10 @@
 Sanitize
 	Test zero dates
 	Connection quit
-	   Make integ tests do quit/close when possible
 	   Quit docs
 	   Close docs
 	   clear_errors() function to clear error_info and error_code at once
+       Make examples use close
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available

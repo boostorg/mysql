@@ -79,7 +79,8 @@ struct IntegTest : testing::Test
     ~IntegTest()
     {
         error_code code;
-        conn.next_layer().close(code);
+        error_info info;
+        conn.close(code, info);
         guard.reset();
         runner.join();
     }
