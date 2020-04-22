@@ -142,6 +142,15 @@ public:
             return no_result();
         });
     }
+    network_result<no_result> close(
+        connection_type& conn
+    ) override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            conn.close(code, info);
+            return no_result();
+        });
+    }
 };
 
 template <typename Stream>
@@ -255,6 +264,15 @@ public:
     {
         return impl([&] {
             conn.quit();
+            return no_result();
+        });
+    }
+    network_result<no_result> close(
+        connection_type& conn
+    ) override
+    {
+        return impl([&] {
+            conn.close();
             return no_result();
         });
     }
@@ -407,6 +425,14 @@ public:
             return conn.async_quit(std::forward<decltype(token)>(token), info);
         });
     }
+    network_result<no_result> close(
+        connection_type& conn
+    ) override
+    {
+        return impl<no_result>([&](auto&& token, error_info* info) {
+            return conn.async_close(std::forward<decltype(token)>(token), info);
+        });
+    }
 };
 
 template <typename Stream>
@@ -540,6 +566,15 @@ public:
             return no_result();
         });
     }
+    network_result<no_result> close(
+        connection_type& conn
+    ) override
+    {
+        return impl(conn, [&](yield_context yield, error_info* info) {
+            conn.async_close(yield, info);
+            return no_result();
+        });
+    }
 };
 
 template <typename Stream>
@@ -670,6 +705,14 @@ public:
     {
         return impl_no_result([&] {
             return conn.async_quit(use_future);
+        });
+    }
+    network_result<no_result> close(
+        connection_type& conn
+    ) override
+    {
+        return impl_no_result([&] {
+            return conn.async_close(use_future);
         });
     }
 };

@@ -117,6 +117,7 @@ public:
     virtual network_result<std::vector<owning_row>> fetch_many(resultset_type&, std::size_t count) = 0;
     virtual network_result<std::vector<owning_row>> fetch_all(resultset_type&) = 0;
     virtual network_result<no_result> quit(connection_type&) = 0;
+    virtual network_result<no_result> close(connection_type&) = 0;
 };
 
 template <typename Stream>

@@ -172,6 +172,15 @@ public:
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, quit_signature)
     async_quit(CompletionToken&& token, error_info* info=nullptr);
+
+    void close(error_code&, error_info&);
+    void close();
+
+    using close_signature = void(error_code);
+
+    template <typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, close_signature)
+    async_close(CompletionToken&& token, error_info* info=nullptr);
 };
 
 /**

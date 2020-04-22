@@ -12,6 +12,7 @@
 #include "boost/mysql/detail/network_algorithms/execute_query.hpp"
 #include "boost/mysql/detail/network_algorithms/prepare_statement.hpp"
 #include "boost/mysql/detail/network_algorithms/quit_connection.hpp"
+#include "boost/mysql/detail/network_algorithms/close_connection.hpp"
 #include "boost/mysql/detail/auxiliar/check_completion_token.hpp"
 #include <boost/asio/buffer.hpp>
 
@@ -199,5 +200,43 @@ boost::mysql::connection<Stream>::async_quit(
     );
 }
 
+template <typename Stream>
+void boost::mysql::connection<Stream>::close(
+    error_code& err,
+    error_info& info
+)
+{
+    err.clear();
+    info.clear();
+    detail::close_connection(channel_, err, info);
+}
+
+template <typename Stream>
+void boost::mysql::connection<Stream>::close()
+{
+    error_code err;
+    error_info info;
+    detail::close_connection(channel_, err, info);
+    detail::check_error_code(err, info);
+}
+
+template <typename Stream>
+template <typename CompletionToken>
+BOOST_MYSQL_INITFN_RESULT_TYPE(
+    CompletionToken,
+    typename boost::mysql::connection<Stream>::close_signature
+)
+boost::mysql::connection<Stream>::async_close(
+    CompletionToken&& token,
+    error_info* info
+)
+{
+    detail::conditional_clear(info);
+    return detail::async_close_connection(
+        channel_,
+        std::forward<CompletionToken>(token),
+        info
+    );
+}
 
 #endif

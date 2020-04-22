@@ -1,9 +1,6 @@
 Sanitize
 	Test zero dates
 	Connection quit
-	   Serialization test for quit message
-	   Connection close
-	   Integ test for close
 	   Make integ tests do quit/close when possible
 	   Quit docs
 	   Close docs
