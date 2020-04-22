@@ -96,6 +96,12 @@ inline void conditional_assign(error_info* to, error_info&& from)
     }
 }
 
+inline void clear_errors(error_code& err, error_info& info) noexcept
+{
+    err.clear();
+    info.clear();
+}
+
 } // detail
 } // mysql
 } // boost

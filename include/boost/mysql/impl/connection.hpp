@@ -23,8 +23,7 @@ void boost::mysql::connection<Stream>::handshake(
     error_info& info
 )
 {
-    code.clear();
-    info.clear();
+    detail::clear_errors(code, info);
     detail::hanshake(channel_, params, code, info);
     // TODO: should we close() the stream in case of error?
 }
@@ -70,8 +69,7 @@ boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
     error_info& info
 )
 {
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
     resultset<Stream> res;
     detail::execute_query(channel_, query_string, res, err, info);
     return res;
@@ -120,8 +118,7 @@ boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepa
 )
 {
     mysql::prepared_statement<Stream> res;
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
     detail::prepare_statement(channel_, statement, err, info, res);
     return res;
 }
@@ -167,8 +164,7 @@ void boost::mysql::connection<Stream>::quit(
     error_info& info
 )
 {
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
     detail::quit_connection(channel_, err, info);
 }
 
@@ -193,6 +189,7 @@ boost::mysql::connection<Stream>::async_quit(
 )
 {
     detail::conditional_clear(info);
+    detail::check_completion_token<CompletionToken, quit_signature>();
     return detail::async_quit_connection(
         channel_,
         std::forward<CompletionToken>(token),
@@ -206,8 +203,7 @@ void boost::mysql::connection<Stream>::close(
     error_info& info
 )
 {
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
     detail::close_connection(channel_, err, info);
 }
 
@@ -232,6 +228,7 @@ boost::mysql::connection<Stream>::async_close(
 )
 {
     detail::conditional_clear(info);
+    detail::check_completion_token<CompletionToken, close_signature>();
     return detail::async_close_connection(
         channel_,
         std::forward<CompletionToken>(token),

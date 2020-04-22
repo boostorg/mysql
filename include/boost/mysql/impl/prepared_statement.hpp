@@ -45,8 +45,7 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
     assert(valid());
 
     mysql::resultset<Stream> res;
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
 
     // Verify we got passed the right number of params
     check_num_params(params_first, params_last, err, info);
@@ -136,8 +135,7 @@ void boost::mysql::prepared_statement<StreamType>::close(
 )
 {
     assert(valid());
-    code.clear();
-    info.clear();
+    detail::clear_errors(code, info);
     detail::close_statement(*channel_, id(), code, info);
 }
 

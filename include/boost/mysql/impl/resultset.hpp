@@ -23,8 +23,7 @@ const boost::mysql::row* boost::mysql::resultset<StreamType>::fetch_one(
 {
     assert(valid());
 
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
 
     if (complete())
     {
@@ -63,8 +62,7 @@ std::vector<boost::mysql::owning_row> boost::mysql::resultset<StreamType>::fetch
 {
     assert(valid());
 
-    err.clear();
-    info.clear();
+    detail::clear_errors(err, info);
 
     std::vector<mysql::owning_row> res;
 

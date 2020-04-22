@@ -181,7 +181,6 @@ void boost::mysql::detail::execute_generic(
 
     // No EOF packet is expected here, as we require deprecate EOF capabilities
     output = std::move(processor).create_resultset();
-    err.clear();
 }
 
 
