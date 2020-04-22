@@ -20,15 +20,17 @@ error_code close_channel(
     channel<Stream>& chan
 )
 {
-    error_code err0, err1;
-    chan.next_layer().shutdown(Stream::shutdown_both, err0);
-    chan.next_layer().close(err1);
-    return err0 ? err0 : err1;
+    error_code err;
+    chan.next_layer().shutdown(Stream::shutdown_both, err);
+    chan.next_layer().close(err);
+    return err;
 }
 
 } // detail
 } // mysql
 } // boost
+
+
 
 template <typename StreamType>
 void boost::mysql::detail::close_connection(
