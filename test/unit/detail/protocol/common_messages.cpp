@@ -178,5 +178,9 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
     }, "float_field")
 ), test_name_generator);
 
+INSTANTIATE_TEST_SUITE_P(QuitPacket, SerializeTest, testing::Values(
+    serialization_testcase(quit_packet(), {0x01}, "default")
+), test_name_generator);
+
 
 } // anon namespace
