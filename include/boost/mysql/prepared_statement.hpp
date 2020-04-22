@@ -111,7 +111,7 @@ public:
         return execute(std::begin(params), std::end(params));
     }
 
-    /// The handler signature for execute.
+    /// The handler signature for prepared_statement::async_execute.
     using execute_signature = void(error_code, resultset<Stream>);
 
     /**
@@ -173,7 +173,7 @@ public:
     /// Closes a prepared statement, deallocating it from the server (sync with exceptions version).
     void close();
 
-    /// The handler signature for close.
+    /// The handler signature for prepared_statement::async_close.
     using close_signature = void(error_code);
 
     /// Closes a prepared statement, deallocating it from the server (async version).

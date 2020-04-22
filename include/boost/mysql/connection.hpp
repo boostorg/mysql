@@ -101,7 +101,7 @@ public:
     /// Performs the MySQL-level handshake (synchronous with exceptions version).
     void handshake(const connection_params& params);
 
-    /// Handler signature for handshake.
+    /// Handler signature for connection::async_handshake.
     using handshake_signature = void(error_code);
 
     /**
@@ -132,7 +132,7 @@ public:
     /// Executes a SQL text query (sync with exceptions version).
     resultset<Stream> query(std::string_view query_string);
 
-    /// Handler signature for query.
+    /// Handler signature for connection::async_query.
     using query_signature = void(error_code, resultset<Stream>);
 
     /// Executes a SQL text query (async version).
@@ -156,7 +156,7 @@ public:
     /// Prepares a statement (sync with exceptions version).
     prepared_statement<Stream> prepare_statement(std::string_view statement);
 
-    /// Handler signature for prepare_statement.
+    /// Handler signature for connection::async_prepare_statement.
     using prepare_statement_signature = void(error_code, prepared_statement<Stream>);
 
     /// Prepares a statement (async version).
@@ -164,20 +164,60 @@ public:
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
     async_prepare_statement(std::string_view statement, CompletionToken&& token, error_info* info=nullptr);
 
+    /**
+     * \brief Notifies the MySQL server that we want to end the session and quit the connection
+     * (sync with error code version).
+     *
+     * \details Sends a quit request to the MySQL server. Both server and client should
+     * close the underlying physical connection after this. This operation involves a network
+     * transfer and thus can fail.
+     *
+     * \warning This operation is a low level one. It does not close the underlying
+     * physical connection after sending the quit request. Unless there is no other
+     * option, prefer connection::close instead.
+     */
     void quit(error_code&, error_info&);
+
+    /**
+     * \brief Notifies the MySQL server that we want to end the session and quit the connection
+     * (sync with exceptions version).
+     */
     void quit();
 
+    /// Handler signature for connection::async_quit.
     using quit_signature = void(error_code);
 
+    /**
+     * \brief Notifies the MySQL server that we want to end the session and quit the connection
+     * (async version).
+     */
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, quit_signature)
     async_quit(CompletionToken&& token, error_info* info=nullptr);
 
+    /**
+     * \brief Closes the connection (sync with error code version).
+     *
+     * \details Performs a full shutdown of the connection to the MySQL server.
+     * This implies sending a quit request and then closing the underlying
+     * physical connection. This operation is thus roughly equivalent to
+     * a connection::quit plus a close on the underlying socket. It should
+     * be preferred over connection::quit whenever possible.
+     *
+     * \warning This function is only available if Stream is a socket
+     * (a derived class on an instantiation of boost::asio::basic_socket).
+     * It is applyable in the most common cases (boost::mysql::tcp_connection and
+     * boost::mysql::unix_connection).
+     */
     void close(error_code&, error_info&);
+
+    /// Closes the connection (sync with exceptions version).
     void close();
 
+    /// Handler signature for connection::async_close.
     using close_signature = void(error_code);
 
+    /// Closes the connection (async version).
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, close_signature)
     async_close(CompletionToken&& token, error_info* info=nullptr);

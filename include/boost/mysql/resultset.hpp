@@ -134,7 +134,7 @@ public:
     /// Fetches all available rows (sync with exceptions version).
     std::vector<owning_row> fetch_all();
 
-    /// Handler signature for fetch_one.
+    /// Handler signature for resultset::async_fetch_one.
     using fetch_one_signature = void(error_code, const row*);
 
     /// Fetchs a single row (async version).
@@ -142,7 +142,7 @@ public:
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
     async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
 
-    /// Handler signature for fetch_many.
+    /// Handler signature for resultset::async_fetch_many.
     using fetch_many_signature = void(error_code, std::vector<owning_row>);
 
     /// Fetches at most count rows (async version).
@@ -150,7 +150,7 @@ public:
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
     async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
 
-    /// Handler signature for fetch_all.
+    /// Handler signature for resultset::async_fetch_all.
     using fetch_all_signature = void(error_code, std::vector<owning_row>);
 
     /// Fetches all available rows (async version).

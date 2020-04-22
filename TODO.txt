@@ -1,10 +1,9 @@
 Sanitize
 	Test zero dates
 	Connection quit
-	   Quit docs
-	   Close docs
 	   clear_errors() function to clear error_info and error_code at once
-       Make examples use close
+	   Base class for async stuff
+    Connection connect
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
