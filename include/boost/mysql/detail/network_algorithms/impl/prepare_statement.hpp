@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_PREPARE_STATEMENT_HPP
 
-#include <boost/asio/yield.hpp>
-
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -148,13 +146,13 @@ boost::mysql::detail::async_prepare_statement(
 
             // Regular coroutine body; if there has been an error, we don't get here
             error_info info;
-            reenter(*this)
+            BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Write message (already serialized at this point)
-                yield this->async_write(processor_.get_buffer());
+                BOOST_ASIO_CORO_YIELD this->async_write(processor_.get_buffer());
 
                 // Read response
-                yield this->async_read(processor_.get_buffer());
+                BOOST_ASIO_CORO_YIELD this->async_read(processor_.get_buffer());
 
                 // Process response
                 processor_.process_response(err, info);
@@ -162,7 +160,7 @@ boost::mysql::detail::async_prepare_statement(
                 {
                     detail::conditional_assign(this->get_output_info(), std::move(info));
                     this->complete(cont, err, stmt_type());
-                    yield break;
+                    BOOST_ASIO_CORO_YIELD break;
                 }
 
                 // Server sends now one packet per parameter and field.
@@ -170,7 +168,7 @@ boost::mysql::detail::async_prepare_statement(
                 remaining_meta_ = processor_.get_num_metadata_packets();
                 for (; remaining_meta_ > 0; --remaining_meta_)
                 {
-                    yield this->async_read(processor_.get_buffer());
+                    BOOST_ASIO_CORO_YIELD this->async_read(processor_.get_buffer());
                 }
 
                 // Compose response
@@ -185,7 +183,5 @@ boost::mysql::detail::async_prepare_statement(
 
     return op::initiate(std::forward<CompletionToken>(token), chan, info, statement);
 }
-
-#include <boost/asio/unyield.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_PREPARE_STATEMENT_HPP_ */

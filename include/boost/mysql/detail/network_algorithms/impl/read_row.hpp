@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_ROW_HPP
 
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
-#include <boost/asio/yield.hpp>
 
 namespace boost {
 namespace mysql {
@@ -102,7 +101,8 @@ boost::mysql::detail::async_read_row(
     bytestring& buffer,
     std::vector<value>& output_values,
     ok_packet& output_ok_packet,
-    CompletionToken&& token
+    CompletionToken&& token,
+    error_info* output_info
 )
 {
     struct op : async_op<StreamType, CompletionToken, read_row_signature, op>
@@ -143,15 +143,15 @@ boost::mysql::detail::async_read_row(
             // Error checking
             if (err)
             {
-                this->complete(cont, err, info, result);
+                this->complete(cont, err, result);
                 return;
             }
 
             // Normal path
-            reenter(*this)
+            BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Read the message
-                yield this->async_read(buffer_);
+                BOOST_ASIO_CORO_YIELD this->async_read(buffer_);
 
                 // Process it
                 result = process_read_message(
@@ -164,7 +164,8 @@ boost::mysql::detail::async_read_row(
                     err,
                     info
                 );
-                this->complete(cont, err, std::move(info), result);
+                detail::conditional_assign(this->get_output_info(), std::move(info));
+                this->complete(cont, err, result);
             }
         }
     };
@@ -172,7 +173,7 @@ boost::mysql::detail::async_read_row(
     return op::initiate(
         std::forward<CompletionToken>(token),
         chan,
-        nullptr, // no output error_info*
+        output_info,
         deserializer,
         meta,
         buffer,
@@ -180,7 +181,5 @@ boost::mysql::detail::async_read_row(
         output_ok_packet
     );
 }
-
-#include <boost/asio/unyield.hpp>
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_IPP_ */

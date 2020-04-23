@@ -3,8 +3,6 @@ Sanitize
     Connection connect
         Close/quit to channel
         Integration test for network errors (e.g. host unreachable)
-    Change read_row_result async signature to use error_info*
-    Replace yields by asio macros
 Better docs
     Wandbox
 	Breaking up the tutorial in pieces

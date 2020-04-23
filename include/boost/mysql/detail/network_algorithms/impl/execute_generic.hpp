@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_GENERIC_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_GENERIC_HPP
 
-#include <boost/asio/yield.hpp>
 #include <limits>
 
 namespace boost {
@@ -232,13 +231,13 @@ boost::mysql::detail::async_execute_generic(
 
             // Non-error path
             error_info info;
-            reenter(*this)
+            BOOST_ASIO_CORO_REENTER(*this)
             {
                 // The request message has already been composed in the ctor. Send it
-                yield this->async_write(processor_->get_buffer());
+                BOOST_ASIO_CORO_YIELD this->async_write(processor_->get_buffer());
 
                 // Read the response
-                yield this->async_read(processor_->get_buffer());
+                BOOST_ASIO_CORO_YIELD this->async_read(processor_->get_buffer());
 
                 // Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
                 processor_->process_response(err, info);
@@ -246,7 +245,7 @@ boost::mysql::detail::async_execute_generic(
                 {
                     conditional_assign(this->get_output_info(), std::move(info));
                     this->complete(cont, err, resultset_type());
-                    yield break;
+                    BOOST_ASIO_CORO_YIELD break;
                 }
                 remaining_fields_ = processor_->field_count();
 
@@ -254,14 +253,14 @@ boost::mysql::detail::async_execute_generic(
                 while (remaining_fields_ > 0)
                 {
                     // Read the field definition packet
-                    yield this->async_read(processor_->get_buffer());
+                    BOOST_ASIO_CORO_YIELD this->async_read(processor_->get_buffer());
 
                     // Process the message
                     err = processor_->process_field_definition();
                     if (err)
                     {
                         this->complete(cont, err, resultset_type());
-                        yield break;
+                        BOOST_ASIO_CORO_YIELD break;
                     }
 
                     remaining_fields_--;
@@ -281,6 +280,5 @@ boost::mysql::detail::async_execute_generic(
             chan, info, deserializer, request);
 }
 
-#include <boost/asio/unyield.hpp>
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_IPP_ */

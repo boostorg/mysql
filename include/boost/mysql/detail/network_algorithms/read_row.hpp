@@ -36,7 +36,7 @@ read_row_result read_row(
     error_info& info
 );
 
-using read_row_signature = void(error_code, error_info, read_row_result);
+using read_row_signature = void(error_code, read_row_result);
 
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, read_row_signature)
@@ -47,7 +47,8 @@ async_read_row(
     bytestring& buffer,
     std::vector<value>& output_values,
     ok_packet& output_ok_packet,
-    CompletionToken&& token
+    CompletionToken&& token,
+    error_info* output_info
 );
 
 

@@ -14,7 +14,6 @@
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/detail/auxiliar/valgrind.hpp"
-#include <boost/asio/yield.hpp>
 
 namespace boost {
 namespace mysql {
@@ -270,11 +269,11 @@ boost::mysql::detail::channel<Stream>::async_read(
             // Non-error path
             std::uint32_t size_to_read = 0;
             channel<Stream>& chan = this->get_channel();
-            reenter(*this)
+            BOOST_ASIO_CORO_REENTER(*this)
             {
                 do
                 {
-                    yield chan.async_read_impl(
+                    BOOST_ASIO_CORO_YIELD chan.async_read_impl(
                         boost::asio::buffer(chan.header_buffer_),
                         std::move(*this)
                     );
@@ -284,12 +283,12 @@ boost::mysql::detail::channel<Stream>::async_read(
                     if (code)
                     {
                         this->complete(cont, code);
-                        yield break;
+                        BOOST_ASIO_CORO_YIELD break;
                     }
 
                     buffer_.resize(buffer_.size() + size_to_read);
 
-                    yield chan.async_read_impl(
+                    BOOST_ASIO_CORO_YIELD chan.async_read_impl(
                         boost::asio::buffer(buffer_.data() + total_transferred_size_, size_to_read),
                         std::move(*this)
                     );
@@ -352,7 +351,7 @@ boost::mysql::detail::channel<Stream>::async_write(
             // Non-error path
             std::uint32_t size_to_write;
             channel<Stream>& chan = this->get_channel();
-            reenter(*this)
+            BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Force write the packet header on an empty packet, at least.
                 do
@@ -360,7 +359,7 @@ boost::mysql::detail::channel<Stream>::async_write(
                     size_to_write = compute_size_to_write(buffer_.size(), total_transferred_size_);
                     chan.process_header_write(size_to_write);
 
-                    yield chan.async_write_impl(
+                    BOOST_ASIO_CORO_YIELD chan.async_write_impl(
                         std::array<boost::asio::const_buffer, 2> {
                             boost::asio::buffer(chan.header_buffer_),
                             boost::asio::buffer(buffer_ + total_transferred_size_, size_to_write)
@@ -406,9 +405,6 @@ boost::mysql::detail::channel<Stream>::async_ssl_handshake(
         std::forward<CompletionToken>(token)
     );
 }
-
-
-#include <boost/asio/unyield.hpp>
 
 
 #endif

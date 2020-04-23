@@ -54,7 +54,5 @@ boost::mysql::detail::async_execute_query(
     );
 }
 
-#include <boost/asio/unyield.hpp>
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP_ */

@@ -9,7 +9,6 @@
 #define INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_CONNECTION_HPP_
 
 #include "boost/mysql/detail/network_algorithms/quit_connection.hpp"
-#include <boost/asio/yield.hpp>
 
 namespace boost {
 namespace mysql {
@@ -69,17 +68,17 @@ boost::mysql::detail::async_close_connection(
         )
         {
             error_code close_err;
-            reenter(*this)
+            BOOST_ASIO_CORO_REENTER(*this)
             {
                 if (!this->get_channel().next_layer().is_open())
                 {
                     this->complete(cont, error_code());
-                    yield break;
+                    BOOST_ASIO_CORO_YIELD break;
                 }
 
                 // We call close regardless of the quit outcome
                 // There are no async versions of shutdown or close
-                yield async_quit_connection(
+                BOOST_ASIO_CORO_YIELD async_quit_connection(
                     this->get_channel(),
                     std::move(*this),
                     this->get_output_info()
@@ -92,8 +91,6 @@ boost::mysql::detail::async_close_connection(
 
     return op::initiate(std::forward<CompletionToken>(token), chan, info);
 }
-
-#include <boost/asio/unyield.hpp>
 
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_CONNECTION_HPP_ */
