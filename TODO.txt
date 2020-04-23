@@ -1,14 +1,12 @@
 Sanitize
 	Test zero dates
-	Connection quit
-	   Base class for async stuff: make it usable for channel
     Connection connect
         Close/quit to channel
         Integration test for network errors (e.g. host unreachable)
     Class with an error info, error code and a check method
     Change read_row_result async signature to use error_info*
-    Attempt to remove shared_ptr's from ops
     Replace yields by asio macros
+    Simplify channel
 Better docs
     Wandbox
 	Breaking up the tutorial in pieces
