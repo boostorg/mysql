@@ -165,9 +165,8 @@ auto boost::mysql::detail::channel<Stream>::async_write_impl(
 }
 
 template <typename Stream>
-template <typename Allocator>
 void boost::mysql::detail::channel<Stream>::read(
-    basic_bytestring<Allocator>& buffer,
+    bytestring& buffer,
     error_code& code
 )
 {
@@ -229,26 +228,26 @@ void boost::mysql::detail::channel<Stream>::write(
 
 
 template <typename Stream>
-template <typename Allocator, typename CompletionToken>
+template <typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
     CompletionToken,
     typename boost::mysql::detail::channel<Stream>::read_signature
 )
 boost::mysql::detail::channel<Stream>::async_read(
-    basic_bytestring<Allocator>& buffer,
+    bytestring& buffer,
     CompletionToken&& token
 )
 {
     struct op : async_op<Stream, CompletionToken, read_signature, op>
     {
-        basic_bytestring<Allocator>& buffer_;
+        bytestring& buffer_;
         std::size_t total_transferred_size_ = 0;
 
         op(
             boost::asio::async_completion<CompletionToken, read_signature>& completion,
             channel<Stream>& chan,
             error_info* output_info,
-            basic_bytestring<Allocator>& buffer
+            bytestring& buffer
         ) :
             async_op<Stream, CompletionToken, read_signature, op>(completion, chan, output_info),
             buffer_(buffer)

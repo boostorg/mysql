@@ -6,7 +6,6 @@ Sanitize
     Class with an error info, error code and a check method
     Change read_row_result async signature to use error_info*
     Replace yields by asio macros
-    Simplify channel
 Better docs
     Wandbox
 	Breaking up the tutorial in pieces

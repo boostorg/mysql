@@ -69,14 +69,13 @@ public:
     channel(Stream& stream): stream_(stream) {}
 
     // Reading
-    template <typename Allocator>
-    void read(basic_bytestring<Allocator>& buffer, error_code& code);
+    void read(bytestring& buffer, error_code& code);
 
     using read_signature = void(error_code);
 
-    template <typename Allocator, typename CompletionToken>
+    template <typename CompletionToken>
     BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, read_signature)
-    async_read(basic_bytestring<Allocator>& buffer, CompletionToken&& token);
+    async_read(bytestring& buffer, CompletionToken&& token);
 
     // Writing
     void write(boost::asio::const_buffer buffer, error_code& code);
