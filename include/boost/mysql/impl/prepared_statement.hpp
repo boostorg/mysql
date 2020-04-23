@@ -72,10 +72,9 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
     ForwardIterator params_last
 ) const
 {
-    error_code err;
-    error_info info;
-    auto res = execute(params_first, params_last, err, info);
-    detail::check_error_code(err, info);
+    detail::error_block blk;
+    auto res = execute(params_first, params_last, blk.err, blk.info);
+    blk.check();
     return res;
 }
 
@@ -143,10 +142,9 @@ template <typename StreamType>
 void boost::mysql::prepared_statement<StreamType>::close()
 {
     assert(valid());
-    error_code code;
-    error_info info;
-    detail::close_statement(*channel_, id(), code, info);
-    detail::check_error_code(code, info);
+    detail::error_block blk;
+    detail::close_statement(*channel_, id(), blk.err, blk.info);
+    blk.check();
 }
 
 template <typename StreamType>

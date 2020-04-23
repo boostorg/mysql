@@ -3,7 +3,6 @@ Sanitize
     Connection connect
         Close/quit to channel
         Integration test for network errors (e.g. host unreachable)
-    Class with an error info, error code and a check method
     Change read_row_result async signature to use error_info*
     Replace yields by asio macros
 Better docs

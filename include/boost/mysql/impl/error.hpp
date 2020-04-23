@@ -102,6 +102,15 @@ inline void clear_errors(error_code& err, error_info& info) noexcept
     info.clear();
 }
 
+// Helper to implement sync with exceptions functions
+struct error_block
+{
+    error_code err;
+    error_info info;
+
+    void check() { detail::check_error_code(err, info); }
+};
+
 } // detail
 } // mysql
 } // boost

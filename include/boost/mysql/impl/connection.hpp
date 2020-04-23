@@ -33,10 +33,9 @@ void boost::mysql::connection<Stream>::handshake(
     const connection_params& params
 )
 {
-    error_code code;
-    error_info info;
-    handshake(params, code, info);
-    detail::check_error_code(code, info);
+    detail::error_block blk;
+    handshake(params, blk.err, blk.info);
+    blk.check();
 }
 
 template <typename Stream>
@@ -81,10 +80,9 @@ boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
 )
 {
     resultset<Stream> res;
-    error_code err;
-    error_info info;
-    detail::execute_query(channel_, query_string, res, err, info);
-    detail::check_error_code(err, info);
+    detail::error_block blk;
+    detail::execute_query(channel_, query_string, res, blk.err, blk.info);
+    blk.check();
     return res;
 }
 
@@ -129,10 +127,9 @@ boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepa
 )
 {
     mysql::prepared_statement<Stream> res;
-    error_code err;
-    error_info info;
-    detail::prepare_statement(channel_, statement, err, info, res);
-    detail::check_error_code(err, info);
+    detail::error_block blk;
+    detail::prepare_statement(channel_, statement, blk.err, blk.info, res);
+    blk.check();
     return res;
 }
 
@@ -171,10 +168,9 @@ void boost::mysql::connection<Stream>::quit(
 template <typename Stream>
 void boost::mysql::connection<Stream>::quit()
 {
-    error_code err;
-    error_info info;
-    detail::quit_connection(channel_, err, info);
-    detail::check_error_code(err, info);
+    detail::error_block blk;
+    detail::quit_connection(channel_, blk.err, blk.info);
+    blk.check();
 }
 
 template <typename Stream>
@@ -210,10 +206,9 @@ void boost::mysql::connection<Stream>::close(
 template <typename Stream>
 void boost::mysql::connection<Stream>::close()
 {
-    error_code err;
-    error_info info;
-    detail::close_connection(channel_, err, info);
-    detail::check_error_code(err, info);
+    detail::error_block blk;
+    detail::close_connection(channel_, blk.err, blk.info);
+    blk.check();
 }
 
 template <typename Stream>
