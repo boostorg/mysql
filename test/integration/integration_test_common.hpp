@@ -39,15 +39,19 @@ struct IntegTest : testing::Test
 {
     using stream_type = Stream;
 
-    mysql::connection_params connection_params {
-        "integ_user",
-        "integ_password",
-        "boost_mysql_integtests"
-    };
+    mysql::connection_params connection_params;
     boost::asio::io_context ctx;
-    mysql::socket_connection<Stream> conn {ctx};
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard { ctx.get_executor() };
-    std::thread runner {[this]{ ctx.run(); } };
+    mysql::socket_connection<Stream> conn;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard;
+    std::thread runner;
+
+    IntegTest() :
+        connection_params("integ_user", "integ_password", "boost_mysql_integtests"),
+        conn(ctx),
+        guard(ctx.get_executor()),
+        runner([this] { ctx.run(); })
+    {
+    }
 
     ~IntegTest()
     {
