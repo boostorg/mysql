@@ -262,7 +262,7 @@ struct MiscSslSensitiveHandshakeTest : SslSensitiveHandshakeTest<Stream>
         this->set_ssl(ssl_mode::require);
         this->set_credentials("non_existing_user", "bad_password");
         auto result = this->do_handshake();
-        EXPECT_NE(result.err, error_code()); // may be access denied or unknown auth plugin
+        result.validate_any_error(); // may be access denied or unknown auth plugin
     }
 
     void SslEnable_SuccessfulLogin()

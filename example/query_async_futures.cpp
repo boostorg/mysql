@@ -103,16 +103,13 @@ void main_impl(int argc, char** argv)
     );
 
 
-    // TCP connect
-    std::future<void> fut = conn.next_layer().async_connect(ep, use_future);
-    fut.get();
-
     /**
-     * Perform the MySQL handshake. Calling async_handshake triggers the
+     * Perform the TCP connect and MySQL handshake.
+     * Calling async_connect triggers the
      * operation, and calling future::get() blocks the current thread until
      * it completes. get() will throw an exception if the operation fails.
      */
-    fut = conn.async_handshake(params, use_future);
+    std::future<void> fut = conn.async_connect(ep, params, use_future);
     fut.get();
 
     // Issue the query to the server

@@ -1,8 +1,12 @@
 Sanitize
 	Test zero dates
     Connection connect
-        Close/quit to channel
-        Integration test for network errors (e.g. host unreachable)
+        Rework how handshake/connect is done in integ tests
+        Connect docs
+        Use connect in examples
+        Redo include guards and headers
+        Make derived class socket_connection?
+    Invalid propagation of an executor
 Better docs
     Wandbox
 	Breaking up the tutorial in pieces

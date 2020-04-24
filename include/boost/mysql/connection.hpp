@@ -113,6 +113,20 @@ public:
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
     async_handshake(const connection_params& params, CompletionToken&& token, error_info* info = nullptr);
 
+    template <typename EndpointType>
+    void connect(const EndpointType& endpoint, const connection_params& params,
+            error_code& ec, error_info& info);
+
+    template <typename EndpointType>
+    void connect(const EndpointType& endpoint, const connection_params& params);
+
+    using connect_signature = void(error_code);
+
+    template <typename EndpointType, typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
+    async_connect(const EndpointType& endpoint, const connection_params& params,
+            CompletionToken&& token, error_info* output_info=nullptr);
+
     /**
      * \brief Executes a SQL text query (sync with error code version).
      * \details Does not perform the actual retrieval of the data; use the various

@@ -19,24 +19,11 @@
 #include "test_common.hpp"
 #include "metadata_validator.hpp"
 #include "network_functions.hpp"
+#include "get_endpoint.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
-
-inline void physical_connect(tcp_connection& conn)
-{
-    boost::asio::ip::tcp::endpoint endpoint (boost::asio::ip::address_v4::loopback(), 3306);
-    conn.next_layer().connect(endpoint);
-}
-
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-inline void physical_connect(unix_connection& conn)
-{
-    boost::asio::local::stream_protocol::endpoint endpoint ("/var/run/mysqld/mysqld.sock");
-    conn.next_layer().connect(endpoint);
-}
-#endif
 
 /**
  * The base of all integration tests. The fixture constructor creates
@@ -66,7 +53,7 @@ struct IntegTest : testing::Test
     {
         try
         {
-            physical_connect(conn);
+            conn.next_layer().connect(get_endpoint<Stream>(endpoint_kind::localhost));
         }
         catch (...) // prevent terminate without an active exception on connect error
         {

@@ -12,6 +12,7 @@
 #include <future>
 
 using namespace boost::mysql::test;
+using boost::mysql::connection_params;
 using boost::mysql::error_info;
 using boost::mysql::error_code;
 using boost::mysql::detail::make_error_code;
@@ -52,9 +53,20 @@ public:
     using resultset_type = typename network_functions<Stream>::resultset_type;
 
     const char* name() const override { return "sync_errc"; }
+    network_result<no_result> connect(
+        connection_type& conn,
+        const typename Stream::endpoint_type& ep,
+        const connection_params& params
+    ) override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            conn.connect(ep, params, code, info);
+            return no_result();
+        });
+    }
     network_result<no_result> handshake(
         connection_type& conn,
-        const boost::mysql::connection_params& params
+        const connection_params& params
     ) override
     {
         return impl([&](error_code& code, error_info& info) {
@@ -177,9 +189,20 @@ public:
     using resultset_type = typename network_functions<Stream>::resultset_type;
 
     const char* name() const override { return "sync_exc"; }
+    network_result<no_result> connect(
+        connection_type& conn,
+        const typename Stream::endpoint_type& ep,
+        const connection_params& params
+    ) override
+    {
+        return impl([&] {
+            conn.connect(ep, params);
+            return no_result();
+        });
+    }
     network_result<no_result> handshake(
         connection_type& conn,
-        const boost::mysql::connection_params& params
+        const connection_params& params
     ) override
     {
         return impl([&] {
@@ -338,9 +361,19 @@ public:
     {
         return use_errinfo_ ? "async_callback_errinfo" : "async_callback_noerrinfo";
     }
+    network_result<no_result> connect(
+        connection_type& conn,
+        const typename Stream::endpoint_type& ep,
+        const connection_params& params
+    ) override
+    {
+        return impl<no_result>([&](auto&& token, error_info* info) {
+            return conn.async_connect(ep, params, std::forward<decltype(token)>(token), info);
+        });
+    }
     network_result<no_result> handshake(
         connection_type& conn,
-        const boost::mysql::connection_params& params
+        const connection_params& params
     ) override
     {
         return impl<no_result>([&](auto&& token, error_info* info) {
@@ -476,9 +509,20 @@ public:
     {
         return use_errinfo_ ? "async_coroutine_errinfo" : "async_coroutine_noerrinfo";
     }
+    network_result<no_result> connect(
+        connection_type& conn,
+        const typename Stream::endpoint_type& ep,
+        const connection_params& params
+    ) override
+    {
+        return impl(conn, [&](yield_context yield, error_info* info) {
+            conn.async_connect(ep, params, yield, info);
+            return no_result();
+        });
+    }
     network_result<no_result> handshake(
         connection_type& conn,
-        const boost::mysql::connection_params& params
+        const connection_params& params
     ) override
     {
         return impl(conn, [&](yield_context yield, error_info* info) {
@@ -620,9 +664,19 @@ public:
     using resultset_type = typename network_functions<Stream>::resultset_type;
 
     const char* name() const override { return "async_future_noerrinfo"; }
+    network_result<no_result> connect(
+        connection_type& conn,
+        const typename Stream::endpoint_type& ep,
+        const connection_params& params
+    ) override
+    {
+        return impl_no_result([&] {
+            return conn.async_connect(ep, params, use_future);
+        });
+    }
     network_result<no_result> handshake(
         connection_type& conn,
-        const boost::mysql::connection_params& params
+        const connection_params& params
     ) override
     {
         return impl_no_result([&] {

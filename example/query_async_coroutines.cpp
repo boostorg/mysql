@@ -108,13 +108,9 @@ void main_impl(int argc, char** argv)
         boost::mysql::error_code ec;
         boost::mysql::error_info additional_info;
 
-        // TCP connect
-        conn.next_layer().async_connect(ep, yield[ec]);
+        // Connect to server
+        conn.async_connect(ep, params, yield[ec]);
         check_error(ec);
-
-        // MySQL handshake
-        conn.async_handshake(params, yield[ec], &additional_info);
-        check_error(ec, additional_info);
 
         // Issue the query to the server
         const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";

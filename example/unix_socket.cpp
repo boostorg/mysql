@@ -70,8 +70,7 @@ void main_impl(int argc, char** argv)
 
     // Connection to the MySQL server, over a UNIX socket
     boost::mysql::unix_connection conn (ctx);
-    conn.next_layer().connect(ep); // next_level() returns a boost::asio::local::stream_protocol::socket
-    conn.handshake(params); // Authenticates to the MySQL server
+    conn.connect(ep, params); // UNIX socket connect and MySQL handshake
 
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
     boost::mysql::unix_resultset result = conn.query(sql);

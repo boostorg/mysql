@@ -26,7 +26,7 @@ struct QuitConnectionTest : public NetworkTest<Stream>
 
         // We are no longer able to query
         auto query_result = net->query(this->conn, "SELECT 1");
-        EXPECT_NE(query_result.err, error_code());
+        query_result.validate_any_error();
     }
 };
 

@@ -73,10 +73,10 @@ void main_impl(int argc, char** argv)
      * Before being able to use it, you have to connect to the server by:
      *    - Establishing the TCP-level session.
      *    - Authenticating to the MySQL server.
+     * connection::connect takes care of both.
      */
     boost::mysql::tcp_connection conn (ctx);
-    conn.next_layer().connect(ep); // next_level() returns a boost::asio::ip::tcp::socket
-    conn.handshake(params); // Authenticates to the MySQL server
+    conn.connect(ep, params);
 
     /**
      * To issue a SQL query to the database server, use tcp_connection::query, which takes

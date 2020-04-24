@@ -97,6 +97,9 @@ public:
     BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, ssl_handshake_signature)
     async_ssl_handshake(CompletionToken&& token);
 
+    // Closing (only available for sockets)
+    error_code close();
+
     // Sequence numbers
     void reset_sequence_number(std::uint8_t value = 0) { sequence_number_ = value; }
     std::uint8_t sequence_number() const { return sequence_number_; }

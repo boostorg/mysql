@@ -45,8 +45,7 @@ void main_impl(int argc, char** argv)
 
     // Declare the connection object and authenticate to the server
     boost::mysql::tcp_connection conn (ctx);
-    conn.next_layer().connect(ep); // next_level() returns a boost::asio::ip::tcp::socket
-    conn.handshake(params); // Authenticates to the MySQL server
+    conn.connect(ep, params);
 
     /**
      * We can tell MySQL to prepare a statement using connection::prepare_statement.

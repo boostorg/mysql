@@ -10,27 +10,6 @@
 
 #include "boost/mysql/detail/network_algorithms/quit_connection.hpp"
 
-namespace boost {
-namespace mysql {
-namespace detail {
-
-template <typename Stream>
-error_code close_channel(
-    channel<Stream>& chan
-)
-{
-    error_code err;
-    chan.next_layer().shutdown(Stream::shutdown_both, err);
-    chan.next_layer().close(err);
-    return err;
-}
-
-} // detail
-} // mysql
-} // boost
-
-
-
 template <typename StreamType>
 void boost::mysql::detail::close_connection(
     channel<StreamType>& chan,
@@ -42,7 +21,7 @@ void boost::mysql::detail::close_connection(
     if (chan.next_layer().is_open())
     {
         quit_connection(chan, code, info);
-        auto err = close_channel(chan);
+        auto err = chan.close();
         if (!code) code = err;
     }
 }
@@ -83,7 +62,7 @@ boost::mysql::detail::async_close_connection(
                     std::move(*this),
                     this->get_output_info()
                 );
-                close_err = close_channel(this->get_channel());
+                close_err = this->get_channel().close();
                 this->complete(cont, err ? err : close_err);
             }
         }

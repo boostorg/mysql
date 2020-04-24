@@ -37,8 +37,7 @@ void main_impl(int argc, char** argv)
     // TCP and MySQL level connect
     boost::asio::io_context ctx;
     boost::mysql::tcp_connection conn (ctx);
-    conn.next_layer().connect(ep);
-    conn.handshake(params);
+    conn.connect(ep, params);
 
     // Issue the query
     const char* sql = R"(

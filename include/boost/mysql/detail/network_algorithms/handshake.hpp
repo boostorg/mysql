@@ -20,7 +20,7 @@ namespace mysql {
 namespace detail {
 
 template <typename StreamType>
-void hanshake(
+void handshake(
     channel<StreamType>& channel,
     const connection_params& params,
     error_code& err,

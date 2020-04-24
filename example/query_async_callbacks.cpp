@@ -87,13 +87,10 @@ public:
 
     void connect()
     {
-        connection.next_layer().async_connect(ep, [this](error_code err) {
-            die_on_error(err);
-            connection.async_handshake(conn_params, [this](error_code err) {
-                die_on_error(err, additional_info);
-                query_employees();
-            }, &additional_info);
-        });
+        connection.async_connect(ep, conn_params, [this](error_code err) {
+            die_on_error(err, additional_info);
+            query_employees();
+        }, &additional_info);
     }
 
     void query_employees()

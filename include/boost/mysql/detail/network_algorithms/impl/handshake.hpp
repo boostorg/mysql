@@ -236,7 +236,7 @@ public:
 } // boost
 
 template <typename StreamType>
-void boost::mysql::detail::hanshake(
+void boost::mysql::detail::handshake(
     channel<StreamType>& channel,
     const connection_params& params,
     error_code& err,

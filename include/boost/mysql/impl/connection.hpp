@@ -13,6 +13,7 @@
 #include "boost/mysql/detail/network_algorithms/prepare_statement.hpp"
 #include "boost/mysql/detail/network_algorithms/quit_connection.hpp"
 #include "boost/mysql/detail/network_algorithms/close_connection.hpp"
+#include "boost/mysql/detail/network_algorithms/connect.hpp"
 #include "boost/mysql/detail/auxiliar/check_completion_token.hpp"
 #include <boost/asio/buffer.hpp>
 
@@ -24,7 +25,7 @@ void boost::mysql::connection<Stream>::handshake(
 )
 {
     detail::clear_errors(code, info);
-    detail::hanshake(channel_, params, code, info);
+    detail::handshake(channel_, params, code, info);
     // TODO: should we close() the stream in case of error?
 }
 
@@ -58,6 +59,50 @@ boost::mysql::connection<Stream>::async_handshake(
         std::forward<CompletionToken>(token),
         info
     );
+}
+
+// connect
+template <typename Stream>
+template <typename EndpointType>
+void boost::mysql::connection<Stream>::connect(
+    const EndpointType& endpoint,
+    const connection_params& params,
+    error_code& ec,
+    error_info& info
+)
+{
+    detail::clear_errors(ec, info);
+    detail::connect(channel_, endpoint, params, ec, info);
+}
+
+template <typename Stream>
+template <typename EndpointType>
+void boost::mysql::connection<Stream>::connect(
+    const EndpointType& endpoint,
+    const connection_params& params
+)
+{
+    detail::error_block blk;
+    detail::connect(channel_, endpoint, params, blk.err, blk.info);
+    blk.check();
+}
+
+template <typename Stream>
+template <typename EndpointType, typename CompletionToken>
+BOOST_MYSQL_INITFN_RESULT_TYPE(
+    CompletionToken,
+    typename boost::mysql::connection<Stream>::connect_signature
+)
+boost::mysql::connection<Stream>::async_connect(
+    const EndpointType& endpoint,
+    const connection_params& params,
+    CompletionToken&& token,
+    error_info* output_info
+)
+{
+    detail::conditional_clear(output_info);
+    detail::check_completion_token<CompletionToken, connect_signature>();
+    return detail::async_connect(channel_, endpoint, params, std::forward<CompletionToken>(token), output_info);
 }
 
 // Query

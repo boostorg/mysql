@@ -64,10 +64,24 @@ struct network_result
 
     void validate_no_error() const
     {
-        ASSERT_EQ(err, error_code());
+        ASSERT_EQ(err, error_code()) << "with error_info= " <<
+                (info ? info->message().c_str() : "<unavailable>");
         if (info)
         {
             EXPECT_EQ(*info, error_info());
+        }
+    }
+
+    // Use when you don't care or can't determine the kind of error
+    void validate_any_error(
+        const std::vector<std::string>& expected_msg={}
+    ) const
+    {
+        ASSERT_NE(err, error_code()) << "with error_info= " <<
+                (info ? info->message().c_str() : "<unavailable>");
+        if (info)
+        {
+            validate_string_contains(info->message(), expected_msg);
         }
     }
 
@@ -104,6 +118,8 @@ public:
 
     virtual ~network_functions() = default;
     virtual const char* name() const = 0;
+    virtual network_result<no_result> connect(connection_type&, const typename Stream::endpoint_type&,
+            const connection_params&) = 0;
     virtual network_result<no_result> handshake(connection_type&, const connection_params&) = 0;
     virtual network_result<resultset_type> query(connection_type&, std::string_view query) = 0;
     virtual network_result<prepared_statement_type> prepare_statement(

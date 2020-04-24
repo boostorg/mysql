@@ -406,5 +406,14 @@ boost::mysql::detail::channel<Stream>::async_ssl_handshake(
     );
 }
 
+template <typename Stream>
+boost::mysql::error_code boost::mysql::detail::channel<Stream>::close()
+{
+    error_code err;
+    stream_.shutdown(Stream::shutdown_both, err);
+    stream_.close(err);
+    return err;
+}
+
 
 #endif
