@@ -49,20 +49,6 @@ struct IntegTest : testing::Test
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard { ctx.get_executor() };
     std::thread runner {[this]{ ctx.run(); } };
 
-    IntegTest()
-    {
-        try
-        {
-            conn.next_layer().connect(get_endpoint<Stream>(endpoint_kind::localhost));
-        }
-        catch (...) // prevent terminate without an active exception on connect error
-        {
-            guard.reset();
-            runner.join();
-            throw;
-        }
-    }
-
     ~IntegTest()
     {
         error_code code;
@@ -78,11 +64,22 @@ struct IntegTest : testing::Test
         connection_params.set_password(password);
     }
 
+    void physical_connect()
+    {
+        conn.next_layer().connect(get_endpoint<Stream>(endpoint_kind::localhost));
+    }
+
     void handshake(ssl_mode m = ssl_mode::require)
     {
         connection_params.set_ssl(ssl_options(m));
         conn.handshake(connection_params);
         validate_ssl(m);
+    }
+
+    void connect(ssl_mode m)
+    {
+        physical_connect();
+        handshake(m);
     }
 
     static bool should_use_ssl(ssl_mode m)
@@ -210,17 +207,17 @@ struct network_testcase_with_ssl
  */
 template <
     typename Stream,
-    typename Param=network_testcase_with_ssl<Stream>,
-    bool do_handshake=true
+    bool do_connect=true,
+    typename Param=network_testcase_with_ssl<Stream>
 >
 struct NetworkTest : public IntegTest<Stream>,
                      public testing::WithParamInterface<Param>
 {
     NetworkTest()
     {
-        if constexpr (do_handshake)
+        if constexpr (do_connect)
         {
-            this->handshake(this->GetParam().ssl);
+            this->connect(this->GetParam().ssl);
         }
     }
 };

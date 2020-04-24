@@ -57,11 +57,11 @@ std::ostream& operator<<(std::ostream& os, const database_types_testcase& v)
 
 // Note: NetworkTest with do_handshake=true requires GetParam() to have an ssl data member
 struct DatabaseTypesTest :
-    NetworkTest<boost::asio::ip::tcp::socket, database_types_testcase, false>
+    NetworkTest<boost::asio::ip::tcp::socket, false, database_types_testcase>
 {
     DatabaseTypesTest()
     {
-        handshake(boost::mysql::ssl_mode::disable);
+        connect(boost::mysql::ssl_mode::disable);
     }
 };
 

@@ -15,11 +15,14 @@ namespace
 {
 
 template <typename Stream>
-struct CloseConnectionTest : public NetworkTest<Stream>
+struct CloseConnectionTest : public NetworkTest<Stream, false>
 {
+    network_functions<Stream>* net = NetworkTest<Stream>::GetParam().net;
+
     void ActiveConnection_ClosesIt()
     {
-        network_functions<Stream>* net = this->GetParam().net;
+        // Connect
+        this->connect(this->GetParam().ssl);
 
         // Close
         auto result = net->close(this->conn);
@@ -35,7 +38,8 @@ struct CloseConnectionTest : public NetworkTest<Stream>
 
     void DoubleClose_Ok()
     {
-        network_functions<Stream>* net = this->GetParam().net;
+        // Connect
+        this->connect(this->GetParam().ssl);
 
         // Close
         auto result = net->close(this->conn);
@@ -54,13 +58,7 @@ struct CloseConnectionTest : public NetworkTest<Stream>
 
     void CloseNotOpenedConnection_Ok()
     {
-        network_functions<Stream>* net = this->GetParam().net;
-
-        // An unconnected connection
-        socket_connection<Stream> not_opened_conn (this->ctx);
-
-        // Close
-        auto result = net->close(not_opened_conn);
+        auto result = net->close(this->conn);
         result.validate_no_error();
     }
 };

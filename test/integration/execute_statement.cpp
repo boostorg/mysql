@@ -127,7 +127,10 @@ BOOST_MYSQL_NETWORK_TEST(ExecuteStatementTest, Container_ServerError)
 // Other containers
 struct ExecuteStatementOtherContainersTest : IntegTest<boost::asio::ip::tcp::socket>
 {
-    ExecuteStatementOtherContainersTest() { handshake(boost::mysql::ssl_mode::disable); }
+    ExecuteStatementOtherContainersTest()
+    {
+        connect(boost::mysql::ssl_mode::disable);
+    }
 };
 
 TEST_F(ExecuteStatementOtherContainersTest, NoParams_CanUseNoStatementParamsVariable)

@@ -16,7 +16,7 @@ namespace
 {
 
 template <typename Stream>
-struct ConnectTest : NetworkTest<Stream>
+struct ConnectTest : NetworkTest<Stream, false>
 {
     network_functions<Stream>* net;
     socket_connection<Stream> other_conn;

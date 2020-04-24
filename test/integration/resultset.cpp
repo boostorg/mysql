@@ -92,7 +92,7 @@ struct resultset_testcase : network_testcase_with_ssl<Stream>
 };
 
 template <typename Stream>
-struct ResultsetTest : public NetworkTest<Stream, resultset_testcase<Stream>, true>
+struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Stream>>
 {
     auto do_generate(std::string_view query) { return this->GetParam().gen->generate(this->conn, query); }
     auto do_fetch_one(resultset<Stream>& r) { return this->GetParam().net->fetch_one(r); }

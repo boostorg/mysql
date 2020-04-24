@@ -31,9 +31,13 @@ namespace
 
 // Handshake tests not depending on whether we use SSL or not
 template <typename Stream>
-struct SslIndifferentHandshakeTest :
-    NetworkTest<Stream, network_testcase_with_ssl<Stream>, false>
+struct SslIndifferentHandshakeTest : NetworkTest<Stream, false>
 {
+    SslIndifferentHandshakeTest()
+    {
+        this->physical_connect();
+    }
+
     auto do_handshake()
     {
         this->connection_params.set_ssl(boost::mysql::ssl_options(this->GetParam().ssl));
@@ -50,8 +54,13 @@ struct SslIndifferentHandshakeTest :
 };
 
 template <typename Stream>
-struct SslSensitiveHandshakeTest : NetworkTest<Stream, network_testcase<Stream>, false>
+struct SslSensitiveHandshakeTest : NetworkTest<Stream, false, network_testcase<Stream>>
 {
+    SslSensitiveHandshakeTest()
+    {
+        this->physical_connect();
+    }
+
     void set_ssl(ssl_mode m)
     {
         this->connection_params.set_ssl(boost::mysql::ssl_options(m));

@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP_
-#define INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP_
+#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP
+#define BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP
 
 // A very simplified variable-length string with fixed max-size
 
