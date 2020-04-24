@@ -50,6 +50,9 @@ namespace mysql {
  *   - MySQL handshake: authenticates the connection to the MySQL server. You can do that
  *     by calling connection::handshake() or connection::async_handshake().
  *
+ * If using a TCP socket or UNIX socket, consider using socket_connection,
+ * which implements a socket_connection::connect method that handles both steps.
+ *
  * Because of how the MySQL protocol works, you must fully perform an operation before
  * starting the next one. For queries, you must wait for the query response and
  * **read the entire resultset** before starting a new query. For prepared statements,
@@ -175,8 +178,8 @@ public:
      * transfer and thus can fail.
      *
      * \warning This operation is a low level one. It does not close the underlying
-     * physical connection after sending the quit request. Unless there is no other
-     * option, prefer connection::close instead.
+     * physical connection after sending the quit request. If you are using a
+     * socket_stream, use socket_stream::close instead.
      */
     void quit(error_code&, error_info&);
 
@@ -198,6 +201,21 @@ public:
     async_quit(CompletionToken&& token, error_info* info=nullptr);
 };
 
+/**
+ * \ingroup connection
+ * \brief A connection to a MySQL server over a socket.
+ * \details Extends boost::mysql::connection with additional
+ * functions that require Stream to be a socket. Stream should
+ * inherit from an instantiation of boost::asio::basic_socket.
+ *
+ * In general, prefer this class over boost::mysql::connection.
+ * See also boost::mysql::tcp_socket and boost::mysql::unix_socket for
+ * the most common instantiations of this template class.
+ *
+ * When using this class, use socket_connection::connect instead of
+ * a socket connect + connection::handshake, and socket_connection::close
+ * instead of a connection::quit + socket close.
+ */
 template<
     typename Stream
 >
@@ -205,15 +223,30 @@ class socket_connection : public connection<Stream>
 {
 public:
     using connection<Stream>::connection;
+
+    /// The endpoint type associated to this connection.
     using endpoint_type = typename Stream::endpoint_type;
 
+    /**
+     * \brief Performs a connection to the MySQL server (sync with error code version).
+     * \details Connects the underlying socket and then performs the handshake
+     * with the server. The underlying socket is closed in case of error. Prefer
+     * this function to connection::handshake if using this class.
+     */
     void connect(const endpoint_type& endpoint, const connection_params& params,
             error_code& ec, error_info& info);
 
+    /// Performs a connection to the MySQL server (sync with exceptions version).
     void connect(const endpoint_type& endpoint, const connection_params& params);
 
+    /// The handler signature to use for async_connect.
     using connect_signature = void(error_code);
 
+    /**
+     * \brief Performs a connection to the MySQL server (async version).
+     * \details The strings pointed to by params should be kept alive by the caller
+     * until the operation completes, as no copy is made by the library.
+     */
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
     async_connect(const endpoint_type& endpoint, const connection_params& params,
@@ -227,11 +260,6 @@ public:
      * physical connection. This operation is thus roughly equivalent to
      * a connection::quit plus a close on the underlying socket. It should
      * be preferred over connection::quit whenever possible.
-     *
-     * \warning This function is only available if Stream is a socket
-     * (a derived class on an instantiation of boost::asio::basic_socket).
-     * It is applyable in the most common cases (boost::mysql::tcp_connection and
-     * boost::mysql::unix_connection).
      */
     void close(error_code&, error_info&);
 
