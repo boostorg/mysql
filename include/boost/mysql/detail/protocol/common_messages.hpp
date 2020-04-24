@@ -41,7 +41,7 @@ struct ok_packet
     int_lenenc last_insert_id;
     int2 status_flags; // server_status_flags
     int2 warnings;
-    // TODO: CLIENT_SESSION_TRACK
+    // CLIENT_SESSION_TRACK: not implemented
     string_lenenc info;
 };
 

@@ -88,7 +88,7 @@ void boost::mysql::detail::prepare_statement(
     if (err) return;
 
     // Server sends now one packet per parameter and field.
-    // We ignore these for now. TODO: do sth useful with these
+    // We ignore these for now.
     for (unsigned i = 0; i < processor.get_num_metadata_packets(); ++i)
     {
         processor.get_channel().read(processor.get_buffer(), err);
@@ -164,7 +164,7 @@ boost::mysql::detail::async_prepare_statement(
                 }
 
                 // Server sends now one packet per parameter and field.
-                // We ignore these for now. TODO: do sth useful with these
+                // We ignore these for now.
                 remaining_meta_ = processor_.get_num_metadata_packets();
                 for (; remaining_meta_ > 0; --remaining_meta_)
                 {

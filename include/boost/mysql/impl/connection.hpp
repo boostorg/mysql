@@ -26,7 +26,6 @@ void boost::mysql::connection<Stream>::handshake(
 {
     detail::clear_errors(code, info);
     detail::handshake(channel_, params, code, info);
-    // TODO: should we close() the stream in case of error?
 }
 
 template <typename Stream>

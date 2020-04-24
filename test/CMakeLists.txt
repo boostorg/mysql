@@ -132,7 +132,7 @@ set_tests_properties(
 # under valgrind. Coroutine tests don't work well under Valgrind, and
 # SSL tests are too slow
 if (BOOST_MYSQL_VALGRIND_TESTS)
-    if (DEFINED ENV{BOOST_MYSQL_HAS_SHA256})
+    if (BOOST_MYSQL_SHA256_TESTS)
         set(GTEST_FILTER "--gtest_filter=-*sslrequire*:*coroutine*")
     else()
         set(GTEST_FILTER "--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*")
@@ -151,7 +151,7 @@ if (BOOST_MYSQL_VALGRIND_TESTS)
 endif()
 
 # SHA256 tests 
-if (DEFINED ENV{BOOST_MYSQL_HAS_SHA256})
+if (BOOST_MYSQL_SHA256_TESTS)
     # Setup
     _mysql_sql_setup_fixture(
         TEST_NAME    mysql_integrationtests_sha256_setup

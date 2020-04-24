@@ -62,7 +62,7 @@ struct handshake_response_packet
     string_lenenc auth_response; // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
     string_null database; // only to be serialized if CLIENT_CONNECT_WITH_DB
     string_null client_plugin_name; // we require CLIENT_PLUGIN_AUTH
-    // TODO: CLIENT_CONNECT_ATTRS
+    // CLIENT_CONNECT_ATTRS: not implemented
 };
 
 template <>

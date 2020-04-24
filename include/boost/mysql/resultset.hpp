@@ -202,8 +202,6 @@ public:
      * \warning The resultset **must be complete** before calling this function.
      */
     std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
-
-    // TODO: status flags accessors
 };
 
 /**

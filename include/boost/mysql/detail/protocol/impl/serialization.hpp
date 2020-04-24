@@ -257,8 +257,7 @@ boost::mysql::detail::serialization_traits<
     // Size check
     if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
 
-    // Endianness conversion
-    // Boost.Endian support for floats start at 1.71. TODO: maybe update requirements and CI
+    // Endianness conversion. Boost.Endian support for floats start at 1.71
 #if BOOST_ENDIAN_BIG_BYTE
     char buf [sizeof(T)];
     std::memcpy(buf, ctx.first(), sizeof(T));

@@ -20,8 +20,6 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
     mysql.server start # Note that running this with sudo fails
     if [ $DATABASE == "mariadb" ]; then
         sudo mysql -u root < ci/root_user_setup.sql
-    else
-        export BOOST_MYSQL_HAS_SHA256=1
     fi
 else
     sudo cp ci/unix-ci.cnf /etc/mysql/conf.d/
@@ -38,6 +36,7 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
     $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
     $(if [ $USE_COVERAGE ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
+    $(if [ $HAS_SHA256 ]; then echo -DBOOST_MYSQL_SHA256_TESTS=ON; fi) \
     $CMAKE_OPTIONS \
     .. 
 make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test

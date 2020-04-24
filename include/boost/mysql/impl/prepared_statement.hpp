@@ -102,15 +102,11 @@ boost::mysql::prepared_statement<StreamType>::async_execute(
     {
         detail::conditional_assign(info, std::move(nonnull_info));
         boost::asio::async_completion<CompletionToken, execute_signature> completion (token);
-        // TODO: is executor correctly preserved here?
-        boost::asio::post(
-            channel_->next_layer().get_executor(),
-            boost::beast::bind_front_handler(
-                std::move(completion.completion_handler),
-                err,
-                resultset<StreamType>()
-            )
-        );
+        boost::asio::post(boost::beast::bind_front_handler(
+            std::move(completion.completion_handler),
+            err,
+            resultset<StreamType>()
+        ));
         return completion.result.get();
     }
     else

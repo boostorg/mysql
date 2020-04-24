@@ -41,7 +41,7 @@ struct com_stmt_prepare_ok_packet
     int2 num_params;
     // int1 reserved_1: must be 0
     int2 warning_count;
-    // TODO: int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA
+    // int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA: not implemented
 };
 
 template <>

@@ -114,12 +114,14 @@ matrix:
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
         - USE_COVERAGE=1
+        - HAS_SHA256=1
     - name: osx_clang_x64_release_mysql
       <<: *__osx_defaults
       env:
         - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Release
         - DATABASE=mysql
+        - HAS_SHA256=1
     - name: osx_clang_x64_debug_mariadb
       <<: *__osx_defaults
       env:

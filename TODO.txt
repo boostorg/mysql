@@ -1,6 +1,5 @@
 Sanitize
 	Test zero dates
-    Invalid propagation of an executor
 Better docs
     Wandbox
 	Breaking up the tutorial in pieces
@@ -30,9 +29,13 @@ Usability
 		Decimal
 		Bit
 		Geometry
-	connection::connect that handles TCP/Unix and MySQL connect
 	connection::run_sql that hides the resultset concept
     Option for separate compilation
+Other possible features
+    CLIENT_SESSION_TRACK
+    CLIENT_OPTIONAL_RESULTSET_METADATA
+    Lower C++ std requirements
+    Status flags accessors in resultset (for OK_Packet)
 Technical debt
 	Random input tests
 	Test dashboard
@@ -53,4 +56,6 @@ Technical debt
 	More thorough testing for several NULLs in integration testing
 	Query and statement tests for DELETEs
 	prepared_statement::execute(): static_assert(), handle value&, const value&, anything convertible
-	Test for too many connections: do we have a buffer overrun there? (error msg shows incomplete)
+	Test for too many connections
+	Use a proper float endianness reverse
+    Executor tests?
