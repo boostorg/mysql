@@ -8,7 +8,7 @@
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::connection;
+using boost::mysql::socket_connection;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 
@@ -19,7 +19,7 @@ template <typename Stream>
 struct ConnectTest : NetworkTest<Stream>
 {
     network_functions<Stream>* net;
-    connection<Stream> other_conn;
+    socket_connection<Stream> other_conn;
 
     ConnectTest():
         net(this->GetParam().net),

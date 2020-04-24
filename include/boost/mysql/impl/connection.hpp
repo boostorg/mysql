@@ -61,50 +61,6 @@ boost::mysql::connection<Stream>::async_handshake(
     );
 }
 
-// connect
-template <typename Stream>
-template <typename EndpointType>
-void boost::mysql::connection<Stream>::connect(
-    const EndpointType& endpoint,
-    const connection_params& params,
-    error_code& ec,
-    error_info& info
-)
-{
-    detail::clear_errors(ec, info);
-    detail::connect(channel_, endpoint, params, ec, info);
-}
-
-template <typename Stream>
-template <typename EndpointType>
-void boost::mysql::connection<Stream>::connect(
-    const EndpointType& endpoint,
-    const connection_params& params
-)
-{
-    detail::error_block blk;
-    detail::connect(channel_, endpoint, params, blk.err, blk.info);
-    blk.check();
-}
-
-template <typename Stream>
-template <typename EndpointType, typename CompletionToken>
-BOOST_MYSQL_INITFN_RESULT_TYPE(
-    CompletionToken,
-    typename boost::mysql::connection<Stream>::connect_signature
-)
-boost::mysql::connection<Stream>::async_connect(
-    const EndpointType& endpoint,
-    const connection_params& params,
-    CompletionToken&& token,
-    error_info* output_info
-)
-{
-    detail::conditional_clear(output_info);
-    detail::check_completion_token<CompletionToken, connect_signature>();
-    return detail::async_connect(channel_, endpoint, params, std::forward<CompletionToken>(token), output_info);
-}
-
 // Query
 template <typename Stream>
 boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
@@ -238,21 +194,27 @@ boost::mysql::connection<Stream>::async_quit(
     );
 }
 
+// socket_connection: connect
 template <typename Stream>
-void boost::mysql::connection<Stream>::close(
-    error_code& err,
+void boost::mysql::socket_connection<Stream>::connect(
+    const endpoint_type& endpoint,
+    const connection_params& params,
+    error_code& ec,
     error_info& info
 )
 {
-    detail::clear_errors(err, info);
-    detail::close_connection(channel_, err, info);
+    detail::clear_errors(ec, info);
+    detail::connect(this->get_channel(), endpoint, params, ec, info);
 }
 
 template <typename Stream>
-void boost::mysql::connection<Stream>::close()
+void boost::mysql::socket_connection<Stream>::connect(
+    const endpoint_type& endpoint,
+    const connection_params& params
+)
 {
     detail::error_block blk;
-    detail::close_connection(channel_, blk.err, blk.info);
+    detail::connect(this->get_channel(), endpoint, params, blk.err, blk.info);
     blk.check();
 }
 
@@ -260,9 +222,51 @@ template <typename Stream>
 template <typename CompletionToken>
 BOOST_MYSQL_INITFN_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::connection<Stream>::close_signature
+    typename boost::mysql::socket_connection<Stream>::connect_signature
 )
-boost::mysql::connection<Stream>::async_close(
+boost::mysql::socket_connection<Stream>::async_connect(
+    const endpoint_type& endpoint,
+    const connection_params& params,
+    CompletionToken&& token,
+    error_info* output_info
+)
+{
+    detail::conditional_clear(output_info);
+    detail::check_completion_token<CompletionToken, connect_signature>();
+    return detail::async_connect(
+        this->get_channel(),
+        endpoint,
+        params,
+        std::forward<CompletionToken>(token),
+        output_info
+    );
+}
+
+template <typename Stream>
+void boost::mysql::socket_connection<Stream>::close(
+    error_code& err,
+    error_info& info
+)
+{
+    detail::clear_errors(err, info);
+    detail::close_connection(this->get_channel(), err, info);
+}
+
+template <typename Stream>
+void boost::mysql::socket_connection<Stream>::close()
+{
+    detail::error_block blk;
+    detail::close_connection(this->get_channel(), blk.err, blk.info);
+    blk.check();
+}
+
+template <typename Stream>
+template <typename CompletionToken>
+BOOST_MYSQL_INITFN_RESULT_TYPE(
+    CompletionToken,
+    typename boost::mysql::socket_connection<Stream>::close_signature
+)
+boost::mysql::socket_connection<Stream>::async_close(
     CompletionToken&& token,
     error_info* info
 )
@@ -270,7 +274,7 @@ boost::mysql::connection<Stream>::async_close(
     detail::conditional_clear(info);
     detail::check_completion_token<CompletionToken, close_signature>();
     return detail::async_close_connection(
-        channel_,
+        this->get_channel(),
         std::forward<CompletionToken>(token),
         info
     );

@@ -10,10 +10,10 @@
 
 #include "boost/mysql/detail/network_algorithms/handshake.hpp"
 
-template <typename StreamType, typename EndpointType>
+template <typename StreamType>
 void boost::mysql::detail::connect(
     channel<StreamType>& chan,
-    const EndpointType& endpoint,
+    const typename StreamType::endpoint_type& endpoint,
     const connection_params& params,
     error_code& err,
     error_info& info
@@ -33,29 +33,30 @@ void boost::mysql::detail::connect(
     }
 }
 
-template <typename StreamType, typename EndpointType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::connect_signature
 )
 boost::mysql::detail::async_connect(
     channel<StreamType>& chan,
-    const EndpointType& endpoint,
+    const typename StreamType::endpoint_type& endpoint,
     const connection_params& params,
     CompletionToken&& token,
     error_info* info
 )
 {
+    using endpoint_type = typename StreamType::endpoint_type;
     struct op : async_op<StreamType, CompletionToken, connect_signature, op>
     {
-        const EndpointType& ep_;
+        const endpoint_type& ep_; // No need for a copy, as we will call it in the first operator() call
         connection_params params_;
 
         op(
             boost::asio::async_completion<CompletionToken, connect_signature>& completion,
             channel<StreamType>& chan,
             error_info* output_info,
-            const EndpointType& ep,
+            const endpoint_type& ep,
             const connection_params& params
         ) :
             async_op<StreamType, CompletionToken, connect_signature, op>(completion, chan, output_info),

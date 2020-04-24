@@ -9,7 +9,7 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-using boost::mysql::connection;
+using boost::mysql::socket_connection;
 
 namespace
 {
@@ -57,7 +57,7 @@ struct CloseConnectionTest : public NetworkTest<Stream>
         network_functions<Stream>* net = this->GetParam().net;
 
         // An unconnected connection
-        connection<Stream> not_opened_conn (this->ctx);
+        socket_connection<Stream> not_opened_conn (this->ctx);
 
         // Close
         auto result = net->close(not_opened_conn);

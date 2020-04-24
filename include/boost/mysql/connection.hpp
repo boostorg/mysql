@@ -65,6 +65,8 @@ class connection
 
     Stream next_layer_;
     channel_type channel_;
+protected:
+    channel_type& get_channel() noexcept { return channel_; }
 public:
     /**
      * \brief Initializing constructor.
@@ -112,20 +114,6 @@ public:
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
     async_handshake(const connection_params& params, CompletionToken&& token, error_info* info = nullptr);
-
-    template <typename EndpointType>
-    void connect(const EndpointType& endpoint, const connection_params& params,
-            error_code& ec, error_info& info);
-
-    template <typename EndpointType>
-    void connect(const EndpointType& endpoint, const connection_params& params);
-
-    using connect_signature = void(error_code);
-
-    template <typename EndpointType, typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
-    async_connect(const EndpointType& endpoint, const connection_params& params,
-            CompletionToken&& token, error_info* output_info=nullptr);
 
     /**
      * \brief Executes a SQL text query (sync with error code version).
@@ -208,6 +196,28 @@ public:
     template <typename CompletionToken>
     BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, quit_signature)
     async_quit(CompletionToken&& token, error_info* info=nullptr);
+};
+
+template<
+    typename Stream
+>
+class socket_connection : public connection<Stream>
+{
+public:
+    using connection<Stream>::connection;
+    using endpoint_type = typename Stream::endpoint_type;
+
+    void connect(const endpoint_type& endpoint, const connection_params& params,
+            error_code& ec, error_info& info);
+
+    void connect(const endpoint_type& endpoint, const connection_params& params);
+
+    using connect_signature = void(error_code);
+
+    template <typename CompletionToken>
+    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
+    async_connect(const endpoint_type& endpoint, const connection_params& params,
+            CompletionToken&& token, error_info* output_info=nullptr);
 
     /**
      * \brief Closes the connection (sync with error code version).
@@ -241,7 +251,7 @@ public:
  * \ingroup connection
  * \brief A connection to MySQL over a TCP socket.
  */
-using tcp_connection = connection<boost::asio::ip::tcp::socket>;
+using tcp_connection = socket_connection<boost::asio::ip::tcp::socket>;
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
 
@@ -249,7 +259,7 @@ using tcp_connection = connection<boost::asio::ip::tcp::socket>;
  * \ingroup connection
  * \brief A connection to MySQL over a UNIX domain socket.
  */
-using unix_connection = connection<boost::asio::local::stream_protocol::socket>;
+using unix_connection = socket_connection<boost::asio::local::stream_protocol::socket>;
 
 #endif
 

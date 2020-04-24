@@ -15,10 +15,10 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType, typename EndpointType>
+template <typename StreamType>
 void connect(
     channel<StreamType>& chan,
-    const EndpointType& endpoint,
+    const typename StreamType::endpoint_type& endpoint,
     const connection_params& params,
     error_code& err,
     error_info& info
@@ -26,11 +26,11 @@ void connect(
 
 using connect_signature = empty_signature;
 
-template <typename StreamType, typename EndpointType, typename CompletionToken>
+template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
 async_connect(
     channel<StreamType>& chan,
-    const EndpointType& endpoint,
+    const typename StreamType::endpoint_type& endpoint,
     const connection_params& params,
     CompletionToken&& token,
     error_info* info

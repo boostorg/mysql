@@ -112,7 +112,7 @@ template <typename Stream>
 class network_functions
 {
 public:
-    using connection_type = connection<Stream>;
+    using connection_type = socket_connection<Stream>;
     using prepared_statement_type = prepared_statement<Stream>;
     using resultset_type = resultset<Stream>;
 
