@@ -16,7 +16,7 @@ using boost::mysql::error_info;
 // error_to_string
 TEST(ErrcEnum, ErrorToString_Ok_ReturnsOk)
 {
-    EXPECT_STREQ(error_to_string(errc::ok), "no error");
+    EXPECT_STREQ(error_to_string(errc::ok), "No error");
 }
 
 TEST(ErrcEnum, ErrorToString_ClientError_ReturnsDescription)

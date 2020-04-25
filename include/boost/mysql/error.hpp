@@ -10,6 +10,7 @@
 
 #include <boost/system/error_code.hpp>
 #include <string>
+#include "boost/mysql/errc.hpp"
 
 /**
  * \defgroup error Error handling
@@ -18,33 +19,6 @@
 
 namespace boost {
 namespace mysql {
-
-/**
- * \ingroup error
- * \brief MySQL-specific error codes.
- * \details Some error codes are defined by the client library, and others
- * are returned from the server. For the latter, the numeric value and
- * string descriptions match the ones described in the MySQL documentation.
- * Only the first ones are documented here. For the latter, see
- * https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html
- */
-enum class errc : int
-{
-    ok = 0, ///< No error.
-
-    // Server returned errors
-    #include "boost/mysql/impl/server_error_enum.hpp"
-
-    // Protocol errors
-    incomplete_message = 0x10000, ///< An incomplete message was received from the server.
-    extra_bytes, ///< Unexpected extra bytes at the end of a message were received.
-    sequence_number_mismatch, ///< A sequence number mismatched happened.
-    server_unsupported, ///< The server does not support the minimum required capabilities to establish the connection.
-    protocol_value_error, ///< An unexpected value was found in a server-received message.
-    unknown_auth_plugin, ///< The user employs an authentication plugin not known to this library.
-    auth_plugin_requires_ssl, ///< The authentication plugin requires the connection to use SSL.
-    wrong_num_params ///< The number of parameters passed to the prepared statement does not match the number of actual parameters.
-};
 
 /**
  * \ingroup error

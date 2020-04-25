@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_IMPL_ERROR_HPP
 #define BOOST_MYSQL_IMPL_ERROR_HPP
 
-#include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
 #include <algorithm>
+#include "boost/mysql/impl/error_descriptions.hpp"
 
 namespace boost {
 namespace system {
@@ -25,26 +25,6 @@ struct is_error_code_enum<mysql::errc>
 
 namespace mysql {
 namespace detail {
-
-struct error_entry
-{
-    errc value;
-    const char* message;
-};
-
-constexpr error_entry all_errors [] = {
-    { errc::ok, "no error" },
-    { errc::incomplete_message, "The message read was incomplete (not enough bytes to fully decode it)" },
-    { errc::extra_bytes, "Extra bytes at the end of the message" },
-    { errc::sequence_number_mismatch, "Mismatched sequence numbers" },
-    { errc::server_unsupported, "The server does not implement the minimum features to be supported" },
-    { errc::protocol_value_error, "A field in a message had an unexpected value" },
-    { errc::unknown_auth_plugin, "The user employs an authentication plugin unknown to the client" },
-    { errc::wrong_num_params, "The provided parameter count does not match the prepared statement parameter count" },
-
-#include "boost/mysql/impl/server_error_descriptions.hpp"
-
-};
 
 inline const char* error_to_string(errc error) noexcept
 {
