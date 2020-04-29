@@ -69,4 +69,4 @@ Currently implemented:
 Yet to be done (but it is on our list - PRs welcome):
 
 - Further authentication methods: sha256_password
-- Multi-resultset: begin able to specify several semicolon-separated queries. 
+- Multi-resultset: being able to specify several semicolon-separated queries. 
