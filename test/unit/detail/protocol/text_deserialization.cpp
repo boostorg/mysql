@@ -431,6 +431,22 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, DeserializeTextValueErrorTest, ValuesIn(
     make_float_err_cases(protocol_field_type::double_, "-2e9999", "2e9999")
 ), test_name_generator);
 
+INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueErrorTest, Values(
+    err_text_value_testcase("empty",            "", protocol_field_type::date),
+    err_text_value_testcase("too_short",        "2020-05-2", protocol_field_type::date),
+    err_text_value_testcase("too_long",         "02020-05-02", protocol_field_type::date),
+    err_text_value_testcase("invalid_date",     "2020-04-31", protocol_field_type::date),
+    err_text_value_testcase("bad_delimiter",    "2020:05:02", protocol_field_type::date),
+    err_text_value_testcase("too_many_groups",  "20-20-05-2", protocol_field_type::date),
+    err_text_value_testcase("too_few_groups",   "2020-00005", protocol_field_type::date),
+    err_text_value_testcase("incomplete_year",  "999-05-005", protocol_field_type::date),
+    err_text_value_testcase("null_value",       makesv("2020-05-\02"), protocol_field_type::date),
+    err_text_value_testcase("lt_min",           "0099-05-02", protocol_field_type::date),
+    err_text_value_testcase("gt_max",           "10000-05-2", protocol_field_type::date),
+    err_text_value_testcase("long_month",       "2010-005-2", protocol_field_type::date),
+    err_text_value_testcase("long_day",         "2010-5-002", protocol_field_type::date)
+), test_name_generator);
+
 // All cases, row
 struct DeserializeTextRowTest : public Test
 {
