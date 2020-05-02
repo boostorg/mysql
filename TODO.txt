@@ -37,6 +37,7 @@ Other possible features
     Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    Change channel read to make less syscalls
 	Random input tests
 	Test dashboard
 	Sanitizers

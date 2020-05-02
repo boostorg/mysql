@@ -121,6 +121,10 @@ std::enable_if_t<std::is_arithmetic_v<T>, errc>
 deserialize_text_value_impl(std::string_view from, T& to)
 {
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), to);
+    if constexpr (std::is_floating_point_v<T>)
+    {
+        ok &= !(std::isnan(to) || std::isinf(to)); // SQL std forbids these values
+    }
     return ok ? errc::ok : errc::protocol_value_error;
 }
 
