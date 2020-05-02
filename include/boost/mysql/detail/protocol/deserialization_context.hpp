@@ -44,7 +44,8 @@ public:
     capabilities get_capabilities() const noexcept { return capabilities_; }
     errc copy(void* to, std::size_t sz) noexcept
     {
-        if (!enough_size(sz)) return errc::incomplete_message;
+        if (!enough_size(sz))
+            return errc::incomplete_message;
         memcpy(to, first_, sz);
         advance(sz);
         return errc::ok;

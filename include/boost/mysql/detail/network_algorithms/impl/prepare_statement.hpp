@@ -33,7 +33,8 @@ public:
         );
         std::uint8_t msg_type = 0;
         std::tie(err, msg_type) = deserialize_message_type(ctx);
-        if (err) return;
+        if (err)
+            return;
 
         if (msg_type == error_packet_header)
         {
@@ -77,22 +78,26 @@ void boost::mysql::detail::prepare_statement(
 
     // Write message
     processor.get_channel().write(boost::asio::buffer(processor.get_buffer()), err);
-    if (err) return;
+    if (err)
+        return;
 
     // Read response
     processor.get_channel().read(processor.get_buffer(), err);
-    if (err) return;
+    if (err)
+        return;
 
     // Process response
     processor.process_response(err, info);
-    if (err) return;
+    if (err)
+        return;
 
     // Server sends now one packet per parameter and field.
     // We ignore these for now.
     for (unsigned i = 0; i < processor.get_num_metadata_packets(); ++i)
     {
         processor.get_channel().read(processor.get_buffer(), err);
-        if (err) return;
+        if (err)
+            return;
     }
 
     // Compose response

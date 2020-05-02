@@ -16,26 +16,34 @@ inline field_type compute_field_type_string(
     std::uint32_t flags
 )
 {
-    if (flags & column_flags::set) return field_type::set;
-    else if (flags & column_flags::enum_) return field_type::enum_;
-    else if (flags & column_flags::binary) return field_type::binary;
-    else return field_type::char_;
+    if (flags & column_flags::set)
+        return field_type::set;
+    else if (flags & column_flags::enum_)
+        return field_type::enum_;
+    else if (flags & column_flags::binary)
+        return field_type::binary;
+    else
+        return field_type::char_;
 }
 
 inline field_type compute_field_type_var_string(
     std::uint32_t flags
 )
 {
-    if (flags & column_flags::binary) return field_type::varbinary;
-    else return field_type::varchar;
+    if (flags & column_flags::binary)
+        return field_type::varbinary;
+    else
+        return field_type::varchar;
 }
 
 inline field_type compute_field_type_blob(
     std::uint32_t flags
 )
 {
-    if (flags & column_flags::binary) return field_type::blob;
-    else return field_type::text;
+    if (flags & column_flags::binary)
+        return field_type::blob;
+    else
+        return field_type::text;
 }
 
 inline field_type compute_field_type(

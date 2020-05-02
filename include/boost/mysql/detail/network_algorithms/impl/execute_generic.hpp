@@ -52,11 +52,13 @@ public:
         deserialization_context ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
         std::uint8_t msg_type;
         std::tie(err, msg_type) = deserialize_message_type(ctx);
-        if (err) return;
+        if (err)
+            return;
         if (msg_type == ok_packet_header)
         {
             err = deserialize_message(ok_packet_, ctx);
-            if (err) return;
+            if (err)
+                return;
             field_count_ = 0;
         }
         else if (msg_type == error_packet_header)
@@ -71,7 +73,8 @@ public:
             ctx.rewind(1);
             int_lenenc num_fields;
             err = deserialize_message(num_fields, ctx);
-            if (err) return;
+            if (err)
+                return;
 
             // For platforms where size_t is shorter than uint64_t,
             // perform range check
@@ -100,7 +103,8 @@ public:
         column_definition_packet field_definition;
         deserialization_context ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
         auto err = deserialize_message(field_definition, ctx);
-        if (err) return err;
+        if (err)
+            return err;
 
         // Add it to our array
         fields_.push_back(field_definition);
@@ -156,26 +160,31 @@ void boost::mysql::detail::execute_generic(
 
     // Send it
     channel.write(boost::asio::buffer(processor.get_buffer()), err);
-    if (err) return;
+    if (err)
+        return;
 
     // Read the response
     channel.read(processor.get_buffer(), err);
-    if (err) return;
+    if (err)
+        return;
 
     // Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
     processor.process_response(err, info);
-    if (err) return;
+    if (err)
+        return;
 
     // Read all of the field definitions (zero if empty resultset)
     for (std::uint64_t i = 0; i < processor.field_count(); ++i)
     {
         // Read the field definition packet
         channel.read(processor.get_buffer(), err);
-        if (err) return;
+        if (err)
+            return;
 
         // Process the message
         err = processor.process_field_definition();
-        if (err) return;
+        if (err)
+            return;
     }
 
     // No EOF packet is expected here, as we require deprecate EOF capabilities

@@ -22,7 +22,10 @@ void boost::mysql::detail::close_connection(
     {
         quit_connection(chan, code, info);
         auto err = chan.close();
-        if (!code) code = err;
+        if (!code)
+        {
+            code = err;
+        }
     }
 }
 

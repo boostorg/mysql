@@ -37,7 +37,8 @@ boost::mysql::detail::serialization_traits<
         output.status_flags,
         capability_flags_high
     );
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
 
     // Compose capabilities
     auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&output.capability_falgs.value);
@@ -47,7 +48,8 @@ boost::mysql::detail::serialization_traits<
 
     // Check minimum server capabilities to deserialize this frame
     capabilities cap (output.capability_falgs.value);
-    if (!cap.has(CLIENT_PLUGIN_AUTH)) return errc::server_unsupported;
+    if (!cap.has(CLIENT_PLUGIN_AUTH))
+        return errc::server_unsupported;
 
     // Deserialize following fields
     err = deserialize_fields(
@@ -55,18 +57,21 @@ boost::mysql::detail::serialization_traits<
         auth_plugin_data_len,
         reserved
     );
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
 
     // Auth plugin data, second part
     auto auth2_length = static_cast<std::uint8_t>(
         std::max(13, auth_plugin_data_len.value - auth1_length));
     const void* auth2_data = ctx.first();
-    if (!ctx.enough_size(auth2_length)) return errc::incomplete_message;
+    if (!ctx.enough_size(auth2_length))
+        return errc::incomplete_message;
     ctx.advance(auth2_length);
 
     // Auth plugin name
     err = deserialize(output.auth_plugin_name, ctx);
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
 
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();

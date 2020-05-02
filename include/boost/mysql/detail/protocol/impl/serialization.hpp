@@ -255,7 +255,8 @@ boost::mysql::detail::serialization_traits<
 >::deserialize_(T& output, deserialization_context& ctx) noexcept
 {
     // Size check
-    if (!ctx.enough_size(sizeof(T))) return errc::incomplete_message;
+    if (!ctx.enough_size(sizeof(T)))
+        return errc::incomplete_message;
 
     // Endianness conversion. Boost.Endian support for floats start at 1.71
 #if BOOST_ENDIAN_BIG_BYTE
@@ -362,8 +363,10 @@ boost::mysql::error_code boost::mysql::detail::deserialize_message(
 )
 {
     auto err = deserialize(output, ctx);
-    if (err != errc::ok) return make_error_code(err);
-    if (!ctx.empty()) return make_error_code(errc::extra_bytes);
+    if (err != errc::ok)
+        return make_error_code(err);
+    if (!ctx.empty())
+        return make_error_code(errc::extra_bytes);
     return error_code();
 }
 

@@ -21,7 +21,10 @@ inline bool container_equals(
     const std::vector<TRight>& rhs
 )
 {
-    if (lhs.size() != rhs.size()) return false;
+    if (lhs.size() != rhs.size())
+    {
+        return false;
+    }
     return std::equal(
         lhs.begin(),
         lhs.end(),

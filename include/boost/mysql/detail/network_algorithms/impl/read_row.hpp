@@ -31,12 +31,15 @@ inline read_row_result process_read_message(
     std::uint8_t msg_type;
     deserialization_context ctx (boost::asio::buffer(buffer), current_capabilities);
     std::tie(err, msg_type) = deserialize_message_type(ctx);
-    if (err) return read_row_result::error;
+    if (err)
+        return read_row_result::error;
     if (msg_type == eof_packet_header)
     {
         // end of resultset
         err = deserialize_message(output_ok_packet, ctx);
-        if (err) return read_row_result::error;
+        return err ? read_row_result::error : read_row_result::eof;
+        if (err)
+            return read_row_result::error;
         return read_row_result::eof;
     }
     else if (msg_type == error_packet_header)
@@ -50,7 +53,8 @@ inline read_row_result process_read_message(
         // An actual row
         ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
         err = deserializer(ctx, meta, output_values);
-        if (err) return read_row_result::error;
+        if (err)
+            return read_row_result::error;
         return read_row_result::row;
     }
 }
@@ -74,7 +78,8 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
 {
     // Read a packet
     channel.read(buffer, err);
-    if (err) return read_row_result::error;
+    if (err)
+        return read_row_result::error;
 
     return process_read_message(
         deserializer,

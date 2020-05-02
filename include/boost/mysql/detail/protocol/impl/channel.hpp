@@ -180,18 +180,21 @@ void boost::mysql::detail::channel<Stream>::read(
         // Read header
         read_impl(header_buff, code);
         valgrind_make_mem_defined(header_buff);
-        if (code) return;
+        if (code)
+            return;
 
         // See how many bytes we should be reading
         code = process_header_read(size_to_read);
-        if (code) return;
+        if (code)
+            return;
 
         // Read the rest of the message
         buffer.resize(buffer.size() + size_to_read);
         auto read_buffer = boost::asio::buffer(buffer.data() + transferred_size, size_to_read);
         read_impl(read_buffer, code);
         valgrind_make_mem_defined(read_buffer);
-        if (code) return;
+        if (code)
+            return;
         transferred_size += size_to_read;
 
     } while (size_to_read == MAX_PACKET_SIZE);
@@ -220,7 +223,8 @@ void boost::mysql::detail::channel<Stream>::write(
             },
             code
         );
-        if (code) return;
+        if (code)
+            return;
         transferred_size += size_to_write;
     } while (transferred_size < bufsize);
 }

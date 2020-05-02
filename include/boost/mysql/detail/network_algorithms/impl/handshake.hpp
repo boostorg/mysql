@@ -35,7 +35,8 @@ inline error_code deserialize_handshake(
 {
     deserialization_context ctx (boost::asio::buffer(buffer), capabilities());
     auto [err, msg_type] = deserialize_message_type(ctx);
-    if (err) return err;
+    if (err)
+        return err;
     if (msg_type == handshake_protocol_version_9)
     {
         return make_error_code(errc::server_unsupported);
@@ -102,11 +103,13 @@ public:
         // Deserialize server greeting
         handshake_packet handshake;
         auto err = deserialize_handshake(boost::asio::buffer(buffer), handshake, info);
-        if (err) return err;
+        if (err)
+            return err;
 
         // Check capabilities
         err = process_capabilities(handshake);
-        if (err) return err;
+        if (err)
+            return err;
 
         // Compute auth response
         return auth_calc_.calculate(
@@ -157,7 +160,8 @@ public:
     {
         deserialization_context ctx (boost::asio::buffer(buffer), negotiated_caps_);
         auto [err, msg_type] = deserialize_message_type(ctx);
-        if (err) return err;
+        if (err)
+            return err;
         if (msg_type == ok_packet_header)
         {
             // Auth success via fast auth path
@@ -173,7 +177,8 @@ public:
             // We have received an auth switch request. Deserialize it
             auth_switch_request_packet auth_sw;
             err = deserialize_message(auth_sw, ctx);
-            if (err) return err;
+            if (err)
+                return err;
 
             // Compute response
             auth_switch_response_packet auth_sw_res;
@@ -183,7 +188,8 @@ public:
                 auth_sw.auth_plugin_data.value,
                 use_ssl()
             );
-            if (err) return err;
+            if (err)
+                return err;
             auth_sw_res.auth_plugin_data.value = auth_calc_.response();
 
             // Serialize
@@ -197,7 +203,8 @@ public:
             // We have received an auth more data request. Deserialize it
             auth_more_data_packet more_data;
             err = deserialize_message(more_data, ctx);
-            if (err) return err;
+            if (err)
+                return err;
 
             std::string_view challenge = more_data.auth_plugin_data.value;
             if (challenge == fast_auth_complete_challenge)
@@ -213,7 +220,8 @@ public:
                 challenge,
                 use_ssl()
             );
-            if (err) return err;
+            if (err)
+                return err;
 
             serialize_message(
                 auth_switch_response_packet {string_eof(auth_calc_.response())},
@@ -248,11 +256,13 @@ void boost::mysql::detail::handshake(
 
     // Read server greeting
     channel.read(channel.shared_buffer(), err);
-    if (err) return;
+    if (err)
+        return;
 
     // Process server greeting (handshake)
     err = processor.process_handshake(channel.shared_buffer(), info);
-    if (err) return;
+    if (err)
+        return;
 
     // Setup SSL if required
     if (processor.use_ssl())
@@ -260,34 +270,40 @@ void boost::mysql::detail::handshake(
         // Send SSL request
         processor.compose_ssl_request(channel.shared_buffer());
         channel.write(boost::asio::buffer(channel.shared_buffer()), err);
-        if (err) return;
+        if (err)
+            return;
 
         // SSL handshake
         channel.ssl_handshake(err);
-        if (err) return;
+        if (err)
+            return;
     }
 
     // Handshake response
     processor.compose_handshake_response(channel.shared_buffer());
     channel.write(boost::asio::buffer(channel.shared_buffer()), err);
-    if (err) return;
+    if (err)
+        return;
 
     auth_result auth_outcome = auth_result::invalid;
     while (auth_outcome != auth_result::complete)
     {
         // Receive response
         channel.read(channel.shared_buffer(), err);
-        if (err) return;
+        if (err)
+            return;
 
         // Process it
         err = processor.process_handshake_server_response(channel.shared_buffer(), auth_outcome, info);
-        if (err) return;
+        if (err)
+            return;
 
         if (auth_outcome == auth_result::send_more_data)
         {
             // We received an auth switch request and we have the response ready to be sent
             channel.write(boost::asio::buffer(channel.shared_buffer()), err);
-            if (err) return;
+            if (err)
+                return;
         }
     };
 

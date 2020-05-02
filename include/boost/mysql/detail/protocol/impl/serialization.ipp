@@ -35,7 +35,8 @@ inline errc deserialize_binary_date(
     if (length >= 4) // if length is zero, year, month and day are zero
     {
         auto err = deserialize_fields(ctx, year, month, day);
-        if (err != errc::ok) return err;
+        if (err != errc::ok)
+            return err;
     }
 
     // TODO: how does this handle zero dates?
@@ -209,10 +210,14 @@ boost::mysql::detail::serialization_traits<
     const serialization_context&
 ) noexcept
 {
-    if (input.value < 251) return 1;
-    else if (input.value < 0x10000) return 3;
-    else if (input.value < 0x1000000) return 4;
-    else return 9;
+    if (input.value < 251)
+        return 1;
+    else if (input.value < 0x10000)
+        return 3;
+    else if (input.value < 0x1000000)
+        return 4;
+    else
+        return 9;
 }
 
 inline boost::mysql::errc
@@ -316,7 +321,8 @@ boost::mysql::detail::serialization_traits<
 {
     int1 length;
     auto err = deserialize(length, ctx);
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
     return deserialize_binary_date(output, length.value, ctx);
 }
 
@@ -384,20 +390,24 @@ boost::mysql::detail::serialization_traits<
 
     // Deserialize length
     auto err = deserialize(length, ctx);
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
 
     // Based on length, deserialize the rest of the fields
     err = deserialize_binary_date(date_part, length.value, ctx);
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
     if (length.value >= 7)
     {
         err = deserialize_fields(ctx, hours, minutes, seconds);
-        if (err != errc::ok) return err;
+        if (err != errc::ok)
+            return err;
     }
     if (length.value >= 11)
     {
         err = deserialize(micros, ctx);
-        if (err != errc::ok) return err;
+        if (err != errc::ok)
+            return err;
     }
 
     // Compose the final datetime. Doing time of day and date separately to avoid overflow
@@ -463,7 +473,8 @@ boost::mysql::detail::serialization_traits<
     // Length
     int1 length;
     auto err = deserialize(length, ctx);
-    if (err != errc::ok) return err;
+    if (err != errc::ok)
+        return err;
 
     int1 is_negative (0);
     int4 days (0);
@@ -482,12 +493,14 @@ boost::mysql::detail::serialization_traits<
             minutes,
             seconds
         );
-        if (err != errc::ok) return err;
+        if (err != errc::ok)
+            return err;
     }
     if (length.value >= 12)
     {
         err = deserialize(microseconds, ctx);
-        if (err != errc::ok) return err;
+        if (err != errc::ok)
+            return err;
     }
 
     output = (is_negative.value ? -1 : 1) * (

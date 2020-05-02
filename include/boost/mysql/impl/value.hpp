@@ -72,7 +72,8 @@ inline bool boost::mysql::operator==(
     const value& rhs
 )
 {
-    if (lhs.index() != rhs.index()) return false;
+    if (lhs.index() != rhs.index())
+        return false;
     return std::visit([&lhs](const auto& rhs_value) {
         using T = std::decay_t<decltype(rhs_value)>;
         return std::get<T>(lhs) == rhs_value;

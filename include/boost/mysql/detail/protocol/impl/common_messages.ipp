@@ -69,7 +69,8 @@ inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
 {
     err_packet error_packet;
     auto code = deserialize_message(error_packet, ctx);
-    if (code) return code;
+    if (code)
+        return code;
     info.set_message(std::string(error_packet.error_message.value));
     return make_error_code(static_cast<errc>(error_packet.error_code.value));
 }
