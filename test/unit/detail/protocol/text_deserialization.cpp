@@ -284,7 +284,10 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("6_decimals_negative_hms", "-14:51:23.000000", -maket(14, 51, 23), protocol_field_type::time, 0, 6),
     text_value_testcase("6_decimals_negative_hmsu", "-14:51:23.900000", -maket(14, 51, 23, 900000), protocol_field_type::time, 0, 6),
     text_value_testcase("6_decimals_min", "-838:59:58.999999", -maket(838, 59, 58, 999999), protocol_field_type::time, 0, 6),
-    text_value_testcase("6_decimals_zero", "00:00:00.000000", maket(0, 0, 0), protocol_field_type::time, 0, 6)
+    text_value_testcase("6_decimals_zero", "00:00:00.000000", maket(0, 0, 0), protocol_field_type::time, 0, 6),
+
+    // This is not a real case - we cap anything above 6 decimals to 6
+    text_value_testcase("7_decimals", "14:51:23.501717", maket(14, 51, 23, 501717), protocol_field_type::time, 0, 7)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
@@ -444,7 +447,66 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueErrorTest, Values(
     err_text_value_testcase("lt_min",           "0099-05-02", protocol_field_type::date),
     err_text_value_testcase("gt_max",           "10000-05-2", protocol_field_type::date),
     err_text_value_testcase("long_month",       "2010-005-2", protocol_field_type::date),
-    err_text_value_testcase("long_day",         "2010-5-002", protocol_field_type::date)
+    err_text_value_testcase("long_day",         "2010-5-002", protocol_field_type::date),
+    err_text_value_testcase("negative_year",    "-999-05-02", protocol_field_type::date),
+    err_text_value_testcase("negative_month",   "2010--5-02", protocol_field_type::date),
+    err_text_value_testcase("negative_day",     "2010-05--                                                                                2", protocol_field_type::date)
+), test_name_generator);
+
+std::vector<err_text_value_testcase> make_datetime_err_cases(
+    protocol_field_type t
+)
+{
+    return {
+        err_text_value_testcase("empty",           "", t),
+        err_text_value_testcase("too_short_0",     "2020-05-02 23:01:0", t, 0, 0),
+        err_text_value_testcase("too_short_1",     "2020-05-02 23:01:0.1", t, 0, 1),
+        err_text_value_testcase("too_short_2",     "2020-05-02 23:01:00.1", t, 0, 2),
+        err_text_value_testcase("too_short_3",     "2020-05-02 23:01:00.11", t, 0, 3),
+        err_text_value_testcase("too_short_4",     "2020-05-02 23:01:00.111", t, 0, 4),
+        err_text_value_testcase("too_short_5",     "2020-05-02 23:01:00.1111", t, 0, 5),
+        err_text_value_testcase("too_short_6",     "2020-05-02 23:01:00.11111", t, 0, 6),
+        err_text_value_testcase("too_long_0",      "2020-05-02 23:01:00.8", t, 0, 0),
+        err_text_value_testcase("too_long_1",      "2020-05-02 23:01:00.98", t, 0, 1),
+        err_text_value_testcase("too_long_2",      "2020-05-02 23:01:00.998", t, 0, 2),
+        err_text_value_testcase("too_long_3",      "2020-05-02 23:01:00.9998", t, 0, 3),
+        err_text_value_testcase("too_long_4",      "2020-05-02 23:01:00.99998", t, 0, 4),
+        err_text_value_testcase("too_long_5",      "2020-05-02 23:01:00.999998", t, 0, 5),
+        err_text_value_testcase("too_long_6",      "2020-05-02 23:01:00.9999998", t, 0, 6),
+        err_text_value_testcase("no_decimals_1",   "2020-05-02 23:01:00  ", t, 0, 1),
+        err_text_value_testcase("no_decimals_2",   "2020-05-02 23:01:00   ", t, 0, 2),
+        err_text_value_testcase("no_decimals_3",   "2020-05-02 23:01:00     ", t, 0, 3),
+        err_text_value_testcase("no_decimals_4",   "2020-05-02 23:01:00      ", t, 0, 4),
+        err_text_value_testcase("no_decimals_5",   "2020-05-02 23:01:00       ", t, 0, 5),
+        err_text_value_testcase("no_decimals_6",   "2020-05-02 23:01:00        ", t, 0, 6),
+        err_text_value_testcase("bad_delimiter",   "2020-05-02 23-01-00", t),
+        err_text_value_testcase("missing_1gp_0",   "2020-05-02 23:01:  ", t),
+        err_text_value_testcase("missing_2gp_0",   "2020-05-02 23:     ", t),
+        err_text_value_testcase("missing_3gp_0",   "2020-05-02         ", t),
+        err_text_value_testcase("missing_1gp_1",   "2020-05-02 23:01:.9  ", t),
+        err_text_value_testcase("missing_2gp_1",   "2020-05-02 23:.9     ", t),
+        err_text_value_testcase("missing_3gp_1",   "2020-05-02.9         ", t),
+        err_text_value_testcase("invalid_hour1",   "2020-05-02 24:20:20", t),
+        err_text_value_testcase("invalid_hour2",   "2020-05-02 240:2:20", t),
+        err_text_value_testcase("negative_hour",   "2020-05-02 -2:20:20", t),
+        err_text_value_testcase("invalid_min",     "2020-05-02 22:60:20", t),
+        err_text_value_testcase("nagetive_min",    "2020-05-02 22:-1:20", t),
+        err_text_value_testcase("invalid_sec",     "2020-05-02 22:06:60", t),
+        err_text_value_testcase("nagetive_sec",    "2020-05-02 22:06:-1", t),
+        err_text_value_testcase("negative_micro",  "2020-05-02 22:06:01.-1", t, 0, 2),
+        err_text_value_testcase("lt_min",          "0900-01-01 00:00:00.00", t, 0, 2),
+        err_text_value_testcase("gt_max",          "10000-01-01 00:00:00.00", t, 0, 2)
+    };
+}
+
+INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueErrorTest, ValuesIn(
+    make_datetime_err_cases(protocol_field_type::datetime)
+), test_name_generator);
+
+// TIMESTAMP has a more narrow range than DATETIME, but as both are represented the same,
+// we accept the same, wider range for both.
+INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DeserializeTextValueErrorTest, ValuesIn(
+    make_datetime_err_cases(protocol_field_type::timestamp)
 ), test_name_generator);
 
 // All cases, row

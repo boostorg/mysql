@@ -66,6 +66,10 @@ inline errc deserialize_text_value_impl(
     hours = std::abs(hours);
     bool is_negative = from[0] == '-';
 
+    // Range check for minutes and seconds (hours may be greater than 24)
+    if (minutes >= 60 || seconds >= 60)
+        return errc::protocol_value_error;
+
     // Sum it
     auto res = std::chrono::hours(hours) + std::chrono::minutes(minutes) +
                std::chrono::seconds(seconds) + std::chrono::microseconds(micros);
