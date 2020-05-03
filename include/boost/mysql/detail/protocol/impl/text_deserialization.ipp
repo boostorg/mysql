@@ -17,25 +17,71 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Text protocol deserialization constants
+namespace textc {
+
+constexpr unsigned max_decimals = 6u;
+
+constexpr std::size_t year_sz = 4;
+constexpr std::size_t month_sz = 2;
+constexpr std::size_t day_sz = 2;
+constexpr std::size_t hours_min_sz = 2; // in TIME, it may be longer
+constexpr std::size_t mins_sz = 2;
+constexpr std::size_t secs_sz = 2;
+
+constexpr std::size_t date_sz = year_sz + month_sz + day_sz + 2; // delimiters
+constexpr std::size_t time_min_sz = hours_min_sz + mins_sz + secs_sz + 2; // delimiters
+constexpr std::size_t time_max_sz = time_min_sz + max_decimals + 3; // sign, period, hour extra character
+constexpr std::size_t datetime_min_sz = date_sz + time_min_sz + 1; // delimiter
+
+constexpr unsigned max_hour = 838;
+constexpr unsigned max_min = 59;
+constexpr unsigned max_sec = 59;
+constexpr unsigned max_micro = 999999;
+
+} // textc
+
+inline unsigned sanitize_decimals(unsigned decimals)
+{
+    return std::min(decimals, textc::max_decimals);
+}
+
+// Computes the meaning of the parsed microsecond number, taking into
+// account decimals (85 with 2 decimals means 850000us)
+inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals)
+{
+    return parsed_micros * static_cast<unsigned>(std::pow(10, textc::max_decimals - decimals));
+}
+
 inline errc deserialize_text_value_impl(
     std::string_view from,
     date& to
 )
 {
-    constexpr std::size_t size = 4 + 2 + 2 + 2; // year, month, day, separators
-    if (from.size() != size)
+    // Size check
+    if (from.size() != textc::date_sz)
         return errc::protocol_value_error;
-    unsigned year, month, day;
-    char buffer [size + 1] {};
+
+    // Copy to a NULL-terminated buffer
+    char buffer [textc::date_sz + 1] {};
     memcpy(buffer, from.data(), from.size());
+
+    // Parse individual components
+    unsigned year, month, day;
     int parsed = sscanf(buffer, "%4u-%2u-%2u", &year, &month, &day);
     if (parsed != 3)
         return errc::protocol_value_error;
+
+    // Verify date validity
     ::date::year_month_day result (::date::year(year)/::date::month(month)/::date::day(day));
     if (!result.ok())
         return errc::protocol_value_error;
+
+    // Range check
     if (result > max_date || result < min_date)
         return errc::protocol_value_error;
+
+    // Done
     to = result;
     return errc::ok;
 }
@@ -46,28 +92,46 @@ inline errc deserialize_text_value_impl(
     unsigned decimals
 )
 {
+    using namespace textc;
+
+    // Adjust decimals
+    decimals = sanitize_decimals(decimals);
+
     // size check
-    constexpr std::size_t min_size = 2 + 2 + 2 + 2; // hours, mins, seconds, no micros
-    constexpr std::size_t max_size = min_size + 1 + 1 + 7; // hour extra character, sign and micros
-    decimals = std::min(decimals, 6u);
-    if (from.size() < min_size || from.size() > max_size)
+    std::size_t actual_min_size = time_min_sz + (decimals ? decimals + 1 : 0);
+    std::size_t actual_max_size = actual_min_size + 1 + 1; // hour extra character and sign
+    assert(actual_max_size <= time_max_sz);
+    if (from.size() < actual_min_size || from.size() > actual_max_size)
         return errc::protocol_value_error;
+
+    // Copy to NULL-terminated buffer
+    char buffer [time_max_sz + 1] {};
+    memcpy(buffer, from.data(), from.size());
+
+    // Sign
+    bool is_negative = from[0] == '-';
+    const char* first = is_negative ? buffer + 1 : buffer;
 
     // Parse it
-    int hours;
-    unsigned minutes, seconds, micros = 0;
-    char buffer [max_size + 1] {};
-    memcpy(buffer, from.data(), from.size());
-    int parsed = decimals ? sscanf(buffer, "%4d:%2u:%2u.%6u", &hours, &minutes, &seconds, &micros) : // sign adds 1 char
-                            sscanf(buffer, "%4d:%2u:%2u", &hours, &minutes, &seconds);
-    if ((decimals && parsed != 4) || (!decimals && parsed != 3))
-        return errc::protocol_value_error;
-    micros *= static_cast<unsigned>(std::pow(10, 6 - decimals));
-    hours = std::abs(hours);
-    bool is_negative = from[0] == '-';
+    unsigned hours, minutes, seconds;
+    unsigned micros = 0;
+    char extra_char;
+    if (decimals)
+    {
+        int parsed = sscanf(first, "%3u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
+        if (parsed != 4)
+            return errc::protocol_value_error;
+        micros = compute_micros(micros, decimals);
+    }
+    else
+    {
+        int parsed = sscanf(first, "%3u:%2u:%2u%c", &hours, &minutes, &seconds, &extra_char);
+        if (parsed != 3)
+            return errc::protocol_value_error;
+    }
 
-    // Range check for minutes and seconds (hours may be greater than 24)
-    if (minutes >= 60 || seconds >= 60)
+    // Range check
+    if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
         return errc::protocol_value_error;
 
     // Sum it
@@ -78,10 +142,7 @@ inline errc deserialize_text_value_impl(
         res = -res;
     }
 
-    // Range check
-    if (res > max_time || res < min_time)
-        return errc::protocol_value_error;
-
+    // Done
     to = res;
     return errc::ok;
 }
@@ -92,30 +153,35 @@ inline errc deserialize_text_value_impl(
     unsigned decimals
 )
 {
+    using namespace textc;
+
+    // Sanitize decimals
+    decimals = sanitize_decimals(decimals);
+
     // Length check
-    constexpr std::size_t min_size = 4 + 5*2 + 5; // year, month, day, hour, minute, seconds, separators
-    decimals = std::min(decimals, 6u);
-    std::size_t expected_size = min_size + (decimals ? decimals + 1 : 0);
+    std::size_t expected_size = datetime_min_sz + (decimals ? decimals + 1 : 0);
     if (from.size() != expected_size)
         return errc::protocol_value_error;
 
-    // Date part
-    date dt;
-    auto err = deserialize_text_value_impl(from.substr(0, 10), dt);
+    // Parse date
+    date d;
+    auto err = deserialize_text_value_impl(from.substr(0, date_sz), d);
     if (err != errc::ok)
         return err;
 
     // Time of day part
     time time_of_day;
-    err = deserialize_text_value_impl(from.substr(11), time_of_day, decimals);
+    err = deserialize_text_value_impl(from.substr(date_sz + 1), time_of_day, decimals);
     if (err != errc::ok)
         return err;
+
+    // Range check
     constexpr auto max_time_of_day = std::chrono::hours(24) - std::chrono::microseconds(1);
     if (time_of_day < std::chrono::seconds(0) || time_of_day > max_time_of_day)
         return errc::protocol_value_error;
 
     // Sum it up
-    to = dt + time_of_day;
+    to = d + time_of_day;
     return errc::ok;
 }
 
@@ -141,30 +207,16 @@ inline errc deserialize_text_value_impl(std::string_view from, std::string_view&
 template <typename T, typename... Args>
 errc deserialize_text_value_to_variant(std::string_view from, value& to, Args&&... args)
 {
-    T value;
-    auto err = deserialize_text_value_impl(from, value, std::forward<Args>(args)...);
-    if (err == errc::ok)
-    {
-        to = value;
-    }
-    return err;
+    return deserialize_text_value_impl(from, to.emplace<T>(), std::forward<Args>(args)...);
 }
 
 inline bool is_next_field_null(
-    deserialization_context& ctx
+    const deserialization_context& ctx
 )
 {
-    int1 type_byte;
-    errc err = deserialize(type_byte, ctx);
-    if (err == errc::ok)
-    {
-        if (type_byte.value == 0xfb)
-        {
-            return true; // it was null, do not rewind
-        }
-        ctx.rewind(1); // it was not null, rewind (this byte is part of the actual message)
-    }
-    return false;
+    if (!ctx.enough_size(1))
+        return false;
+    return *ctx.first() == 0xfb;
 }
 
 } // detail
@@ -232,9 +284,9 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
     output.resize(fields.size());
     for (std::vector<value>::size_type i = 0; i < fields.size(); ++i)
     {
-        bool is_null = is_next_field_null(ctx);
-        if (is_null)
+        if (is_next_field_null(ctx))
         {
+            ctx.advance(1);
             output[i] = nullptr;
         }
         else

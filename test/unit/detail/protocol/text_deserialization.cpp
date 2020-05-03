@@ -216,10 +216,13 @@ INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, Values(
     text_value_testcase("6_decimals_hms", "2010-02-15 02:05:30.000000", makedt(2010, 2, 15, 2, 5, 30), protocol_field_type::datetime, 0, 6),
     text_value_testcase("6_decimals_hmsu", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), protocol_field_type::datetime, 0, 6),
     text_value_testcase("6_decimals_min", "1000-01-01 00:00:00.000000", makedt(1000, 1, 1), protocol_field_type::datetime, 0, 6),
-    text_value_testcase("6_decimals_max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), protocol_field_type::datetime, 0, 6)
+    text_value_testcase("6_decimals_max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), protocol_field_type::datetime, 0, 6),
+
+    // not a real case, we cap decimals to 6
+    text_value_testcase("7_decimals", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), protocol_field_type::datetime, 0, 7)
 ), test_name_generator);
 
-// Right now, timestamps are deserialized as DATETIMEs. TODO: update this when we consider time zones
+// Right now, timestamps are deserialized as DATETIMEs
 INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DeserializeTextValueTest, Values(
     text_value_testcase("0_decimals", "2010-02-15 02:05:30", makedt(2010, 2, 15, 2, 5, 30), protocol_field_type::timestamp),
     text_value_testcase("6_decimals", "2010-02-15 02:05:30.085670", makedt(2010, 2, 15, 2, 5, 30, 85670), protocol_field_type::timestamp, 0, 6),
@@ -237,6 +240,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("0_decimals_negative_hms", "-14:51:23", -maket(14, 51, 23), protocol_field_type::time),
     text_value_testcase("0_decimals_min", "-838:59:59", -maket(838, 59, 59), protocol_field_type::time),
     text_value_testcase("0_decimals_zero", "00:00:00", maket(0, 0, 0), protocol_field_type::time),
+    text_value_testcase("0_decimals_negative_h0", "-00:51:23", -maket(0, 51, 23), protocol_field_type::time),
 
     text_value_testcase("1_decimals_positive_hms", "14:51:23.0", maket(14, 51, 23), protocol_field_type::time, 0, 1),
     text_value_testcase("1_decimals_positive_hmsu", "14:51:23.5", maket(14, 51, 23, 500000), protocol_field_type::time, 0, 1),
@@ -245,6 +249,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("1_decimals_negative_hmsu", "-14:51:23.5", -maket(14, 51, 23, 500000), protocol_field_type::time, 0, 1),
     text_value_testcase("1_decimals_min", "-838:59:58.9", -maket(838, 59, 58, 900000), protocol_field_type::time, 0, 1),
     text_value_testcase("1_decimals_zero", "00:00:00.0", maket(0, 0, 0), protocol_field_type::time, 0, 1),
+    text_value_testcase("1_decimals_negative_h0", "-00:51:23.1", -maket(0, 51, 23, 100000), protocol_field_type::time, 0, 1),
 
     text_value_testcase("2_decimals_positive_hms", "14:51:23.00", maket(14, 51, 23), protocol_field_type::time, 0, 2),
     text_value_testcase("2_decimals_positive_hmsu", "14:51:23.52", maket(14, 51, 23, 520000), protocol_field_type::time, 0, 2),
@@ -253,6 +258,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("2_decimals_negative_hmsu", "-14:51:23.50", -maket(14, 51, 23, 500000), protocol_field_type::time, 0, 2),
     text_value_testcase("2_decimals_min", "-838:59:58.99", -maket(838, 59, 58, 990000), protocol_field_type::time, 0, 2),
     text_value_testcase("2_decimals_zero", "00:00:00.00", maket(0, 0, 0), protocol_field_type::time, 0, 2),
+    text_value_testcase("2_decimals_negative_h0", "-00:51:23.12", -maket(0, 51, 23, 120000), protocol_field_type::time, 0, 2),
 
     text_value_testcase("3_decimals_positive_hms", "14:51:23.000", maket(14, 51, 23), protocol_field_type::time, 0, 3),
     text_value_testcase("3_decimals_positive_hmsu", "14:51:23.501", maket(14, 51, 23, 501000), protocol_field_type::time, 0, 3),
@@ -261,6 +267,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("3_decimals_negative_hmsu", "-14:51:23.003", -maket(14, 51, 23, 3000), protocol_field_type::time, 0, 3),
     text_value_testcase("3_decimals_min", "-838:59:58.999", -maket(838, 59, 58, 999000), protocol_field_type::time, 0, 3),
     text_value_testcase("3_decimals_zero", "00:00:00.000", maket(0, 0, 0), protocol_field_type::time, 0, 3),
+    text_value_testcase("3_decimals_negative_h0", "-00:51:23.123", -maket(0, 51, 23, 123000), protocol_field_type::time, 0, 3),
 
     text_value_testcase("4_decimals_positive_hms", "14:51:23.0000", maket(14, 51, 23), protocol_field_type::time, 0, 4),
     text_value_testcase("4_decimals_positive_hmsu", "14:51:23.5017", maket(14, 51, 23, 501700), protocol_field_type::time, 0, 4),
@@ -269,6 +276,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("4_decimals_negative_hmsu", "-14:51:23.0038", -maket(14, 51, 23, 3800), protocol_field_type::time, 0, 4),
     text_value_testcase("4_decimals_min", "-838:59:58.9999", -maket(838, 59, 58, 999900), protocol_field_type::time, 0, 4),
     text_value_testcase("4_decimals_zero", "00:00:00.0000", maket(0, 0, 0), protocol_field_type::time, 0, 4),
+    text_value_testcase("4_decimals_negative_h0", "-00:51:23.1234", -maket(0, 51, 23, 123400), protocol_field_type::time, 0, 4),
 
     text_value_testcase("5_decimals_positive_hms", "14:51:23.00000", maket(14, 51, 23), protocol_field_type::time, 0, 5),
     text_value_testcase("5_decimals_positive_hmsu", "14:51:23.50171", maket(14, 51, 23, 501710), protocol_field_type::time, 0, 5),
@@ -277,6 +285,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("5_decimals_negative_hmsu", "-14:51:23.00009", -maket(14, 51, 23, 90), protocol_field_type::time, 0, 5),
     text_value_testcase("5_decimals_min", "-838:59:58.99999", -maket(838, 59, 58, 999990), protocol_field_type::time, 0, 5),
     text_value_testcase("5_decimals_zero", "00:00:00.00000", maket(0, 0, 0), protocol_field_type::time, 0, 5),
+    text_value_testcase("5_decimals_negative_h0", "-00:51:23.12345", -maket(0, 51, 23, 123450), protocol_field_type::time, 0, 5),
 
     text_value_testcase("6_decimals_positive_hms", "14:51:23.000000", maket(14, 51, 23), protocol_field_type::time, 0, 6),
     text_value_testcase("6_decimals_positive_hmsu", "14:51:23.501717", maket(14, 51, 23, 501717), protocol_field_type::time, 0, 6),
@@ -285,6 +294,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
     text_value_testcase("6_decimals_negative_hmsu", "-14:51:23.900000", -maket(14, 51, 23, 900000), protocol_field_type::time, 0, 6),
     text_value_testcase("6_decimals_min", "-838:59:58.999999", -maket(838, 59, 58, 999999), protocol_field_type::time, 0, 6),
     text_value_testcase("6_decimals_zero", "00:00:00.000000", maket(0, 0, 0), protocol_field_type::time, 0, 6),
+    text_value_testcase("6_decimals_negative_h0", "-00:51:23.123456", -maket(0, 51, 23, 123456), protocol_field_type::time, 0, 6),
 
     // This is not a real case - we cap anything above 6 decimals to 6
     text_value_testcase("7_decimals", "14:51:23.501717", maket(14, 51, 23, 501717), protocol_field_type::time, 0, 7)
@@ -303,17 +313,17 @@ struct err_text_value_testcase : named_param
     std::string name;
     std::string_view from;
     protocol_field_type type;
-    unsigned decimals;
     std::uint16_t flags;
+    unsigned decimals;
     errc expected_err;
 
     err_text_value_testcase(std::string&& name, std::string_view from, protocol_field_type type,
-            unsigned decimals=0, std::uint16_t flags=0, errc expected_err=errc::protocol_value_error) :
+            std::uint16_t flags=0, unsigned decimals=0, errc expected_err=errc::protocol_value_error) :
         name(std::move(name)),
         from(from),
         type(type),
-        decimals(decimals),
         flags(flags),
+        decimals(decimals),
         expected_err(expected_err)
     {
     }
@@ -369,7 +379,7 @@ std::vector<err_text_value_testcase> make_int32_err_cases(
 {
     // Unsigned integers behaviour for negative inputs are determined by what iostreams
     // do (accepting it and overflowing)
-    return make_int_err_cases(t, "-2147483649", "2147483648", "-2147483649", "4294967296");
+    return make_int_err_cases(t, "-2147483649", "2147483648", "-4294967296", "4294967296");
 }
 
 INSTANTIATE_TEST_SUITE_P(TINYINT, DeserializeTextValueErrorTest, ValuesIn(
@@ -398,7 +408,7 @@ std::vector<err_text_value_testcase> make_int64_err_cases(
         t,
         "-9223372036854775809",
         "9223372036854775808",
-        "-9223372036854775809",
+        "-18446744073709551616",
         "18446744073709551616"
     );
 }
@@ -479,6 +489,13 @@ std::vector<err_text_value_testcase> make_datetime_err_cases(
         err_text_value_testcase("no_decimals_4",   "2020-05-02 23:01:00      ", t, 0, 4),
         err_text_value_testcase("no_decimals_5",   "2020-05-02 23:01:00       ", t, 0, 5),
         err_text_value_testcase("no_decimals_6",   "2020-05-02 23:01:00        ", t, 0, 6),
+        err_text_value_testcase("trailing_0",      "2020-05-02 23:01:0p", t, 0, 0),
+        err_text_value_testcase("trailing_1",      "2020-05-02 23:01:00.p", t, 0, 1),
+        err_text_value_testcase("trailing_2",      "2020-05-02 23:01:00.1p", t, 0, 2),
+        err_text_value_testcase("trailing_3",      "2020-05-02 23:01:00.12p", t, 0, 3),
+        err_text_value_testcase("trailing_4",      "2020-05-02 23:01:00.123p", t, 0, 4),
+        err_text_value_testcase("trailing_5",      "2020-05-02 23:01:00.1234p", t, 0, 5),
+        err_text_value_testcase("trailing_6",      "2020-05-02 23:01:00.12345p", t, 0, 6),
         err_text_value_testcase("bad_delimiter",   "2020-05-02 23-01-00", t),
         err_text_value_testcase("missing_1gp_0",   "2020-05-02 23:01:  ", t),
         err_text_value_testcase("missing_2gp_0",   "2020-05-02 23:     ", t),
@@ -490,11 +507,11 @@ std::vector<err_text_value_testcase> make_datetime_err_cases(
         err_text_value_testcase("invalid_hour2",   "2020-05-02 240:2:20", t),
         err_text_value_testcase("negative_hour",   "2020-05-02 -2:20:20", t),
         err_text_value_testcase("invalid_min",     "2020-05-02 22:60:20", t),
-        err_text_value_testcase("nagetive_min",    "2020-05-02 22:-1:20", t),
+        err_text_value_testcase("negative_min",    "2020-05-02 22:-1:20", t),
         err_text_value_testcase("invalid_sec",     "2020-05-02 22:06:60", t),
-        err_text_value_testcase("nagetive_sec",    "2020-05-02 22:06:-1", t),
+        err_text_value_testcase("negative_sec",    "2020-05-02 22:06:-1", t),
         err_text_value_testcase("negative_micro",  "2020-05-02 22:06:01.-1", t, 0, 2),
-        err_text_value_testcase("lt_min",          "0900-01-01 00:00:00.00", t, 0, 2),
+        err_text_value_testcase("lt_min",          "0090-01-01 00:00:00.00", t, 0, 2),
         err_text_value_testcase("gt_max",          "10000-01-01 00:00:00.00", t, 0, 2)
     };
 }
@@ -507,6 +524,62 @@ INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueErrorTest, ValuesIn(
 // we accept the same, wider range for both.
 INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DeserializeTextValueErrorTest, ValuesIn(
     make_datetime_err_cases(protocol_field_type::timestamp)
+), test_name_generator);
+
+INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueErrorTest, Values(
+    err_text_value_testcase("empty",           "", protocol_field_type::time),
+    err_text_value_testcase("not_numbers",     "abjkjdb67", protocol_field_type::time),
+    err_text_value_testcase("too_short_0",     "1:20:20", protocol_field_type::time),
+    err_text_value_testcase("too_short_1",     "1:20:20.1", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("too_short_2",     "01:20:20.1", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("too_short_3",     "01:20:20.12", protocol_field_type::time, 0, 3),
+    err_text_value_testcase("too_short_4",     "01:20:20.123", protocol_field_type::time, 0, 4),
+    err_text_value_testcase("too_short_5",     "01:20:20.1234", protocol_field_type::time, 0, 5),
+    err_text_value_testcase("too_short_6",     "01:20:20.12345", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("too_long_0",      "-9999:40:40", protocol_field_type::time, 0, 0),
+    err_text_value_testcase("too_long_1",      "-9999:40:40.1", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("too_long_2",      "-9999:40:40.12", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("too_long_3",      "-9999:40:40.123", protocol_field_type::time, 0, 3),
+    err_text_value_testcase("too_long_4",      "-9999:40:40.1234", protocol_field_type::time, 0, 4),
+    err_text_value_testcase("too_long_5",      "-9999:40:40.12345", protocol_field_type::time, 0, 5),
+    err_text_value_testcase("too_long_6",      "-9999:40:40.123456", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("extra_long",      "-99999999:40:40.12345678", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("extra_long2",     "99999999999:40:40", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("decimals_0",      "01:20:20.1", protocol_field_type::time, 0, 0),
+    err_text_value_testcase("no_decimals_1",   "01:20:20  ", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("no_decimals_2",   "01:20:20   ", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("no_decimals_3",   "01:20:20    ", protocol_field_type::time, 0, 3),
+    err_text_value_testcase("no_decimals_4",   "01:20:20     ", protocol_field_type::time, 0, 4),
+    err_text_value_testcase("no_decimals_5",   "01:20:20      ", protocol_field_type::time, 0, 5),
+    err_text_value_testcase("no_decimals_6",   "01:20:20       ", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("bad_delimiter",   "01-20-20", protocol_field_type::time),
+    err_text_value_testcase("missing_1gp_0",   "23:01:  ", protocol_field_type::time),
+    err_text_value_testcase("missing_2gp_0",   "23:     ", protocol_field_type::time),
+    err_text_value_testcase("missing_1gp_1",   "23:01:.9  ", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("missing_2gp_1",   "23:.9     ", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("invalid_min",     "22:60:20", protocol_field_type::time),
+    err_text_value_testcase("negative_min",    "22:-1:20", protocol_field_type::time),
+    err_text_value_testcase("invalid_sec",     "22:06:60", protocol_field_type::time),
+    err_text_value_testcase("negative_sec",    "22:06:-1", protocol_field_type::time),
+    err_text_value_testcase("invalid_micro_1", "22:06:01.99", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("invalid_micro_2", "22:06:01.999", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("invalid_micro_3", "22:06:01.9999", protocol_field_type::time, 0, 3),
+    err_text_value_testcase("invalid_micro_4", "22:06:01.99999", protocol_field_type::time, 0, 4),
+    err_text_value_testcase("invalid_micro_5", "22:06:01.999999", protocol_field_type::time, 0, 5),
+    err_text_value_testcase("invalid_micro_6", "22:06:01.9999999", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("negative_micro",  "22:06:01.-1", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("lt_min",          "-900:00:00.00", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("gt_max",          "900:00:00.00", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("invalid_sign",    "x670:00:00.00", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("null_char",       makesv("20:00:\00.00"), protocol_field_type::time, 0, 2),
+    err_text_value_testcase("trailing_0",      "22:06:01k", protocol_field_type::time, 0, 0),
+    err_text_value_testcase("trailing_1",      "22:06:01.1k", protocol_field_type::time, 0, 1),
+    err_text_value_testcase("trailing_2",      "22:06:01.12k", protocol_field_type::time, 0, 2),
+    err_text_value_testcase("trailing_3",      "22:06:01.123k", protocol_field_type::time, 0, 3),
+    err_text_value_testcase("trailing_4",      "22:06:01.1234k", protocol_field_type::time, 0, 4),
+    err_text_value_testcase("trailing_5",      "22:06:01.12345k", protocol_field_type::time, 0, 5),
+    err_text_value_testcase("trailing_6",      "22:06:01.123456k", protocol_field_type::time, 0, 6),
+    err_text_value_testcase("double_sign",     "--22:06:01.123456", protocol_field_type::time, 0, 6)
 ), test_name_generator);
 
 // All cases, row

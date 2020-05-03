@@ -1,5 +1,13 @@
 Sanitize
 	Test zero dates
+	Refactor text deserialization constants
+	Add text deserialization error tests
+	Refactor binary deserialization constants
+	Add binary deserialization error tests
+	   Float: nan, inf, signalling nan
+	See if we have any trouble with user input in binary serialization
+	Test with an unknown protocol type
+	Random input tests
 Better docs
     Wandbox
 	Breaking up the tutorial in pieces
@@ -38,7 +46,6 @@ Other possible features
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
     Change channel read to make less syscalls
-	Random input tests
 	Test dashboard
 	Sanitizers
 	Integ tests for different default auth plugins
