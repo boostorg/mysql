@@ -32,7 +32,9 @@ add_executable(
     unit/detail/protocol/query_messages.cpp
     unit/detail/protocol/prepared_statement_messages.cpp
     unit/detail/protocol/capabilities.cpp
-    unit/detail/protocol/text_deserialization.cpp
+    unit/detail/protocol/text_deserialization_value.cpp
+    unit/detail/protocol/text_deserialization_error.cpp
+    unit/detail/protocol/text_deserialization_row.cpp
     unit/detail/protocol/binary_deserialization.cpp
     unit/detail/protocol/null_bitmap_traits.cpp
     unit/metadata.cpp
