@@ -139,7 +139,6 @@ std::vector<err_text_value_testcase> make_float_err_cases(
     return {
         err_text_value_testcase("blank", "", t),
         err_text_value_testcase("non_number", "abtrf", t),
-        err_text_value_testcase("hex", "0x01", t),
         err_text_value_testcase("lt_min", lt_min, t),
         err_text_value_testcase("gt_max", gt_max, t),
         err_text_value_testcase("inf", "inf", t), // inf values not allowed by SQL std
