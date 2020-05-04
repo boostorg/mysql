@@ -64,6 +64,7 @@ TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
     auto err = deserialize_binary_value(ctx, meta, actual_value);
     EXPECT_EQ(err, errc::ok);
     EXPECT_EQ(actual_value, GetParam().expected);
+    EXPECT_EQ(ctx.first(), buffer.data() + buffer.size()); // all bytes consumed
 }
 
 INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeBinaryValueTest, Values(

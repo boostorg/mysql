@@ -41,7 +41,13 @@ inline errc deserialize_binary_date(
 
     // TODO: how does this handle zero dates?
     ::date::year_month_day ymd (::date::year(year.value), ::date::month(month.value), ::date::day(day.value));
+    if (!ymd.ok())
+        return errc::protocol_value_error;
+
     output = date(ymd);
+    if (output < min_date || output > max_date)
+        return errc::protocol_value_error;
+
     return errc::ok;
 }
 

@@ -7,9 +7,14 @@ Sanitize
         Refactor binary deserialization constants
         Change text row to use parameterized tests
         Refactor deserialize_binary_value to have similar implementation to the text one
+    Better resilience of deserialization
+        Make float inf and nan output NULL?
+        Lift range check on dates, datetimes, times
+        Make invalid dates and datetimes output NULL
+        Integ tests for zero and invalid dates
+    Complete DATETIME and TIME error tests
 	See if we have any trouble with user input in binary serialization: make assertions
 	Test with an unknown protocol type
-    Test zero dates
 	Random input tests
 Better docs
     Wandbox
@@ -27,6 +32,7 @@ Handshake
 	SSL certificate & common name validation
 	sha256_password
 Usability
+    Operator<< and == for value and ADL
 	Should make_error_code be public?
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name

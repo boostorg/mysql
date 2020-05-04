@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_HPP
 
+#include <cmath>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -268,6 +270,8 @@ boost::mysql::detail::serialization_traits<
     std::memcpy(&output, ctx.first(), sizeof(T));
 #endif
     ctx.advance(sizeof(T));
+    if (std::isnan(output) || std::isinf(output))
+        return errc::protocol_value_error;
     return errc::ok;
 }
 
