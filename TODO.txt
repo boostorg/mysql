@@ -1,12 +1,13 @@
 Sanitize
-	Test zero dates
-	Refactor text deserialization constants
-	Add text deserialization error tests
-	Refactor binary deserialization constants
-	Add binary deserialization error tests
-	   Float: nan, inf, signalling nan
-	See if we have any trouble with user input in binary serialization
+    Refactor binary deserialization tests
+        Verify that deserialization test fixture works
+        Add strings, float, double, times error tests in serialization.cpp
+        Refactor binary deserialization constants
+        Change text row to use parameterized tests
+        Refactor deserialize_binary_value to have similar implementation to the text one
+	See if we have any trouble with user input in binary serialization: make assertions
 	Test with an unknown protocol type
+    Test zero dates
 	Random input tests
 Better docs
     Wandbox
