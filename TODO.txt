@@ -1,7 +1,9 @@
 Sanitize
     Refactor binary deserialization tests
+        serialize_binary_value(), get_binary_value_size() instead of global serialize for floats and times
+        Move serialization tests to just binary serialization tests
         Verify that deserialization test fixture works
-        Add strings, float, double, times error tests in serialization.cpp
+        Add float, double, times error tests in serialization.cpp
         Refactor binary deserialization constants
         Change text row to use parameterized tests
         Refactor deserialize_binary_value to have similar implementation to the text one

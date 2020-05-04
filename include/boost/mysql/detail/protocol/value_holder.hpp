@@ -56,6 +56,9 @@ struct get_value_type
 template <typename T>
 using get_value_type_t = typename get_value_type<T>::type;
 
+template <typename T>
+constexpr bool is_value_holder_v = std::is_base_of_v<value_holder<get_value_type_t<T>>, T>;
+
 }
 }
 }

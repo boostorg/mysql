@@ -17,59 +17,82 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-using binary_protocol_value = std::variant<
-    int1,
-    int2,
-    int4,
-    int8,
-    int1_signed,
-    int2_signed,
-    int4_signed,
-    int8_signed,
-    string_lenenc,
-    float,
-    double,
-    date,
-    datetime,
-    time
->;
-
-template <typename SignedType, typename UnsignedType>
-binary_protocol_value get_int_deserializable_type(
-    const field_metadata& meta
+template <typename TargetType, typename DeserializableType=TargetType>
+errc deserialize_binary_value_to_variant(
+    deserialization_context& ctx,
+    value& output
 )
 {
-    return meta.is_unsigned() ? binary_protocol_value(UnsignedType()) :
-                                binary_protocol_value(SignedType());
+    DeserializableType deser;
+    auto err = deserialize(deser, ctx);
+    if (err != errc::ok)
+        return err;
+    if constexpr (is_value_holder_v<DeserializableType>)
+    {
+        output = TargetType(deser.value);
+    }
+    else
+    {
+        output = TargetType(deser);
+    }
+    return errc::ok;
 }
 
-inline binary_protocol_value get_deserializable_type(
-    const field_metadata& meta
+template <
+    typename TargetTypeUnsigned,
+    typename TargetTypeSigned,
+    typename DeserializableTypeUnsigned,
+    typename DeserializableTypeSigned
+>
+errc deserialize_binary_value_to_variant_int(
+    const field_metadata& meta,
+    deserialization_context& ctx,
+    value& output
+)
+{
+    return meta.is_unsigned() ?
+        deserialize_binary_value_to_variant<TargetTypeUnsigned, DeserializableTypeUnsigned>(ctx, output) :
+        deserialize_binary_value_to_variant<TargetTypeSigned, DeserializableTypeSigned>(ctx, output);
+}
+
+
+} // detail
+} // mysql
+} // boost
+
+inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
+    deserialization_context& ctx,
+    const field_metadata& meta,
+    value& output
 )
 {
     switch (meta.protocol_type())
     {
     case protocol_field_type::tiny:
-        return get_int_deserializable_type<int1_signed, int1>(meta);
+        return deserialize_binary_value_to_variant_int<
+                std::uint32_t, std::int32_t, int1, int1_signed>(meta, ctx, output);
     case protocol_field_type::short_:
     case protocol_field_type::year:
-        return get_int_deserializable_type<int2_signed, int2>(meta);
+        return deserialize_binary_value_to_variant_int<
+                std::uint32_t, std::int32_t, int2, int2_signed>(meta, ctx, output);
     case protocol_field_type::int24:
     case protocol_field_type::long_:
-        return get_int_deserializable_type<int4_signed, int4>(meta);
+        return deserialize_binary_value_to_variant_int<
+                std::uint32_t, std::int32_t, int4, int4_signed>(meta, ctx, output);
     case protocol_field_type::longlong:
-        return get_int_deserializable_type<int8_signed, int8>(meta);
+        return deserialize_binary_value_to_variant_int<
+                std::uint64_t, std::int64_t, int8, int8_signed>(meta, ctx, output);
     case protocol_field_type::float_:
-        return float();
+        return deserialize_binary_value_to_variant<float>(ctx, output);
     case protocol_field_type::double_:
-        return double();
+        return deserialize_binary_value_to_variant<double>(ctx, output);
     case protocol_field_type::timestamp:
     case protocol_field_type::datetime:
-        return datetime();
+        return deserialize_binary_value_to_variant<datetime>(ctx, output);
     case protocol_field_type::date:
-        return date();
+        return deserialize_binary_value_to_variant<date>(ctx, output);
     case protocol_field_type::time:
-        return time();
+        return deserialize_binary_value_to_variant<time>(ctx, output);
     // True string types
     case protocol_field_type::varchar:
     case protocol_field_type::var_string:
@@ -86,43 +109,8 @@ inline binary_protocol_value get_deserializable_type(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return string_lenenc();
+        return deserialize_binary_value_to_variant<std::string_view, string_lenenc>(ctx, output);
     }
-}
-
-} // detail
-} // mysql
-} // boost
-
-inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
-    deserialization_context& ctx,
-    const field_metadata& meta,
-    value& output
-)
-{
-    auto protocol_value = get_deserializable_type(meta);
-    return std::visit([&output, &ctx](auto typed_protocol_value) {
-        using type = decltype(typed_protocol_value);
-        auto err = deserialize(typed_protocol_value, ctx);
-        if (err == errc::ok)
-        {
-            if constexpr (std::is_constructible_v<value, type>) // not a value holder
-            {
-                output = typed_protocol_value;
-            }
-            else if constexpr (is_one_of_v<type, int1, int2>)
-            {
-                // regular promotion would make this int32_t. Force it be uint32_t
-                // TODO: check here
-                output = std::uint32_t(typed_protocol_value.value);
-            }
-            else
-            {
-                output = typed_protocol_value.value;
-            }
-        }
-        return err;
-    }, protocol_value);
 }
 
 inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(

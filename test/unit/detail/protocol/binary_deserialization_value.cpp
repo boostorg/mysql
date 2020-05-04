@@ -57,6 +57,7 @@ struct DeserializeBinaryValueTest : public TestWithParam<binary_value_testcase> 
 
 TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
+    using boost::mysql::operator<<;
     column_definition_packet coldef;
     coldef.type = GetParam().type;
     coldef.flags.value = GetParam().flags;
