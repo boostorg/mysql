@@ -76,7 +76,7 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeTextValueTest, Values(
 
     text_value_testcase("bit", "\1", "\1", protocol_field_type::bit),
     text_value_testcase("decimal", "\1", "\1", protocol_field_type::newdecimal),
-    text_value_testcase("geomtry", "\1", "\1", protocol_field_type::geometry, column_flags::binary | column_flags::blob)
+    text_value_testcase("geometry", "\1", "\1", protocol_field_type::geometry, column_flags::binary | column_flags::blob)
 ), test_name_generator);
 
 template <typename SignedType, typename UnsignedType>
