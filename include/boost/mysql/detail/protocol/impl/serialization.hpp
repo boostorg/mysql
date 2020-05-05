@@ -248,51 +248,6 @@ std::size_t boost::mysql::detail::serialization_traits<
     return get_int_size<serializable_type>();
 }
 
-// Floating points
-template <typename T>
-boost::mysql::errc
-boost::mysql::detail::serialization_traits<
-    T,
-    boost::mysql::detail::serialization_tag::floating_point
->::deserialize_(T& output, deserialization_context& ctx) noexcept
-{
-    // Size check
-    if (!ctx.enough_size(sizeof(T)))
-        return errc::incomplete_message;
-
-    // Endianness conversion. Boost.Endian support for floats start at 1.71
-#if BOOST_ENDIAN_BIG_BYTE
-    char buf [sizeof(T)];
-    std::memcpy(buf, ctx.first(), sizeof(T));
-    std::reverse(buf, buf + sizeof(T));
-    std::memcpy(&output, buf, sizeof(T));
-#else
-    std::memcpy(&output, ctx.first(), sizeof(T));
-#endif
-    ctx.advance(sizeof(T));
-    if (std::isnan(output) || std::isinf(output))
-        return errc::protocol_value_error;
-    return errc::ok;
-}
-
-template <typename T>
-void
-boost::mysql::detail::serialization_traits<
-    T,
-    boost::mysql::detail::serialization_tag::floating_point
->::serialize_(T input, serialization_context& ctx) noexcept
-{
-    // Endianness conversion
-#if BOOST_ENDIAN_BIG_BYTE
-    char buf [sizeof(T)];
-    std::memcpy(buf, &input, sizeof(T));
-    std::reverse(buf, buf + sizeof(T));
-    ctx.write(buf, sizeof(T));
-#else
-    ctx.write(&input, sizeof(T));
-#endif
-}
-
 // Structs
 template <typename T>
 constexpr bool boost::mysql::detail::is_struct_with_fields()
@@ -399,7 +354,6 @@ boost::mysql::detail::get_serialization_tag()
 {
     return
         is_fixed_size_int<T>() ? serialization_tag::fixed_size_int :
-        std::is_floating_point<T>::value ? serialization_tag::floating_point :
         std::is_enum<T>::value ? serialization_tag::enumeration :
         is_struct_with_fields<T>() ? serialization_tag::struct_with_fields :
         serialization_tag::none;

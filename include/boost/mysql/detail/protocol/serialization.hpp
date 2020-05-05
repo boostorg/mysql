@@ -26,7 +26,6 @@ enum class serialization_tag
 {
     none,
     fixed_size_int,
-    floating_point,
     enumeration,
     struct_with_fields
 };
@@ -153,45 +152,6 @@ struct serialization_traits<T, serialization_tag::enumeration>
         serialize(serializable_type(static_cast<underlying_type>(input)), ctx);
     }
     static std::size_t get_size_(T, const serialization_context&) noexcept;
-};
-
-// Floating points
-template <typename T>
-struct serialization_traits<T, serialization_tag::floating_point>
-{
-    static_assert(std::numeric_limits<T>::is_iec559);
-    static errc deserialize_(T& output, deserialization_context& ctx) noexcept;
-    static void serialize_(T input, serialization_context& ctx) noexcept;
-    static std::size_t get_size_(T, const serialization_context&) noexcept
-    {
-        return sizeof(T);
-    }
-};
-
-
-// Dates and times
-template <>
-struct serialization_traits<date, serialization_tag::none>
-{
-    static inline std::size_t get_size_(const date& input, const serialization_context& ctx) noexcept;
-    static inline void serialize_(const date& input, serialization_context& ctx) noexcept;
-    static inline errc deserialize_(date& output, deserialization_context& ctx) noexcept;
-};
-
-template <>
-struct serialization_traits<datetime, serialization_tag::none>
-{
-    static inline std::size_t get_size_(const datetime& input, const serialization_context& ctx) noexcept;
-    static inline void serialize_(const datetime& input, serialization_context& ctx) noexcept;
-    static inline errc deserialize_(datetime& output, deserialization_context& ctx) noexcept;
-};
-
-template <>
-struct serialization_traits<time, serialization_tag::none>
-{
-    static inline std::size_t get_size_(const time& input, const serialization_context& ctx) noexcept;
-    static inline void serialize_(const time& input, serialization_context& ctx) noexcept;
-    static inline errc deserialize_(time& output, deserialization_context& ctx) noexcept;
 };
 
 // Structs and commands (messages)

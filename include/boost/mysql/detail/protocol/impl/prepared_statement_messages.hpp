@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_PREPARED_STATEMENT_MESSAGES_HPP
 
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
+#include "boost/mysql/detail/protocol/binary_serialization.hpp"
 
 namespace boost {
 namespace mysql {
@@ -42,12 +43,8 @@ inline bool is_unsigned(
     const value& input
 ) noexcept
 {
-    // By default, return false; just for integer types explicitly unsigned return true
-    return std::visit([](auto v) {
-        using type = decltype(v);
-        return std::is_same_v<type, std::uint32_t> ||
-               std::is_same_v<type, std::uint64_t>;
-    }, input);
+    return std::holds_alternative<std::uint32_t>(input) ||
+           std::holds_alternative<std::uint64_t>(input);
 }
 
 // Performs a mapping from T to a type that can be serialized
@@ -82,25 +79,6 @@ inline get_serializable_type_t<T> to_serializable_type(T input) noexcept
     return get_serializable_type_t<T>(input);
 }
 
-inline std::size_t get_binary_value_size(
-    const value& input,
-    const serialization_context& ctx
-) noexcept
-{
-    return std::visit([&ctx](const auto& v) {
-        return get_size(to_serializable_type(v), ctx);
-    }, input);
-}
-
-inline void serialize_binary_value(
-    const value& input,
-    serialization_context& ctx
-) noexcept
-{
-    std::visit([&ctx](const auto& v) {
-        serialize(to_serializable_type(v), ctx);
-    }, input);
-}
 
 } // detail
 } // mysql
