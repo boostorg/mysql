@@ -166,13 +166,14 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueErrorTest, Values(
     err_text_value_testcase("too_few_groups",   "2020-00005", protocol_field_type::date),
     err_text_value_testcase("incomplete_year",  "999-05-005", protocol_field_type::date),
     err_text_value_testcase("null_value",       makesv("2020-05-\02"), protocol_field_type::date),
-    err_text_value_testcase("lt_min",           "0099-05-02", protocol_field_type::date),
+    err_text_value_testcase("lt_min",           "-001-05-02", protocol_field_type::date),
     err_text_value_testcase("gt_max",           "10000-05-2", protocol_field_type::date),
     err_text_value_testcase("long_month",       "2010-005-2", protocol_field_type::date),
     err_text_value_testcase("long_day",         "2010-5-002", protocol_field_type::date),
     err_text_value_testcase("negative_year",    "-999-05-02", protocol_field_type::date),
     err_text_value_testcase("negative_month",   "2010--5-02", protocol_field_type::date),
-    err_text_value_testcase("negative_day",     "2010-05--                                                                                2", protocol_field_type::date)
+    err_text_value_testcase("negative_day",     "2010-05--2", protocol_field_type::date),
+    err_text_value_testcase("hex",              "ffff-ff-ff", protocol_field_type::date)
 ), test_name_generator);
 
 std::vector<err_text_value_testcase> make_datetime_err_cases(
@@ -223,7 +224,7 @@ std::vector<err_text_value_testcase> make_datetime_err_cases(
         err_text_value_testcase("invalid_sec",     "2020-05-02 22:06:60", t),
         err_text_value_testcase("negative_sec",    "2020-05-02 22:06:-1", t),
         err_text_value_testcase("negative_micro",  "2020-05-02 22:06:01.-1", t, 0, 2),
-        err_text_value_testcase("lt_min",          "0090-01-01 00:00:00.00", t, 0, 2),
+        err_text_value_testcase("lt_min",          "-001-01-01 00:00:00.00", t, 0, 2),
         err_text_value_testcase("gt_max",          "10000-01-01 00:00:00.00", t, 0, 2)
     };
 }

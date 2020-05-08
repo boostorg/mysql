@@ -188,9 +188,8 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, DeserializeTextValueTest, ValuesIn(
 INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueTest, Values(
     text_value_testcase("regular_date", "2019-02-28", makedate(2019, 2, 28), protocol_field_type::date),
     text_value_testcase("leap_year", "1788-02-29", makedate(1788, 2, 29), protocol_field_type::date),
-    text_value_testcase("min", "1000-01-01", makedate(1000, 1, 1), protocol_field_type::date),
-    text_value_testcase("max", "9999-12-31", makedate(9999, 12, 31), protocol_field_type::date),
-    text_value_testcase("unofficial_min", "0100-01-01", makedate(100, 1, 1), protocol_field_type::date)
+    text_value_testcase("min", "0000-01-01", makedate(0, 1, 1), protocol_field_type::date),
+    text_value_testcase("max", "9999-12-31", makedate(9999, 12, 31), protocol_field_type::date)
 ), test_name_generator);
 
 std::vector<text_value_testcase> make_datetime_cases(

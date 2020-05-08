@@ -11,35 +11,11 @@
 #include <cstdlib>
 #include <cmath>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
-#include <date/date.h>
+#include "boost/mysql/detail/protocol/constants.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// Text protocol deserialization constants
-namespace textc {
-
-constexpr unsigned max_decimals = 6u;
-
-constexpr std::size_t year_sz = 4;
-constexpr std::size_t month_sz = 2;
-constexpr std::size_t day_sz = 2;
-constexpr std::size_t hours_min_sz = 2; // in TIME, it may be longer
-constexpr std::size_t mins_sz = 2;
-constexpr std::size_t secs_sz = 2;
-
-constexpr std::size_t date_sz = year_sz + month_sz + day_sz + 2; // delimiters
-constexpr std::size_t time_min_sz = hours_min_sz + mins_sz + secs_sz + 2; // delimiters
-constexpr std::size_t time_max_sz = time_min_sz + max_decimals + 3; // sign, period, hour extra character
-constexpr std::size_t datetime_min_sz = date_sz + time_min_sz + 1; // delimiter
-
-constexpr unsigned max_hour = 838;
-constexpr unsigned max_min = 59;
-constexpr unsigned max_sec = 59;
-constexpr unsigned max_micro = 999999;
-
-} // textc
 
 inline unsigned sanitize_decimals(unsigned decimals)
 {
@@ -78,11 +54,10 @@ inline errc deserialize_text_value_impl(
         return errc::protocol_value_error;
 
     // Range check
-    if (result > max_date || result < min_date)
+    to = result;
+    if (to < min_date || to > max_date)
         return errc::protocol_value_error;
 
-    // Done
-    to = result;
     return errc::ok;
 }
 

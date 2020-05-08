@@ -74,8 +74,8 @@ constexpr std::uint8_t auth_more_data_header = 0x01;
 constexpr std::string_view fast_auth_complete_challenge = "\3";
 
 // Column flags
-namespace column_flags
-{
+namespace column_flags {
+
 constexpr std::uint16_t not_null = 1;     // Field can't be NULL.
 constexpr std::uint16_t pri_key = 2;     // Field is part of a primary key.
 constexpr std::uint16_t unique_key = 4;     // Field is part of a unique key.
@@ -92,16 +92,73 @@ constexpr std::uint16_t no_default_value = 4096;     // Field doesn't have defau
 constexpr std::uint16_t on_update_now = 8192;     // Field is set to NOW on UPDATE.
 constexpr std::uint16_t part_key = 16384;     // Intern; Part of some key.
 constexpr std::uint16_t num = 32768;     // Field is num (for clients)
-}
+
+} // column_flags
 
 // Prepared statements
-namespace cursor_types
-{
+namespace cursor_types {
+
 constexpr std::uint8_t no_cursor = 0;
 constexpr std::uint8_t read_only = 1;
 constexpr std::uint8_t for_update = 2;
 constexpr std::uint8_t scrollable = 4;
-}
+
+} // cursor_types
+
+// Text protocol deserialization constants
+namespace textc {
+
+constexpr unsigned max_decimals = 6u;
+
+constexpr std::size_t year_sz = 4;
+constexpr std::size_t month_sz = 2;
+constexpr std::size_t day_sz = 2;
+constexpr std::size_t hours_min_sz = 2; // in TIME, it may be longer
+constexpr std::size_t mins_sz = 2;
+constexpr std::size_t secs_sz = 2;
+
+constexpr std::size_t date_sz = year_sz + month_sz + day_sz + 2; // delimiters
+constexpr std::size_t time_min_sz = hours_min_sz + mins_sz + secs_sz + 2; // delimiters
+constexpr std::size_t time_max_sz = time_min_sz + max_decimals + 3; // sign, period, hour extra character
+constexpr std::size_t datetime_min_sz = date_sz + time_min_sz + 1; // delimiter
+
+constexpr unsigned max_hour = 838;
+constexpr unsigned max_min = 59;
+constexpr unsigned max_sec = 59;
+constexpr unsigned max_micro = 999999;
+
+} // textc
+
+// Binary protocol (de)serialization constants
+namespace binc {
+
+constexpr std::size_t length_sz = 1; // length byte, for date, datetime and time
+constexpr std::size_t year_sz = 2;
+constexpr std::size_t month_sz = 1;
+constexpr std::size_t date_day_sz = 1;
+constexpr std::size_t time_days_sz = 4;
+constexpr std::size_t hours_sz = 1;
+constexpr std::size_t mins_sz = 1;
+constexpr std::size_t secs_sz = 1;
+constexpr std::size_t micros_sz = 4;
+constexpr std::size_t time_sign_sz = 1;
+
+constexpr std::size_t date_sz = year_sz + month_sz + date_day_sz; // does not include length
+
+constexpr std::size_t datetime_d_sz = date_sz;
+constexpr std::size_t datetime_dhms_sz = datetime_d_sz + hours_sz + mins_sz + secs_sz;
+constexpr std::size_t datetime_dhmsu_sz = datetime_dhms_sz + micros_sz;
+
+constexpr std::size_t time_dhms_sz = time_sign_sz + time_days_sz + hours_sz + mins_sz + secs_sz;
+constexpr std::size_t time_dhmsu_sz = time_dhms_sz + micros_sz;
+
+constexpr std::size_t max_days = 34; // equivalent to the 839 hours, in the broken format
+constexpr unsigned max_hour = 23;
+constexpr unsigned max_min = 59;
+constexpr unsigned max_sec = 59;
+constexpr unsigned max_micro = 999999;
+
+} // binc
 
 
 } // detail

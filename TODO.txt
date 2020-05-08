@@ -1,23 +1,13 @@
 Sanitize
-    Refactor binary deserialization tests
-        serialize_binary_value(), get_binary_value_size() instead of global serialize for floats and times
-        Move serialization tests to just binary serialization tests
-        Verify that deserialization test fixture works
-        Add float, double, times error tests in serialization.cpp
-        Refactor binary deserialization constants
-        Change text row to use parameterized tests
-        Refactor deserialize_binary_value to have similar implementation to the text one
-    Better resilience of deserialization
-        Make float inf and nan output NULL?
-        Lift range check on dates, datetimes, times
-        Make invalid dates and datetimes output NULL
-        Integ tests for zero and invalid dates
-    Complete DATETIME and TIME error tests
+    Complete DATETIME and TIME deserialize_binary_value error tests
+    Complete serialize_binary_value tests
+    Change deserialize_text_value to allow zero and invalid dates/datetimes
+    Integ tests for zero and invalid dates
+    Remove deserialization test error fixture
+    Change text row to use parameterized tests
 	See if we have any trouble with user input in binary serialization: make assertions
 	Test with an unknown protocol type
-	Random input tests
 Better docs
-    Wandbox
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
 	Try to include Readme instead of copying it
@@ -54,6 +44,7 @@ Other possible features
     Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    Random input tests
     Change channel read to make less syscalls
 	Test dashboard
 	Sanitizers

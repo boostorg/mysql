@@ -133,9 +133,13 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeBinaryValueErrorTest, Values(
      err_binary_value_testcase("empty", {}, protocol_field_type::date, errc::incomplete_message),
      err_binary_value_testcase("incomplete_year", {0x04, 0xff},
              protocol_field_type::date, errc::incomplete_message),
-     err_binary_value_testcase("year_gt_max", {0x04, 0x10, 0x27, 0x03, 0x1c}, // year 10000
+     err_binary_value_testcase("no_month_day", {0x04, 0x09, 0x27},
+             protocol_field_type::date, errc::incomplete_message),
+     err_binary_value_testcase("no_day", {0x04, 0x09, 0x27, 0x01},
+             protocol_field_type::date, errc::incomplete_message),
+     err_binary_value_testcase("gt_max", {0x04, 0x10, 0x27, 0x0c, 0x1f}, // year 10000
              protocol_field_type::date),
-     err_binary_value_testcase("year_lt_min", {0x04, 0x63, 0x00, 0x03, 0x1c}, // year 99
+     err_binary_value_testcase("protocol_max", {0x04, 0xff, 0xff, 0x0c, 0x1f},
              protocol_field_type::date)
 ));
 

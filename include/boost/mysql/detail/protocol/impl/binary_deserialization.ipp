@@ -11,6 +11,7 @@
 #include <variant>
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
+#include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/detail/auxiliar/tmp.hpp"
 
 namespace boost {
@@ -62,9 +63,8 @@ errc deserialize_binary_value_to_variant_float(
     if (!ctx.enough_size(sizeof(T)))
         return errc::incomplete_message;
 
-    T v;
-
     // Endianness conversion. Boost.Endian support for floats start at 1.71
+    T v;
 #if BOOST_ENDIAN_BIG_BYTE
     char buf [sizeof(T)];
     std::memcpy(buf, ctx.first(), sizeof(T));
@@ -73,59 +73,78 @@ errc deserialize_binary_value_to_variant_float(
 #else
     std::memcpy(&v, ctx.first(), sizeof(T));
 #endif
-    ctx.advance(sizeof(T));
+
+    // Nans and infs not allowed in SQL
     if (std::isnan(v) || std::isinf(v))
-    {
-        //output = nullptr;
         return errc::protocol_value_error;
-    }
-    else
-    {
-        output = v;
-    }
+
+    // Done
+    ctx.advance(sizeof(T));
+    output = v;
     return errc::ok;
 }
 
 // Time types
+inline errc deserialize_binary_ymd(
+    deserialization_context& ctx,
+    ::date::year_month_day& output
+)
+{
+    int2 year;
+    int1 month;
+    int1 day;
+
+    auto err = deserialize_fields(ctx, year, month, day);
+    if (err != errc::ok)
+        return err;
+
+    output = ::date::year_month_day (
+        ::date::year(year.value),
+        ::date::month(month.value),
+        ::date::day(day.value)
+    );
+
+    return errc::ok;
+}
+
 inline errc deserialize_binary_value_to_variant_date(
     deserialization_context& ctx,
     value& output
 ) noexcept
 {
-    int1 length;
-    int2 year;
-    int1 month;
-    int1 day;
-
     // Deserialize length
+    int1 length;
     auto err = deserialize(length, ctx);
     if (err != errc::ok)
         return err;
 
-    // A zero date. This is represented in C++ as a NULL
-    if (length.value < 4)
+    // Check for zero dates, represented in C++ as a NULL
+    if (length.value < binc::date_sz)
     {
         output = nullptr;
         return errc::ok;
     }
 
     // Deserialize rest of fields
-    err = deserialize_fields(ctx, year, month, day);
+    ::date::year_month_day ymd;
+    err = deserialize_binary_ymd(ctx, ymd);
     if (err != errc::ok)
         return err;
 
-    ::date::year_month_day ymd (::date::year(year.value), ::date::month(month.value), ::date::day(day.value));
-    if (!ymd.ok()) // invalid date. We represent this as a NULL
+    // Check for invalid dates, represented as NULL in C++
+    if (!ymd.ok())
     {
         output = nullptr;
         return errc::ok;
     }
 
+    // Range check
     date d (ymd);
     if (d < min_date || d > max_date)
         return errc::protocol_value_error;
 
-    output = d;
+    // Convert to sys_days (date)
+    output = static_cast<date>(ymd);
     return errc::ok;
 }
 
@@ -134,58 +153,72 @@ inline errc deserialize_binary_value_to_variant_datetime(
     value& output
 ) noexcept
 {
-    int1 length;
-    int2 year;
-    int1 month;
-    int1 day;
-    int1 hours;
-    int1 minutes;
-    int1 seconds;
-    int4 micros;
+    using namespace binc;
 
     // Deserialize length
+    int1 length;
     auto err = deserialize(length, ctx);
     if (err != errc::ok)
         return err;
 
-    // A zero datetime, represented as NULL in C++
-    if (length.value < 4)
+    // Check for zero datetimes, represented as NULL in C++
+    if (length.value < datetime_d_sz)
     {
         output = nullptr;
         return errc::ok;
     }
 
-    // Date part
-    err = deserialize_fields(ctx, year, month, day);
+    // Deserialize date
+    ::date::year_month_day ymd;
+    err = deserialize_binary_ymd(ctx, ymd);
     if (err != errc::ok)
         return err;
-    ::date::year_month_day ymd (::date::year(year.value), ::date::month(month.value), ::date::day(day.value));
+
+    // Check for invalid dates, represented in C++ as NULL
     if (!ymd.ok())
     {
         output = nullptr;
         return errc::ok;
     }
 
-    // Rest of fields
-    if (length.value >= 7)
+    // If the DATETIME contains no value for these fields, they are zero
+    int1 hours (0);
+    int1 minutes (0);
+    int1 seconds (0);
+    int4 micros (0);
+
+    // Hours, minutes, seconds
+    if (length.value >= datetime_dhms_sz)
     {
         err = deserialize_fields(ctx, hours, minutes, seconds);
         if (err != errc::ok)
             return err;
     }
-    if (length.value >= 11)
+
+    // Microseconds
+    if (length.value >= datetime_dhmsu_sz)
     {
         err = deserialize(micros, ctx);
         if (err != errc::ok)
             return err;
     }
 
-    // TODO: range check
+    // Range check
+    if (hours.value > max_hour ||
+        minutes.value > max_min ||
+        seconds.value > max_sec ||
+        micros.value > max_micro)
+    {
+        return errc::protocol_value_error;
+    }
 
     // Compose the final datetime. Doing time of day and date separately to avoid overflow
-    auto time_of_day_part = std::chrono::hours(hours.value) + std::chrono::minutes(minutes.value) +
-        std::chrono::seconds(seconds.value) + std::chrono::microseconds(micros.value);
-    output = date(ymd) + time_of_day_part;
+    auto time_of_day =
+        std::chrono::hours(hours.value) +
+        std::chrono::minutes(minutes.value) +
+        std::chrono::seconds(seconds.value) +
+        std::chrono::microseconds(micros.value);
+    output = static_cast<date>(ymd) + time_of_day;
     return errc::ok;
 }
 
@@ -194,12 +227,15 @@ inline errc deserialize_binary_value_to_variant_time(
     value& output
 ) noexcept
 {
-    // Length
+    using namespace binc;
+
+    // Deserialize length
     int1 length;
     auto err = deserialize(length, ctx);
     if (err != errc::ok)
         return err;
 
+    // If the TIME contains no value for these fields, they are zero
     int1 is_negative (0);
     int4 days (0);
     int1 hours (0);
@@ -207,7 +243,8 @@ inline errc deserialize_binary_value_to_variant_time(
     int1 seconds(0);
     int4 microseconds(0);
 
-    if (length.value >= 8)
+    // Sign, days, hours, minutes, seconds
+    if (length.value >= time_dhms_sz)
     {
         err = deserialize_fields(
             ctx,
@@ -220,20 +257,33 @@ inline errc deserialize_binary_value_to_variant_time(
         if (err != errc::ok)
             return err;
     }
-    if (length.value >= 12)
+
+    // Microseconds
+    if (length.value >= time_dhmsu_sz)
     {
         err = deserialize(microseconds, ctx);
         if (err != errc::ok)
             return err;
     }
 
-    output = (is_negative.value ? -1 : 1) * (
+    // Range check
+    if (days.value > max_days ||
+        hours.value > max_hour ||
+        minutes.value > max_min ||
+        seconds.value > max_sec ||
+        microseconds.value > max_micro)
+    {
+        return errc::protocol_value_error;
+    }
+
+    // Compose the final time
+    output = time((is_negative.value ? -1 : 1) * (
          ::date::days(days.value) +
          std::chrono::hours(hours.value) +
          std::chrono::minutes(minutes.value) +
          std::chrono::seconds(seconds.value) +
          std::chrono::microseconds(microseconds.value)
-    );
+    ));
     return errc::ok;
 }
 

@@ -138,8 +138,8 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, DeserializeBinaryValueTest, Values(
 INSTANTIATE_TEST_SUITE_P(DATE, DeserializeBinaryValueTest, ::testing::Values(
     binary_value_testcase("regular", {0x04, 0xda, 0x07, 0x03, 0x1c},
             makedate(2010, 3, 28), protocol_field_type::date),
-    binary_value_testcase("min", {0x04, 0xe8, 0x03, 0x01, 0x01},
-            makedate(1000, 1, 1), protocol_field_type::date),
+    binary_value_testcase("min", {0x04, 0x00, 0x00, 0x01, 0x01},
+            makedate(0, 1, 1), protocol_field_type::date),
     binary_value_testcase("max", {0x04, 0x0f, 0x27, 0x0c, 0x1f},
             makedate(9999, 12, 31), protocol_field_type::date)
 ), test_name_generator);
