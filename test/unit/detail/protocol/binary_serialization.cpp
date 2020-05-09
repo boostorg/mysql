@@ -57,6 +57,23 @@ TEST_P(SerializeBinaryValueTest, SerializeBinaryValue_Trivial_WritesToBuffer)
     });
 }
 
+// These just test that we call the right serialization function
+// Extensive testing for strings is done in serialization.cpp
+INSTANTIATE_TEST_SUITE_P(StringTypes, SerializeBinaryValueTest, Values(
+    serialize_binary_value_testcase("regular", "abc", {0x03, 0x61, 0x62, 0x63})
+), test_name_generator);
+
+// Same comment applies for ints
+INSTANTIATE_TEST_SUITE_P(IntTypes, SerializeBinaryValueTest, Values(
+    serialize_binary_value_testcase("uint32", std::uint32_t(0xfcfdfeff),
+            {0xff, 0xfe, 0xfd, 0xfc}),
+    serialize_binary_value_testcase("int32",  std::int32_t(-0x3020101),
+            {0xff, 0xfe, 0xfd, 0xfc}),
+    serialize_binary_value_testcase("uint64", std::uint64_t(0xf8f9fafbfcfdfeff),
+            {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}),
+    serialize_binary_value_testcase("int64",  std::int64_t(-0x0706050403020101),
+            {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8})
+), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(FLOAT, SerializeBinaryValueTest, Values(
     serialize_binary_value_testcase("fractional_negative", -4.2f, {0x66, 0x66, 0x86, 0xc0}),
@@ -92,6 +109,11 @@ INSTANTIATE_TEST_SUITE_P(TIME, SerializeBinaryValueTest, Values(
         {0x0c, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe8, 0xe5, 0x04, 0x00}),
     serialize_binary_value_testcase("negative_hmsu", -maket(838, 59, 58, 999000),
         {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x58, 0x3e, 0x0f, 0x00})
+), test_name_generator);
+
+// NULL is transmitted as the NULL bitmap, so nothing is expected as output
+INSTANTIATE_TEST_SUITE_P(Null, SerializeBinaryValueTest, Values(
+    serialize_binary_value_testcase("regular", nullptr, {})
 ), test_name_generator);
 
 } // anon namespace

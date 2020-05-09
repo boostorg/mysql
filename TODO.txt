@@ -1,11 +1,14 @@
 Sanitize
-    Complete serialize_binary_value tests
     Change deserialize_text_value to allow zero and invalid dates/datetimes
     Integ tests for zero and invalid dates
     Remove deserialization test error fixture
     Change text row to use parameterized tests
 	See if we have any trouble with user input in binary serialization: make assertions
 	Test with an unknown protocol type
+    Remove int1_signed, int2_signed...
+    Remove int1, int2, int4, int8
+    Make deserialize() and deserialize_fields() the same thing
+    More coverage for serialization of int types
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
