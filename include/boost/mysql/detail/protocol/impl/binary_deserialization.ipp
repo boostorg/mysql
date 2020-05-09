@@ -227,7 +227,7 @@ inline errc deserialize_binary_value_to_variant_datetime(
         std::chrono::minutes(minutes.value) +
         std::chrono::seconds(seconds.value) +
         std::chrono::microseconds(micros.value);
-    output = static_cast<date>(ymd) + time_of_day;
+    output = d + time_of_day;
     return errc::ok;
 }
 

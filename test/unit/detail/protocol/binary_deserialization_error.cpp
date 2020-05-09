@@ -176,6 +176,60 @@ INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DeserializeBinaryValueErrorTest, ValuesIn(
     make_datetime_cases(protocol_field_type::timestamp)
 ), test_name_generator);
 
+std::vector<err_binary_value_testcase> make_time_cases()
+{
+    constexpr auto type = protocol_field_type::time;
+    std::vector<err_binary_value_testcase> res {
+        { "empty",                        {},
+                type, errc::incomplete_message },
+        { "no_sign_days_hours_mins_secs", {0x08},
+                type, errc::incomplete_message },
+        { "no_days_hours_mins_secs",      {0x08, 0x01},
+                type, errc::incomplete_message },
+        { "no_hours_mins_secs",           {0x08, 0x01, 0x22, 0x00, 0x00, 0x00},
+                type, errc::incomplete_message },
+        { "no_mins_secs",                 {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16},
+                type, errc::incomplete_message },
+        { "no_secs",                      {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b},
+                type, errc::incomplete_message },
+        { "no_micros",                    {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a},
+                type, errc::incomplete_message },
+    };
+
+    std::pair<const char*, std::vector<std::uint8_t>> out_of_range_cases [] {
+        { "invalid_days",       {0x08, 0x00,   35, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a} },
+        { "invalid_days_max",   {0x08, 0x00, 0xff, 0xff, 0xff, 0xff, 0x16, 0x3b, 0x3a} },
+        { "invalid_hours",      {0x08, 0x01, 0x22, 0x00, 0x00, 0x00,   24, 0x3b, 0x3a} },
+        { "invalid_hours_max",  {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0xff, 0x3b, 0x3a} },
+        { "invalid_mins",       {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16,   60, 0x3a} },
+        { "invalid_mins_max",   {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0xff, 0x3a} },
+        { "invalid_secs",       {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b,   60} },
+        { "invalid_secs_max",   {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0xff} },
+        { "invalid_micros",     {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x40, 0x42, 0xf4, 0x00} },
+        { "invalid_micros_max", {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0xff, 0xff, 0xff, 0xff} },
+    };
+
+    for (auto& c: out_of_range_cases)
+    {
+        // Positive
+        c.second[1] = 0x00;
+        res.emplace_back(c.first + std::string("_positive"), bytestring(c.second), type);
+
+        // Negative
+        c.second[1] = 0x01;
+        res.emplace_back(c.first + std::string("_negative"), std::move(c.second), type);
+    }
+
+    return res;
+}
+
+// 0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a
+// 0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x58, 0x3e, 0x0f, 0x00
+INSTANTIATE_TEST_SUITE_P(TIME, DeserializeBinaryValueErrorTest, ValuesIn(
+    make_time_cases()
+), test_name_generator);
+
+
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeBinaryValueErrorTest, ValuesIn(
     make_int_cases(protocol_field_type::year, 1)
 ), test_name_generator);

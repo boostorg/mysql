@@ -1,5 +1,5 @@
 Sanitize
-    Complete DATETIME and TIME deserialize_binary_value error tests
+    Test for negative TIME with sign != 0x01
     Complete serialize_binary_value tests
     Change deserialize_text_value to allow zero and invalid dates/datetimes
     Integ tests for zero and invalid dates
