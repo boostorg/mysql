@@ -107,6 +107,13 @@ inline errc deserialize_binary_ymd(
     return errc::ok;
 }
 
+inline bool is_out_of_range(
+    const date& d
+)
+{
+    return d < min_date || d > max_date;
+}
+
 inline errc deserialize_binary_value_to_variant_date(
     deserialization_context& ctx,
     value& output
@@ -140,7 +147,7 @@ inline errc deserialize_binary_value_to_variant_date(
 
     // Range check
     date d (ymd);
-    if (d < min_date || d > max_date)
+    if (is_out_of_range(d))
         return errc::protocol_value_error;
 
     // Convert to sys_days (date)
@@ -204,7 +211,9 @@ inline errc deserialize_binary_value_to_variant_datetime(
     }
 
     // Range check
-    if (hours.value > max_hour ||
+    date d (ymd);
+    if (is_out_of_range(d) ||
+        hours.value > max_hour ||
         minutes.value > max_min ||
         seconds.value > max_sec ||
         micros.value > max_micro)
