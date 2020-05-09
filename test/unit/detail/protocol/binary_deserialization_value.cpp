@@ -141,7 +141,29 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeBinaryValueTest, ::testing::Values(
     binary_value_testcase("min", {0x04, 0x00, 0x00, 0x01, 0x01},
             makedate(0, 1, 1), protocol_field_type::date),
     binary_value_testcase("max", {0x04, 0x0f, 0x27, 0x0c, 0x1f},
-            makedate(9999, 12, 31), protocol_field_type::date)
+            makedate(9999, 12, 31), protocol_field_type::date),
+    binary_value_testcase("zero", {0x00},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("zero_invalid_month",        {0x04, 0x00, 0x00,   13, 0x01},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("zero_invalid_month_max",    {0x04, 0x00, 0x00, 0xff, 0x01},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("zero_invalid_day",          {0x04, 0x00, 0x00, 0x01, 32},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("zero_invalid_day_max",      {0x04, 0x00, 0x00, 0x01, 0xff},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("zero_invalid_date",         {0x04, 0x00, 0x00,   31,    4},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("nonzero_invalid_month",     {0x04, 0xe4, 0x07,   13, 0x01},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("nonzero_invalid_month_max", {0x04, 0xe4, 0x07, 0xff, 0x01},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("nonzero_invalid_day",       {0x04, 0xe4, 0x07, 0x01, 32},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("nonzero_invalid_day_max",   {0x04, 0xe4, 0x07, 0x01, 0xff},
+                nullptr, protocol_field_type::date),
+    binary_value_testcase("nonzero_invalid_date",      {0x04, 0xe4, 0x07,   31,    4},
+                nullptr, protocol_field_type::date)
 ), test_name_generator);
 
 std::vector<binary_value_testcase> make_datetime_cases(

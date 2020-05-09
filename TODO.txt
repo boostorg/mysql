@@ -9,6 +9,8 @@ Sanitize
     Remove int1, int2, int4, int8
     Make deserialize() and deserialize_fields() the same thing
     More coverage for serialization of int types
+    Docs for edge cases in values
+    Make mins and maxs public
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
