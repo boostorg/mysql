@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <any>
+#include <functional>
 #include <boost/type_index.hpp>
 #include "test_common.hpp"
 
@@ -166,7 +167,13 @@ struct serialization_testcase : test::named_param
     }
 };
 
-
+// We expose this function so binary serialization, which does not employ
+// the regular serialize() overloads, can use it
+void do_serialize_test(
+    const std::vector<std::uint8_t>& expected_buffer,
+    const std::function<void(detail::serialization_context&)>& serializator,
+    detail::capabilities caps = detail::capabilities()
+);
 
 // Test fixtures
 struct SerializationFixture : public testing::TestWithParam<serialization_testcase> {}; // base

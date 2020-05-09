@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include "test_common.hpp"
+#include "serialization_test_common.hpp"
 #include "boost/mysql/detail/protocol/binary_serialization.hpp"
 
 using namespace boost::mysql::detail;
@@ -42,7 +43,6 @@ struct SerializeBinaryValueTest : TestWithParam<serialize_binary_value_testcase>
 {
 };
 
-// TODO: these are copied from serialization tests
 TEST_P(SerializeBinaryValueTest, GetBinaryValueSize_Trivial_ReturnsExpectedSize)
 {
     serialization_context ctx (capabilities{});
@@ -52,23 +52,9 @@ TEST_P(SerializeBinaryValueTest, GetBinaryValueSize_Trivial_ReturnsExpectedSize)
 
 TEST_P(SerializeBinaryValueTest, SerializeBinaryValue_Trivial_WritesToBuffer)
 {
-    auto expected_size = GetParam().buffer.size();
-    std::vector<uint8_t> buffer (expected_size + 8, 0x7a); // buffer overrun detector
-    serialization_context ctx (capabilities(), buffer.data());
-    serialize_binary_value(GetParam().from, ctx);
-
-    // Iterator
-    EXPECT_EQ(ctx.first(), buffer.data() + expected_size) << "Iterator not updated correctly";
-
-    // Buffer
-    std::string_view expected_populated = makesv(GetParam().buffer.data(), expected_size);
-    std::string_view actual_populated = makesv(buffer.data(), expected_size);
-    compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
-
-    // Check for buffer overruns
-    std::string expected_clean (8, 0x7a);
-    std::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
-    compare_buffers(expected_clean, actual_clean, "Buffer overrun");
+    do_serialize_test(GetParam().buffer, [](serialization_context& ctx) {
+        serialize_binary_value(GetParam().from, ctx);
+    });
 }
 
 

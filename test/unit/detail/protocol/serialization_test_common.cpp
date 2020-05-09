@@ -11,6 +11,32 @@ using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using boost::mysql::errc;
 
+void boost::mysql::test::do_serialize_test(
+    const std::vector<std::uint8_t>& expected_buffer,
+    const std::function<void(serialization_context&)>& serializator,
+    capabilities caps
+)
+{
+    auto expected_size = expected_buffer.size();
+    std::vector<uint8_t> buffer (expected_size + 8, 0x7a); // buffer overrun detector
+    serialization_context ctx (caps, buffer.data());
+    serializator(ctx);
+
+    // Iterator
+    EXPECT_EQ(ctx.first(), buffer.data() + expected_size) << "Iterator not updated correctly";
+
+    // Buffer
+    std::string_view expected_populated = makesv(expected_buffer.data(), expected_size);
+    std::string_view actual_populated = makesv(buffer.data(), expected_size);
+    compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
+
+    // Check for buffer overruns
+    std::string expected_clean (8, 0x7a);
+    std::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
+    compare_buffers(expected_clean, actual_clean, "Buffer overrun");
+}
+
+
 namespace
 {
 
@@ -25,23 +51,9 @@ void get_size_test(const serialization_testcase& p)
 // serialize
 void serialize_test(const serialization_testcase& p)
 {
-    auto expected_size = p.expected_buffer.size();
-    std::vector<uint8_t> buffer (expected_size + 8, 0x7a); // buffer overrun detector
-    serialization_context ctx (p.caps, buffer.data());
-    p.value->serialize(ctx);
-
-    // Iterator
-    EXPECT_EQ(ctx.first(), buffer.data() + expected_size) << "Iterator not updated correctly";
-
-    // Buffer
-    std::string_view expected_populated = makesv(p.expected_buffer.data(), expected_size);
-    std::string_view actual_populated = makesv(buffer.data(), expected_size);
-    compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
-
-    // Check for buffer overruns
-    std::string expected_clean (8, 0x7a);
-    std::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
-    compare_buffers(expected_clean, actual_clean, "Buffer overrun");
+    do_serialize_test(p.expected_buffer, [&](serialization_context& ctx) {
+        p.value->serialize(ctx);
+    }, p.caps);
 }
 
 // deserialize
