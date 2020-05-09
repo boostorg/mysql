@@ -1404,7 +1404,7 @@ constexpr error_entry all_errors [] = {
     { errc::table_name_causes_too_long_path, "table_name_causes_too_long_path" },
     { errc::audit_log_insufficient_privilege, "audit_log_insufficient_privilege" },
     { errc::da_grp_rpl_started_auto_rejoin, "da_grp_rpl_started_auto_rejoin" },
-    { errc::incomplete_message, "///< An incomplete message was received from the server" },
+    { errc::incomplete_message, "An incomplete message was received from the server" },
     { errc::extra_bytes, "Unexpected extra bytes at the end of a message were received" },
     { errc::sequence_number_mismatch, "Mismatched sequence numbers" },
     { errc::server_unsupported, "The server does not support the minimum required capabilities to establish the connection" },
