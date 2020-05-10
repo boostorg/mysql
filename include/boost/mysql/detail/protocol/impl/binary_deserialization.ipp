@@ -168,24 +168,14 @@ inline errc deserialize_binary_value_to_variant_datetime(
     if (err != errc::ok)
         return err;
 
-    // Check for zero datetimes, represented as NULL in C++
-    if (length.value < datetime_d_sz)
+    // Deserialize date. If the DATETIME does not contain these values,
+    // they are supposed to be zero (invalid date)
+    ::date::year_month_day ymd (::date::year(0), ::date::month(0), ::date::day(0));
+    if (length.value >= datetime_d_sz)
     {
-        output = nullptr;
-        return errc::ok;
-    }
-
-    // Deserialize date
-    ::date::year_month_day ymd;
-    err = deserialize_binary_ymd(ctx, ymd);
-    if (err != errc::ok)
-        return err;
-
-    // Check for invalid dates, represented in C++ as NULL
-    if (!ymd.ok())
-    {
-        output = nullptr;
-        return errc::ok;
+        err = deserialize_binary_ymd(ctx, ymd);
+        if (err != errc::ok)
+            return err;
     }
 
     // If the DATETIME contains no value for these fields, they are zero
@@ -208,6 +198,15 @@ inline errc deserialize_binary_value_to_variant_datetime(
         err = deserialize(micros, ctx);
         if (err != errc::ok)
             return err;
+    }
+
+    // Check for invalid dates, represented in C++ as NULL.
+    // Note: we do the check here to ensure we consume all the bytes
+    // associated to this datetime
+    if (!ymd.ok())
+    {
+        output = nullptr;
+        return errc::ok;
     }
 
     // Range check
