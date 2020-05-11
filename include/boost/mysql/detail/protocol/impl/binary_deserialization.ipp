@@ -20,7 +20,7 @@ namespace detail {
 
 // ints and strings
 template <typename TargetType, typename DeserializableType=TargetType>
-errc deserialize_binary_value_to_variant_value_holder(
+errc deserialize_binary_value_value_holder(
     deserialization_context& ctx,
     value& output
 ) noexcept
@@ -39,22 +39,22 @@ template <
     typename DeserializableTypeUnsigned,
     typename DeserializableTypeSigned
 >
-errc deserialize_binary_value_to_variant_int(
+errc deserialize_binary_value_int(
     const field_metadata& meta,
     deserialization_context& ctx,
     value& output
 ) noexcept
 {
     return meta.is_unsigned() ?
-        deserialize_binary_value_to_variant_value_holder<
+        deserialize_binary_value_value_holder<
             TargetTypeUnsigned, DeserializableTypeUnsigned>(ctx, output) :
-        deserialize_binary_value_to_variant_value_holder<
+        deserialize_binary_value_value_holder<
             TargetTypeSigned, DeserializableTypeSigned>(ctx, output);
 }
 
 // Floats
 template <typename T>
-errc deserialize_binary_value_to_variant_float(
+errc deserialize_binary_value_float(
     deserialization_context& ctx,
     value& output
 ) noexcept
@@ -94,9 +94,18 @@ inline errc deserialize_binary_ymd(
     int1 month;
     int1 day;
 
+    // Deserialize
     auto err = deserialize_fields(ctx, year, month, day);
     if (err != errc::ok)
         return err;
+
+    // Range check
+    if (year.value > max_year ||
+        month.value > max_month ||
+        day.value > max_day)
+    {
+        return errc::protocol_value_error;
+    }
 
     output = ::date::year_month_day (
         ::date::year(year.value),
@@ -107,14 +116,7 @@ inline errc deserialize_binary_ymd(
     return errc::ok;
 }
 
-inline bool is_out_of_range(
-    const date& d
-)
-{
-    return d < min_date || d > max_date;
-}
-
-inline errc deserialize_binary_value_to_variant_date(
+inline errc deserialize_binary_value_date(
     deserialization_context& ctx,
     value& output
 ) noexcept
@@ -155,7 +157,7 @@ inline errc deserialize_binary_value_to_variant_date(
     return errc::ok;
 }
 
-inline errc deserialize_binary_value_to_variant_datetime(
+inline errc deserialize_binary_value_datetime(
     deserialization_context& ctx,
     value& output
 ) noexcept
@@ -237,7 +239,7 @@ inline errc deserialize_binary_value_to_variant_datetime(
     return errc::ok;
 }
 
-inline errc deserialize_binary_value_to_variant_time(
+inline errc deserialize_binary_value_time(
     deserialization_context& ctx,
     value& output
 ) noexcept
@@ -282,7 +284,7 @@ inline errc deserialize_binary_value_to_variant_time(
     }
 
     // Range check
-    if (days.value > max_days ||
+    if (days.value > time_max_days ||
         hours.value > max_hour ||
         minutes.value > max_min ||
         seconds.value > max_sec ||
@@ -316,30 +318,30 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     switch (meta.protocol_type())
     {
     case protocol_field_type::tiny:
-        return deserialize_binary_value_to_variant_int<
+        return deserialize_binary_value_int<
                 std::uint32_t, std::int32_t, int1, int1_signed>(meta, ctx, output);
     case protocol_field_type::short_:
     case protocol_field_type::year:
-        return deserialize_binary_value_to_variant_int<
+        return deserialize_binary_value_int<
                 std::uint32_t, std::int32_t, int2, int2_signed>(meta, ctx, output);
     case protocol_field_type::int24:
     case protocol_field_type::long_:
-        return deserialize_binary_value_to_variant_int<
+        return deserialize_binary_value_int<
                 std::uint32_t, std::int32_t, int4, int4_signed>(meta, ctx, output);
     case protocol_field_type::longlong:
-        return deserialize_binary_value_to_variant_int<
+        return deserialize_binary_value_int<
                 std::uint64_t, std::int64_t, int8, int8_signed>(meta, ctx, output);
     case protocol_field_type::float_:
-        return deserialize_binary_value_to_variant_float<float>(ctx, output);
+        return deserialize_binary_value_float<float>(ctx, output);
     case protocol_field_type::double_:
-        return deserialize_binary_value_to_variant_float<double>(ctx, output);
+        return deserialize_binary_value_float<double>(ctx, output);
     case protocol_field_type::timestamp:
     case protocol_field_type::datetime:
-        return deserialize_binary_value_to_variant_datetime(ctx, output);
+        return deserialize_binary_value_datetime(ctx, output);
     case protocol_field_type::date:
-        return deserialize_binary_value_to_variant_date(ctx, output);
+        return deserialize_binary_value_date(ctx, output);
     case protocol_field_type::time:
-        return deserialize_binary_value_to_variant_time(ctx, output);
+        return deserialize_binary_value_time(ctx, output);
     // True string types
     case protocol_field_type::varchar:
     case protocol_field_type::var_string:
@@ -356,7 +358,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return deserialize_binary_value_to_variant_value_holder<std::string_view, string_lenenc>(ctx, output);
+        return deserialize_binary_value_value_holder<std::string_view, string_lenenc>(ctx, output);
     }
 }
 

@@ -145,19 +145,15 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeBinaryValueTest, ::testing::Values(
             makedate(9999, 12, 31), protocol_field_type::date),
     binary_value_testcase("zero", {0x00},
                 nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_month",        {0x04, 0x00, 0x00,   13, 0x01},
+    binary_value_testcase("zero_full_length", {0x04, 0x00, 0x00, 0x00, 0x00},
                 nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_month_max",    {0x04, 0x00, 0x00, 0xff, 0x01},
+    binary_value_testcase("zero_month",   {0x04, 0x00, 0x00, 0x00, 0x01},
                 nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_month_min",    {0x04, 0x00, 0x00, 0x00, 0x01},
+    binary_value_testcase("zero_day",     {0x04, 0x00, 0x00, 0x01, 0x00},
                 nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_day",          {0x04, 0x00, 0x00, 0x01, 32},
+    binary_value_testcase("zero_month_day_nonzero_year", {0x04, 0x01, 0x00, 0x00, 0x00},
                 nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_day_max",      {0x04, 0x00, 0x00, 0x01, 0xff},
-                nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_day_min",      {0x04, 0x00, 0x00, 0x01, 0x00},
-                nullptr, protocol_field_type::date),
-    binary_value_testcase("invalid_date",         {0x04, 0x00, 0x00,   31,    4},
+    binary_value_testcase("invalid_date", {0x04, 0x00, 0x00,   11,   31},
                 nullptr, protocol_field_type::date)
 ), test_name_generator);
 
@@ -199,33 +195,10 @@ std::vector<binary_value_testcase> make_datetime_cases(
         { "date_hmsu", {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
                 makedt(2010, 1, 1, 23,  1,  59, 967510), type },
         { "zeros",          {0x00}, nullptr, type },
-        { "zeros_d",        {0x04, 0x00, 0x00, 0x00, 0x00}, nullptr, type },
-        { "zeros_hms",      {0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, nullptr, type },
-        { "zeros_hmsu",     {0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, nullptr, type },
     };
 
-    // Create all the casuistic for invalid datetimes. We consider three factors:
-    // which member is invalid, why is it invalid, and which length does the datetime have.
-    constexpr struct
-    {
-        const char* name;
-        std::size_t pos;
-        std::uint8_t invalid_value;
-    } what_is_invalid [] = {
-        { "month", 3, 13 },
-        { "day",   4, 32 }
-    };
-
-    constexpr struct
-    {
-        const char* name;
-        int value;
-    } why_is_invalid [] = {
-        { "zero", 0 },
-        { "protocolmax", 0xff },
-        { "gtmax", -1 } // means "look inside what_is_invalid"
-    };
-
+    // Create all the casuistic for datetimes with invalid dates. For all possible lengths,
+    // try invalid date, zero month, zero day, zero date
     constexpr struct
     {
         const char* name;
@@ -236,24 +209,33 @@ std::vector<binary_value_testcase> make_datetime_cases(
         { "hmsu", 11 }
     };
 
-    bytestring regular {0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-    for (const auto& what: what_is_invalid)
+    constexpr struct
     {
-        for (const auto& why: why_is_invalid)
-        {
-            for (const auto& len: lengths)
-            {
-                std::string name = stringize("invalid_", what.name, "_", why.name, "_", len.name);
-                std::uint8_t invalid_value = why.value == -1 ? what.invalid_value : why.value;
-                bytestring buffer (regular);
-                buffer[what.pos] = invalid_value;
-                buffer[0] = std::uint8_t(len.length);
-                buffer.resize(len.length + 1);
-                res.emplace_back(std::move(name), std::move(buffer), nullptr, type);
-            }
-        }
+        const char* name;
+        void (*invalidator)(bytestring&);
+    } why_is_invalid [] = {
+        { "zeros",          [](bytestring& b) { std::memset(b.data() + 1, 0, b.size() - 1); } },
+        { "invalid_date",   [](bytestring& b) { b[3] = 11; b[4] = 31; } },
+        { "zero_month",     [](bytestring& b) { b[3] = 0; } },
+        { "zero_day",       [](bytestring& b) { b[4] = 0; } },
+        { "zero_month_day", [](bytestring& b) { std::memset(b.data()+1, 0, 4); } },
     };
+
+    // Template datetime
+    bytestring regular {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00};
+
+    for (const auto& why: why_is_invalid)
+    {
+        for (const auto& len: lengths)
+        {
+            std::string name = stringize(why.name, "_", len.name);
+            bytestring buffer (regular);
+            buffer[0] = std::uint8_t(len.length);
+            buffer.resize(len.length + 1);
+            why.invalidator(buffer);
+            res.emplace_back(std::move(name), std::move(buffer), nullptr, type);
+        }
+    }
 
     return res;
 }

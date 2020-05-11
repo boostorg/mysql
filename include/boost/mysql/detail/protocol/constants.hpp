@@ -121,11 +121,9 @@ constexpr std::size_t date_sz = year_sz + month_sz + day_sz + 2; // delimiters
 constexpr std::size_t time_min_sz = hours_min_sz + mins_sz + secs_sz + 2; // delimiters
 constexpr std::size_t time_max_sz = time_min_sz + max_decimals + 3; // sign, period, hour extra character
 constexpr std::size_t datetime_min_sz = date_sz + time_min_sz + 1; // delimiter
+constexpr std::size_t datetime_max_sz = datetime_min_sz + max_decimals + 1; // period
 
-constexpr unsigned max_hour = 838;
-constexpr unsigned max_min = 59;
-constexpr unsigned max_sec = 59;
-constexpr unsigned max_micro = 999999;
+constexpr unsigned time_max_hour = 838;
 
 } // textc
 
@@ -152,13 +150,18 @@ constexpr std::size_t datetime_dhmsu_sz = datetime_dhms_sz + micros_sz;
 constexpr std::size_t time_dhms_sz = time_sign_sz + time_days_sz + hours_sz + mins_sz + secs_sz;
 constexpr std::size_t time_dhmsu_sz = time_dhms_sz + micros_sz;
 
-constexpr std::size_t max_days = 34; // equivalent to the 839 hours, in the broken format
+constexpr std::size_t time_max_days = 34; // equivalent to the 839 hours, in the broken format
+
+} // binc
+
+// Constants common to both protocols
+constexpr unsigned max_year = 9999;
+constexpr unsigned max_month = 12;
+constexpr unsigned max_day = 31;
 constexpr unsigned max_hour = 23;
 constexpr unsigned max_min = 59;
 constexpr unsigned max_sec = 59;
 constexpr unsigned max_micro = 999999;
-
-} // binc
 
 
 } // detail

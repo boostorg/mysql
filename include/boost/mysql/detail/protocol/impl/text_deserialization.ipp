@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <cmath>
+#include <type_traits>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include "boost/mysql/detail/protocol/constants.hpp"
 
@@ -17,60 +18,223 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline unsigned sanitize_decimals(unsigned decimals)
+// Integers
+template <typename T>
+errc deserialize_text_value_int_impl(
+    std::string_view from,
+    value& to
+) noexcept
+{
+    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), to.emplace<T>());
+    return ok ? errc::ok : errc::protocol_value_error;
+}
+
+template <typename UnsignedType>
+errc deserialize_text_value_int(
+    std::string_view from,
+    value& to,
+    const field_metadata& meta
+) noexcept
+{
+    using SignedType = std::make_signed_t<UnsignedType>;
+    return meta.is_unsigned() ?
+            deserialize_text_value_int_impl<UnsignedType>(from, to) :
+            deserialize_text_value_int_impl<SignedType>(from, to);
+}
+
+// Floating points
+template <typename T>
+errc deserialize_text_value_float(
+    std::string_view from,
+    value& to
+) noexcept
+{
+    T val;
+    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), val);
+    if (!ok || std::isnan(val) || std::isinf(val)) // SQL std forbids these values
+        return errc::protocol_value_error;
+    to = val;
+    return errc::ok;
+}
+
+// Strings
+inline errc deserialize_text_value_string(
+    std::string_view from,
+    value& to
+) noexcept
+{
+    to = from;
+    return errc::ok;
+}
+
+// Date/time types
+inline unsigned sanitize_decimals(unsigned decimals) noexcept
 {
     return std::min(decimals, textc::max_decimals);
 }
 
 // Computes the meaning of the parsed microsecond number, taking into
 // account decimals (85 with 2 decimals means 850000us)
-inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals)
+inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexcept
 {
     return parsed_micros * static_cast<unsigned>(std::pow(10, textc::max_decimals - decimals));
 }
 
-inline errc deserialize_text_value_impl(
+inline errc deserialize_text_ymd(
     std::string_view from,
-    date& to
-)
-{
-    // Size check
-    if (from.size() != textc::date_sz)
-        return errc::protocol_value_error;
-
-    // Copy to a NULL-terminated buffer
-    char buffer [textc::date_sz + 1] {};
-    memcpy(buffer, from.data(), from.size());
-
-    // Parse individual components
-    unsigned year, month, day;
-    int parsed = sscanf(buffer, "%4u-%2u-%2u", &year, &month, &day);
-    if (parsed != 3)
-        return errc::protocol_value_error;
-
-    // Verify date validity
-    ::date::year_month_day result (::date::year(year)/::date::month(month)/::date::day(day));
-    if (!result.ok())
-        return errc::protocol_value_error;
-
-    // Range check
-    to = result;
-    if (to < min_date || to > max_date)
-        return errc::protocol_value_error;
-
-    return errc::ok;
-}
-
-inline errc deserialize_text_value_impl(
-    std::string_view from,
-    time& to,
-    unsigned decimals
+    ::date::year_month_day& to
 )
 {
     using namespace textc;
 
-    // Adjust decimals
-    decimals = sanitize_decimals(decimals);
+    // Size check
+    if (from.size() != date_sz)
+        return errc::protocol_value_error;
+
+    // Copy to a NULL-terminated buffer
+    char buffer [date_sz + 1] {};
+    std::memcpy(buffer, from.data(), from.size());
+
+    // Parse individual components
+    unsigned year, month, day;
+    char extra_char;
+    int parsed = sscanf(buffer, "%4u-%2u-%2u%c", &year, &month, &day, &extra_char);
+    if (parsed != 3)
+        return errc::protocol_value_error;
+
+    // Range check for individual components
+    if (year > max_year || month > max_month || day > max_day)
+        return errc::protocol_value_error;
+
+    to = ::date::year_month_day(
+        ::date::year{static_cast<int>(year)},
+        ::date::month{month},
+        ::date::day{day}
+    );
+    return errc::ok;
+}
+
+inline errc deserialize_text_value_date(
+    std::string_view from,
+    value& to
+) noexcept
+{
+    // Deserialize ymd
+    ::date::year_month_day ymd;
+    auto err = deserialize_text_ymd(from, ymd);
+    if (err != errc::ok)
+        return err;
+
+    // Verify date validity. MySQL allows zero and invalid dates, which
+    // we represent in C++ as NULL
+    if (!ymd.ok())
+    {
+        to = nullptr;
+        return errc::ok;
+    }
+
+    // Range check
+    date d (ymd);
+    if (is_out_of_range(d))
+        return errc::protocol_value_error;
+
+    // Done
+    to = d;
+    return errc::ok;
+}
+
+inline errc deserialize_text_value_datetime(
+    std::string_view from,
+    value& to,
+    const field_metadata& meta
+) noexcept
+{
+    using namespace textc;
+
+    // Sanitize decimals
+    unsigned decimals = sanitize_decimals(meta.decimals());
+
+    // Length check
+    std::size_t expected_size = datetime_min_sz + (decimals ? decimals + 1 : 0);
+    if (from.size() != expected_size)
+        return errc::protocol_value_error;
+
+    // Deserialize date part
+    ::date::year_month_day ymd;
+    auto err = deserialize_text_ymd(from.substr(0, date_sz), ymd);
+    if (err != errc::ok)
+        return err;
+
+    // Copy to NULL-terminated buffer
+    constexpr std::size_t datetime_time_first = date_sz + 1; // date + space
+    char buffer [datetime_max_sz - datetime_time_first + 1] {};
+    std::memcpy(buffer, from.data() + datetime_time_first, from.size() - datetime_time_first);
+
+    // Parse
+    unsigned hours, minutes, seconds;
+    unsigned micros = 0;
+    char extra_char;
+    if (decimals)
+    {
+        int parsed = sscanf(buffer, "%2u:%2u:%2u.%6u%c",
+                &hours, &minutes, &seconds, &micros, &extra_char);
+        if (parsed != 4)
+            return errc::protocol_value_error;
+        micros = compute_micros(micros, decimals);
+    }
+    else
+    {
+        int parsed = sscanf(buffer, "%2u:%2u:%2u%c",
+                &hours, &minutes, &seconds, &extra_char);
+        if (parsed != 3)
+            return errc::protocol_value_error;
+    }
+
+    // Validity check. We make this check before
+    // the invalid date check to make invalid dates with incorrect
+    // hours/mins/secs/micros fail
+    if (hours > max_hour ||
+        minutes > max_min ||
+        seconds > max_sec ||
+        micros > max_micro)
+    {
+        return errc::protocol_value_error;
+    }
+
+    // Date validity. MySQL allows DATETIMEs with invalid dates, which
+    // we represent here as NULL
+    if (!ymd.ok())
+    {
+        to = nullptr;
+        return errc::ok;
+    }
+
+    // Range check for date
+    date d (ymd);
+    if (is_out_of_range(d))
+        return errc::protocol_value_error;
+
+    // Sum it up
+    to = datetime(
+        d +
+        std::chrono::hours(hours) +
+        std::chrono::minutes(minutes) +
+        std::chrono::seconds(seconds) +
+        std::chrono::microseconds(micros)
+    );
+    return errc::ok;
+}
+
+inline errc deserialize_text_value_time(
+    std::string_view from,
+    value& to,
+    const field_metadata& meta
+) noexcept
+{
+    using namespace textc;
+
+    // Sanitize decimals
+    unsigned decimals = sanitize_decimals(meta.decimals());
 
     // size check
     std::size_t actual_min_size = time_min_sz + (decimals ? decimals + 1 : 0);
@@ -106,12 +270,20 @@ inline errc deserialize_text_value_impl(
     }
 
     // Range check
-    if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
+    if (hours > time_max_hour ||
+        minutes > max_min ||
+        seconds > max_sec ||
+        micros > max_micro)
+    {
         return errc::protocol_value_error;
+    }
 
     // Sum it
-    auto res = std::chrono::hours(hours) + std::chrono::minutes(minutes) +
-               std::chrono::seconds(seconds) + std::chrono::microseconds(micros);
+    auto res =
+        std::chrono::hours(hours) +
+        std::chrono::minutes(minutes) +
+        std::chrono::seconds(seconds) +
+        std::chrono::microseconds(micros);
     if (is_negative)
     {
         res = -res;
@@ -120,69 +292,6 @@ inline errc deserialize_text_value_impl(
     // Done
     to = res;
     return errc::ok;
-}
-
-inline errc deserialize_text_value_impl(
-    std::string_view from,
-    datetime& to,
-    unsigned decimals
-)
-{
-    using namespace textc;
-
-    // Sanitize decimals
-    decimals = sanitize_decimals(decimals);
-
-    // Length check
-    std::size_t expected_size = datetime_min_sz + (decimals ? decimals + 1 : 0);
-    if (from.size() != expected_size)
-        return errc::protocol_value_error;
-
-    // Parse date
-    date d;
-    auto err = deserialize_text_value_impl(from.substr(0, date_sz), d);
-    if (err != errc::ok)
-        return err;
-
-    // Time of day part
-    time time_of_day;
-    err = deserialize_text_value_impl(from.substr(date_sz + 1), time_of_day, decimals);
-    if (err != errc::ok)
-        return err;
-
-    // Range check
-    constexpr auto max_time_of_day = std::chrono::hours(24) - std::chrono::microseconds(1);
-    if (time_of_day < std::chrono::seconds(0) || time_of_day > max_time_of_day)
-        return errc::protocol_value_error;
-
-    // Sum it up
-    to = d + time_of_day;
-    return errc::ok;
-}
-
-
-template <typename T>
-std::enable_if_t<std::is_arithmetic_v<T>, errc>
-deserialize_text_value_impl(std::string_view from, T& to)
-{
-    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), to);
-    if constexpr (std::is_floating_point_v<T>)
-    {
-        ok &= !(std::isnan(to) || std::isinf(to)); // SQL std forbids these values
-    }
-    return ok ? errc::ok : errc::protocol_value_error;
-}
-
-inline errc deserialize_text_value_impl(std::string_view from, std::string_view& to)
-{
-    to = from;
-    return errc::ok;
-}
-
-template <typename T, typename... Args>
-errc deserialize_text_value_to_variant(std::string_view from, value& to, Args&&... args)
-{
-    return deserialize_text_value_impl(from, to.emplace<T>(), std::forward<Args>(args)...);
 }
 
 inline bool is_next_field_null(
@@ -211,24 +320,20 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     case protocol_field_type::int24:
     case protocol_field_type::long_:
     case protocol_field_type::year:
-        return meta.is_unsigned() ?
-                deserialize_text_value_to_variant<std::uint32_t>(from, output) :
-                deserialize_text_value_to_variant<std::int32_t>(from, output);
+        return deserialize_text_value_int<std::uint32_t>(from, output, meta);
     case protocol_field_type::longlong:
-        return meta.is_unsigned() ?
-                deserialize_text_value_to_variant<std::uint64_t>(from, output) :
-                deserialize_text_value_to_variant<std::int64_t>(from, output);
+        return deserialize_text_value_int<std::uint64_t>(from, output, meta);
     case protocol_field_type::float_:
-        return deserialize_text_value_to_variant<float>(from, output);
+        return deserialize_text_value_float<float>(from, output);
     case protocol_field_type::double_:
-        return deserialize_text_value_to_variant<double>(from, output);
+        return deserialize_text_value_float<double>(from, output);
     case protocol_field_type::timestamp:
     case protocol_field_type::datetime:
-        return deserialize_text_value_to_variant<datetime>(from, output, meta.decimals());
+        return deserialize_text_value_datetime(from, output, meta);
     case protocol_field_type::date:
-        return deserialize_text_value_to_variant<date>(from, output);
+        return deserialize_text_value_date(from, output);
     case protocol_field_type::time:
-        return deserialize_text_value_to_variant<time>(from, output, meta.decimals());
+        return deserialize_text_value_time(from, output, meta);
     // True string types
     case protocol_field_type::varchar:
     case protocol_field_type::var_string:
@@ -245,7 +350,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return deserialize_text_value_to_variant<std::string_view>(from, output);
+        return deserialize_text_value_string(from, output);
     }
 }
 

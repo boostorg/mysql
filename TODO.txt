@@ -1,5 +1,4 @@
 Sanitize
-    Change deserialize_text_value to allow zero and invalid dates/datetimes
     Integ tests for zero and invalid dates
     Remove deserialization test error fixture
     Change text row to use parameterized tests

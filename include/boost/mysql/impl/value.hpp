@@ -22,6 +22,13 @@ constexpr datetime max_datetime = max_date + std::chrono::hours(24) - std::chron
 constexpr time min_time = -std::chrono::hours(839);
 constexpr time max_time = std::chrono::hours(839);
 
+inline bool is_out_of_range(
+    const date& d
+)
+{
+    return d < min_date || d > max_date;
+}
+
 // Range checks
 static_assert(date::min() <= min_date);
 static_assert(date::max() >= max_date);

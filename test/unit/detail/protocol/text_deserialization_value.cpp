@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
+#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
@@ -24,7 +25,7 @@ namespace
 struct text_value_testcase : named_param
 {
     std::string name;
-    std::string_view from;
+    std::string from;
     value expected;
     protocol_field_type type;
     unsigned decimals;
@@ -33,14 +34,14 @@ struct text_value_testcase : named_param
     template <typename T>
     text_value_testcase(
         std::string name,
-        std::string_view from,
+        std::string from,
         T&& expected_value,
         protocol_field_type type,
         std::uint16_t flags=0,
         unsigned decimals=0
     ) :
         name(std::move(name)),
-        from(from),
+        from(std::move(from)),
         expected(std::forward<T>(expected_value)),
         type(type),
         decimals(decimals),
@@ -81,13 +82,13 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeTextValueTest, Values(
 
 template <typename SignedType, typename UnsignedType>
 std::vector<text_value_testcase> make_int_cases(
-    std::string_view signed_max_s,
+    std::string signed_max_s,
     SignedType signed_max_b,
-    std::string_view signed_min_s,
+    std::string signed_min_s,
     SignedType signed_min_b,
-    std::string_view unsigned_max_s,
+    std::string unsigned_max_s,
     UnsignedType unsigned_max_b,
-    std::string_view zerofill_s,
+    std::string zerofill_s,
     UnsignedType zerofill_b,
     protocol_field_type type
 )
@@ -189,19 +190,24 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeTextValueTest, Values(
     text_value_testcase("regular_date", "2019-02-28", makedate(2019, 2, 28), protocol_field_type::date),
     text_value_testcase("leap_year", "1788-02-29", makedate(1788, 2, 29), protocol_field_type::date),
     text_value_testcase("min", "0000-01-01", makedate(0, 1, 1), protocol_field_type::date),
-    text_value_testcase("max", "9999-12-31", makedate(9999, 12, 31), protocol_field_type::date)
+    text_value_testcase("max", "9999-12-31", makedate(9999, 12, 31), protocol_field_type::date),
+    text_value_testcase("zero", "0000-00-00", nullptr, protocol_field_type::date),
+    text_value_testcase("zero_month", "0000-00-01", nullptr, protocol_field_type::date),
+    text_value_testcase("zero_day", "0000-01-00", nullptr, protocol_field_type::date),
+    text_value_testcase("zero_month_day_nonzero_year", "2010-00-00", nullptr, protocol_field_type::date),
+    text_value_testcase("invalid_date", "2010-11-31", nullptr, protocol_field_type::date)
 ), test_name_generator);
 
 std::vector<text_value_testcase> make_datetime_cases(
     protocol_field_type type
 )
 {
-    return {
+    std::vector<text_value_testcase> res {
         { "0_decimals_date", "2010-02-15 00:00:00", makedt(2010, 2, 15), type },
         { "0_decimals_h", "2010-02-15 02:00:00", makedt(2010, 2, 15, 2), type },
         { "0_decimals_hm", "2010-02-15 02:05:00", makedt(2010, 2, 15, 2, 5), type },
         { "0_decimals_hms", "2010-02-15 02:05:30", makedt(2010, 2, 15, 2, 5, 30), type },
-        { "0_decimals_min", "1000-01-01 00:00:00", makedt(1000, 1, 1), type },
+        { "0_decimals_min", "0000-01-01 00:00:00", makedt(0, 1, 1), type },
         { "0_decimals_max", "9999-12-31 23:59:59", makedt(9999, 12, 31, 23, 59, 59), type },
 
         { "1_decimals_date", "2010-02-15 00:00:00.0", makedt(2010, 2, 15), type, 0, 1 },
@@ -209,37 +215,68 @@ std::vector<text_value_testcase> make_datetime_cases(
         { "1_decimals_hm", "2010-02-15 02:05:00.0", makedt(2010, 2, 15, 2, 5), type, 0, 1 },
         { "1_decimals_hms", "2010-02-15 02:05:30.0", makedt(2010, 2, 15, 2, 5, 30), type, 0, 1 },
         { "1_decimals_hmsu", "2010-02-15 02:05:30.5", makedt(2010, 2, 15, 2, 5, 30, 500000), type, 0, 1 },
-        { "1_decimals_min", "1000-01-01 00:00:00.0", makedt(1000, 1, 1), type, 0, 1 },
+        { "1_decimals_min", "0000-01-01 00:00:00.0", makedt(0, 1, 1), type, 0, 1 },
         { "1_decimals_max", "9999-12-31 23:59:59.9", makedt(9999, 12, 31, 23, 59, 59, 900000), type, 0, 1 },
 
         { "2_decimals_hms", "2010-02-15 02:05:30.00", makedt(2010, 2, 15, 2, 5, 30), type, 0, 2 },
         { "2_decimals_hmsu", "2010-02-15 02:05:30.05", makedt(2010, 2, 15, 2, 5, 30, 50000), type, 0, 2 },
-        { "2_decimals_min", "1000-01-01 00:00:00.00", makedt(1000, 1, 1), type, 0, 2 },
+        { "2_decimals_min", "0000-01-01 00:00:00.00", makedt(0, 1, 1), type, 0, 2 },
         { "2_decimals_max", "9999-12-31 23:59:59.99", makedt(9999, 12, 31, 23, 59, 59, 990000), type, 0, 2 },
 
         { "3_decimals_hms", "2010-02-15 02:05:30.000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 3 },
         { "3_decimals_hmsu", "2010-02-15 02:05:30.420", makedt(2010, 2, 15, 2, 5, 30, 420000), type, 0, 3 },
-        { "3_decimals_min", "1000-01-01 00:00:00.000", makedt(1000, 1, 1), type, 0, 3 },
+        { "3_decimals_min", "0000-01-01 00:00:00.000", makedt(0, 1, 1), type, 0, 3 },
         { "3_decimals_max", "9999-12-31 23:59:59.999", makedt(9999, 12, 31, 23, 59, 59, 999000), type, 0, 3 },
 
         { "4_decimals_hms", "2010-02-15 02:05:30.0000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 4 },
         { "4_decimals_hmsu", "2010-02-15 02:05:30.4267", makedt(2010, 2, 15, 2, 5, 30, 426700), type, 0, 4 },
-        { "4_decimals_min", "1000-01-01 00:00:00.0000", makedt(1000, 1, 1), type, 0, 4 },
+        { "4_decimals_min", "0000-01-01 00:00:00.0000", makedt(0, 1, 1), type, 0, 4 },
         { "4_decimals_max", "9999-12-31 23:59:59.9999", makedt(9999, 12, 31, 23, 59, 59, 999900), type, 0, 4 },
 
         { "5_decimals_hms", "2010-02-15 02:05:30.00000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 5 },
         { "5_decimals_hmsu", "2010-02-15 02:05:30.00239", makedt(2010, 2, 15, 2, 5, 30, 2390), type, 0, 5 },
-        { "5_decimals_min", "1000-01-01 00:00:00.00000", makedt(1000, 1, 1), type, 0, 5 },
+        { "5_decimals_min", "0000-01-01 00:00:00.00000", makedt(0, 1, 1), type, 0, 5 },
         { "5_decimals_max", "9999-12-31 23:59:59.99999", makedt(9999, 12, 31, 23, 59, 59, 999990), type, 0, 5 },
 
         { "6_decimals_hms", "2010-02-15 02:05:30.000000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 6 },
         { "6_decimals_hmsu", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), type, 0, 6 },
-        { "6_decimals_min", "1000-01-01 00:00:00.000000", makedt(1000, 1, 1), type, 0, 6 },
+        { "6_decimals_min", "0000-01-01 00:00:00.000000", makedt(0, 1, 1), type, 0, 6 },
         { "6_decimals_max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), type, 0, 6 },
 
         // not a real case, we cap decimals to 6
         { "7_decimals", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), type, 0, 7 }
     };
+
+    // Generate all invalid date casuistic for all decimals
+    constexpr struct
+    {
+        const char* name;
+        const char* base_value;
+    } why_is_invalid [] = {
+        { "zero", "0000-00-00 00:00:00" },
+        { "invalid_date", "2010-11-31 01:10:59" },
+        { "zero_month",  "2010-00-31 01:10:59" },
+        { "zero_day", "2010-11-00 01:10:59" },
+        { "zero_month_day", "2010-00-00 01:10:59" }
+    };
+
+    for (const auto& why: why_is_invalid)
+    {
+        for (unsigned decimals = 0; decimals <= 6; ++decimals)
+        {
+            std::string name = stringize(decimals, "_decimals_", why.name);
+            std::string value = why.base_value;
+            if (decimals > 0)
+            {
+                value.push_back('.');
+                for (unsigned i = 0; i < decimals; ++i)
+                    value.push_back('0');
+            }
+            res.emplace_back(std::move(name), std::move(value), nullptr, type, 0, decimals);
+        }
+    }
+
+    return res;
 }
 
 INSTANTIATE_TEST_SUITE_P(DATETIME, DeserializeTextValueTest, ValuesIn(
