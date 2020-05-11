@@ -183,30 +183,6 @@ struct DeserializeSpaceTest : SerializationFixture {}; // Deserialization + extr
 struct SerializeDeserializeTest : SerializationFixture {}; // Serialization + deserialization
 struct FullSerializationTest : SerializationFixture {}; // All
 
-// errc tests
-struct deserialize_error_testcase : test::named_param
-{
-    std::shared_ptr<any_value> value;
-    std::vector<uint8_t> buffer;
-    std::string name;
-    errc expected_error;
-
-    template <typename T>
-    deserialize_error_testcase(
-        std::vector<uint8_t>&& buffer,
-        std::string&& test_name,
-        errc err = errc::incomplete_message
-    ) :
-        value(std::make_shared<any_value_impl<T>>(T{})),
-        buffer(std::move(buffer)),
-        name(std::move(test_name)),
-        expected_error(err)
-    {
-    }
-};
-
-struct DeserializeErrorTest : testing::TestWithParam<deserialize_error_testcase> {};
-
 } // test
 } // mysql
 } // boost

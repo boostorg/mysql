@@ -1,5 +1,4 @@
 Sanitize
-    Remove deserialization test error fixture
     Change text row to use parameterized tests
 	See if we have any trouble with user input in binary serialization: make assertions
 	Test with an unknown protocol type

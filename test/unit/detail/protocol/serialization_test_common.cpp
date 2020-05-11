@@ -124,19 +124,5 @@ TEST_P(FullSerializationTest, deserialize) { deserialize_test(GetParam()); }
 TEST_P(FullSerializationTest, deserialize_extra_space) { deserialize_extra_space_test(GetParam()); }
 TEST_P(FullSerializationTest, deserialize_not_enough_space) { deserialize_not_enough_space_test(GetParam()); }
 
-// Errc tests
-TEST_P(DeserializeErrorTest, Deserialize_ErrorCondition_ReturnsErrorCode)
-{
-    auto first = GetParam().buffer.data();
-    auto last = GetParam().buffer.data() + GetParam().buffer.size();
-    deserialization_context ctx (first, last, capabilities());
-    auto value = GetParam().value->default_construct();
-    auto err = value->deserialize(ctx);
-    EXPECT_EQ(err, GetParam().expected_error);
-}
-
 } // anon namespace
-
-
-
 
