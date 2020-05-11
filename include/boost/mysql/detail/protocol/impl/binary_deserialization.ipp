@@ -200,6 +200,17 @@ inline errc deserialize_binary_value_to_variant_datetime(
             return err;
     }
 
+    // Validity check. We make this check before
+    // the invalid date check to make invalid dates with incorrect
+    // hours/mins/secs/micros fail
+    if (hours.value > max_hour ||
+        minutes.value > max_min ||
+        seconds.value > max_sec ||
+        micros.value > max_micro)
+    {
+        return errc::protocol_value_error;
+    }
+
     // Check for invalid dates, represented in C++ as NULL.
     // Note: we do the check here to ensure we consume all the bytes
     // associated to this datetime
@@ -211,11 +222,7 @@ inline errc deserialize_binary_value_to_variant_datetime(
 
     // Range check
     date d (ymd);
-    if (is_out_of_range(d) ||
-        hours.value > max_hour ||
-        minutes.value > max_min ||
-        seconds.value > max_sec ||
-        micros.value > max_micro)
+    if (is_out_of_range(d))
     {
         return errc::protocol_value_error;
     }
