@@ -14,7 +14,6 @@
 
 using namespace boost::mysql::test;
 using namespace testing;
-using namespace date::literals;
 using boost::mysql::value;
 using boost::mysql::field_metadata;
 using boost::mysql::field_type;
@@ -290,15 +289,47 @@ INSTANTIATE_TEST_SUITE_P(DOUBLE, DatabaseTypesTest, Values(
 ), test_name_generator);
 
 // Dates and times
-INSTANTIATE_TEST_SUITE_P(DATE, DatabaseTypesTest, Values(
-    database_types_testcase("types_date", "field_date", "regular", 2010_y/3/28_d, field_type::date),
-    database_types_testcase("types_date", "field_date", "leap", 1788_y/2/29_d, field_type::date),
-    database_types_testcase("types_date", "field_date", "min", 1000_y/1/1_d, field_type::date),
-    database_types_testcase("types_date", "field_date", "max", 9999_y/12/31_d, field_type::date)
+
+// MySQL accepts zero and invalid dates. We represent them as NULL
+constexpr const char* invalid_date_cases [] = {
+    "zero",
+    "yzero_mzero_dregular",
+    "yzero_mregular_dzero",
+    "yzero_invalid_date",
+    "yregular_mzero_dzero",
+    "yregular_mzero_dregular",
+    "yregular_mregular_dzero",
+    "yregular_invalid_date",
+};
+
+std::vector<database_types_testcase> make_date_cases()
+{
+    constexpr auto type = field_type::date;
+    constexpr const char* table = "types_date";
+    constexpr const char* field = "field_date";
+
+    // Regular cases
+    std::vector<database_types_testcase> res {
+        { table, field, "regular", makedate(2010, 3, 28), type },
+        { table, field, "leap", makedate(1788, 2, 29), type },
+        { table, field, "min", makedate(0, 1, 1), type },
+        { table, field, "max", makedate(9999, 12, 31), type }
+    };
+
+    // Invalid DATEs
+    for (const char* invalid_case: invalid_date_cases)
+    {
+        res.emplace_back(table, field, invalid_case, nullptr, type);
+    }
+
+    return res;
+}
+
+INSTANTIATE_TEST_SUITE_P(DATE, DatabaseTypesTest, ValuesIn(
+    make_date_cases()
 ), test_name_generator);
 
 // Infrastructure to generate DATETIME and TIMESTAMP test cases
-
 // Given a number of microseconds, removes the least significant part according to decimals
 int round_micros(int input, int decimals)
 {
@@ -400,7 +431,8 @@ std::pair<std::string, boost::mysql::time> time_from_id(std::bitset<6> id, int d
             t += letter == 'u' ? round_micros(offset, decimals) : offset; // add to value
         }
     }
-    if (name.empty()) name = "zero";
+    if (name.empty())
+        name = "zero";
     if (id[0]) // bit sign
     {
         name = "negative_" + name;
@@ -424,7 +456,8 @@ std::vector<database_types_testcase> generate_common_datetime_cases(
         for (std::size_t int_id = 0; int_id < max_int_id; ++int_id)
         {
             std::bitset<4> bitset_id (int_id);
-            if (bitset_id[3] && decimals == 0) continue; // cases with micros don't make sense for fields with no decimals
+            if (bitset_id[3] && decimals == 0)
+                continue; // cases with micros don't make sense for fields with no decimals
             auto [id, value] = datetime_from_id(int_id, decimals);
             res.push_back(create_datetime_testcase(decimals, move(id), value, type));
         }
@@ -441,9 +474,24 @@ std::vector<database_types_testcase> generate_datetime_cases()
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
         res.push_back(create_datetime_testcase(decimals, "min",
-                makedt(1000, 1, 1), field_type::datetime));
+                makedt(0, 1, 1), field_type::datetime));
         res.push_back(create_datetime_testcase(decimals, "max",
                 makedt(9999, 12, 31, 23, 59, 59, round_micros(999999, decimals)), field_type::datetime));
+        const char* lengths [] = {"date", "hms", decimals ? "hmsu" : nullptr };
+        for (const char* length:  lengths)
+        {
+            if (!length)
+                continue;
+            for (const char* invalid_date_case: invalid_date_cases)
+            {
+                res.push_back(create_datetime_testcase(
+                    decimals,
+                    boost::mysql::detail::stringize(length, '_', invalid_date_case),
+                    nullptr,
+                    field_type::datetime
+                ));
+            }
+        }
     }
 
     return res;
@@ -451,7 +499,16 @@ std::vector<database_types_testcase> generate_datetime_cases()
 
 std::vector<database_types_testcase> generate_timestamp_cases()
 {
-    return generate_common_datetime_cases(field_type::timestamp);
+    auto res = generate_common_datetime_cases(field_type::timestamp);
+
+    // Only the full-zero TIMESTAMP is allowed - timestamps with
+    // invalid date parts are converted to the zero TIMESTAMP
+    for (int decimals = 0; decimals <= 6; ++decimals)
+    {
+        res.push_back(create_datetime_testcase(decimals, "zero", nullptr, field_type::timestamp));
+    }
+
+    return res;
 }
 
 std::vector<database_types_testcase> generate_time_cases()

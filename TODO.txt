@@ -1,5 +1,4 @@
 Sanitize
-    Integ tests for zero and invalid dates
     Remove deserialization test error fixture
     Change text row to use parameterized tests
 	See if we have any trouble with user input in binary serialization: make assertions
@@ -47,6 +46,7 @@ Other possible features
     Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    Refactor database type cases, and remove unit tests superseeded by them
     Random input tests
     Change channel read to make less syscalls
 	Test dashboard
