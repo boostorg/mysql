@@ -16,13 +16,13 @@ namespace mysql {
 namespace detail {
 
 inline std::size_t get_binary_value_size(
-    const value& input,
-    const serialization_context& ctx
+    const serialization_context& ctx,
+    const value& input
 ) noexcept;
 
 inline void serialize_binary_value(
-    const value& input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const value& input
 ) noexcept;
 
 

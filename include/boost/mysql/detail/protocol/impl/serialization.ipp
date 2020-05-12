@@ -31,12 +31,12 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::int_lenenc,
     boost::mysql::detail::serialization_tag::none
 >::deserialize_(
-    int_lenenc& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    int_lenenc& output
 ) noexcept
 {
     int1 first_byte;
-    errc err = deserialize(first_byte, ctx);
+    errc err = deserialize(ctx, first_byte);
     if (err != errc::ok)
     {
         return err;
@@ -45,19 +45,19 @@ boost::mysql::detail::serialization_traits<
     if (first_byte.value == 0xFC)
     {
         int2 value;
-        err = deserialize(value, ctx);
+        err = deserialize(ctx, value);
         output.value = value.value;
     }
     else if (first_byte.value == 0xFD)
     {
         int3 value;
-        err = deserialize(value, ctx);
+        err = deserialize(ctx, value);
         output.value = value.value;
     }
     else if (first_byte.value == 0xFE)
     {
         int8 value;
-        err = deserialize(value, ctx);
+        err = deserialize(ctx, value);
         output.value = value.value;
     }
     else
@@ -74,28 +74,28 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::int_lenenc,
     boost::mysql::detail::serialization_tag::none
 >::serialize_(
-    int_lenenc input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    int_lenenc input
 ) noexcept
 {
     if (input.value < 251)
     {
-        serialize(int1(static_cast<std::uint8_t>(input.value)), ctx);
+        serialize(ctx, int1(static_cast<std::uint8_t>(input.value)));
     }
     else if (input.value < 0x10000)
     {
         ctx.write(0xfc);
-        serialize(int2(static_cast<std::uint16_t>(input.value)), ctx);
+        serialize(ctx, int2(static_cast<std::uint16_t>(input.value)));
     }
     else if (input.value < 0x1000000)
     {
         ctx.write(0xfd);
-        serialize(int3(static_cast<std::uint32_t>(input.value)), ctx);
+        serialize(ctx, int3(static_cast<std::uint32_t>(input.value)));
     }
     else
     {
         ctx.write(0xfe);
-        serialize(int8(static_cast<std::uint64_t>(input.value)), ctx);
+        serialize(ctx, int8(static_cast<std::uint64_t>(input.value)));
     }
 }
 
@@ -104,8 +104,8 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::int_lenenc,
     boost::mysql::detail::serialization_tag::none
 >::get_size_(
-    int_lenenc input,
-    const serialization_context&
+    const serialization_context&,
+    int_lenenc input
 ) noexcept
 {
     if (input.value < 251)
@@ -123,8 +123,8 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_null,
     boost::mysql::detail::serialization_tag::none
 >::deserialize_(
-    string_null& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    string_null& output
 ) noexcept
 {
     auto string_end = std::find(ctx.first(), ctx.last(), 0);
@@ -142,8 +142,8 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_eof,
     boost::mysql::detail::serialization_tag::none
 >::deserialize_(
-    string_eof& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    string_eof& output
 ) noexcept
 {
     output.value = get_string(ctx.first(), ctx.last()-ctx.first());
@@ -156,12 +156,12 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_lenenc,
     boost::mysql::detail::serialization_tag::none
 >::deserialize_(
-    string_lenenc& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    string_lenenc& output
 ) noexcept
 {
     int_lenenc length;
-    errc err = deserialize(length, ctx);
+    errc err = deserialize(ctx, length);
     if (err != errc::ok)
     {
         return err;
@@ -188,7 +188,7 @@ boost::mysql::detail::deserialize_message_type(
 {
     int1 msg_type;
     std::pair<mysql::error_code, std::uint8_t> res {};
-    auto err = deserialize(msg_type, ctx);
+    auto err = deserialize(ctx, msg_type);
     if (err == errc::ok)
     {
         res.second = msg_type.value;

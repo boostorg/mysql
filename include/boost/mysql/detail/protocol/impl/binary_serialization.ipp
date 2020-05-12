@@ -18,8 +18,8 @@ namespace detail {
 template <typename T>
 std::enable_if_t<std::is_floating_point_v<T>>
 serialize_binary_value_impl(
-    T input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    T input
 )
 {
     // Endianness conversion
@@ -37,11 +37,11 @@ serialize_binary_value_impl(
 
 // Does not add the length prefix byte
 inline void serialize_binary_ymd(
-    const ::date::year_month_day& ymd,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const ::date::year_month_day& ymd
 ) noexcept
 {
-    serialize_fields(
+    serialize(
         ctx,
         int2(static_cast<std::uint16_t>(static_cast<int>(ymd.year()))),
         int1(static_cast<std::uint8_t>(static_cast<unsigned>(ymd.month()))),
@@ -50,20 +50,20 @@ inline void serialize_binary_ymd(
 }
 
 inline void serialize_binary_value_impl(
-    const date& input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const date& input
 )
 {
     ::date::year_month_day ymd (input);
     assert(ymd.ok());
 
-    serialize(int1(binc::date_sz), ctx);
-    serialize_binary_ymd(ymd, ctx);
+    serialize(ctx, int1(binc::date_sz));
+    serialize_binary_ymd(ctx, ymd);
 }
 
 inline void serialize_binary_value_impl(
-    const datetime& input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const datetime& input
 )
 {
     // Break datetime
@@ -73,9 +73,9 @@ inline void serialize_binary_value_impl(
     assert(ymd.ok());
 
     // Serialize
-    serialize(int1(binc::datetime_dhmsu_sz), ctx);
-    serialize_binary_ymd(ymd, ctx);
-    serialize_fields(
+    serialize(ctx, int1(binc::datetime_dhmsu_sz));
+    serialize_binary_ymd(ctx, ymd);
+    serialize(
         ctx,
         int1(static_cast<std::uint8_t>(tod.hours().count())),
         int1(static_cast<std::uint8_t>(tod.minutes().count())),
@@ -85,8 +85,8 @@ inline void serialize_binary_value_impl(
 }
 
 inline void serialize_binary_value_impl(
-    const time& input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const time& input
 )
 {
     // Break time
@@ -98,7 +98,7 @@ inline void serialize_binary_value_impl(
     int1 is_negative (input.count() < 0 ? 1 : 0);
 
     // Serialize
-    serialize_fields(
+    serialize(
         ctx,
         int1(binc::time_dhmsu_sz),
         is_negative,
@@ -121,7 +121,7 @@ struct size_visitor
     template <typename T>
     std::size_t operator()(T) noexcept { return sizeof(T); }
 
-    std::size_t operator()(std::string_view v) noexcept { return get_size(string_lenenc(v), ctx); }
+    std::size_t operator()(std::string_view v) noexcept { return get_size(ctx, string_lenenc(v)); }
     std::size_t operator()(const date&) noexcept { return binc::date_sz + binc::length_sz; }
     std::size_t operator()(const datetime&) noexcept { return binc::datetime_dhmsu_sz + binc::length_sz; }
     std::size_t operator()(const time&) noexcept { return binc::time_dhmsu_sz + binc::length_sz; }
@@ -135,13 +135,13 @@ struct serialize_visitor
     serialize_visitor(serialization_context& ctx) noexcept: ctx(ctx) {}
 
     template <typename T>
-    void operator()(const T& v) noexcept { serialize_binary_value_impl(v, ctx); }
+    void operator()(const T& v) noexcept { serialize_binary_value_impl(ctx, v); }
 
-    void operator()(std::int32_t v) noexcept { serialize(int4_signed(v), ctx); }
-    void operator()(std::uint32_t v) noexcept { serialize(int4(v), ctx); }
-    void operator()(std::int64_t v) noexcept { serialize(int8_signed(v), ctx); }
-    void operator()(std::uint64_t v) noexcept { serialize(int8(v), ctx); }
-    void operator()(std::string_view v) noexcept { serialize(string_lenenc(v), ctx); }
+    void operator()(std::int32_t v) noexcept { serialize(ctx, int4_signed(v)); }
+    void operator()(std::uint32_t v) noexcept { serialize(ctx, int4(v)); }
+    void operator()(std::int64_t v) noexcept { serialize(ctx, int8_signed(v)); }
+    void operator()(std::uint64_t v) noexcept { serialize(ctx, int8(v)); }
+    void operator()(std::string_view v) noexcept { serialize(ctx, string_lenenc(v)); }
     void operator()(std::nullptr_t) noexcept {}
 };
 
@@ -151,16 +151,16 @@ struct serialize_visitor
 
 
 inline std::size_t boost::mysql::detail::get_binary_value_size(
-    const value& input,
-    const serialization_context& ctx
+    const serialization_context& ctx,
+    const value& input
 ) noexcept
 {
     return std::visit(size_visitor(ctx), input);
 }
 
 inline void boost::mysql::detail::serialize_binary_value(
-    const value& input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const value& input
 ) noexcept
 {
     std::visit(serialize_visitor(ctx), input);

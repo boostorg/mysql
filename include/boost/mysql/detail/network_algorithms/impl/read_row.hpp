@@ -36,7 +36,7 @@ inline read_row_result process_read_message(
     if (msg_type == eof_packet_header)
     {
         // end of resultset
-        err = deserialize_message(output_ok_packet, ctx);
+        err = deserialize_message(ctx, output_ok_packet);
         return err ? read_row_result::error : read_row_result::eof;
         if (err)
             return read_row_result::error;

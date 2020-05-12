@@ -56,7 +56,7 @@ public:
             return;
         if (msg_type == ok_packet_header)
         {
-            err = deserialize_message(ok_packet_, ctx);
+            err = deserialize_message(ctx, ok_packet_);
             if (err)
                 return;
             field_count_ = 0;
@@ -72,7 +72,7 @@ public:
             // of this packet, so we must rewind the context
             ctx.rewind(1);
             int_lenenc num_fields;
-            err = deserialize_message(num_fields, ctx);
+            err = deserialize_message(ctx, num_fields);
             if (err)
                 return;
 
@@ -102,7 +102,7 @@ public:
     {
         column_definition_packet field_definition;
         deserialization_context ctx (boost::asio::buffer(buffer_), channel_.current_capabilities());
-        auto err = deserialize_message(field_definition, ctx);
+        auto err = deserialize_message(ctx, field_definition);
         if (err)
             return err;
 

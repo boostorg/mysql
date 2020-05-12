@@ -48,7 +48,7 @@ template <>
 struct serialization_traits<handshake_packet, serialization_tag::struct_with_fields> :
     noop_serialize<handshake_packet>
 {
-    static inline errc deserialize_(handshake_packet& output, deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(deserialization_context& ctx, handshake_packet& output) noexcept;
 };
 
 // response
@@ -83,8 +83,10 @@ template <>
 struct serialization_traits<handshake_response_packet, serialization_tag::struct_with_fields> :
     noop_deserialize<handshake_response_packet>
 {
-    static inline std::size_t get_size_(const handshake_response_packet& value, const serialization_context& ctx) noexcept;
-    static inline void serialize_(const handshake_response_packet& value, serialization_context& ctx) noexcept;
+    static inline std::size_t get_size_(const serialization_context& ctx,
+            const handshake_response_packet& value) noexcept;
+    static inline void serialize_(serialization_context& ctx,
+            const handshake_response_packet& value) noexcept;
 };
 
 // SSL request
@@ -141,7 +143,8 @@ template <>
 struct serialization_traits<auth_switch_request_packet, serialization_tag::struct_with_fields> :
     noop_serialize<auth_switch_request_packet>
 {
-    static inline errc deserialize_(auth_switch_request_packet& output, deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(deserialization_context& ctx,
+            auth_switch_request_packet& output) noexcept;
 };
 
 // more data (like auth switch request, but for the same plugin)

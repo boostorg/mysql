@@ -26,7 +26,7 @@ errc deserialize_binary_value_value_holder(
 ) noexcept
 {
     DeserializableType deser;
-    auto err = deserialize(deser, ctx);
+    auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
     output = TargetType(deser.value);
@@ -95,7 +95,7 @@ inline errc deserialize_binary_ymd(
     int1 day;
 
     // Deserialize
-    auto err = deserialize_fields(ctx, year, month, day);
+    auto err = deserialize(ctx, year, month, day);
     if (err != errc::ok)
         return err;
 
@@ -123,7 +123,7 @@ inline errc deserialize_binary_value_date(
 {
     // Deserialize length
     int1 length;
-    auto err = deserialize(length, ctx);
+    auto err = deserialize(ctx, length);
     if (err != errc::ok)
         return err;
 
@@ -166,7 +166,7 @@ inline errc deserialize_binary_value_datetime(
 
     // Deserialize length
     int1 length;
-    auto err = deserialize(length, ctx);
+    auto err = deserialize(ctx, length);
     if (err != errc::ok)
         return err;
 
@@ -189,7 +189,7 @@ inline errc deserialize_binary_value_datetime(
     // Hours, minutes, seconds
     if (length.value >= datetime_dhms_sz)
     {
-        err = deserialize_fields(ctx, hours, minutes, seconds);
+        err = deserialize(ctx, hours, minutes, seconds);
         if (err != errc::ok)
             return err;
     }
@@ -197,7 +197,7 @@ inline errc deserialize_binary_value_datetime(
     // Microseconds
     if (length.value >= datetime_dhmsu_sz)
     {
-        err = deserialize(micros, ctx);
+        err = deserialize(ctx, micros);
         if (err != errc::ok)
             return err;
     }
@@ -248,7 +248,7 @@ inline errc deserialize_binary_value_time(
 
     // Deserialize length
     int1 length;
-    auto err = deserialize(length, ctx);
+    auto err = deserialize(ctx, length);
     if (err != errc::ok)
         return err;
 
@@ -263,7 +263,7 @@ inline errc deserialize_binary_value_time(
     // Sign, days, hours, minutes, seconds
     if (length.value >= time_dhms_sz)
     {
-        err = deserialize_fields(
+        err = deserialize(
             ctx,
             is_negative,
             days,
@@ -278,7 +278,7 @@ inline errc deserialize_binary_value_time(
     // Microseconds
     if (length.value >= time_dhmsu_sz)
     {
-        err = deserialize(microseconds, ctx);
+        err = deserialize(ctx, microseconds);
         if (err != errc::ok)
             return err;
     }

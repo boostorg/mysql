@@ -38,108 +38,124 @@ struct is_command : decltype(is_command_helper::get<T>(nullptr))
 {
 };
 
-template <std::size_t index, typename T>
+template <typename T>
+using struct_index_sequence = std::make_index_sequence<std::tuple_size_v<
+    decltype(get_struct_fields<T>::value)
+>>;
+
+template <typename T, std::size_t... index>
 errc deserialize_struct(
-    [[maybe_unused]] T& output,
-    [[maybe_unused]] deserialization_context& ctx
+    deserialization_context& ctx,
+    T& output,
+    std::index_sequence<index...>
 ) noexcept
 {
     constexpr auto fields = get_struct_fields<T>::value;
-    if constexpr (index == std::tuple_size<decltype(fields)>::value)
-    {
-        return errc::ok;
-    }
-    else
-    {
-        constexpr auto pmem = std::get<index>(fields);
-        errc err = deserialize(output.*pmem, ctx);
-        if (err != errc::ok)
-        {
-            return err;
-        }
-        else
-        {
-            return deserialize_struct<index+1>(output, ctx);
-        }
-    }
+    return deserialize(ctx, (output.*(std::get<index>(fields)))...);
 }
 
-template <std::size_t index, typename T>
+template <typename T, std::size_t... index>
 void serialize_struct(
-    [[maybe_unused]] const T& value,
-    [[maybe_unused]] serialization_context& ctx
+    serialization_context& ctx,
+    const T& input,
+    std::index_sequence<index...>
 ) noexcept
 {
     constexpr auto fields = get_struct_fields<T>::value;
-    if constexpr (index < std::tuple_size<decltype(fields)>::value)
-    {
-        auto pmem = std::get<index>(fields);
-        serialize(value.*pmem, ctx);
-        serialize_struct<index+1>(value, ctx);
-    }
+    serialize(ctx, (input.*(std::get<index>(fields)))...);
 }
 
-template <std::size_t index, typename T>
+template <typename T, std::size_t... index>
 std::size_t get_size_struct(
-    [[maybe_unused]] const T& input,
-    [[maybe_unused]] const serialization_context& ctx
+    const serialization_context& ctx,
+    const T& input,
+    std::index_sequence<index...>
 ) noexcept
 {
     constexpr auto fields = get_struct_fields<T>::value;
-    if constexpr (index == std::tuple_size<decltype(fields)>::value)
-    {
-        return 0;
-    }
-    else
-    {
-        constexpr auto pmem = std::get<index>(fields);
-        return get_size_struct<index+1>(input, ctx) +
-               get_size(input.*pmem, ctx);
-    }
+    return get_size(ctx, (input.*(std::get<index>(fields)))...);
 }
 
-// Helpers for (de)serialize_fields
-template <typename FirstType>
-errc deserialize_fields_helper(deserialization_context& ctx, FirstType& field) noexcept
+inline errc deserialize_helper(deserialization_context&) noexcept
 {
-    return deserialize(field, ctx);
+    return errc::ok;
 }
 
 template <typename FirstType, typename... Types>
-errc deserialize_fields_helper(
+errc deserialize_helper(
     deserialization_context& ctx,
-    FirstType& field,
-    Types&... fields_tail
+    FirstType& first,
+    Types&... tail
 ) noexcept
 {
-    errc err = deserialize(field, ctx);
+    errc err = serialization_traits<FirstType>::deserialize_(ctx, first);
     if (err == errc::ok)
     {
-        err = deserialize_fields_helper(ctx, fields_tail...);
+        err = deserialize_helper(ctx, tail...);
     }
     return err;
 }
 
-template <typename FirstType>
-void serialize_fields_helper(serialization_context& ctx, const FirstType& field) noexcept
+inline void serialize_helper(serialization_context&) noexcept {}
+
+template <typename FirstType, typename... Types>
+void serialize_helper(
+    serialization_context& ctx,
+    const FirstType& first,
+    const Types&... tail
+)
 {
-    serialize(field, ctx);
+    serialization_traits<FirstType>::serialize_(ctx, first);
+    serialize_helper(ctx, tail...);
+}
+
+inline std::size_t get_size_helper(const serialization_context&) noexcept
+{
+    return 0;
 }
 
 template <typename FirstType, typename... Types>
-void serialize_fields_helper(
-    serialization_context& ctx,
-    const FirstType& field,
-    const Types&... fields_tail
-)
+std::size_t get_size_helper(
+    const serialization_context& ctx,
+    const FirstType& input,
+    const Types&... tail
+) noexcept
 {
-    serialize(field, ctx);
-    serialize_fields_helper(ctx, fields_tail...);
+    return serialization_traits<FirstType>::get_size_(ctx, input) +
+           get_size_helper(ctx, tail...);
 }
 
 } // detail
 } // mysql
 } // boost
+
+// Common
+template <typename... Types>
+boost::mysql::errc boost::mysql::detail::deserialize(
+    deserialization_context& ctx,
+    Types&... output
+) noexcept
+{
+    return deserialize_helper(ctx, output...);
+}
+
+template <typename... Types>
+void boost::mysql::detail::serialize(
+    serialization_context& ctx,
+    const Types&... input
+) noexcept
+{
+    serialize_helper(ctx, input...);
+}
+
+template <typename... Types>
+std::size_t boost::mysql::detail::get_size(
+    const serialization_context& ctx,
+    const Types&... input
+) noexcept
+{
+    return get_size_helper(ctx, input...);
+}
 
 // Fixed size ints
 template <typename T>
@@ -157,8 +173,8 @@ boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::fixed_size_int
 >::deserialize_(
-    T& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    T& output
 ) noexcept
 {
     static_assert(std::is_standard_layout_v<decltype(T::value)>);
@@ -182,8 +198,8 @@ void boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::fixed_size_int
 >::serialize_(
-    T input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    T input
 ) noexcept
 {
     boost::endian::native_to_little_inplace(input.value);
@@ -194,7 +210,7 @@ template <typename T>
 constexpr std::size_t boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::fixed_size_int
->::get_size_(T, const serialization_context&) noexcept
+>::get_size_(const serialization_context&, T) noexcept
 {
     return get_int_size<T>();
 }
@@ -205,8 +221,8 @@ boost::mysql::errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_fixed<N>,
     boost::mysql::detail::serialization_tag::none
 >::deserialize_(
-    string_fixed<N>& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    string_fixed<N>& output
 ) noexcept
 {
     if (!ctx.enough_size(N))
@@ -225,12 +241,12 @@ boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::enumeration
 >::deserialize_(
-    T& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    T& output
 ) noexcept
 {
     serializable_type value;
-    errc err = deserialize(value, ctx);
+    errc err = deserialize(ctx, value);
     if (err != errc::ok)
     {
         return err;
@@ -243,7 +259,7 @@ template <typename T>
 std::size_t boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::enumeration
->::get_size_(T, const serialization_context&) noexcept
+>::get_size_(const serialization_context&, T) noexcept
 {
     return get_int_size<serializable_type>();
 }
@@ -263,9 +279,12 @@ boost::mysql::errc
 boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::struct_with_fields
->::deserialize_(T& output, deserialization_context& ctx) noexcept
+>::deserialize_(
+    deserialization_context& ctx,
+    T& output
+) noexcept
 {
-    return deserialize_struct<0>(output, ctx);
+    return deserialize_struct(ctx, output, struct_index_sequence<T>());
 }
 
 template <typename T>
@@ -274,17 +293,17 @@ boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
-    [[maybe_unused]] const T& input,
-    [[maybe_unused]] serialization_context& ctx
+    [[maybe_unused]] serialization_context& ctx,
+    [[maybe_unused]] const T& input
 ) noexcept
 {
     // For commands, add the command ID. Commands are only sent by the client,
     // so this is not considered in the deserialization functions.
     if constexpr (is_command<T>::value)
     {
-        serialize(int1(T::command_id), ctx);
+        serialize(ctx, int1(T::command_id));
     }
-    serialize_struct<0>(input, ctx);
+    serialize_struct(ctx, input, struct_index_sequence<T>());
 }
 
 template <typename T>
@@ -292,10 +311,10 @@ std::size_t
 boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::struct_with_fields
->::get_size_(const T& input, const serialization_context& ctx) noexcept
+>::get_size_(const serialization_context& ctx, const T& input) noexcept
 {
     std::size_t res = is_command<T>::value ? 1 : 0;
-    res += get_size_struct<0>(input, ctx);
+    res += get_size_struct(ctx, input, struct_index_sequence<T>());
     return res;
 }
 
@@ -308,35 +327,25 @@ void boost::mysql::detail::serialize_message(
 )
 {
     serialization_context ctx (caps);
-    std::size_t size = get_size(input, ctx);
+    std::size_t size = get_size(ctx, input);
     buffer.resize(size);
     ctx.set_first(buffer.data());
-    serialize(input, ctx);
+    serialize(ctx, input);
     assert(ctx.first() == buffer.data() + buffer.size());
 }
 
 template <typename Deserializable>
 boost::mysql::error_code boost::mysql::detail::deserialize_message(
-    Deserializable& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    Deserializable& output
 )
 {
-    auto err = deserialize(output, ctx);
+    auto err = deserialize(ctx, output);
     if (err != errc::ok)
         return make_error_code(err);
     if (!ctx.empty())
         return make_error_code(errc::extra_bytes);
     return error_code();
-}
-
-template <typename... Types>
-boost::mysql::errc
-boost::mysql::detail::deserialize_fields(
-    deserialization_context& ctx,
-    Types&... fields
-) noexcept
-{
-    return deserialize_fields_helper(ctx, fields...);
 }
 
 template <typename... Types>

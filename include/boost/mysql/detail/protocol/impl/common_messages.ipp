@@ -13,12 +13,12 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::ok_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
-    ok_packet& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    ok_packet& output
 ) noexcept
 {
     {
-        auto err = deserialize_fields(
+        auto err = deserialize(
             ctx,
             output.affected_rows,
             output.last_insert_id,
@@ -27,7 +27,7 @@ boost::mysql::detail::serialization_traits<
         );
         if (err == errc::ok && ctx.enough_size(1)) // message is optional, may be omitted
         {
-            err = deserialize(output.info, ctx);
+            err = deserialize(ctx, output.info);
         }
         return err;
     }
@@ -38,13 +38,13 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::column_definition_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
-    column_definition_packet& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    column_definition_packet& output
 ) noexcept
 {
     int_lenenc length_of_fixed_fields;
     int2 final_padding;
-    return deserialize_fields(
+    return deserialize(
         ctx,
         output.catalog,
         output.schema,
@@ -68,7 +68,7 @@ inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
 )
 {
     err_packet error_packet;
-    auto code = deserialize_message(error_packet, ctx);
+    auto code = deserialize_message(ctx, error_packet);
     if (code)
         return code;
     info.set_message(std::string(error_packet.error_message.value));

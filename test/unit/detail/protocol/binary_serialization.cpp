@@ -46,14 +46,14 @@ struct SerializeBinaryValueTest : TestWithParam<serialize_binary_value_testcase>
 TEST_P(SerializeBinaryValueTest, GetBinaryValueSize_Trivial_ReturnsExpectedSize)
 {
     serialization_context ctx (capabilities{});
-    std::size_t size = get_binary_value_size(GetParam().from, ctx);
+    std::size_t size = get_binary_value_size(ctx, GetParam().from);
     EXPECT_EQ(size, GetParam().buffer.size());
 }
 
 TEST_P(SerializeBinaryValueTest, SerializeBinaryValue_Trivial_WritesToBuffer)
 {
     do_serialize_test(GetParam().buffer, [](serialization_context& ctx) {
-        serialize_binary_value(GetParam().from, ctx);
+        serialize_binary_value(ctx, GetParam().from);
     });
 }
 

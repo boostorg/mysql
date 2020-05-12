@@ -371,7 +371,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
         else
         {
             string_lenenc value_str;
-            errc err = deserialize(value_str, ctx);
+            errc err = deserialize(ctx, value_str);
             if (err != errc::ok)
                 return make_error_code(err);
             err = deserialize_text_value(value_str.value, fields[i], output[i]);

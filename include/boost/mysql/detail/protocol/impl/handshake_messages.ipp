@@ -14,8 +14,8 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::handshake_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
-    handshake_packet& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    handshake_packet& output
 ) noexcept
 {
     constexpr std::uint8_t auth1_length = 8;
@@ -26,7 +26,7 @@ boost::mysql::detail::serialization_traits<
     int1 auth_plugin_data_len;
     string_fixed<10> reserved;
 
-    auto err = deserialize_fields(
+    auto err = deserialize(
         ctx,
         output.server_version,
         output.connection_id,
@@ -52,7 +52,7 @@ boost::mysql::detail::serialization_traits<
         return errc::server_unsupported;
 
     // Deserialize following fields
-    err = deserialize_fields(
+    err = deserialize(
         ctx,
         auth_plugin_data_len,
         reserved
@@ -69,7 +69,7 @@ boost::mysql::detail::serialization_traits<
     ctx.advance(auth2_length);
 
     // Auth plugin name
-    err = deserialize(output.auth_plugin_name, ctx);
+    err = deserialize(ctx, output.auth_plugin_name);
     if (err != errc::ok)
         return err;
 
@@ -86,22 +86,23 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::handshake_response_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(
-    const handshake_response_packet& value,
-    const serialization_context& ctx
+    const serialization_context& ctx,
+    const handshake_response_packet& value
 ) noexcept
 {
-    std::size_t res =
-        get_size(value.client_flag, ctx) +
-        get_size(value.max_packet_size, ctx) +
-        get_size(value.character_set, ctx) +
-        23 + // filler
-        get_size(value.username, ctx) +
-        get_size(value.auth_response, ctx);
+    std::size_t res = get_size(
+        ctx,
+        value.client_flag,
+        value.max_packet_size,
+        value.character_set,
+        value.username,
+        value.auth_response
+    ) + 23; // filler
     if (ctx.get_capabilities().has(CLIENT_CONNECT_WITH_DB))
     {
-        res += get_size(value.database, ctx);
+        res += get_size(ctx, value.database);
     }
-    res += get_size(value.client_plugin_name, ctx);
+    res += get_size(ctx, value.client_plugin_name);
     return res;
 }
 
@@ -110,22 +111,25 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::handshake_response_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
-    const handshake_response_packet& value,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const handshake_response_packet& value
 ) noexcept
 {
-    serialize(value.client_flag, ctx);
-    serialize(value.max_packet_size, ctx);
-    serialize(value.character_set, ctx);
-    std::uint8_t buffer [23] {};
-    ctx.write(buffer, sizeof(buffer));
-    serialize(value.username, ctx);
-    serialize(value.auth_response, ctx);
+    serialize(
+        ctx,
+        value.client_flag,
+        value.max_packet_size,
+        value.character_set,
+        string_fixed<23>{},
+        value.username,
+        value.auth_response
+    );
+
     if (ctx.get_capabilities().has(CLIENT_CONNECT_WITH_DB))
     {
-        serialize(value.database, ctx);
+        serialize(ctx, value.database);
     }
-    serialize(value.client_plugin_name, ctx);
+    serialize(ctx, value.client_plugin_name);
 }
 
 inline boost::mysql::errc
@@ -133,11 +137,11 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::auth_switch_request_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
-    auth_switch_request_packet& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    auth_switch_request_packet& output
 ) noexcept
 {
-    auto err = deserialize_fields(ctx, output.plugin_name, output.auth_plugin_data);
+    auto err = deserialize(ctx, output.plugin_name, output.auth_plugin_data);
     auto& auth_data = output.auth_plugin_data.value;
     // Discard an additional NULL at the end of auth data
     if (!auth_data.empty())

@@ -49,7 +49,7 @@ inline error_code deserialize_handshake(
     {
         return make_error_code(errc::protocol_value_error);
     }
-    return deserialize_message(output, ctx);
+    return deserialize_message(ctx, output);
 }
 
 // When receiving an auth response from the server, several things can happen:
@@ -176,7 +176,7 @@ public:
         {
             // We have received an auth switch request. Deserialize it
             auth_switch_request_packet auth_sw;
-            err = deserialize_message(auth_sw, ctx);
+            err = deserialize_message(ctx, auth_sw);
             if (err)
                 return err;
 
@@ -202,7 +202,7 @@ public:
         {
             // We have received an auth more data request. Deserialize it
             auth_more_data_packet more_data;
-            err = deserialize_message(more_data, ctx);
+            err = deserialize_message(ctx, more_data);
             if (err)
                 return err;
 

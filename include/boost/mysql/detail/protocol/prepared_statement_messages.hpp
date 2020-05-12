@@ -59,8 +59,8 @@ template <>
 struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struct_with_fields> :
     noop_serialize<com_stmt_prepare_ok_packet>
 {
-    static inline errc deserialize_(com_stmt_prepare_ok_packet& output,
-            deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(deserialization_context& ctx,
+            com_stmt_prepare_ok_packet& output) noexcept;
 };
 
 // execute
@@ -95,10 +95,10 @@ struct serialization_traits<
     serialization_tag::struct_with_fields
 > : noop_deserialize<com_stmt_execute_packet<ForwardIterator>>
 {
-    static inline std::size_t get_size_(const com_stmt_execute_packet<ForwardIterator>& value,
-            const serialization_context& ctx) noexcept;
-    static inline void serialize_(const com_stmt_execute_packet<ForwardIterator>& input,
-            serialization_context& ctx) noexcept;
+    static inline std::size_t get_size_(const serialization_context& ctx,
+            const com_stmt_execute_packet<ForwardIterator>& value) noexcept;
+    static inline void serialize_(serialization_context& ctx,
+            const com_stmt_execute_packet<ForwardIterator>& input) noexcept;
 };
 
 struct com_stmt_execute_param_meta_packet

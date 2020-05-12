@@ -61,7 +61,7 @@ template <>
 struct serialization_traits<ok_packet, serialization_tag::struct_with_fields> :
     noop_serialize<ok_packet>
 {
-    static inline errc deserialize_(ok_packet& output, deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(deserialization_context& ctx, ok_packet& output) noexcept;
 };
 
 // err packet
@@ -123,7 +123,7 @@ template <>
 struct serialization_traits<column_definition_packet, serialization_tag::struct_with_fields> :
     noop_serialize<column_definition_packet>
 {
-    static inline errc deserialize_(column_definition_packet& output, deserialization_context& ctx) noexcept;
+    static inline errc deserialize_(deserialization_context& ctx, column_definition_packet& output) noexcept;
 };
 
 // connection quit

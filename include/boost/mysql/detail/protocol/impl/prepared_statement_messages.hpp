@@ -47,39 +47,6 @@ inline bool is_unsigned(
            std::holds_alternative<std::uint64_t>(input);
 }
 
-// Performs a mapping from T to a type that can be serialized
-template <typename T>
-struct get_serializable_type { using type = T; };
-
-template <typename T>
-using get_serializable_type_t = typename get_serializable_type<T>::type;
-
-// Indicate no serialization is required
-struct dummy_serializable
-{
-    explicit dummy_serializable(std::nullptr_t) {}
-};
-
-template <>
-struct serialization_traits<dummy_serializable, serialization_tag::none> :
-    noop_serialize<dummy_serializable>
-{
-};
-
-template <> struct get_serializable_type<std::uint32_t> { using type = int4; };
-template <> struct get_serializable_type<std::int32_t> { using type = int4_signed; };
-template <> struct get_serializable_type<std::uint64_t> { using type = int8; };
-template <> struct get_serializable_type<std::int64_t> { using type = int8_signed; };
-template <> struct get_serializable_type<std::string_view> { using type = string_lenenc; };
-template <> struct get_serializable_type<std::nullptr_t> { using type = dummy_serializable; };
-
-template <typename T>
-inline get_serializable_type_t<T> to_serializable_type(T input) noexcept
-{
-    return get_serializable_type_t<T>(input);
-}
-
-
 } // detail
 } // mysql
 } // boost
@@ -89,12 +56,12 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::com_stmt_prepare_ok_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::deserialize_(
-    com_stmt_prepare_ok_packet& output,
-    deserialization_context& ctx
+    deserialization_context& ctx,
+    com_stmt_prepare_ok_packet& output
 ) noexcept
 {
     int1 reserved;
-    return deserialize_fields(
+    return deserialize(
         ctx,
         output.statement_id,
         output.num_columns,
@@ -110,22 +77,20 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(
-    const com_stmt_execute_packet<ForwardIterator>& value,
-    const serialization_context& ctx
+    const serialization_context& ctx,
+    const com_stmt_execute_packet<ForwardIterator>& value
 ) noexcept
 {
     std::size_t res = 1 + // command ID
-        get_size(value.statement_id, ctx) +
-        get_size(value.flags, ctx) +
-        get_size(value.iteration_count, ctx);
+        get_size(ctx, value.statement_id, value.flags, value.iteration_count);
     auto num_params = std::distance(value.params_begin, value.params_end);
     assert(num_params >= 0 && num_params <= 255);
     res += null_bitmap_traits(stmt_execute_null_bitmap_offset, num_params).byte_count();
-    res += get_size(value.new_params_bind_flag, ctx);
-    res += get_size(com_stmt_execute_param_meta_packet{}, ctx) * num_params;
+    res += get_size(ctx, value.new_params_bind_flag);
+    res += get_size(ctx, com_stmt_execute_param_meta_packet{}) * num_params;
     for (auto it = value.params_begin; it != value.params_end; ++it)
     {
-        res += get_binary_value_size(*it, ctx);
+        res += get_binary_value_size(ctx, *it);
     }
     return res;
 }
@@ -136,14 +101,17 @@ boost::mysql::detail::serialization_traits<
     boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
-    const com_stmt_execute_packet<ForwardIterator>& input,
-    serialization_context& ctx
+    serialization_context& ctx,
+    const com_stmt_execute_packet<ForwardIterator>& input
 ) noexcept
 {
-    serialize(int1(com_stmt_execute_packet<ForwardIterator>::command_id), ctx);
-    serialize(input.statement_id, ctx);
-    serialize(input.flags, ctx);
-    serialize(input.iteration_count, ctx);
+    serialize(
+        ctx,
+        int1(com_stmt_execute_packet<ForwardIterator>::command_id),
+        input.statement_id,
+        input.flags,
+        input.iteration_count
+    );
 
     // Number of parameters
     auto num_params = std::distance(input.params_begin, input.params_end);
@@ -163,7 +131,7 @@ boost::mysql::detail::serialization_traits<
     ctx.advance(traits.byte_count());
 
     // new parameters bind flag
-    serialize(input.new_params_bind_flag, ctx);
+    serialize(ctx, input.new_params_bind_flag);
 
     // value metadata
     com_stmt_execute_param_meta_packet meta;
@@ -171,13 +139,13 @@ boost::mysql::detail::serialization_traits<
     {
         meta.type = get_protocol_field_type(*it);
         meta.unsigned_flag.value = is_unsigned(*it) ? 0x80 : 0;
-        serialize(meta, ctx);
+        serialize(ctx, meta);
     }
 
     // actual values
     for (auto it = input.params_begin; it != input.params_end; ++it)
     {
-        serialize_binary_value(*it, ctx);
+        serialize_binary_value(ctx, *it);
     }
 }
 

@@ -121,15 +121,15 @@ public:
     any_value_impl(const T& v): value_(v) {};
     void serialize(detail::serialization_context& ctx) const override
     {
-        ::boost::mysql::detail::serialize(value_, ctx);
+        ::boost::mysql::detail::serialize(ctx, value_);
     }
     std::size_t get_size(const detail::serialization_context& ctx) const override
     {
-        return ::boost::mysql::detail::get_size(value_, ctx);
+        return ::boost::mysql::detail::get_size(ctx, value_);
     }
     errc deserialize(detail::deserialization_context& ctx) override
     {
-        return ::boost::mysql::detail::deserialize(value_, ctx);
+        return ::boost::mysql::detail::deserialize(ctx, value_);
     }
     std::shared_ptr<any_value> default_construct() const override
     {
