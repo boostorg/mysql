@@ -2,9 +2,6 @@ Sanitize
     Remove int1_signed, int2_signed...
     Remove int1, int2, int4, int8
     Make deserialize() and deserialize_fields() the same thing
-    More coverage for serialization of int types
-    Docs for edge cases in values
-    Make mins and maxs public
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -25,7 +22,6 @@ Usability
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
 	Iterators for sync resultset iteration
-	Consideration of timezones
 	Timeouts
 	Retries
 	Connection pool
@@ -42,6 +38,8 @@ Other possible features
     Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    More coverage for serialization of int types
+    Tests for field_metadata::character_set
     Refactor database type cases, and remove unit tests superseeded by them
     Random input tests
     Change channel read to make less syscalls

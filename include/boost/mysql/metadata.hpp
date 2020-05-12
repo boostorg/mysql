@@ -66,6 +66,9 @@ public:
      */
     std::string_view original_field_name() const noexcept { return msg_.org_name.value; }
 
+    /// Returns the character set (collation) for the column.
+    collation character_set() const noexcept { return msg_.character_set; }
+
     /// Returns the maximum length of the field.
     unsigned column_length() const noexcept { return msg_.column_length.value; }
 
