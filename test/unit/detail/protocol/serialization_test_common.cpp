@@ -36,7 +36,6 @@ void boost::mysql::test::do_serialize_test(
     compare_buffers(expected_clean, actual_clean, "Buffer overrun");
 }
 
-
 namespace
 {
 

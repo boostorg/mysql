@@ -10,7 +10,6 @@
 
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/value.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <any>
@@ -182,6 +181,7 @@ struct DeserializeTest : SerializationFixture {}; // Only deserialization
 struct DeserializeSpaceTest : SerializationFixture {}; // Deserialization + extra/infra space
 struct SerializeDeserializeTest : SerializationFixture {}; // Serialization + deserialization
 struct FullSerializationTest : SerializationFixture {}; // All
+
 
 } // test
 } // mysql
