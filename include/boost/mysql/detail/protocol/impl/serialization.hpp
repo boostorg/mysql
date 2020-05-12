@@ -50,8 +50,10 @@ errc deserialize_struct(
     std::index_sequence<index...>
 ) noexcept
 {
-    constexpr auto fields = get_struct_fields<T>::value;
-    return deserialize(ctx, (output.*(std::get<index>(fields)))...);
+    return deserialize(
+        ctx,
+        (output.*(std::get<index>(get_struct_fields<T>::value)))...
+    );
 }
 
 template <typename T, std::size_t... index>
@@ -61,8 +63,10 @@ void serialize_struct(
     std::index_sequence<index...>
 ) noexcept
 {
-    constexpr auto fields = get_struct_fields<T>::value;
-    serialize(ctx, (input.*(std::get<index>(fields)))...);
+    serialize(
+        ctx,
+        (input.*(std::get<index>(get_struct_fields<T>::value)))...
+    );
 }
 
 template <typename T, std::size_t... index>
@@ -72,8 +76,10 @@ std::size_t get_size_struct(
     std::index_sequence<index...>
 ) noexcept
 {
-    constexpr auto fields = get_struct_fields<T>::value;
-    return get_size(ctx, (input.*(std::get<index>(fields)))...);
+    return get_size(
+        ctx,
+        (input.*(std::get<index>(get_struct_fields<T>::value)))...
+    );
 }
 
 inline errc deserialize_helper(deserialization_context&) noexcept

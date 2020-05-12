@@ -1,7 +1,6 @@
 Sanitize
     Remove int1_signed, int2_signed...
     Remove int1, int2, int4, int8
-    Make deserialize() and deserialize_fields() the same thing
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
