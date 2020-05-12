@@ -84,7 +84,11 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeBinaryValueTest, Values(
 
     binary_value_testcase("bit", {0x02, 0x02, 0x01}, "\2\1", protocol_field_type::bit),
     binary_value_testcase("decimal", {0x02, 0x31, 0x30}, "10", protocol_field_type::newdecimal),
-    binary_value_testcase("geomtry", {0x04, 0x74, 0x65, 0x73, 0x74}, "test", protocol_field_type::geometry)
+    binary_value_testcase("geomtry", {0x04, 0x74, 0x65, 0x73, 0x74}, "test", protocol_field_type::geometry),
+
+    // Anything we don't know what it is, we interpret as a string
+    binary_value_testcase("unknown_protocol_type", {0x04, 0x74, 0x65, 0x73, 0x74},
+            "test", static_cast<protocol_field_type>(0x23))
 ), test_name_generator);
 
 // Note: these employ regular integer deserialization functions, which have
