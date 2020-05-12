@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP_
-#define INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP_
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP
 
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/detail/protocol/serialization.hpp"

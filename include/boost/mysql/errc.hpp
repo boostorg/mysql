@@ -1405,7 +1405,7 @@ enum class errc : int
     table_name_causes_too_long_path = 3913, ///< table_name_causes_too_long_path.
     audit_log_insufficient_privilege = 3914, ///< audit_log_insufficient_privilege.
     da_grp_rpl_started_auto_rejoin = 3916, ///< da_grp_rpl_started_auto_rejoin.
-    incomplete_message = 65536, ///< ///< An incomplete message was received from the server.
+    incomplete_message = 65536, ///< An incomplete message was received from the server.
     extra_bytes = 65537, ///< Unexpected extra bytes at the end of a message were received.
     sequence_number_mismatch = 65538, ///< Mismatched sequence numbers.
     server_unsupported = 65539, ///< The server does not support the minimum required capabilities to establish the connection.
