@@ -214,14 +214,13 @@ inline errc deserialize_text_value_datetime(
     if (is_out_of_range(d))
         return errc::protocol_value_error;
 
-    // Sum it up
-    to = datetime(
-        d +
+    // Sum it up. Doing time of day independently to prevent overflow
+    auto time_of_day =
         std::chrono::hours(hours) +
         std::chrono::minutes(minutes) +
         std::chrono::seconds(seconds) +
-        std::chrono::microseconds(micros)
-    );
+        std::chrono::microseconds(micros);
+    to = d + time_of_day;
     return errc::ok;
 }
 
