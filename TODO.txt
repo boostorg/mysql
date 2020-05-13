@@ -1,6 +1,3 @@
-Sanitize
-    Remove int1_signed, int2_signed...
-    Remove int1, int2, int4, int8
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -37,7 +34,11 @@ Other possible features
     Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
-    More coverage for serialization of int types
+	Refactor serialization
+	    Remove int1_signed, int2_signed...
+	    Remove int1, int2, int4, int8
+    	More coverage for serialization of int types
+    	Use a proper float endianness reverse
     Tests for field_metadata::character_set
     Refactor database type cases, and remove unit tests superseeded by them
     Random input tests
@@ -61,5 +62,4 @@ Technical debt
 	Query and statement tests for DELETEs
 	prepared_statement::execute(): static_assert(), handle value&, const value&, anything convertible
 	Test for too many connections
-	Use a proper float endianness reverse
     Executor tests?
