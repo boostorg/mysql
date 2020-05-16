@@ -25,8 +25,12 @@ errc deserialize_text_value_int_impl(
     value& to
 ) noexcept
 {
-    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), to.emplace<T>());
-    return ok ? errc::ok : errc::protocol_value_error;
+    T v;
+    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), v);
+    if (!ok)
+        return errc::protocol_value_error;
+    to = value(v);
+    return errc::ok;
 }
 
 template <typename UnsignedType>
@@ -53,7 +57,7 @@ errc deserialize_text_value_float(
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), val);
     if (!ok || std::isnan(val) || std::isinf(val)) // SQL std forbids these values
         return errc::protocol_value_error;
-    to = val;
+    to = value(val);
     return errc::ok;
 }
 
@@ -63,7 +67,7 @@ inline errc deserialize_text_value_string(
     value& to
 ) noexcept
 {
-    to = from;
+    to = value(from);
     return errc::ok;
 }
 
@@ -129,7 +133,7 @@ inline errc deserialize_text_value_date(
     // we represent in C++ as NULL
     if (!ymd.ok())
     {
-        to = nullptr;
+        to = value(nullptr);
         return errc::ok;
     }
 
@@ -139,7 +143,7 @@ inline errc deserialize_text_value_date(
         return errc::protocol_value_error;
 
     // Done
-    to = d;
+    to = value(d);
     return errc::ok;
 }
 
@@ -205,7 +209,7 @@ inline errc deserialize_text_value_datetime(
     // we represent here as NULL
     if (!ymd.ok())
     {
-        to = nullptr;
+        to = value(nullptr);
         return errc::ok;
     }
 
@@ -220,7 +224,7 @@ inline errc deserialize_text_value_datetime(
         std::chrono::minutes(minutes) +
         std::chrono::seconds(seconds) +
         std::chrono::microseconds(micros);
-    to = d + time_of_day;
+    to = value(d + time_of_day);
     return errc::ok;
 }
 
@@ -289,7 +293,7 @@ inline errc deserialize_text_value_time(
     }
 
     // Done
-    to = res;
+    to = value(res);
     return errc::ok;
 }
 
@@ -366,7 +370,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
         if (is_next_field_null(ctx))
         {
             ctx.advance(1);
-            output[i] = nullptr;
+            output[i] = value(nullptr);
         }
         else
         {

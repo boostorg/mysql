@@ -34,7 +34,7 @@ inline protocol_field_type get_protocol_field_type(
         constexpr auto operator()(time) const noexcept { return protocol_field_type::time; }
         constexpr auto operator()(std::nullptr_t) const noexcept { return protocol_field_type::null; }
     };
-    return std::visit(visitor(), input);
+    return std::visit(visitor(), input.to_variant());
 }
 
 // Whether to include the unsigned flag in the statement execute message
@@ -43,8 +43,9 @@ inline bool is_unsigned(
     const value& input
 ) noexcept
 {
-    return std::holds_alternative<std::uint32_t>(input) ||
-           std::holds_alternative<std::uint64_t>(input);
+    auto v = input.to_variant();
+    return std::holds_alternative<std::uint32_t>(v) ||
+           std::holds_alternative<std::uint64_t>(v);
 }
 
 } // detail
@@ -123,7 +124,7 @@ boost::mysql::detail::serialization_traits<
     std::memset(ctx.first(), 0, traits.byte_count()); // Initialize to zeroes
     for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
     {
-        if (std::holds_alternative<std::nullptr_t>(*it))
+        if (it->is_null())
         {
             traits.set_null(ctx.first(), i);
         }

@@ -155,7 +155,7 @@ inline std::size_t boost::mysql::detail::get_binary_value_size(
     const value& input
 ) noexcept
 {
-    return std::visit(size_visitor(ctx), input);
+    return std::visit(size_visitor(ctx), input.to_variant());
 }
 
 inline void boost::mysql::detail::serialize_binary_value(
@@ -163,7 +163,7 @@ inline void boost::mysql::detail::serialize_binary_value(
     const value& input
 ) noexcept
 {
-    std::visit(serialize_visitor(ctx), input);
+    std::visit(serialize_visitor(ctx), input.to_variant());
 }
 
 

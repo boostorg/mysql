@@ -29,7 +29,7 @@ errc deserialize_binary_value_value_holder(
     auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
-    output = TargetType(deser.value);
+    output = value(static_cast<TargetType>(deser.value));
     return errc::ok;
 }
 
@@ -80,7 +80,7 @@ errc deserialize_binary_value_float(
 
     // Done
     ctx.advance(sizeof(T));
-    output = v;
+    output = value(v);
     return errc::ok;
 }
 
@@ -130,7 +130,7 @@ inline errc deserialize_binary_value_date(
     // Check for zero dates, represented in C++ as a NULL
     if (length.value < binc::date_sz)
     {
-        output = nullptr;
+        output = value(nullptr);
         return errc::ok;
     }
 
@@ -143,7 +143,7 @@ inline errc deserialize_binary_value_date(
     // Check for invalid dates, represented as NULL in C++
     if (!ymd.ok())
     {
-        output = nullptr;
+        output = value(nullptr);
         return errc::ok;
     }
 
@@ -153,7 +153,7 @@ inline errc deserialize_binary_value_date(
         return errc::protocol_value_error;
 
     // Convert to sys_days (date)
-    output = static_cast<date>(ymd);
+    output = value(static_cast<date>(ymd));
     return errc::ok;
 }
 
@@ -218,7 +218,7 @@ inline errc deserialize_binary_value_datetime(
     // associated to this datetime
     if (!ymd.ok())
     {
-        output = nullptr;
+        output = value(nullptr);
         return errc::ok;
     }
 
@@ -235,7 +235,7 @@ inline errc deserialize_binary_value_datetime(
         std::chrono::minutes(minutes.value) +
         std::chrono::seconds(seconds.value) +
         std::chrono::microseconds(micros.value);
-    output = d + time_of_day;
+    output = value(d + time_of_day);
     return errc::ok;
 }
 
@@ -294,13 +294,13 @@ inline errc deserialize_binary_value_time(
     }
 
     // Compose the final time
-    output = time((is_negative.value ? -1 : 1) * (
+    output = value(time((is_negative.value ? -1 : 1) * (
          ::date::days(days.value) +
          std::chrono::hours(hours.value) +
          std::chrono::minutes(minutes.value) +
          std::chrono::seconds(seconds.value) +
          std::chrono::microseconds(microseconds.value)
-    ));
+    )));
     return errc::ok;
 }
 
@@ -390,7 +390,7 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
     {
         if (null_bitmap.is_null(null_bitmap_begin, i))
         {
-            output[i] = nullptr;
+            output[i] = value(nullptr);
         }
         else
         {

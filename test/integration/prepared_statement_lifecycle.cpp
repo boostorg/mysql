@@ -19,8 +19,8 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 {
     std::int64_t get_table_size(const std::string& table)
     {
-        return std::get<std::int64_t>(
-            this->conn.query("SELECT COUNT(*) FROM " + table).fetch_all().at(0).values().at(0));
+        return this->conn.query("SELECT COUNT(*) FROM " + table)
+                .fetch_all().at(0).values().at(0).template get<std::int64_t>();
     }
 
     value get_updates_table_value(const std::string& field_varchar="f0")

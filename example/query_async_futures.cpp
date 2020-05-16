@@ -46,7 +46,6 @@ using boost::asio::use_future;
 
 void print_employee(const boost::mysql::row& employee)
 {
-    using boost::mysql::operator<<; // Required for mysql::value objects to be streamable, due to ADL rules
     std::cout << "Employee '"
               << employee.values()[0] << " "                   // first_name (type std::string_view)
               << employee.values()[1] << "' earns "            // last_name  (type std::string_view)

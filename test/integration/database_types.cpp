@@ -458,8 +458,8 @@ std::vector<database_types_testcase> generate_common_datetime_cases(
             std::bitset<4> bitset_id (int_id);
             if (bitset_id[3] && decimals == 0)
                 continue; // cases with micros don't make sense for fields with no decimals
-            auto [id, value] = datetime_from_id(int_id, decimals);
-            res.push_back(create_datetime_testcase(decimals, move(id), value, type));
+            auto [id, dt] = datetime_from_id(int_id, decimals);
+            res.push_back(create_datetime_testcase(decimals, move(id), value(dt), type));
         }
     }
 
@@ -474,9 +474,9 @@ std::vector<database_types_testcase> generate_datetime_cases()
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
         res.push_back(create_datetime_testcase(decimals, "min",
-                makedt(0, 1, 1), field_type::datetime));
+                value(makedt(0, 1, 1)), field_type::datetime));
         res.push_back(create_datetime_testcase(decimals, "max",
-                makedt(9999, 12, 31, 23, 59, 59, round_micros(999999, decimals)), field_type::datetime));
+                value(makedt(9999, 12, 31, 23, 59, 59, round_micros(999999, decimals))), field_type::datetime));
         const char* lengths [] = {"date", "hms", decimals ? "hmsu" : nullptr };
         for (const char* length:  lengths)
         {
@@ -487,7 +487,7 @@ std::vector<database_types_testcase> generate_datetime_cases()
                 res.push_back(create_datetime_testcase(
                     decimals,
                     boost::mysql::detail::stringize(length, '_', invalid_date_case),
-                    nullptr,
+                    value(nullptr),
                     field_type::datetime
                 ));
             }
@@ -505,7 +505,7 @@ std::vector<database_types_testcase> generate_timestamp_cases()
     // invalid date parts are converted to the zero TIMESTAMP
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
-        res.push_back(create_datetime_testcase(decimals, "zero", nullptr, field_type::timestamp));
+        res.push_back(create_datetime_testcase(decimals, "zero", value(nullptr), field_type::timestamp));
     }
 
     return res;
@@ -524,14 +524,14 @@ std::vector<database_types_testcase> generate_time_cases()
             std::bitset<6> bitset_id (int_id);
             if (bitset_id[5] && decimals == 0) continue; // cases with micros don't make sense for fields with no decimals
             if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
-            auto [id, value] = time_from_id(int_id, decimals);
-            res.push_back(create_datetime_testcase(decimals, move(id), value, field_type::time));
+            auto [id, t] = time_from_id(int_id, decimals);
+            res.push_back(create_datetime_testcase(decimals, move(id), value(t), field_type::time));
         }
 
         // min and max
         auto max_value = decimals == 0 ? maket(838, 59, 59) : maket(838, 59, 58, round_micros(999999, decimals));
-        res.push_back(create_datetime_testcase(decimals, "min", -max_value, field_type::time));
-        res.push_back(create_datetime_testcase(decimals, "max",  max_value, field_type::time));
+        res.push_back(create_datetime_testcase(decimals, "min", value(-max_value), field_type::time));
+        res.push_back(create_datetime_testcase(decimals, "max",  value(max_value), field_type::time));
     }
 
     return res;

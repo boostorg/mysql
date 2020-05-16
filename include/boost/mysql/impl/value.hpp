@@ -62,29 +62,32 @@ struct print_visitor
     void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 
+template <typename T>
+constexpr std::optional<T> get_optional_noconv(
+    const value::variant_type& v
+) noexcept
+{
+    auto* res = std::get_if<T>(&v);
+    return res ? std::optional<T>(*res) : std::optional<T>();
+}
+
 } // detail
 } // mysql
 } // boost
 
-inline bool boost::mysql::operator==(
-    const value& lhs,
-    const value& rhs
-)
+template <typename T>
+constexpr std::optional<T> boost::mysql::value::get_optional() const noexcept
 {
-    if (lhs.index() != rhs.index())
-        return false;
-    return std::visit([&lhs](const auto& rhs_value) {
-        using T = std::decay_t<decltype(rhs_value)>;
-        return std::get<T>(lhs) == rhs_value;
-    }, rhs);
+    return detail::get_optional_noconv<T>(repr_);
 }
 
-inline bool boost::mysql::operator==(
-    const std::vector<value>& lhs,
-    const std::vector<value>& rhs
-)
+template <typename T>
+constexpr T boost::mysql::value::get() const
 {
-    return detail::container_equals(lhs, rhs);
+    auto res = get_optional<T>();
+    if (!res)
+        throw std::bad_variant_access();
+    return *res;
 }
 
 inline std::ostream& boost::mysql::operator<<(
@@ -92,7 +95,7 @@ inline std::ostream& boost::mysql::operator<<(
     const value& value
 )
 {
-    std::visit(detail::print_visitor(os), value);
+    std::visit(detail::print_visitor(os), value.to_variant());
     return os;
 }
 

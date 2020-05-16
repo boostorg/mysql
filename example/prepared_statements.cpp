@@ -89,7 +89,7 @@ void main_impl(int argc, char** argv)
     boost::mysql::tcp_resultset result = salary_getter.execute(boost::mysql::make_values("Efficient"));
     std::vector<boost::mysql::owning_row> salaries = result.fetch_all(); // Get all the results
     assert(salaries.size() == 1);
-    [[maybe_unused]] auto salary = std::get<double>(salaries[0].values().at(0)); // First row, first column
+    [[maybe_unused]] double salary = salaries[0].values().at(0).get<double>(); // First row, first column
     assert(salary == 30000);
     std::cout << "The salary before the payrise was: " << salary << std::endl;
 
@@ -111,7 +111,7 @@ void main_impl(int argc, char** argv)
     result = salary_getter.execute(boost::mysql::make_values("Efficient"));
     salaries = result.fetch_all();
     assert(salaries.size() == 1);
-    salary = std::get<double>(salaries[0].values().at(0));
+    salary = salaries[0].values().at(0).get<double>();
     assert(salary == 35000); // Our update took place, and the dev got his pay rise
     std::cout << "The salary after the payrise was: " << salary << std::endl;
 

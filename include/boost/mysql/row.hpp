@@ -68,7 +68,10 @@ public:
  * \relates row
  * \brief Compares two rows.
  */
-inline bool operator==(const row& lhs, const row& rhs) { return lhs.values() == rhs.values(); }
+inline bool operator==(const row& lhs, const row& rhs)
+{
+    return detail::container_equals(lhs.values(), rhs.values());
+}
 
 /**
  * \relates row

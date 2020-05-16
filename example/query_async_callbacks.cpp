@@ -48,7 +48,6 @@ using boost::mysql::owning_row;
 
 void print_employee(const boost::mysql::row& employee)
 {
-    using boost::mysql::operator<<; // Required for mysql::value objects to be streamable, due to ADL rules
     std::cout << "Employee '"
               << employee.values()[0] << " "                   // first_name (type std::string_view)
               << employee.values()[1] << "' earns "            // last_name  (type std::string_view)
@@ -129,7 +128,7 @@ public:
             resultset.async_fetch_all([this](error_code err, const std::vector<owning_row>& rows) {
                 die_on_error(err, additional_info);
                 assert(rows.size() == 1);
-                [[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
+                [[maybe_unused]] auto salary = rows[0].values()[0].get<double>();
                 assert(salary == 15000);
                 close();
             }, &additional_info);

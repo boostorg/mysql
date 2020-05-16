@@ -170,46 +170,72 @@ using time = std::chrono::microseconds;
  * MySQL types BIT and GEOMETRY do not have direct support yet.
  * They are represented as binary strings.
  */
-using value = std::variant<
-    std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
-    std::int64_t,      // signed BIGINT
-    std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, YEAR
-    std::uint64_t,     // unsigned BIGINT
-    std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
-    float,             // FLOAT
-    double,            // DOUBLE
-    date,              // DATE
-    datetime,          // DATETIME, TIMESTAMP
-    time,              // TIME
-    std::nullptr_t     // Any of the above when the value is NULL
->;
+class value
+{
+public:
+    // The underlying representation
+    using variant_type = std::variant<
+        std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
+        std::int64_t,      // signed BIGINT
+        std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, YEAR
+        std::uint64_t,     // unsigned BIGINT
+        std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+        float,             // FLOAT
+        double,            // DOUBLE
+        date,              // DATE
+        datetime,          // DATETIME, TIMESTAMP
+        time,              // TIME
+        std::nullptr_t     // Any of the above when the value is NULL
+    >;
+
+    // Default constrctor: makes it a NULL value
+    constexpr value() noexcept: repr_(nullptr) {}
+
+    // Initialization constructor accepting any of the variant alternatives
+    template <typename T>
+    explicit constexpr value(const T& v) noexcept : repr_(v) {}
+
+    // Tests for NULL
+    constexpr bool is_null() const noexcept { return std::holds_alternative<std::nullptr_t>(repr_); }
+
+    // Returns true if the stored value is T or can be converted to T without loss of precision
+    template <typename T>
+    constexpr bool is() const noexcept { return get_optional<T>(); }
+
+    // Retrieves the stored value. If the stored value is not a T or cannot
+    // be converted to T without loss of precision, throws.
+    template <typename T>
+    constexpr T get() const;
+
+    // Retrieves the stored value, as an optional. If the stored value is not a T or cannot
+    // be converted to T without loss of precision, returns an empty optional.
+    template <typename T>
+    constexpr std::optional<T> get_optional() const noexcept;
+
+    // Returns the underlying variant type
+    constexpr variant_type to_variant() const noexcept { return repr_; }
+
+    /// Tests for equality (type and value).
+    constexpr bool operator==(const value& rhs) const noexcept { return repr_ == rhs.repr_; }
+
+    /// Tests for inequality (type and value).
+    constexpr bool operator!=(const value& rhs) const noexcept { return !(*this==rhs); }
+private:
+    variant_type repr_;
+};
 
 /**
- * \ingroup values
- * \brief Tests for equality (type and value).
- */
-inline bool operator==(const value& lhs, const value& rhs);
-
-/**
- * \ingroup values
- * \brief Tests for inequality (type and value).
- */
-inline bool operator!=(const value& lhs, const value& rhs) { return !(lhs == rhs); }
-
-inline bool operator==(const std::vector<value>& lhs, const std::vector<value>& rhs);
-inline bool operator!=(const std::vector<value>& lhs, const std::vector<value>& rhs) { return !(lhs == rhs); }
-
-/**
- * \ingroup values
  * \brief Streams a value.
+ * \relates value
  */
-inline std::ostream& operator<<(std::ostream& os, const value& value);
+inline std::ostream& operator<<(std::ostream& os, const value& v);
+
 
 /**
- * \ingroup values
  * \brief Creates an array of mysql::value out of the passed in arguments.
  * \details Each argument creates an element in the array. It should be possible
  * to construct a mysql::value out of every single argument passed in.
+ * \relates value
  */
 template <typename... Types>
 std::array<value, sizeof...(Types)> make_values(Types&&... args);

@@ -31,7 +31,6 @@
  */
 void print_employee(const boost::mysql::row& employee)
 {
-    using boost::mysql::operator<<; // Required for mysql::value objects to be streamable, due to ADL rules
     std::cout << "Employee '"
               << employee.values()[0] << " "                   // first_name (type std::string_view)
               << employee.values()[1] << "' earns "            // last_name  (type std::string_view)
@@ -109,7 +108,7 @@ void main_impl(int argc, char** argv)
     result = conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'");
     auto rows = result.fetch_all();
     assert(rows.size() == 1);
-    [[maybe_unused]] auto salary = std::get<double>(rows[0].values()[0]);
+    [[maybe_unused]] double salary = rows[0].values()[0].get<double>();
     assert(salary == 10000);
 
     // Close the connection. This notifies the MySQL we want to log out

@@ -73,7 +73,7 @@ serialization_testcase make_stmt_execute_test(
 
 INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
     make_stmt_execute_test(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
-        { std::uint32_t(0xabffff) }, {
+        { value(std::uint32_t(0xabffff)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x03, 0x80, 0xff, 0xff,
             0xab, 0x00
@@ -81,7 +81,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "uint32_t"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { std::int32_t(-0xabffff) }, {
+        { value(std::int32_t(-0xabffff)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x03, 0x00, 0x01, 0x00,
             0x54, 0xff
@@ -89,7 +89,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "int32_t"
     ),
     make_stmt_execute_test(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
-        { std::uint64_t(0xabffffabacadae) }, {
+        { value(std::uint64_t(0xabffffabacadae)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x08, 0x80, 0xae, 0xad,
             0xac, 0xab, 0xff, 0xff, 0xab, 0x00
@@ -97,7 +97,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "uint64_t"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { std::int64_t(-0xabffffabacadae) }, {
+        { value(std::int64_t(-0xabffffabacadae)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x08, 0x00, 0x52, 0x52,
             0x53, 0x54, 0x00, 0x00, 0x54, 0xff
@@ -105,7 +105,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "int64_t"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { std::string_view("test") }, {
+        { value(std::string_view("test")) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x04, 0x74,
             0x65, 0x73, 0x74
@@ -113,7 +113,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "string_view"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { 3.14e20f }, {
+        { value(3.14e20f) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x04, 0x00, 0x01, 0x2d,
             0x88, 0x61
@@ -121,7 +121,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "float"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { 2.1e214 }, {
+        { value(2.1e214) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x05, 0x00, 0x56, 0xc0,
             0xee, 0xa6, 0x95, 0x30, 0x6f, 0x6c
@@ -129,7 +129,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "double"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { makedate(2010, 9, 3) }, {
+        { value(makedate(2010, 9, 3)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x0a, 0x00, 0x04, 0xda,
             0x07, 0x09, 0x03
@@ -137,7 +137,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "date"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { makedt(2010, 9, 3, 10, 30, 59, 231800) }, {
+        { value(makedt(2010, 9, 3, 10, 30, 59, 231800)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x0c, 0x00, 0x0b, 0xda,
             0x07, 0x09, 0x03, 0x0a, 0x1e, 0x3b, 0x78, 0x89,
@@ -146,7 +146,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "datetime"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { maket(230, 30, 59, 231800) }, {
+        { value(maket(230, 30, 59, 231800)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x0b, 0x00, 0x0c, 0x00,
             0x09, 0x00, 0x00, 0x00, 0x0e, 0x1e, 0x3b, 0x78,
@@ -155,7 +155,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "time"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { nullptr }, {
+        { value(nullptr) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x01, 0x01, 0x06, 0x00
         },
@@ -191,7 +191,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "several_params"
     ),
     make_stmt_execute_test<std::forward_list<value>>(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
-        { std::uint32_t(0xabffff) }, {
+        { value(std::uint32_t(0xabffff)) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x03, 0x80, 0xff, 0xff,
             0xab, 0x00
