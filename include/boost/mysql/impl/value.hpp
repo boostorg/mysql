@@ -81,6 +81,54 @@ constexpr std::optional<T> boost::mysql::value::get_optional() const noexcept
     return detail::get_optional_noconv<T>(repr_);
 }
 
+template <>
+constexpr std::optional<std::uint64_t>
+boost::mysql::value::get_optional<std::uint64_t>() const noexcept
+{
+    auto res = detail::get_optional_noconv<std::uint64_t>(repr_);
+    if (!res)
+    {
+        auto* val = std::get_if<std::int64_t>(&repr_);
+        if (val && *val >= 0)
+        {
+            res = static_cast<std::uint64_t>(*val);
+        }
+    }
+    return res;
+}
+
+template <>
+constexpr std::optional<std::int64_t>
+boost::mysql::value::get_optional<std::int64_t>() const noexcept
+{
+    auto res = detail::get_optional_noconv<std::int64_t>(repr_);
+    if (!res)
+    {
+        auto* val = std::get_if<std::uint64_t>(&repr_);
+        if (val && *val <= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
+        {
+            res = static_cast<std::int64_t>(*val);
+        }
+    }
+    return res;
+}
+
+template <>
+constexpr std::optional<double>
+boost::mysql::value::get_optional<double>() const noexcept
+{
+    auto res = detail::get_optional_noconv<double>(repr_);
+    if (!res)
+    {
+        auto* val = std::get_if<float>(&repr_);
+        if (val)
+        {
+            res = *val;
+        }
+    }
+    return res;
+}
+
 template <typename T>
 constexpr T boost::mysql::value::get() const
 {

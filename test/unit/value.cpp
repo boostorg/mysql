@@ -19,10 +19,6 @@ using boost::mysql::value;
 namespace
 {
 
-// Required because value is a typedef for a specific std::variant and operator<<
-// is defined in namespace mysql - ADL does not find it
-using boost::mysql::operator<<;
-
 // tests for operator== and operator!=
 struct ValueEqualityTest : public Test
 {

@@ -175,6 +175,7 @@ class value
 public:
     // The underlying representation
     using variant_type = std::variant<
+        std::nullptr_t,    // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
         std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR
         std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
@@ -182,12 +183,11 @@ public:
         double,            // DOUBLE
         date,              // DATE
         datetime,          // DATETIME, TIMESTAMP
-        time,              // TIME
-        std::nullptr_t     // Any of the above when the value is NULL
+        time               // TIME
     >;
 
     // Default constrctor: makes it a NULL value
-    constexpr value() noexcept: repr_(nullptr) {}
+    constexpr value() = default;
 
     // Initialization constructor accepting any of the variant alternatives
     template <typename T>
@@ -201,7 +201,10 @@ public:
 
     // Returns true if the stored value is T or can be converted to T without loss of precision
     template <typename T>
-    constexpr bool is() const noexcept { return get_optional<T>(); }
+    constexpr bool is() const noexcept { return std::holds_alternative<T>(repr_); }
+
+    template <typename T>
+    constexpr bool is_convertible_to() const noexcept { return get_optional<T>(); }
 
     // Retrieves the stored value. If the stored value is not a T or cannot
     // be converted to T without loss of precision, throws.
