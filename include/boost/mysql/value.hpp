@@ -175,10 +175,8 @@ class value
 public:
     // The underlying representation
     using variant_type = std::variant<
-        std::int32_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT
-        std::int64_t,      // signed BIGINT
-        std::uint32_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, YEAR
-        std::uint64_t,     // unsigned BIGINT
+        std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
+        std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR
         std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
         float,             // FLOAT
         double,            // DOUBLE
@@ -194,6 +192,9 @@ public:
     // Initialization constructor accepting any of the variant alternatives
     template <typename T>
     explicit constexpr value(const T& v) noexcept : repr_(v) {}
+
+    explicit constexpr value(int v) noexcept : repr_(std::int64_t(v)) {}
+    explicit constexpr value(unsigned v) noexcept : repr_(std::uint64_t(v)) {}
 
     // Tests for NULL
     constexpr bool is_null() const noexcept { return std::holds_alternative<std::nullptr_t>(repr_); }

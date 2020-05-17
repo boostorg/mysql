@@ -22,9 +22,6 @@ using boost::mysql::errc;
 namespace
 {
 
-using boost::mysql::operator<<;
-
-
 struct binary_value_testcase : named_param
 {
     std::string name;
@@ -54,7 +51,6 @@ struct DeserializeBinaryValueTest : public TestWithParam<binary_value_testcase> 
 
 TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
-    using boost::mysql::operator<<;
     column_definition_packet coldef;
     coldef.type = GetParam().type;
     coldef.flags.value = GetParam().flags;
@@ -94,27 +90,27 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeBinaryValueTest, Values(
 // Note: these employ regular integer deserialization functions, which have
 // already been tested in serialization.cpp
 INSTANTIATE_TEST_SUITE_P(IntTypes, DeserializeBinaryValueTest, Values(
-    binary_value_testcase("tinyint_unsigned", {0x14}, std::uint32_t(20),
+    binary_value_testcase("tinyint_unsigned", {0x14}, std::uint64_t(20),
             protocol_field_type::tiny, column_flags::unsigned_),
-    binary_value_testcase("tinyint_signed", {0xec}, std::int32_t(-20), protocol_field_type::tiny),
+    binary_value_testcase("tinyint_signed", {0xec}, std::int64_t(-20), protocol_field_type::tiny),
 
-    binary_value_testcase("smallint_unsigned", {0x14, 0x00}, std::uint32_t(20),
+    binary_value_testcase("smallint_unsigned", {0x14, 0x00}, std::uint64_t(20),
             protocol_field_type::short_, column_flags::unsigned_),
-    binary_value_testcase("smallint_signed", {0xec, 0xff}, std::int32_t(-20), protocol_field_type::short_),
+    binary_value_testcase("smallint_signed", {0xec, 0xff}, std::int64_t(-20), protocol_field_type::short_),
 
-    binary_value_testcase("mediumint_unsigned", {0x14, 0x00, 0x00, 0x00}, std::uint32_t(20),
+    binary_value_testcase("mediumint_unsigned", {0x14, 0x00, 0x00, 0x00}, std::uint64_t(20),
             protocol_field_type::int24, column_flags::unsigned_),
-    binary_value_testcase("mediumint_signed", {0xec, 0xff, 0xff, 0xff}, std::int32_t(-20), protocol_field_type::int24),
+    binary_value_testcase("mediumint_signed", {0xec, 0xff, 0xff, 0xff}, std::int64_t(-20), protocol_field_type::int24),
 
-    binary_value_testcase("int_unsigned", {0x14, 0x00, 0x00, 0x00}, std::uint32_t(20),
+    binary_value_testcase("int_unsigned", {0x14, 0x00, 0x00, 0x00}, std::uint64_t(20),
             protocol_field_type::long_, column_flags::unsigned_),
-    binary_value_testcase("int_signed", {0xec, 0xff, 0xff, 0xff}, std::int32_t(-20), protocol_field_type::long_),
+    binary_value_testcase("int_signed", {0xec, 0xff, 0xff, 0xff}, std::int64_t(-20), protocol_field_type::long_),
 
     binary_value_testcase("bigint_unsigned", {0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, std::uint64_t(20),
             protocol_field_type::longlong, column_flags::unsigned_),
     binary_value_testcase("bigint_signed", {0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, std::int64_t(-20),
             protocol_field_type::longlong),
-    binary_value_testcase("year", {0xe3, 0x07}, std::uint32_t(2019),
+    binary_value_testcase("year", {0xe3, 0x07}, std::uint64_t(2019),
             protocol_field_type::year, column_flags::unsigned_)
 ), test_name_generator);
 

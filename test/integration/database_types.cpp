@@ -85,7 +85,8 @@ TEST_P(DatabaseTypesTest, Query_MetadataAndValueCorrect)
     // Validate the returned value
     row expected_row ({param.expected_value});
     ASSERT_EQ(rows.size(), 1);
-    EXPECT_EQ(static_cast<const row&>(rows[0]), expected_row); // make gtest pick operator<<
+    ASSERT_EQ(rows[0].values().size(), 1);
+    EXPECT_EQ(rows[0].values()[0], param.expected_value);
 }
 
 TEST_P(DatabaseTypesTest, PreparedStatementExecuteResult_MetadataAndValueCorrect)
@@ -109,9 +110,9 @@ TEST_P(DatabaseTypesTest, PreparedStatementExecuteResult_MetadataAndValueCorrect
     validate_meta(result.fields(), {param.mvalid});
 
     // Validate the returned value
-    row expected_row ({param.expected_value});
     ASSERT_EQ(rows.size(), 1);
-    EXPECT_EQ(static_cast<const row&>(rows[0]), expected_row); // make gtest pick operator<<
+    ASSERT_EQ(rows[0].values().size(), 1);
+    EXPECT_EQ(rows[0].values()[0], param.expected_value);
 }
 
 TEST_P(DatabaseTypesTest, PreparedStatementExecuteParam_ValueSerializedCorrectly)
@@ -153,77 +154,77 @@ const flagsvec flags_zerofill { &field_metadata::is_unsigned, &field_metadata::i
 
 // Integers
 INSTANTIATE_TEST_SUITE_P(TINYINT, DatabaseTypesTest, Values(
-    database_types_testcase("types_tinyint", "field_signed", "regular", std::int32_t(20), field_type::tinyint),
-    database_types_testcase("types_tinyint", "field_signed", "negative", std::int32_t(-20), field_type::tinyint),
-    database_types_testcase("types_tinyint", "field_signed", "min", std::int32_t(-0x80), field_type::tinyint),
-    database_types_testcase("types_tinyint", "field_signed", "max", std::int32_t(0x7f), field_type::tinyint),
+    database_types_testcase("types_tinyint", "field_signed", "regular", std::int64_t(20), field_type::tinyint),
+    database_types_testcase("types_tinyint", "field_signed", "negative", std::int64_t(-20), field_type::tinyint),
+    database_types_testcase("types_tinyint", "field_signed", "min", std::int64_t(-0x80), field_type::tinyint),
+    database_types_testcase("types_tinyint", "field_signed", "max", std::int64_t(0x7f), field_type::tinyint),
 
-    database_types_testcase("types_tinyint", "field_unsigned", "regular", std::uint32_t(20), field_type::tinyint, flags_unsigned),
-    database_types_testcase("types_tinyint", "field_unsigned", "min", std::uint32_t(0), field_type::tinyint, flags_unsigned),
-    database_types_testcase("types_tinyint", "field_unsigned", "max", std::uint32_t(0xff), field_type::tinyint, flags_unsigned),
+    database_types_testcase("types_tinyint", "field_unsigned", "regular", std::uint64_t(20), field_type::tinyint, flags_unsigned),
+    database_types_testcase("types_tinyint", "field_unsigned", "min", std::uint64_t(0), field_type::tinyint, flags_unsigned),
+    database_types_testcase("types_tinyint", "field_unsigned", "max", std::uint64_t(0xff), field_type::tinyint, flags_unsigned),
 
-    database_types_testcase("types_tinyint", "field_width", "regular", std::int32_t(20), field_type::tinyint),
-    database_types_testcase("types_tinyint", "field_width", "negative", std::int32_t(-20), field_type::tinyint),
+    database_types_testcase("types_tinyint", "field_width", "regular", std::int64_t(20), field_type::tinyint),
+    database_types_testcase("types_tinyint", "field_width", "negative", std::int64_t(-20), field_type::tinyint),
 
-    database_types_testcase("types_tinyint", "field_zerofill", "regular", std::uint32_t(20), field_type::tinyint, flags_zerofill),
-    database_types_testcase("types_tinyint", "field_zerofill", "min", std::uint32_t(0), field_type::tinyint, flags_zerofill)
+    database_types_testcase("types_tinyint", "field_zerofill", "regular", std::uint64_t(20), field_type::tinyint, flags_zerofill),
+    database_types_testcase("types_tinyint", "field_zerofill", "min", std::uint64_t(0), field_type::tinyint, flags_zerofill)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(SMALLINT, DatabaseTypesTest, Values(
-    database_types_testcase("types_smallint", "field_signed", "regular", std::int32_t(20), field_type::smallint),
-    database_types_testcase("types_smallint", "field_signed", "negative", std::int32_t(-20), field_type::smallint),
-    database_types_testcase("types_smallint", "field_signed", "min", std::int32_t(-0x8000), field_type::smallint),
-    database_types_testcase("types_smallint", "field_signed", "max", std::int32_t(0x7fff), field_type::smallint),
+    database_types_testcase("types_smallint", "field_signed", "regular", std::int64_t(20), field_type::smallint),
+    database_types_testcase("types_smallint", "field_signed", "negative", std::int64_t(-20), field_type::smallint),
+    database_types_testcase("types_smallint", "field_signed", "min", std::int64_t(-0x8000), field_type::smallint),
+    database_types_testcase("types_smallint", "field_signed", "max", std::int64_t(0x7fff), field_type::smallint),
 
-    database_types_testcase("types_smallint", "field_unsigned", "regular", std::uint32_t(20), field_type::smallint, flags_unsigned),
-    database_types_testcase("types_smallint", "field_unsigned", "min", std::uint32_t(0), field_type::smallint, flags_unsigned),
-    database_types_testcase("types_smallint", "field_unsigned", "max", std::uint32_t(0xffff), field_type::smallint, flags_unsigned),
+    database_types_testcase("types_smallint", "field_unsigned", "regular", std::uint64_t(20), field_type::smallint, flags_unsigned),
+    database_types_testcase("types_smallint", "field_unsigned", "min", std::uint64_t(0), field_type::smallint, flags_unsigned),
+    database_types_testcase("types_smallint", "field_unsigned", "max", std::uint64_t(0xffff), field_type::smallint, flags_unsigned),
 
-    database_types_testcase("types_smallint", "field_width", "regular", std::int32_t(20), field_type::smallint),
-    database_types_testcase("types_smallint", "field_width", "negative", std::int32_t(-20), field_type::smallint),
+    database_types_testcase("types_smallint", "field_width", "regular", std::int64_t(20), field_type::smallint),
+    database_types_testcase("types_smallint", "field_width", "negative", std::int64_t(-20), field_type::smallint),
 
-    database_types_testcase("types_smallint", "field_zerofill", "regular", std::uint32_t(20), field_type::smallint, flags_zerofill),
-    database_types_testcase("types_smallint", "field_zerofill", "min", std::uint32_t(0), field_type::smallint, flags_zerofill)
+    database_types_testcase("types_smallint", "field_zerofill", "regular", std::uint64_t(20), field_type::smallint, flags_zerofill),
+    database_types_testcase("types_smallint", "field_zerofill", "min", std::uint64_t(0), field_type::smallint, flags_zerofill)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DatabaseTypesTest, Values(
-    database_types_testcase("types_mediumint", "field_signed", "regular", std::int32_t(20), field_type::mediumint),
-    database_types_testcase("types_mediumint", "field_signed", "negative", std::int32_t(-20), field_type::mediumint),
-    database_types_testcase("types_mediumint", "field_signed", "min", std::int32_t(-0x800000), field_type::mediumint),
-    database_types_testcase("types_mediumint", "field_signed", "max", std::int32_t(0x7fffff), field_type::mediumint),
+    database_types_testcase("types_mediumint", "field_signed", "regular", std::int64_t(20), field_type::mediumint),
+    database_types_testcase("types_mediumint", "field_signed", "negative", std::int64_t(-20), field_type::mediumint),
+    database_types_testcase("types_mediumint", "field_signed", "min", std::int64_t(-0x800000), field_type::mediumint),
+    database_types_testcase("types_mediumint", "field_signed", "max", std::int64_t(0x7fffff), field_type::mediumint),
 
-    database_types_testcase("types_mediumint", "field_unsigned", "regular", std::uint32_t(20), field_type::mediumint, flags_unsigned),
-    database_types_testcase("types_mediumint", "field_unsigned", "min", std::uint32_t(0), field_type::mediumint, flags_unsigned),
-    database_types_testcase("types_mediumint", "field_unsigned", "max", std::uint32_t(0xffffff), field_type::mediumint, flags_unsigned),
+    database_types_testcase("types_mediumint", "field_unsigned", "regular", std::uint64_t(20), field_type::mediumint, flags_unsigned),
+    database_types_testcase("types_mediumint", "field_unsigned", "min", std::uint64_t(0), field_type::mediumint, flags_unsigned),
+    database_types_testcase("types_mediumint", "field_unsigned", "max", std::uint64_t(0xffffff), field_type::mediumint, flags_unsigned),
 
-    database_types_testcase("types_mediumint", "field_width", "regular", std::int32_t(20), field_type::mediumint),
-    database_types_testcase("types_mediumint", "field_width", "negative", std::int32_t(-20), field_type::mediumint),
+    database_types_testcase("types_mediumint", "field_width", "regular", std::int64_t(20), field_type::mediumint),
+    database_types_testcase("types_mediumint", "field_width", "negative", std::int64_t(-20), field_type::mediumint),
 
-    database_types_testcase("types_mediumint", "field_zerofill", "regular", std::uint32_t(20), field_type::mediumint, flags_zerofill),
-    database_types_testcase("types_mediumint", "field_zerofill", "min", std::uint32_t(0), field_type::mediumint, flags_zerofill)
+    database_types_testcase("types_mediumint", "field_zerofill", "regular", std::uint64_t(20), field_type::mediumint, flags_zerofill),
+    database_types_testcase("types_mediumint", "field_zerofill", "min", std::uint64_t(0), field_type::mediumint, flags_zerofill)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(INT, DatabaseTypesTest, Values(
-    database_types_testcase("types_int", "field_signed", "regular", std::int32_t(20), field_type::int_),
-    database_types_testcase("types_int", "field_signed", "negative", std::int32_t(-20), field_type::int_),
-    database_types_testcase("types_int", "field_signed", "min", std::int32_t(-0x80000000), field_type::int_),
-    database_types_testcase("types_int", "field_signed", "max", std::int32_t(0x7fffffff), field_type::int_),
+    database_types_testcase("types_int", "field_signed", "regular", std::int64_t(20), field_type::int_),
+    database_types_testcase("types_int", "field_signed", "negative", std::int64_t(-20), field_type::int_),
+    database_types_testcase("types_int", "field_signed", "min", std::int64_t(-0x80000000LL), field_type::int_),
+    database_types_testcase("types_int", "field_signed", "max", std::int64_t(0x7fffffff), field_type::int_),
 
-    database_types_testcase("types_int", "field_unsigned", "regular", std::uint32_t(20), field_type::int_, flags_unsigned),
-    database_types_testcase("types_int", "field_unsigned", "min", std::uint32_t(0), field_type::int_, flags_unsigned),
-    database_types_testcase("types_int", "field_unsigned", "max", std::uint32_t(0xffffffff), field_type::int_, flags_unsigned),
+    database_types_testcase("types_int", "field_unsigned", "regular", std::uint64_t(20), field_type::int_, flags_unsigned),
+    database_types_testcase("types_int", "field_unsigned", "min", std::uint64_t(0), field_type::int_, flags_unsigned),
+    database_types_testcase("types_int", "field_unsigned", "max", std::uint64_t(0xffffffff), field_type::int_, flags_unsigned),
 
-    database_types_testcase("types_int", "field_width", "regular", std::int32_t(20), field_type::int_),
-    database_types_testcase("types_int", "field_width", "negative", std::int32_t(-20), field_type::int_),
+    database_types_testcase("types_int", "field_width", "regular", std::int64_t(20), field_type::int_),
+    database_types_testcase("types_int", "field_width", "negative", std::int64_t(-20), field_type::int_),
 
-    database_types_testcase("types_int", "field_zerofill", "regular", std::uint32_t(20), field_type::int_, flags_zerofill),
-    database_types_testcase("types_int", "field_zerofill", "min", std::uint32_t(0), field_type::int_, flags_zerofill)
+    database_types_testcase("types_int", "field_zerofill", "regular", std::uint64_t(20), field_type::int_, flags_zerofill),
+    database_types_testcase("types_int", "field_zerofill", "min", std::uint64_t(0), field_type::int_, flags_zerofill)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BIGINT, DatabaseTypesTest, Values(
     database_types_testcase("types_bigint", "field_signed", "regular", std::int64_t(20), field_type::bigint),
     database_types_testcase("types_bigint", "field_signed", "negative", std::int64_t(-20), field_type::bigint),
-    database_types_testcase("types_bigint", "field_signed", "min", std::int64_t(-0x8000000000000000), field_type::bigint),
+    database_types_testcase("types_bigint", "field_signed", "min", std::int64_t(-0x7fffffffffffffff - 1), field_type::bigint),
     database_types_testcase("types_bigint", "field_signed", "max", std::int64_t(0x7fffffffffffffff), field_type::bigint),
 
     database_types_testcase("types_bigint", "field_unsigned", "regular", std::uint64_t(20), field_type::bigint, flags_unsigned),
@@ -543,10 +544,10 @@ INSTANTIATE_TEST_SUITE_P(TIMESTAMP, DatabaseTypesTest, ValuesIn(generate_timesta
 INSTANTIATE_TEST_SUITE_P(TIME,      DatabaseTypesTest, ValuesIn(generate_time_cases()),      test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DatabaseTypesTest, Values(
-    database_types_testcase("types_year", "field_default", "regular", std::uint32_t(2019), field_type::year, flags_zerofill),
-    database_types_testcase("types_year", "field_default", "min", std::uint32_t(1901), field_type::year, flags_zerofill),
-    database_types_testcase("types_year", "field_default", "max", std::uint32_t(2155), field_type::year, flags_zerofill),
-    database_types_testcase("types_year", "field_default", "zero", std::uint32_t(0), field_type::year, flags_zerofill)
+    database_types_testcase("types_year", "field_default", "regular", std::uint64_t(2019), field_type::year, flags_zerofill),
+    database_types_testcase("types_year", "field_default", "min", std::uint64_t(1901), field_type::year, flags_zerofill),
+    database_types_testcase("types_year", "field_default", "max", std::uint64_t(2155), field_type::year, flags_zerofill),
+    database_types_testcase("types_year", "field_default", "zero", std::uint64_t(0), field_type::year, flags_zerofill)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(STRING, DatabaseTypesTest, Values(
@@ -626,14 +627,14 @@ INSTANTIATE_TEST_SUITE_P(NOT_IMPLEMENTED_TYPES, DatabaseTypesTest, Values(
 INSTANTIATE_TEST_SUITE_P(METADATA_FLAGS, DatabaseTypesTest, Values(
     database_types_testcase("types_flags", "field_timestamp", "default", nullptr, field_type::timestamp,
                      flagsvec{&field_metadata::is_set_to_now_on_update}, 0, flagsvec{&field_metadata::is_unsigned}),
-    database_types_testcase("types_flags", "field_primary_key", "default", std::int32_t(50), field_type::int_,
+    database_types_testcase("types_flags", "field_primary_key", "default", std::int64_t(50), field_type::int_,
                      flagsvec{&field_metadata::is_primary_key, &field_metadata::is_not_null,
                               &field_metadata::is_auto_increment}),
     database_types_testcase("types_flags", "field_not_null", "default", "char", field_type::char_,
                      flagsvec{&field_metadata::is_not_null}),
-    database_types_testcase("types_flags", "field_unique", "default", std::int32_t(21), field_type::int_,
+    database_types_testcase("types_flags", "field_unique", "default", std::int64_t(21), field_type::int_,
                      flagsvec{&field_metadata::is_unique_key}),
-    database_types_testcase("types_flags", "field_indexed", "default", std::int32_t(42), field_type::int_,
+    database_types_testcase("types_flags", "field_indexed", "default", std::int64_t(42), field_type::int_,
                      flagsvec{&field_metadata::is_multiple_key})
 ), test_name_generator);
 

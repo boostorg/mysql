@@ -34,8 +34,6 @@ errc deserialize_binary_value_value_holder(
 }
 
 template <
-    typename TargetTypeUnsigned,
-    typename TargetTypeSigned,
     typename DeserializableTypeUnsigned,
     typename DeserializableTypeSigned
 >
@@ -47,9 +45,9 @@ errc deserialize_binary_value_int(
 {
     return meta.is_unsigned() ?
         deserialize_binary_value_value_holder<
-            TargetTypeUnsigned, DeserializableTypeUnsigned>(ctx, output) :
+            std::uint64_t, DeserializableTypeUnsigned>(ctx, output) :
         deserialize_binary_value_value_holder<
-            TargetTypeSigned, DeserializableTypeSigned>(ctx, output);
+            std::int64_t, DeserializableTypeSigned>(ctx, output);
 }
 
 // Floats
@@ -318,19 +316,15 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     switch (meta.protocol_type())
     {
     case protocol_field_type::tiny:
-        return deserialize_binary_value_int<
-                std::uint32_t, std::int32_t, int1, int1_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<int1, int1_signed>(meta, ctx, output);
     case protocol_field_type::short_:
     case protocol_field_type::year:
-        return deserialize_binary_value_int<
-                std::uint32_t, std::int32_t, int2, int2_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<int2, int2_signed>(meta, ctx, output);
     case protocol_field_type::int24:
     case protocol_field_type::long_:
-        return deserialize_binary_value_int<
-                std::uint32_t, std::int32_t, int4, int4_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<int4, int4_signed>(meta, ctx, output);
     case protocol_field_type::longlong:
-        return deserialize_binary_value_int<
-                std::uint64_t, std::int64_t, int8, int8_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<int8, int8_signed>(meta, ctx, output);
     case protocol_field_type::float_:
         return deserialize_binary_value_float<float>(ctx, output);
     case protocol_field_type::double_:

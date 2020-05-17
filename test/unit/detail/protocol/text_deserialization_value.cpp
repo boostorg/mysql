@@ -85,78 +85,77 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, DeserializeTextValueTest, Values(
             "test", static_cast<protocol_field_type>(0x23))
 ), test_name_generator);
 
-template <typename SignedType, typename UnsignedType>
 std::vector<text_value_testcase> make_int_cases(
     std::string signed_max_s,
-    SignedType signed_max_b,
+    std::int64_t signed_max_b,
     std::string signed_min_s,
-    SignedType signed_min_b,
+    std::int64_t signed_min_b,
     std::string unsigned_max_s,
-    UnsignedType unsigned_max_b,
+    std::uint64_t unsigned_max_b,
     std::string zerofill_s,
-    UnsignedType zerofill_b,
+    std::uint64_t zerofill_b,
     protocol_field_type type
 )
 {
     return {
-        { "signed", "20", SignedType(20), type },
+        { "signed", "20", std::int64_t(20), type },
         { "signed_max", signed_max_s, signed_max_b, type },
-        { "signed_negative", "-20", SignedType(-20), type },
+        { "signed_negative", "-20", std::int64_t(-20), type },
         { "signed_min", signed_min_s, signed_min_b, type },
-        { "unsigned", "20", UnsignedType(20), type, column_flags::unsigned_ },
-        { "usigned_min", "0", UnsignedType(0), type, column_flags::unsigned_ },
+        { "unsigned", "20", std::uint64_t(20), type, column_flags::unsigned_ },
+        { "usigned_min", "0", std::uint64_t(0), type, column_flags::unsigned_ },
         { "usigned_max", unsigned_max_s, unsigned_max_b, type, column_flags::unsigned_ },
-        { "unsigned_zerofill", zerofill_s, UnsignedType(zerofill_b), type,
+        { "unsigned_zerofill", zerofill_s, std::uint64_t(zerofill_b), type,
                 column_flags::unsigned_ | column_flags::zerofill }
     };
 }
 
 INSTANTIATE_TEST_SUITE_P(TINYINT, DeserializeTextValueTest, ValuesIn(
     make_int_cases(
-        "127", std::int32_t(127),
-        "-128", std::int32_t(-128),
-        "255", std::uint32_t(255),
-        "010", std::uint32_t(10),
+        "127", 127,
+        "-128", -128,
+        "255", 255,
+        "010", 10,
         protocol_field_type::tiny
     )
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(SMALLINT, DeserializeTextValueTest, ValuesIn(
     make_int_cases(
-        "32767", std::int32_t(32767),
-        "-32768", std::int32_t(-32768),
-        "65535", std::uint32_t(65535),
-        "00535", std::uint32_t(535),
+        "32767", 32767,
+        "-32768", -32768,
+        "65535", 65535,
+        "00535", 535,
         protocol_field_type::short_
     )
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, ValuesIn(
     make_int_cases(
-        "8388607", std::int32_t(8388607),
-        "-8388608", std::int32_t(-8388608),
-        "16777215", std::uint32_t(16777215),
-        "00007215", std::uint32_t(7215),
+        "8388607", 8388607,
+        "-8388608",-8388608,
+        "16777215", 16777215,
+        "00007215", 7215,
         protocol_field_type::int24
     )
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueTest, ValuesIn(
     make_int_cases(
-        "2147483647", std::int32_t(2147483647),
-        "-2147483648", std::int32_t(-2147483648),
-        "4294967295", std::uint32_t(4294967295),
-        "0000067295", std::uint32_t(67295),
+        "2147483647", 2147483647,
+        "-2147483648", -2147483648,
+        "4294967295", 4294967295,
+        "0000067295", 67295,
         protocol_field_type::long_
     )
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueTest, ValuesIn(
     make_int_cases(
-        "9223372036854775807", std::int64_t(9223372036854775807),
-        "-9223372036854775808", std::int64_t(-9223372036854775807 - 1), // minus is not part of literal, avoids warning
-        "18446744073709551615", std::uint64_t(18446744073709551615ULL), // suffix needed to avoid warning
-        "0000067295", std::uint64_t(67295),
+        "9223372036854775807", 9223372036854775807,
+        "-9223372036854775808", -9223372036854775807 - 1, // minus is not part of literal, avoids warning
+        "18446744073709551615", 18446744073709551615ULL, // suffix needed to avoid warning
+        "0000067295", 67295,
         protocol_field_type::longlong
     )
 ), test_name_generator);
@@ -366,10 +365,10 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueTest, Values(
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueTest, Values(
-    text_value_testcase("regular_value", "1999", std::uint32_t(1999), protocol_field_type::year, column_flags::unsigned_),
-    text_value_testcase("min", "1901", std::uint32_t(1901), protocol_field_type::year, column_flags::unsigned_),
-    text_value_testcase("max", "2155", std::uint32_t(2155), protocol_field_type::year, column_flags::unsigned_),
-    text_value_testcase("zero", "0000", std::uint32_t(0), protocol_field_type::year, column_flags::unsigned_)
+    text_value_testcase("regular_value", "1999", std::uint64_t(1999), protocol_field_type::year, column_flags::unsigned_),
+    text_value_testcase("min", "1901", std::uint64_t(1901), protocol_field_type::year, column_flags::unsigned_),
+    text_value_testcase("max", "2155", std::uint64_t(2155), protocol_field_type::year, column_flags::unsigned_),
+    text_value_testcase("zero", "0000", std::uint64_t(0), protocol_field_type::year, column_flags::unsigned_)
 ), test_name_generator);
 
 } // anon namespace

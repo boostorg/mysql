@@ -22,8 +22,6 @@ inline protocol_field_type get_protocol_field_type(
 {
     struct visitor
     {
-        constexpr auto operator()(std::int32_t) const noexcept { return protocol_field_type::long_; }
-        constexpr auto operator()(std::uint32_t) const noexcept { return protocol_field_type::long_; }
         constexpr auto operator()(std::int64_t) const noexcept { return protocol_field_type::longlong; }
         constexpr auto operator()(std::uint64_t) const noexcept { return protocol_field_type::longlong; }
         constexpr auto operator()(std::string_view) const noexcept { return protocol_field_type::varchar; }
@@ -43,9 +41,7 @@ inline bool is_unsigned(
     const value& input
 ) noexcept
 {
-    auto v = input.to_variant();
-    return std::holds_alternative<std::uint32_t>(v) ||
-           std::holds_alternative<std::uint64_t>(v);
+    return std::holds_alternative<std::uint64_t>(input.to_variant());
 }
 
 } // detail

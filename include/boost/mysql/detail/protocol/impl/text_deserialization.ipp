@@ -33,17 +33,15 @@ errc deserialize_text_value_int_impl(
     return errc::ok;
 }
 
-template <typename UnsignedType>
-errc deserialize_text_value_int(
+inline errc deserialize_text_value_int(
     std::string_view from,
     value& to,
     const field_metadata& meta
 ) noexcept
 {
-    using SignedType = std::make_signed_t<UnsignedType>;
     return meta.is_unsigned() ?
-            deserialize_text_value_int_impl<UnsignedType>(from, to) :
-            deserialize_text_value_int_impl<SignedType>(from, to);
+            deserialize_text_value_int_impl<std::uint64_t>(from, to) :
+            deserialize_text_value_int_impl<std::int64_t>(from, to);
 }
 
 // Floating points
@@ -323,9 +321,8 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     case protocol_field_type::int24:
     case protocol_field_type::long_:
     case protocol_field_type::year:
-        return deserialize_text_value_int<std::uint32_t>(from, output, meta);
     case protocol_field_type::longlong:
-        return deserialize_text_value_int<std::uint64_t>(from, output, meta);
+        return deserialize_text_value_int(from, output, meta);
     case protocol_field_type::float_:
         return deserialize_text_value_float<float>(from, output);
     case protocol_field_type::double_:

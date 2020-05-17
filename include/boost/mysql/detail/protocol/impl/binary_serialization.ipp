@@ -137,8 +137,6 @@ struct serialize_visitor
     template <typename T>
     void operator()(const T& v) noexcept { serialize_binary_value_impl(ctx, v); }
 
-    void operator()(std::int32_t v) noexcept { serialize(ctx, int4_signed(v)); }
-    void operator()(std::uint32_t v) noexcept { serialize(ctx, int4(v)); }
     void operator()(std::int64_t v) noexcept { serialize(ctx, int8_signed(v)); }
     void operator()(std::uint64_t v) noexcept { serialize(ctx, int8(v)); }
     void operator()(std::string_view v) noexcept { serialize(ctx, string_lenenc(v)); }

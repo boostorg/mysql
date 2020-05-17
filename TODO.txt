@@ -4,6 +4,7 @@ Value class
     Implement conversions between ints
     Tests for new functions and conversions
     Review docs
+    Clean using boost::mysql::operatorxx
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available

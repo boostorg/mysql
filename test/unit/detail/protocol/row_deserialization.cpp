@@ -130,7 +130,7 @@ INSTANTIATE_TEST_SUITE_P(Text, DeserializeRowTest, Values(
         text,
         "one_value",
         {0x01, 0x35},
-        makevalues(std::int32_t(5)),
+        makevalues(std::int64_t(5)),
         { protocol_field_type::tiny }
     ),
     row_testcase(
@@ -144,7 +144,7 @@ INSTANTIATE_TEST_SUITE_P(Text, DeserializeRowTest, Values(
         text,
         "several_values",
         {0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30},
-        makevalues("val", std::int32_t(21), 0.0f),
+        makevalues("val", std::int64_t(21), 0.0f),
         { protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_ }
     ),
     row_testcase(
@@ -183,13 +183,13 @@ INSTANTIATE_TEST_SUITE_P(Text, DeserializeRowErrorTest, testing::Values(
 // Instantiations for binary protocol
 INSTANTIATE_TEST_SUITE_P(Binary, DeserializeRowTest, testing::Values(
     row_testcase(bin, "one_value", {0x00, 0x00, 0x14},
-            makevalues(std::int32_t(20)),
+            makevalues(std::int64_t(20)),
             {protocol_field_type::tiny}),
     row_testcase(bin, "one_null", {0x00, 0x04},
             makevalues(nullptr),
             {protocol_field_type::tiny}),
     row_testcase(bin, "two_values", {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07},
-            makevalues("min", std::int32_t(1901)),
+            makevalues("min", std::int64_t(1901)),
             {protocol_field_type::var_string, protocol_field_type::short_}),
     row_testcase(bin, "one_value_one_null", {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78},
             makevalues("max", nullptr),
@@ -209,8 +209,8 @@ INSTANTIATE_TEST_SUITE_P(Binary, DeserializeRowTest, testing::Values(
             0x05, 0x71, 0x99, 0x6d, 0xe2, 0x93, 0x4d, 0xf5,
             0x3d
         }, makevalues(
-            std::int32_t(-3),
-            std::int32_t(20),
+            std::int64_t(-3),
+            std::int64_t(20),
             nullptr,
             3.14f,
             "ab",

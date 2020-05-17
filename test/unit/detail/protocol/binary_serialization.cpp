@@ -65,10 +65,6 @@ INSTANTIATE_TEST_SUITE_P(StringTypes, SerializeBinaryValueTest, Values(
 
 // Same comment applies for ints
 INSTANTIATE_TEST_SUITE_P(IntTypes, SerializeBinaryValueTest, Values(
-    serialize_binary_value_testcase("uint32", std::uint32_t(0xfcfdfeff),
-            {0xff, 0xfe, 0xfd, 0xfc}),
-    serialize_binary_value_testcase("int32",  std::int32_t(-0x3020101),
-            {0xff, 0xfe, 0xfd, 0xfc}),
     serialize_binary_value_testcase("uint64", std::uint64_t(0xf8f9fafbfcfdfeff),
             {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}),
     serialize_binary_value_testcase("int64",  std::int64_t(-0x0706050403020101),

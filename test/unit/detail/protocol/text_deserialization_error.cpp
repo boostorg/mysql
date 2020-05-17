@@ -61,11 +61,7 @@ TEST_P(DeserializeTextValueErrorTest, Error_ReturnsExpectedErrc)
 }
 
 std::vector<err_text_value_testcase> make_int_err_cases(
-    protocol_field_type t,
-    std::string_view signed_lt_min,
-    std::string_view signed_gt_max,
-    std::string_view unsigned_lt_min,
-    std::string_view unsigned_gt_max
+    protocol_field_type t
 )
 {
     return {
@@ -74,60 +70,36 @@ std::vector<err_text_value_testcase> make_int_err_cases(
         err_text_value_testcase("signed_hex", "0x01", t),
         err_text_value_testcase("signed_fractional", "1.1", t),
         err_text_value_testcase("signed_exp", "2e10", t),
-        err_text_value_testcase("signed_lt_min", signed_lt_min, t),
-        err_text_value_testcase("signed_gt_max", signed_gt_max, t),
+        err_text_value_testcase("signed_lt_min", "-9223372036854775809", t),
+        err_text_value_testcase("signed_gt_max", "9223372036854775808", t),
         err_text_value_testcase("unsigned_blank", "", t, column_flags::unsigned_),
         err_text_value_testcase("unsigned_non_number", "abtrf", t, column_flags::unsigned_),
         err_text_value_testcase("unsigned_hex", "0x01", t, column_flags::unsigned_),
         err_text_value_testcase("unsigned_fractional", "1.1", t, column_flags::unsigned_),
         err_text_value_testcase("unsigned_exp", "2e10", t, column_flags::unsigned_),
-        err_text_value_testcase("unsigned_lt_min", unsigned_lt_min, t, column_flags::unsigned_),
-        err_text_value_testcase("unsigned_gt_max", unsigned_gt_max, t, column_flags::unsigned_)
+        err_text_value_testcase("unsigned_lt_min", "-18446744073709551616", t, column_flags::unsigned_),
+        err_text_value_testcase("unsigned_gt_max", "18446744073709551616", t, column_flags::unsigned_)
     };
 }
 
-std::vector<err_text_value_testcase> make_int32_err_cases(
-    protocol_field_type t
-)
-{
-    // Unsigned integers behaviour for negative inputs are determined by what iostreams
-    // do (accepting it and overflowing)
-    return make_int_err_cases(t, "-2147483649", "2147483648", "-4294967296", "4294967296");
-}
-
 INSTANTIATE_TEST_SUITE_P(TINYINT, DeserializeTextValueErrorTest, ValuesIn(
-    make_int32_err_cases(protocol_field_type::tiny)
+    make_int_err_cases(protocol_field_type::tiny)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(SMALLINT, DeserializeTextValueErrorTest, ValuesIn(
-    make_int32_err_cases(protocol_field_type::short_)
+    make_int_err_cases(protocol_field_type::short_)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueErrorTest, ValuesIn(
-    make_int32_err_cases(protocol_field_type::int24)
+    make_int_err_cases(protocol_field_type::int24)
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueErrorTest, ValuesIn(
-    make_int32_err_cases(protocol_field_type::long_)
+    make_int_err_cases(protocol_field_type::long_)
 ), test_name_generator);
 
-std::vector<err_text_value_testcase> make_int64_err_cases(
-    protocol_field_type t
-)
-{
-    // Unsigned integers behaviour for negative inputs are determined by what iostreams
-    // do (accepting it and overflowing)
-    return make_int_err_cases(
-        t,
-        "-9223372036854775809",
-        "9223372036854775808",
-        "-18446744073709551616",
-        "18446744073709551616"
-    );
-}
-
 INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueErrorTest, ValuesIn(
-    make_int64_err_cases(protocol_field_type::longlong)
+    make_int_err_cases(protocol_field_type::longlong)
 ), test_name_generator);
 
 std::vector<err_text_value_testcase> make_float_err_cases(
@@ -306,7 +278,7 @@ INSTANTIATE_TEST_SUITE_P(TIME, DeserializeTextValueErrorTest, Values(
 
 // Although range is smaller, YEAR is deserialized just as a regular int
 INSTANTIATE_TEST_SUITE_P(YEAR, DeserializeTextValueErrorTest, ValuesIn(
-    make_int32_err_cases(protocol_field_type::year)
+    make_int_err_cases(protocol_field_type::year)
 ), test_name_generator);
 
 } // anon namespace
