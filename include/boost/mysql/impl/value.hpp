@@ -71,9 +71,35 @@ constexpr std::optional<T> get_optional_noconv(
     return res ? std::optional<T>(*res) : std::optional<T>();
 }
 
+// Helper to make integer constructors work
+template <typename T>
+constexpr decltype(auto) value_cast_int(const T& v) noexcept
+{
+    if constexpr (std::is_unsigned_v<T>)
+    {
+        return std::uint64_t(v);
+    }
+    else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>)
+    {
+        return std::int64_t(v);
+    }
+    else
+    {
+        return v;
+    }
+}
+
 } // detail
 } // mysql
 } // boost
+
+template <typename T>
+constexpr boost::mysql::value::value(
+    const T& v
+) noexcept :
+    repr_(detail::value_cast_int(v))
+{
+}
 
 template <typename T>
 constexpr std::optional<T> boost::mysql::value::get_optional() const noexcept

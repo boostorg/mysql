@@ -16,6 +16,7 @@
 #include <ostream>
 #include <array>
 #include <vector>
+#include "boost/mysql/detail/auxiliar/tmp.hpp"
 
 /**
  * \defgroup values Values
@@ -186,15 +187,12 @@ public:
         time               // TIME
     >;
 
-    // Default constrctor: makes it a NULL value
+    // Default constructor: makes it a NULL value
     constexpr value() = default;
 
     // Initialization constructor accepting any of the variant alternatives
     template <typename T>
-    explicit constexpr value(const T& v) noexcept : repr_(v) {}
-
-    explicit constexpr value(int v) noexcept : repr_(std::int64_t(v)) {}
-    explicit constexpr value(unsigned v) noexcept : repr_(std::uint64_t(v)) {}
+    explicit constexpr value(const T& v) noexcept;
 
     // Tests for NULL
     constexpr bool is_null() const noexcept { return std::holds_alternative<std::nullptr_t>(repr_); }
@@ -204,7 +202,7 @@ public:
     constexpr bool is() const noexcept { return std::holds_alternative<T>(repr_); }
 
     template <typename T>
-    constexpr bool is_convertible_to() const noexcept { return get_optional<T>(); }
+    constexpr bool is_convertible_to() const noexcept { return get_optional<T>().has_value(); }
 
     // Retrieves the stored value. If the stored value is not a T or cannot
     // be converted to T without loss of precision, throws.
