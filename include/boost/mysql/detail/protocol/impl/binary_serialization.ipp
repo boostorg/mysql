@@ -57,7 +57,7 @@ inline void serialize_binary_value_impl(
     ::date::year_month_day ymd (input);
     assert(ymd.ok());
 
-    serialize(ctx, int1(binc::date_sz));
+    serialize(ctx, int1(static_cast<std::uint8_t>(binc::date_sz)));
     serialize_binary_ymd(ctx, ymd);
 }
 
@@ -73,7 +73,7 @@ inline void serialize_binary_value_impl(
     assert(ymd.ok());
 
     // Serialize
-    serialize(ctx, int1(binc::datetime_dhmsu_sz));
+    serialize(ctx, int1(static_cast<std::uint8_t>(binc::datetime_dhmsu_sz)));
     serialize_binary_ymd(ctx, ymd);
     serialize(
         ctx,
@@ -100,7 +100,7 @@ inline void serialize_binary_value_impl(
     // Serialize
     serialize(
         ctx,
-        int1(binc::time_dhmsu_sz),
+        int1(static_cast<std::uint8_t>(binc::time_dhmsu_sz)),
         is_negative,
         int4(static_cast<std::uint32_t>(std::abs(days.count()))),
         int1(static_cast<std::uint8_t>(std::abs(hours.count()))),
