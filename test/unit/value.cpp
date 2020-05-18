@@ -10,15 +10,15 @@
 #include <sstream>
 #include <map>
 #include "boost/mysql/value.hpp"
+#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
 using namespace testing;
-using namespace date::literals;
-using namespace std::chrono;
 using boost::mysql::value;
 using boost::typeindex::type_index;
 using boost::typeindex::type_id;
+using boost::mysql::detail::stringize;
 
 namespace
 {
@@ -308,16 +308,14 @@ INSTANTIATE_TEST_SUITE_P(Default, ValueAccessorsTest, Values(
 struct ValueEqualityTest : public Test
 {
     std::vector<value> values = makevalues(
-        std::int32_t(20),
         std::int64_t(-1),
-        std::uint32_t(0xffffffff),
         std::uint64_t(0x100000000),
+        "string",
         3.14f,
         8.89,
-        boost::mysql::date(1_d/10/2019_y),
-        boost::mysql::date(1_d/10/2019_y) + std::chrono::hours(10),
-        boost::mysql::time(std::chrono::seconds(-10)),
-        std::uint32_t(2010),
+        makedate(2019, 10, 1),
+        makedt(2019, 10, 1, 10),
+        maket(0, 0, -10),
         nullptr
     );
 };
@@ -337,16 +335,14 @@ TEST_F(ValueEqualityTest, OperatorsEqNe_DifferentType_ReturnNotEquals)
 TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeDifferentValue_ReturnNotEquals)
 {
     auto other_values = makevalues(
-        std::int32_t(10),
         std::int64_t(-22),
-        std::uint32_t(0xff6723),
         std::uint64_t(222),
+        "other_string",
         -3.0f,
         8e24,
-        boost::mysql::date(1_d/9/2019_y),
-        boost::mysql::date(1_d/9/2019_y) + std::chrono::hours(10),
-        boost::mysql::time(std::chrono::seconds(10)),
-        std::uint32_t(1900),
+        makedate(2019, 9, 1),
+        makedt(2019, 9, 1, 10),
+        maket(0, 0, 10),
         nullptr
     );
 
@@ -396,28 +392,102 @@ TEST_P(ValueStreamTest, OutputStream_Trivial_ProducesExpectedString)
     EXPECT_EQ(ss.str(), GetParam().expected);
 }
 
-INSTANTIATE_TEST_SUITE_P(Default, ValueStreamTest, Values(
-    stream_testcase("null", nullptr, "<NULL>"),
-    stream_testcase("i64_positive", std::int64_t(42), "42"),
-    stream_testcase("i64_negative", std::int64_t(-90), "-90"),
-    stream_testcase("i64_zero", std::int64_t(0), "0"),
-    stream_testcase("u64_positive", std::uint64_t(42), "42"),
-    stream_testcase("u64_zero", std::uint64_t(0), "0"),
-    stream_testcase("string_view", "a_string", "a_string"),
-    stream_testcase("float", 2.43f, "2.43"),
-    stream_testcase("double", 8.12, "8.12"),
-    stream_testcase("date_regular", makedate(2019, 9, 1), "2019-09-01"),
-    stream_testcase("date_zero", makedate(0, 9, 1), "0000-09-01"),
-    stream_testcase("datetime_dhmsu", makedt(2019, 1, 8, 9, 20, 11, 123), "2019-01-08 09:20:11.000123"),
-    stream_testcase("datetime_d", makedt(2019, 1, 8), "2019-01-08 00:00:00.000000"),
-    stream_testcase("time_zero", maket(0, 0, 0), "00:00:00:000000"),
-    stream_testcase("time_positive_h", maket(24, 0, 0), "24:00:00:000000"),
-    stream_testcase("time_positive_hmsu", maket(210, 59, 59, 100), "210:59:59:000100"),
-    stream_testcase("time_negative_hmsu", -maket(839, 20, 35, 999999), "-839:20:35:999999"),
-    stream_testcase("time_positive_ms", maket(0, 2, 5), "00:02:05:000000"),
-    stream_testcase("time_negative_ms", -maket(0, 21, 45), "-00:21:45:000000"),
-    stream_testcase("time_positive_su", maket(0, 0, 1, 234000), "00:00:01:234000"),
-    stream_testcase("time_negative_su", -maket(0, 0, 1, 234000), "-00:00:01:234000")
-));
+// Note: time is the only operator for which we fully implement the stream operation
+void add_time_cases(std::vector<stream_testcase>& output)
+{
+    // We will list the possibilities for each time part and will
+    // take the Cartessian product of all them
+    struct component_value
+    {
+        const char* name;
+        int v;
+        const char* repr;
+    };
+
+    constexpr component_value sign_values [] = {
+        { "positive", 1, "" },
+        { "negative", -1, "-" }
+    };
+
+    constexpr component_value hours_values [] = {
+        { "zero", 0, "00" },
+        { "onedigit", 5, "05" },
+        { "twodigits", 23, "23" },
+        { "max", 838, "838" }
+    };
+
+    constexpr component_value mins_secs_values [] = {
+        { "zero", 0, "00" },
+        { "onedigit", 5, "05" },
+        { "twodigits", 59, "59" }
+    };
+
+    constexpr component_value micros_values [] = {
+        { "zero", 0, "000000" },
+        { "onedigit", 5, "000005" },
+        { "twodigits", 50, "000050" },
+        { "max", 999999, "999999" },
+    };
+
+    for (const auto& sign: sign_values)
+    {
+        for (const auto& hours: hours_values)
+        {
+            for (const auto& mins: mins_secs_values)
+            {
+                for (const auto& secs: mins_secs_values)
+                {
+                    for (const auto& micros: micros_values)
+                    {
+                        std::string name = stringize(
+                            "time_", sign.name,
+                            "_h", hours.name,
+                            "_m", mins.name,
+                            "_s", secs.name,
+                            "_u", micros.name
+                        );
+                        std::string str_val = stringize(
+                            sign.repr,
+                            hours.repr, ':',
+                            mins.repr, ':',
+                            secs.repr, '.',
+                            micros.repr
+                        );
+                        auto val = sign.v * maket(hours.v,
+                                mins.v, secs.v, micros.v);
+                        if (sign.v == -1 && val == maket(0, 0, 0))
+                            continue; // This case makes no sense, as negative zero is represented as zero
+                        output.emplace_back(std::move(name), value(val), std::move(str_val));
+                    }
+                }
+            }
+        }
+    }
+}
+
+std::vector<stream_testcase> make_stream_cases()
+{
+    std::vector<stream_testcase> res {
+        { "null", nullptr, "<NULL>" },
+        { "i64_positive", std::int64_t(42), "42" },
+        { "i64_negative", std::int64_t(-90), "-90" },
+        { "i64_zero", std::int64_t(0), "0" },
+        { "u64_positive", std::uint64_t(42), "42" },
+        { "u64_zero", std::uint64_t(0), "0" },
+        { "string_view", "a_string", "a_string" },
+        { "float", 2.43f, "2.43" },
+        { "double", 8.12, "8.12" },
+        { "date_regular", makedate(2019, 9, 1), "2019-09-01" },
+        { "date_zero", makedate(0, 9, 1), "0000-09-01" },
+        { "datetime_dhmsu", makedt(2019, 1, 8, 9, 20, 11, 123), "2019-01-08 09:20:11.000123" },
+        { "datetime_d", makedt(2019, 1, 8), "2019-01-08 00:00:00.000000" },
+    };
+    add_time_cases(res);
+    return res;
+}
+
+INSTANTIATE_TEST_SUITE_P(Default, ValueStreamTest, ValuesIn(
+    make_stream_cases()
+), test_name_generator);
 
 }

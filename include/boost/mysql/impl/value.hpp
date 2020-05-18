@@ -48,7 +48,7 @@ struct print_visitor
         auto secs = std::abs(std::chrono::duration_cast<std::chrono::seconds>(value % std::chrono::minutes(1)).count());
         auto micros = std::abs((value % std::chrono::seconds(1)).count());
 
-        snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u:%06u",
+        snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u.%06u",
             sign,
             static_cast<int>(hours),
             static_cast<unsigned>(mins),
