@@ -42,6 +42,7 @@ Technical debt
     	More coverage for serialization of int types
     	Use a proper float endianness reverse
     	Use boost::variant2
+    	Add constexpr to value::to_variant()
     Tests for field_metadata::character_set
     Refactor database type cases, and remove unit tests superseeded by them
     Random input tests

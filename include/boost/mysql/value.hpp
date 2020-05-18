@@ -15,37 +15,88 @@
 #include <chrono>
 #include <ostream>
 #include <array>
-#include <vector>
-#include "boost/mysql/detail/auxiliar/tmp.hpp"
+#include <optional>
 
 /**
  * \defgroup values Values
  * \brief Classes and functions related to the representation
- * of database values.
+ * of database values. See boost::mysql::value for more info.
+ */
+
+namespace boost {
+namespace mysql {
+
+/**
+ * \ingroup values
+ * \brief Type representing MySQL DATE data type.
+ */
+using date = ::date::sys_days;
+
+/**
+ * \ingroup values
+ * \brief Type representing MySQL DATETIME and TIMESTAMP data types.
+ */
+using datetime = ::date::sys_time<std::chrono::microseconds>;
+
+/**
+ * \ingroup values
+ * \brief Type representing MySQL TIME data type.
+ */
+using time = std::chrono::microseconds;
+
+/**
+ * \ingroup values
+ * \brief Represents a value in the database of any of the allowed types.
+ * \details
  *
- * In a MySQL table, a value can be any of the MySQL supported types.
- * In this library, table rows are represented as a collection of
- * boost::mysql::value, which is a union of all the supported types.
+ * A boost::mysql::value is a variant-like class. At a given time,
+ * it always holds a value of one of the type alternatives, henceforth
+ * the stored value. See value::variant_type for the list of all
+ * possible type alternatives. A value can be converted to an
+ * actual variant using value::to_variant.
  *
- * The following lists all the types known to Boost.Mysql, together with
- * the ranges and specific considerations for each one.
+ * NULL values are considered to hold the value nullptr, with actual
+ * type std::nullptr_t. You can check for NULL values using
+ * value::is_null. There is no distinction between NULL values
+ * for different database types (e.g. a NULL value for a TINY
+ * column is the same as a NULL value for a VARCHAR column).
+ *
+ * To query if a value holds a specific alternative, use value::is.
+ * To retrieve the actual value, use value::get or value::get_optional.
+ * For certain types, if the actual type is different than the
+ * one passed to get/get_optional, these two will try to convert
+ * the value to the requested type. The following conversions are
+ * considered:
+ *   - If the actual type is std::uint64_t, the requested type
+ *     was std::int64_t, and the value is within the range
+ *     of a std::int64_t, it will be converted to this type.
+ *   - If the actual type is std::int64_t, the requested type
+ *     was std::uint64_t, and the value is within the range
+ *     of a std::uint64_t, it will be converted to this type.
+ *   - If the actual type was float, and the requested type
+ *     was double, it will be converted.
+ *
+ * The mapping from database types (e.g. TINY, VARCHAR...) to C++
+ * types is not one to one. The following lists the mapping from database
+ * types to C++ types, together with the ranges and specific considerations
+ * for each one.
  *
  * - Integral types:
  *   - **TINYINT**. 1 byte integer type. If it is signed, it is represented
- *     as a std::int32_t, and its range is between -0x80 and 0x7f.
- *     If unsigned, represented as a std::uint32_t, and its range is
+ *     as a std::int64_t, and its range is between -0x80 and 0x7f.
+ *     If unsigned, represented as a std::uint64_t, and its range is
  *     between 0 and 0xff.
  *   - **SMALLINT**. 2 byte integer type. If it is signed, it is represented
- *     as a std::int32_t, and its range is between -0x8000 and 0x7fff.
- *     If unsigned, represented as a std::uint32_t, and its range is
+ *     as a std::int64_t, and its range is between -0x8000 and 0x7fff.
+ *     If unsigned, represented as a std::uint64_t, and its range is
  *     between 0 and 0xffff.
  *   - **MEDIUMINT**. 3 byte integer type. If it is signed, it is represented
- *     as a std::int32_t, and its range is between -0x800000 and 0x7fffff.
- *     If unsigned, represented as a std::uint32_t, and its range is
+ *     as a std::int64_t, and its range is between -0x800000 and 0x7fffff.
+ *     If unsigned, represented as a std::uint64_t, and its range is
  *     between 0 and 0xffffff.
  *   - **INT**. 4 byte integer type. If it is signed, it is represented
- *     as a std::int32_t, and its range is between -0x80000000 and 0x7fffffff.
- *     If unsigned, represented as a std::uint32_t, and its range is
+ *     as a std::int64_t, and its range is between -0x80000000 and 0x7fffffff.
+ *     If unsigned, represented as a std::uint64_t, and its range is
  *     between 0 and 0xffffffff.
  *   - **BIGINT**. 8 byte integer type. If it is signed, it is represented
  *     as a std::int64_t, and its range is between -0x8000000000000000 and
@@ -136,45 +187,16 @@
  *     - **GEOMETRY**. In this case, the string will contain
  *       the binary representation of the geometry type.
  *
- */
-
-namespace boost {
-namespace mysql {
-
-/**
- * \ingroup values
- * \brief Type representing MySQL DATE data type.
- */
-using date = ::date::sys_days;
-
-/**
- * \ingroup values
- * \brief Type representing MySQL DATETIME and TIMESTAMP data types.
- */
-using datetime = ::date::sys_time<std::chrono::microseconds>;
-
-/**
- * \ingroup values
- * \brief Type representing MySQL TIME data type.
- */
-using time = std::chrono::microseconds;
-
-/**
- * \ingroup values
- * \brief Represents a value in the database of any of the allowed types.
- * \details If a value is NULL, the type of the variant will be nullptr_t.
- *
- * If a value is a string, the type will be string_view, and it will
- * point to a externally owned piece of memory. That implies that boost::mysql::value
- * does **NOT** own its string memory (saving copies).
- *
- * MySQL types BIT and GEOMETRY do not have direct support yet.
- * They are represented as binary strings.
+ * \warning This is a lightweight, cheap-to-copy class. Strings
+ * are represented as string_views, not as owning strings.
+ * This implies that if a value is a string, it will point
+ * to a **externally owned** piece of memory (this will typically be
+ * a boost::mysql::owning_row object).
  */
 class value
 {
 public:
-    // The underlying representation
+    /// Type of a variant representing the value.
     using variant_type = std::variant<
         std::nullptr_t,    // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
@@ -187,10 +209,13 @@ public:
         time               // TIME
     >;
 
-    // Default constructor: makes it a NULL value
+    /// Constructs a NULL value.
     constexpr value() = default;
 
-    // Initialization constructor accepting any of the variant alternatives
+    /**
+     * \brief Initialization constructor.
+     * \details
+     */
     template <typename T>
     explicit constexpr value(const T& v) noexcept;
 
@@ -215,7 +240,8 @@ public:
     constexpr std::optional<T> get_optional() const noexcept;
 
     // Returns the underlying variant type
-    constexpr variant_type to_variant() const noexcept { return repr_; }
+    // TODO: add constexpr when variant_type is variant2
+    variant_type to_variant() const noexcept { return repr_; }
 
     /// Tests for equality (type and value).
     constexpr bool operator==(const value& rhs) const noexcept { return repr_ == rhs.repr_; }
