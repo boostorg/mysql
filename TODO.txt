@@ -1,10 +1,6 @@
 Value class
-    Drop uint32_t, int32_t, float
     Change documentation regarding dropped types
-    Implement conversions between ints
-    Tests for new functions and conversions
     Review docs
-    Clean using boost::mysql::operatorxx
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
