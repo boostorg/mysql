@@ -143,7 +143,7 @@ INSTANTIATE_TEST_SUITE_P(MEDIUMINT, DeserializeTextValueTest, ValuesIn(
 INSTANTIATE_TEST_SUITE_P(INT, DeserializeTextValueTest, ValuesIn(
     make_int_cases(
         "2147483647", 2147483647,
-        "-2147483648", -2147483648,
+        "-2147483648", -2147483647 - 1, // minus is not part of literal, avoids warning
         "4294967295", 4294967295,
         "0000067295", 67295,
         protocol_field_type::long_
