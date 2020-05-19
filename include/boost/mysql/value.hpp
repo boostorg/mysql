@@ -214,33 +214,94 @@ public:
 
     /**
      * \brief Initialization constructor.
-     * \details
+     * \details Initializes *this with the same type and value that
+     * variant_type(v) would contain. The following exceptions apply:
+     *   - If T is any unsigned integer, the type will be std::uint64_t
+     *     and the value, std::uint64_t(v).
+     *   - If T is any signed integer, the type will be std::int64t
+     *     and the value, std::int64_t(v).
+     *
+     * Examples:
+     *   - value(48) -> std::int64_t
+     *   - value(std::uint8_t(2)) -> std::uint64_t
+     *   - value("test") -> std::string_view
      */
     template <typename T>
     explicit constexpr value(const T& v) noexcept;
 
-    // Tests for NULL
+    /**
+     * \brief Checks if the value is NULL.
+     * \details Returns true only if the value's current type alternative
+     * is std::nullptr_t. Equivalent to value::is<std::nullptr_t>().
+     */
     constexpr bool is_null() const noexcept { return std::holds_alternative<std::nullptr_t>(repr_); }
 
-    // Returns true if the stored value is T or can be converted to T without loss of precision
+    /**
+     * \brief Checks if the current type alternative is T.
+     * \details T should be one of value::variant_type's type alternatives.
+     * This function does *not* take into account possible type conversions
+     * (e.g. float to double). It returns true only if the current alternative
+     * matches T exactly. See value::is_convertible_to for a version of this
+     * function taking conversions into account. This function is faster
+     * than value::is_convertible_to.
+     */
     template <typename T>
     constexpr bool is() const noexcept { return std::holds_alternative<T>(repr_); }
 
+    /**
+     * \brief Checks if the current value can be converted to T.
+     * \details T should be one of value::variant_type's type alternatives.
+     * This function returns true if the current type alternative is T (value::is<T>()
+     * returns true) or if there exists a conversion from the current alternative
+     * to T that does not cause loss of precision (e.g. float to double).
+     * See boost::mysql::value for a list of such conversions.
+     *
+     * Use this function if you only need to know if a conversion is possible or not.
+     * If you also need to access the stored value, use value::get_optional and check
+     * the returned optional instead.
+     */
     template <typename T>
     constexpr bool is_convertible_to() const noexcept { return get_optional<T>().has_value(); }
 
-    // Retrieves the stored value. If the stored value is not a T or cannot
-    // be converted to T without loss of precision, throws.
+    /**
+     * \brief Retrieves the stored value or throws an exception.
+     * \details If the stored value is a T, or can be converted to T using
+     * one of the conversions listed in boost::mysql::value's docs (i.e. when
+     * value::is_convertible_to<T>() returns true), returns the converted value.
+     * Otherwise throws std::bad_variant_access.
+     *
+     * \warning The following code pattern, where v is a boost::mysql::value,
+     * is correct but inefficient:
+     * \code
+     * if (v.is_convertible_to<double>())
+     * {
+     *     double d = v.get<double>();
+     *     // Do stuff with d
+     * }
+     * \endcode
+     * Prefer the following:
+     * \code
+     * std::optional<double> d = v.get_optional<double>();
+     * if (d)
+     * {
+     *     // Do stuff with d
+     * }
+     * \endcode
+     */
     template <typename T>
     constexpr T get() const;
 
-    // Retrieves the stored value, as an optional. If the stored value is not a T or cannot
-    // be converted to T without loss of precision, returns an empty optional.
+    /**
+     * \brief Retrieves the stored value as an optional.
+     * \details If the stored value is a T, or can be converted to T using
+     * one of the conversions listed in boost::mysql::value's docs (i.e. when
+     * value::is_convertible_to<T>() returns true), returns an optional
+     * containing the converted value. Otherwise returns an empty optional.
+     */
     template <typename T>
     constexpr std::optional<T> get_optional() const noexcept;
 
-    // Returns the underlying variant type
-    // TODO: add constexpr when variant_type is variant2
+    /// Converts a value to an actual variant of type value::variant_type.
     variant_type to_variant() const noexcept { return repr_; }
 
     /// Tests for equality (type and value).

@@ -1,6 +1,3 @@
-Value class
-    Change documentation regarding dropped types
-    Review docs
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
