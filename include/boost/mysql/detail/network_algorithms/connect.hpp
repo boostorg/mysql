@@ -24,10 +24,10 @@ void connect(
     error_info& info
 );
 
-using connect_signature = empty_signature;
+using connect_signature = void(error_code);
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, connect_signature)
 async_connect(
     channel<StreamType>& chan,
     const typename StreamType::endpoint_type& endpoint,

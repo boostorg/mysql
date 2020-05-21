@@ -6,7 +6,7 @@
 //
 
 #include "boost/mysql/mysql.hpp"
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>
 

@@ -6,7 +6,7 @@
 //
 
 #include "boost/mysql/mysql.hpp"
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/spawn.hpp>
 #include <iostream>
@@ -26,7 +26,8 @@ using boost::mysql::error_info;
  * please have a look to the query_sync.cpp example.
  *
  * In this library, all asynchronous operations follow Boost.Asio universal
- * asynchronous models, and thus may be used with callbacks, coroutines or futures.
+ * asynchronous models, and thus may be used with callbacks, Boost stackful
+ * coroutines, C++20 coroutines or futures.
  * The handler signature is always one of:
  *   - void(error_code): for operations that do not have a "return type" (e.g. handshake)
  *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
@@ -91,7 +92,7 @@ void main_impl(int argc, char** argv)
      * (see https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/spawn.html).
      *
      * The coroutine will actually start running when we call io_context::run().
-     * It will suspend every time we call one of the asyncrhonous functions, saving
+     * It will suspend every time we call one of the asynchronous functions, saving
      * all information it needs for resuming. When the asynchronous operation completes,
      * the coroutine will resume in the point it was left.
      *

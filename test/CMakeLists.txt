@@ -82,8 +82,13 @@ find_package(Boost REQUIRED COMPONENTS coroutine)
 
 add_executable(
     mysql_integrationtests
+    integration/network_functions/network_functions_impl.cpp
+    integration/network_functions/sync.cpp
+    integration/network_functions/async_callback.cpp
+    integration/network_functions/async_coroutine.cpp
+    integration/network_functions/async_coroutinecpp20.cpp
+    integration/network_functions/async_future.cpp
     integration/metadata_validator.cpp
-    integration/network_functions.cpp
     integration/connect.cpp
     integration/handshake.cpp
     integration/query.cpp

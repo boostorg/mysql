@@ -6,7 +6,7 @@
 //
 
 #include "boost/mysql/mysql.hpp"
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/yield.hpp>
@@ -29,7 +29,8 @@ using boost::mysql::owning_row;
  * please have a look to the query_sync.cpp example.
  *
  * In this library, all asynchronous operations follow Boost.Asio universal
- * asynchronous models, and thus may be used with callbacks, coroutines or futures.
+ * asynchronous models, and thus may be used with callbacks, Boost stackful
+ * coroutines, C++20 coroutines or futures.
  * The handler signature is always one of:
  *   - void(error_code): for operations that do not have a "return type" (e.g. handshake)
  *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which

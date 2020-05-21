@@ -29,8 +29,57 @@ void boost::mysql::detail::close_connection(
     }
 }
 
+namespace boost {
+namespace mysql {
+namespace detail {
+
+template<class StreamType>
+struct close_connection_op : boost::asio::coroutine
+{
+    channel<StreamType>& chan_;
+    error_info* output_info_;
+
+    close_connection_op(channel<StreamType>& chan, error_info* output_info) :
+        chan_(chan),
+        output_info_(output_info)
+    {
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code err = {}
+    )
+    {
+        error_code close_err;
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            if (!chan_.next_layer().is_open())
+            {
+                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                self.complete(error_code());
+                BOOST_ASIO_CORO_YIELD break;
+            }
+
+            // We call close regardless of the quit outcome
+            // There are no async versions of shutdown or close
+            BOOST_ASIO_CORO_YIELD async_quit_connection(
+                chan_,
+                std::move(self),
+                output_info_
+            );
+            close_err = chan_.close();
+            self.complete(err ? err : close_err);
+        }
+    }
+};
+
+}
+}
+}
+
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::close_connection_signature
 )
@@ -40,38 +89,10 @@ boost::mysql::detail::async_close_connection(
     error_info* info
 )
 {
-    struct op : async_op<StreamType, CompletionToken, close_connection_signature, op>
-    {
-        using async_op<StreamType, CompletionToken, close_connection_signature, op>::async_op;
-
-        void operator()(
-            error_code err,
-            bool cont=true
-        )
-        {
-            error_code close_err;
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                if (!this->get_channel().next_layer().is_open())
-                {
-                    this->complete(cont, error_code());
-                    BOOST_ASIO_CORO_YIELD break;
-                }
-
-                // We call close regardless of the quit outcome
-                // There are no async versions of shutdown or close
-                BOOST_ASIO_CORO_YIELD async_quit_connection(
-                    this->get_channel(),
-                    std::move(*this),
-                    this->get_output_info()
-                );
-                close_err = this->get_channel().close();
-                this->complete(cont, err ? err : close_err);
-            }
-        }
-    };
-
-    return op::initiate(std::forward<CompletionToken>(token), chan, info);
+    return boost::asio::async_compose<
+        CompletionToken,
+        close_connection_signature
+    >(close_connection_op<StreamType>{chan, info}, token, chan);
 }
 
 

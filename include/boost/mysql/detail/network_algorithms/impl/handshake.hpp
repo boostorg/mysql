@@ -239,6 +239,105 @@ public:
     }
 };
 
+template<class StreamType>
+struct handshake_op : boost::asio::coroutine
+{
+    channel<StreamType>& chan_;
+    error_info* output_info_;
+    handshake_processor processor_;
+    auth_result auth_state_ {auth_result::invalid};
+
+    handshake_op(
+        channel<StreamType>& channel,
+        error_info* output_info,
+        const connection_params& params
+    ) :
+        chan_(channel),
+        output_info_(output_info),
+        processor_(params)
+    {
+    }
+
+    template<class Self>
+    void complete(Self& self, error_code code, error_info&& info)
+    {
+        chan_.set_current_capabilities(processor_.negotiated_capabilities());
+        conditional_assign(output_info_, std::move(info));
+        self.complete(code);
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code err = {}
+    )
+    {
+        // Error checking
+        if (err)
+        {
+            complete(self, err, error_info());
+            return;
+        }
+
+        // Non-error path
+        error_info info;
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            // Read server greeting
+            BOOST_ASIO_CORO_YIELD chan_.async_read(chan_.shared_buffer(), std::move(self));
+
+            // Process server greeting
+            err = processor_.process_handshake(chan_.shared_buffer(), info);
+            if (err)
+            {
+                complete(self, err, std::move(info));
+                BOOST_ASIO_CORO_YIELD break;
+            }
+
+            // SSL
+            if (processor_.use_ssl())
+            {
+                // Send SSL request
+                processor_.compose_ssl_request(chan_.shared_buffer());
+                BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+
+                // SSL handshake
+                BOOST_ASIO_CORO_YIELD chan_.async_ssl_handshake(std::move(self));
+            }
+
+            // Compose and send handshake response
+            processor_.compose_handshake_response(chan_.shared_buffer());
+            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+
+            while (auth_state_ != auth_result::complete)
+            {
+                // Receive response
+                BOOST_ASIO_CORO_YIELD chan_.async_read(chan_.shared_buffer(), std::move(self));
+
+                // Process it
+                err = processor_.process_handshake_server_response(
+                    chan_.shared_buffer(),
+                    auth_state_,
+                    info
+                );
+                if (err)
+                {
+                    complete(self, err, std::move(info));
+                    BOOST_ASIO_CORO_YIELD break;
+                }
+
+                if (auth_state_ == auth_result::send_more_data)
+                {
+                    // We received an auth switch response and we have the response ready to be sent
+                    BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+                }
+            }
+
+            complete(self, error_code(), error_info());
+        }
+    }
+};
+
 } // detail
 } // mysql
 } // boost
@@ -311,7 +410,7 @@ void boost::mysql::detail::handshake(
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::handshake_signature
 )
@@ -322,102 +421,14 @@ boost::mysql::detail::async_handshake(
     error_info* info
 )
 {
-    struct op : async_op<StreamType, CompletionToken, handshake_signature, op>
-    {
-        handshake_processor processor_;
-        error_info info_;
-        auth_result auth_state_ {auth_result::invalid};
-
-        op(
-            boost::asio::async_completion<CompletionToken, handshake_signature>& completion,
-            channel<StreamType>& channel,
-            error_info* output_info,
-            const connection_params& params
-        ) :
-            async_op<StreamType, CompletionToken, handshake_signature, op>(completion, channel, output_info),
-            processor_(params)
-        {
-        }
-
-        void complete(bool cont, error_code code, error_info&& info = {})
-        {
-            this->get_channel().set_current_capabilities(processor_.negotiated_capabilities());
-            conditional_assign(this->get_output_info(), std::move(info));
-            async_op<StreamType, CompletionToken, handshake_signature, op>::complete(cont, code);
-        }
-
-        void operator()(
-            error_code err,
-            bool cont=true
-        )
-        {
-            // Error checking
-            if (err)
-            {
-                complete(cont, err);
-                return;
-            }
-
-            // Non-error path
-            error_info info;
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Read server greeting
-                BOOST_ASIO_CORO_YIELD this->async_read();
-
-                // Process server greeting
-                err = processor_.process_handshake(this->get_channel().shared_buffer(), info);
-                if (err)
-                {
-                    complete(cont, err, std::move(info));
-                    BOOST_ASIO_CORO_YIELD break;
-                }
-
-                // SSL
-                if (processor_.use_ssl())
-                {
-                    // Send SSL request
-                    processor_.compose_ssl_request(this->get_channel().shared_buffer());
-                    BOOST_ASIO_CORO_YIELD this->async_write();
-
-                    // SSL handshake
-                    BOOST_ASIO_CORO_YIELD this->get_channel().async_ssl_handshake(std::move(*this));
-                }
-
-                // Compose and send handshake response
-                processor_.compose_handshake_response(this->get_channel().shared_buffer());
-                BOOST_ASIO_CORO_YIELD this->async_write();
-
-                while (auth_state_ != auth_result::complete)
-                {
-                    // Receive response
-                    BOOST_ASIO_CORO_YIELD this->async_read();
-
-                    // Process it
-                    err = processor_.process_handshake_server_response(
-                        this->get_channel().shared_buffer(),
-                        auth_state_,
-                        info
-                    );
-                    if (err)
-                    {
-                        complete(cont, err, std::move(info));
-                        BOOST_ASIO_CORO_YIELD break;
-                    }
-
-                    if (auth_state_ == auth_result::send_more_data)
-                    {
-                        // We received an auth switch response and we have the response ready to be sent
-                        BOOST_ASIO_CORO_YIELD this->async_write();
-                    }
-                }
-
-                complete(cont, error_code());
-            }
-        }
-    };
-
-    return op::initiate(std::forward<CompletionToken>(token), chan, info, params);
+    return boost::asio::async_compose<
+        CompletionToken,
+        boost::mysql::detail::handshake_signature
+    >(
+        handshake_op<StreamType>(chan, info, params),
+        token,
+        chan
+    );
 }
 
 

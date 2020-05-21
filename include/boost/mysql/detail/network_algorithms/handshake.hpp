@@ -27,10 +27,10 @@ void handshake(
     error_info& info
 );
 
-using handshake_signature = empty_signature;
+using handshake_signature = void(error_code);
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, handshake_signature)
 async_handshake(
     channel<StreamType>& channel,
     const connection_params& params,

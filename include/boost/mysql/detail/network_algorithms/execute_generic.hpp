@@ -30,7 +30,7 @@ template <typename StreamType>
 using execute_generic_signature = void(error_code, resultset<StreamType>);
 
 template <typename StreamType, typename Serializable, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
 async_execute_generic(
     deserialize_row_fn deserializer,
     channel<StreamType>& chan,

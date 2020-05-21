@@ -65,6 +65,7 @@ cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
     $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
     $(if [ $USE_COVERAGE ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
     $(if [ $HAS_SHA256 ]; then echo -DBOOST_MYSQL_SHA256_TESTS=ON; fi) \
+    -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
     $CMAKE_OPTIONS \
     .. 
 make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test

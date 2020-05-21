@@ -29,7 +29,7 @@ void execute_statement(
 );
 
 template <typename StreamType, typename ForwardIterator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
 async_execute_statement(
     channel<StreamType>& chan,
     std::uint32_t statement_id,

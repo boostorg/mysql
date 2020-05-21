@@ -10,6 +10,74 @@
 
 #include "boost/mysql/detail/network_algorithms/handshake.hpp"
 
+namespace boost {
+namespace mysql {
+namespace detail {
+
+template<class StreamType>
+struct connect_op : boost::asio::coroutine
+{
+    using endpoint_type = typename StreamType::endpoint_type;
+
+    channel<StreamType>& chan_;
+    error_info* output_info_;
+    const endpoint_type& ep_; // No need for a copy, as we will call it in the first operator() call
+    connection_params params_;
+
+    connect_op(
+        channel<StreamType>& chan,
+        error_info* output_info,
+        const endpoint_type& ep,
+        const connection_params& params
+    ) :
+        chan_(chan),
+        output_info_(output_info),
+        ep_(ep),
+        params_(params)
+    {
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code code = {}
+    )
+    {
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            // Physical connect
+            BOOST_ASIO_CORO_YIELD chan_.next_layer().async_connect(ep_, std::move(self));
+            if (code)
+            {
+                chan_.close();
+                if (output_info_)
+                {
+                    output_info_->set_message("Physical connect failed");
+                }
+                self.complete(code);
+                BOOST_ASIO_CORO_YIELD break;
+            }
+
+            // Handshake
+            BOOST_ASIO_CORO_YIELD async_handshake(
+                chan_,
+                params_,
+                std::move(self),
+                output_info_
+            );
+            if (code)
+            {
+                chan_.close();
+            }
+            self.complete(code);
+        }
+    }
+};
+
+} // detail
+} // mysql
+} // boost
+
 template <typename StreamType>
 void boost::mysql::detail::connect(
     channel<StreamType>& chan,
@@ -34,7 +102,7 @@ void boost::mysql::detail::connect(
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::connect_signature
 )
@@ -46,65 +114,8 @@ boost::mysql::detail::async_connect(
     error_info* info
 )
 {
-    using endpoint_type = typename StreamType::endpoint_type;
-    struct op : async_op<StreamType, CompletionToken, connect_signature, op>
-    {
-        const endpoint_type& ep_; // No need for a copy, as we will call it in the first operator() call
-        connection_params params_;
-
-        op(
-            boost::asio::async_completion<CompletionToken, connect_signature>& completion,
-            channel<StreamType>& chan,
-            error_info* output_info,
-            const endpoint_type& ep,
-            const connection_params& params
-        ) :
-            async_op<StreamType, CompletionToken, connect_signature, op>(completion, chan, output_info),
-            ep_(ep),
-            params_(params)
-        {
-        }
-
-        void operator()(
-            error_code code,
-            bool cont=true
-        )
-        {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Physical connect
-                BOOST_ASIO_CORO_YIELD this->get_channel().next_layer().async_connect(
-                    ep_,
-                    std::move(*this)
-                );
-                if (code)
-                {
-                    this->get_channel().close();
-                    if (this->get_output_info())
-                    {
-                        this->get_output_info()->set_message("Physical connect failed");
-                    }
-                    this->complete(cont, code);
-                    BOOST_ASIO_CORO_YIELD break;
-                }
-
-                // Handshake
-                BOOST_ASIO_CORO_YIELD async_handshake(
-                    this->get_channel(),
-                    params_,
-                    std::move(*this),
-                    this->get_output_info()
-                );
-                if (code)
-                {
-                    this->get_channel().close();
-                }
-                this->complete(cont, code);
-            }
-        }
-    };
-
-    return op::initiate(std::forward<CompletionToken>(token), chan, info, endpoint, params);
+    return boost::asio::async_compose<CompletionToken, connect_signature>(
+        connect_op<StreamType>{chan, info, endpoint, params}, token, chan);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP_ */

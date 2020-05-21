@@ -21,10 +21,10 @@ void close_connection(
     error_info& info
 );
 
-using close_connection_signature = empty_signature;
+using close_connection_signature = void(error_code);
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, close_connection_signature)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, close_connection_signature)
 async_close_connection(
     channel<StreamType>& chan,
     CompletionToken&& token,

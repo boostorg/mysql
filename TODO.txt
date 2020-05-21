@@ -53,7 +53,6 @@ Technical debt
 	Review named_param
 	Take fetch_many() algorithm out into network_algorithms (e.g. read_many_rows)
 	Concept checking for StreamType
-	See if we can drop the dependence on beast
 	Review valid() for moved-from resultsets (should it return always true?)
 	Force the same number of values in each row as in fields()
 	CMake exporting?

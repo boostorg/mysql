@@ -137,10 +137,7 @@ public:
 };
 
 template <typename Stream>
-using network_function_array = std::array<network_functions<Stream>*, 7>;
-
-template <typename Stream>
-network_function_array<Stream> make_all_network_functions();
+std::vector<network_functions<Stream>*> make_all_network_functions();
 
 } // test
 } // mysql

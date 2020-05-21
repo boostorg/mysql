@@ -11,7 +11,6 @@
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
 #include "boost/mysql/detail/network_algorithms/handshake.hpp"
-#include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/prepared_statement.hpp"
@@ -82,6 +81,12 @@ public:
     {
     }
 
+    /// The executor type associated to this object.
+    using executor_type = typename Stream::executor_type;
+
+    /// Retrieves the executor associated to this object.
+    executor_type get_executor() { return next_layer_.get_executor(); }
+
     /// Retrieves the underlying Stream object.
     Stream& next_layer() { return next_layer_; }
 
@@ -114,8 +119,8 @@ public:
      * \details The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
      */
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, handshake_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(handshake_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, handshake_signature)
     async_handshake(const connection_params& params, CompletionToken&& token, error_info* info = nullptr);
 
     /**
@@ -141,8 +146,8 @@ public:
     using query_signature = void(error_code, resultset<Stream>);
 
     /// Executes a SQL text query (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, query_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(query_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, query_signature)
     async_query(std::string_view query_string, CompletionToken&& token, error_info* info=nullptr);
 
     /**
@@ -165,8 +170,8 @@ public:
     using prepare_statement_signature = void(error_code, prepared_statement<Stream>);
 
     /// Prepares a statement (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, prepare_statement_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(prepare_statement_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, prepare_statement_signature)
     async_prepare_statement(std::string_view statement, CompletionToken&& token, error_info* info=nullptr);
 
     /**
@@ -196,8 +201,8 @@ public:
      * \brief Notifies the MySQL server that we want to end the session and quit the connection
      * (async version).
      */
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, quit_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(quit_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, quit_signature)
     async_quit(CompletionToken&& token, error_info* info=nullptr);
 };
 
@@ -247,8 +252,8 @@ public:
      * \details The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
      */
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, connect_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(connect_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, connect_signature)
     async_connect(const endpoint_type& endpoint, const connection_params& params,
             CompletionToken&& token, error_info* output_info=nullptr);
 
@@ -270,8 +275,8 @@ public:
     using close_signature = void(error_code);
 
     /// Closes the connection (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, close_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(close_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, close_signature)
     async_close(CompletionToken&& token, error_info* info=nullptr);
 };
 

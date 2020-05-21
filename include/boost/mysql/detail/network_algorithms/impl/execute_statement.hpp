@@ -58,7 +58,7 @@ void boost::mysql::detail::execute_statement(
 }
 
 template <typename StreamType, typename ForwardIterator, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::execute_generic_signature<StreamType>
 )

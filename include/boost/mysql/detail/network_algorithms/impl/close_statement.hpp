@@ -30,7 +30,7 @@ void boost::mysql::detail::close_statement(
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::close_signature
 )

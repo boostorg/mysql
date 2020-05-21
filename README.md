@@ -34,7 +34,6 @@ Finally, link your target against the **Boost_mysql** interface library, and you
 - C++17 capable compiler (tested with gcc 7.4, clang 7.0, Apple clang 11.0, MSVC 19.25).
 - Boost 1.70 or higher. The following Boost libraries are used:
     - Boost.Asio (and in consequence, Boost.System).
-    - Boost.Beast (implementation dependency, we are working in removing it).
     - Boost.Lexical_Cast.
     - Boost.Endian.
 - OpenSSL.

@@ -48,6 +48,18 @@ language: cpp
 
 matrix:
   include:
+    - name: linux_clang10_x64_debug_mysql
+      <<: *__linux_mysql_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - DATABASE=mysql
+        - USE_COVERAGE=1
+        - CMAKE_CXX_FLAGS="-stdlib=libc++ -DBOOST_ASIO_DISABLE_CONCEPTS"
+        - CMAKE_OPTIONS="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 -DCMAKE_CXX_STANDARD=20"
+      install:
+        - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+        - sudo apt install clang-10 libc++-10-dev libc++abi-10-dev
     - name: linux_gcc_x64_debug_mysql
       <<: *__linux_mysql_defaults
       compiler: gcc

@@ -11,7 +11,6 @@
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
-#include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include <optional>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
@@ -77,6 +76,12 @@ public:
     prepared_statement(detail::channel<Stream>& chan, const detail::com_stmt_prepare_ok_packet& msg) noexcept:
         channel_(&chan), stmt_msg_(msg) {}
 
+    /// The executor type associated to this object.
+    using executor_type = typename Stream::executor_type;
+
+    /// Retrieves the executor associated to this object.
+    executor_type get_executor() { assert(channel_);  return channel_->get_executor(); }
+
     /// Retrieves the stream object associated with the underlying connection.
     Stream& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }
 
@@ -99,14 +104,14 @@ public:
      * Use no_statement_params to execute a statement with no params.
      */
     template <typename Collection>
-    resultset<Stream> execute(const Collection& params, error_code& err, error_info& info) const
+    resultset<Stream> execute(const Collection& params, error_code& err, error_info& info)
     {
         return execute(std::begin(params), std::end(params), err, info);
     }
 
     /// Executes a statement (collection, sync with exceptions code version).
     template <typename Collection>
-    resultset<Stream> execute(const Collection& params) const
+    resultset<Stream> execute(const Collection& params)
     {
         return execute(std::begin(params), std::end(params));
     }
@@ -119,9 +124,9 @@ public:
      * \details It is **not** necessary to keep the collection of parameters or the
      * values they may point to alive.
      */
-    template <typename Collection, typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
-    async_execute(const Collection& params, CompletionToken&& token, error_info* info=nullptr) const
+    template <typename Collection, BOOST_ASIO_COMPLETION_TOKEN_FOR(execute_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_signature)
+    async_execute(const Collection& params, CompletionToken&& token, error_info* info=nullptr)
     {
         return async_execute(
             std::begin(params),
@@ -140,21 +145,21 @@ public:
      */
     template <typename ForwardIterator>
     resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last,
-            error_code&, error_info&) const;
+            error_code&, error_info&);
 
     /// Executes a statement (iterator, sync with exceptions version).
     template <typename ForwardIterator>
-    resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last) const;
+    resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last);
 
     /**
      * \brief Executes a statement (iterator, async version).
      * \details The sequence [params_first, params_last) and the values that may be pointed
      * by the elements of the sequence need **not** be kept alive.
      */
-    template <typename ForwardIterator, typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, execute_signature)
+    template <typename ForwardIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(execute_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_signature)
     async_execute(ForwardIterator params_first, ForwardIterator params_last,
-            CompletionToken&& token, error_info* info=nullptr) const;
+            CompletionToken&& token, error_info* info=nullptr);
 
     /**
      * \brief Closes a prepared statement, deallocating it from the server (sync with error code version).
@@ -177,8 +182,8 @@ public:
     using close_signature = void(error_code);
 
     /// Closes a prepared statement, deallocating it from the server (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, close_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(close_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, close_signature)
     async_close(CompletionToken&& token, error_info* info=nullptr);
 };
 

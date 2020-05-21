@@ -39,7 +39,7 @@ read_row_result read_row(
 using read_row_signature = void(error_code, read_row_result);
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, read_row_signature)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, read_row_signature)
 async_read_row(
     deserialize_row_fn deserializer,
     channel<StreamType>& channel,

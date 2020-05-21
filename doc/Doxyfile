@@ -78,7 +78,8 @@ EXPAND_ONLY_PREDEF      = NO
 SEARCH_INCLUDES         = YES
 INCLUDE_PATH            = ../include
 INCLUDE_FILE_PATTERNS   =
-PREDEFINED              = BOOST_MYSQL_DOXYGEN
+PREDEFINED              = BOOST_MYSQL_DOXYGEN \
+                          "BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(ct, sig)=auto"
 SKIP_FUNCTION_MACROS    = NO
 
 # Source browsing

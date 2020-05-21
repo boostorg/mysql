@@ -49,6 +49,7 @@ set(MYSQL_EXAMPLES
     query_sync
     query_async_callbacks
     query_async_coroutines
+    query_async_coroutinescpp20
     query_async_futures
     metadata
     prepared_statements

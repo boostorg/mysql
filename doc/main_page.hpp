@@ -37,7 +37,6 @@
  * - C++17 capable compiler (tested with gcc 7.4, clang 7.0, Apple clang 11.0, MSVC 19.25).
  * - Boost 1.70 or higher. The following Boost libraries are used:
  *    - Boost.Asio (and in consequence, Boost.System).
- *    - Boost.Beast (implementation dependency, we are working in removing it).
  *    - Boost.Lexical_Cast.
  *    - Boost.Endian.
  * - OpenSSL.
@@ -87,6 +86,11 @@
  * This example demonstrates issuing text queries to the server and reading
  * results, using coroutines.
  * \include query_async_coroutines.cpp
+ *
+ * \subsection query_async_coroutinescpp20 Query, asynchronous with C++20 coroutines
+ * This example demonstrates issuing text queries to the server and reading
+ * results, using C++20 coroutines (boost::asio::use_awaitable).
+ * \include query_async_coroutinescpp20.cpp
  *
  * \subsection prepared_statements Prepared statements
  * This example demonstrates preparing statements, executing them

@@ -37,11 +37,11 @@ void boost::mysql::detail::quit_connection(
 )
 {
     compose_quit(chan);
-    chan.write(boost::asio::buffer(chan.shared_buffer()), code);
+    chan.write(chan.shared_buffer(), code);
 }
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     boost::mysql::detail::quit_connection_signature
 )
@@ -53,7 +53,7 @@ boost::mysql::detail::async_quit_connection(
 {
     compose_quit(chan);
     return chan.async_write(
-        boost::asio::buffer(chan.shared_buffer()),
+        chan.shared_buffer(),
         std::forward<CompletionToken>(token)
     );
 }

@@ -27,7 +27,7 @@ void execute_query(
 );
 
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
 async_execute_query(
     channel<StreamType>& chan,
     std::string_view query,

@@ -23,11 +23,6 @@ using deserialize_row_fn = error_code (*)(
     std::vector<value>&
 );
 
-using empty_signature = void(error_code);
-
-template <typename T>
-using r_handler_signature = void(error_code, T);
-
 } // detail
 } // mysql
 } // boost

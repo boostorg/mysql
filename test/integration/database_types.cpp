@@ -552,27 +552,27 @@ INSTANTIATE_TEST_SUITE_P(YEAR, DatabaseTypesTest, Values(
 
 INSTANTIATE_TEST_SUITE_P(STRING, DatabaseTypesTest, Values(
     database_types_testcase("types_string", "field_char", "regular", "test_char", field_type::char_),
-    database_types_testcase("types_string", "field_char", "utf8", u8"\u00F1", field_type::char_),
+    database_types_testcase("types_string", "field_char", "utf8", "\xc3\xb1", field_type::char_),
     database_types_testcase("types_string", "field_char", "empty", "", field_type::char_),
 
     database_types_testcase("types_string", "field_varchar", "regular", "test_varchar", field_type::varchar),
-    database_types_testcase("types_string", "field_varchar", "utf8", u8"\u00D1", field_type::varchar),
+    database_types_testcase("types_string", "field_varchar", "utf8", "\xc3\x91", field_type::varchar),
     database_types_testcase("types_string", "field_varchar", "empty", "", field_type::varchar),
 
     database_types_testcase("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text),
-    database_types_testcase("types_string", "field_tinytext", "utf8", u8"\u00e1", field_type::text),
+    database_types_testcase("types_string", "field_tinytext", "utf8", "\xc3\xa1", field_type::text),
     database_types_testcase("types_string", "field_tinytext", "empty", "", field_type::text),
 
     database_types_testcase("types_string", "field_text", "regular", "test_text", field_type::text),
-    database_types_testcase("types_string", "field_text", "utf8", u8"\u00e9", field_type::text),
+    database_types_testcase("types_string", "field_text", "utf8", "\xc3\xa9", field_type::text),
     database_types_testcase("types_string", "field_text", "empty", "", field_type::text),
 
     database_types_testcase("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text),
-    database_types_testcase("types_string", "field_mediumtext", "utf8", u8"\u00ed", field_type::text),
+    database_types_testcase("types_string", "field_mediumtext", "utf8", "\xc3\xad", field_type::text),
     database_types_testcase("types_string", "field_mediumtext", "empty", "", field_type::text),
 
     database_types_testcase("types_string", "field_longtext", "regular", "test_longtext", field_type::text),
-    database_types_testcase("types_string", "field_longtext", "utf8", u8"\u00f3", field_type::text),
+    database_types_testcase("types_string", "field_longtext", "utf8", "\xc3\xb3", field_type::text),
     database_types_testcase("types_string", "field_longtext", "empty", "", field_type::text),
 
     database_types_testcase("types_string", "field_enum", "regular", "red", field_type::enum_),

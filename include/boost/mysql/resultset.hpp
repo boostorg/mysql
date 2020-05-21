@@ -14,7 +14,6 @@
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/auxiliar/bytestring.hpp"
 #include "boost/mysql/detail/network_algorithms/common.hpp" // deserialize_row_fn
-#include "boost/mysql/detail/auxiliar/async_result_macro.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <cassert>
@@ -75,7 +74,12 @@ class resultset
     detail::bytestring buffer_;
     detail::ok_packet ok_packet_;
     bool eof_received_ {false};
-public:
+
+    struct fetch_one_op;
+    struct fetch_many_op;
+    struct fetch_many_op_impl;
+
+  public:
     /// Default constructor.
     resultset(): channel_(nullptr) {};
 
@@ -84,6 +88,12 @@ public:
         deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
     resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
         channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
+
+    /// The executor type associated to the object.
+    using executor_type = typename channel_type::executor_type;
+
+    /// Retrieves the executor associated to the object.
+    executor_type get_executor() { assert(channel_); return channel_->get_executor(); }
 
     /// Retrieves the stream object associated with the underlying connection.
     StreamType& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }
@@ -138,24 +148,24 @@ public:
     using fetch_one_signature = void(error_code, const row*);
 
     /// Fetchs a single row (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_one_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(fetch_one_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, fetch_one_signature)
     async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
 
     /// Handler signature for resultset::async_fetch_many.
     using fetch_many_signature = void(error_code, std::vector<owning_row>);
 
     /// Fetches at most count rows (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_many_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(fetch_many_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, fetch_many_signature)
     async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
 
     /// Handler signature for resultset::async_fetch_all.
     using fetch_all_signature = void(error_code, std::vector<owning_row>);
 
     /// Fetches all available rows (async version).
-    template <typename CompletionToken>
-    BOOST_MYSQL_INITFN_RESULT_TYPE(CompletionToken, fetch_all_signature)
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(fetch_all_signature) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, fetch_all_signature)
     async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
 
     /**
