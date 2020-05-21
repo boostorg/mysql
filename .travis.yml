@@ -8,10 +8,7 @@
 __linux_addons_defaults: &__linux_addons_defaults
   apt:
     update: true
-    sources:
-      - sourceline: 'ppa:mhier/libboost-latest'
     packages:
-      - boost1.70
       - python3
       - valgrind
       - lcov

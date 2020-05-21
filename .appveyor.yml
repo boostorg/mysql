@@ -16,6 +16,12 @@ matrix:
   fast_finish: true
 
 build_script:
+  - mkdir C:\boost_1_73_0
+  - git clone https://github.com/anarthal/boost-unix-mirror.git boost-latest
+  - cd boost-latest
+  - .\bootstrap.bat --prefix=C:\boost_1_73_0
+  - .\b2 --prefix=C:\boost_1_73_0 --with-system --with-context --with-coroutine --with-date_time -d0 install
+  - cd ..
   - cp ci\ca-cert.pem C:\
   - cp ci\server-cert.pem C:\
   - cp ci\server-key.pem C:\

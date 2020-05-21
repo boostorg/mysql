@@ -6,6 +6,36 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+# Get latest cmake
+function get_cmake {
+    CMAKE_ROOT=/opt/cmake-latest
+    sudo mkdir $CMAKE_ROOT
+    sudo chmod 777 $CMAKE_ROOT
+    wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
+    mkdir -p $CMAKE_ROOT
+    bash cmake-latest.sh --prefix=$CMAKE_ROOT --skip-license
+    export PATH=$CMAKE_ROOT/bin:$PATH
+}
+
+# Build latest boost
+function build_boost {
+    BOOST_ROOT=/opt/boost_1_73_0
+    sudo mkdir $BOOST_ROOT
+    sudo chmod 777 $BOOST_ROOT
+    git clone https://github.com/anarthal/boost-unix-mirror.git boost-latest
+    cd boost-latest
+    ./bootstrap.sh --prefix=$BOOST_ROOT
+    ./b2 --prefix=$BOOST_ROOT \
+         --with-system \
+         --with-context \
+         --with-coroutine \
+         --with-date_time \
+         -d0 \
+         toolset=$TRAVIS_COMPILER \
+         install
+    cd ..
+    export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
+}
 
 # SHA256 functionality is only supported in MySQL 8+. From our
 # CI systems, only OSX has this version.
@@ -24,12 +54,10 @@ if [ $TRAVIS_OS_NAME == "osx" ]; then
 else
     sudo cp ci/unix-ci.cnf /etc/mysql/conf.d/
     sudo service mysql restart
-    wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
-    mkdir -p /tmp/cmake-latest
-    bash cmake-latest.sh --prefix=/tmp/cmake-latest --skip-license
-    export PATH=/tmp/cmake-latest/bin:$PATH
+    get_cmake # OSX cmake is good enough
 fi
 
+build_boost
 
 mkdir -p build
 cd build
