@@ -102,7 +102,7 @@ boost::mysql::connection<Stream>::async_query(
 )
 {
     detail::conditional_clear(info);
-    detail::check_completion_token<CompletionToken, query_signature>();
+    //detail::check_completion_token<CompletionToken, query_signature>();
     return detail::async_execute_query(
         channel_,
         query_string,

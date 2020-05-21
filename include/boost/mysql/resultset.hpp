@@ -81,6 +81,7 @@ class resultset
     struct fetch_many_op_impl;
 
   public:
+    using executor_type = typename channel_type::executor_type;
     /// Default constructor.
     resultset(): channel_(nullptr) {};
 
@@ -89,6 +90,8 @@ class resultset
         deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
     resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
         channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
+
+    executor_type get_executor() {assert(channel_);return channel_->get_executor();}
 
     /// Retrieves the stream object associated with the underlying connection.
     StreamType& next_layer() noexcept { assert(channel_); return channel_->next_layer(); }

@@ -77,7 +77,7 @@ struct connect_op : async_op<StreamType>
           {
             this->get_output_info()->set_message("Physical connect failed");
           }
-          this->complete(self, code);
+          self.complete(code);
           BOOST_ASIO_CORO_YIELD break;
         }
 
@@ -92,7 +92,7 @@ struct connect_op : async_op<StreamType>
         {
           this->get_channel().close();
         }
-        this->complete(self, code);
+        self.complete(code);
       }
   }
 };

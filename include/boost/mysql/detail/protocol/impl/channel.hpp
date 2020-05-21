@@ -258,7 +258,7 @@ struct
     // Error checking
     if (code)
     {
-      this->complete(self, code);
+      self.complete(code);
       return;
     }
 
@@ -278,7 +278,7 @@ struct
           code = chan.process_header_read(size_to_read);
           if (code)
           {
-            this->complete(self, code);
+            self.complete(code);
             BOOST_ASIO_CORO_YIELD break;
           }
 
@@ -295,7 +295,7 @@ struct
           total_transferred_size_ += bytes_transferred;
         } while (bytes_transferred == MAX_PACKET_SIZE);
 
-        this->complete(self, error_code());
+        self.complete(error_code());
       }
   }
 };
@@ -348,7 +348,7 @@ struct
     // Error handling
     if (code)
     {
-      this->complete(self, code);
+      self.complete(code);
       return;
     }
 
@@ -375,7 +375,7 @@ struct
 
         } while (total_transferred_size_ < buffer_.size());
 
-        this->complete(self, error_code());
+        self.complete(error_code());
       }
   }
 };

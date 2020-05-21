@@ -69,7 +69,11 @@ class channel
     struct read_op;
     struct write_op;
 public:
+    using executor_type = typename Stream::executor_type;
+
     channel(Stream& stream): stream_(stream) {}
+
+    executor_type get_executor() {return stream_.get_executor();}
 
     // Reading
     void read(bytestring& buffer, error_code& code);
@@ -155,10 +159,10 @@ public:
 
      // Reads from channel against the channel internal buffer, using itself as
     template<class Self>
-    void async_read(Self& self) { async_read(self, channel_.shared_buffer()); }
+    void async_read(Self&& self) { async_read(std::move(self), channel_.shared_buffer()); }
 
     template<class Self>
-    void async_read(Self& self, bytestring& buff)
+    void async_read(Self&& self, bytestring& buff)
     {
         channel_.async_read(
             buff,
@@ -167,7 +171,7 @@ public:
     }
 
     template<class Self>
-    void async_write(Self& self, const bytestring& buff)
+    void async_write(Self&& self, const bytestring& buff)
     {
         channel_.async_write(
             boost::asio::buffer(buff),
@@ -176,7 +180,7 @@ public:
     }
 
     template <class Self>
-    void async_write(Self& self) { async_write(self, channel_.shared_buffer()); }
+    void async_write(Self&& self) { async_write(std::move(self), channel_.shared_buffer()); }
 };
 
 

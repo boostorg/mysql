@@ -222,7 +222,7 @@ struct execute_generic_op : async_op<StreamType>
     // Error checking
     if (err)
     {
-      this->complete(self, err, resultset<StreamType>());
+      self.complete(err, resultset<StreamType>());
       return;
     }
 
@@ -241,7 +241,7 @@ struct execute_generic_op : async_op<StreamType>
         if (err)
         {
           conditional_assign(this->get_output_info(), std::move(info));
-          this->complete(self, err, resultset<StreamType>());
+          self.complete(err, resultset<StreamType>());
           BOOST_ASIO_CORO_YIELD break;
         }
         remaining_fields_ = processor_->field_count();
@@ -256,7 +256,7 @@ struct execute_generic_op : async_op<StreamType>
           err = processor_->process_field_definition();
           if (err)
           {
-            this->complete(self, err, resultset<StreamType>());
+            self.complete(err, resultset<StreamType>());
             BOOST_ASIO_CORO_YIELD break;
           }
 
@@ -264,10 +264,9 @@ struct execute_generic_op : async_op<StreamType>
         }
 
         // No EOF packet is expected here, as we require deprecate EOF capabilities
-        this->complete(
-            self,
+        self.complete(
             error_code(),
-            resultset_type(std::move(*processor_).create_resultset())
+            resultset<StreamType>(std::move(*processor_).create_resultset())
         );
       }
   }

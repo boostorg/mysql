@@ -134,7 +134,7 @@ struct read_row_op : async_op<StreamType>
     // Error checking
     if (err)
     {
-      this->complete(self, err, result);
+      self.complete(err, result);
       return;
     }
 
@@ -156,7 +156,7 @@ struct read_row_op : async_op<StreamType>
             info
         );
         detail::conditional_assign(this->get_output_info(), std::move(info));
-        this->complete(self, err, result);
+        self.complete(err, result);
       }
   }
 };

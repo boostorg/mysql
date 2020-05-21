@@ -148,7 +148,7 @@ struct boost::mysql::resultset<StreamType>::fetch_one_op : detail::async_op<Stre
         {
           // ensure return as if by post
           BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-          this->complete(self, error_code(), nullptr);
+          self.complete(error_code(), nullptr);
           BOOST_ASIO_CORO_YIELD break;
         }
         BOOST_ASIO_CORO_YIELD detail::async_read_row(
@@ -162,8 +162,7 @@ struct boost::mysql::resultset<StreamType>::fetch_one_op : detail::async_op<Stre
                           this->get_output_info()
                       );
         resultset_.eof_received_ = result == detail::read_row_result::eof;
-        this->complete(
-            self,
+        self.complete(
             err,
             result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
         );
@@ -215,7 +214,7 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op_impl
 };
 
 template<typename StreamType>
-struct boost::mysql::resultset<StreamType>::fetch_many_op
+struct boost::mysql::resultset<StreamType>::fetch_many_op : detail::async_op<StreamType>
 {
   std::shared_ptr<fetch_many_op_impl> impl_;
   bool cont_ = false;
@@ -253,7 +252,7 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op
                         );
           if (result == detail::read_row_result::error)
           {
-            this->complete(self, err, std::move(impl_->rows));
+            self.complete(err, std::move(impl_->rows));
             BOOST_ASIO_CORO_YIELD break;
           }
           else if (result == detail::read_row_result::eof)
@@ -272,7 +271,7 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op
                 std::move(self), err));
         }
 
-        this->complete(self, err, std::move(impl_->rows));
+        self.complete(err, std::move(impl_->rows));
       }
   }
 };

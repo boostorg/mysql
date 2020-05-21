@@ -348,7 +348,7 @@ struct handshake_op : async_op<StreamType>
     // Error checking
     if (err)
     {
-      self.complete(self, err);
+      self.complete(err);
       return;
     }
 
