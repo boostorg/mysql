@@ -51,7 +51,10 @@ boost::mysql::connection<Stream>::async_handshake(
 )
 {
     detail::conditional_clear(info);
-    detail::check_completion_token<CompletionToken, handshake_signature>();
+
+    // consider using: BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)
+//    detail::check_completion_token<CompletionToken, handshake_signature>();
+
     return detail::async_handshake(
         channel_,
         params,

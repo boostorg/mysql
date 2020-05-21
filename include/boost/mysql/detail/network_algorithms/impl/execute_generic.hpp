@@ -191,6 +191,91 @@ void boost::mysql::detail::execute_generic(
     output = std::move(processor).create_resultset();
 }
 
+namespace boost {
+namespace mysql {
+namespace detail {
+
+template<class StreamType, class Serializable>
+struct execute_generic_op : async_op<StreamType>
+{
+  std::shared_ptr<execute_processor<StreamType>> processor_;
+  std::uint64_t remaining_fields_ {0};
+
+  execute_generic_op(
+    channel<StreamType>& chan,
+    error_info* output_info,
+    deserialize_row_fn deserializer,
+    const Serializable& request
+  ) :
+  async_op<StreamType>(chan, output_info),
+  processor_(std::make_shared<execute_processor<StreamType>>(deserializer, chan))
+  {
+    processor_->process_request(request);
+  }
+
+  template<class Self>
+  void operator()(
+      Self& self,
+      error_code err = {}
+  )
+  {
+    // Error checking
+    if (err)
+    {
+      this->complete(self, err, resultset<StreamType>());
+      return;
+    }
+
+    // Non-error path
+    error_info info;
+    BOOST_ASIO_CORO_REENTER(*this)
+      {
+        // The request message has already been composed in the ctor. Send it
+        BOOST_ASIO_CORO_YIELD this->async_write(std::move(self), processor_->get_buffer());
+
+        // Read the response
+        BOOST_ASIO_CORO_YIELD this->async_read(std::move(self), processor_->get_buffer());
+
+        // Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
+        processor_->process_response(err, info);
+        if (err)
+        {
+          conditional_assign(this->get_output_info(), std::move(info));
+          this->complete(self, err, resultset<StreamType>());
+          BOOST_ASIO_CORO_YIELD break;
+        }
+        remaining_fields_ = processor_->field_count();
+
+        // Read all of the field definitions
+        while (remaining_fields_ > 0)
+        {
+          // Read the field definition packet
+          BOOST_ASIO_CORO_YIELD this->async_read(std::move(self), processor_->get_buffer());
+
+          // Process the message
+          err = processor_->process_field_definition();
+          if (err)
+          {
+            this->complete(self, err, resultset<StreamType>());
+            BOOST_ASIO_CORO_YIELD break;
+          }
+
+          remaining_fields_--;
+        }
+
+        // No EOF packet is expected here, as we require deprecate EOF capabilities
+        this->complete(
+            self,
+            error_code(),
+            resultset_type(std::move(*processor_).create_resultset())
+        );
+      }
+  }
+};
+
+}
+}
+}
 
 template <typename StreamType, typename Serializable, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
@@ -206,87 +291,16 @@ boost::mysql::detail::async_execute_generic(
 )
 {
     using handler_signature = execute_generic_signature<StreamType>;
-    using resultset_type = resultset<StreamType>;
+//    using resultset_type = resultset<StreamType>;
 
-    struct op : async_op<StreamType, CompletionToken, handler_signature, op>
-    {
-        std::shared_ptr<execute_processor<StreamType>> processor_;
-        std::uint64_t remaining_fields_ {0};
+    return boost::asio::async_compose<CompletionToken, handler_signature>(
+        execute_generic_op<StreamType, Serializable>{
+            chan, info, deserializer, request
+        },
+        token, chan);
 
-        op(
-            boost::asio::async_completion<CompletionToken, handler_signature>& initiator,
-            channel<StreamType>& chan,
-            error_info* output_info,
-            deserialize_row_fn deserializer,
-            const Serializable& request
-        ) :
-            async_op<StreamType, CompletionToken, handler_signature, op>(initiator, chan, output_info),
-            processor_(std::make_shared<execute_processor<StreamType>>(deserializer, chan))
-        {
-            processor_->process_request(request);
-        }
-
-        void operator()(
-            error_code err,
-            bool cont=true
-        )
-        {
-            // Error checking
-            if (err)
-            {
-                this->complete(cont, err, resultset_type());
-                return;
-            }
-
-            // Non-error path
-            error_info info;
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // The request message has already been composed in the ctor. Send it
-                BOOST_ASIO_CORO_YIELD this->async_write(processor_->get_buffer());
-
-                // Read the response
-                BOOST_ASIO_CORO_YIELD this->async_read(processor_->get_buffer());
-
-                // Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
-                processor_->process_response(err, info);
-                if (err)
-                {
-                    conditional_assign(this->get_output_info(), std::move(info));
-                    this->complete(cont, err, resultset_type());
-                    BOOST_ASIO_CORO_YIELD break;
-                }
-                remaining_fields_ = processor_->field_count();
-
-                // Read all of the field definitions
-                while (remaining_fields_ > 0)
-                {
-                    // Read the field definition packet
-                    BOOST_ASIO_CORO_YIELD this->async_read(processor_->get_buffer());
-
-                    // Process the message
-                    err = processor_->process_field_definition();
-                    if (err)
-                    {
-                        this->complete(cont, err, resultset_type());
-                        BOOST_ASIO_CORO_YIELD break;
-                    }
-
-                    remaining_fields_--;
-                }
-
-                // No EOF packet is expected here, as we require deprecate EOF capabilities
-                this->complete(
-                    cont,
-                    error_code(),
-                    resultset_type(std::move(*processor_).create_resultset())
-                );
-            }
-        }
-    };
-
-    return op::initiate(std::forward<CompletionToken>(token),
-            chan, info, deserializer, request);
+//    return op::initiate(std::forward<CompletionToken>(token),
+//            chan, info, deserializer, request);
 }
 
 

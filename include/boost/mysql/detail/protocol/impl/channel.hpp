@@ -10,6 +10,7 @@
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/asio/compose.hpp>
 #include <cassert>
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
@@ -229,6 +230,75 @@ void boost::mysql::detail::channel<Stream>::write(
     } while (transferred_size < bufsize);
 }
 
+template<class Stream>
+struct
+    boost::mysql::detail::channel<Stream>::
+        read_op : async_op<Stream>
+{
+  bytestring& buffer_;
+  std::size_t total_transferred_size_ = 0;
+
+  read_op(
+      channel<Stream>& chan,
+  error_info* output_info,
+      bytestring& buffer
+  ) :
+  async_op<Stream>(chan, output_info),
+  buffer_(buffer)
+  {
+  }
+
+  template<class Self>
+  void operator()(
+      Self& self,
+      error_code code = {},
+      std::size_t bytes_transferred=0
+  )
+  {
+    // Error checking
+    if (code)
+    {
+      this->complete(self, code);
+      return;
+    }
+
+    // Non-error path
+    std::uint32_t size_to_read = 0;
+    channel<Stream>& chan = this->get_channel();
+    BOOST_ASIO_CORO_REENTER(*this)
+      {
+        do
+        {
+          BOOST_ASIO_CORO_YIELD chan.async_read_impl(
+                            boost::asio::buffer(chan.header_buffer_),
+                            std::move(self)
+                        );
+          valgrind_make_mem_defined(boost::asio::buffer(chan.header_buffer_));
+
+          code = chan.process_header_read(size_to_read);
+          if (code)
+          {
+            this->complete(self, code);
+            BOOST_ASIO_CORO_YIELD break;
+          }
+
+          buffer_.resize(buffer_.size() + size_to_read);
+
+          BOOST_ASIO_CORO_YIELD chan.async_read_impl(
+                            boost::asio::buffer(buffer_.data() + total_transferred_size_, size_to_read),
+                            std::move(self)
+                        );
+          valgrind_make_mem_defined(
+              boost::asio::buffer(buffer_.data() + total_transferred_size_, bytes_transferred)
+          );
+
+          total_transferred_size_ += bytes_transferred;
+        } while (bytes_transferred == MAX_PACKET_SIZE);
+
+        this->complete(self, error_code());
+      }
+  }
+};
 
 template <typename Stream>
 template <typename CompletionToken>
@@ -241,76 +311,74 @@ boost::mysql::detail::channel<Stream>::async_read(
     CompletionToken&& token
 )
 {
-    struct op : async_op<Stream, CompletionToken, read_signature, op>
-    {
-        bytestring& buffer_;
-        std::size_t total_transferred_size_ = 0;
-
-        op(
-            boost::asio::async_completion<CompletionToken, read_signature>& completion,
-            channel<Stream>& chan,
-            error_info* output_info,
-            bytestring& buffer
-        ) :
-            async_op<Stream, CompletionToken, read_signature, op>(completion, chan, output_info),
-            buffer_(buffer)
-        {
-        }
-
-        void operator()(
-            error_code code,
-            std::size_t bytes_transferred=0,
-            bool cont=true
-        )
-        {
-            // Error checking
-            if (code)
-            {
-                this->complete(cont, code);
-                return;
-            }
-
-            // Non-error path
-            std::uint32_t size_to_read = 0;
-            channel<Stream>& chan = this->get_channel();
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                do
-                {
-                    BOOST_ASIO_CORO_YIELD chan.async_read_impl(
-                        boost::asio::buffer(chan.header_buffer_),
-                        std::move(*this)
-                    );
-                    valgrind_make_mem_defined(boost::asio::buffer(chan.header_buffer_));
-
-                    code = chan.process_header_read(size_to_read);
-                    if (code)
-                    {
-                        this->complete(cont, code);
-                        BOOST_ASIO_CORO_YIELD break;
-                    }
-
-                    buffer_.resize(buffer_.size() + size_to_read);
-
-                    BOOST_ASIO_CORO_YIELD chan.async_read_impl(
-                        boost::asio::buffer(buffer_.data() + total_transferred_size_, size_to_read),
-                        std::move(*this)
-                    );
-                    valgrind_make_mem_defined(
-                        boost::asio::buffer(buffer_.data() + total_transferred_size_, bytes_transferred)
-                    );
-
-                    total_transferred_size_ += bytes_transferred;
-                } while (bytes_transferred == MAX_PACKET_SIZE);
-
-                this->complete(cont, error_code());
-            }
-        }
-    };
-
     buffer.clear();
-    return op::initiate(std::forward<CompletionToken>(token), *this, nullptr, buffer);
+    return boost::asio::async_compose<
+        CompletionToken,
+        typename boost::mysql::detail::channel<Stream>::read_signature>(
+          read_op(*this, nullptr, buffer),
+          token, *this);
+//    return op::initiate(std::forward<CompletionToken>(token), *this, nullptr, buffer);
 }
+
+template<typename Stream>
+struct
+    boost::mysql::detail::channel<Stream>::
+        write_op : async_op<Stream>
+{
+  boost::asio::const_buffer buffer_;
+  std::size_t total_transferred_size_ = 0;
+
+  write_op(
+      channel<Stream>& chan,
+      error_info* output_info,
+      boost::asio::const_buffer buffer
+  ) :
+  async_op<Stream>(chan, output_info),
+  buffer_(buffer)
+  {
+  }
+
+  template<class Self>
+  void operator()(
+      Self& self,
+      error_code code = {},
+      std::size_t bytes_transferred=0
+  )
+  {
+    // Error handling
+    if (code)
+    {
+      this->complete(self, code);
+      return;
+    }
+
+    // Non-error path
+    std::uint32_t size_to_write;
+    channel<Stream>& chan = this->get_channel();
+    BOOST_ASIO_CORO_REENTER(*this)
+      {
+        // Force write the packet header on an empty packet, at least.
+        do
+        {
+          size_to_write = compute_size_to_write(buffer_.size(), total_transferred_size_);
+          chan.process_header_write(size_to_write);
+
+          BOOST_ASIO_CORO_YIELD chan.async_write_impl(
+                            std::array<boost::asio::const_buffer, 2> {
+                                boost::asio::buffer(chan.header_buffer_),
+                                boost::asio::buffer(buffer_ + total_transferred_size_, size_to_write)
+                            },
+                            std::move(self)
+                        );
+
+          total_transferred_size_ += (bytes_transferred - 4); // header size
+
+        } while (total_transferred_size_ < buffer_.size());
+
+        this->complete(self, error_code());
+      }
+  }
+};
 
 template <typename Stream>
 template <typename CompletionToken>
@@ -323,65 +391,10 @@ boost::mysql::detail::channel<Stream>::async_write(
     CompletionToken&& token
 )
 {
-    struct op : async_op<Stream, CompletionToken, write_signature, op>
-    {
-        boost::asio::const_buffer buffer_;
-        std::size_t total_transferred_size_ = 0;
-
-        op(
-            boost::asio::async_completion<CompletionToken, write_signature>& completion,
-            channel<Stream>& chan,
-            error_info* output_info,
-            boost::asio::const_buffer buffer
-        ) :
-            async_op<Stream, CompletionToken, write_signature, op>(completion, chan, output_info),
-            buffer_(buffer)
-        {
-        }
-
-        void operator()(
-            error_code code,
-            std::size_t bytes_transferred=0,
-            bool cont=true
-        )
-        {
-            // Error handling
-            if (code)
-            {
-                this->complete(cont, code);
-                return;
-            }
-
-            // Non-error path
-            std::uint32_t size_to_write;
-            channel<Stream>& chan = this->get_channel();
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Force write the packet header on an empty packet, at least.
-                do
-                {
-                    size_to_write = compute_size_to_write(buffer_.size(), total_transferred_size_);
-                    chan.process_header_write(size_to_write);
-
-                    BOOST_ASIO_CORO_YIELD chan.async_write_impl(
-                        std::array<boost::asio::const_buffer, 2> {
-                            boost::asio::buffer(chan.header_buffer_),
-                            boost::asio::buffer(buffer_ + total_transferred_size_, size_to_write)
-                        },
-                        std::move(*this)
-                    );
-
-                    total_transferred_size_ += (bytes_transferred - 4); // header size
-
-                } while (total_transferred_size_ < buffer_.size());
-
-                this->complete(cont, error_code());
-            }
-        }
-
-    };
-
-    return op::initiate(std::forward<CompletionToken>(token), *this, nullptr, buffer);
+  return boost::asio::async_compose<CompletionToken,
+                                    typename boost::mysql::detail::channel<Stream>::write_signature>
+      (write_op(*this, nullptr, buffer), token, *this);
+//    return op::initiate(std::forward<CompletionToken>(token), *this, nullptr, buffer);
 }
 
 template <typename Stream>

@@ -75,7 +75,12 @@ class resultset
     detail::bytestring buffer_;
     detail::ok_packet ok_packet_;
     bool eof_received_ {false};
-public:
+
+    struct fetch_one_op;
+    struct fetch_many_op;
+    struct fetch_many_op_impl;
+
+  public:
     /// Default constructor.
     resultset(): channel_(nullptr) {};
 

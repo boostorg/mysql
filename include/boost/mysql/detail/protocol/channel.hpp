@@ -65,6 +65,9 @@ class channel
 
     template <typename BufferSeq, typename CompletionToken>
     auto async_write_impl(BufferSeq&& buff, CompletionToken&& token);
+
+    struct read_op;
+    struct write_op;
 public:
     channel(Stream& stream): stream_(stream) {}
 
@@ -130,24 +133,18 @@ using async_op_base = boost::beast::async_base<
 // The base for async operations involving a channel
 // Defined here so it can also be used for channel function implementation
 template <
-    typename Stream,
-    typename CompletionToken,
-    typename HandlerSignature,
-    typename Derived // CRTP
+    typename Stream
 >
 class async_op :
-    public boost::asio::coroutine,
-    public async_op_base<Stream, CompletionToken, HandlerSignature>
+    public boost::asio::coroutine
 {
     channel<Stream>& channel_;
     error_info* output_info_;
 
-    using base_type = async_op_base<Stream, CompletionToken, HandlerSignature>;
+//    using base_type = async_op_base<Stream, CompletionToken, HandlerSignature>;
 public:
-    using async_completion_type = boost::asio::async_completion<CompletionToken, HandlerSignature>;
 
-    async_op(async_completion_type& initiator, channel<Stream>& chan, error_info* output_info) :
-        base_type(std::move(initiator.completion_handler), chan.next_layer().get_executor()),
+    async_op(channel<Stream>& chan, error_info* output_info) :
         channel_(chan),
         output_info_(output_info)
     {
@@ -156,39 +153,30 @@ public:
     channel<Stream>& get_channel() noexcept { return channel_; }
     error_info* get_output_info() noexcept { return output_info_; }
 
-    template <typename... Args>
-    static auto initiate(
-        CompletionToken&& token,
-        channel<Stream>& chan,
-        error_info* output_info,
-        Args&&... args
-    )
-    {
-        async_completion_type completion (token);
-        Derived op (completion, chan, output_info, std::forward<Args>(args)...);
-        op(error_code());
-        return completion.result.get();
-    }
+     // Reads from channel against the channel internal buffer, using itself as
+    template<class Self>
+    void async_read(Self& self) { async_read(self, channel_.shared_buffer()); }
 
-    // Reads from channel against the channel internal buffer, using itself as
-    void async_read() { async_read(channel_.shared_buffer()); }
-    void async_read(bytestring& buff)
+    template<class Self>
+    void async_read(Self& self, bytestring& buff)
     {
         channel_.async_read(
             buff,
-            std::move(static_cast<Derived&>(*this))
+            std::move(self)
         );
     }
 
-    void async_write(const bytestring& buff)
+    template<class Self>
+    void async_write(Self& self, const bytestring& buff)
     {
         channel_.async_write(
             boost::asio::buffer(buff),
-            std::move(static_cast<Derived&>(*this))
+            std::move(self)
         );
     }
 
-    void async_write() { async_write(channel_.shared_buffer()); }
+    template <class Self>
+    void async_write(Self& self) { async_write(self, channel_.shared_buffer()); }
 };
 
 

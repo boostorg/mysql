@@ -93,6 +93,75 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
     );
 }
 
+namespace boost{ namespace mysql { namespace detail {
+
+template<class StreamType>
+struct read_row_op : async_op<StreamType>
+{
+  deserialize_row_fn deserializer_;
+  const std::vector<field_metadata>& meta_;
+  bytestring& buffer_;
+  std::vector<value>& output_values_;
+  ok_packet& output_ok_packet_;
+
+  read_row_op(
+  channel<StreamType>& chan,
+      error_info* output_info,
+  deserialize_row_fn deserializer,
+  const std::vector<field_metadata>& meta,
+      bytestring& buffer,
+  std::vector<value>& output_values,
+      ok_packet& output_ok_packet
+  ) :
+  async_op<StreamType>(chan, output_info),
+  deserializer_(deserializer),
+  meta_(meta),
+  buffer_(buffer),
+  output_values_(output_values),
+  output_ok_packet_(output_ok_packet)
+  {
+  }
+
+  template<class Self>
+  void operator()(
+      Self& self,
+      error_code err = {}
+  )
+  {
+    error_info info;
+    read_row_result result = read_row_result::error;
+
+    // Error checking
+    if (err)
+    {
+      this->complete(self, err, result);
+      return;
+    }
+
+    // Normal path
+    BOOST_ASIO_CORO_REENTER(*this)
+      {
+        // Read the message
+        BOOST_ASIO_CORO_YIELD this->async_read(std::move(self), buffer_);
+
+        // Process it
+        result = process_read_message(
+            deserializer_,
+            this->get_channel().current_capabilities(),
+            meta_,
+            buffer_,
+            output_values_,
+            output_ok_packet_,
+            err,
+            info
+        );
+        detail::conditional_assign(this->get_output_info(), std::move(info));
+        this->complete(self, err, result);
+      }
+  }
+};
+
+}}}
 
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
@@ -110,81 +179,28 @@ boost::mysql::detail::async_read_row(
     error_info* output_info
 )
 {
-    struct op : async_op<StreamType, CompletionToken, read_row_signature, op>
-    {
-        deserialize_row_fn deserializer_;
-        const std::vector<field_metadata>& meta_;
-        bytestring& buffer_;
-        std::vector<value>& output_values_;
-        ok_packet& output_ok_packet_;
+    return boost::asio::async_compose<CompletionToken, read_row_signature>(
+        read_row_op(
+            chan,
+            output_info,
+            deserializer,
+            meta,
+            buffer,
+            output_values,
+            output_ok_packet
+            ), token, chan
+        );
 
-        op(
-            boost::asio::async_completion<CompletionToken, read_row_signature>& completion,
-            channel<StreamType>& chan,
-            error_info* output_info,
-            deserialize_row_fn deserializer,
-            const std::vector<field_metadata>& meta,
-            bytestring& buffer,
-            std::vector<value>& output_values,
-            ok_packet& output_ok_packet
-        ) :
-            async_op<StreamType, CompletionToken, read_row_signature, op>(completion, chan, output_info),
-            deserializer_(deserializer),
-            meta_(meta),
-            buffer_(buffer),
-            output_values_(output_values),
-            output_ok_packet_(output_ok_packet)
-        {
-        }
-
-        void operator()(
-            error_code err,
-            bool cont=true
-        )
-        {
-            error_info info;
-            read_row_result result = read_row_result::error;
-
-            // Error checking
-            if (err)
-            {
-                this->complete(cont, err, result);
-                return;
-            }
-
-            // Normal path
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Read the message
-                BOOST_ASIO_CORO_YIELD this->async_read(buffer_);
-
-                // Process it
-                result = process_read_message(
-                    deserializer_,
-                    this->get_channel().current_capabilities(),
-                    meta_,
-                    buffer_,
-                    output_values_,
-                    output_ok_packet_,
-                    err,
-                    info
-                );
-                detail::conditional_assign(this->get_output_info(), std::move(info));
-                this->complete(cont, err, result);
-            }
-        }
-    };
-
-    return op::initiate(
-        std::forward<CompletionToken>(token),
-        chan,
-        output_info,
-        deserializer,
-        meta,
-        buffer,
-        output_values,
-        output_ok_packet
-    );
+//    return op::initiate(
+//        std::forward<CompletionToken>(token),
+//        chan,
+//        output_info,
+//        deserializer,
+//        meta,
+//        buffer,
+//        output_values,
+//        output_ok_packet
+//    );
 }
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_IPP_ */
