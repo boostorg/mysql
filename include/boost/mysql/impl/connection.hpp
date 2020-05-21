@@ -234,7 +234,7 @@ boost::mysql::socket_connection<Stream>::async_connect(
 )
 {
     detail::conditional_clear(output_info);
-    detail::check_completion_token<CompletionToken, connect_signature>();
+//    detail::check_completion_token<CompletionToken, connect_signature>();
     return detail::async_connect(
         this->get_channel(),
         endpoint,

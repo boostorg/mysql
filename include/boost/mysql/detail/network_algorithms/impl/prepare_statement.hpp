@@ -104,6 +104,82 @@ void boost::mysql::detail::prepare_statement(
     output = prepared_statement<StreamType>(channel, processor.get_response());
 }
 
+namespace boost {
+namespace mysql {
+namespace detail {
+
+template<typename StreamType>
+struct prepare_statement_op : async_op<StreamType>
+{
+  prepare_statement_processor<StreamType> processor_;
+  unsigned remaining_meta_;
+
+  prepare_statement_op(
+    channel<StreamType>& chan,
+    error_info* output_info,
+    std::string_view statement
+  ) :
+  async_op<StreamType>(chan, output_info),
+  processor_(chan),
+      remaining_meta_(0)
+  {
+    processor_.process_request(statement);
+  }
+
+  template<class Self>
+  void operator()(
+      Self& self,
+      error_code err = {}
+  )
+  {
+    // Error checking
+    if (err)
+    {
+      this->complete(self, err, prepared_statement<StreamType>());
+      return;
+    }
+
+    // Regular coroutine body; if there has been an error, we don't get here
+    error_info info;
+    BOOST_ASIO_CORO_REENTER(*this)
+      {
+        // Write message (already serialized at this point)
+        BOOST_ASIO_CORO_YIELD this->async_write(std::move(self), processor_.get_buffer());
+
+        // Read response
+        BOOST_ASIO_CORO_YIELD this->async_read(std::move(self), processor_.get_buffer());
+
+        // Process response
+        processor_.process_response(err, info);
+        if (err)
+        {
+          detail::conditional_assign(this->get_output_info(), std::move(info));
+          this->complete(self, err, prepared_statement<StreamType>());
+          BOOST_ASIO_CORO_YIELD break;
+        }
+
+        // Server sends now one packet per parameter and field.
+        // We ignore these for now.
+        remaining_meta_ = processor_.get_num_metadata_packets();
+        for (; remaining_meta_ > 0; --remaining_meta_)
+        {
+          BOOST_ASIO_CORO_YIELD this->async_read(std::move(self), processor_.get_buffer());
+        }
+
+        // Compose response
+        this->complete(
+            self,
+            err,
+            prepared_statement<StreamType>(processor_.get_channel(), processor_.get_response())
+        );
+      }
+  }
+};
+
+}
+}
+}
+
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(
     CompletionToken,
@@ -117,76 +193,12 @@ boost::mysql::detail::async_prepare_statement(
 )
 {
     using handler_signature = prepare_statement_signature<StreamType>;
-    using stmt_type = prepared_statement<StreamType>;
+//    using stmt_type = prepared_statement<StreamType>;
 
-    struct op : async_op<StreamType, CompletionToken, handler_signature, op>
-    {
-        prepare_statement_processor<StreamType> processor_;
-        unsigned remaining_meta_;
+    return boost::asio::async_compose<CompletionToken, handler_signature>(
+        prepare_statement_op<StreamType>{chan, info, statement}, token, chan);
 
-        op(
-            boost::asio::async_completion<CompletionToken, handler_signature>& completion,
-            channel<StreamType>& chan,
-            error_info* output_info,
-            std::string_view statement
-        ) :
-            async_op<StreamType, CompletionToken, handler_signature, op>(completion, chan, output_info),
-            processor_(chan),
-            remaining_meta_(0)
-        {
-            processor_.process_request(statement);
-        }
-
-        void operator()(
-            error_code err,
-            bool cont=true
-        )
-        {
-            // Error checking
-            if (err)
-            {
-                this->complete(cont, err, stmt_type());
-                return;
-            }
-
-            // Regular coroutine body; if there has been an error, we don't get here
-            error_info info;
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Write message (already serialized at this point)
-                BOOST_ASIO_CORO_YIELD this->async_write(processor_.get_buffer());
-
-                // Read response
-                BOOST_ASIO_CORO_YIELD this->async_read(processor_.get_buffer());
-
-                // Process response
-                processor_.process_response(err, info);
-                if (err)
-                {
-                    detail::conditional_assign(this->get_output_info(), std::move(info));
-                    this->complete(cont, err, stmt_type());
-                    BOOST_ASIO_CORO_YIELD break;
-                }
-
-                // Server sends now one packet per parameter and field.
-                // We ignore these for now.
-                remaining_meta_ = processor_.get_num_metadata_packets();
-                for (; remaining_meta_ > 0; --remaining_meta_)
-                {
-                    BOOST_ASIO_CORO_YIELD this->async_read(processor_.get_buffer());
-                }
-
-                // Compose response
-                this->complete(
-                    cont,
-                    err,
-                    stmt_type(processor_.get_channel(), processor_.get_response())
-                );
-            }
-        }
-    };
-
-    return op::initiate(std::forward<CompletionToken>(token), chan, info, statement);
+    //    return op::initiate(std::forward<CompletionToken>(token), chan, info, statement);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_PREPARE_STATEMENT_HPP_ */
