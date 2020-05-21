@@ -41,7 +41,7 @@ struct close_op : async_op<StreamType>
   template<class Self>
   void operator()(
       Self& self,
-      error_code err
+      error_code err = {}
   )
   {
     error_code close_err;
@@ -50,7 +50,7 @@ struct close_op : async_op<StreamType>
         if (!this->get_channel().next_layer().is_open())
         {
           BOOST_ASIO_CORO_YIELD boost::asio::post(boost::beast::bind_front_handler(std::move(self)));
-          this->complete(self, error_code());
+          self.complete(error_code());
           BOOST_ASIO_CORO_YIELD break;
         }
 
@@ -62,7 +62,7 @@ struct close_op : async_op<StreamType>
                           this->get_output_info()
                       );
         close_err = this->get_channel().close();
-        this->complete(self, err ? err : close_err);
+        self.complete(err ? err : close_err);
       }
   }
 };
