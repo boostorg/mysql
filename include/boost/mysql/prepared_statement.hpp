@@ -68,6 +68,8 @@ class prepared_statement
 
     template <typename ForwardIterator>
     void check_num_params(ForwardIterator first, ForwardIterator last, error_code& err, error_info& info) const;
+
+    error_info& shared_info() noexcept { assert(channel_); return channel_->shared_info(); }
 public:
     /// Default constructor.
     prepared_statement() = default;
@@ -116,23 +118,52 @@ public:
         return execute(std::begin(params), std::end(params));
     }
 
-    /// The handler signature for prepared_statement::async_execute.
-    using execute_signature = void(error_code, resultset<Stream>);
-
     /**
-     * \brief Executes a statement (collection, sync with exceptions code version).
-     * \details It is **not** necessary to keep the collection of parameters or the
+     * \brief Executes a statement (collection, async without error_info version).
+     * \details The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
+     *
+     * It is **not** necessary to keep the collection of parameters or the
      * values they may point to alive.
      */
-    template <typename Collection, BOOST_ASIO_COMPLETION_TOKEN_FOR(execute_signature) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_signature)
-    async_execute(const Collection& params, CompletionToken&& token, error_info* info=nullptr)
+    template <
+        typename Collection,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+    async_execute(
+        const Collection& params,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
     {
         return async_execute(
             std::begin(params),
             std::end(params),
-            std::forward<CompletionToken>(token),
-            info
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// Executes a statement (collection, async with error_info version).
+    template <
+        typename Collection,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+    async_execute(
+        const Collection& params,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute(
+            std::begin(params),
+            std::end(params),
+            output_info,
+            std::forward<CompletionToken>(token)
         );
     }
 
@@ -152,14 +183,43 @@ public:
     resultset<Stream> execute(ForwardIterator params_first, ForwardIterator params_last);
 
     /**
-     * \brief Executes a statement (iterator, async version).
-     * \details The sequence [params_first, params_last) and the values that may be pointed
+     * \brief Executes a statement (iterator, async without error_info version).
+     * \details The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
+     *
+     * The sequence [params_first, params_last) and the values that may be pointed
      * by the elements of the sequence need **not** be kept alive.
      */
-    template <typename ForwardIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(execute_signature) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_signature)
-    async_execute(ForwardIterator params_first, ForwardIterator params_last,
-            CompletionToken&& token, error_info* info=nullptr);
+    template <
+        typename ForwardIterator,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+    async_execute(
+        ForwardIterator params_first,
+        ForwardIterator params_last,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute(params_first, params_last, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /// Executes a statement (iterator, async with error_info version).
+    template <
+        typename ForwardIterator,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+    async_execute(
+        ForwardIterator params_first,
+        ForwardIterator params_last,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
 
     /**
      * \brief Closes a prepared statement, deallocating it from the server (sync with error code version).
@@ -178,13 +238,43 @@ public:
     /// Closes a prepared statement, deallocating it from the server (sync with exceptions version).
     void close();
 
-    /// The handler signature for prepared_statement::async_close.
-    using close_signature = void(error_code);
+    /**
+     * \brief Closes a prepared statement, deallocating it from the server (async without error_info version).
+     * \details The handler signature for this operation is
+     * `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    {
+        return async_close(shared_info(), std::forward<CompletionToken>(token));
+    }
 
-    /// Closes a prepared statement, deallocating it from the server (async version).
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(close_signature) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, close_signature)
-    async_close(CompletionToken&& token, error_info* info=nullptr);
+    /// Closes a prepared statement, deallocating it from the server (async with error_info version).
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_close(
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /// Rebinds the prepared statement type to another executor.
+    template <typename Executor>
+    struct rebind_executor
+    {
+        /// The prepared statement type when rebound to the specified executor.
+        using other = prepared_statement<
+            typename Stream:: template rebind_executor<Executor>::other
+        >;
+    };
 };
 
 /**

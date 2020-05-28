@@ -85,6 +85,19 @@ target_compile_features(
     cxx_std_17
 )
 
+# If we're on MSVC, the value of the __cplusplus macro is incorrect.
+# We could fix it using /Zc:__cplusplus, but that breaks date.h
+# Asio detects default function template arguments using __cplusplus,
+# which are required for default completion tokens. This feature is
+# available on every C++11 or higher capable compiler. Force it.
+if (MSVC)
+    target_compile_definitions(
+        Boost_mysql
+        INTERFACE
+        BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
+    )
+endif()
+
 if (BOOST_MYSQL_VALGRIND_TESTS)
     target_link_libraries(
         Boost_mysql

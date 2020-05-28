@@ -243,27 +243,19 @@ template<class StreamType>
 struct handshake_op : boost::asio::coroutine
 {
     channel<StreamType>& chan_;
-    error_info* output_info_;
+    error_info& output_info_;
     handshake_processor processor_;
     auth_result auth_state_ {auth_result::invalid};
 
     handshake_op(
         channel<StreamType>& channel,
-        error_info* output_info,
+        error_info& output_info,
         const connection_params& params
     ) :
         chan_(channel),
         output_info_(output_info),
         processor_(params)
     {
-    }
-
-    template<class Self>
-    void complete(Self& self, error_code code, error_info&& info)
-    {
-        chan_.set_current_capabilities(processor_.negotiated_capabilities());
-        conditional_assign(output_info_, std::move(info));
-        self.complete(code);
     }
 
     template<class Self>
@@ -275,24 +267,24 @@ struct handshake_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            complete(self, err, error_info());
+            self.complete(err);
             return;
         }
 
         // Non-error path
-        error_info info;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Read server greeting
             BOOST_ASIO_CORO_YIELD chan_.async_read(chan_.shared_buffer(), std::move(self));
 
             // Process server greeting
-            err = processor_.process_handshake(chan_.shared_buffer(), info);
+            err = processor_.process_handshake(chan_.shared_buffer(), output_info_);
             if (err)
             {
-                complete(self, err, std::move(info));
+                self.complete(err);
                 BOOST_ASIO_CORO_YIELD break;
             }
+            chan_.set_current_capabilities(processor_.negotiated_capabilities());
 
             // SSL
             if (processor_.use_ssl())
@@ -318,11 +310,11 @@ struct handshake_op : boost::asio::coroutine
                 err = processor_.process_handshake_server_response(
                     chan_.shared_buffer(),
                     auth_state_,
-                    info
+                    output_info_
                 );
                 if (err)
                 {
-                    complete(self, err, std::move(info));
+                    self.complete(err);
                     BOOST_ASIO_CORO_YIELD break;
                 }
 
@@ -333,7 +325,7 @@ struct handshake_op : boost::asio::coroutine
                 }
             }
 
-            complete(self, error_code(), error_info());
+            self.complete(error_code());
         }
     }
 };
@@ -412,18 +404,18 @@ void boost::mysql::detail::handshake(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::handshake_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_handshake(
     channel<StreamType>& chan,
     const connection_params& params,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
     return boost::asio::async_compose<
         CompletionToken,
-        boost::mysql::detail::handshake_signature
+        void(error_code)
     >(
         handshake_op<StreamType>(chan, info, params),
         token,

@@ -36,10 +36,10 @@ using boost::mysql::owning_row;
  *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
  *     T = resultset<StreamType>).
  *
- * All asynchronous operations accept a last optional error_info* parameter. error_info
- * contains additional diagnostic information returned by the server. If you
- * pass a non-nullptr value, it will be populated in case of error if any extra information
- * is available.
+ * There are two overloads for all asynchronous operations. One accepts an output error_info&
+ * parameter right before the completion token. This error_info will be populated
+ * in case of error if any extra information provided by the server. The other overload
+ * does not have this error_info& parameter.
  *
  * Design note: handler signatures in Boost.Asio should have two parameters, at
  * most, and the first one should be an error_code - otherwise some of the asynchronous
@@ -87,61 +87,62 @@ public:
 
     void connect()
     {
-        connection.async_connect(ep, conn_params, [this](error_code err) {
+        connection.async_connect(ep, conn_params, additional_info, [this](error_code err) {
             die_on_error(err, additional_info);
             query_employees();
-        }, &additional_info);
+        });
     }
 
     void query_employees()
     {
         const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        connection.async_query(sql, [this](error_code err, tcp_resultset&& result) {
+        connection.async_query(sql, additional_info, [this](error_code err, tcp_resultset&& result) {
             die_on_error(err, additional_info);
             resultset = std::move(result);
-            resultset.async_fetch_all([this](error_code err, const std::vector<owning_row>& rows) {
+            resultset.async_fetch_all(additional_info, [this](error_code err, const std::vector<owning_row>& rows) {
                 die_on_error(err, additional_info);
                 for (const auto& employee: rows)
                 {
                     print_employee(employee);
                 }
                 update_slacker();
-            }, &additional_info);
-        }, &additional_info);
+            });
+        });
     }
 
     void update_slacker()
     {
         const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
-        connection.async_query(sql, [this](error_code err, [[maybe_unused]] tcp_resultset&& result) {
+        connection.async_query(sql, additional_info,
+                [this](error_code err, [[maybe_unused]] tcp_resultset&& result) {
             die_on_error(err, additional_info);
             assert(result.fields().size() == 0);
             query_intern();
-        }, &additional_info);
+        });
     }
 
     void query_intern()
     {
         const char* sql = "SELECT salary FROM employee WHERE last_name = 'Slacker'";
-        connection.async_query(sql, [this](error_code err, tcp_resultset&& result) {
+        connection.async_query(sql, additional_info, [this](error_code err, tcp_resultset&& result) {
             die_on_error(err, additional_info);
             resultset = std::move(result);
-            resultset.async_fetch_all([this](error_code err, const std::vector<owning_row>& rows) {
+            resultset.async_fetch_all(additional_info, [this](error_code err, const std::vector<owning_row>& rows) {
                 die_on_error(err, additional_info);
                 assert(rows.size() == 1);
                 [[maybe_unused]] auto salary = rows[0].values()[0].get<double>();
                 assert(salary == 15000);
                 close();
-            }, &additional_info);
-        }, &additional_info);
+            });
+        });
     }
 
     void close()
     {
         // Notify the MySQL server we want to quit and then close the socket
-        connection.async_close([this](error_code err) {
+        connection.async_close(additional_info, [this](error_code err) {
             die_on_error(err, additional_info);
-        }, &additional_info);
+        });
     }
 
     auto& context() { return ctx; }

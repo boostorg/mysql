@@ -23,31 +23,22 @@ namespace
 {
 
 template <typename Stream>
-class async_coroutine : public network_functions<Stream>
+class async_coroutine_errinfo : public network_functions<Stream>
 {
-    bool use_errinfo_;
-
     template <typename IoObj, typename Callable>
     auto impl(IoObj& obj, Callable&& cb) {
         using R = decltype(cb(
             std::declval<yield_context>(),
-            std::declval<error_info*>()
+            std::declval<error_info&>()
         ));
 
         std::promise<network_result<R>> prom;
 
-        boost::asio::spawn(obj.get_executor(), [&, this](yield_context yield) {
+        boost::asio::spawn(obj.get_executor(), [&](yield_context yield) {
             error_code ec = boost::mysql::detail::make_error_code(errc::no);
             error_info info ("error_info not cleared properly");
-            R result = cb(yield[ec], use_errinfo_ ? &info: nullptr);
-            if (use_errinfo_)
-            {
-                prom.set_value(network_result<R>(ec, std::move(info), std::move(result)));
-            }
-            else
-            {
-                prom.set_value(network_result<R>(ec, std::move(result)));
-            }
+            R result = cb(yield[ec], info);
+            prom.set_value(network_result<R>(ec, std::move(info), std::move(result)));
         });
 
         return prom.get_future().get();
@@ -58,10 +49,9 @@ public:
     using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
     using resultset_type = typename network_functions<Stream>::resultset_type;
 
-    async_coroutine(bool use_errinfo): use_errinfo_(use_errinfo) {}
     const char* name() const override
     {
-        return use_errinfo_ ? "async_coroutine_errinfo" : "async_coroutine_noerrinfo";
+        return "async_coroutine_errinfo";
     }
     network_result<no_result> connect(
         connection_type& conn,
@@ -69,8 +59,8 @@ public:
         const connection_params& params
     ) override
     {
-        return impl(conn, [&](yield_context yield, error_info* info) {
-            conn.async_connect(ep, params, yield, info);
+        return impl(conn, [&](yield_context yield, error_info& info) {
+            conn.async_connect(ep, params, info, yield);
             return no_result();
         });
     }
@@ -79,8 +69,8 @@ public:
         const connection_params& params
     ) override
     {
-        return impl(conn, [&](yield_context yield, error_info* info) {
-            conn.async_handshake(params, yield, info);
+        return impl(conn, [&](yield_context yield, error_info& info) {
+            conn.async_handshake(params, info, yield);
             return no_result();
         });
     }
@@ -89,8 +79,8 @@ public:
         std::string_view query
     ) override
     {
-        return impl(conn, [&](yield_context yield, error_info* info) {
-            return conn.async_query(query, yield, info);
+        return impl(conn, [&](yield_context yield, error_info& info) {
+            return conn.async_query(query, info, yield);
         });
     }
     network_result<prepared_statement_type> prepare_statement(
@@ -98,8 +88,8 @@ public:
         std::string_view statement
     ) override
     {
-        return impl(conn, [&](yield_context yield, error_info* info) {
-            return conn.async_prepare_statement(statement, yield, info);
+        return impl(conn, [&](yield_context yield, error_info& info) {
+            return conn.async_prepare_statement(statement, info, yield);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -108,8 +98,8 @@ public:
         value_list_it params_last
     ) override
     {
-        return impl(stmt, [&](yield_context yield, error_info* info) {
-            return stmt.async_execute(params_first, params_last, yield, info);
+        return impl(stmt, [&](yield_context yield, error_info& info) {
+            return stmt.async_execute(params_first, params_last, info, yield);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -117,16 +107,16 @@ public:
         const std::vector<value>& values
     ) override
     {
-        return impl(stmt, [&](yield_context yield, error_info* info) {
-            return stmt.async_execute(values, yield, info);
+        return impl(stmt, [&](yield_context yield, error_info& info) {
+            return stmt.async_execute(values, info, yield);
         });
     }
     network_result<no_result> close_statement(
         prepared_statement_type& stmt
     ) override
     {
-        return impl(stmt, [&](yield_context yield, error_info* info) {
-            stmt.async_close(yield, info);
+        return impl(stmt, [&](yield_context yield, error_info& info) {
+            stmt.async_close(info, yield);
             return no_result();
         });
     }
@@ -134,8 +124,8 @@ public:
         resultset_type& r
     ) override
     {
-        return impl(r, [&](yield_context yield, error_info* info) {
-            return r.async_fetch_one(yield, info);
+        return impl(r, [&](yield_context yield, error_info& info) {
+            return r.async_fetch_one(info, yield);
         });
     }
     network_result<std::vector<owning_row>> fetch_many(
@@ -143,24 +133,24 @@ public:
         std::size_t count
     ) override
     {
-        return impl(r, [&](yield_context yield, error_info* info) {
-            return r.async_fetch_many(count, yield, info);
+        return impl(r, [&](yield_context yield, error_info& info) {
+            return r.async_fetch_many(count, info, yield);
         });
     }
     network_result<std::vector<owning_row>> fetch_all(
         resultset_type& r
     ) override
     {
-        return impl(r, [&](yield_context yield, error_info* info) {
-            return r.async_fetch_all(yield, info);
+        return impl(r, [&](yield_context yield, error_info& info) {
+            return r.async_fetch_all(info, yield);
         });
     }
     network_result<no_result> quit(
         connection_type& conn
     ) override
     {
-        return impl(conn, [&](yield_context yield, error_info* info) {
-            conn.async_quit(yield, info);
+        return impl(conn, [&](yield_context yield, error_info& info) {
+            conn.async_quit(info, yield);
             return no_result();
         });
     }
@@ -168,8 +158,147 @@ public:
         connection_type& conn
     ) override
     {
-        return impl(conn, [&](yield_context yield, error_info* info) {
-            conn.async_close(yield, info);
+        return impl(conn, [&](yield_context yield, error_info& info) {
+            conn.async_close(info, yield);
+            return no_result();
+        });
+    }
+};
+
+template <typename Stream>
+class async_coroutine_noerrinfo : public network_functions<Stream>
+{
+    template <typename IoObj, typename Callable>
+    auto impl(IoObj& obj, Callable&& cb) {
+        using R = decltype(cb(std::declval<yield_context>()));
+
+        std::promise<network_result<R>> prom;
+
+        boost::asio::spawn(obj.get_executor(), [&](yield_context yield) {
+            error_code ec = boost::mysql::detail::make_error_code(errc::no);
+            R result = cb(yield[ec]);
+            prom.set_value(network_result<R>(ec, std::move(result)));
+        });
+
+        return prom.get_future().get();
+    }
+
+public:
+    using connection_type = typename network_functions<Stream>::connection_type;
+    using prepared_statement_type = typename network_functions<Stream>::prepared_statement_type;
+    using resultset_type = typename network_functions<Stream>::resultset_type;
+
+    const char* name() const override
+    {
+        return "async_coroutine_noerrinfo";
+    }
+    network_result<no_result> connect(
+        connection_type& conn,
+        const typename Stream::endpoint_type& ep,
+        const connection_params& params
+    ) override
+    {
+        return impl(conn, [&](yield_context yield) {
+            conn.async_connect(ep, params, yield);
+            return no_result();
+        });
+    }
+    network_result<no_result> handshake(
+        connection_type& conn,
+        const connection_params& params
+    ) override
+    {
+        return impl(conn, [&](yield_context yield) {
+            conn.async_handshake(params, yield);
+            return no_result();
+        });
+    }
+    network_result<resultset_type> query(
+        connection_type& conn,
+        std::string_view query
+    ) override
+    {
+        return impl(conn, [&](yield_context yield) {
+            return conn.async_query(query, yield);
+        });
+    }
+    network_result<prepared_statement_type> prepare_statement(
+        connection_type& conn,
+        std::string_view statement
+    ) override
+    {
+        return impl(conn, [&](yield_context yield) {
+            return conn.async_prepare_statement(statement, yield);
+        });
+    }
+    network_result<resultset_type> execute_statement(
+        prepared_statement_type& stmt,
+        value_list_it params_first,
+        value_list_it params_last
+    ) override
+    {
+        return impl(stmt, [&](yield_context yield) {
+            return stmt.async_execute(params_first, params_last, yield);
+        });
+    }
+    network_result<resultset_type> execute_statement(
+        prepared_statement_type& stmt,
+        const std::vector<value>& values
+    ) override
+    {
+        return impl(stmt, [&](yield_context yield) {
+            return stmt.async_execute(values, yield);
+        });
+    }
+    network_result<no_result> close_statement(
+        prepared_statement_type& stmt
+    ) override
+    {
+        return impl(stmt, [&](yield_context yield) {
+            stmt.async_close(yield);
+            return no_result();
+        });
+    }
+    network_result<const row*> fetch_one(
+        resultset_type& r
+    ) override
+    {
+        return impl(r, [&](yield_context yield) {
+            return r.async_fetch_one(yield);
+        });
+    }
+    network_result<std::vector<owning_row>> fetch_many(
+        resultset_type& r,
+        std::size_t count
+    ) override
+    {
+        return impl(r, [&](yield_context yield) {
+            return r.async_fetch_many(count, yield);
+        });
+    }
+    network_result<std::vector<owning_row>> fetch_all(
+        resultset_type& r
+    ) override
+    {
+        return impl(r, [&](yield_context yield) {
+            return r.async_fetch_all(yield);
+        });
+    }
+    network_result<no_result> quit(
+        connection_type& conn
+    ) override
+    {
+        return impl(conn, [&](yield_context yield) {
+            conn.async_quit(yield);
+            return no_result();
+        });
+    }
+    network_result<no_result> close(
+        connection_type& conn
+    ) override
+    {
+        return impl(conn, [&](yield_context yield) {
+            conn.async_close(yield);
             return no_result();
         });
     }
@@ -181,14 +310,14 @@ public:
 template <typename Stream>
 network_functions<Stream>* boost::mysql::test::async_coroutine_errinfo_functions()
 {
-    static async_coroutine<Stream> res (true);
+    static async_coroutine_errinfo<Stream> res;
     return &res;
 }
 
 template <typename Stream>
 network_functions<Stream>* boost::mysql::test::async_coroutine_noerrinfo_functions()
 {
-    static async_coroutine<Stream> res (false);
+    static async_coroutine_noerrinfo<Stream> res;
     return &res;
 }
 

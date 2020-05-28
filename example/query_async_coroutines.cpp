@@ -33,10 +33,10 @@ using boost::mysql::error_info;
  *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
  *     T = resultset<StreamType>).
  *
- * All asynchronous operations accept a last optional error_info* parameter. error_info
- * contains additional diagnostic information returned by the server. If you
- * pass a non-nullptr value, it will be populated in case of error if any extra information
- * is available.
+ * There are two overloads for all asynchronous operations. One accepts an output error_info&
+ * parameter right before the completion token. This error_info will be populated
+ * in case of error if any extra information provided by the server. The other overload
+ * does not have this error_info& parameter.
  *
  * Design note: handler signatures in Boost.Asio should have two parameters, at
  * most, and the first one should be an error_code - otherwise some of the asynchronous
@@ -109,12 +109,12 @@ void main_impl(int argc, char** argv)
         boost::mysql::error_info additional_info;
 
         // Connect to server
-        conn.async_connect(ep, params, yield[ec]);
+        conn.async_connect(ep, params, additional_info, yield[ec]);
         check_error(ec);
 
         // Issue the query to the server
         const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        boost::mysql::tcp_resultset result = conn.async_query(sql, yield[ec], &additional_info);
+        boost::mysql::tcp_resultset result = conn.async_query(sql, additional_info, yield[ec]);
         check_error(ec, additional_info);
 
         /**
@@ -126,14 +126,14 @@ void main_impl(int argc, char** argv)
          */
         while (true)
         {
-            const boost::mysql::row* row = result.async_fetch_one(yield[ec], &additional_info);
+            const boost::mysql::row* row = result.async_fetch_one(additional_info, yield[ec]);
             check_error(ec, additional_info);
             if (!row) break; // No more rows available
             print_employee(*row);
         }
 
         // Notify the MySQL server we want to quit, then close the underlying connection.
-        conn.async_close(yield[ec], &additional_info);
+        conn.async_close(additional_info, yield[ec]);
         check_error(ec, additional_info);
     });
 

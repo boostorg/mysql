@@ -37,9 +37,9 @@ template<class StreamType>
 struct close_connection_op : boost::asio::coroutine
 {
     channel<StreamType>& chan_;
-    error_info* output_info_;
+    error_info& output_info_;
 
-    close_connection_op(channel<StreamType>& chan, error_info* output_info) :
+    close_connection_op(channel<StreamType>& chan, error_info& output_info) :
         chan_(chan),
         output_info_(output_info)
     {
@@ -81,17 +81,17 @@ struct close_connection_op : boost::asio::coroutine
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::close_connection_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_close_connection(
     channel<StreamType>& chan,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
     return boost::asio::async_compose<
         CompletionToken,
-        close_connection_signature
+        void(boost::mysql::error_code)
     >(close_connection_op<StreamType>{chan, info}, token, chan);
 }
 

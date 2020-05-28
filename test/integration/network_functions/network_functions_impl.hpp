@@ -23,7 +23,8 @@ template <typename Stream> network_functions<Stream>* async_coroutine_errinfo_fu
 template <typename Stream> network_functions<Stream>* async_coroutine_noerrinfo_functions();
 template <typename Stream> network_functions<Stream>* async_coroutinecpp20_errinfo_functions();
 template <typename Stream> network_functions<Stream>* async_coroutinecpp20_noerrinfo_functions();
-template <typename Stream> network_functions<Stream>* async_future_functions();
+template <typename Stream> network_functions<Stream>* async_future_noerrinfo_functions();
+template <typename Stream> network_functions<Stream>* async_future_errinfo_functions();
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #define BOOST_MYSQL_INSTANTIATE_NETWORK_FUNCTIONS_UNIX(fun) \

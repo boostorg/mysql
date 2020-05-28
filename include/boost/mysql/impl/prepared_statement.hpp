@@ -79,30 +79,26 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
 
 template <typename StreamType>
 template <typename ForwardIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    typename boost::mysql::prepared_statement<StreamType>::execute_signature) CompletionToken>
+    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::prepared_statement<StreamType>::execute_signature
+    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
 )
 boost::mysql::prepared_statement<StreamType>::async_execute(
     ForwardIterator params_first,
     ForwardIterator params_last,
-    CompletionToken&& token,
-    error_info* info
+    error_info& output_info,
+    CompletionToken&& token
 )
 {
-    detail::conditional_clear(info);
+    output_info.clear();
+    assert(valid());
 
     // Check we got passed the right number of params
     error_code err;
-    error_info nonnull_info;
-    check_num_params(params_first, params_last, err, nonnull_info);
-    if (err)
-    {
-        detail::conditional_assign(info, std::move(nonnull_info));
-    }
+    check_num_params(params_first, params_last, err, output_info);
 
-    auto initiation = [](auto&& handler, error_code err, error_info* info,
+    auto initiation = [](auto&& handler, error_code err, error_info& info,
             prepared_statement<StreamType>& stmt, ForwardIterator params_first,
             ForwardIterator params_last) {
         if (err)
@@ -133,11 +129,11 @@ boost::mysql::prepared_statement<StreamType>::async_execute(
         }
     };
 
-    return boost::asio::async_initiate<CompletionToken, execute_signature>(
+    return boost::asio::async_initiate<CompletionToken, void(error_code, resultset<StreamType>)>(
         initiation,
         token,
         err,
-        info,
+        std::ref(output_info),
         std::ref(*this),
         params_first,
         params_last
@@ -165,24 +161,23 @@ void boost::mysql::prepared_statement<StreamType>::close()
 }
 
 template <typename StreamType>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    typename boost::mysql::prepared_statement<StreamType>::close_signature) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::prepared_statement<StreamType>::close_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::prepared_statement<StreamType>::async_close(
-    CompletionToken&& token,
-    error_info* info
+    error_info& output_info,
+    CompletionToken&& token
 )
 {
     assert(valid());
-    detail::conditional_clear(info);
+    output_info.clear();
     return detail::async_close_statement(
         *channel_,
         id(),
         std::forward<CompletionToken>(token),
-        info
+        output_info
     );
 }
 

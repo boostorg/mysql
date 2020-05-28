@@ -138,13 +138,13 @@ template<class StreamType>
 struct execute_generic_op : boost::asio::coroutine
 {
     channel<StreamType>& chan_;
-    error_info* output_info_;
+    error_info& output_info_;
     std::shared_ptr<execute_processor> processor_;
     std::uint64_t remaining_fields_ {0};
 
     execute_generic_op(
         channel<StreamType>& chan,
-        error_info* output_info,
+        error_info& output_info,
         std::shared_ptr<execute_processor>&& processor
     ) :
         chan_(chan),
@@ -167,7 +167,6 @@ struct execute_generic_op : boost::asio::coroutine
         }
 
         // Non-error path
-        error_info info;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             chan_.reset_sequence_number();
@@ -180,10 +179,9 @@ struct execute_generic_op : boost::asio::coroutine
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
-            processor_->process_response(err, info);
+            processor_->process_response(err, output_info_);
             if (err)
             {
-                conditional_assign(output_info_, std::move(info));
                 self.complete(err, resultset<StreamType>());
                 BOOST_ASIO_CORO_YIELD break;
             }
@@ -270,21 +268,21 @@ void boost::mysql::detail::execute_generic(
 template <typename StreamType, typename Serializable, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::execute_generic_signature<StreamType>
+    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
 )
 boost::mysql::detail::async_execute_generic(
     deserialize_row_fn deserializer,
     channel<StreamType>& chan,
     const Serializable& request,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
     auto processor = std::make_shared<execute_processor>(deserializer, chan.current_capabilities());
     processor->process_request(request);
     return boost::asio::async_compose<
         CompletionToken,
-        execute_generic_signature<StreamType>
+        void(error_code, resultset<StreamType>)
     >(
         execute_generic_op<StreamType>(chan, info, std::move(processor)),
         token,

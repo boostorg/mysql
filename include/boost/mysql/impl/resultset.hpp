@@ -127,11 +127,11 @@ struct boost::mysql::resultset<StreamType>::fetch_one_op
     : boost::asio::coroutine
 {
     resultset<StreamType>& resultset_;
-    error_info* output_info_;
+    error_info& output_info_;
 
     fetch_one_op(
         resultset<StreamType>& obj,
-        error_info* output_info
+        error_info& output_info
     ) :
         resultset_(obj),
         output_info_(output_info)
@@ -175,20 +175,20 @@ struct boost::mysql::resultset<StreamType>::fetch_one_op
 
 template <typename StreamType>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    typename boost::mysql::resultset<StreamType>::fetch_one_signature) CompletionToken>
+    void(boost::mysql::error_code, const boost::mysql::row*)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::resultset<StreamType>::fetch_one_signature
+    void(boost::mysql::error_code, const boost::mysql::row*)
 )
 boost::mysql::resultset<StreamType>::async_fetch_one(
-    CompletionToken&& token,
-    error_info* info
+    error_info& output_info,
+    CompletionToken&& token
 )
 {
     assert(valid());
-    detail::conditional_clear(info);
-    return boost::asio::async_compose<CompletionToken, fetch_one_signature>(
-        fetch_one_op(*this, info),
+    output_info.clear();
+    return boost::asio::async_compose<CompletionToken, void(error_code, const row*)>(
+        fetch_one_op(*this, output_info),
         token,
         *this
     );
@@ -207,10 +207,10 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op
         detail::bytestring buffer;
         std::vector<value> values;
         std::size_t remaining;
-        error_info* output_info;
+        error_info& output_info;
         bool cont {false};
 
-        impl_struct(resultset<StreamType>& obj, error_info* output_info, std::size_t count):
+        impl_struct(resultset<StreamType>& obj, error_info& output_info, std::size_t count):
             parent_resultset(obj),
             remaining(count),
             output_info(output_info)
@@ -230,7 +230,7 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op
 
     fetch_many_op(
         resultset<StreamType>& obj,
-        error_info* output_info,
+        error_info& output_info,
         std::size_t count
     ) :
         impl_(std::make_shared<impl_struct>(obj, output_info, count))
@@ -303,21 +303,24 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op
 
 template <typename StreamType>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    typename boost::mysql::resultset<StreamType>::fetch_many_signature) CompletionToken>
+    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::resultset<StreamType>::fetch_many_signature
+    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)
 )
 boost::mysql::resultset<StreamType>::async_fetch_many(
     std::size_t count,
-    CompletionToken&& token,
-    error_info* info
+    error_info& output_info,
+    CompletionToken&& token
 )
 {
     assert(valid());
-    detail::conditional_clear(info);
-    return boost::asio::async_compose<CompletionToken, fetch_many_signature>(
-        fetch_many_op(*this, info, count),
+    output_info.clear();
+    return boost::asio::async_compose<
+        CompletionToken,
+        void(error_code, std::vector<owning_row>)
+    >(
+        fetch_many_op(*this, output_info, count),
         token,
         *this
     );
@@ -325,20 +328,20 @@ boost::mysql::resultset<StreamType>::async_fetch_many(
 
 template <typename StreamType>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    typename boost::mysql::resultset<StreamType>::fetch_all_signature) CompletionToken>
+    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::resultset<StreamType>::fetch_all_signature
+    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)
 )
 boost::mysql::resultset<StreamType>::async_fetch_all(
-    CompletionToken&& token,
-    error_info* info
+    error_info& info,
+    CompletionToken&& token
 )
 {
     return async_fetch_many(
         std::numeric_limits<std::size_t>::max(),
-        std::forward<CompletionToken>(token),
-        info
+        info,
+        std::forward<CompletionToken>(token)
     );
 }
 

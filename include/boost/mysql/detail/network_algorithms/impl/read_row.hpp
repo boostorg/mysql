@@ -63,7 +63,7 @@ template<class StreamType>
 struct read_row_op : boost::asio::coroutine
 {
     channel<StreamType>& chan_;
-    error_info* output_info_;
+    error_info& output_info_;
     deserialize_row_fn deserializer_;
     const std::vector<field_metadata>& meta_;
     bytestring& buffer_;
@@ -72,7 +72,7 @@ struct read_row_op : boost::asio::coroutine
 
     read_row_op(
         channel<StreamType>& chan,
-        error_info* output_info,
+        error_info& output_info,
         deserialize_row_fn deserializer,
         const std::vector<field_metadata>& meta,
         bytestring& buffer,
@@ -95,7 +95,6 @@ struct read_row_op : boost::asio::coroutine
         error_code err = {}
     )
     {
-        error_info info;
         read_row_result result = read_row_result::error;
 
         // Error checking
@@ -120,9 +119,8 @@ struct read_row_op : boost::asio::coroutine
                 output_values_,
                 output_ok_packet_,
                 err,
-                info
+                output_info_
             );
-            detail::conditional_assign(output_info_, std::move(info));
             self.complete(err, result);
         }
     }
@@ -165,7 +163,7 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::read_row_signature
+    void(boost::mysql::error_code, boost::mysql::detail::read_row_result)
 )
 boost::mysql::detail::async_read_row(
     deserialize_row_fn deserializer,
@@ -175,11 +173,11 @@ boost::mysql::detail::async_read_row(
     std::vector<value>& output_values,
     ok_packet& output_ok_packet,
     CompletionToken&& token,
-    error_info* output_info
+    error_info& output_info
 )
 {
-    return boost::asio::async_compose<CompletionToken, read_row_signature>(
-        read_row_op(
+    return boost::asio::async_compose<CompletionToken, void(error_code, read_row_result)> (
+        read_row_op<StreamType>(
             chan,
             output_info,
             deserializer,
@@ -187,19 +185,10 @@ boost::mysql::detail::async_read_row(
             buffer,
             output_values,
             output_ok_packet
-            ), token, chan
-        );
-
-//    return op::initiate(
-//        std::forward<CompletionToken>(token),
-//        chan,
-//        output_info,
-//        deserializer,
-//        meta,
-//        buffer,
-//        output_values,
-//        output_ok_packet
-//    );
+        ),
+        token,
+        chan
+    );
 }
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_IPP_ */

@@ -20,13 +20,13 @@ struct connect_op : boost::asio::coroutine
     using endpoint_type = typename StreamType::endpoint_type;
 
     channel<StreamType>& chan_;
-    error_info* output_info_;
+    error_info& output_info_;
     const endpoint_type& ep_; // No need for a copy, as we will call it in the first operator() call
     connection_params params_;
 
     connect_op(
         channel<StreamType>& chan,
-        error_info* output_info,
+        error_info& output_info,
         const endpoint_type& ep,
         const connection_params& params
     ) :
@@ -50,10 +50,7 @@ struct connect_op : boost::asio::coroutine
             if (code)
             {
                 chan_.close();
-                if (output_info_)
-                {
-                    output_info_->set_message("Physical connect failed");
-                }
+                output_info_.set_message("Physical connect failed");
                 self.complete(code);
                 BOOST_ASIO_CORO_YIELD break;
             }
@@ -104,17 +101,17 @@ void boost::mysql::detail::connect(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::connect_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_connect(
     channel<StreamType>& chan,
     const typename StreamType::endpoint_type& endpoint,
     const connection_params& params,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
-    return boost::asio::async_compose<CompletionToken, connect_signature>(
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
         connect_op<StreamType>{chan, info, endpoint, params}, token, chan);
 }
 

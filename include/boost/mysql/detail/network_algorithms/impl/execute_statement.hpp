@@ -10,6 +10,7 @@
 
 #include "boost/mysql/detail/protocol/binary_deserialization.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
+#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 
 namespace boost {
 namespace mysql {
@@ -60,7 +61,7 @@ void boost::mysql::detail::execute_statement(
 template <typename StreamType, typename ForwardIterator, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::execute_generic_signature<StreamType>
+    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
 )
 boost::mysql::detail::async_execute_statement(
     channel<StreamType>& chan,
@@ -68,7 +69,7 @@ boost::mysql::detail::async_execute_statement(
     ForwardIterator params_begin,
     ForwardIterator params_end,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
     return async_execute_generic(

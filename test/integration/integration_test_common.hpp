@@ -47,7 +47,7 @@ struct IntegTest : testing::Test
 
     IntegTest() :
         connection_params("integ_user", "integ_password", "boost_mysql_integtests"),
-        conn(ctx),
+        conn(ctx.get_executor()),
         guard(ctx.get_executor()),
         runner([this] { ctx.run(); })
     {
@@ -237,6 +237,9 @@ struct NetworkTest : public IntegTest<Stream>,
 #define BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_TCP(TestSuiteName) \
     BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_HELPER(TestSuiteName, TCP, boost::asio::ip::tcp::socket)
 
+#define BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_TCP_DEFAULT_TOKEN(TestSuiteName) \
+    BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_HELPER(TestSuiteName, TCPDefaultToken, boost::mysql::test::tcp_future_socket)
+
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #define BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_UNIX(TestSuiteName) \
         BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_HELPER(TestSuiteName, UNIX, boost::asio::local::stream_protocol::socket)
@@ -246,14 +249,12 @@ struct NetworkTest : public IntegTest<Stream>,
 
 #define BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS(TestSuiteName) \
     BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_TCP(TestSuiteName) \
+    BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_TCP_DEFAULT_TOKEN(TestSuiteName) \
     BOOST_MYSQL_NETWORK_TEST_SUITE_TYPEDEFS_UNIX(TestSuiteName)
 
 // Test definition
 #define BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, Suffix) \
     TEST_P(TestSuiteName##Suffix, TestName) { this->TestName(); }
-
-#define BOOST_MYSQL_NETWORK_TEST_TCP(TestSuiteName, TestName) \
-    BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, TCP)
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #define BOOST_MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName) \
@@ -263,7 +264,8 @@ struct NetworkTest : public IntegTest<Stream>,
 #endif
 
 #define BOOST_MYSQL_NETWORK_TEST(TestSuiteName, TestName) \
-    BOOST_MYSQL_NETWORK_TEST_TCP(TestSuiteName, TestName) \
+    BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, TCP) \
+    BOOST_MYSQL_NETWORK_TEST_HELPER(TestSuiteName, TestName, TCPDefaultToken) \
     BOOST_MYSQL_NETWORK_TEST_UNIX(TestSuiteName, TestName)
 
 // Test suite instantiation
@@ -274,9 +276,6 @@ struct NetworkTest : public IntegTest<Stream>,
         return param_info.param.name(); \
     });
 
-#define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_TCP(TestSuiteName) \
-    BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, TCP)
-
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName) \
     BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, UNIX)
@@ -285,7 +284,8 @@ struct NetworkTest : public IntegTest<Stream>,
 #endif
 
 #define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE(TestSuiteName) \
-    BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_TCP(TestSuiteName) \
+    BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, TCP) \
+    BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, TCPDefaultToken) \
     BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName)
 
 // Typedefs + Instantiation

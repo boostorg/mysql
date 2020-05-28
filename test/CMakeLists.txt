@@ -44,6 +44,8 @@ add_executable(
     unit/row.cpp
     unit/error.cpp
     unit/prepared_statement.cpp
+    unit/resultset.cpp
+    unit/connection.cpp
 )
 # A codegen issue in MSVC C++17 makes gmock expectations not work
 if (NOT MSVC)
@@ -89,6 +91,7 @@ add_executable(
     integration/network_functions/async_coroutinecpp20.cpp
     integration/network_functions/async_future.cpp
     integration/metadata_validator.cpp
+    integration/connection.cpp
     integration/connect.cpp
     integration/handshake.cpp
     integration/query.cpp

@@ -107,14 +107,13 @@ public:
 struct MysqlChannelFixture : public Test
 {
     using MockChannel = channel<NiceMock<MockStream>>;
-    NiceMock<MockStream> stream;
-    MockChannel chan {stream};
+    MockChannel chan;
     error_code code;
     InSequence seq;
 
     MysqlChannelFixture()
     {
-        stream.set_default_behavior();
+        chan.next_layer().set_default_behavior();
     }
 };
 
@@ -162,7 +161,7 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
 
 TEST_F(MysqlChannelReadTest, SyncRead_AllReadsSuccessful_ReadHeaderPopulatesBuffer)
 {
-    ON_CALL(stream, read_buffer)
+    ON_CALL(chan.next_layer(), read_buffer)
         .WillByDefault(Invoke(make_read_handler()));
     bytes_to_read = {
         0x03, 0x00, 0x00, 0x00,
@@ -175,7 +174,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_AllReadsSuccessful_ReadHeaderPopulatesBuff
 
 TEST_F(MysqlChannelReadTest, SyncRead_MoreThan16M_JoinsPackets)
 {
-    ON_CALL(stream, read_buffer)
+    ON_CALL(chan.next_layer(), read_buffer)
         .WillByDefault(Invoke(make_read_handler()));
     concat(bytes_to_read, {0xff, 0xff, 0xff, 0x00});
     concat(bytes_to_read, std::vector<uint8_t>(0xffffff, 0x20));
@@ -190,7 +189,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_MoreThan16M_JoinsPackets)
 
 TEST_F(MysqlChannelReadTest, SyncRead_EmptyPacket_LeavesBufferEmpty)
 {
-    ON_CALL(stream, read_buffer)
+    ON_CALL(chan.next_layer(), read_buffer)
         .WillByDefault(Invoke(make_read_handler()));
     concat(bytes_to_read, {0x00, 0x00, 0x00, 0x00});
     chan.read(buffer, code);
@@ -200,7 +199,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_EmptyPacket_LeavesBufferEmpty)
 
 TEST_F(MysqlChannelReadTest, SyncRead_ShortReads_InvokesReadAgain)
 {
-    EXPECT_CALL(stream, read_buffer)
+    EXPECT_CALL(chan.next_layer(), read_buffer)
         .WillOnce(Invoke(buffer_copier({0x04})))
         .WillOnce(Invoke(buffer_copier({     0x00, 0x00, 0x00})))
         .WillOnce(Invoke(buffer_copier({0x01, 0x02})))
@@ -213,7 +212,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_ShortReads_InvokesReadAgain)
 TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInHeader_ReturnsFailureErrorCode)
 {
     auto expected_error = make_error_code(boost::system::errc::not_supported);
-    EXPECT_CALL(stream, read_buffer)
+    EXPECT_CALL(chan.next_layer(), read_buffer)
         .WillOnce(Invoke(read_failer(expected_error)));
     chan.read(buffer, code);
     EXPECT_EQ(code, expected_error);
@@ -222,7 +221,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInHeader_ReturnsFailureErrorCode)
 TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInPacket_ReturnsFailureErrorCode)
 {
     auto expected_error = make_error_code(boost::system::errc::not_supported);
-    EXPECT_CALL(stream, read_buffer)
+    EXPECT_CALL(chan.next_layer(), read_buffer)
         .WillOnce(Invoke(buffer_copier({0xff, 0xff, 0xff, 0x00})))
         .WillOnce(Invoke(read_failer(expected_error)));
     chan.read(buffer, code);
@@ -231,7 +230,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_ReadErrorInPacket_ReturnsFailureErrorCode)
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateErrorCode)
 {
-    ON_CALL(stream, read_buffer)
+    ON_CALL(chan.next_layer(), read_buffer)
         .WillByDefault(Invoke(make_read_handler()));
     bytes_to_read = {0xff, 0xff, 0xff, 0x05};
     chan.read(buffer, code);
@@ -240,7 +239,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberMismatch_ReturnsAppropriateE
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSequenceNumber)
 {
-    ON_CALL(stream, read_buffer)
+    ON_CALL(chan.next_layer(), read_buffer)
         .WillByDefault(Invoke(make_read_handler()));
     bytes_to_read = {
         0x03, 0x00, 0x00, 0x21,
@@ -255,7 +254,7 @@ TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberNotZero_RespectsCurrentSeque
 
 TEST_F(MysqlChannelReadTest, SyncRead_SequenceNumberFF_SequenceNumberWraps)
 {
-    ON_CALL(stream, read_buffer)
+    ON_CALL(chan.next_layer(), read_buffer)
         .WillByDefault(Invoke(make_read_handler()));
     bytes_to_read = {
         0x03, 0x00, 0x00, 0xff,
@@ -299,7 +298,7 @@ struct MysqlChannelWriteTest : public MysqlChannelFixture
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_AllWritesSuccessful_WritesHeaderAndBuffer)
 {
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(make_write_handler()));
     chan.write(buffer(std::vector<uint8_t>{0xaa, 0xab, 0xac}), code);
     verify_buffer({
@@ -311,7 +310,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_AllWritesSuccessful_WritesHeaderAndBuffe
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_MoreThan16M_SplitsInPackets)
 {
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(make_write_handler()));
     chan.write(buffer(std::vector<uint8_t>(2*0xffffff + 4, 0xab)), code);
     std::vector<uint8_t> expected_buffer {0xff, 0xff, 0xff, 0x00};
@@ -326,7 +325,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_MoreThan16M_SplitsInPackets)
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_EmptyPacket_WritesHeader)
 {
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(make_write_handler()));
     chan.reset_sequence_number(2);
     chan.write(buffer(std::vector<uint8_t>{}), code);
@@ -336,7 +335,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_EmptyPacket_WritesHeader)
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_ShortWrites_WritesHeaderAndBuffer)
 {
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(make_write_handler(2)));
     chan.write(buffer(std::vector<uint8_t>{0xaa, 0xab, 0xac}), code);
     verify_buffer({
@@ -348,7 +347,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_ShortWrites_WritesHeaderAndBuffer)
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInHeader_ReturnsErrorCode)
 {
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(write_failer(boost::system::errc::broken_pipe)));
     chan.write(buffer(std::vector<uint8_t>(10, 0x01)), code);
     EXPECT_EQ(code, make_error_code(boost::system::errc::broken_pipe));
@@ -356,7 +355,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInHeader_ReturnsErrorCode)
 
 TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInPacket_ReturnsErrorCode)
 {
-    EXPECT_CALL(stream, write_buffer)
+    EXPECT_CALL(chan.next_layer(), write_buffer)
         .WillOnce(Return(4))
         .WillOnce(Invoke(write_failer(boost::system::errc::broken_pipe)));
     chan.write(buffer(std::vector<uint8_t>(10, 0x01)), code);
@@ -366,7 +365,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_WriteErrorInPacket_ReturnsErrorCode)
 TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceNumberNotZero_RespectsSequenceNumber)
 {
     chan.reset_sequence_number(0xab);
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(make_write_handler()));
     chan.write(buffer(std::vector<uint8_t>{0xaa, 0xab, 0xac}), code);
     verify_buffer({
@@ -380,7 +379,7 @@ TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceNumberNotZero_RespectsSequenceNu
 TEST_F(MysqlChannelWriteTest, SyncWrite_SequenceIsFF_WrapsSequenceNumber)
 {
     chan.reset_sequence_number(0xff);
-    ON_CALL(stream, write_buffer)
+    ON_CALL(chan.next_layer(), write_buffer)
         .WillByDefault(Invoke(make_write_handler()));
     chan.write(buffer(std::vector<uint8_t>{0xaa, 0xab, 0xac}), code);
     verify_buffer({

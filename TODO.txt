@@ -27,6 +27,9 @@ Usability
 		Geometry
 	connection::run_sql that hides the resultset concept
     Option for separate compilation
+    Reconnect cycle
+        Ensure you can reconnect after a failed handshake/successful close
+        Shutdown SSL stream
 Other possible features
     CLIENT_SESSION_TRACK
     CLIENT_OPTIONAL_RESULTSET_METADATA

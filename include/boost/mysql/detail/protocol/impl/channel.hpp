@@ -126,6 +126,7 @@ auto boost::mysql::detail::channel<Stream>::async_read_impl(
         return boost::asio::async_read(
             ssl_block_->stream,
             std::forward<BufferSeq>(buff),
+            boost::asio::transfer_all(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -134,6 +135,7 @@ auto boost::mysql::detail::channel<Stream>::async_read_impl(
         return boost::asio::async_read(
             stream_,
             std::forward<BufferSeq>(buff),
+            boost::asio::transfer_all(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -302,7 +304,7 @@ template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::detail::channel<Stream>::read_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::channel<Stream>::async_read(
     bytestring& buffer,
@@ -310,10 +312,7 @@ boost::mysql::detail::channel<Stream>::async_read(
 )
 {
     buffer.clear();
-    return boost::asio::async_compose<
-        CompletionToken,
-        typename boost::mysql::detail::channel<Stream>::read_signature
-    >(
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
         read_op(*this, buffer),
         token,
         *this
@@ -382,17 +381,14 @@ template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::detail::channel<Stream>::write_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::channel<Stream>::async_write(
     boost::asio::const_buffer buffer,
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<
-        CompletionToken,
-        typename boost::mysql::detail::channel<Stream>::write_signature
-    >(
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
         write_op(*this, buffer),
         token,
         *this
@@ -412,7 +408,7 @@ template <typename Stream>
 template <typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    typename boost::mysql::detail::channel<Stream>::ssl_handshake_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::channel<Stream>::async_ssl_handshake(
     CompletionToken&& token

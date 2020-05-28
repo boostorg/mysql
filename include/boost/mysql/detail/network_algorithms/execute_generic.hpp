@@ -26,17 +26,14 @@ void execute_generic(
     error_info& info
 );
 
-template <typename StreamType>
-using execute_generic_signature = void(error_code, resultset<StreamType>);
-
 template <typename StreamType, typename Serializable, typename CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, execute_generic_signature<StreamType>)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<StreamType>))
 async_execute_generic(
     deserialize_row_fn deserializer,
     channel<StreamType>& chan,
     const Serializable& request,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 );
 
 } // detail

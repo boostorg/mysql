@@ -34,10 +34,10 @@ using boost::asio::use_future;
  *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
  *     T = resultset<StreamType>).
  *
- * All asynchronous operations accept a last optional error_info* parameter. error_info
- * contains additional diagnostic information returned by the server. If you
- * pass a non-nullptr value, it will be populated in case of error if any extra information
- * is available.
+ * There are two overloads for all asynchronous operations. One accepts an output error_info&
+ * parameter right before the completion token. This error_info will be populated
+ * in case of error if any extra information provided by the server. The other overload
+ * does not have this error_info& parameter.
  *
  * Design note: handler signatures in Boost.Asio should have two parameters, at
  * most, and the first one should be an error_code - otherwise some of the asynchronous

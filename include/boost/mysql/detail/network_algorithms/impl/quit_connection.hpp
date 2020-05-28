@@ -43,12 +43,12 @@ void boost::mysql::detail::quit_connection(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::quit_connection_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_quit_connection(
     channel<StreamType>& chan,
     CompletionToken&& token,
-    error_info*
+    error_info&
 )
 {
     compose_quit(chan);

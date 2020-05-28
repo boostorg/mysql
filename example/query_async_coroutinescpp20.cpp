@@ -27,7 +27,9 @@ using boost::mysql::error_info;
  * This example assumes you are connecting to a localhost MySQL server.
  *
  * This example uses asynchronous functions with C++20 coroutines
- * (boost::asio::use_awaitable).
+ * (boost::asio::use_awaitable). It also demonstrates using
+ * defaulted completion tokens (so that you do not have to write
+ * boost::asio::use_awaitable in every async op).
  *
  * This example assumes you are already familiar with the basic concepts
  * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
@@ -41,10 +43,10 @@ using boost::mysql::error_info;
  *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
  *     T = resultset<StreamType>).
  *
- * All asynchronous operations accept a last optional error_info* parameter. error_info
- * contains additional diagnostic information returned by the server. If you
- * pass a non-nullptr value, it will be populated in case of error if any extra information
- * is available.
+ * There are two overloads for all asynchronous operations. One accepts an output error_info&
+ * parameter right before the completion token. This error_info will be populated
+ * in case of error if any extra information provided by the server. The other overload
+ * does not have this error_info& parameter.
  *
  * Design note: handler signatures in Boost.Asio should have two parameters, at
  * most, and the first one should be an error_code - otherwise some of the asynchronous
@@ -88,6 +90,34 @@ public:
 };
 
 /**
+ * Default completion tokens are associated to executors.
+ * boost::mysql::socket_connection objects use the same executor
+ * as the underlying stream (socket). boost::mysql::tcp_connection
+ * objects use boost::asio::ip::tcp::socket, which use the polymorphic
+ * boost::asio::executor as executor type, which does not have a default
+ * completion token associated.
+ *
+ * We will use the io_context's executor as base executor. We will then
+ * use use_awaitable_t::executor_with_default on this type, which creates
+ * a new executor type acting the same as the base executor, but having
+ * use_awaitable_t as default completion token type.
+ *
+ * We will then obtain the connection type to use by rebinding
+ * the usual tcp_connection to our new executor type, coro_executor_type.
+ * This is equivalent to using a boost::mysql::connection<socket_type>,
+ * where socket_type is a TCP socket that uses our coro_executor_type.
+ *
+ * The reward for this hard work is not having to pass the completion
+ * token (boost::asio::use_awaitable) to any of the asynchronous operations
+ * initiated by this connection or any of the I/O objects (e.g. resultsets)
+ * associated to them.
+ */
+using base_executor_type = boost::asio::io_context::executor_type;
+using coro_executor_type = boost::asio::use_awaitable_t<
+    base_executor_type>::executor_with_default<base_executor_type>;
+using connection_type = boost::mysql::tcp_connection::rebind_executor<coro_executor_type>::other;
+
+/**
  * Our coroutine. It must have a return type of boost::asio::awaitable<T>.
  * Our coroutine does not communicate any result back, so T=void.
  * Remember that you do not have to explicitly create any awaitable<void> in
@@ -106,25 +136,33 @@ public:
  * signature of void(error_code, resultset<Stream>), so async_query will return
  * a boost::asio::awaitable<boost::mysql::resultset<Stream>>. The return type of
  * calling co_await on such a expression would be a boost::mysql::resultset<Stream>.
- * If any of the asyncrhonous operations fail, an exception will be raised
+ * If any of the asynchronous operations fail, an exception will be raised
  * within the coroutine.
  */
-boost::asio::awaitable<void> start_query(
-    boost::asio::executor ex,
+boost::asio::awaitable<void, base_executor_type> start_query(
+    const boost::asio::io_context::executor_type& ex,
     const boost::asio::ip::tcp::endpoint& ep,
     const boost::mysql::connection_params& params
 )
 {
-    boost::mysql::tcp_connection conn (ex);
+    // Create the connection. We do not use the raw tcp_connection type
+    // alias to default the completion token; see above.
+    connection_type conn (ex);
 
-    // Connect to server
-    co_await conn.async_connect(ep, params, boost::asio::use_awaitable);
+    // Connect to server. Note: we didn't have to pass boost::asio::use_awaitable:
+    // go default completion tokens brrrrr
+    co_await conn.async_connect(ep, params);
 
-    // Issue the query to the server. Note that async_query returns a
-    // boost::asio::awaitable<boost::mysql::tcp_resultset>
+    /**
+     * Issue the query to the server. Note that async_query returns a
+     * boost::asio::awaitable<boost::mysql::resultset<socket_type>, base_executor_type>,
+     * where socket_type is a TCP socket bound to coro_executor_type.
+     * Calling co_await on this expression will yield a boost::mysql::resultset<socket_type>.
+     * Note that this is not the same type as a boost::mysql::tcp_resultset because we
+     * used a custom socket type.
+     */
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::tcp_resultset result =
-        co_await conn.async_query(sql, boost::asio::use_awaitable);
+    auto result = co_await conn.async_query(sql);
 
     /**
      * Get all rows in the resultset. We will employ resultset::async_fetch_one(),
@@ -133,14 +171,13 @@ boost::asio::awaitable<void> start_query(
      * rows remain valid until the next call to async_fetch_one(). When no more
      * rows are available, async_fetch_one returns nullptr.
      */
-    while (const boost::mysql::row* row =
-        co_await result.async_fetch_one(boost::asio::use_awaitable))
+    while (const boost::mysql::row* row = co_await result.async_fetch_one())
     {
         print_employee(*row);
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
-    co_await conn.async_close(boost::asio::use_awaitable);
+    co_await conn.async_close();
 }
 
 void main_impl(int argc, char** argv)

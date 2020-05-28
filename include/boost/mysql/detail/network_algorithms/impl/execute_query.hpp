@@ -10,6 +10,7 @@
 
 #include "boost/mysql/detail/protocol/text_deserialization.hpp"
 #include "boost/mysql/detail/protocol/query_messages.hpp"
+#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 
 template <typename StreamType>
 void boost::mysql::detail::execute_query(
@@ -35,13 +36,13 @@ void boost::mysql::detail::execute_query(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::execute_generic_signature<StreamType>
+    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
 )
 boost::mysql::detail::async_execute_query(
     channel<StreamType>& chan,
     std::string_view query,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
     com_query_packet request { string_eof(query) };

@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_AUXILIAR_BYTESTRING_HPP
 
 #include <vector>
+#include <cstdint>
 
 namespace boost {
 namespace mysql {

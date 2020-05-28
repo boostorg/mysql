@@ -10,8 +10,8 @@ configuration:
   - Debug
   - Release
 platform:
-  - x86
   - x64
+  - x86
 matrix:
   fast_finish: true
 

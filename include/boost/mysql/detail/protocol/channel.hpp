@@ -38,12 +38,13 @@ class channel
             stream (base_stream, ctx) {}
     };
 
-    Stream& stream_;
+    Stream stream_;
     std::optional<ssl_block> ssl_block_;
     std::uint8_t sequence_number_ {0};
     std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
     bytestring shared_buff_; // for async ops
     capabilities current_caps_;
+    error_info shared_info_; // for async ops
 
     bool process_sequence_number(std::uint8_t got);
     std::uint8_t next_sequence_number() { return sequence_number_++; }
@@ -68,7 +69,8 @@ class channel
     struct read_op;
     struct write_op;
 public:
-    channel(Stream& stream): stream_(stream) {}
+    template <typename... Args>
+    channel(Args&&... args): stream_(std::forward<Args>(args)...) {}
 
     // Executor
     using executor_type = typename Stream::executor_type;
@@ -77,10 +79,8 @@ public:
     // Reading
     void read(bytestring& buffer, error_code& code);
 
-    using read_signature = void(error_code);
-
     template <typename CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, read_signature)
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read(bytestring& buffer, CompletionToken&& token);
 
     // Writing
@@ -90,14 +90,12 @@ public:
         write(boost::asio::buffer(buffer), code);
     }
 
-    using write_signature = void(error_code);
-
     template <typename CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, write_signature)
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(boost::asio::const_buffer buffer, CompletionToken&& token);
 
     template <typename CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, write_signature)
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(const bytestring& buffer, CompletionToken&& token)
     {
         return async_write(boost::asio::buffer(buffer), std::forward<CompletionToken>(token));
@@ -108,10 +106,8 @@ public:
 
     void ssl_handshake(error_code& ec);
 
-    using ssl_handshake_signature = void(error_code);
-
     template <typename CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, ssl_handshake_signature)
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_ssl_handshake(CompletionToken&& token);
 
     // Closing (only available for sockets)
@@ -129,9 +125,10 @@ public:
     capabilities current_capabilities() const noexcept { return current_caps_; }
     void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 
-    // Internal buffer
+    // Internal buffer & error_info to help async ops
     const bytestring& shared_buffer() const noexcept { return shared_buff_; }
     bytestring& shared_buffer() noexcept { return shared_buff_; }
+    error_info& shared_info() noexcept { return shared_info_; }
 };
 
 } // detail

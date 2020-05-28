@@ -63,12 +63,12 @@ template<typename StreamType>
 struct prepare_statement_op : boost::asio::coroutine
 {
     prepare_statement_processor<StreamType> processor_;
-    error_info* output_info_;
+    error_info& output_info_;
     unsigned remaining_meta_ {0};
 
     prepare_statement_op(
         channel<StreamType>& chan,
-        error_info* output_info,
+        error_info& output_info,
         std::string_view statement
     ) :
         processor_(chan),
@@ -91,7 +91,6 @@ struct prepare_statement_op : boost::asio::coroutine
         }
 
         // Regular coroutine body; if there has been an error, we don't get here
-        error_info info;
         channel<StreamType>& chan = processor_.get_channel();
         BOOST_ASIO_CORO_REENTER(*this)
         {
@@ -102,10 +101,9 @@ struct prepare_statement_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan.async_read(processor_.get_buffer(), std::move(self));
 
             // Process response
-            processor_.process_response(err, info);
+            processor_.process_response(err, output_info_);
             if (err)
             {
-                detail::conditional_assign(output_info_, std::move(info));
                 self.complete(err, prepared_statement<StreamType>());
                 BOOST_ASIO_CORO_YIELD break;
             }
@@ -175,18 +173,18 @@ void boost::mysql::detail::prepare_statement(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::prepare_statement_signature<StreamType>
+    void(boost::mysql::error_code, boost::mysql::prepared_statement<StreamType>)
 )
 boost::mysql::detail::async_prepare_statement(
     channel<StreamType>& chan,
     std::string_view statement,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 )
 {
     return boost::asio::async_compose<
         CompletionToken,
-        prepare_statement_signature<StreamType>
+        void(error_code, prepared_statement<StreamType>)
     >(
         prepare_statement_op<StreamType>{chan, info, statement},
         token,

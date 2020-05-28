@@ -32,13 +32,13 @@ void boost::mysql::detail::close_statement(
 template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    boost::mysql::detail::close_signature
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_close_statement(
     channel<StreamType>& chan,
     std::uint32_t statement_id,
     CompletionToken&& token,
-    error_info*
+    error_info&
 )
 {
     // Compose the close message

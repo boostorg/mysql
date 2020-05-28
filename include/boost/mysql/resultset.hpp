@@ -65,15 +65,15 @@ template <
 >
 class resultset
 {
-    using channel_type = detail::channel<StreamType>;
-
     detail::deserialize_row_fn deserializer_ {};
-    channel_type* channel_;
+    detail::channel<StreamType>* channel_;
     detail::resultset_metadata meta_;
     row current_row_;
     detail::bytestring buffer_;
     detail::ok_packet ok_packet_;
     bool eof_received_ {false};
+
+    error_info& shared_info() noexcept { assert(channel_); return channel_->shared_info(); }
 
     struct fetch_one_op;
     struct fetch_many_op;
@@ -84,13 +84,15 @@ class resultset
     resultset(): channel_(nullptr) {};
 
     // Private, do not use
-    resultset(channel_type& channel, detail::resultset_metadata&& meta, detail::deserialize_row_fn deserializer):
+    resultset(detail::channel<StreamType>& channel, detail::resultset_metadata&& meta,
+        detail::deserialize_row_fn deserializer):
         deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
-    resultset(channel_type& channel, detail::bytestring&& buffer, const detail::ok_packet& ok_pack):
+    resultset(detail::channel<StreamType>& channel, detail::bytestring&& buffer,
+        const detail::ok_packet& ok_pack):
         channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 
     /// The executor type associated to the object.
-    using executor_type = typename channel_type::executor_type;
+    using executor_type = typename detail::channel<StreamType>::executor_type;
 
     /// Retrieves the executor associated to the object.
     executor_type get_executor() { assert(channel_); return channel_->get_executor(); }
@@ -118,6 +120,34 @@ class resultset
     const row* fetch_one();
 
     /**
+     * \brief Fetches a single row (async without error_info version).
+     * \details The handler signature for this operation is
+     * `void(boost::mysql::error_code, const boost::mysql::row*)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, const row*))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, const row*))
+    async_fetch_one(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    {
+        return async_fetch_one(shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /// Fetches a single row (async with error_info version).
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, const row*))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, const row*))
+    async_fetch_one(
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
      * \brief Fetches at most count rows (sync with error code version).
      * \details The returned rows are guaranteed to be valid as long as the
      * resultset is alive. Contrary to fetch_one, subsequent calls to any of
@@ -132,6 +162,38 @@ class resultset
     std::vector<owning_row> fetch_many(std::size_t count);
 
     /**
+     * \brief Fetches at most count rows (async without error_info version).
+     * \details The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+    async_fetch_many(
+        std::size_t count,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_fetch_many(count, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /// Fetches at most count rows (async with error_info version).
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+    async_fetch_many(
+        std::size_t count,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
      * \brief Fetches all available rows (sync with error code version).
      * \details The returned rows are guaranteed to be valid as long as the
      * resultset is alive. Contrary to fetch_one, subsequent calls to any of
@@ -144,29 +206,33 @@ class resultset
     /// Fetches all available rows (sync with exceptions version).
     std::vector<owning_row> fetch_all();
 
-    /// Handler signature for resultset::async_fetch_one.
-    using fetch_one_signature = void(error_code, const row*);
+    /**
+     * \brief Fetches all available rows (async without error_info version).
+     * \details The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+    async_fetch_all(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    {
+        return async_fetch_all(shared_info(), std::forward<CompletionToken>(token));
+    }
 
-    /// Fetchs a single row (async version).
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(fetch_one_signature) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, fetch_one_signature)
-    async_fetch_one(CompletionToken&& token, error_info* info=nullptr);
-
-    /// Handler signature for resultset::async_fetch_many.
-    using fetch_many_signature = void(error_code, std::vector<owning_row>);
-
-    /// Fetches at most count rows (async version).
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(fetch_many_signature) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, fetch_many_signature)
-    async_fetch_many(std::size_t count, CompletionToken&& token, error_info* info=nullptr);
-
-    /// Handler signature for resultset::async_fetch_all.
-    using fetch_all_signature = void(error_code, std::vector<owning_row>);
-
-    /// Fetches all available rows (async version).
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(fetch_all_signature) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, fetch_all_signature)
-    async_fetch_all(CompletionToken&& token, error_info* info=nullptr);
+    /// Fetches all available rows (async with error_info version).
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
+    async_fetch_all(
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
 
     /**
      * \brief Returns whether this object represents a valid resultset.
@@ -212,6 +278,16 @@ class resultset
      * \warning The resultset **must be complete** before calling this function.
      */
     std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
+
+    /// Rebinds the resultset type to another executor.
+    template <typename Executor>
+    struct rebind_executor
+    {
+        /// The resultset type when rebound to the specified executor.
+        using other = resultset<
+            typename StreamType:: template rebind_executor<Executor>::other
+        >;
+    };
 };
 
 /**

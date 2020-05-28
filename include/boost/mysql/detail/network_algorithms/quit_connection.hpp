@@ -21,14 +21,12 @@ void quit_connection(
     error_info& info
 );
 
-using quit_connection_signature = void(error_code);
-
 template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, quit_connection_signature)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_quit_connection(
     channel<StreamType>& chan,
     CompletionToken&& token,
-    error_info* info
+    error_info& info
 );
 
 } // detail

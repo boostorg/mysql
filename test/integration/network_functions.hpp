@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <forward_list>
 #include <optional>
+#include <boost/asio/use_future.hpp>
 
 /**
  * A mechanism to test all variants of a network algorithm (e.g. synchronous
@@ -108,6 +109,19 @@ struct network_result
 
 using value_list_it = std::forward_list<value>::const_iterator;
 
+// A TCP socket that has use_future as default completion token
+class future_executor : public boost::asio::io_context::executor_type
+{
+public:
+    future_executor(const boost::asio::io_context::executor_type& base) :
+        boost::asio::io_context::executor_type(base) {}
+    using default_completion_token_type = boost::asio::use_future_t<>;
+};
+using tcp_future_socket = boost::asio::basic_stream_socket<
+    boost::asio::ip::tcp,
+    future_executor
+>;
+
 template <typename Stream>
 class network_functions
 {
@@ -138,6 +152,10 @@ public:
 
 template <typename Stream>
 std::vector<network_functions<Stream>*> make_all_network_functions();
+
+template <>
+std::vector<network_functions<tcp_future_socket>*>
+make_all_network_functions<tcp_future_socket>();
 
 } // test
 } // mysql

@@ -8,33 +8,31 @@
 #include "test_common.hpp"
 #include "boost/mysql/prepared_statement.hpp"
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/strand.hpp>
 
 using namespace boost::mysql::detail;
+using boost::mysql::prepared_statement;
+using boost::mysql::tcp_prepared_statement;
+using boost::asio::ip::tcp;
 
 namespace
 {
 
-using stream_type = boost::asio::ip::tcp::socket;
-using channel_type = channel<stream_type>;
-using stmt_type = boost::mysql::prepared_statement<stream_type>;
-
 struct PreparedStatementTest : public testing::Test
 {
     boost::asio::io_context ctx; // TODO: change these for a mock stream
-    stream_type socket {ctx};
-    channel_type channel {socket};
+    channel<tcp::socket> chan {ctx};
 };
 
 TEST_F(PreparedStatementTest, DefaultConstructor_Trivial_Invalid)
 {
-    stmt_type stmt;
+    tcp_prepared_statement stmt;
     EXPECT_FALSE(stmt.valid());
 }
 
 TEST_F(PreparedStatementTest, InitializingConstructor_Trivial_Valid)
 {
-
-    stmt_type stmt (channel, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)});
+    tcp_prepared_statement stmt (chan, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)});
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 10);
     EXPECT_EQ(stmt.num_params(), 8);
@@ -42,15 +40,15 @@ TEST_F(PreparedStatementTest, InitializingConstructor_Trivial_Valid)
 
 TEST_F(PreparedStatementTest, MoveConstructor_FromDefaultConstructed_Invalid)
 {
-    stmt_type stmt {stmt_type()};
+    tcp_prepared_statement stmt {tcp_prepared_statement()};
     EXPECT_FALSE(stmt.valid());
 }
 
 TEST_F(PreparedStatementTest, MoveConstructor_FromValid_Valid)
 {
 
-    stmt_type stmt (stmt_type(
-        channel, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
+    tcp_prepared_statement stmt (tcp_prepared_statement(
+        chan, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
     ));
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 10);
@@ -59,25 +57,47 @@ TEST_F(PreparedStatementTest, MoveConstructor_FromValid_Valid)
 
 TEST_F(PreparedStatementTest, MoveAssignment_FromDefaultConstructed_Invalid)
 {
-    stmt_type stmt (channel, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)});
-    stmt = stmt_type();
+    tcp_prepared_statement stmt (
+        chan,
+        com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
+    );
+    stmt = tcp_prepared_statement();
     EXPECT_FALSE(stmt.valid());
-    stmt = stmt_type();
+    stmt = tcp_prepared_statement();
     EXPECT_FALSE(stmt.valid());
 }
 
 TEST_F(PreparedStatementTest, MoveAssignment_FromValid_Valid)
 {
 
-    stmt_type stmt;
-    stmt = stmt_type (channel, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)});
+    tcp_prepared_statement stmt;
+    stmt = tcp_prepared_statement (
+        chan,
+        com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
+    );
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 10);
     EXPECT_EQ(stmt.num_params(), 8);
-    stmt = stmt_type (channel, com_stmt_prepare_ok_packet{int4(1), int2(2), int2(3), int2(4)});
+    stmt = tcp_prepared_statement(
+        chan,
+        com_stmt_prepare_ok_packet{int4(1), int2(2), int2(3), int2(4)}
+    );
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 1);
     EXPECT_EQ(stmt.num_params(), 3);
+}
+
+TEST_F(PreparedStatementTest, RebindExecutor_Trivial_ReturnsCorrectType)
+{
+    using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
+    using rebound_type = tcp_prepared_statement::rebind_executor<other_executor>::other;
+    using expected_type = boost::mysql::prepared_statement<
+        boost::asio::basic_stream_socket<
+            boost::asio::ip::tcp,
+            other_executor
+        >
+    >;
+    EXPECT_TRUE((std::is_same_v<rebound_type, expected_type>));
 }
 
 }
