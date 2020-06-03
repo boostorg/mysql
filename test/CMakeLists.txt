@@ -22,7 +22,7 @@ endif()
 # Unit testing. We do not use gtest_discover_tests because
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
-    mysql_unittests
+    boost_mysql_unittests
     unit/detail/auxiliar/static_string.cpp
     unit/detail/auth/auth_calculator.cpp
     unit/detail/protocol/serialization_test_common.cpp
@@ -39,6 +39,7 @@ add_executable(
     unit/detail/protocol/row_deserialization.cpp
     unit/detail/protocol/binary_serialization.cpp
     unit/detail/protocol/null_bitmap_traits.cpp
+    unit/detail/protocol/channel.cpp
     unit/metadata.cpp
     unit/value.cpp
     unit/row.cpp
@@ -47,35 +48,30 @@ add_executable(
     unit/resultset.cpp
     unit/connection.cpp
 )
-# A codegen issue in MSVC C++17 makes gmock expectations not work
-if (NOT MSVC)
-    target_sources(mysql_unittests PRIVATE unit/detail/protocol/channel.cpp)
-endif()
-
 target_include_directories(
-    mysql_unittests
+    boost_mysql_unittests
     PRIVATE
     common
 )
 target_link_libraries(
-    mysql_unittests
+    boost_mysql_unittests
     PRIVATE
     gtest
     gtest_main
     gmock
-    Boost_mysql
+    Boost::mysql
 )
-_mysql_common_target_settings(mysql_unittests)
+common_target_settings(boost_mysql_unittests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
-    Mysqlvalgrind_AddMemcheckTest(
-        NAME mysql_unittests_memcheck
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_unittests
+    add_memcheck_test(
+        NAME boost_mysql_unittests_memcheck
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_unittests
     )
 else()
     add_test(
-        NAME mysql_unittests
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/mysql_unittests
+        NAME boost_mysql_unittests
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_unittests
     )
 endif()
 
@@ -83,7 +79,7 @@ endif()
 find_package(Boost REQUIRED COMPONENTS coroutine)
 
 add_executable(
-    mysql_integrationtests
+    boost_mysql_integrationtests
     integration/network_functions/network_functions_impl.cpp
     integration/network_functions/sync.cpp
     integration/network_functions/async_callback.cpp
@@ -105,83 +101,76 @@ add_executable(
     integration/close_connection.cpp
 )
 target_link_libraries(
-    mysql_integrationtests
+    boost_mysql_integrationtests
     PRIVATE
     gtest
     gtest_main
     gmock
-    Boost_mysql
+    Boost::mysql
     Boost::coroutine
 )
 target_include_directories(
-    mysql_integrationtests
+    boost_mysql_integrationtests
     PRIVATE
     common
 )
-_mysql_common_target_settings(mysql_integrationtests)
+common_target_settings(boost_mysql_integrationtests)
 
 # Integration test setup
-_mysql_sql_setup_fixture(
-    TEST_NAME    mysql_integrationtests_setup
-    FIXTURE_NAME mysql_integrationtests_fixture
+add_sql_setup_fixture(
+    TEST_NAME    boost_mysql_integrationtests_setup
+    FIXTURE_NAME boost_mysql_integrationtests_fixture
     SQL_FILE     ${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
     SKIP_VAR     BOOST_MYSQL_SKIP_DB_SETUP
 )
 
 # Regular integration tests
 add_test(
-    NAME mysql_integrationtests
+    NAME boost_mysql_integrationtests
     COMMAND 
-        ${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+        ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
         "--gtest_filter=-*RequiresSha256*" # Exclude anything using SHA256
 )
 set_tests_properties(
-    mysql_integrationtests
-    PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
+    boost_mysql_integrationtests
+    PROPERTIES FIXTURES_REQUIRED boost_mysql_integrationtests_setup
 )
 
 # If we are using memcheck, then run a subset of the integration tests
 # under valgrind. Coroutine tests don't work well under Valgrind, and
-# SSL tests are too slow
+# SSL tests are too slow. We do some other exclusions to reduce runtime
 if (BOOST_MYSQL_VALGRIND_TESTS)
-    if (BOOST_MYSQL_SHA256_TESTS)
-        set(GTEST_FILTER "--gtest_filter=-*sslrequire*:*coroutine*")
-    else()
-        set(GTEST_FILTER "--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*")
-    endif()
-    
-    add_test(
-        NAME mysql_integrationtests_memcheck
-        COMMAND 
-            ${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
-            ${GTEST_FILTER}
+    set(GTEST_FILTER "--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*:*UNIX*:*noerrinfo*:*TCPDefaultToken*")
+    add_memcheck_test(
+        NAME boost_mysql_integrationtests_memcheck
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests ${GTEST_FILTER}
     )
     set_tests_properties(
-        mysql_integrationtests_memcheck
-        PROPERTIES FIXTURES_REQUIRED mysql_integrationtests_setup
+        boost_mysql_integrationtests_memcheck
+        PROPERTIES FIXTURES_REQUIRED boost_mysql_integrationtests_setup
     )
 endif()
 
 # SHA256 tests 
 if (BOOST_MYSQL_SHA256_TESTS)
     # Setup
-    _mysql_sql_setup_fixture(
-        TEST_NAME    mysql_integrationtests_sha256_setup
-        FIXTURE_NAME mysql_integrationtests_sha256_fixture
+    add_sql_setup_fixture(
+        TEST_NAME    boost_mysql_integrationtests_sha256_setup
+        FIXTURE_NAME boost_mysql_integrationtests_sha256_fixture
         SQL_FILE     ${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup_sha256.sql
         SKIP_VAR     BOOST_MYSQL_SKIP_DB_SETUP
     )
     
     # Actual tests
     add_test(
-        NAME mysql_integrationtests_sha256
+        NAME boost_mysql_integrationtests_sha256
         COMMAND 
-            ${CMAKE_CURRENT_BINARY_DIR}/mysql_integrationtests
+            ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
             "--gtest_filter=*RequiresSha256*" # Run only SHA256 stuff
     )
     set_tests_properties(
-        mysql_integrationtests_sha256
+        boost_mysql_integrationtests_sha256
         PROPERTIES FIXTURES_REQUIRED 
-        "mysql_integrationtests_fixture;mysql_integrationtests_sha256_fixture"
+        "boost_mysql_integrationtests_fixture;boost_mysql_integrationtests_sha256_fixture"
     )
 endif()

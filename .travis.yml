@@ -12,6 +12,7 @@ __linux_addons_defaults: &__linux_addons_defaults
       - python3
       - valgrind
       - lcov
+      - ninja-build
 
 __linux_defaults: &__linux_defaults
   os: linux
@@ -20,7 +21,7 @@ __linux_defaults: &__linux_defaults
   addons:
     <<: *__linux_addons_defaults
   script:
-    - bash -e -x ci/build_unix.sh
+    - bash -e -x tools/build_unix.sh
     
 __linux_mysql_defaults: &__linux_mysql_defaults
   <<: *__linux_defaults
@@ -39,11 +40,8 @@ __osx_defaults: &__osx_defaults
   sudo: true
   compiler: clang
   script:
-    - bash -e -x ci/build_unix.sh
+    - bash -e -x tools/build_unix.sh
     
-__osx_cmake_options: &__osx_cmake_options "CMAKE_OPTIONS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
-
-
 language: cpp
 
 matrix:
@@ -119,7 +117,6 @@ matrix:
     - name: osx_clang_x64_debug_mysql
       <<: *__osx_defaults
       env:
-        - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mysql
         - USE_COVERAGE=1
@@ -127,20 +124,17 @@ matrix:
     - name: osx_clang_x64_release_mysql
       <<: *__osx_defaults
       env:
-        - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Release
         - DATABASE=mysql
         - HAS_SHA256=1
     - name: osx_clang_x64_debug_mariadb
       <<: *__osx_defaults
       env:
-        - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Debug
         - DATABASE=mariadb
         - USE_COVERAGE=1
     - name: osx_clang_x64_release_mariadb
       <<: *__osx_defaults
       env:
-        - *__osx_cmake_options
         - CMAKE_BUILD_TYPE=Release
         - DATABASE=mariadb

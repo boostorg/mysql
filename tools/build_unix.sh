@@ -40,43 +40,50 @@ function build_boost {
 # SHA256 functionality is only supported in MySQL 8+. From our
 # CI systems, only OSX has this version.
 
-cp ci/*.pem /tmp # Copy SSL certs/keys to a known location
+cp tools/ssl/*.pem /tmp # Copy SSL certs/keys to a known location
 if [ $TRAVIS_OS_NAME == "osx" ]; then
     brew update
-    brew install $DATABASE lcov
-    cp ci/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
+    brew install $DATABASE lcov ninja
+    cp tools/unix-ci.cnf ~/.my.cnf  # This location is checked by both MySQL and MariaDB
     sudo mkdir -p /var/run/mysqld/
     sudo chmod 777 /var/run/mysqld/
     mysql.server start # Note that running this with sudo fails
     if [ $DATABASE == "mariadb" ]; then
-        sudo mysql -u root < ci/root_user_setup.sql
+        sudo mysql -u root < tools/root_user_setup.sql
     fi
+    OPENSSL_ROOT_DIR_ARG=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
 else
-    sudo cp ci/unix-ci.cnf /etc/mysql/conf.d/
+    sudo cp tools/unix-ci.cnf /etc/mysql/conf.d/
     sudo service mysql restart
     get_cmake # OSX cmake is good enough
 fi
 
 build_boost
+python3 tools/build_date.py /tmp/date/
 
 mkdir -p build
 cd build
-cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+cmake \
+    -DCMAKE_INSTALL_PREFIX=/tmp/boost_mysql \
+    -DCMAKE_PREFIX_PATH=/tmp/date/ \
+    -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
     $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
     $(if [ $USE_COVERAGE ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
     $(if [ $HAS_SHA256 ]; then echo -DBOOST_MYSQL_SHA256_TESTS=ON; fi) \
+    $OPENSSL_ROOT_DIR_ARG \
     -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
+    -DBOOST_MYSQL_ALLOW_FETCH_CONTENT=OFF \
     $CMAKE_OPTIONS \
     .. 
-make -j6 CTEST_OUTPUT_ON_FAILURE=1 all test
+make -j6 CTEST_OUTPUT_ON_FAILURE=1 all install test
 
 # Coverage collection
 if [ $USE_COVERAGE ]; then
     # Select the gcov tool to use
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        GCOV_TOOL="$TRAVIS_BUILD_DIR/ci/clang-gcov-osx.sh"
+        GCOV_TOOL="$TRAVIS_BUILD_DIR/tools/clang-gcov-osx.sh"
     elif [ "$TRAVIS_COMPILER" == "clang" ]; then
-        GCOV_TOOL="$TRAVIS_BUILD_DIR/ci/clang-gcov-linux.sh"
+        GCOV_TOOL="$TRAVIS_BUILD_DIR/tools/clang-gcov-linux.sh"
     else
         GCOV_TOOL=gcov
     fi;
@@ -91,3 +98,8 @@ if [ $USE_COVERAGE ]; then
     curl -s https://codecov.io/bash -o codecov.sh
     bash +x codecov.sh -f coverage.info
 fi
+
+# Test that a project using our cmake can do it
+python3 ../tools/user_project_find_package/build.py \
+    "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;/tmp/date" \
+    $OPENSSL_ROOT_DIR_ARG

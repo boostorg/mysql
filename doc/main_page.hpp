@@ -30,7 +30,7 @@
  * CMake's FetchContent module to do this), and then call add_subdirectory() on the
  * Boost.MySQL root directory. This will look for all the required dependencies.
  *
- * Finally, link your target against the **Boost_mysql** interface library, and you will be done!
+ * Finally, link your target against the **Boost::mysql** interface library, and you will be done!
  *
  * \section Requirements
  *

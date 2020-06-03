@@ -16,10 +16,11 @@ matrix:
   fast_finish: true
 
 build_script:
-  - cp ci\ca-cert.pem C:\
-  - cp ci\server-cert.pem C:\
-  - cp ci\server-key.pem C:\
-  - cp ci\windows-ci.cnf C:\
+  - cp tools\ssl\ca-cert.pem C:\
+  - cp tools\ssl\server-cert.pem C:\
+  - cp tools\ssl\server-key.pem C:\
+  - cp tools\windows-ci.cnf C:\
+  - C:\Python37-x64\python.exe tools\build_date.py C:\date
   - 'echo !include C:\\windows-ci.cnf >> "C:\Program Files\MySQL\MySQL Server 5.7\my.ini"'
   - net stop MySQL57 && net start MySQL57
   - set PATH=C:\Program Files\MySQL\MySQL Server 5.7\bin;C:\Libraries\boost_1_73_0\lib64-msvc-14.2;C:\Libraries\boost_1_73_0\lib32-msvc-14.2;%PATH%
@@ -27,11 +28,22 @@ build_script:
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
   - mkdir build
   - cd build
-  - cmake -G Ninja -DBOOST_ROOT=C:\Libraries\boost_1_73_0 -DCMAKE_BUILD_TYPE=%CONFIGURATION% -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
-  - cmake --build . -j
+  - cmake 
+    -G Ninja 
+    -DCMAKE_INSTALL_PREFIX=C:\boost_mysql
+    -DCMAKE_PREFIX_PATH=C:\date
+    -DBOOST_ROOT=C:\Libraries\boost_1_73_0 
+    -DCMAKE_BUILD_TYPE=%CONFIGURATION% 
+    -DCMAKE_C_COMPILER=cl 
+    -DCMAKE_CXX_COMPILER=cl
+    -DBOOST_MYSQL_ALLOW_FETCH_CONTENT=OFF
+    ..
+  - cmake --build . -j --target install
 
 test_script:
   - ctest --output-on-failure
+  - C:\Python37-x64\python.exe ..\tools\user_project_find_package\build.py 
+    -DCMAKE_PREFIX_PATH=C:\boost_mysql;C:\date;C:\Libraries\boost_1_73_0
 
 services:
   - mysql

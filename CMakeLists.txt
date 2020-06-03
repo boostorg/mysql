@@ -6,16 +6,13 @@
 #
 
 cmake_minimum_required(VERSION 3.13.0) # Determined by requiring Boost 1.70
-project(mysql-asio)
-
-# We require having access to cmake/ in the module path
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+project(boost_mysql VERSION 0.0.1)
 
 # If we are the top-level project, enable testing
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
     if(BUILD_TESTING)
-        set(_MYSQL_TESTING_ENABLED ON)
+        set(_TESTING_ENABLED ON)
     endif()
     
     # Valgrind tests and Valgrind-friendly code (e.g. mark SSL buffers as initialized)
@@ -31,56 +28,66 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     mark_as_advanced(BOOST_MYSQL_SHA256_TESTS)
 endif()
 
+option(BOOST_MYSQL_ALLOW_FETCH_CONTENT ON "Allow FetchContent for date library")
+mark_as_advanced(BOOST_MYSQL_ALLOW_FETCH_CONTENT)
 
-# Some common utilities
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
-
-# Dependencies
+# Includes
+include(GNUInstallDirs)
 include(FetchContent)
 
-find_package(Boost 1.70.0 REQUIRED COMPONENTS system)
+# Dependencies
+find_package(Boost 1.72.0 REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-
-if (BOOST_MYSQL_VALGRIND_TESTS)
-    find_package(Mysqlvalgrind REQUIRED)
+if (NOT BOOST_MYSQL_ALLOW_FETCH_CONTENT)
+    find_package(date REQUIRED)
+else()
+    find_package(date QUIET)
 endif()
 
-# Date
-FetchContent_Declare(
-    date
-    GIT_REPOSITORY https://github.com/HowardHinnant/date.git
-    GIT_TAG        v2.4.1
-)
-
-FetchContent_GetProperties(date)
-if(NOT date_POPULATED)
-    FetchContent_Populate(date)
-    # Building date requires CMake 3.14, and we only need headers
+if (NOT date_FOUND)
+    message("-- Could NOT find date, fetching it")
+    FetchContent_Declare(
+        date
+        GIT_REPOSITORY https://github.com/HowardHinnant/date.git
+        GIT_TAG        v2.4.1
+    )
+    
+    FetchContent_GetProperties(date)
+    if(NOT date_POPULATED)
+        FetchContent_Populate(date)
+        set(ENABLE_DATE_TESTING OFF CACHE BOOL "")
+        set(USE_SYSTEM_TZ_DB ON CACHE BOOL "")
+        add_subdirectory(${date_SOURCE_DIR} ${date_BINARY_DIR})
+    endif()
 endif()
 
 # Interface library (header-only)
-add_library(
-    Boost_mysql
-    INTERFACE
-)
+add_library(boost_mysql INTERFACE)
+add_library(Boost::mysql ALIAS boost_mysql)
 
+target_link_directories(
+    boost_mysql 
+    INTERFACE
+    ${Boost_LIBRARY_DIRS} # Prevent link errors in Windows
+)
 target_link_libraries(
-    Boost_mysql
+    boost_mysql
     INTERFACE
     Boost::system
     Threads::Threads
     OpenSSL::Crypto
     OpenSSL::SSL
+    date_interface
 )
 target_include_directories(
-    Boost_mysql
+    boost_mysql
     INTERFACE
-    include
-    ${date_SOURCE_DIR}/include
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 target_compile_features(
-    Boost_mysql
+    boost_mysql
     INTERFACE
     cxx_std_17
 )
@@ -92,22 +99,53 @@ target_compile_features(
 # available on every C++11 or higher capable compiler. Force it.
 if (MSVC)
     target_compile_definitions(
-        Boost_mysql
+        boost_mysql
         INTERFACE
         BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
     )
 endif()
 
-if (BOOST_MYSQL_VALGRIND_TESTS)
-    target_link_libraries(
-        Boost_mysql
-        INTERFACE
-        Mysqlvalgrind::Mysqlvalgrind
+# Installing
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set_target_properties(boost_mysql PROPERTIES EXPORT_NAME mysql)
+    install(
+        DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ 
+        DESTINATION include
+    )
+    install(
+        TARGETS boost_mysql
+        EXPORT boost_mysql_targets
+    )
+    install(
+        EXPORT boost_mysql_targets
+        FILE boost_mysql-targets.cmake
+        NAMESPACE Boost::
+        DESTINATION lib/cmake/boost_mysql
+    )
+    
+    include(CMakePackageConfigHelpers)
+
+    configure_package_config_file(
+        cmake/config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql-config.cmake
+        INSTALL_DESTINATION lib/cmake/boost_mysql
+    )
+
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql-config-version.cmake
+        VERSION ${PROJECT_VERSION} 
+        COMPATIBILITY SameMajorVersion
+    )
+
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql-config-version.cmake
+        DESTINATION lib/cmake/boost_mysql
     )
 endif()
 
 # Examples and tests
-if(_MYSQL_TESTING_ENABLED)
+if(_TESTING_ENABLED)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
     add_subdirectory(example)
     add_subdirectory(test)

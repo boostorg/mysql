@@ -27,15 +27,16 @@ Download Boost.MySQL and make it available to your CMake script (we suggest you 
 CMake's FetchContent module to do this), and then call add_subdirectory() on the
 Boost.MySQL root directory. This will look for all the required dependencies.
 
-Finally, link your target against the **Boost_mysql** interface library, and you will be done!
+Finally, link your target against the **Boost::mysql** interface library, and you will be done!
 
 ## Requirements
 
 - C++17 capable compiler (tested with gcc 7.4, clang 7.0, Apple clang 11.0, MSVC 19.25).
-- Boost 1.70 or higher. The following Boost libraries are used:
+- Boost 1.72 or higher. The following Boost libraries are used:
     - Boost.Asio (and in consequence, Boost.System).
     - Boost.Lexical_Cast.
     - Boost.Endian.
+    - Boost.Coroutine (only if you are using boost::asio::yield_context).
 - OpenSSL.
 - CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
 - Howard Hinnant's date library (https://github.com/HowardHinnant/date) v2.4.1 or higher.
