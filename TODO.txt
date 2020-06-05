@@ -36,6 +36,9 @@ Other possible features
     Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    Increase compiler test coverage
+    Increase DB version test coverage
+    Conan for dependencies
 	Move to most recent Boost
 	    Remove int1_signed, int2_signed...
 	    Remove int1, int2, int4, int8

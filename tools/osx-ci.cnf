@@ -6,7 +6,7 @@
 #
 
 [mysqld]
-ssl-ca=C:\\ca-cert.pem
-ssl-cert=C:\\server-cert.pem
-ssl-key=C:\\server-key.pem
-log_error=C:\\mysql-log.txt
+socket=/var/run/mysqld/mysqld.sock
+
+[client]
+socket=/var/run/mysqld/mysqld.sock

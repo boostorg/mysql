@@ -21,7 +21,6 @@ function(common_target_settings TARGET_NAME)
         target_compile_definitions(
             ${TARGET_NAME}
             PRIVATE
-            _CRT_SECURE_NO_WARNINGS
             _WIN32_WINNT=${WINNT_VERSION} # Silence warnings in Windows
             _SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING # Warnings in C++17 for Asio
         )
@@ -43,37 +42,6 @@ function(common_target_settings TARGET_NAME)
         target_compile_options(${TARGET_NAME} PRIVATE --coverage)
         target_link_options(${TARGET_NAME} PRIVATE --coverage)
     endif()
-endfunction()
-
-# Adds a test fixture that consists of running a SQL file in the MySQL server
-function (add_sql_setup_fixture)
-    set(options "")
-    set(oneValueArgs TEST_NAME FIXTURE_NAME SQL_FILE SKIP_VAR)
-    set(multiValueArgs "")
-    cmake_parse_arguments(
-        SQLFIXT
-        "${options}" 
-        "${oneValueArgs}"
-        "${multiValueArgs}"
-        ${ARGN}
-    )
-    
-    # If this env var is defined we will skip setup 
-    # (just for development) (done in the Python script)
-    if (SQLFIXT_SKIP_VAR)
-        set(ADDITIONAL_OPTIONS -s ${SQLFIXT_SKIP_VAR})
-    endif()
-    
-    # Actual test
-    add_test(
-        NAME ${SQLFIXT_TEST_NAME}
-        COMMAND
-            ${Python3_EXECUTABLE} 
-            ${CMAKE_SOURCE_DIR}/tools/run_sql.py 
-            ${SQLFIXT_SQL_FILE}
-            ${ADDITIONAL_OPTIONS}
-    )
-    set_tests_properties(${SQLFIXT_TEST_NAME} PROPERTIES FIXTURES_SETUP ${SQLFIXT_FIXTURE_NAME})
 endfunction()
 
 # Valgrind stuff

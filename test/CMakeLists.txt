@@ -23,6 +23,7 @@ endif()
 # of the runtime penalty (specially considerable in integration tests)
 add_executable(
     boost_mysql_unittests
+    common/test_main.cpp
     unit/detail/auxiliar/static_string.cpp
     unit/detail/auth/auth_calculator.cpp
     unit/detail/protocol/serialization_test_common.cpp
@@ -57,7 +58,6 @@ target_link_libraries(
     boost_mysql_unittests
     PRIVATE
     gtest
-    gtest_main
     gmock
     Boost::mysql
 )
@@ -80,6 +80,7 @@ find_package(Boost REQUIRED COMPONENTS coroutine)
 
 add_executable(
     boost_mysql_integrationtests
+    common/test_main.cpp
     integration/network_functions/network_functions_impl.cpp
     integration/network_functions/sync.cpp
     integration/network_functions/async_callback.cpp
@@ -104,7 +105,6 @@ target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
     gtest
-    gtest_main
     gmock
     Boost::mysql
     Boost::coroutine
@@ -116,24 +116,12 @@ target_include_directories(
 )
 common_target_settings(boost_mysql_integrationtests)
 
-# Integration test setup
-add_sql_setup_fixture(
-    TEST_NAME    boost_mysql_integrationtests_setup
-    FIXTURE_NAME boost_mysql_integrationtests_fixture
-    SQL_FILE     ${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup.sql
-    SKIP_VAR     BOOST_MYSQL_SKIP_DB_SETUP
-)
-
 # Regular integration tests
 add_test(
     NAME boost_mysql_integrationtests
     COMMAND 
         ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
         "--gtest_filter=-*RequiresSha256*" # Exclude anything using SHA256
-)
-set_tests_properties(
-    boost_mysql_integrationtests
-    PROPERTIES FIXTURES_REQUIRED boost_mysql_integrationtests_setup
 )
 
 # If we are using memcheck, then run a subset of the integration tests
@@ -145,32 +133,15 @@ if (BOOST_MYSQL_VALGRIND_TESTS)
         NAME boost_mysql_integrationtests_memcheck
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests ${GTEST_FILTER}
     )
-    set_tests_properties(
-        boost_mysql_integrationtests_memcheck
-        PROPERTIES FIXTURES_REQUIRED boost_mysql_integrationtests_setup
-    )
 endif()
 
 # SHA256 tests 
 if (BOOST_MYSQL_SHA256_TESTS)
-    # Setup
-    add_sql_setup_fixture(
-        TEST_NAME    boost_mysql_integrationtests_sha256_setup
-        FIXTURE_NAME boost_mysql_integrationtests_sha256_fixture
-        SQL_FILE     ${CMAKE_CURRENT_SOURCE_DIR}/integration/db_setup_sha256.sql
-        SKIP_VAR     BOOST_MYSQL_SKIP_DB_SETUP
-    )
-    
     # Actual tests
     add_test(
         NAME boost_mysql_integrationtests_sha256
         COMMAND 
             ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
             "--gtest_filter=*RequiresSha256*" # Run only SHA256 stuff
-    )
-    set_tests_properties(
-        boost_mysql_integrationtests_sha256
-        PROPERTIES FIXTURES_REQUIRED 
-        "boost_mysql_integrationtests_fixture;boost_mysql_integrationtests_sha256_fixture"
     )
 endif()

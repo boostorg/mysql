@@ -1,0 +1,29 @@
+#
+# Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+local EXAMPLES =
+    query_sync
+    query_async_callbacks
+    query_async_coroutines
+    query_async_coroutinescpp20
+    query_async_futures
+    prepared_statements
+    metadata
+    unix_socket
+;
+
+for local example in $(EXAMPLES)
+{
+    unit-test "boost_mysql_example_$(example)" 
+        :
+            "$(example).cpp"
+            /boost/mysql//boost_mysql
+            /boost/coroutine//boost_coroutine
+        :
+            <testing.arg>"example_user example_password"
+        ;
+}

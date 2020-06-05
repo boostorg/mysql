@@ -5,45 +5,40 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-image: Visual Studio 2019
-configuration:
-  - Debug
-  - Release
-platform:
-  - x64
-  - x86
 matrix:
   fast_finish: true
 
 build_script:
-  - cp tools\ssl\ca-cert.pem C:\
-  - cp tools\ssl\server-cert.pem C:\
-  - cp tools\ssl\server-key.pem C:\
-  - cp tools\windows-ci.cnf C:\
-  - C:\Python37-x64\python.exe tools\build_date.py C:\date
-  - 'echo !include C:\\windows-ci.cnf >> "C:\Program Files\MySQL\MySQL Server 5.7\my.ini"'
-  - net stop MySQL57 && net start MySQL57
-  - set PATH=C:\Program Files\MySQL\MySQL Server 5.7\bin;C:\Libraries\boost_1_73_0\lib64-msvc-14.2;C:\Libraries\boost_1_73_0\lib32-msvc-14.2;%PATH%
-  - mysqladmin --user=root password -pPassword12! ""
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %PLATFORM%
-  - mkdir build
-  - cd build
-  - cmake 
-    -G Ninja 
-    -DCMAKE_INSTALL_PREFIX=C:\boost_mysql
-    -DCMAKE_PREFIX_PATH=C:\date
-    -DBOOST_ROOT=C:\Libraries\boost_1_73_0 
-    -DCMAKE_BUILD_TYPE=%CONFIGURATION% 
-    -DCMAKE_C_COMPILER=cl 
-    -DCMAKE_CXX_COMPILER=cl
-    -DBOOST_MYSQL_ALLOW_FETCH_CONTENT=OFF
-    ..
-  - cmake --build . -j --target install
+  - powershell ". .\tools\build_windows.ps1"
+  
+environment:
+  global:
+    B2_CI_VERSION: 1
+    B2_CXXFLAGS: -permissive-
+    B2_VARIANR: release,debug
+    B2_CXXSTD: 17
+  matrix:
+    # CMake
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_BUILD_TYPE: Debug
+      PLATFORM: x64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_BUILD_TYPE: Release
+      PLATFORM: x64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_BUILD_TYPE: Debug
+      PLATFORM: x86
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_BUILD_TYPE: Release
+      PLATFORM: x86
+    # Boost.Build
+    - FLAVOR: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PLATFORM: x86
+      B2_TOOLSET: msvc-14.2
+    - FLAVOR: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PLATFORM: x64
+      B2_TOOLSET: msvc-14.2
 
-test_script:
-  - ctest --output-on-failure
-  - C:\Python37-x64\python.exe ..\tools\user_project_find_package\build.py 
-    -DCMAKE_PREFIX_PATH=C:\boost_mysql;C:\date;C:\Libraries\boost_1_73_0
-
-services:
-  - mysql

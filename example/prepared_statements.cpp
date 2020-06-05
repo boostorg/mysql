@@ -90,7 +90,6 @@ void main_impl(int argc, char** argv)
     std::vector<boost::mysql::owning_row> salaries = result.fetch_all(); // Get all the results
     assert(salaries.size() == 1);
     [[maybe_unused]] double salary = salaries[0].values().at(0).get<double>(); // First row, first column
-    assert(salary == 30000);
     std::cout << "The salary before the payrise was: " << salary << std::endl;
 
     /**

@@ -39,14 +39,14 @@ struct IntegTest : testing::Test
 {
     using stream_type = Stream;
 
-    mysql::connection_params connection_params;
+    mysql::connection_params params;
     boost::asio::io_context ctx;
     mysql::socket_connection<Stream> conn;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard;
     std::thread runner;
 
     IntegTest() :
-        connection_params("integ_user", "integ_password", "boost_mysql_integtests"),
+        params("integ_user", "integ_password", "boost_mysql_integtests"),
         conn(ctx.get_executor()),
         guard(ctx.get_executor()),
         runner([this] { ctx.run(); })
@@ -64,8 +64,8 @@ struct IntegTest : testing::Test
 
     void set_credentials(std::string_view user, std::string_view password)
     {
-        connection_params.set_username(user);
-        connection_params.set_password(password);
+        params.set_username(user);
+        params.set_password(password);
     }
 
     void physical_connect()
@@ -75,8 +75,8 @@ struct IntegTest : testing::Test
 
     void handshake(ssl_mode m = ssl_mode::require)
     {
-        connection_params.set_ssl(ssl_options(m));
-        conn.handshake(connection_params);
+        params.set_ssl(ssl_options(m));
+        conn.handshake(params);
         validate_ssl(m);
     }
 

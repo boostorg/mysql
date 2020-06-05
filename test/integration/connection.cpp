@@ -29,7 +29,7 @@ TEST_F(ConnectionTest, MoveConstructor_ConnectedConnection_UsableConnection)
 
     // Connect
     first.next_layer().connect(get_endpoint<tcp::socket>(endpoint_kind::localhost));
-    first.handshake(connection_params);
+    first.handshake(params);
 
     // Construct second connection
     connection<tcp::socket> second (std::move(first));
@@ -48,7 +48,7 @@ TEST_F(ConnectionTest, MoveAssignment_FromConnectedConnection_UsableConnection)
 
     // Connect
     first.next_layer().connect(get_endpoint<tcp::socket>(endpoint_kind::localhost));
-    first.handshake(connection_params);
+    first.handshake(params);
 
     // Move
     second = std::move(first);
@@ -68,7 +68,7 @@ TEST_F(SocketConnectionTest, MoveConstructor_ConnectedConnection_UsableConnectio
     EXPECT_TRUE(first.valid());
 
     // Connect
-    first.connect(get_endpoint<tcp::socket>(endpoint_kind::localhost), connection_params);
+    first.connect(get_endpoint<tcp::socket>(endpoint_kind::localhost), params);
 
     // Construct second connection
     socket_connection<tcp::socket> second (std::move(first));
@@ -86,7 +86,7 @@ TEST_F(SocketConnectionTest, MoveAssignment_FromConnectedConnection_UsableConnec
     EXPECT_TRUE(second.valid());
 
     // Connect
-    first.connect(get_endpoint<tcp::socket>(endpoint_kind::localhost), connection_params);
+    first.connect(get_endpoint<tcp::socket>(endpoint_kind::localhost), params);
 
     // Move
     second = std::move(first);

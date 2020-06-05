@@ -11,8 +11,14 @@
 #include <cstdlib>
 #include <cmath>
 #include <type_traits>
+#include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include "boost/mysql/detail/protocol/constants.hpp"
+
+#ifdef BOOST_MSVC
+#pragma warning( push )
+#pragma warning( disable : 4996 ) // MSVC doesn't like my sscanf's
+#endif
 
 namespace boost {
 namespace mysql {
@@ -385,6 +391,8 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
     return error_code();
 }
 
-
+#ifdef BOOST_MSVC
+#pragma warning( pop )
+#endif
 
 #endif

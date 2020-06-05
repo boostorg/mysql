@@ -414,19 +414,19 @@ INSERT INTO types_flags VALUES
 ;
 
 -- Users
-DROP USER IF EXISTS 'integ_user'@'localhost';
-CREATE USER 'integ_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'integ_user'@'localhost' IDENTIFIED BY 'integ_password';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'integ_user'@'localhost';
+DROP USER IF EXISTS 'integ_user'@'%';
+CREATE USER 'integ_user'@'%' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'integ_user'@'%' IDENTIFIED BY 'integ_password';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'integ_user'@'%';
 
-DROP USER IF EXISTS 'mysqlnp_user'@'localhost';
-CREATE USER 'mysqlnp_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'mysqlnp_user'@'localhost' IDENTIFIED BY 'mysqlnp_password';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_user'@'localhost';
+DROP USER IF EXISTS 'mysqlnp_user'@'%';
+CREATE USER 'mysqlnp_user'@'%' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'mysqlnp_user'@'%' IDENTIFIED BY 'mysqlnp_password';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_user'@'%';
 
-DROP USER IF EXISTS 'mysqlnp_empty_password_user'@'localhost';
-CREATE USER 'mysqlnp_empty_password_user'@'localhost' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'mysqlnp_empty_password_user'@'localhost' IDENTIFIED BY '';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_empty_password_user'@'localhost';
+DROP USER IF EXISTS 'mysqlnp_empty_password_user'@'%';
+CREATE USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_empty_password_user'@'%';
 
 FLUSH PRIVILEGES;

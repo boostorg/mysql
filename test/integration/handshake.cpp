@@ -24,6 +24,8 @@ using boost::mysql::detail::make_error_code;
 using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::error_code;
+using boost::mysql::tcp_connection;
+using boost::mysql::connection_params;
 using boost::mysql::detail::stringize;
 
 namespace
@@ -40,8 +42,8 @@ struct SslIndifferentHandshakeTest : NetworkTest<Stream, false>
 
     auto do_handshake()
     {
-        this->connection_params.set_ssl(boost::mysql::ssl_options(this->GetParam().ssl));
-        return this->GetParam().net->handshake(this->conn, this->connection_params);
+        this->params.set_ssl(boost::mysql::ssl_options(this->GetParam().ssl));
+        return this->GetParam().net->handshake(this->conn, this->params);
     }
 
     // does handshake and verifies it went OK
@@ -63,12 +65,12 @@ struct SslSensitiveHandshakeTest : NetworkTest<Stream, false, network_testcase<S
 
     void set_ssl(ssl_mode m)
     {
-        this->connection_params.set_ssl(boost::mysql::ssl_options(m));
+        this->params.set_ssl(boost::mysql::ssl_options(m));
     }
 
     auto do_handshake()
     {
-        return this->GetParam().net->handshake(this->conn, this->connection_params);
+        return this->GetParam().net->handshake(this->conn, this->params);
     }
 
     void do_handshake_ok(ssl_mode m)
@@ -117,13 +119,13 @@ struct MiscSslIndifferentHandshakeTest : SslIndifferentHandshakeTest<Stream>
 {
     void NoDatabase_SuccessfulLogin()
     {
-        this->connection_params.set_database("");
+        this->params.set_database("");
         this->do_handshake_ok();
     }
 
     void BadDatabase_FailedLogin()
     {
-        this->connection_params.set_database("bad_database");
+        this->params.set_database("bad_database");
         auto result = this->do_handshake();
         result.validate_error(errc::dbaccess_denied_error, {"database", "bad_database"});
     }
@@ -149,19 +151,23 @@ struct CachingSha2HandshakeTest : SslSensitiveHandshakeTest<Stream>
 {
     void load_sha256_cache(const std::string& user, const std::string& password)
     {
-        if (password.empty())
-        {
-            check_call(stringize("mysql -u ", user, " -e \"\""));
-        }
-        else
-        {
-            check_call(stringize("mysql -u ", user, " -p", password, " -e \"\""));
-        }
+        tcp_connection conn (this->ctx);
+        conn.connect(
+            get_endpoint<boost::asio::ip::tcp::socket>(endpoint_kind::localhost),
+            connection_params(user, password)
+        );
+        conn.close();
     }
 
     void clear_sha256_cache()
     {
-        check_call("mysql -u root -e \"FLUSH PRIVILEGES\"");
+        tcp_connection conn (this->ctx);
+        conn.connect(
+            get_endpoint<boost::asio::ip::tcp::socket>(endpoint_kind::localhost),
+            connection_params("root", "")
+        );
+        conn.query("FLUSH PRIVILEGES");
+        conn.close();
     }
 
     // Actual tests
