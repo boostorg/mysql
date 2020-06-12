@@ -73,21 +73,20 @@ inline mysql::time maket(int hours, int mins, int secs, int micros=0)
 }
 
 template <std::size_t N>
-inline std::string_view makesv(const char (&value) [N])
+inline boost::string_view makesv(const char (&value) [N])
 {
-    static_assert(N>=1);
-    return std::string_view(value, N-1); // discard null terminator
+    return detail::make_string_view(value);
 }
 
 template <std::size_t N>
-inline std::string_view makesv(const std::uint8_t (&value) [N])
+inline boost::string_view makesv(const std::uint8_t (&value) [N])
 {
-    return std::string_view(reinterpret_cast<const char*>(value), N);
+    return boost::string_view(reinterpret_cast<const char*>(value), N);
 }
 
-inline std::string_view makesv(const std::uint8_t* value, std::size_t size)
+inline boost::string_view makesv(const std::uint8_t* value, std::size_t size)
 {
-    return std::string_view(reinterpret_cast<const char*>(value), size);
+    return boost::string_view(reinterpret_cast<const char*>(value), size);
 }
 
 
@@ -105,7 +104,7 @@ inline void validate_error_info(const boost::mysql::error_info& value, const std
     validate_string_contains(value.message(), to_check);
 }
 
-inline std::string buffer_diff(std::string_view s0, std::string_view s1)
+inline std::string buffer_diff(boost::string_view s0, boost::string_view s1)
 {
     std::ostringstream ss;
     ss << std::hex;
@@ -125,7 +124,7 @@ inline std::string buffer_diff(std::string_view s0, std::string_view s1)
     return ss.str();
 }
 
-inline void compare_buffers(std::string_view s0, std::string_view s1, const char* msg = "")
+inline void compare_buffers(boost::string_view s0, boost::string_view s1, const char* msg = "")
 {
     EXPECT_EQ(s0, s1) << msg << ":\n" << buffer_diff(s0, s1);
 }
@@ -162,18 +161,38 @@ inline const char* to_string(ssl_mode m)
     }
 }
 
-struct named_param {};
+// All the param types used in our parametric tests will have
+// a name() member function convertible to std::string. GTest needs
+// the parameter to be streamable; we tag our types with this named_tag
+// so the operator<< is found by ADL.
+struct named_tag {};
 
-template <typename T, typename=std::enable_if_t<std::is_base_of_v<named_param, T>>>
-std::ostream& operator<<(std::ostream& os, const T& v) { return os << v.name; }
-
-constexpr auto test_name_generator = [](const auto& param_info) {
-    std::ostringstream os;
-    os << param_info.param;
-    std::string res = os.str();
-    std::replace_if(res.begin(), res.end(), [](char c) { return !std::isalnum(c); }, '_');
-    return res;
+class named : public named_tag
+{
+    std::string name_;
+public:
+    named(std::string&& n): name_(std::move(n)) {}
+    const std::string& name() const noexcept { return name_; }
 };
+
+template <
+    typename T,
+    typename=typename std::enable_if<
+        std::is_base_of<named_tag, T>::value
+    >::type
+>
+std::ostream& operator<<(std::ostream& os, const T& v) { return os << v.name(); }
+
+struct test_name_generator_t
+{
+    template <typename T>
+    std::string operator()(const testing::TestParamInfo<T>& param_info) const
+    {
+        return param_info.param.name();
+    }
+};
+
+constexpr test_name_generator_t test_name_generator;
 
 } // test
 } // mysql

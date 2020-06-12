@@ -16,21 +16,15 @@ namespace detail {
 
 // Floating point types
 template <typename T>
-std::enable_if_t<std::is_floating_point_v<T>>
+typename std::enable_if<std::is_floating_point<T>::value>::type
 serialize_binary_value_impl(
     serialization_context& ctx,
     T input
 )
 {
-    // Endianness conversion
-#if BOOST_ENDIAN_BIG_BYTE
-    char buf [sizeof(T)];
-    std::memcpy(buf, &input, sizeof(T));
-    std::reverse(buf, buf + sizeof(T));
-    ctx.write(buf, sizeof(T));
-#else
-    ctx.write(&input, sizeof(T));
-#endif
+    boost::endian::endian_store<T, sizeof(T),
+        boost::endian::order::little>(ctx.first(), input);
+    ctx.advance(sizeof(T));
 }
 
 // Time types
@@ -43,9 +37,9 @@ inline void serialize_binary_ymd(
 {
     serialize(
         ctx,
-        int2(static_cast<std::uint16_t>(static_cast<int>(ymd.year()))),
-        int1(static_cast<std::uint8_t>(static_cast<unsigned>(ymd.month()))),
-        int1(static_cast<std::uint8_t>(static_cast<unsigned>(ymd.day())))
+        static_cast<std::uint16_t>(static_cast<int>(ymd.year())),
+        static_cast<std::uint8_t>(static_cast<unsigned>(ymd.month())),
+        static_cast<std::uint8_t>(static_cast<unsigned>(ymd.day()))
     );
 }
 
@@ -57,7 +51,7 @@ inline void serialize_binary_value_impl(
     ::date::year_month_day ymd (input);
     assert(ymd.ok());
 
-    serialize(ctx, int1(static_cast<std::uint8_t>(binc::date_sz)));
+    serialize(ctx, static_cast<std::uint8_t>(binc::date_sz));
     serialize_binary_ymd(ctx, ymd);
 }
 
@@ -73,14 +67,14 @@ inline void serialize_binary_value_impl(
     assert(ymd.ok());
 
     // Serialize
-    serialize(ctx, int1(static_cast<std::uint8_t>(binc::datetime_dhmsu_sz)));
+    serialize(ctx, static_cast<std::uint8_t>(binc::datetime_dhmsu_sz));
     serialize_binary_ymd(ctx, ymd);
     serialize(
         ctx,
-        int1(static_cast<std::uint8_t>(tod.hours().count())),
-        int1(static_cast<std::uint8_t>(tod.minutes().count())),
-        int1(static_cast<std::uint8_t>(tod.seconds().count())),
-        int4(static_cast<std::uint32_t>(tod.subseconds().count()))
+        static_cast<std::uint8_t>(tod.hours().count()),
+        static_cast<std::uint8_t>(tod.minutes().count()),
+        static_cast<std::uint8_t>(tod.seconds().count()),
+        static_cast<std::uint32_t>(tod.subseconds().count())
     );
 }
 
@@ -95,18 +89,18 @@ inline void serialize_binary_value_impl(
     auto minutes = std::chrono::duration_cast<std::chrono::minutes>(input % std::chrono::hours(1));
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(input % std::chrono::minutes(1));
     auto microseconds = input % std::chrono::seconds(1);
-    int1 is_negative (input.count() < 0 ? 1 : 0);
+    std::uint8_t is_negative = (input.count() < 0) ? 1 : 0;
 
     // Serialize
     serialize(
         ctx,
-        int1(static_cast<std::uint8_t>(binc::time_dhmsu_sz)),
+        static_cast<std::uint8_t>(binc::time_dhmsu_sz),
         is_negative,
-        int4(static_cast<std::uint32_t>(std::abs(days.count()))),
-        int1(static_cast<std::uint8_t>(std::abs(hours.count()))),
-        int1(static_cast<std::uint8_t>(std::abs(minutes.count()))),
-        int1(static_cast<std::uint8_t>(std::abs(seconds.count()))),
-        int4(static_cast<std::uint32_t>(std::abs(microseconds.count())))
+        static_cast<std::uint32_t>(std::abs(days.count())),
+        static_cast<std::uint8_t>(std::abs(hours.count())),
+        static_cast<std::uint8_t>(std::abs(minutes.count())),
+        static_cast<std::uint8_t>(std::abs(seconds.count())),
+        static_cast<std::uint32_t>(std::abs(microseconds.count()))
     );
 }
 
@@ -121,7 +115,7 @@ struct size_visitor
     template <typename T>
     std::size_t operator()(T) noexcept { return sizeof(T); }
 
-    std::size_t operator()(std::string_view v) noexcept { return get_size(ctx, string_lenenc(v)); }
+    std::size_t operator()(boost::string_view v) noexcept { return get_size(ctx, string_lenenc(v)); }
     std::size_t operator()(const date&) noexcept { return binc::date_sz + binc::length_sz; }
     std::size_t operator()(const datetime&) noexcept { return binc::datetime_dhmsu_sz + binc::length_sz; }
     std::size_t operator()(const time&) noexcept { return binc::time_dhmsu_sz + binc::length_sz; }
@@ -137,9 +131,9 @@ struct serialize_visitor
     template <typename T>
     void operator()(const T& v) noexcept { serialize_binary_value_impl(ctx, v); }
 
-    void operator()(std::int64_t v) noexcept { serialize(ctx, int8_signed(v)); }
-    void operator()(std::uint64_t v) noexcept { serialize(ctx, int8(v)); }
-    void operator()(std::string_view v) noexcept { serialize(ctx, string_lenenc(v)); }
+    void operator()(std::int64_t v) noexcept { serialize(ctx, v); }
+    void operator()(std::uint64_t v) noexcept { serialize(ctx, v); }
+    void operator()(boost::string_view v) noexcept { serialize(ctx, string_lenenc(v)); }
     void operator()(std::nullptr_t) noexcept {}
 };
 
@@ -153,7 +147,7 @@ inline std::size_t boost::mysql::detail::get_binary_value_size(
     const value& input
 ) noexcept
 {
-    return std::visit(size_visitor(ctx), input.to_variant());
+    return boost::variant2::visit(size_visitor(ctx), input.to_variant());
 }
 
 inline void boost::mysql::detail::serialize_binary_value(
@@ -161,7 +155,7 @@ inline void boost::mysql::detail::serialize_binary_value(
     const value& input
 ) noexcept
 {
-    std::visit(serialize_visitor(ctx), input.to_variant());
+    boost::variant2::visit(serialize_visitor(ctx), input.to_variant());
 }
 
 

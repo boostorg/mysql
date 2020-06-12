@@ -52,7 +52,7 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
     {
         detail::execute_statement(
             *channel_,
-            stmt_msg_.statement_id.value,
+            stmt_msg_.statement_id,
             params_first,
             params_last,
             res,
@@ -77,6 +77,59 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
     return res;
 }
 
+// Helper for async_execute
+template <typename StreamType>
+struct boost::mysql::prepared_statement<StreamType>::async_execute_initiation
+{
+    template <typename HandlerType>
+    struct error_handler
+    {
+        error_code err;
+        HandlerType h;
+
+        void operator()()
+        {
+            std::forward<HandlerType>(h)(err, resultset<StreamType>());
+        }
+    };
+
+    template <typename HandlerType, typename ForwardIterator>
+    void operator()(
+        HandlerType&& handler,
+        error_code err,
+        error_info& info,
+        prepared_statement<StreamType>& stmt,
+        ForwardIterator params_first,
+        ForwardIterator params_last
+    ) const
+    {
+        if (err)
+        {
+            auto executor = boost::asio::get_associated_executor(
+                handler,
+                stmt.next_layer().get_executor()
+            );
+
+            boost::asio::post(boost::asio::bind_executor(
+                executor,
+                error_handler<HandlerType>{err, std::forward<HandlerType>(handler)}
+            ));
+        }
+        else
+        {
+            // Actually execute the statement
+            detail::async_execute_statement(
+                *stmt.channel_,
+                stmt.stmt_msg_.statement_id,
+                params_first,
+                params_last,
+                std::forward<HandlerType>(handler),
+                info
+            );
+        }
+    }
+};
+
 template <typename StreamType>
 template <typename ForwardIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(
     void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)) CompletionToken>
@@ -98,39 +151,8 @@ boost::mysql::prepared_statement<StreamType>::async_execute(
     error_code err;
     check_num_params(params_first, params_last, err, output_info);
 
-    auto initiation = [](auto&& handler, error_code err, error_info& info,
-            prepared_statement<StreamType>& stmt, ForwardIterator params_first,
-            ForwardIterator params_last) {
-        if (err)
-        {
-            auto executor = boost::asio::get_associated_executor(
-                handler,
-                stmt.next_layer().get_executor()
-            );
-
-            boost::asio::post(boost::asio::bind_executor(
-                executor,
-                [handler = std::forward<decltype(handler)>(handler), err] () mutable {
-                    std::forward<decltype(handler)>(handler)(err, resultset<StreamType>());
-                }
-            ));
-        }
-        else
-        {
-            // Actually execute the statement
-            detail::async_execute_statement(
-                *stmt.channel_,
-                stmt.stmt_msg_.statement_id.value,
-                params_first,
-                params_last,
-                std::forward<decltype(handler)>(handler),
-                info
-            );
-        }
-    };
-
     return boost::asio::async_initiate<CompletionToken, void(error_code, resultset<StreamType>)>(
-        initiation,
+        async_execute_initiation(),
         token,
         err,
         std::ref(output_info),

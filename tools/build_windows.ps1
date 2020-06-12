@@ -59,11 +59,11 @@ if ($Env:B2_TOOLSET) # Use Boost.Build
     # Boost.Build setup
     Copy-Item -Path "tools\user-config.jam" -Destination "$HOME\user-config.jam"
     
-    # Boost.CI install and build (note: no need to wait for container here,
-    # building takes time enough)
+    # Boost.CI install and build
     Check-Call { git clone https://github.com/boostorg/boost-ci.git C:\boost-ci-cloned }
     Copy-Item -Path "C:\boost-ci-cloned\ci" -Destination ".\ci" -Recurse
     Remove-Item -Recurse -Force "C:\boost-ci-cloned"
+    Check-Call { python ".\tools\wait_for_db_container.py" }
     Check-Call { cmd /c ".\tools\build_windows_b2.bat" }
 }
 else # Use CMake
@@ -77,6 +77,7 @@ else # Use CMake
         "-DCMAKE_PREFIX_PATH=$DATE_ROOT" `
         "-DBOOST_ROOT=C:\Libraries\boost_1_73_0" `
         "-DCMAKE_BUILD_TYPE=$Env:CMAKE_BUILD_TYPE" `
+        "-DCMAKE_CXX_STANDARD=17" `
         "-DCMAKE_C_COMPILER=cl" `
         "-DCMAKE_CXX_COMPILER=cl" `
         "-DBOOST_MYSQL_ALLOW_FETCH_CONTENT=OFF" `

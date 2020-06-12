@@ -25,12 +25,16 @@ namespace
 template <typename Stream>
 class async_coroutine_errinfo : public network_functions<Stream>
 {
+    template <typename Callable>
+    using impl_result_type = decltype(std::declval<Callable>()(
+        std::declval<yield_context>(),
+        std::declval<error_info&>()
+    ));
+
     template <typename IoObj, typename Callable>
-    auto impl(IoObj& obj, Callable&& cb) {
-        using R = decltype(cb(
-            std::declval<yield_context>(),
-            std::declval<error_info&>()
-        ));
+    network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
+    {
+        using R = impl_result_type<Callable>;
 
         std::promise<network_result<R>> prom;
 
@@ -76,7 +80,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl(conn, [&](yield_context yield, error_info& info) {
@@ -85,7 +89,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl(conn, [&](yield_context yield, error_info& info) {
@@ -168,9 +172,15 @@ public:
 template <typename Stream>
 class async_coroutine_noerrinfo : public network_functions<Stream>
 {
+    template <typename Callable>
+    using impl_result_type = decltype(std::declval<Callable>()(
+        std::declval<yield_context>()
+    ));
+
     template <typename IoObj, typename Callable>
-    auto impl(IoObj& obj, Callable&& cb) {
-        using R = decltype(cb(std::declval<yield_context>()));
+    network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
+    {
+        using R = impl_result_type<Callable>;
 
         std::promise<network_result<R>> prom;
 
@@ -215,7 +225,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl(conn, [&](yield_context yield) {
@@ -224,7 +234,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl(conn, [&](yield_context yield) {

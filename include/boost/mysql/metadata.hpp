@@ -26,7 +26,7 @@ class field_metadata
     detail::column_definition_packet msg_;
     mutable field_type field_type_ { field_type::_not_computed };
 
-    bool flag_set(std::uint16_t flag) const noexcept { return msg_.flags.value & flag; }
+    bool flag_set(std::uint16_t flag) const noexcept { return msg_.flags & flag; }
 public:
     /// Default constructor.
     field_metadata() = default;
@@ -35,21 +35,21 @@ public:
     field_metadata(const detail::column_definition_packet& msg) noexcept: msg_(msg) {};
 
     /// Returns the name of the database (schema) the field belongs to.
-    std::string_view database() const noexcept { return msg_.schema.value; }
+    boost::string_view database() const noexcept { return msg_.schema.value; }
 
     /**
      * \brief Returns the name of the virtual table the field belongs to.
      * \details If the table was aliased, this will be the name of the alias
      * (e.g. in "SELECT * FROM employees emp", table() will be "emp").
      */
-    std::string_view table() const noexcept { return msg_.table.value; }
+    boost::string_view table() const noexcept { return msg_.table.value; }
 
     /**
      * \brief Returns the name of the physical table the field belongs to.
      * \details E.g. in "SELECT * FROM employees emp",
      * original_table() will be "employees".
      */
-    std::string_view original_table() const noexcept { return msg_.org_table.value; }
+    boost::string_view original_table() const noexcept { return msg_.org_table.value; }
 
     /**
      * \brief Returns the actual name of the field.
@@ -57,20 +57,20 @@ public:
      * (e.g. in "SELECT id AS employee_id FROM employees",
      * field_name() will be "employee_id").
      */
-    std::string_view field_name() const noexcept { return msg_.name.value; }
+    boost::string_view field_name() const noexcept { return msg_.name.value; }
 
     /**
      * \brief Returns the original (physical) name of the field.
      * \details E.g. in "SELECT id AS employee_id FROM employees",
      * original_field_name() will be "id".
      */
-    std::string_view original_field_name() const noexcept { return msg_.org_name.value; }
+    boost::string_view original_field_name() const noexcept { return msg_.org_name.value; }
 
     /// Returns the character set (collation) for the column.
     collation character_set() const noexcept { return msg_.character_set; }
 
     /// Returns the maximum length of the field.
-    unsigned column_length() const noexcept { return msg_.column_length.value; }
+    unsigned column_length() const noexcept { return msg_.column_length; }
 
     detail::protocol_field_type protocol_type() const noexcept { return msg_.type; }
 
@@ -78,7 +78,7 @@ public:
     field_type type() const noexcept;
 
     /// Returns the number of decimals of the field.
-    unsigned decimals() const noexcept { return msg_.decimals.value; }
+    unsigned decimals() const noexcept { return msg_.decimals; }
 
     /// Returns true if the field is not allowed to be NULL, false if it is nullable.
     bool is_not_null() const noexcept { return flag_set(detail::column_flags::not_null); }
@@ -123,7 +123,7 @@ public:
     resultset_metadata& operator=(const resultset_metadata&) = delete;
     resultset_metadata& operator=(resultset_metadata&&) = default;
     ~resultset_metadata() = default;
-    const auto& fields() const noexcept { return fields_; }
+    const std::vector<field_metadata>& fields() const noexcept { return fields_; }
 };
 
 } // detail

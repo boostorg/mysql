@@ -22,9 +22,8 @@ using boost::mysql::errc;
 namespace
 {
 
-struct binary_value_testcase : named_param
+struct binary_value_testcase : public named
 {
-    std::string name;
     std::vector<std::uint8_t> from;
     value expected;
     protocol_field_type type;
@@ -38,7 +37,7 @@ struct binary_value_testcase : named_param
         protocol_field_type type,
         std::uint16_t flags=0
     ):
-        name(std::move(name)),
+        named(std::move(name)),
         from(std::move(from)),
         expected(std::forward<T>(expected_value)),
         type(type),
@@ -51,9 +50,9 @@ struct DeserializeBinaryValueTest : public TestWithParam<binary_value_testcase> 
 
 TEST_P(DeserializeBinaryValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
-    column_definition_packet coldef;
+    column_definition_packet coldef {};
     coldef.type = GetParam().type;
-    coldef.flags.value = GetParam().flags;
+    coldef.flags = GetParam().flags;
     boost::mysql::field_metadata meta (coldef);
     value actual_value;
     const auto& buffer = GetParam().from;
@@ -209,7 +208,7 @@ std::vector<binary_value_testcase> make_datetime_cases(
         { "hmsu", 11 }
     };
 
-    constexpr struct
+    const struct
     {
         const char* name;
         void (*invalidator)(bytestring&);

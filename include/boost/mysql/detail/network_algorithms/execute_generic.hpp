@@ -10,7 +10,7 @@
 
 #include "boost/mysql/detail/network_algorithms/common.hpp"
 #include "boost/mysql/resultset.hpp"
-#include <string_view>
+#include <boost/utility/string_view.hpp>
 
 namespace boost {
 namespace mysql {

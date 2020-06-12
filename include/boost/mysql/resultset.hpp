@@ -270,14 +270,14 @@ class resultset
      * \brief The number of warnings produced by the SQL that generated this resultset.
      * \warning The resultset **must be complete** before calling this function.
      */
-    unsigned warning_count() const noexcept { assert(complete()); return ok_packet_.warnings.value; }
+    unsigned warning_count() const noexcept { assert(complete()); return ok_packet_.warnings; }
 
     /**
      * \brief Additionat text information about the execution of
      *        the SQL that generated this resultset.
      * \warning The resultset **must be complete** before calling this function.
      */
-    std::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
+    boost::string_view info() const noexcept { assert(complete()); return ok_packet_.info.value; }
 
     /// Rebinds the resultset type to another executor.
     template <typename Executor>

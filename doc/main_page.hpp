@@ -8,15 +8,15 @@
 /**
  * \mainpage User manual
  *
- * Boost.MySQL is a C++17 client for the MySQL database server, based on Boost.Asio.
+ * Boost.MySQL is a C++11 client for the MySQL database server, based on Boost.Asio.
  *
  * \section why Why another MySQL C++ client?
  *
  * - It is fully compatible with Boost.Asio and integrates well with any other
  *   library in the Boost.Asio ecosystem (like Boost.Beast).
  * - It supports Boost.Asio's universal asynchronous model, which means you can
- *   go asyncrhonous using callbacks, futures or coroutines.
- * - It is written in modern C++ (C++17) and takes advantage of the latest language
+ *   go asyncrhonous using callbacks, futures or coroutines (including C++20 coroutines).
+ * - It is written in modern C++ (C++11) and takes advantage of the latest language
  *   features and standard library additions.
  * - It is header only.
  *
@@ -34,11 +34,8 @@
  *
  * \section Requirements
  *
- * - C++17 capable compiler (tested with gcc 7.4, clang 7.0, Apple clang 11.0, MSVC 19.25).
- * - Boost 1.70 or higher. The following Boost libraries are used:
- *    - Boost.Asio (and in consequence, Boost.System).
- *    - Boost.Lexical_Cast.
- *    - Boost.Endian.
+ * - C++11 capable compiler (tested with gcc 7.4, clang 7.0, Apple clang 11.0, MSVC 19.25).
+ * - Boost 1.72 or higher.
  * - OpenSSL.
  * - CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
  * - Howard Hinnant's date library (https://github.com/HowardHinnant/date) v2.4.1 or higher.

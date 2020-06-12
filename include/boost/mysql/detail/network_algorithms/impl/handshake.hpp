@@ -34,9 +34,10 @@ inline error_code deserialize_handshake(
 )
 {
     deserialization_context ctx (boost::asio::buffer(buffer), capabilities());
-    auto [err, msg_type] = deserialize_message_type(ctx);
-    if (err)
-        return err;
+    std::uint8_t msg_type = 0;
+    auto err = deserialize(ctx, msg_type);
+    if (err != errc::ok)
+        return make_error_code(err);
     if (msg_type == handshake_protocol_version_9)
     {
         return make_error_code(errc::server_unsupported);
@@ -85,7 +86,7 @@ public:
     error_code process_capabilities(const handshake_packet& handshake)
     {
         auto ssl = params_.ssl().mode();
-        capabilities server_caps (handshake.capability_falgs.value);
+        capabilities server_caps (handshake.capability_falgs);
         capabilities required_caps = mandatory_capabilities |
                 conditional_capability(!params_.database().empty(), CLIENT_CONNECT_WITH_DB) |
                 conditional_capability(ssl == ssl_mode::require, CLIENT_SSL);
@@ -124,9 +125,9 @@ public:
     void compose_ssl_request(bytestring& buffer)
     {
         ssl_request sslreq {
-            int4(negotiated_capabilities().get()),
-            int4(static_cast<std::uint32_t>(MAX_PACKET_SIZE)),
-            int1(get_collation_first_byte(params_.connection_collation())),
+            negotiated_capabilities().get(),
+            static_cast<std::uint32_t>(MAX_PACKET_SIZE),
+            get_collation_first_byte(params_.connection_collation()),
             {}
         };
 
@@ -138,9 +139,9 @@ public:
     {
         // Compose response
         handshake_response_packet response {
-            int4(negotiated_caps_.get()),
-            int4(static_cast<std::uint32_t>(MAX_PACKET_SIZE)),
-            int1(get_collation_first_byte(params_.connection_collation())),
+            negotiated_caps_.get(),
+            static_cast<std::uint32_t>(MAX_PACKET_SIZE),
+            get_collation_first_byte(params_.connection_collation()),
             string_null(params_.username()),
             string_lenenc(auth_calc_.response()),
             string_null(params_.database()),
@@ -159,7 +160,8 @@ public:
     )
     {
         deserialization_context ctx (boost::asio::buffer(buffer), negotiated_caps_);
-        auto [err, msg_type] = deserialize_message_type(ctx);
+        std::uint8_t msg_type = 0;
+        auto err = make_error_code(deserialize(ctx, msg_type));
         if (err)
             return err;
         if (msg_type == ok_packet_header)
@@ -181,7 +183,6 @@ public:
                 return err;
 
             // Compute response
-            auth_switch_response_packet auth_sw_res;
             err = auth_calc_.calculate(
                 auth_sw.plugin_name.value,
                 params_.password(),
@@ -190,10 +191,13 @@ public:
             );
             if (err)
                 return err;
-            auth_sw_res.auth_plugin_data.value = auth_calc_.response();
 
             // Serialize
-            serialize_message(auth_sw_res, negotiated_caps_, buffer);
+            serialize_message(
+                auth_switch_response_packet{string_eof(auth_calc_.response())},
+                negotiated_caps_,
+                buffer
+            );
 
             result = auth_result::send_more_data;
             return error_code();
@@ -206,7 +210,7 @@ public:
             if (err)
                 return err;
 
-            std::string_view challenge = more_data.auth_plugin_data.value;
+            boost::string_view challenge = more_data.auth_plugin_data.value;
             if (challenge == fast_auth_complete_challenge)
             {
                 result = auth_result::wait_for_ok;

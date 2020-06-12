@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_AUTH_MYSQL_NATIVE_PASSWORD_HPP
 
 #include <cstdint>
-#include <string_view>
+#include <boost/utility/string_view.hpp>
 #include "boost/mysql/error.hpp"
 
 namespace boost {
@@ -20,10 +20,10 @@ namespace mysql_native_password {
 // Authorization for this plugin is always challenge (nonce) -> response
 // (hashed password).
 inline error_code compute_response(
-    std::string_view password,
-    std::string_view challenge,
+    boost::string_view password,
+    boost::string_view challenge,
     bool use_ssl,
-    std::string& output
+    bytestring& output
 );
 
 

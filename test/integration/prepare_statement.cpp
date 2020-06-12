@@ -20,7 +20,13 @@ namespace
 template <typename Stream>
 struct PrepareStatementTest : public NetworkTest<Stream>
 {
-    auto do_prepare(std::string_view stmt)
+    PrepareStatementTest()
+    {
+        this->connect(this->GetParam().ssl);
+    }
+
+    network_result<prepared_statement<Stream>>
+    do_prepare(boost::string_view stmt)
     {
         return this->GetParam().net->prepare_statement(this->conn, stmt);
     }

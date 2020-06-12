@@ -32,7 +32,7 @@ TEST_F(PreparedStatementTest, DefaultConstructor_Trivial_Invalid)
 
 TEST_F(PreparedStatementTest, InitializingConstructor_Trivial_Valid)
 {
-    tcp_prepared_statement stmt (chan, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)});
+    tcp_prepared_statement stmt (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 10);
     EXPECT_EQ(stmt.num_params(), 8);
@@ -48,7 +48,7 @@ TEST_F(PreparedStatementTest, MoveConstructor_FromValid_Valid)
 {
 
     tcp_prepared_statement stmt (tcp_prepared_statement(
-        chan, com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
+        chan, com_stmt_prepare_ok_packet{10, 9, 8, 7}
     ));
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 10);
@@ -59,7 +59,7 @@ TEST_F(PreparedStatementTest, MoveAssignment_FromDefaultConstructed_Invalid)
 {
     tcp_prepared_statement stmt (
         chan,
-        com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
+        com_stmt_prepare_ok_packet{10, 9, 8, 7}
     );
     stmt = tcp_prepared_statement();
     EXPECT_FALSE(stmt.valid());
@@ -73,14 +73,14 @@ TEST_F(PreparedStatementTest, MoveAssignment_FromValid_Valid)
     tcp_prepared_statement stmt;
     stmt = tcp_prepared_statement (
         chan,
-        com_stmt_prepare_ok_packet{int4(10), int2(9), int2(8), int2(7)}
+        com_stmt_prepare_ok_packet{10, 9, 8, 7}
     );
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 10);
     EXPECT_EQ(stmt.num_params(), 8);
     stmt = tcp_prepared_statement(
         chan,
-        com_stmt_prepare_ok_packet{int4(1), int2(2), int2(3), int2(4)}
+        com_stmt_prepare_ok_packet{1, 2, 3, 4}
     );
     EXPECT_TRUE(stmt.valid());
     EXPECT_EQ(stmt.id(), 1);
@@ -97,7 +97,7 @@ TEST_F(PreparedStatementTest, RebindExecutor_Trivial_ReturnsCorrectType)
             other_executor
         >
     >;
-    EXPECT_TRUE((std::is_same_v<rebound_type, expected_type>));
+    EXPECT_TRUE((std::is_same<rebound_type, expected_type>::value));
 }
 
 }

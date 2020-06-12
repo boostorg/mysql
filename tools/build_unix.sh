@@ -112,8 +112,9 @@ function cmake_build {
     cd build
     cmake \
         -DCMAKE_INSTALL_PREFIX=/tmp/boost_mysql \
-        -DCMAKE_PREFIX_PATH=/tmp/date/ \
+        "-DCMAKE_PREFIX_PATH=/tmp/date/;/opt/boost_1_73_0" \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+        -DCMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD \
         $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
         $(if [ $USE_COVERAGE ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
         $(if [ $BOOST_MYSQL_SHA256_TESTS ]; then echo -DBOOST_MYSQL_SHA256_TESTS=ON; fi) \
@@ -130,7 +131,7 @@ function cmake_build {
     # Test that a user project could use our export
     python3 \
         tools/user_project_find_package/build.py \
-        "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;/tmp/date" \
+        "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;/tmp/date;/opt/boost_1_73_0" \
         $openssl_arg
 }
 

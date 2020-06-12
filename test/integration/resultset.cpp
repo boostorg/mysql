@@ -10,6 +10,7 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::detail::make_error_code;
+using boost::mysql::detail::stringize;
 using boost::mysql::field_metadata;
 using boost::mysql::field_type;
 using boost::mysql::error_code;
@@ -18,6 +19,7 @@ using boost::mysql::ssl_mode;
 using boost::mysql::connection;
 using boost::mysql::resultset;
 using boost::mysql::prepared_statement;
+using boost::mysql::owning_row;
 namespace net = boost::asio;
 
 namespace
@@ -30,7 +32,7 @@ class resultset_generator
 public:
     virtual ~resultset_generator() {}
     virtual const char* name() const = 0;
-    virtual resultset<Stream> generate(connection<Stream>&, std::string_view) = 0;
+    virtual resultset<Stream> generate(connection<Stream>&, boost::string_view) = 0;
 };
 
 template <typename Stream>
@@ -38,7 +40,7 @@ class text_resultset_generator : public resultset_generator<Stream>
 {
 public:
     const char* name() const override { return "text"; }
-    resultset<Stream> generate(connection<Stream>& conn, std::string_view query) override
+    resultset<Stream> generate(connection<Stream>& conn, boost::string_view query) override
     {
         return conn.query(query);
     }
@@ -49,42 +51,56 @@ class binary_resultset_generator : public resultset_generator<Stream>
 {
 public:
     const char* name() const override { return "binary"; }
-    resultset<Stream> generate(connection<Stream>& conn, std::string_view query) override
+    resultset<Stream> generate(connection<Stream>& conn, boost::string_view query) override
     {
         return conn.prepare_statement(query).execute(boost::mysql::no_statement_params);
     }
 };
 
-template <typename Stream> text_resultset_generator<Stream> text_obj;
-template <typename Stream> binary_resultset_generator<Stream> binary_obj;
-
 // Test parameter
 template <typename Stream>
-struct resultset_testcase : network_testcase_with_ssl<Stream>
+struct resultset_testcase : boost::mysql::test::named_tag
 {
+    network_functions<Stream>* net;
+    ssl_mode ssl;
     resultset_generator<Stream>* gen;
 
-    resultset_testcase(network_testcase_with_ssl<Stream> base, resultset_generator<Stream>* gen):
-        network_testcase_with_ssl<Stream>(base), gen(gen) {}
+    resultset_testcase(network_functions<Stream>* funs, ssl_mode ssl, resultset_generator<Stream>* gen):
+        net(funs),
+        ssl(ssl),
+        gen(gen)
+    {
+    }
 
     std::string name() const
     {
-        return network_testcase_with_ssl<Stream>::name() + '_' + gen->name();
+        return stringize(net->name(), '_', to_string(ssl), '_', gen->name());
     }
 
     static std::vector<resultset_testcase<Stream>> make_all()
     {
+        static text_resultset_generator<Stream> text_obj;
+        static binary_resultset_generator<Stream> binary_obj;
+
         resultset_generator<Stream>* all_resultset_generators [] = {
-            &text_obj<Stream>,
-            &binary_obj<Stream>
+            &text_obj,
+            &binary_obj
+        };
+        auto all_network_functions = make_all_network_functions<Stream>();
+        ssl_mode all_ssl_modes [] = {
+            ssl_mode::disable,
+            ssl_mode::require
         };
 
         std::vector<resultset_testcase<Stream>> res;
-        for (auto* gen: all_resultset_generators)
+        for (auto* net: all_network_functions)
         {
-            for (auto base: network_testcase_with_ssl<Stream>::make_all())
+            for (auto ssl: all_ssl_modes)
             {
-                res.push_back(resultset_testcase<Stream>(base, gen));
+                for (auto* gen: all_resultset_generators)
+                {
+                    res.emplace_back(net, ssl, gen);
+                }
             }
         }
         return res;
@@ -92,12 +108,19 @@ struct resultset_testcase : network_testcase_with_ssl<Stream>
 };
 
 template <typename Stream>
-struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Stream>>
+struct ResultsetTest : public NetworkTest<Stream, resultset_testcase<Stream>>
 {
-    auto do_generate(std::string_view query) { return this->GetParam().gen->generate(this->conn, query); }
-    auto do_fetch_one(resultset<Stream>& r) { return this->GetParam().net->fetch_one(r); }
-    auto do_fetch_many(resultset<Stream>& r, std::size_t count) { return this->GetParam().net->fetch_many(r, count); }
-    auto do_fetch_all(resultset<Stream>& r) { return this->GetParam().net->fetch_all(r); }
+    network_functions<Stream>* net {this->GetParam().net};
+
+    ResultsetTest()
+    {
+        this->connect(this->GetParam().ssl);
+    }
+
+    resultset<Stream> do_generate(boost::string_view query)
+    {
+        return this->GetParam().gen->generate(this->conn, query);
+    }
 
     // FetchOne
     void FetchOne_NoResults()
@@ -108,13 +131,13 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         EXPECT_EQ(result.fields().size(), 2);
 
         // Already in the end of the resultset, we receive the EOF
-        auto row_result = do_fetch_one(result);
+        auto row_result = net->fetch_one(result);
         row_result.validate_no_error();
         EXPECT_EQ(row_result.value, nullptr);
         this->validate_eof(result);
 
         // Fetching again just returns null
-        row_result = do_fetch_one(result);
+        row_result = net->fetch_one(result);
         row_result.validate_no_error();
         EXPECT_EQ(row_result.value, nullptr);
         this->validate_eof(result);
@@ -128,7 +151,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         EXPECT_EQ(result.fields().size(), 2);
 
         // Fetch only row
-        auto row_result = do_fetch_one(result);
+        auto row_result = net->fetch_one(result);
         row_result.validate_no_error();
         ASSERT_NE(row_result.value, nullptr);
         this->validate_2fields_meta(result, "one_row_table");
@@ -136,7 +159,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         EXPECT_FALSE(result.complete());
 
         // Fetch next: end of resultset
-        row_result = do_fetch_one(result);
+        row_result = net->fetch_one(result);
         row_result.validate_no_error();
         ASSERT_EQ(row_result.value, nullptr);
         this->validate_eof(result);
@@ -150,7 +173,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         EXPECT_EQ(result.fields().size(), 2);
 
         // Fetch first row
-        auto row_result = do_fetch_one(result);
+        auto row_result = net->fetch_one(result);
         row_result.validate_no_error();
         ASSERT_NE(row_result.value, nullptr);
         this->validate_2fields_meta(result, "two_rows_table");
@@ -158,7 +181,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         EXPECT_FALSE(result.complete());
 
         // Fetch next row
-        row_result = do_fetch_one(result);
+        row_result = net->fetch_one(result);
         row_result.validate_no_error();
         ASSERT_NE(row_result.value, nullptr);
         this->validate_2fields_meta(result, "two_rows_table");
@@ -166,7 +189,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         EXPECT_FALSE(result.complete());
 
         // Fetch next: end of resultset
-        row_result = do_fetch_one(result);
+        row_result = net->fetch_one(result);
         row_result.validate_no_error();
         ASSERT_EQ(row_result.value, nullptr);
         this->validate_eof(result);
@@ -180,14 +203,14 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         auto result = do_generate("SELECT * FROM empty_table");
 
         // Fetch many, but there are no results
-        auto rows_result = do_fetch_many(result, 10);
+        auto rows_result = net->fetch_many(result, 10);
         rows_result.validate_no_error();
         EXPECT_TRUE(rows_result.value.empty());
         EXPECT_TRUE(result.complete());
         this->validate_eof(result);
 
         // Fetch again, should return OK and empty
-        rows_result = do_fetch_many(result, 10);
+        rows_result = net->fetch_many(result, 10);
         rows_result.validate_no_error();
         EXPECT_TRUE(rows_result.value.empty());
         EXPECT_TRUE(result.complete());
@@ -199,13 +222,13 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         auto result = do_generate("SELECT * FROM three_rows_table");
 
         // Fetch 2, one remaining
-        auto rows_result = do_fetch_many(result, 2);
+        auto rows_result = net->fetch_many(result, 2);
         rows_result.validate_no_error();
         EXPECT_FALSE(result.complete());
         EXPECT_EQ(rows_result.value, (makerows(2, 1, "f0", 2, "f1")));
 
         // Fetch another two (completes the resultset)
-        rows_result = do_fetch_many(result, 2);
+        rows_result = net->fetch_many(result, 2);
         rows_result.validate_no_error();
         EXPECT_TRUE(result.complete());
         this->validate_eof(result);
@@ -217,7 +240,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         auto result = do_generate("SELECT * FROM two_rows_table");
 
         // Fetch 3, resultset exhausted
-        auto rows_result = do_fetch_many(result, 3);
+        auto rows_result = net->fetch_many(result, 3);
         rows_result.validate_no_error();
         EXPECT_EQ(rows_result.value, (makerows(2, 1, "f0", 2, "f1")));
         this->validate_eof(result);
@@ -228,13 +251,13 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         auto result = do_generate("SELECT * FROM two_rows_table");
 
         // Fetch 2, 0 remaining but resultset not exhausted
-        auto rows_result = do_fetch_many(result, 2);
+        auto rows_result = net->fetch_many(result, 2);
         rows_result.validate_no_error();
         EXPECT_FALSE(result.complete());
         EXPECT_EQ(rows_result.value, (makerows(2, 1, "f0", 2, "f1")));
 
         // Fetch again, exhausts the resultset
-        rows_result = do_fetch_many(result, 2);
+        rows_result = net->fetch_many(result, 2);
         rows_result.validate_no_error();
         EXPECT_EQ(rows_result.value.size(), 0);
         this->validate_eof(result);
@@ -245,7 +268,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         auto result = do_generate("SELECT * FROM one_row_table");
 
         // Fetch 1, 1 remaining
-        auto rows_result = do_fetch_many(result, 1);
+        auto rows_result = net->fetch_many(result, 1);
         rows_result.validate_no_error();
         EXPECT_FALSE(result.complete());
         EXPECT_EQ(rows_result.value, (makerows(2, 1, "f0")));
@@ -257,13 +280,13 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
         auto result = do_generate("SELECT * FROM empty_table");
 
         // Fetch many, but there are no results
-        auto rows_result = do_fetch_all(result);
+        auto rows_result = net->fetch_all(result);
         rows_result.validate_no_error();
         EXPECT_TRUE(rows_result.value.empty());
         EXPECT_TRUE(result.complete());
 
         // Fetch again, should return OK and empty
-        rows_result = do_fetch_all(result);
+        rows_result = net->fetch_all(result);
         rows_result.validate_no_error();
         EXPECT_TRUE(rows_result.value.empty());
         this->validate_eof(result);
@@ -273,7 +296,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
     {
         auto result = do_generate("SELECT * FROM one_row_table");
 
-        auto rows_result = do_fetch_all(result);
+        auto rows_result = net->fetch_all(result);
         rows_result.validate_no_error();
         EXPECT_TRUE(result.complete());
         EXPECT_EQ(rows_result.value, (makerows(2, 1, "f0")));
@@ -283,7 +306,7 @@ struct ResultsetTest : public NetworkTest<Stream, true, resultset_testcase<Strea
     {
         auto result = do_generate("SELECT * FROM two_rows_table");
 
-        auto rows_result = do_fetch_all(result);
+        auto rows_result = net->fetch_all(result);
         rows_result.validate_no_error();
         this->validate_eof(result);
         EXPECT_TRUE(result.complete());

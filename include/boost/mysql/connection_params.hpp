@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_CONNECTION_PARAMS_HPP
 #define BOOST_MYSQL_CONNECTION_PARAMS_HPP
 
-#include <string_view>
+#include <boost/utility/string_view.hpp>
 #include "boost/mysql/collation.hpp"
 
 /**
@@ -60,17 +60,17 @@ public:
  */
 class connection_params
 {
-    std::string_view username_;
-    std::string_view password_;
-    std::string_view database_;
+    boost::string_view username_;
+    boost::string_view password_;
+    boost::string_view database_;
     collation connection_collation_;
     ssl_options ssl_;
 public:
     /// Initializing constructor
     connection_params(
-        std::string_view username,  ///< Username to authenticate as
-        std::string_view password,  ///< Password for that username, possibly empty.
-        std::string_view db = "",   ///< Database to use, or empty string for no database.
+        boost::string_view username,  ///< Username to authenticate as
+        boost::string_view password,  ///< Password for that username, possibly empty.
+        boost::string_view db = "",   ///< Database to use, or empty string for no database.
         collation connection_col = collation::utf8_general_ci, ///< The default character set and collation for the connection.
         const ssl_options& opts = ssl_options() ///< The TLS options to use with this connection.
     ) :
@@ -83,22 +83,22 @@ public:
     }
 
     /// Retrieves the username.
-    std::string_view username() const noexcept { return username_; }
+    boost::string_view username() const noexcept { return username_; }
 
     /// Sets the username.
-    void set_username(std::string_view value) noexcept { username_ = value; }
+    void set_username(boost::string_view value) noexcept { username_ = value; }
 
     /// Retrieves the password.
-    std::string_view password() const noexcept { return password_; }
+    boost::string_view password() const noexcept { return password_; }
 
     /// Sets the password
-    void set_password(std::string_view value) noexcept { password_ = value; }
+    void set_password(boost::string_view value) noexcept { password_ = value; }
 
     /// Retrieves the database.
-    std::string_view database() const noexcept { return database_; }
+    boost::string_view database() const noexcept { return database_; }
 
     /// Sets the database
-    void set_database(std::string_view value) noexcept { database_ = value; }
+    void set_database(boost::string_view value) noexcept { database_ = value; }
 
     /// Retrieves the connection collation.
     collation connection_collation() const noexcept { return connection_collation_; }

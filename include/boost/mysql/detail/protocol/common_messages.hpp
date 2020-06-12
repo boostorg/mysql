@@ -21,16 +21,16 @@ namespace detail {
 struct packet_header
 {
     int3 packet_size;
-    int1 sequence_number;
-};
+    std::uint8_t sequence_number;
 
-template <>
-struct get_struct_fields<packet_header>
-{
-    static constexpr auto value = std::make_tuple(
-        &packet_header::packet_size,
-        &packet_header::sequence_number
-    );
+    template <typename Self, typename Callable>
+    static void apply(Self& self, Callable&& cb)
+    {
+        std::forward<Callable>(cb)(
+            self.packet_size,
+            self.sequence_number
+        );
+    }
 };
 
 // ok packet
@@ -39,22 +39,22 @@ struct ok_packet
     // header: int<1>     header     0x00 or 0xFE the OK packet header
     int_lenenc affected_rows;
     int_lenenc last_insert_id;
-    int2 status_flags; // server_status_flags
-    int2 warnings;
+    std::uint16_t status_flags; // server_status_flags
+    std::uint16_t warnings;
     // CLIENT_SESSION_TRACK: not implemented
     string_lenenc info;
-};
 
-template <>
-struct get_struct_fields<ok_packet>
-{
-    static constexpr auto value = std::make_tuple(
-        &ok_packet::affected_rows,
-        &ok_packet::last_insert_id,
-        &ok_packet::status_flags,
-        &ok_packet::warnings,
-        &ok_packet::info
-    );
+    template <typename Self, typename Callable>
+    static void apply(Self& self, Callable&& cb)
+    {
+        std::forward<Callable>(cb)(
+            self.affected_rows,
+            self.last_insert_id,
+            self.status_flags,
+            self.warnings,
+            self.info
+        );
+    }
 };
 
 template <>
@@ -68,22 +68,24 @@ struct serialization_traits<ok_packet, serialization_tag::struct_with_fields> :
 struct err_packet
 {
     // int<1>     header     0xFF ERR packet header
-    int2 error_code;
+    std::uint16_t error_code;
     string_fixed<1> sql_state_marker;
     string_fixed<5> sql_state;
     string_eof error_message;
+
+    template <typename Self, typename Callable>
+    static void apply(Self& self, Callable&& cb)
+    {
+        std::forward<Callable>(cb)(
+            self.error_code,
+            self.sql_state_marker,
+            self.sql_state,
+            self.error_message
+        );
+    }
 };
 
-template <>
-struct get_struct_fields<err_packet>
-{
-    static constexpr auto value = std::make_tuple(
-        &err_packet::error_code,
-        &err_packet::sql_state_marker,
-        &err_packet::sql_state,
-        &err_packet::error_message
-    );
-};
+static_assert(is_struct_with_fields<err_packet>(), "Bad!");
 
 // col def
 struct column_definition_packet
@@ -95,28 +97,28 @@ struct column_definition_packet
     string_lenenc name; // virtual column name
     string_lenenc org_name; // physical column name
     collation character_set;
-    int4 column_length; // maximum length of the field
+    std::uint32_t column_length; // maximum length of the field
     protocol_field_type type; // type of the column as defined in enum_field_types
-    int2 flags; // Flags as defined in Column Definition Flags
-    int1 decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
-};
+    std::uint16_t flags; // Flags as defined in Column Definition Flags
+    std::uint8_t decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
 
-template <>
-struct get_struct_fields<column_definition_packet>
-{
-    static constexpr auto value = std::make_tuple(
-        &column_definition_packet::catalog,
-        &column_definition_packet::schema,
-        &column_definition_packet::table,
-        &column_definition_packet::org_table,
-        &column_definition_packet::name,
-        &column_definition_packet::org_name,
-        &column_definition_packet::character_set,
-        &column_definition_packet::column_length,
-        &column_definition_packet::type,
-        &column_definition_packet::flags,
-        &column_definition_packet::decimals
-    );
+    template <typename Self, typename Callable>
+    static void apply(Self& self, Callable&& cb)
+    {
+        std::forward<Callable>(cb)(
+            self.catalog,
+            self.schema,
+            self.table,
+            self.org_table,
+            self.name,
+            self.org_name,
+            self.character_set,
+            self.column_length,
+            self.type,
+            self.flags,
+            self.decimals
+        );
+    }
 };
 
 template <>
@@ -130,12 +132,9 @@ struct serialization_traits<column_definition_packet, serialization_tag::struct_
 struct quit_packet
 {
     static constexpr std::uint8_t command_id = 0x01;
-};
 
-template <>
-struct get_struct_fields<quit_packet>
-{
-    static constexpr auto value = std::make_tuple();
+    template <typename Self, typename Callable>
+    static void apply(Self&, Callable&&) noexcept {}
 };
 
 // aux

@@ -21,21 +21,18 @@ namespace
 template <typename Stream>
 struct ExecuteStatementTest : public NetworkTest<Stream>
 {
-    prepared_statement<Stream> do_prepare(std::string_view stmt)
+    network_functions<Stream>* net {this->GetParam().net};
+
+    ExecuteStatementTest()
+    {
+        this->connect(this->GetParam().ssl);
+    }
+
+    prepared_statement<Stream> do_prepare(boost::string_view stmt)
     {
         auto res = this->GetParam().net->prepare_statement(this->conn, stmt);
         res.validate_no_error();
         return std::move(res.value);
-    }
-
-    auto do_execute(prepared_statement<Stream>& stmt, value_list_it first, value_list_it last)
-    {
-        return this->GetParam().net->execute_statement(stmt, first, last);
-    }
-
-    auto do_execute(prepared_statement<Stream>& stmt, const std::vector<value>& params)
-    {
-        return this->GetParam().net->execute_statement(stmt, params);
     }
 
     // Iterator version
@@ -43,7 +40,7 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
     {
         std::forward_list<value> params;
         auto stmt = do_prepare("SELECT * FROM empty_table");
-        auto result = do_execute(stmt, params.begin(), params.end()); // execute
+        auto result = net->execute_statement(stmt, params.begin(), params.end()); // execute
         result.validate_no_error();
         EXPECT_TRUE(result.value.valid());
     }
@@ -52,7 +49,7 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
     {
         std::forward_list<value> params { value("item"), value(42) };
         auto stmt = do_prepare("SELECT * FROM empty_table WHERE id IN (?, ?)");
-        auto result = do_execute(stmt, params.begin(), params.end());
+        auto result = net->execute_statement(stmt, params.begin(), params.end());
         result.validate_no_error();
         EXPECT_TRUE(result.value.valid());
     }
@@ -61,16 +58,17 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
     {
         std::forward_list<value> params { value("item") };
         auto stmt = do_prepare("SELECT * FROM empty_table WHERE id IN (?, ?)");
-        auto result = do_execute(stmt, params.begin(), params.end());
+        auto result = net->execute_statement(stmt, params.begin(), params.end());
         result.validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
         EXPECT_FALSE(result.value.valid());
     }
 
     void Iterator_ServerError()
     {
+        this->start_transaction();
         std::forward_list<value> params { value("f0"), value("bad_date") };
         auto stmt = do_prepare("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
-        auto result = do_execute(stmt, params.begin(), params.end());
+        auto result = net->execute_statement(stmt, params.begin(), params.end());
         result.validate_error(errc::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
         EXPECT_FALSE(result.value.valid());
     }
@@ -79,7 +77,7 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
     void Container_OkNoParams()
     {
         auto stmt = do_prepare("SELECT * FROM empty_table");
-        auto result = do_execute(stmt, std::vector<value>()); // execute
+        auto result = net->execute_statement(stmt, std::vector<value>()); // execute
         result.validate_no_error();
         EXPECT_TRUE(result.value.valid());
     }
@@ -88,7 +86,7 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
     {
         std::vector<value> params { value("item"), value(42) };
         auto stmt = do_prepare("SELECT * FROM empty_table WHERE id IN (?, ?)");
-        auto result = do_execute(stmt, params);
+        auto result = net->execute_statement(stmt, params);
         result.validate_no_error();
         EXPECT_TRUE(result.value.valid());
     }
@@ -97,15 +95,16 @@ struct ExecuteStatementTest : public NetworkTest<Stream>
     {
         std::vector<value> params { value("item") };
         auto stmt = do_prepare("SELECT * FROM empty_table WHERE id IN (?, ?)");
-        auto result = do_execute(stmt, params);
+        auto result = net->execute_statement(stmt, params);
         result.validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
         EXPECT_FALSE(result.value.valid());
     }
 
     void Container_ServerError()
     {
+        this->start_transaction();
         auto stmt = do_prepare("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
-        auto result = do_execute(stmt, makevalues("f0", "bad_date"));
+        auto result = net->execute_statement(stmt, makevalues("f0", "bad_date"));
         result.validate_error(errc::truncated_wrong_value, {"field_date", "bad_date", "incorrect date value"});
         EXPECT_FALSE(result.value.valid());
     }

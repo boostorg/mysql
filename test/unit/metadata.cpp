@@ -28,10 +28,10 @@ TEST(FieldMetadata, IntPrimaryKey)
         string_lenenc("id"),
         string_lenenc("id"),
         collation::binary,
-        int4(11),
+        11,
         protocol_field_type::long_,
-        int2(column_flags::pri_key | column_flags::auto_increment | column_flags::not_null),
-        int1(0)
+        column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
+        0
     };
     field_metadata meta (msg);
 
@@ -65,10 +65,10 @@ TEST(FieldMetadata, VarcharWithAlias)
         string_lenenc("field_alias"),
         string_lenenc("field_varchar"),
         collation::utf8_general_ci,
-        int4(765),
+        765,
         protocol_field_type::var_string,
-        int2(0),
-        int1(0)
+        0,
+        0
     };
     field_metadata meta (msg);
 
@@ -102,10 +102,10 @@ TEST(FieldMetadata, FloatField)
         string_lenenc("field_float"),
         string_lenenc("field_float"),
         collation::binary,
-        int4(12),
+        12,
         protocol_field_type::float_,
-        int2(0),
-        int1(31)
+        0,
+        31
     };
     field_metadata meta (msg);
 

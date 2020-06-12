@@ -47,11 +47,18 @@ using boost::mysql::owning_row;
  * of the handler signatures.
  */
 
+#define ASSERT(expr) \
+    if (!(expr)) \
+    { \
+        std::cerr << "Assertion failed: " #expr << std::endl; \
+        exit(1); \
+    }
+
 void print_employee(const boost::mysql::row& employee)
 {
     std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type std::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type std::string_view)
+              << employee.values()[0] << " "                   // first_name (type boost::string_view)
+              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
               << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
 }
 
@@ -114,9 +121,9 @@ public:
     {
         const char* sql = "UPDATE employee SET salary = 15000 WHERE last_name = 'Slacker'";
         connection.async_query(sql, additional_info,
-                [this](error_code err, [[maybe_unused]] tcp_resultset&& result) {
+                [this](error_code err, tcp_resultset&& result) {
             die_on_error(err, additional_info);
-            assert(result.fields().size() == 0);
+            ASSERT(result.fields().size() == 0);
             query_intern();
         });
     }
@@ -129,9 +136,9 @@ public:
             resultset = std::move(result);
             resultset.async_fetch_all(additional_info, [this](error_code err, const std::vector<owning_row>& rows) {
                 die_on_error(err, additional_info);
-                assert(rows.size() == 1);
-                [[maybe_unused]] auto salary = rows[0].values()[0].get<double>();
-                assert(salary == 15000);
+                ASSERT(rows.size() == 1);
+                auto salary = rows[0].values()[0].get<double>();
+                ASSERT(salary == 15000);
                 close();
             });
         });
@@ -145,7 +152,7 @@ public:
         });
     }
 
-    auto& context() { return ctx; }
+    void run() { ctx.run(); }
 };
 
 void main_impl(int argc, char** argv)
@@ -158,7 +165,7 @@ void main_impl(int argc, char** argv)
 
     application app (argv[1], argv[2]);
     app.start(); // starts the async chain
-    app.context().run(); // run the asio::io_context until the async chain finishes
+    app.run(); // run the asio::io_context until the async chain finishes
 }
 
 int main(int argc, char** argv)

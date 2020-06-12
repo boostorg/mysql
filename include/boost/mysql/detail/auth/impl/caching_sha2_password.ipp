@@ -10,6 +10,7 @@
 
 #include <openssl/sha.h>
 #include <cstring>
+#include "boost/mysql/detail/auxiliar/make_string_view.hpp"
 
 namespace boost {
 namespace mysql {
@@ -18,17 +19,17 @@ namespace caching_sha2_password {
 
 constexpr std::size_t challenge_length = 20;
 constexpr std::size_t response_length = 32;
-constexpr std::string_view perform_full_auth = "\4";
+constexpr boost::string_view perform_full_auth = make_string_view("\4");
 
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
 inline void compute_auth_string(
-    std::string_view password,
+    boost::string_view password,
     const void* challenge,
     void* output
 )
 {
-    static_assert(response_length == SHA256_DIGEST_LENGTH);
+    static_assert(response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
 
     // SHA(SHA(password_sha) concat challenge) XOR password_sha
     // hash1 = SHA(pass)
@@ -61,10 +62,10 @@ inline void compute_auth_string(
 
 inline boost::mysql::error_code
 boost::mysql::detail::caching_sha2_password::compute_response(
-    std::string_view password,
-    std::string_view challenge,
+    boost::string_view password,
+    boost::string_view challenge,
     bool use_ssl,
-    std::string& output
+    bytestring& output
 )
 {
     if (challenge == perform_full_auth)
@@ -73,7 +74,7 @@ boost::mysql::detail::caching_sha2_password::compute_response(
         {
             return make_error_code(errc::auth_plugin_requires_ssl);
         }
-        output = password;
+        output.assign(password.begin(), password.end());
         output.push_back(0);
         return error_code();
     }

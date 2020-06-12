@@ -16,6 +16,10 @@ namespace
 template <typename Stream>
 struct CloseStatementTest : NetworkTest<Stream>
 {
+    CloseStatementTest()
+    {
+        this->connect(this->GetParam().ssl);
+    }
 
     void ExistingOrClosedStatement()
     {

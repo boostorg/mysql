@@ -19,6 +19,7 @@ using boost::mysql::detail::make_error_code;
 using boost::mysql::field_metadata;
 using boost::mysql::field_type;
 using boost::mysql::errc;
+using boost::mysql::resultset;
 
 namespace
 {
@@ -26,15 +27,26 @@ namespace
 template <typename Stream>
 struct QueryTest : public NetworkTest<Stream>
 {
-    auto do_query(std::string_view sql)
+    QueryTest()
+    {
+        this->connect(this->GetParam().ssl);
+    }
+
+    network_result<resultset<Stream>>
+    do_query(boost::string_view sql)
     {
         return this->GetParam().net->query(this->conn, sql);
     }
 
     void InsertQueryOk()
     {
+        this->start_transaction();
+
+        // Issue query
         const char* sql = "INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')";
         auto result = do_query(sql);
+
+        // Verify resultset
         result.validate_no_error();
         EXPECT_TRUE(result.value.fields().empty());
         EXPECT_TRUE(result.value.valid());
@@ -43,10 +55,14 @@ struct QueryTest : public NetworkTest<Stream>
         EXPECT_EQ(result.value.warning_count(), 0);
         EXPECT_GT(result.value.last_insert_id(), 0);
         EXPECT_EQ(result.value.info(), "");
+
+        // Verify insertion took place
+        EXPECT_EQ(this->get_table_size("inserts_table"), 1);
     }
 
     void InsertQueryFailed()
     {
+        this->start_transaction();
         const char* sql = "INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')";
         auto result = do_query(sql);
         result.validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
@@ -55,8 +71,13 @@ struct QueryTest : public NetworkTest<Stream>
 
     void UpdateQueryOk()
     {
-        const char* sql = "UPDATE updates_table SET field_int = field_int+1";
+        this->start_transaction();
+
+        // Issue the query
+        const char* sql = "UPDATE updates_table SET field_int = field_int+10";
         auto result = do_query(sql);
+
+        // Validate resultset
         result.validate_no_error();
         EXPECT_TRUE(result.value.fields().empty());
         EXPECT_TRUE(result.value.valid());
@@ -65,6 +86,12 @@ struct QueryTest : public NetworkTest<Stream>
         EXPECT_EQ(result.value.warning_count(), 0);
         EXPECT_EQ(result.value.last_insert_id(), 0);
         EXPECT_THAT(std::string(result.value.info()), HasSubstr("Rows matched"));
+
+        // Validate it took effect
+        result = do_query("SELECT field_int FROM updates_table WHERE field_varchar = 'f0'");
+        result.validate_no_error();
+        auto updated_value = result.value.fetch_all().at(0).values().at(0).template get<std::int64_t>();
+        EXPECT_EQ(updated_value, 52); // initial value was 42
     }
 
     void SelectOk()

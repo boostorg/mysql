@@ -8,29 +8,37 @@
 #include <gtest/gtest.h>
 #include <array>
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
+#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include "test_common.hpp"
 
 using boost::mysql::detail::null_bitmap_traits;
 using boost::mysql::detail::stmt_execute_null_bitmap_offset;
 using boost::mysql::detail::binary_row_null_bitmap_offset;
+using boost::mysql::detail::stringize;
 using namespace boost::mysql::test;
 
 namespace
 {
 
 // byte_count()
-struct ByteCountParams
+struct byte_count_testcase : named_tag
 {
     std::size_t offset;
     std::size_t num_fields;
     std::size_t expected_value;
-};
-std::ostream& operator<<(std::ostream& os, const ByteCountParams& v)
-{
-    return os << "offset=" << v.offset << ",num_fields=" << v.num_fields;
-}
 
-struct NullBitmapTraitsByteCountTest : testing::TestWithParam<ByteCountParams> {};
+    byte_count_testcase(std::size_t offset, std::size_t num_fields, std::size_t expected_value) :
+        offset(offset), num_fields(num_fields), expected_value(expected_value)
+    {
+    }
+
+    std::string name() const
+    {
+        return stringize("offset_", offset, "_numfields_", num_fields);
+    }
+};
+
+struct NullBitmapTraitsByteCountTest : testing::TestWithParam<byte_count_testcase> {};
 
 TEST_P(NullBitmapTraitsByteCountTest, Trivial_ReturnsNumberOfBytes)
 {
@@ -39,59 +47,65 @@ TEST_P(NullBitmapTraitsByteCountTest, Trivial_ReturnsNumberOfBytes)
 }
 
 INSTANTIATE_TEST_SUITE_P(StmtExecuteOffset, NullBitmapTraitsByteCountTest, testing::Values(
-    ByteCountParams{stmt_execute_null_bitmap_offset, 0, 0},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 1, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 2, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 3, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 4, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 5, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 6, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 7, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 8, 1},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 9, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 10, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 11, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 12, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 13, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 14, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 15, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 16, 2},
-    ByteCountParams{stmt_execute_null_bitmap_offset, 17, 3}
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 0, 0},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 1, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 2, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 3, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 4, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 5, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 6, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 7, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 8, 1},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 9, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 10, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 11, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 12, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 13, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 14, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 15, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 16, 2},
+    byte_count_testcase{stmt_execute_null_bitmap_offset, 17, 3}
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsByteCountTest, testing::Values(
-    ByteCountParams{binary_row_null_bitmap_offset, 0, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 1, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 2, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 3, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 4, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 5, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 6, 1},
-    ByteCountParams{binary_row_null_bitmap_offset, 7, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 8, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 9, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 10, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 11, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 12, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 13, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 14, 2},
-    ByteCountParams{binary_row_null_bitmap_offset, 15, 3},
-    ByteCountParams{binary_row_null_bitmap_offset, 16, 3},
-    ByteCountParams{binary_row_null_bitmap_offset, 17, 3}
+    byte_count_testcase{binary_row_null_bitmap_offset, 0, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 1, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 2, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 3, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 4, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 5, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 6, 1},
+    byte_count_testcase{binary_row_null_bitmap_offset, 7, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 8, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 9, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 10, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 11, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 12, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 13, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 14, 2},
+    byte_count_testcase{binary_row_null_bitmap_offset, 15, 3},
+    byte_count_testcase{binary_row_null_bitmap_offset, 16, 3},
+    byte_count_testcase{binary_row_null_bitmap_offset, 17, 3}
 ), test_name_generator);
 
 // is_null
-struct IsNullParams
+struct is_null_testcase : named_tag
 {
     std::size_t offset;
     std::size_t pos;
     bool expected;
+
+    is_null_testcase(std::size_t offset, std::size_t pos, bool expected) :
+        offset(offset), pos(pos), expected(expected)
+    {
+    }
+
+    std::string name() const
+    {
+        return stringize("offset_", offset, "_pos_", pos);
+    }
 };
-std::ostream& operator<<(std::ostream& os, const IsNullParams& v)
-{
-    return os << "offset=" << v.offset << ",pos=" << v.pos;
-}
-struct NullBitmapTraitsIsNullTest : testing::TestWithParam<IsNullParams> {};
+struct NullBitmapTraitsIsNullTest : testing::TestWithParam<is_null_testcase> {};
 
 TEST_P(NullBitmapTraitsIsNullTest, Trivial_ReturnsFlagValue)
 {
@@ -102,88 +116,89 @@ TEST_P(NullBitmapTraitsIsNullTest, Trivial_ReturnsFlagValue)
 }
 
 INSTANTIATE_TEST_SUITE_P(StmtExecuteOffset, NullBitmapTraitsIsNullTest, testing::Values(
-    IsNullParams{stmt_execute_null_bitmap_offset, 0, false},
-    IsNullParams{stmt_execute_null_bitmap_offset, 1, false},
-    IsNullParams{stmt_execute_null_bitmap_offset, 2, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 3, false},
-    IsNullParams{stmt_execute_null_bitmap_offset, 4, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 5, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 6, false},
-    IsNullParams{stmt_execute_null_bitmap_offset, 7, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 8, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 9, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 10, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 11, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 12, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 13, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 14, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 15, true},
-    IsNullParams{stmt_execute_null_bitmap_offset, 16, false}
+    is_null_testcase{stmt_execute_null_bitmap_offset, 0, false},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 1, false},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 2, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 3, false},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 4, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 5, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 6, false},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 7, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 8, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 9, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 10, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 11, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 12, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 13, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 14, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 15, true},
+    is_null_testcase{stmt_execute_null_bitmap_offset, 16, false}
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsIsNullTest, testing::Values(
-    IsNullParams{binary_row_null_bitmap_offset, 0, true},
-    IsNullParams{binary_row_null_bitmap_offset, 1, false},
-    IsNullParams{binary_row_null_bitmap_offset, 2, true},
-    IsNullParams{binary_row_null_bitmap_offset, 3, true},
-    IsNullParams{binary_row_null_bitmap_offset, 4, false},
-    IsNullParams{binary_row_null_bitmap_offset, 5, true},
-    IsNullParams{binary_row_null_bitmap_offset, 6, true},
-    IsNullParams{binary_row_null_bitmap_offset, 7, true},
-    IsNullParams{binary_row_null_bitmap_offset, 8, true},
-    IsNullParams{binary_row_null_bitmap_offset, 9, true},
-    IsNullParams{binary_row_null_bitmap_offset, 10, true},
-    IsNullParams{binary_row_null_bitmap_offset, 11, true},
-    IsNullParams{binary_row_null_bitmap_offset, 12, true},
-    IsNullParams{binary_row_null_bitmap_offset, 13, true},
-    IsNullParams{binary_row_null_bitmap_offset, 14, false},
-    IsNullParams{binary_row_null_bitmap_offset, 15, false},
-    IsNullParams{binary_row_null_bitmap_offset, 16, false}
+    is_null_testcase{binary_row_null_bitmap_offset, 0, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 1, false},
+    is_null_testcase{binary_row_null_bitmap_offset, 2, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 3, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 4, false},
+    is_null_testcase{binary_row_null_bitmap_offset, 5, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 6, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 7, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 8, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 9, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 10, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 11, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 12, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 13, true},
+    is_null_testcase{binary_row_null_bitmap_offset, 14, false},
+    is_null_testcase{binary_row_null_bitmap_offset, 15, false},
+    is_null_testcase{binary_row_null_bitmap_offset, 16, false}
 ), test_name_generator);
 
 TEST(NullBitmapTraits, IsNull_OneFieldStmtExecuteFirstBitZero_ReturnsFalse)
 {
-    std::uint8_t value = 0b00000000;
+    std::uint8_t value = 0x00;
     null_bitmap_traits traits (stmt_execute_null_bitmap_offset, 1);
     EXPECT_FALSE(traits.is_null(&value, 0));
 }
 
 TEST(NullBitmapTraits, IsNull_OneFieldStmtExecuteFirstBitOne_ReturnsTrue)
 {
-    std::uint8_t value = 0b00000001;
+    std::uint8_t value = 0x01;
     null_bitmap_traits traits (stmt_execute_null_bitmap_offset, 1);
     EXPECT_TRUE(traits.is_null(&value, 0));
 }
 
 TEST(NullBitmapTraits, IsNull_OneFieldBinaryRowThirdBitZero_ReturnsFalse)
 {
-    std::uint8_t value = 0b00000000;
+    std::uint8_t value = 0x00;
     null_bitmap_traits traits (binary_row_null_bitmap_offset, 1);
     EXPECT_FALSE(traits.is_null(&value, 0));
 }
 
 TEST(NullBitmapTraits, IsNull_OneFieldBinaryRowThirdBitOne_ReturnsTrue)
 {
-    std::uint8_t value = 0b00000100;
+    std::uint8_t value = 0x04; // 0b00000100
     null_bitmap_traits traits (binary_row_null_bitmap_offset, 1);
     EXPECT_TRUE(traits.is_null(&value, 0));
 }
 
 // set_null
-struct SetNullParams
+struct set_null_testcase : named_tag
 {
     std::size_t offset;
     std::size_t pos;
     std::array<std::uint8_t, 3> expected;
 
-    SetNullParams(std::size_t offset, std::size_t pos, const std::array<std::uint8_t, 3>& expected):
+    set_null_testcase(std::size_t offset, std::size_t pos, const std::array<std::uint8_t, 3>& expected):
         offset(offset), pos(pos), expected(expected) {};
+
+    std::string name() const
+    {
+        return stringize("offset_", offset, "_pos_", pos);
+    }
 };
-std::ostream& operator<<(std::ostream& os, const SetNullParams& v)
-{
-    return os << "offset=" << v.offset << ",pos=" << v.pos;
-}
-struct NullBitmapTraitsSetNullTest : testing::TestWithParam<SetNullParams> {};
+struct NullBitmapTraitsSetNullTest : testing::TestWithParam<set_null_testcase> {};
 
 TEST_P(NullBitmapTraitsSetNullTest, Trivial_SetsAdequateBit)
 {
@@ -196,43 +211,43 @@ TEST_P(NullBitmapTraitsSetNullTest, Trivial_SetsAdequateBit)
 }
 
 INSTANTIATE_TEST_SUITE_P(StmtExecuteOffset, NullBitmapTraitsSetNullTest, testing::Values(
-    SetNullParams(stmt_execute_null_bitmap_offset, 0, {0b00000001, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 1, {0b00000010, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 2, {0b00000100, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 3, {0b00001000, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 4, {0b00010000, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 5, {0b00100000, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 6, {0b01000000, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 7, {0b10000000, 0, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 8, {0,  0b00000001, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 9, {0,  0b00000010, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 10, {0, 0b00000100, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 11, {0, 0b00001000, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 12, {0, 0b00010000, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 13, {0, 0b00100000, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 14, {0, 0b01000000, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 15, {0, 0b10000000, 0}),
-    SetNullParams(stmt_execute_null_bitmap_offset, 16, {0, 0, 0b00000001})
+    set_null_testcase(stmt_execute_null_bitmap_offset, 0, {0x01, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 1, {0x02, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 2, {0x04, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 3, {0x08, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 4, {0x10, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 5, {0x20, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 6, {0x40, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 7, {0x80, 0, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 8, {0,  0x01, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 9, {0,  0x02, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 10, {0, 0x04, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 11, {0, 0x08, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 12, {0, 0x10, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 13, {0, 0x20, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 14, {0, 0x40, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 15, {0, 0x80, 0}),
+    set_null_testcase(stmt_execute_null_bitmap_offset, 16, {0, 0, 0x01})
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(BinaryRowOffset, NullBitmapTraitsSetNullTest, testing::Values(
-    SetNullParams(binary_row_null_bitmap_offset, 0, {0b00000100, 0, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 1, {0b00001000, 0, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 2, {0b00010000, 0, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 3, {0b00100000, 0, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 4, {0b01000000, 0, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 5, {0b10000000, 0, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 6,  {0,  0b00000001, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 7,  {0,  0b00000010, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 8,  {0, 0b00000100, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 9,  {0, 0b00001000, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 10, {0, 0b00010000, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 11, {0, 0b00100000, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 12, {0, 0b01000000, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 13, {0, 0b10000000, 0}),
-    SetNullParams(binary_row_null_bitmap_offset, 14, {0, 0, 0b00000001}),
-    SetNullParams(binary_row_null_bitmap_offset, 15, {0, 0, 0b00000010}),
-    SetNullParams(binary_row_null_bitmap_offset, 16, {0, 0, 0b00000100})
+    set_null_testcase(binary_row_null_bitmap_offset, 0, {0x04, 0, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 1, {0x08, 0, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 2, {0x10, 0, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 3, {0x20, 0, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 4, {0x40, 0, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 5, {0x80, 0, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 6,  {0,  0x01, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 7,  {0,  0x02, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 8,  {0,  0x04, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 9,  {0,  0x08, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 10, {0,  0x10, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 11, {0,  0x20, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 12, {0,  0x40, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 13, {0,  0x80, 0}),
+    set_null_testcase(binary_row_null_bitmap_offset, 14, {0, 0, 0x01}),
+    set_null_testcase(binary_row_null_bitmap_offset, 15, {0, 0, 0x02}),
+    set_null_testcase(binary_row_null_bitmap_offset, 16, {0, 0, 0x04})
 ), test_name_generator);
 
 TEST(NullBitmapTraits, SetNull_OneFieldStmtExecute_SetsFirstBitToZero)
@@ -276,6 +291,4 @@ TEST(NullBitmapTraits, SetNull_MultifiedBinaryRow_SetsAppropriateBits)
 }
 
 
-
-}
-
+} // anon namespace

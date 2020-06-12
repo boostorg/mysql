@@ -18,7 +18,7 @@ namespace test {
 class meta_validator
 {
 public:
-    using flag_getter = bool (field_metadata::*)() const noexcept;
+    using flag_getter = bool (field_metadata::*)() const;
     meta_validator(std::string table, std::string field, field_type type,
             std::vector<flag_getter> flags={}, unsigned decimals=0,
             std::vector<flag_getter> ignore_flags={}):

@@ -21,18 +21,17 @@ using boost::mysql::errc;
 namespace
 {
 
-struct err_text_value_testcase : named_param
+struct err_text_value_testcase : public named
 {
-    std::string name;
-    std::string_view from;
+    boost::string_view from;
     protocol_field_type type;
     std::uint16_t flags;
     unsigned decimals;
     errc expected_err;
 
-    err_text_value_testcase(std::string&& name, std::string_view from, protocol_field_type type,
+    err_text_value_testcase(std::string&& name, boost::string_view from, protocol_field_type type,
             std::uint16_t flags=0, unsigned decimals=0, errc expected_err=errc::protocol_value_error) :
-        name(std::move(name)),
+        named(std::move(name)),
         from(from),
         type(type),
         flags(flags),
@@ -48,10 +47,10 @@ struct DeserializeTextValueErrorTest : TestWithParam<err_text_value_testcase>
 
 TEST_P(DeserializeTextValueErrorTest, Error_ReturnsExpectedErrc)
 {
-    column_definition_packet coldef;
+    column_definition_packet coldef {};
     coldef.type = GetParam().type;
-    coldef.decimals.value = static_cast<std::uint8_t>(GetParam().decimals);
-    coldef.flags.value = GetParam().flags;
+    coldef.decimals = static_cast<std::uint8_t>(GetParam().decimals);
+    coldef.flags = GetParam().flags;
     boost::mysql::field_metadata meta (coldef);
     value actual_value;
     auto err = deserialize_text_value(GetParam().from, meta, actual_value);
@@ -104,8 +103,8 @@ INSTANTIATE_TEST_SUITE_P(BIGINT, DeserializeTextValueErrorTest, ValuesIn(
 
 std::vector<err_text_value_testcase> make_float_err_cases(
     protocol_field_type t,
-    std::string_view lt_min,
-    std::string_view gt_max
+    boost::string_view lt_min,
+    boost::string_view gt_max
 )
 {
     return {

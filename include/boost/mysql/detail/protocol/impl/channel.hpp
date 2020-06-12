@@ -58,9 +58,12 @@ boost::mysql::error_code boost::mysql::detail::channel<Stream>::process_header_r
 {
     packet_header header;
     deserialization_context ctx (boost::asio::buffer(header_buffer_), capabilities(0)); // unaffected by capabilities
-    [[maybe_unused]] errc err = deserialize(ctx, header);
-    assert(err == errc::ok); // this should always succeed
-    if (!process_sequence_number(header.sequence_number.value))
+    errc err = deserialize(ctx, header);
+    if (err != errc::ok)
+    {
+        return make_error_code(err);
+    }
+    if (!process_sequence_number(header.sequence_number))
     {
         return make_error_code(errc::sequence_number_mismatch);
     }
@@ -75,7 +78,7 @@ void boost::mysql::detail::channel<Stream>::process_header_write(
 {
     packet_header header;
     header.packet_size.value = size_to_write;
-    header.sequence_number.value = next_sequence_number();
+    header.sequence_number = next_sequence_number();
     serialization_context ctx (capabilities(0), header_buffer_.data()); // capabilities not relevant here
     serialize(ctx, header);
 }
@@ -116,7 +119,8 @@ std::size_t boost::mysql::detail::channel<Stream>::write_impl(
 
 template <typename Stream>
 template <typename BufferSeq, typename CompletionToken>
-auto boost::mysql::detail::channel<Stream>::async_read_impl(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
+boost::mysql::detail::channel<Stream>::async_read_impl(
     BufferSeq&& buff,
     CompletionToken&& token
 )
@@ -143,7 +147,8 @@ auto boost::mysql::detail::channel<Stream>::async_read_impl(
 
 template <typename Stream>
 template <typename BufferSeq, typename CompletionToken>
-auto boost::mysql::detail::channel<Stream>::async_write_impl(
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
+boost::mysql::detail::channel<Stream>::async_write_impl(
     BufferSeq&& buff,
     CompletionToken&& token
 )

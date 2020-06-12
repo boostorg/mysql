@@ -15,7 +15,7 @@
 template <typename StreamType>
 void boost::mysql::detail::execute_query(
     channel<StreamType>& channel,
-    std::string_view query,
+    boost::string_view query,
     resultset<StreamType>& output,
     error_code& err,
     error_info& info
@@ -40,7 +40,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_execute_query(
     channel<StreamType>& chan,
-    std::string_view query,
+    boost::string_view query,
     CompletionToken&& token,
     error_info& info
 )

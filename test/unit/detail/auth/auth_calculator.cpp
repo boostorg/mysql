@@ -32,14 +32,14 @@ struct MysqlNativePasswordTest : public Test
         0xeb, 0xa8, 0x12, 0x6a, 0xd1, 0x0f, 0xe9, 0xb1,
         0x10, 0x50, 0xd4, 0x28
     };
-    std::string_view challenge = makesv(challenge_buffer);
-    std::string_view expected = makesv(expected_buffer);
+    boost::string_view challenge = makesv(challenge_buffer);
+    boost::string_view expected = makesv(expected_buffer);
 };
 
 TEST_F(MysqlNativePasswordTest, NonEmptyPasswordSslFalse_ReturnsExpectedHash)
 {
     auto err = calc.calculate("mysql_native_password", "root", challenge, false);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), expected);
     EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
 }
@@ -47,7 +47,7 @@ TEST_F(MysqlNativePasswordTest, NonEmptyPasswordSslFalse_ReturnsExpectedHash)
 TEST_F(MysqlNativePasswordTest, NonEmptyPasswordSslTrue_ReturnsExpectedHash)
 {
     auto err = calc.calculate("mysql_native_password", "root", challenge, true);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), expected);
     EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
 }
@@ -55,7 +55,7 @@ TEST_F(MysqlNativePasswordTest, NonEmptyPasswordSslTrue_ReturnsExpectedHash)
 TEST_F(MysqlNativePasswordTest, EmptyPasswordSslFalse_ReturnsEmpty)
 {
     auto err = calc.calculate("mysql_native_password", "", challenge, false);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), "");
     EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
 }
@@ -63,7 +63,7 @@ TEST_F(MysqlNativePasswordTest, EmptyPasswordSslFalse_ReturnsEmpty)
 TEST_F(MysqlNativePasswordTest, EmptyPasswordSslTrue_ReturnsEmpty)
 {
     auto err = calc.calculate("mysql_native_password", "", challenge, false);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), "");
     EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
 }
@@ -91,15 +91,15 @@ struct CachingSha2PasswordTest : public Test
         0x6, 0xca, 0x7, 0x2, 0x98, 0xac, 0xd1, 0x6,
         0x18, 0xc6, 0x90, 0x38, 0x9d, 0x88, 0xe1, 0x20
     };
-    std::string_view challenge = makesv(challenge_buffer);
-    std::string_view expected = makesv(expected_buffer);
-    std::string_view cleartext_challenge { "\4" };
+    boost::string_view challenge = makesv(challenge_buffer);
+    boost::string_view expected = makesv(expected_buffer);
+    boost::string_view cleartext_challenge { "\4" };
 };
 
 TEST_F(CachingSha2PasswordTest, NonEmptyPasswordChallengeAuthSslFalse_ReturnsExpectedHash)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", challenge, false);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), expected);
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }
@@ -107,7 +107,7 @@ TEST_F(CachingSha2PasswordTest, NonEmptyPasswordChallengeAuthSslFalse_ReturnsExp
 TEST_F(CachingSha2PasswordTest, NonEmptyPasswordChallengeAuthSslTrue_ReturnsExpectedHash)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", challenge, true);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), expected);
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }
@@ -121,7 +121,7 @@ TEST_F(CachingSha2PasswordTest, NonEmptyPasswordCleartextAuthSslFalse_Fail)
 TEST_F(CachingSha2PasswordTest, NonEmptyPasswordCleartextAuthSslTrue_ReturnsPassword)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", cleartext_challenge, true);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), std::string("hola") + '\0');
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }
@@ -129,7 +129,7 @@ TEST_F(CachingSha2PasswordTest, NonEmptyPasswordCleartextAuthSslTrue_ReturnsPass
 TEST_F(CachingSha2PasswordTest, EmptyPasswordChallengeAuthSslFalse_ReturnsEmpty)
 {
     auto err = calc.calculate("caching_sha2_password", "", challenge, false);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), "");
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }
@@ -137,7 +137,7 @@ TEST_F(CachingSha2PasswordTest, EmptyPasswordChallengeAuthSslFalse_ReturnsEmpty)
 TEST_F(CachingSha2PasswordTest, EmptyPasswordChallengeAuthSslTrue_ReturnsEmpty)
 {
     auto err = calc.calculate("caching_sha2_password", "", challenge, true);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), "");
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }
@@ -145,7 +145,7 @@ TEST_F(CachingSha2PasswordTest, EmptyPasswordChallengeAuthSslTrue_ReturnsEmpty)
 TEST_F(CachingSha2PasswordTest, EmptyPasswordCleartextAuthSslFalse_ReturnsEmpty)
 {
     auto err = calc.calculate("caching_sha2_password", "", cleartext_challenge, false);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), "");
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }
@@ -153,7 +153,7 @@ TEST_F(CachingSha2PasswordTest, EmptyPasswordCleartextAuthSslFalse_ReturnsEmpty)
 TEST_F(CachingSha2PasswordTest, EmptyPasswordCleartextAuthSslTrue_ReturnsEmpty)
 {
     auto err = calc.calculate("caching_sha2_password", "", cleartext_challenge, true);
-    EXPECT_EQ(err, error_code());
+    ASSERT_EQ(err, error_code());
     EXPECT_EQ(calc.response(), "");
     EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
 }

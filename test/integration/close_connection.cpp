@@ -15,7 +15,7 @@ namespace
 {
 
 template <typename Stream>
-struct CloseConnectionTest : public NetworkTest<Stream, false>
+struct CloseConnectionTest : public NetworkTest<Stream>
 {
     network_functions<Stream>* net = NetworkTest<Stream>::GetParam().net;
 

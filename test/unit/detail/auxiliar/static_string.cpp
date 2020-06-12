@@ -9,7 +9,7 @@
 #include "boost/mysql/detail/auxiliar/static_string.hpp"
 
 using boost::mysql::detail::static_string;
-using std::string_view;
+using boost::string_view;
 
 namespace
 {

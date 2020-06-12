@@ -16,6 +16,11 @@ namespace
 template <typename Stream>
 struct QuitConnectionTest : public NetworkTest<Stream>
 {
+    QuitConnectionTest()
+    {
+        this->connect(this->GetParam().ssl);
+    }
+
     void ActiveConnection_ClosesIt()
     {
         network_functions<Stream>* net = this->GetParam().net;

@@ -28,9 +28,9 @@ inline read_row_result process_read_message(
     assert(deserializer);
 
     // Message type: row, error or eof?
-    std::uint8_t msg_type;
+    std::uint8_t msg_type = 0;
     deserialization_context ctx (boost::asio::buffer(buffer), current_capabilities);
-    std::tie(err, msg_type) = deserialize_message_type(ctx);
+    err = make_error_code(deserialize(ctx, msg_type));
     if (err)
         return read_row_result::error;
     if (msg_type == eof_packet_header)

@@ -34,8 +34,84 @@ __osx_defaults: &__osx_defaults
 language: cpp
 script: bash -e -x tools/build_unix.sh
 
+env:
+  global:
+    - CMAKE_CXX_STANDARD=17
+    - DATABASE=mysql:8
+
 matrix:
   include:
+    # CMake OSX builds
+    - name: cmake_osx_clang_debug
+      <<: *__osx_defaults
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - USE_COVERAGE=1
+    - name: cmake_osx_clang_release
+      <<: *__osx_defaults
+      env:
+        - CMAKE_BUILD_TYPE=Release
+
+    # B2 builds
+    - name: b2_linux_clang
+      <<: *__linux_defaults
+      env:
+        - B2_CXXSTD=11,14,17
+        - B2_TOOLSET=clang
+        - B2_VARIANT=debug,release
+    - name: b2_osx_clang
+      <<: *__osx_defaults
+      env:
+        - B2_CXXSTD=11,14,17
+        - B2_TOOLSET=clang
+        - B2_VARIANT=debug,release
+    # Linux CMake builds
+    - name: cmake_linux_clang10_debug
+      <<: *__linux_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - CMAKE_CXX_STANDARD=20
+        - USE_COVERAGE=1
+        - CMAKE_CXX_FLAGS="-stdlib=libc++ -DBOOST_ASIO_DISABLE_CONCEPTS"
+        - CMAKE_OPTIONS="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10"
+      install:
+        - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+        - sudo apt install clang-10 libc++-10-dev libc++abi-10-dev
+
+    - name: cmake_linux_gcc_debug
+      <<: *__linux_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - USE_VALGRIND=1
+        - USE_COVERAGE=1
+    - name: cmake_linux_gcc_release
+      <<: *__linux_defaults
+      compiler: gcc
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: cmake_linux_clang_debug
+      <<: *__linux_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - USE_VALGRIND=1
+        - USE_COVERAGE=1
+    - name: cmake_linux_clang_release
+      <<: *__linux_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Release
+    - name: cmake_linux_clang_debug_cxx11
+      <<: *__linux_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - CMAKE_CXX_STANDARD=11
+        - USE_VALGRIND=1
+        - USE_COVERAGE=1
+    
     # Other database version builds (CMake Linux)
     - name: cmake_linux_clang_debug_mysql5
       <<: *__linux_defaults
@@ -45,6 +121,7 @@ matrix:
         - DATABASE=mysql:5
         - USE_VALGRIND=1
         - USE_COVERAGE=1
+        
     - name: cmake_linux_clang_debug_mariadb
       <<: *__linux_defaults
       compiler: clang
@@ -54,74 +131,5 @@ matrix:
         - USE_VALGRIND=1
         - USE_COVERAGE=1
 
-    # B2 builds
-    - name: b2_linux_clang_mysql8
-      <<: *__linux_defaults
-      env:
-        - DATABASE=mysql:8
-        - B2_CXXSTD=17
-        - B2_TOOLSET=clang
-        - B2_VARIANT=debug,release
-    - name: b2_osx_clang_mysql8
-      <<: *__osx_defaults
-      env:
-        - DATABASE=mysql:8
-        - B2_CXXSTD=17
-        - B2_TOOLSET=clang
-        - B2_VARIANT=debug,release
-    # Linux CMake builds
-    - name: cmake_linux_clang10_debug_mysql8
-      <<: *__linux_defaults
-      compiler: clang
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - DATABASE=mysql:8
-        - USE_COVERAGE=1
-        - CMAKE_CXX_FLAGS="-stdlib=libc++ -DBOOST_ASIO_DISABLE_CONCEPTS"
-        - CMAKE_OPTIONS="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 -DCMAKE_CXX_STANDARD=20"
-      install:
-        - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
-        - sudo apt install clang-10 libc++-10-dev libc++abi-10-dev
-    - name: cmake_linux_gcc_debug_mysql8
-      <<: *__linux_defaults
-      compiler: gcc
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - DATABASE=mysql:8
-        - USE_VALGRIND=1
-        - USE_COVERAGE=1
-    - name: cmake_linux_gcc_release_mysql8
-      <<: *__linux_defaults
-      compiler: gcc
-      env:
-        - CMAKE_BUILD_TYPE=Release
-        - DATABASE=mysql:8
-    - name: cmake_linux_clang_debug_mysql8
-      <<: *__linux_defaults
-      compiler: clang
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - DATABASE=mysql:8
-        - USE_VALGRIND=1
-        - USE_COVERAGE=1
-    - name: cmake_linux_clang_release_mysql8
-      <<: *__linux_defaults
-      compiler: clang
-      env:
-        - CMAKE_BUILD_TYPE=Release
-        - DATABASE=mysql:8
-    
-    # CMake OSX builds
-    - name: cmake_osx_clang_debug_mysql8
-      <<: *__osx_defaults
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - DATABASE=mysql:8
-        - USE_COVERAGE=1
-    - name: cmake_osx_clang_release_mysql8
-      <<: *__osx_defaults
-      env:
-        - CMAKE_BUILD_TYPE=Release
-        - DATABASE=mysql:8
         
         

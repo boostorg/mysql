@@ -24,10 +24,10 @@ com_stmt_execute_packet<ForwardIterator> make_stmt_execute_packet(
 )
 {
     return com_stmt_execute_packet<ForwardIterator> {
-        int4(statement_id),
-        int1(0), // flags
-        int4(1), // iteration count
-        int1(1), // new params flag: set
+        statement_id,
+        std::uint8_t(0),  // flags
+        std::uint32_t(1), // iteration count
+        std::uint8_t(1),  // new params flag: set
         params_begin,
         params_end
     };

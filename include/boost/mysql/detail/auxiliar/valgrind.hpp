@@ -16,14 +16,24 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+#ifdef BOOST_MYSQL_VALGRIND_TESTS
+
 inline void valgrind_make_mem_defined(
-    [[maybe_unused]] boost::asio::const_buffer buff
+    boost::asio::const_buffer buff
 )
 {
-#ifdef BOOST_MYSQL_VALGRIND_TESTS
     VALGRIND_MAKE_MEM_DEFINED(buff.data(), buff.size());
-#endif
 }
+
+#else
+
+inline void valgrind_make_mem_defined(boost::asio::const_buffer) {}
+
+#endif
+
+
+
+
 
 } // detail
 } // mysql

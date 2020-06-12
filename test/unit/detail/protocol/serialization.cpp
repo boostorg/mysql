@@ -23,47 +23,44 @@ std::string string_251 (251, 'a');
 std::string string_ffff (0xffff, 'a');
 std::string string_10000 (0x10000, 'a');
 
-enum class EnumInt1 : uint8_t
+enum class EnumInt1 : std::uint8_t
 {
     value0 = 0,
     value1 = 3,
     value2 = 0xff
 };
 
-enum class EnumInt2 : uint16_t
+enum class EnumInt2 : std::uint16_t
 {
     value0 = 0,
     value1 = 3,
     value2 = 0xfeff
 };
 
-enum class EnumInt4 : uint32_t
+enum class EnumInt4 : std::uint32_t
 {
     value0 = 0,
     value1 = 3,
     value2 = 0xfcfdfeff
 };
 
-INSTANTIATE_TEST_SUITE_P(UnsignedFixedSizeInts, FullSerializationTest, ::testing::Values(
-    serialization_testcase(int1(0xff), {0xff}, "int1"),
-    serialization_testcase(int2(0xfeff), {0xff, 0xfe}, "int2"),
+INSTANTIATE_TEST_SUITE_P(FixedSizeInts, FullSerializationTest, ::testing::Values(
+    serialization_testcase(std::uint8_t(0xff), {0xff}, "int1"),
+    serialization_testcase(std::uint16_t(0xfeff), {0xff, 0xfe}, "int2"),
     serialization_testcase(int3(0xfdfeff), {0xff, 0xfe, 0xfd}, "int3"),
-    serialization_testcase(int4(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}, "int4"),
-    serialization_testcase(int6(0xfafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa}, "int6"),
-    serialization_testcase(int8(0xf8f9fafbfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "int8")
-), test_name_generator);
-
-INSTANTIATE_TEST_SUITE_P(SignedFixedSizeInts, FullSerializationTest, ::testing::Values(
-    serialization_testcase(int1_signed(-1), {0xff}, "int1_negative"),
-    serialization_testcase(int2_signed(-0x101), {0xff, 0xfe}, "int2_negative"),
-    serialization_testcase(int4_signed(-0x3020101), {0xff, 0xfe, 0xfd, 0xfc}, "int4_negative"),
-    serialization_testcase(int8_signed(-0x0706050403020101),
-            {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "int8_negative"),
-    serialization_testcase(int1_signed(0x01), {0x01}, "int1_positive"),
-    serialization_testcase(int2_signed(0x0201), {0x01, 0x02}, "int2_positive"),
-    serialization_testcase(int4_signed(0x04030201), {0x01, 0x02, 0x03, 0x04}, "int4_positive"),
-    serialization_testcase(int8_signed(0x0807060504030201),
-            {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "int8_positive")
+    serialization_testcase(std::uint32_t(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}, "int4"),
+    serialization_testcase(std::uint64_t(0xf8f9fafbfcfdfeff),
+        {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "int8"),
+    serialization_testcase(std::int8_t(0x01), {0x01}, "int1_positive"),
+    serialization_testcase(std::int8_t(-1), {0xff}, "int1_negative"),
+    serialization_testcase(std::int16_t(0x0201), {0x01, 0x02}, "int2_positive"),
+    serialization_testcase(std::int16_t(-0x101), {0xff, 0xfe}, "int2_negative"),
+    serialization_testcase(std::int32_t(0x04030201), {0x01, 0x02, 0x03, 0x04}, "int4_positive"),
+    serialization_testcase(std::int32_t(-0x3020101), {0xff, 0xfe, 0xfd, 0xfc}, "int4_negative"),
+    serialization_testcase(std::int64_t(0x0807060504030201),
+            {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, "int8_positive"),
+    serialization_testcase(std::int64_t(-0x0706050403020101),
+            {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}, "int8_negative")
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(LengthEncodedInt, FullSerializationTest, ::testing::Values(
@@ -100,7 +97,7 @@ INSTANTIATE_TEST_SUITE_P(LengthEncodedString, FullSerializationTest, ::testing::
     serialization_testcase(string_lenenc(""), {0x00}, "empty"),
     serialization_testcase(string_lenenc("abc"),
             {0x03, 0x61, 0x62, 0x63}, "1_byte_size_regular_characters"),
-    serialization_testcase(string_lenenc(std::string_view("a\0b", 3)),
+    serialization_testcase(string_lenenc(boost::string_view("a\0b", 3)),
             {0x03, 0x61, 0x00, 0x62}, "1_byte_size_null_characters"),
     serialization_testcase(string_lenenc(string_250),
             concat_copy({250}, std::vector<std::uint8_t>(250, 0x61)), "1_byte_size_max"),
@@ -114,7 +111,7 @@ INSTANTIATE_TEST_SUITE_P(LengthEncodedString, FullSerializationTest, ::testing::
 
 INSTANTIATE_TEST_SUITE_P(EofString, SerializeDeserializeTest, ::testing::Values(
     serialization_testcase(string_eof("abc"), {0x61, 0x62, 0x63}, "regular_characters"),
-    serialization_testcase(string_eof(std::string_view("a\0b", 3)), {0x61, 0x00, 0x62}, "null_characters"),
+    serialization_testcase(string_eof(boost::string_view("a\0b", 3)), {0x61, 0x00, 0x62}, "null_characters"),
     serialization_testcase(string_eof(""), {}, "empty")
 ), test_name_generator);
 

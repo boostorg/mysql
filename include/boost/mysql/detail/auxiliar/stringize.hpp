@@ -15,11 +15,20 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline void stringize_helper(std::ostream&) noexcept {}
+
+template <typename T, typename... Types>
+void stringize_helper(std::ostream& os, const T& input, const Types&... tail)
+{
+    os << input;
+    stringize_helper(os, tail...);
+}
+
 template <typename... Types>
 std::string stringize(const Types&... inputs)
 {
     std::ostringstream ss;
-    (ss << ... << inputs);
+    stringize_helper(ss, inputs...);
     return ss.str();
 }
 

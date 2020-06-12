@@ -33,7 +33,7 @@ std::vector<field_metadata> make_meta(
     std::vector<boost::mysql::field_metadata> res;
     for (const auto type: types)
     {
-        column_definition_packet coldef;
+        column_definition_packet coldef {};
         coldef.type = type;
         res.emplace_back(coldef);
     }
@@ -41,10 +41,9 @@ std::vector<field_metadata> make_meta(
 }
 
 // Success cases
-struct row_testcase : named_param
+struct row_testcase : public named
 {
     deserialize_row_fn deserializer;
-    std::string name;
     std::vector<std::uint8_t> from;
     std::vector<value> expected;
     std::vector<field_metadata> meta;
@@ -56,8 +55,8 @@ struct row_testcase : named_param
         std::vector<value> expected,
         const std::vector<protocol_field_type>& types
     ):
+        named(std::move(name)),
         deserializer(deserializer),
-        name(std::move(name)),
         from(std::move(from)),
         expected(std::move(expected)),
         meta(make_meta(types))
@@ -82,10 +81,9 @@ TEST_P(DeserializeRowTest, CorrectFormat_SetsOutputValueReturnsTrue)
 }
 
 // Error cases
-struct row_err_testcase : named_param
+struct row_err_testcase : public named
 {
     deserialize_row_fn deserializer;
-    std::string name;
     std::vector<std::uint8_t> from;
     errc expected;
     std::vector<field_metadata> meta;
@@ -97,8 +95,8 @@ struct row_err_testcase : named_param
         errc expected,
         std::vector<protocol_field_type> types
     ):
+        named(std::move(name)),
         deserializer(deserializer),
-        name(std::move(name)),
         from(std::move(from)),
         expected(expected),
         meta(make_meta(types))

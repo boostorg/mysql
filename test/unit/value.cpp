@@ -29,14 +29,13 @@ template <typename T>
 std::string type_name() { return type_id<T>().pretty_name(); }
 
 // Constructors
-struct value_constructor_testcase : named_param
+struct value_constructor_testcase : public named
 {
-    std::string name;
     value v;
     vt expected;
 
     value_constructor_testcase(std::string name, value v, vt expected) :
-        name(std::move(name)), v(v), expected(expected) {}
+        named(std::move(name)), v(v), expected(expected) {}
 };
 
 struct ValueConstructorTest :  public TestWithParam<value_constructor_testcase>
@@ -51,47 +50,55 @@ TEST_P(ValueConstructorTest, Constructor_Trivial_ContainedVariantMatches)
 std::string test_string ("test");
 
 template <typename T>
-T non_const_int = 42;
+T& non_const_int()
+{
+    static T res = 42;
+    return res;
+}
 
 template <typename T>
-const T const_int = 42;
+const T& const_int()
+{
+    static T res = 42;
+    return res;
+}
 
 INSTANTIATE_TEST_SUITE_P(Default, ValueConstructorTest, Values(
     value_constructor_testcase("default_constructor", value(), vt(nullptr)),
     value_constructor_testcase("from_nullptr", value(nullptr), vt(nullptr)),
     value_constructor_testcase("from_u8", value(std::uint8_t(0xff)), vt(std::uint64_t(0xff))),
-    value_constructor_testcase("from_u8_const_lvalue", value(const_int<std::uint8_t>), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u8_lvalue", value(non_const_int<std::uint8_t>), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u8_const_lvalue", value(const_int<std::uint8_t>()), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u8_lvalue", value(non_const_int<std::uint8_t>()), vt(std::uint64_t(42))),
     value_constructor_testcase("from_u16", value(std::uint16_t(0xffff)), vt(std::uint64_t(0xffff))),
-    value_constructor_testcase("from_u16_const_lvalue", value(const_int<std::uint16_t>), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u16_lvalue", value(non_const_int<std::uint16_t>), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u16_const_lvalue", value(const_int<std::uint16_t>()), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u16_lvalue", value(non_const_int<std::uint16_t>()), vt(std::uint64_t(42))),
     value_constructor_testcase("from_ushort", value((unsigned short)(0xffff)), vt(std::uint64_t(0xffff))),
     value_constructor_testcase("from_u32", value(std::uint32_t(42)), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u32_const_lvalue", value(const_int<std::uint32_t>), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u32_lvalue", value(non_const_int<std::uint32_t>), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u32_const_lvalue", value(const_int<std::uint32_t>()), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u32_lvalue", value(non_const_int<std::uint32_t>()), vt(std::uint64_t(42))),
     value_constructor_testcase("from_uint", value(42u), vt(std::uint64_t(42))),
     value_constructor_testcase("from_ulong", value(42uL), vt(std::uint64_t(42))),
     value_constructor_testcase("from_ulonglong", value(42uLL), vt(std::uint64_t(42))),
     value_constructor_testcase("from_u64", value(std::uint64_t(42)), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u64_const_lvalue", value(const_int<std::uint64_t>), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u64_lvalue", value(non_const_int<std::uint64_t>), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u64_const_lvalue", value(const_int<std::uint64_t>()), vt(std::uint64_t(42))),
+    value_constructor_testcase("from_u64_lvalue", value(non_const_int<std::uint64_t>()), vt(std::uint64_t(42))),
     value_constructor_testcase("from_s8", value(std::int8_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s8_const_lvalue", value(const_int<std::int8_t>), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s8_lvalue", value(non_const_int<std::int8_t>), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s8_const_lvalue", value(const_int<std::int8_t>()), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s8_lvalue", value(non_const_int<std::int8_t>()), vt(std::int64_t(42))),
     value_constructor_testcase("from_s16", value(std::int16_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s16_const_lvalue", value(const_int<std::int16_t>), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s16_lvalue", value(non_const_int<std::int16_t>), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s16_const_lvalue", value(const_int<std::int16_t>()), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s16_lvalue", value(non_const_int<std::int16_t>()), vt(std::int64_t(42))),
     value_constructor_testcase("from_sshort", value(short(-42)), vt(std::int64_t(-42))),
     value_constructor_testcase("from_s32", value(std::int32_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s32_const_lvalue", value(const_int<std::int32_t>), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s32_lvalue", value(non_const_int<std::int32_t>), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s32_const_lvalue", value(const_int<std::int32_t>()), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s32_lvalue", value(non_const_int<std::int32_t>()), vt(std::int64_t(42))),
     value_constructor_testcase("from_sint", value(-42), vt(std::int64_t(-42))),
     value_constructor_testcase("from_slong", value(-42L), vt(std::int64_t(-42))),
     value_constructor_testcase("from_slonglong", value(-42LL), vt(std::int64_t(-42))),
     value_constructor_testcase("from_s64", value(std::int64_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s64_const_lvalue", value(const_int<std::int64_t>), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s64_lvalue", value(non_const_int<std::int64_t>), vt(std::int64_t(42))),
-    value_constructor_testcase("from_string_view", value(std::string_view("test")), vt("test")),
+    value_constructor_testcase("from_s64_const_lvalue", value(const_int<std::int64_t>()), vt(std::int64_t(42))),
+    value_constructor_testcase("from_s64_lvalue", value(non_const_int<std::int64_t>()), vt(std::int64_t(42))),
+    value_constructor_testcase("from_string_view", value(boost::string_view("test")), vt("test")),
     value_constructor_testcase("from_string", value(test_string), vt("test")),
     value_constructor_testcase("from_const_char", value("test"), vt("test")),
     value_constructor_testcase("from_float", value(4.2f), vt(4.2f)),
@@ -148,11 +155,11 @@ TEST(ValueTest, MoveAssignment_Trivial_Copies)
 }
 
 // accessors: is, is_convertible_to, is_null, get, get_optional
-constexpr vt all_types [] = {
+const vt all_types [] = {
     vt(nullptr),
     vt(std::uint64_t{}),
     vt(std::int64_t{}),
-    vt(std::string_view{}),
+    vt(boost::string_view{}),
     vt(float{}),
     vt(double{}),
     vt(boost::mysql::date{}),
@@ -165,19 +172,18 @@ void for_each_type(Callable&& cb)
 {
     for (auto type_variant : all_types)
     {
-        std::visit(std::forward<Callable>(cb), type_variant);
+        boost::variant2::visit(std::forward<Callable>(cb), type_variant);
     }
 }
 
-struct accessors_testcase : named_param
+struct accessors_testcase : public named
 {
-    std::string name;
     value v;
     type_index is_type; // the type for which is() should return true
     std::map<type_index, vt> conversions;
 
     accessors_testcase(std::string&& name, value v, type_index is, std::map<type_index, vt>&& convs) :
-        name(std::move(name)),
+        named(std::move(name)),
         v(v),
         is_type(is),
         conversions(std::move(convs))
@@ -210,76 +216,163 @@ TEST_P(ValueAccessorsTest, IsNull_Trivial_ReturnsTrueOnlyForNullptrAlternative)
     EXPECT_EQ(GetParam().v.is_null(), expected);
 }
 
+struct is_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        bool expected = param.is_type == type_id<T>();
+        EXPECT_EQ(param.v.is<T>(), expected) << type_name<T>();
+    }
+};
+
 TEST_P(ValueAccessorsTest, Is_Trivial_ReturnsTrueOnlyIfTypeMatches)
 {
-    for_each_type([](auto type_value) {
-        using T = decltype(type_value);
-        bool expected = GetParam().is_type == type_id<T>();
-        EXPECT_EQ(GetParam().v.is<T>(), expected) << type_name<T>();
-    });
+    for_each_type(is_visitor());
 }
+
+struct is_convertible_to_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        bool expected = it != param.conversions.end();
+        EXPECT_EQ(param.v.is_convertible_to<T>(), expected) << type_name<T>();
+    }
+};
 
 TEST_P(ValueAccessorsTest, IsConvertibleTo_TypeAllowsConversions_ReturnsTrue)
 {
-    for_each_type([](auto type_value) {
-        using T = decltype(type_value);
-        auto it = GetParam().conversions.find(type_id<T>());
-        bool expected = it != GetParam().conversions.end();
-        EXPECT_EQ(GetParam().v.is_convertible_to<T>(), expected) << type_name<T>();
-    });
+    for_each_type(is_convertible_to_visitor());
 }
+
+struct get_ok_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        if (it != param.conversions.end())
+        {
+            T expected = boost::variant2::get<T>(it->second);
+            EXPECT_EQ(param.v.get<T>(), expected) << type_name<T>();
+        }
+    }
+};
 
 TEST_P(ValueAccessorsTest, Get_TypeConvertibleToTarget_ReturnsConvertedValue)
 {
-    for_each_type([](auto type_value) {
-        using T = decltype(type_value);
-        auto it = GetParam().conversions.find(type_id<T>());
-        if (it != GetParam().conversions.end())
-        {
-            T expected = std::get<T>(it->second);
-            EXPECT_EQ(GetParam().v.get<T>(), expected) << type_name<T>();
-        }
-    });
+    for_each_type(get_ok_visitor());
 }
+
+struct get_nook_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        if (it == param.conversions.end())
+        {
+            EXPECT_THROW(param.v.get<T>(), boost::variant2::bad_variant_access) << type_name<T>();
+        }
+    }
+};
 
 TEST_P(ValueAccessorsTest, Get_TypeNotConvertibleToTarget_Throws)
 {
-    for_each_type([](auto type_value) {
-        using T = decltype(type_value);
-        auto it = GetParam().conversions.find(type_id<T>());
-        if (it == GetParam().conversions.end())
-        {
-            EXPECT_THROW(GetParam().v.get<T>(), std::bad_variant_access) << type_name<T>();
-        }
-    });
+    for_each_type(get_nook_visitor());
 }
 
-TEST_P(ValueAccessorsTest, GetOptional_TypeConvertibleToTarget_ReturnsConvertedValue)
+struct get_optional_ok_visitor
 {
-    for_each_type([](auto type_value) {
-        using T = decltype(type_value);
-        auto it = GetParam().conversions.find(type_id<T>());
-        if (it != GetParam().conversions.end())
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        if (it != param.conversions.end())
         {
-            auto expected = std::get<T>(it->second);
-            auto opt = GetParam().v.get_optional<T>();
+            auto expected = boost::variant2::get<T>(it->second);
+            auto opt = param.v.get_optional<T>();
             ASSERT_TRUE(opt) << type_name<T>();
             EXPECT_EQ(*opt, expected) << type_name<T>();
         }
-    });
+    }
+};
+
+TEST_P(ValueAccessorsTest, GetOptional_TypeConvertibleToTarget_ReturnsConvertedValue)
+{
+    for_each_type(get_optional_ok_visitor());
 }
+
+struct get_optional_nook_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        if (it == param.conversions.end())
+        {
+            EXPECT_FALSE(param.v.get_optional<T>()) << type_name<T>();
+        }
+    }
+};
 
 TEST_P(ValueAccessorsTest, GetOptional_TypeNotConvertibleToTarget_ReturnsEmptyOptional)
 {
-    for_each_type([](auto type_value) {
-        using T = decltype(type_value);
-        auto it = GetParam().conversions.find(type_id<T>());
-        if (it == GetParam().conversions.end())
-        {
-            EXPECT_FALSE(GetParam().v.get_optional<T>()) << type_name<T>();
-        }
-    });
+    for_each_type(get_optional_nook_visitor());
 }
+
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+
+struct get_std_optional_ok_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        if (it != param.conversions.end())
+        {
+            auto expected = boost::variant2::get<T>(it->second);
+            auto opt = param.v.get_std_optional<T>();
+            ASSERT_TRUE(opt) << type_name<T>();
+            EXPECT_EQ(*opt, expected) << type_name<T>();
+        }
+    }
+};
+
+TEST_P(ValueAccessorsTest, GetStdOptional_TypeConvertibleToTarget_ReturnsConvertedValue)
+{
+    for_each_type(get_std_optional_ok_visitor());
+}
+
+struct get_std_optional_nook_visitor
+{
+    template <typename T>
+    void operator()(T) const
+    {
+        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
+        auto it = param.conversions.find(type_id<T>());
+        if (it == param.conversions.end())
+        {
+            EXPECT_FALSE(param.v.get_std_optional<T>()) << type_name<T>();
+        }
+    }
+};
+
+TEST_P(ValueAccessorsTest, GetStdOptional_TypeNotConvertibleToTarget_ReturnsEmptyOptional)
+{
+    for_each_type(get_std_optional_nook_visitor());
+}
+
+#endif // BOOST_NO_CXX17_HDR_OPTIONAL
 
 INSTANTIATE_TEST_SUITE_P(Default, ValueAccessorsTest, Values(
     make_default_accessors_testcase("null", nullptr),
@@ -366,15 +459,14 @@ TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeSameValue_ReturnEquals)
 }
 
 // operator<<
-struct stream_testcase : named_param
+struct stream_testcase : public named
 {
-    std::string name;
     value input;
     std::string expected;
 
     template <typename T>
     stream_testcase(std::string&& name, T input, std::string&& expected) :
-        name(std::move(name)),
+        named(std::move(name)),
         input(input),
         expected(std::move(expected))
     {

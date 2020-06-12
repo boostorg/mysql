@@ -238,7 +238,11 @@ struct boost::mysql::resultset<StreamType>::fetch_many_op
     };
 
     template <typename Self>
-    auto bind_handler(Self& self, error_code err)
+    auto bind_handler(Self& self, error_code err) ->
+        boost::asio::executor_binder<
+            decltype(std::bind(std::move(self), err, detail::read_row_result::eof)),
+            decltype(boost::asio::get_associated_executor(self, impl_->parent_resultset.get_executor()))
+        >
     {
         auto executor = boost::asio::get_associated_executor(
             self,

@@ -26,13 +26,13 @@ void boost::mysql::test::do_serialize_test(
     EXPECT_EQ(ctx.first(), buffer.data() + expected_size) << "Iterator not updated correctly";
 
     // Buffer
-    std::string_view expected_populated = makesv(expected_buffer.data(), expected_size);
-    std::string_view actual_populated = makesv(buffer.data(), expected_size);
+    boost::string_view expected_populated = makesv(expected_buffer.data(), expected_size);
+    boost::string_view actual_populated = makesv(buffer.data(), expected_size);
     compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
 
     // Check for buffer overruns
     std::string expected_clean (8, 0x7a);
-    std::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
+    boost::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
     compare_buffers(expected_clean, actual_clean, "Buffer overrun");
 }
 

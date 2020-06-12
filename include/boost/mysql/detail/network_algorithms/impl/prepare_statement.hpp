@@ -16,10 +16,10 @@ template <typename StreamType>
 class prepare_statement_processor
 {
     channel<StreamType>& channel_;
-    com_stmt_prepare_ok_packet response_;
+    com_stmt_prepare_ok_packet response_ {};
 public:
     prepare_statement_processor(channel<StreamType>& chan): channel_(chan) {}
-    void process_request(std::string_view statement)
+    void process_request(boost::string_view statement)
     {
         com_stmt_prepare_packet packet { string_eof(statement) };
         serialize_message(packet, channel_.current_capabilities(), channel_.shared_buffer());
@@ -32,7 +32,7 @@ public:
             channel_.current_capabilities()
         );
         std::uint8_t msg_type = 0;
-        std::tie(err, msg_type) = deserialize_message_type(ctx);
+        err = make_error_code(deserialize(ctx, msg_type));
         if (err)
             return;
 
@@ -49,13 +49,13 @@ public:
             err = deserialize_message(ctx, response_);
         }
     }
-    auto& get_buffer() noexcept { return channel_.shared_buffer(); }
-    auto& get_channel() noexcept { return channel_; }
-    const auto& get_response() const noexcept { return response_; }
+    bytestring& get_buffer() noexcept { return channel_.shared_buffer(); }
+    channel<StreamType>& get_channel() noexcept { return channel_; }
+    const com_stmt_prepare_ok_packet& get_response() const noexcept { return response_; }
 
     unsigned get_num_metadata_packets() const noexcept
     {
-        return response_.num_columns.value + response_.num_params.value;
+        return response_.num_columns + response_.num_params;
     }
 };
 
@@ -69,7 +69,7 @@ struct prepare_statement_op : boost::asio::coroutine
     prepare_statement_op(
         channel<StreamType>& chan,
         error_info& output_info,
-        std::string_view statement
+        boost::string_view statement
     ) :
         processor_(chan),
         output_info_(output_info)
@@ -132,7 +132,7 @@ struct prepare_statement_op : boost::asio::coroutine
 template <typename StreamType>
 void boost::mysql::detail::prepare_statement(
     channel<StreamType>& channel,
-    std::string_view statement,
+    boost::string_view statement,
     error_code& err,
     error_info& info,
     prepared_statement<StreamType>& output
@@ -177,7 +177,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_prepare_statement(
     channel<StreamType>& chan,
-    std::string_view statement,
+    boost::string_view statement,
     CompletionToken&& token,
     error_info& info
 )

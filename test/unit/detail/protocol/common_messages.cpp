@@ -16,18 +16,18 @@ namespace
 {
 
 INSTANTIATE_TEST_SUITE_P(PacketHeader, FullSerializationTest, ::testing::Values(
-    serialization_testcase(packet_header{int3(3), int1(0)}, {0x03, 0x00, 0x00, 0x00}, "small_packet_seqnum_0"),
-    serialization_testcase(packet_header{int3(9), int1(2)}, {0x09, 0x00, 0x00, 0x02}, "small_packet_seqnum_not_0"),
-    serialization_testcase(packet_header{int3(0xcacbcc), int1(0xfa)}, {0xcc, 0xcb, 0xca, 0xfa}, "big_packet_seqnum_0"),
-    serialization_testcase(packet_header{int3(0xffffff), int1(0xff)}, {0xff, 0xff, 0xff, 0xff}, "max_packet_max_seqnum")
+    serialization_testcase(packet_header{int3(3), 0}, {0x03, 0x00, 0x00, 0x00}, "small_packet_seqnum_0"),
+    serialization_testcase(packet_header{int3(9), 2}, {0x09, 0x00, 0x00, 0x02}, "small_packet_seqnum_not_0"),
+    serialization_testcase(packet_header{int3(0xcacbcc), 0xfa}, {0xcc, 0xcb, 0xca, 0xfa}, "big_packet_seqnum_0"),
+    serialization_testcase(packet_header{int3(0xffffff), 0xff}, {0xff, 0xff, 0xff, 0xff}, "max_packet_max_seqnum")
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
     serialization_testcase(ok_packet{
         int_lenenc(4), // affected rows
         int_lenenc(0), // last insert ID
-        int2(static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED)), // server status
-        int2(0), // warnings
+        static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED), // server status
+        0, // warnings
         string_lenenc("Rows matched: 5  Changed: 4  Warnings: 0")
     }, {
         0x04, 0x00, 0x22, 0x00, 0x00, 0x00, 0x28, 0x52, 0x6f, 0x77, 0x73,
@@ -39,8 +39,8 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
     serialization_testcase(ok_packet{
         int_lenenc(1), // affected rows
         int_lenenc(6), // last insert ID
-        int2(static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT)), // server status
-        int2(0), // warnings
+        static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT), // server status
+        0, // warnings
         string_lenenc("")  // no message
     },{
         0x01, 0x06, 0x02, 0x00, 0x00, 0x00
@@ -49,8 +49,8 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
     serialization_testcase(ok_packet{
         int_lenenc(0), // affected rows
         int_lenenc(0), // last insert ID
-        int2(static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT)), // server status
-        int2(0), // warnings
+        static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT), // server status
+        0, // warnings
         string_lenenc("")  // no message
     }, {
         0x00, 0x00, 0x02, 0x00, 0x00, 0x00
@@ -59,7 +59,7 @@ INSTANTIATE_TEST_SUITE_P(OkPacket, DeserializeTest, ::testing::Values(
 
 INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
     serialization_testcase(err_packet{
-        int2(1049), // eror code
+        1049, // eror code
         string_fixed<1>{0x23}, // sql state marker
         string_fixed<5>{'4', '2', '0', '0', '0'}, // sql state
         string_eof("Unknown database 'a'") // err msg
@@ -70,7 +70,7 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
     }, "wrong_use_database"),
 
     serialization_testcase(err_packet{
-        int2(1146), // eror code
+        1146, // eror code
         string_fixed<1>{0x23}, // sql state marker
         string_fixed<5>{'4', '2', 'S', '0', '2'}, // sql state
         string_eof("Table 'awesome.unknown' doesn't exist") // err msg
@@ -84,7 +84,7 @@ INSTANTIATE_TEST_SUITE_P(ErrPacket, DeserializeTest, ::testing::Values(
     }, "unknown_table"),
 
     serialization_testcase(err_packet{
-        int2(1045), // error code
+        1045, // error code
         string_fixed<1>{0x23}, // SQL state marker
         string_fixed<5>{'2', '8', '0', '0', '0'}, // SQL state
         string_eof("Access denied for user 'root'@'localhost' (using password: YES)")
@@ -111,15 +111,11 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
         string_lenenc("id"), // field name
         string_lenenc("id"), // physical field name
         collation::binary,
-        int4(11), // length
+        11, // length
         protocol_field_type::long_,
-        int2(
-            column_flags::not_null |
-            column_flags::pri_key |
-            column_flags::auto_increment |
-            column_flags::part_key
-        ),
-        int1(0) // decimals
+        column_flags::not_null | column_flags::pri_key |
+                column_flags::auto_increment | column_flags::part_key,
+        0 // decimals
     }, {
         0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
         0x73, 0x6f, 0x6d, 0x65, 0x0a, 0x74, 0x65, 0x73,
@@ -137,10 +133,10 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
         string_lenenc("field_alias"), // field name
         string_lenenc("field_varchar"), // physical field name
         collation::utf8_general_ci,
-        int4(765), // length
+        765, // length
         protocol_field_type::var_string,
-        int2(), // no column flags
-        int1(0) // decimals
+        0, // no column flags
+        0 // decimals
     }, {
         0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
         0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68, 0x69,
@@ -161,10 +157,10 @@ INSTANTIATE_TEST_SUITE_P(ColumnDefinition, DeserializeSpaceTest, testing::Values
         string_lenenc("field_float"), // field name
         string_lenenc("field_float"), // physical field name
         collation::binary, // binary
-        int4(12), // length
+        12, // length
         protocol_field_type::float_,
-        int2(), // no column flags
-        int1(31) // decimals
+        0, // no column flags
+        31 // decimals
     }, {
         0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
         0x73, 0x6f, 0x6d, 0x65, 0x0a, 0x74, 0x65, 0x73,

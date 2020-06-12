@@ -12,7 +12,7 @@
 #include "test_common.hpp"
 #include <gtest/gtest.h>
 #include <forward_list>
-#include <optional>
+#include <boost/optional/optional.hpp>
 #include <boost/asio/use_future.hpp>
 
 /**
@@ -52,7 +52,7 @@ template <typename T>
 struct network_result
 {
     error_code err;
-    std::optional<error_info> info; // some async initiators (futures) don't support this
+    boost::optional<error_info> info; // some async initiators (futures) don't support this
     T value;
 
     network_result() = default;
@@ -135,9 +135,9 @@ public:
     virtual network_result<no_result> connect(connection_type&, const typename Stream::endpoint_type&,
             const connection_params&) = 0;
     virtual network_result<no_result> handshake(connection_type&, const connection_params&) = 0;
-    virtual network_result<resultset_type> query(connection_type&, std::string_view query) = 0;
+    virtual network_result<resultset_type> query(connection_type&, boost::string_view query) = 0;
     virtual network_result<prepared_statement_type> prepare_statement(
-            connection_type&, std::string_view statement) = 0;
+            connection_type&, boost::string_view statement) = 0;
     virtual network_result<resultset_type> execute_statement(
             prepared_statement_type&, value_list_it params_first, value_list_it params_last) = 0;
     virtual network_result<resultset_type> execute_statement(

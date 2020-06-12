@@ -27,7 +27,7 @@ namespace detail {
 // Integers
 template <typename T>
 errc deserialize_text_value_int_impl(
-    std::string_view from,
+    boost::string_view from,
     value& to
 ) noexcept
 {
@@ -40,7 +40,7 @@ errc deserialize_text_value_int_impl(
 }
 
 inline errc deserialize_text_value_int(
-    std::string_view from,
+    boost::string_view from,
     value& to,
     const field_metadata& meta
 ) noexcept
@@ -53,7 +53,7 @@ inline errc deserialize_text_value_int(
 // Floating points
 template <typename T>
 errc deserialize_text_value_float(
-    std::string_view from,
+    boost::string_view from,
     value& to
 ) noexcept
 {
@@ -67,7 +67,7 @@ errc deserialize_text_value_float(
 
 // Strings
 inline errc deserialize_text_value_string(
-    std::string_view from,
+    boost::string_view from,
     value& to
 ) noexcept
 {
@@ -89,7 +89,7 @@ inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexce
 }
 
 inline errc deserialize_text_ymd(
-    std::string_view from,
+    boost::string_view from,
     ::date::year_month_day& to
 )
 {
@@ -123,7 +123,7 @@ inline errc deserialize_text_ymd(
 }
 
 inline errc deserialize_text_value_date(
-    std::string_view from,
+    boost::string_view from,
     value& to
 ) noexcept
 {
@@ -152,7 +152,7 @@ inline errc deserialize_text_value_date(
 }
 
 inline errc deserialize_text_value_datetime(
-    std::string_view from,
+    boost::string_view from,
     value& to,
     const field_metadata& meta
 ) noexcept
@@ -233,7 +233,7 @@ inline errc deserialize_text_value_datetime(
 }
 
 inline errc deserialize_text_value_time(
-    std::string_view from,
+    boost::string_view from,
     value& to,
     const field_metadata& meta
 ) noexcept
@@ -315,7 +315,7 @@ inline bool is_next_field_null(
 } // boost
 
 inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
-    std::string_view from,
+    boost::string_view from,
     const field_metadata& meta,
     value& output
 )

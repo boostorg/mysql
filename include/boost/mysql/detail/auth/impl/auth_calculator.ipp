@@ -10,18 +10,19 @@
 
 #include "boost/mysql/detail/auth/mysql_native_password.hpp"
 #include "boost/mysql/detail/auth/caching_sha2_password.hpp"
+#include "boost/mysql/detail/auxiliar/make_string_view.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 constexpr authentication_plugin mysql_native_password_plugin {
-    "mysql_native_password",
+    make_string_view("mysql_native_password"),
     &mysql_native_password::compute_response
 };
 
 constexpr authentication_plugin caching_sha2_password_plugin {
-    "caching_sha2_password",
+    make_string_view("caching_sha2_password"),
     &caching_sha2_password::compute_response
 };
 
@@ -36,7 +37,7 @@ constexpr std::array<const authentication_plugin*, 2> all_authentication_plugins
 
 inline const boost::mysql::detail::authentication_plugin*
 boost::mysql::detail::auth_calculator::find_plugin(
-    std::string_view name
+    boost::string_view name
 )
 {
     auto it = std::find_if(
@@ -49,9 +50,9 @@ boost::mysql::detail::auth_calculator::find_plugin(
 
 inline boost::mysql::error_code
 boost::mysql::detail::auth_calculator::calculate(
-    std::string_view plugin_name,
-    std::string_view password,
-    std::string_view challenge,
+    boost::string_view plugin_name,
+    boost::string_view password,
+    boost::string_view challenge,
     bool use_ssl
 )
 {
@@ -62,7 +63,7 @@ boost::mysql::detail::auth_calculator::calculate(
         // Blank password: we should just return an empty auth string
         if (password.empty())
         {
-            response_ = "";
+            response_.clear();
             return error_code();
         }
         else

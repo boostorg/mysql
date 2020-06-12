@@ -22,17 +22,17 @@ inline protocol_field_type get_protocol_field_type(
 {
     struct visitor
     {
-        constexpr auto operator()(std::int64_t) const noexcept { return protocol_field_type::longlong; }
-        constexpr auto operator()(std::uint64_t) const noexcept { return protocol_field_type::longlong; }
-        constexpr auto operator()(std::string_view) const noexcept { return protocol_field_type::varchar; }
-        constexpr auto operator()(float) const noexcept { return protocol_field_type::float_; }
-        constexpr auto operator()(double) const noexcept { return protocol_field_type::double_; }
-        constexpr auto operator()(date) const noexcept { return protocol_field_type::date; }
-        constexpr auto operator()(datetime) const noexcept { return protocol_field_type::datetime; }
-        constexpr auto operator()(time) const noexcept { return protocol_field_type::time; }
-        constexpr auto operator()(std::nullptr_t) const noexcept { return protocol_field_type::null; }
+        protocol_field_type operator()(std::int64_t) const noexcept { return protocol_field_type::longlong; }
+        protocol_field_type operator()(std::uint64_t) const noexcept { return protocol_field_type::longlong; }
+        protocol_field_type operator()(boost::string_view) const noexcept { return protocol_field_type::varchar; }
+        protocol_field_type operator()(float) const noexcept { return protocol_field_type::float_; }
+        protocol_field_type operator()(double) const noexcept { return protocol_field_type::double_; }
+        protocol_field_type operator()(date) const noexcept { return protocol_field_type::date; }
+        protocol_field_type operator()(datetime) const noexcept { return protocol_field_type::datetime; }
+        protocol_field_type operator()(time) const noexcept { return protocol_field_type::time; }
+        protocol_field_type operator()(std::nullptr_t) const noexcept { return protocol_field_type::null; }
     };
-    return std::visit(visitor(), input.to_variant());
+    return boost::variant2::visit(visitor(), input.to_variant());
 }
 
 // Whether to include the unsigned flag in the statement execute message
@@ -41,7 +41,7 @@ inline bool is_unsigned(
     const value& input
 ) noexcept
 {
-    return std::holds_alternative<std::uint64_t>(input.to_variant());
+    return input.is<std::uint64_t>();
 }
 
 } // detail
@@ -57,7 +57,7 @@ boost::mysql::detail::serialization_traits<
     com_stmt_prepare_ok_packet& output
 ) noexcept
 {
-    int1 reserved;
+    std::uint8_t reserved;
     return deserialize(
         ctx,
         output.statement_id,
@@ -102,9 +102,10 @@ boost::mysql::detail::serialization_traits<
     const com_stmt_execute_packet<ForwardIterator>& input
 ) noexcept
 {
+    constexpr std::uint8_t command_id = com_stmt_execute_packet<ForwardIterator>::command_id;
     serialize(
         ctx,
-        int1(com_stmt_execute_packet<ForwardIterator>::command_id),
+        command_id,
         input.statement_id,
         input.flags,
         input.iteration_count
@@ -135,7 +136,7 @@ boost::mysql::detail::serialization_traits<
     for (auto it = input.params_begin; it != input.params_end; ++it)
     {
         meta.type = get_protocol_field_type(*it);
-        meta.unsigned_flag.value = is_unsigned(*it) ? 0x80 : 0;
+        meta.unsigned_flag = is_unsigned(*it) ? 0x80 : 0;
         serialize(ctx, meta);
     }
 

@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_CONSTANTS_HPP
 
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
+#include "boost/mysql/detail/auxiliar/make_string_view.hpp"
 
 namespace boost {
 namespace mysql {
@@ -71,7 +72,7 @@ constexpr std::uint8_t ok_packet_header = 0x00;
 constexpr std::uint8_t eof_packet_header = 0xfe;
 constexpr std::uint8_t auth_switch_request_header = 0xfe;
 constexpr std::uint8_t auth_more_data_header = 0x01;
-constexpr std::string_view fast_auth_complete_challenge = "\3";
+constexpr boost::string_view fast_auth_complete_challenge = make_string_view("\3");
 
 // Column flags
 namespace column_flags {

@@ -102,7 +102,9 @@ inline std::ostream& operator<<(std::ostream& os, const row& value)
 template <
     typename RowTypeLeft,
     typename RowTypeRight,
-    typename=std::enable_if_t<std::is_base_of_v<row, RowTypeLeft> && std::is_base_of_v<row, RowTypeRight>>
+    typename=typename std::enable_if<
+        std::is_base_of<row, RowTypeLeft>::value && std::is_base_of<row, RowTypeRight>::value
+    >::type
 >
 inline bool operator==(const std::vector<RowTypeLeft>& lhs, const std::vector<RowTypeRight>& rhs)
 {
@@ -112,7 +114,9 @@ inline bool operator==(const std::vector<RowTypeLeft>& lhs, const std::vector<Ro
 template <
     typename RowTypeLeft,
     typename RowTypeRight,
-    typename=std::enable_if_t<std::is_base_of_v<row, RowTypeLeft> && std::is_base_of_v<row, RowTypeRight>>
+    typename=typename std::enable_if<
+        std::is_base_of<row, RowTypeLeft>::value && std::is_base_of<row, RowTypeRight>::value
+    >::type
 >
 inline bool operator!=(const std::vector<RowTypeLeft>& lhs, const std::vector<RowTypeRight>& rhs)
 {

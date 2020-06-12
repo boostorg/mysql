@@ -21,9 +21,8 @@ using boost::mysql::errc;
 namespace
 {
 
-struct err_binary_value_testcase : named_param
+struct err_binary_value_testcase : public named
 {
-    std::string name;
     bytestring from;
     protocol_field_type type;
     std::uint16_t flags;
@@ -31,7 +30,7 @@ struct err_binary_value_testcase : named_param
 
     err_binary_value_testcase(std::string&& name, bytestring&& from, protocol_field_type type,
             std::uint16_t flags=0, errc expected_err=errc::protocol_value_error) :
-        name(std::move(name)),
+        named(std::move(name)),
         from(std::move(from)),
         type(type),
         flags(flags),
@@ -41,7 +40,7 @@ struct err_binary_value_testcase : named_param
 
     err_binary_value_testcase(std::string&& name, bytestring&& from, protocol_field_type type,
             errc expected_err) :
-        name(std::move(name)),
+        named(std::move(name)),
         from(std::move(from)),
         type(type),
         flags(0),
@@ -56,9 +55,9 @@ struct DeserializeBinaryValueErrorTest : TestWithParam<err_binary_value_testcase
 
 TEST_P(DeserializeBinaryValueErrorTest, Error_ReturnsExpectedErrc)
 {
-    column_definition_packet coldef;
+    column_definition_packet coldef {};
     coldef.type = GetParam().type;
-    coldef.flags.value = GetParam().flags;
+    coldef.flags = GetParam().flags;
     boost::mysql::field_metadata meta (coldef);
     value actual_value;
     const auto& buff = GetParam().from;
@@ -152,7 +151,7 @@ INSTANTIATE_TEST_SUITE_P(DATE, DeserializeBinaryValueErrorTest, Values(
              protocol_field_type::date),
      err_binary_value_testcase("protocol_max",      {0xff, 0xff, 0xff, 0xff, 0xff},
              protocol_field_type::date)
-));
+), test_name_generator);
 
 // Based on correct datetime {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00}
 std::vector<err_binary_value_testcase> make_datetime_cases(

@@ -17,10 +17,9 @@ namespace
 template <typename Stream>
 struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 {
-    std::int64_t get_table_size(const std::string& table)
+    PreparedStatementLifecycleTest()
     {
-        return this->conn.query("SELECT COUNT(*) FROM " + table)
-                .fetch_all().at(0).values().at(0).template get<std::int64_t>();
+        this->connect(this->GetParam().ssl);
     }
 
     value get_updates_table_value(const std::string& field_varchar="f0")
@@ -74,10 +73,8 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 
     void InsertWithParametersMultipleExecutions()
     {
+        this->start_transaction();
         auto* net = this->GetParam().net;
-
-        // Get the number of rows before insertion
-        auto rows_before = get_table_size("inserts_table");
 
         // Prepare a statement
         auto stmt = net->prepare_statement(
@@ -100,9 +97,8 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
         EXPECT_TRUE(result.value.complete());
         EXPECT_TRUE(result.value.fields().empty());
 
-        // Validate we did something
-        auto rows_after = get_table_size("inserts_table");
-        EXPECT_EQ(rows_after, rows_before + 2);
+        // Validate that the insertions took place
+        EXPECT_EQ(this->get_table_size("inserts_table"), 2);
 
         // Close it
         auto close_result = net->close_statement(stmt.value);
@@ -111,6 +107,7 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 
     void UpdateWithParametersMultipleExecutions()
     {
+        this->start_transaction();
         auto* net = this->GetParam().net;
 
         // Prepare a statement
@@ -147,6 +144,7 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 
     void MultipleStatements()
     {
+        this->start_transaction();
         auto* net = this->GetParam().net;
 
         // Prepare an update
@@ -203,6 +201,7 @@ struct PreparedStatementLifecycleTest : NetworkTest<Stream>
 
     void InsertWithNullValues()
     {
+        this->start_transaction();
         auto* net = this->GetParam().net;
 
         // Statement to perform the updates

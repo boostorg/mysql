@@ -22,6 +22,13 @@
  * please have a look to the query_sync.cpp example.
  */
 
+#define ASSERT(expr) \
+    if (!(expr)) \
+    { \
+        std::cerr << "Assertion failed: " #expr << std::endl; \
+        exit(1); \
+    }
+
 void main_impl(int argc, char** argv)
 {
     if (argc != 3)
@@ -54,29 +61,29 @@ void main_impl(int argc, char** argv)
      * You can retrieve the field name, type, number of decimals,
      * suggested display width, whether the field is part of a key...
      */
-    assert(result.fields().size() == 2);
+    ASSERT(result.fields().size() == 2);
 
-    [[maybe_unused]] const boost::mysql::field_metadata& company_name = result.fields()[0];
-    assert(company_name.database() == "boost_mysql_examples"); // database name
-    assert(company_name.table() == "comp");                    // the alias we assigned to the table in the query
-    assert(company_name.original_table() == "company");        // the original table name
-    assert(company_name.field_name() == "company_name");       // the name of the field in the query
-    assert(company_name.original_field_name() == "name");      // the name of the physical field in the table
-    assert(company_name.type() == boost::mysql::field_type::varchar); // we created the field as a VARCHAR
-    assert(!company_name.is_primary_key());                    // field is not a primary key
-    assert(!company_name.is_auto_increment());                 // field is not AUTO_INCREMENT
-    assert(company_name.is_not_null());                        // field may not be NULL
+    const boost::mysql::field_metadata& company_name = result.fields()[0];
+    ASSERT(company_name.database() == "boost_mysql_examples"); // database name
+    ASSERT(company_name.table() == "comp");                    // the alias we assigned to the table in the query
+    ASSERT(company_name.original_table() == "company");        // the original table name
+    ASSERT(company_name.field_name() == "company_name");       // the name of the field in the query
+    ASSERT(company_name.original_field_name() == "name");      // the name of the physical field in the table
+    ASSERT(company_name.type() == boost::mysql::field_type::varchar); // we created the field as a VARCHAR
+    ASSERT(!company_name.is_primary_key());                    // field is not a primary key
+    ASSERT(!company_name.is_auto_increment());                 // field is not AUTO_INCREMENT
+    ASSERT(company_name.is_not_null());                        // field may not be NULL
 
-    [[maybe_unused]] const boost::mysql::field_metadata& employee_id = result.fields()[1];
-    assert(employee_id.database() == "boost_mysql_examples"); // database name
-    assert(employee_id.table() == "emp");                   // the alias we assigned to the table in the query
-    assert(employee_id.original_table() == "employee");     // the original table name
-    assert(employee_id.field_name() == "employee_id");      // the name of the field in the query
-    assert(employee_id.original_field_name() == "id");      // the name of the physical field in the table
-    assert(employee_id.type() == boost::mysql::field_type::int_);  // we created the field as INT
-    assert(employee_id.is_primary_key());                   // field is a primary key
-    assert(employee_id.is_auto_increment());                // we declared the field as AUTO_INCREMENT
-    assert(employee_id.is_not_null());                      // field cannot be NULL
+    const boost::mysql::field_metadata& employee_id = result.fields()[1];
+    ASSERT(employee_id.database() == "boost_mysql_examples"); // database name
+    ASSERT(employee_id.table() == "emp");                   // the alias we assigned to the table in the query
+    ASSERT(employee_id.original_table() == "employee");     // the original table name
+    ASSERT(employee_id.field_name() == "employee_id");      // the name of the field in the query
+    ASSERT(employee_id.original_field_name() == "id");      // the name of the physical field in the table
+    ASSERT(employee_id.type() == boost::mysql::field_type::int_);  // we created the field as INT
+    ASSERT(employee_id.is_primary_key());                   // field is a primary key
+    ASSERT(employee_id.is_auto_increment());                // we declared the field as AUTO_INCREMENT
+    ASSERT(employee_id.is_not_null());                      // field cannot be NULL
 
     // Close the connection
     conn.close();

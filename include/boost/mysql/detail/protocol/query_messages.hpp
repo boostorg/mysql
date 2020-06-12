@@ -20,14 +20,14 @@ struct com_query_packet
     string_eof query;
 
     static constexpr std::uint8_t command_id = 3;
-};
 
-template <>
-struct get_struct_fields<com_query_packet>
-{
-    static constexpr auto value = std::make_tuple(
-        &com_query_packet::query
-    );
+    template <typename Self, typename Callable>
+    static void apply(Self& self, Callable&& cb)
+    {
+        std::forward<Callable>(cb)(
+            self.query
+        );
+    }
 };
 
 }

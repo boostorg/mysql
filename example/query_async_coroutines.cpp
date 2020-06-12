@@ -47,8 +47,8 @@ using boost::mysql::error_info;
 void print_employee(const boost::mysql::row& employee)
 {
     std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type std::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type std::string_view)
+              << employee.values()[0] << " "                   // first_name (type boost::string_view)
+              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
               << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
 }
 

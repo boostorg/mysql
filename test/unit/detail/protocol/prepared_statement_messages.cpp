@@ -32,10 +32,10 @@ INSTANTIATE_TEST_SUITE_P(ComStmtPrepare, SerializeTest, testing::Values(
 
 INSTANTIATE_TEST_SUITE_P(ComStmtPrepareResponse, DeserializeSpaceTest, testing::Values(
     serialization_testcase(com_stmt_prepare_ok_packet{
-        int4(1), // statement id
-        int2(2), // number of fields
-        int2(3), // number of params
-        int2(0), // warnings
+        1, // statement id
+        2, // number of fields
+        3, // number of params
+        0, // warnings
     }, {
         0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00,
         0x00, 0x00, 0x00
@@ -57,10 +57,10 @@ serialization_testcase make_stmt_execute_test(
     auto params_shared = std::make_shared<Collection>(std::begin(params), std::end(params));
     return serialization_testcase(
         com_stmt_execute_packet<typename Collection::const_iterator> {
-            int4(stmt_id),
-            int1(flags),
-            int4(itercount),
-            int1(new_params_flag),
+            stmt_id,
+            flags,
+            itercount,
+            new_params_flag,
             params_shared->begin(),
             params_shared->end()
         },
@@ -89,7 +89,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
         "int64_t"
     ),
     make_stmt_execute_test(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-        { value(std::string_view("test")) }, {
+        { value(boost::string_view("test")) }, {
             0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
             0x00, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x04, 0x74,
             0x65, 0x73, 0x74
@@ -148,7 +148,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
     make_stmt_execute_test(2, 0, 1, 1, makevalues(
             std::uint64_t(0xabffffabacadae),
             std::int64_t(-0xabffffabacadae),
-            std::string_view("test"),
+            boost::string_view("test"),
             nullptr,
             2.1e214,
             makedate(2010, 9, 3),
@@ -181,7 +181,7 @@ INSTANTIATE_TEST_SUITE_P(ComStmtExecute, SerializeTest, testing::Values(
 ), test_name_generator);
 
 INSTANTIATE_TEST_SUITE_P(ComStmtClose, SerializeTest, testing::Values(
-    serialization_testcase(com_stmt_close_packet{int4(1)}, {0x19, 0x01, 0x00, 0x00, 0x00}, "regular")
+    serialization_testcase(com_stmt_close_packet{1}, {0x19, 0x01, 0x00, 0x00, 0x00}, "regular")
 ), test_name_generator);
 
 }

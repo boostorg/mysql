@@ -23,7 +23,10 @@ namespace
 
 // Helpers
 template <typename Callable>
-auto impl_errinfo(Callable&& cb) {
+auto impl_errinfo(
+    Callable&& cb
+) -> network_result<decltype(cb(std::declval<error_info&>()).get())>
+{
     using R = decltype(cb(std::declval<error_info&>()).get()); // Callable returns a future<R>
     error_info info ("Error info was not clearer properly");
     std::future<R> fut = cb(info);
@@ -43,7 +46,10 @@ auto impl_errinfo(Callable&& cb) {
 }
 
 template <typename Callable>
-static network_result<no_result> impl_no_result_errinfo(Callable&& cb) {
+network_result<no_result> impl_no_result_errinfo(
+    Callable&& cb
+)
+{
     error_info info ("Error info was not clearer properly");
     std::future<void> fut = cb(info);
     try
@@ -58,7 +64,10 @@ static network_result<no_result> impl_no_result_errinfo(Callable&& cb) {
 }
 
 template <typename Callable>
-auto impl_noerrinfo(Callable&& cb) {
+auto impl_noerrinfo(
+    Callable&& cb
+) -> network_result<decltype(cb().get())>
+{
     using R = decltype(cb().get()); // Callable returns a future<R>
     std::future<R> fut = cb();
     try
@@ -75,7 +84,10 @@ auto impl_noerrinfo(Callable&& cb) {
 }
 
 template <typename Callable>
-static network_result<no_result> impl_no_result_noerrinfo(Callable&& cb) {
+network_result<no_result> impl_no_result_noerrinfo(
+    Callable&& cb
+)
+{
     std::future<void> fut = cb();
     try
     {
@@ -119,7 +131,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
@@ -128,7 +140,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
@@ -235,7 +247,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl_noerrinfo([&] {
@@ -244,7 +256,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl_noerrinfo([&]{
@@ -352,7 +364,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
@@ -361,7 +373,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
@@ -468,7 +480,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl_noerrinfo([&] {
@@ -477,7 +489,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl_noerrinfo([&]{

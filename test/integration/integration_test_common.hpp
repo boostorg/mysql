@@ -62,7 +62,7 @@ struct IntegTest : testing::Test
         runner.join();
     }
 
-    void set_credentials(std::string_view user, std::string_view password)
+    void set_credentials(boost::string_view user, boost::string_view password)
     {
         params.set_username(user);
         params.set_password(password);
@@ -110,7 +110,7 @@ struct IntegTest : testing::Test
         int affected_rows=0,
         int warnings=0,
         int last_insert=0,
-        std::string_view info=""
+        boost::string_view info=""
     )
     {
         EXPECT_TRUE(result.valid());
@@ -140,23 +140,41 @@ struct IntegTest : testing::Test
         validate_2fields_meta(result.fields(), table);
     }
 
+    // Call this in the fixture setup of any test invoking write
+    // operations on the database, to prevent race conditions,
+    // make the testing environment more stable and speed up the tests
+    void start_transaction()
+    {
+        this->conn.query("START TRANSACTION").fetch_all();
+    }
+
+    std::int64_t get_table_size(const std::string& table)
+    {
+        return this->conn.query("SELECT COUNT(*) FROM " + table)
+                .fetch_all().at(0).values().at(0).template get<std::int64_t>();
+    }
 };
 
 // To be used as test parameter, when a test case should be run
 // over all different network_function's.
 template <typename Stream>
-struct network_testcase
+struct network_testcase : named_tag
 {
     network_functions<Stream>* net;
 
-    std::string name() const { return net->name(); }
+    network_testcase(network_functions<Stream>* funs) :
+        net(funs)
+    {
+    }
+
+    const char* name() const { return net->name(); }
 
     static std::vector<network_testcase<Stream>> make_all()
     {
         std::vector<network_testcase<Stream>> res;
         for (auto* net: make_all_network_functions<Stream>())
         {
-            res.push_back(network_testcase<Stream>{net});
+            res.emplace_back(net);
         }
         return res;
     }
@@ -170,9 +188,15 @@ struct network_testcase_with_ssl
     network_functions<Stream>* net;
     ssl_mode ssl;
 
+    network_testcase_with_ssl(network_functions<Stream>* funs, ssl_mode ssl) :
+        net(funs),
+        ssl(ssl)
+    {
+    }
+
     std::string name() const
     {
-        return detail::stringize(this->net->name(), '_', to_string(ssl));
+        return detail::stringize(net->name(), '_', to_string(ssl));
     }
 
     static std::vector<network_testcase_with_ssl<Stream>> make_all()
@@ -182,7 +206,7 @@ struct network_testcase_with_ssl
         {
             for (auto ssl: {ssl_mode::require, ssl_mode::disable})
             {
-                res.push_back(network_testcase_with_ssl<Stream>{net, ssl});
+                res.emplace_back(net, ssl);
             }
         }
         return res;
@@ -211,19 +235,11 @@ struct network_testcase_with_ssl
  */
 template <
     typename Stream,
-    bool do_connect=true,
     typename Param=network_testcase_with_ssl<Stream>
 >
 struct NetworkTest : public IntegTest<Stream>,
                      public testing::WithParamInterface<Param>
 {
-    NetworkTest()
-    {
-        if constexpr (do_connect)
-        {
-            this->connect(this->GetParam().ssl);
-        }
-    }
 };
 
 } // test
@@ -272,9 +288,7 @@ struct NetworkTest : public IntegTest<Stream>,
 #define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_HELPER(TestSuiteName, Suffix) \
     INSTANTIATE_TEST_SUITE_P(Default, TestSuiteName##Suffix, testing::ValuesIn( \
         TestSuiteName##Suffix::ParamType::make_all() \
-    ), [](const auto& param_info) { \
-        return param_info.param.name(); \
-    });
+    ), test_name_generator);
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #define BOOST_MYSQL_INSTANTIATE_NETWORK_TEST_SUITE_UNIX(TestSuiteName) \

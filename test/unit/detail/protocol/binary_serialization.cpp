@@ -20,9 +20,8 @@ using boost::mysql::errc;
 namespace
 {
 
-struct serialize_binary_value_testcase : named_param
+struct serialize_binary_value_testcase : public named
 {
-    std::string name;
     value from;
     bytestring buffer;
 
@@ -32,7 +31,7 @@ struct serialize_binary_value_testcase : named_param
         T&& from,
         bytestring&& buffer
     ) :
-        name(std::move(name)),
+        named(std::move(name)),
         from(std::forward<T>(from)),
         buffer(std::move(buffer))
     {

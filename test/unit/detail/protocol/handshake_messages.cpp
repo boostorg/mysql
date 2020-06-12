@@ -51,11 +51,11 @@ constexpr std::uint32_t hanshake_caps =
 INSTANTIATE_TEST_SUITE_P(Handshake, DeserializeSpaceTest, ::testing::Values(
     serialization_testcase(handshake_packet{
         string_null("5.7.27-0ubuntu0.19.04.1"), // server version
-        int4(2), // connection ID
+        2, // connection ID
         handshake_packet::auth_buffer_type(makesv(handshake_auth_plugin_data)),
-        int4(hanshake_caps),
-        int1(static_cast<std::uint8_t>(collation::latin1_swedish_ci)),
-        int2(SERVER_STATUS_AUTOCOMMIT),
+        hanshake_caps,
+        static_cast<std::uint8_t>(collation::latin1_swedish_ci),
+        static_cast<std::uint16_t>(SERVER_STATUS_AUTOCOMMIT),
         string_null("mysql_native_password")
     }, {
       0x35, 0x2e, 0x37, 0x2e, 0x32, 0x37, 0x2d, 0x30,
@@ -99,9 +99,9 @@ constexpr std::uint32_t handshake_response_caps =
 
 INSTANTIATE_TEST_SUITE_P(HandshakeResponse, SerializeTest, ::testing::Values(
     serialization_testcase(handshake_response_packet{
-        int4(handshake_response_caps),
-        int4(16777216), // max packet size
-        int1(static_cast<std::uint8_t>(collation::utf8_general_ci)),
+        handshake_response_caps,
+        16777216, // max packet size
+        static_cast<std::uint8_t>(collation::utf8_general_ci),
         string_null("root"),
         string_lenenc(makesv(handshake_response_auth_data)),
         string_null(""), // Irrelevant, not using connect with DB
@@ -120,9 +120,9 @@ INSTANTIATE_TEST_SUITE_P(HandshakeResponse, SerializeTest, ::testing::Values(
     }, "without_database", handshake_response_caps),
 
     serialization_testcase(handshake_response_packet{
-        int4(handshake_response_caps | CLIENT_CONNECT_WITH_DB),
-        int4(16777216), // max packet size
-        int1(static_cast<std::uint8_t>(collation::utf8_general_ci)),
+        handshake_response_caps | CLIENT_CONNECT_WITH_DB,
+        16777216, // max packet size
+        static_cast<std::uint8_t>(collation::utf8_general_ci),
         string_null("root"),
         string_lenenc(makesv(handshake_response_auth_data)),
         string_null("database"), // database name
@@ -197,9 +197,9 @@ constexpr std::uint32_t ssl_request_caps =
 
 INSTANTIATE_TEST_SUITE_P(SslRequest, SerializeTest, ::testing::Values(
     serialization_testcase(ssl_request{
-        int4(ssl_request_caps),
-        int4(0x1000000),
-        int1(45),
+        ssl_request_caps,
+        0x1000000,
+        45,
         string_fixed<23>{}
     }, {
 

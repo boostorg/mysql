@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP
 
 #include <cstddef>
-#include <string_view>
+#include <boost/utility/string_view.hpp>
 #include "boost/mysql/error.hpp"
 
 namespace boost {
@@ -27,10 +27,10 @@ namespace caching_sha2_password {
 // auth without an SSL connection, but that requires the server public key,
 // and we do not implement that.
 inline error_code compute_response(
-    std::string_view password,
-    std::string_view challenge,
+    boost::string_view password,
+    boost::string_view challenge,
     bool use_ssl,
-    std::string& output
+    bytestring& output
 );
 
 } // caching_sha2_password

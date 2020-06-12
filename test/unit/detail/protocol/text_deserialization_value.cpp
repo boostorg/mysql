@@ -22,9 +22,8 @@ using boost::mysql::errc;
 namespace
 {
 
-struct text_value_testcase : named_param
+struct text_value_testcase : public named
 {
-    std::string name;
     std::string from;
     value expected;
     protocol_field_type type;
@@ -40,7 +39,7 @@ struct text_value_testcase : named_param
         std::uint16_t flags=0,
         unsigned decimals=0
     ) :
-        name(std::move(name)),
+        named(std::move(name)),
         from(std::move(from)),
         expected(std::forward<T>(expected_value)),
         type(type),
@@ -54,10 +53,10 @@ struct DeserializeTextValueTest : public TestWithParam<text_value_testcase> {};
 
 TEST_P(DeserializeTextValueTest, CorrectFormat_SetsOutputValueReturnsTrue)
 {
-    column_definition_packet coldef;
+    column_definition_packet coldef {};
     coldef.type = GetParam().type;
-    coldef.decimals.value = static_cast<std::uint8_t>(GetParam().decimals);
-    coldef.flags.value = GetParam().flags;
+    coldef.decimals = static_cast<std::uint8_t>(GetParam().decimals);
+    coldef.flags = GetParam().flags;
     boost::mysql::field_metadata meta (coldef);
     value actual_value;
     auto err = deserialize_text_value(GetParam().from, meta, actual_value);

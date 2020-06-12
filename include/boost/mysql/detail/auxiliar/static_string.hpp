@@ -11,7 +11,7 @@
 // A very simplified variable-length string with fixed max-size
 
 #include <array>
-#include <string_view>
+#include <boost/utility/string_view.hpp>
 #include <cassert>
 #include <cstring>
 #include <ostream>
@@ -25,22 +25,20 @@ class static_string
 {
     std::array<char, max_size> buffer_;
     std::size_t size_;
-
-    void size_check([[maybe_unused]] std::size_t sz) const noexcept { assert(sz <= max_size); }
 public:
     static_string() noexcept: size_(0) {}
-    static_string(std::string_view value) noexcept : size_(value.size())
+    static_string(boost::string_view value) noexcept : size_(value.size())
     {
-        size_check(value.size());
+        assert(value.size() <= max_size);
         size_ = value.size();
         std::memcpy(buffer_.data(), value.data(), value.size());
     }
     std::size_t size() const noexcept { return size_; }
-    std::string_view value() const noexcept { return std::string_view(buffer_.data(), size_); }
+    boost::string_view value() const noexcept { return boost::string_view(buffer_.data(), size_); }
     void append(const void* arr, std::size_t sz) noexcept
     {
         std::size_t new_size = size_ + sz;
-        size_check(new_size);
+        assert(new_size <= max_size);
         std::memcpy(buffer_.data() + size_, arr, sz);
         size_ = new_size;
     }

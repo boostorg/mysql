@@ -11,7 +11,6 @@
 #include "boost/mysql/resultset.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
-#include <optional>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 
@@ -70,6 +69,8 @@ class prepared_statement
     void check_num_params(ForwardIterator first, ForwardIterator last, error_code& err, error_info& info) const;
 
     error_info& shared_info() noexcept { assert(channel_); return channel_->shared_info(); }
+
+    struct async_execute_initiation;
 public:
     /// Default constructor.
     prepared_statement() = default;
@@ -94,10 +95,10 @@ public:
     bool valid() const noexcept { return channel_ != nullptr; }
 
     /// Returns a server-side identifier for the statement (unique in a per-connection basis).
-    unsigned id() const noexcept { assert(valid()); return stmt_msg_.statement_id.value; }
+    unsigned id() const noexcept { assert(valid()); return stmt_msg_.statement_id; }
 
     /// Returns the number of parameters that should be passed to execute().
-    unsigned num_params() const noexcept { assert(valid()); return stmt_msg_.num_params.value; }
+    unsigned num_params() const noexcept { assert(valid()); return stmt_msg_.num_params; }
 
     /**
      * \brief Executes a statement (collection, sync with error code version).

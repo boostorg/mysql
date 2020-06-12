@@ -19,7 +19,7 @@ namespace mysql {
 namespace detail {
 
 inline errc deserialize_text_value(
-    std::string_view from,
+    boost::string_view from,
     const field_metadata& meta,
     value& output
 );

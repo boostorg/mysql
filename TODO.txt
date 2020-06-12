@@ -5,6 +5,13 @@ Better docs
 	BoostBook
 	Automate the process
 	Make undocumented enum values show (for collation)
+License issues
+    date
+    gtest
+CI tests for older compilers
+    GCCs
+    Clangs
+    MSVCs
 Multiresultset
 	Text protocol
 	Binary protocol (stored procedures)
@@ -33,19 +40,11 @@ Usability
 Other possible features
     CLIENT_SESSION_TRACK
     CLIENT_OPTIONAL_RESULTSET_METADATA
-    Lower C++ std requirements
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
-    Increase compiler test coverage
+    Increase int serialization test coverage
     Increase DB version test coverage
     Conan for dependencies
-	Move to most recent Boost
-	    Remove int1_signed, int2_signed...
-	    Remove int1, int2, int4, int8
-    	More coverage for serialization of int types
-    	Use a proper float endianness reverse
-    	Use boost::variant2
-    	Add constexpr to value::to_variant()
     Tests for field_metadata::character_set
     Refactor database type cases, and remove unit tests superseeded by them
     Random input tests

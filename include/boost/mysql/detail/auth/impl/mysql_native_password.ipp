@@ -23,7 +23,7 @@ constexpr std::size_t response_length = 20;
 // output must point to response_length bytes of data
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
 inline void compute_auth_string(
-    std::string_view password,
+    boost::string_view password,
     const void* challenge,
     void* output
 )
@@ -41,7 +41,7 @@ inline void compute_auth_string(
     SHA1(salted_buffer, sizeof(salted_buffer), salted_sha1);
 
     // XOR
-    static_assert(response_length == SHA_DIGEST_LENGTH);
+    static_assert(response_length == SHA_DIGEST_LENGTH, "Buffer size mismatch");
     for (std::size_t i = 0; i < SHA_DIGEST_LENGTH; ++i)
     {
         static_cast<std::uint8_t*>(output)[i] = password_sha1[i] ^ salted_sha1[i];
@@ -56,10 +56,10 @@ inline void compute_auth_string(
 
 inline boost::mysql::error_code
 boost::mysql::detail::mysql_native_password::compute_response(
-    std::string_view password,
-    std::string_view challenge,
+    boost::string_view password,
+    boost::string_view challenge,
     bool, // use_ssl
-    std::string& output
+    bytestring& output
 )
 {
     // Check challenge size

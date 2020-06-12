@@ -8,14 +8,17 @@
 #ifndef BOOST_MYSQL_VALUE_HPP
 #define BOOST_MYSQL_VALUE_HPP
 
-#include <variant>
 #include <cstdint>
-#include <string_view>
+#include <boost/utility/string_view.hpp>
 #include <date/date.h>
 #include <chrono>
 #include <ostream>
 #include <array>
+#include <boost/variant2/variant.hpp>
+#include <boost/optional/optional.hpp>
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
+#endif
 
 /**
  * \defgroup values Values
@@ -161,8 +164,8 @@ using time = std::chrono::microseconds;
  *     Represented as a boost::mysql::time (alias for std::chrono::microseconds).
  *     Guaranteed to be in range [boost::mysql::min_time and boost::mysql::max_time].
  * - String types. All text, character and blob types are represented as a
- *   std::string_view. Furthermore, any type without a more specialized representation
- *   is exposed as a std::string_view. Character strings are NOT aware of encoding -
+ *   boost::string_view. Furthermore, any type without a more specialized representation
+ *   is exposed as a boost::string_view. Character strings are NOT aware of encoding -
  *   they are represented as the string raw bytes. The encoding for each character
  *   string column is part of the column metadata, and can be accessed using
  *   boost::mysql::field_metadata::character_set().
@@ -197,11 +200,11 @@ class value
 {
 public:
     /// Type of a variant representing the value.
-    using variant_type = std::variant<
+    using variant_type = boost::variant2::variant<
         std::nullptr_t,    // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
         std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR
-        std::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+        boost::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
         float,             // FLOAT
         double,            // DOUBLE
         date,              // DATE
@@ -210,7 +213,7 @@ public:
     >;
 
     /// Constructs a NULL value.
-    constexpr value() = default;
+    BOOST_CXX14_CONSTEXPR value() = default;
 
     /**
      * \brief Initialization constructor.
@@ -224,17 +227,20 @@ public:
      * Examples:
      *   - value(48) -> std::int64_t
      *   - value(std::uint8_t(2)) -> std::uint64_t
-     *   - value("test") -> std::string_view
+     *   - value("test") -> boost::string_view
      */
     template <typename T>
-    explicit constexpr value(const T& v) noexcept;
+    explicit BOOST_CXX14_CONSTEXPR value(const T& v) noexcept;
 
     /**
      * \brief Checks if the value is NULL.
      * \details Returns true only if the value's current type alternative
      * is std::nullptr_t. Equivalent to value::is<std::nullptr_t>().
      */
-    constexpr bool is_null() const noexcept { return std::holds_alternative<std::nullptr_t>(repr_); }
+    BOOST_CXX14_CONSTEXPR bool is_null() const noexcept
+    {
+        return boost::variant2::holds_alternative<std::nullptr_t>(repr_);
+    }
 
     /**
      * \brief Checks if the current type alternative is T.
@@ -246,7 +252,10 @@ public:
      * than value::is_convertible_to.
      */
     template <typename T>
-    constexpr bool is() const noexcept { return std::holds_alternative<T>(repr_); }
+    BOOST_CXX14_CONSTEXPR bool is() const noexcept
+    {
+        return boost::variant2::holds_alternative<T>(repr_);
+    }
 
     /**
      * \brief Checks if the current value can be converted to T.
@@ -261,14 +270,17 @@ public:
      * the returned optional instead.
      */
     template <typename T>
-    constexpr bool is_convertible_to() const noexcept { return get_optional<T>().has_value(); }
+    BOOST_CXX14_CONSTEXPR bool is_convertible_to() const noexcept
+    {
+        return get_optional<T>().has_value();
+    }
 
     /**
      * \brief Retrieves the stored value or throws an exception.
      * \details If the stored value is a T, or can be converted to T using
      * one of the conversions listed in boost::mysql::value's docs (i.e. when
      * value::is_convertible_to<T>() returns true), returns the converted value.
-     * Otherwise throws std::bad_variant_access.
+     * Otherwise throws boost::variant2::bad_variant_access.
      *
      * \warning The following code pattern, where v is a boost::mysql::value,
      * is correct but inefficient:
@@ -289,27 +301,49 @@ public:
      * \endcode
      */
     template <typename T>
-    constexpr T get() const;
+    T get() const;
 
     /**
-     * \brief Retrieves the stored value as an optional.
+     * \brief Retrieves the stored value as a boost::optional.
      * \details If the stored value is a T, or can be converted to T using
      * one of the conversions listed in boost::mysql::value's docs (i.e. when
      * value::is_convertible_to<T>() returns true), returns an optional
      * containing the converted value. Otherwise returns an empty optional.
      */
     template <typename T>
-    constexpr std::optional<T> get_optional() const noexcept;
+    boost::optional<T> get_optional() const noexcept;
+
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+    /**
+     * \brief Retrieves the stored value as a std::optional.
+     * \details If the stored value is a T, or can be converted to T using
+     * one of the conversions listed in boost::mysql::value's docs (i.e. when
+     * value::is_convertible_to<T>() returns true), returns an optional
+     * containing the converted value. Otherwise returns an empty optional.
+     */
+    template <typename T>
+    constexpr std::optional<T> get_std_optional() const noexcept;
+#endif
 
     /// Converts a value to an actual variant of type value::variant_type.
-    variant_type to_variant() const noexcept { return repr_; }
+    BOOST_CXX14_CONSTEXPR variant_type to_variant() const noexcept { return repr_; }
 
     /// Tests for equality (type and value).
-    constexpr bool operator==(const value& rhs) const noexcept { return repr_ == rhs.repr_; }
+    BOOST_CXX14_CONSTEXPR bool operator==(const value& rhs) const noexcept { return repr_ == rhs.repr_; }
 
     /// Tests for inequality (type and value).
-    constexpr bool operator!=(const value& rhs) const noexcept { return !(*this==rhs); }
+    BOOST_CXX14_CONSTEXPR bool operator!=(const value& rhs) const noexcept { return !(*this==rhs); }
 private:
+    struct unsigned_int_tag {};
+    struct signed_int_tag {};
+    struct no_tag {};
+
+    BOOST_CXX14_CONSTEXPR value(std::uint64_t val, unsigned_int_tag) noexcept : repr_(val) {}
+    BOOST_CXX14_CONSTEXPR value(std::int64_t val, signed_int_tag) noexcept : repr_(val) {}
+
+    template <typename T>
+    BOOST_CXX14_CONSTEXPR value(const T& val, no_tag) noexcept : repr_(val) {}
+
     variant_type repr_;
 };
 
@@ -327,19 +361,19 @@ inline std::ostream& operator<<(std::ostream& os, const value& v);
  * \relates value
  */
 template <typename... Types>
-std::array<value, sizeof...(Types)> make_values(Types&&... args);
+BOOST_CXX14_CONSTEXPR std::array<value, sizeof...(Types)> make_values(Types&&... args);
 
 /// The minimum allowed value for boost::mysql::date.
-constexpr date min_date = ::date::day(1)/::date::January/::date::year(0); // slightly more flexible than official min
+BOOST_CXX14_CONSTEXPR const date min_date = ::date::day(1)/::date::January/::date::year(0); // slightly more flexible than official min
 
 /// The maximum allowed value for boost::mysql::date.
-constexpr date max_date = ::date::day(31)/::date::December/::date::year(9999);
+BOOST_CXX14_CONSTEXPR const date max_date = ::date::day(31)/::date::December/::date::year(9999);
 
 /// The minimum allowed value for boost::mysql::datetime.
-constexpr datetime min_datetime = min_date;
+BOOST_CXX14_CONSTEXPR const datetime min_datetime = min_date;
 
 /// The maximum allowed value for boost::mysql::datetime.
-constexpr datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
+BOOST_CXX14_CONSTEXPR const datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
 
 /// The minimum allowed value for boost::mysql::time.
 constexpr time min_time = -std::chrono::hours(839);

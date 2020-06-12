@@ -22,7 +22,7 @@ TEST(ResultsetTest, RebindExecutor_Trivial_ReturnsCorrectType)
             other_executor
         >
     >;
-    EXPECT_TRUE((std::is_same_v<rebound_type, expected_type>));
+    EXPECT_TRUE((std::is_same<rebound_type, expected_type>::value));
 }
 
 }

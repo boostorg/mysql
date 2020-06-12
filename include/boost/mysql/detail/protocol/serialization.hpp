@@ -25,7 +25,7 @@ namespace detail {
 enum class serialization_tag
 {
     none,
-    fixed_size_int,
+    plain_int,
     enumeration,
     struct_with_fields
 };
@@ -45,16 +45,33 @@ void serialize(serialization_context& ctx, const Types&... input) noexcept;
 template <typename... Types>
 std::size_t get_size(const serialization_context& ctx, const Types&... input) noexcept;
 
-// Fixed-size integers
+// Plain integers
 template <typename T>
-constexpr bool is_fixed_size_int();
-
-template <typename T>
-struct serialization_traits<T, serialization_tag::fixed_size_int>
+struct serialization_traits<T, serialization_tag::plain_int>
 {
     static errc deserialize_(deserialization_context& ctx, T& output) noexcept;
     static void serialize_(serialization_context& ctx, T input) noexcept;
-    static constexpr std::size_t get_size_(const serialization_context&, T) noexcept;
+    static constexpr std::size_t get_size_(const serialization_context&, T) noexcept { return sizeof(T); }
+};
+
+// int3
+template <>
+struct serialization_traits<int3, serialization_tag::none>
+{
+    static inline errc deserialize_(deserialization_context& ctx, int3& output) noexcept
+    {
+        if (!ctx.enough_size(3))
+            return errc::incomplete_message;
+        output.value = boost::endian::load_little_u24(ctx.first());
+        ctx.advance(3);
+        return errc::ok;
+    }
+    static inline void serialize_(serialization_context& ctx, int3 input) noexcept
+    {
+        boost::endian::store_little_u24(ctx.first(), input.value);
+        ctx.advance(3);
+    }
+    static inline std::size_t get_size_(const serialization_context&, int3) noexcept { return 3; }
 };
 
 // int_lenenc
@@ -71,7 +88,14 @@ struct serialization_traits<int_lenenc, serialization_tag::none>
 template <std::size_t N>
 struct serialization_traits<string_fixed<N>, serialization_tag::none>
 {
-    static errc deserialize_(deserialization_context& ctx, string_fixed<N>& output) noexcept;
+    static errc deserialize_(deserialization_context& ctx, string_fixed<N>& output) noexcept
+    {
+        if (!ctx.enough_size(N))
+            return errc::incomplete_message;
+        memcpy(output.data(), ctx.first(), N);
+        ctx.advance(N);
+        return errc::ok;
+    }
     static void serialize_(serialization_context& ctx, const string_fixed<N>& input) noexcept
     {
         ctx.write(input.data(), N);
@@ -134,30 +158,31 @@ struct serialization_traits<string_lenenc, serialization_tag::none>
 template <typename T>
 struct serialization_traits<T, serialization_tag::enumeration>
 {
-    using underlying_type = std::underlying_type_t<T>;
-    using serializable_type = value_holder<underlying_type>;
+    using underlying_type = typename std::underlying_type<T>::type;
 
-    static errc deserialize_(deserialization_context& ctx, T& output) noexcept;
+    static errc deserialize_(deserialization_context& ctx, T& output) noexcept
+    {
+        underlying_type value = 0;
+        errc err = deserialize(ctx, value);
+        output = static_cast<T>(value);
+        return err;
+    }
     static void serialize_(serialization_context& ctx, T input) noexcept
     {
-        serialize(ctx, serializable_type(static_cast<underlying_type>(input)));
+        serialize(ctx, static_cast<underlying_type>(input));
     }
-    static std::size_t get_size_(const serialization_context&, T) noexcept;
+    static std::size_t get_size_(const serialization_context&, T) noexcept { return sizeof(underlying_type); }
 };
 
-// Structs and commands (messages)
+// Structs and commands
 // To allow a limited way of reflection, structs should
-// specialize get_struct_fields with a tuple of pointers to members,
-// thus defining which fields should be (de)serialized in the struct
-// and in which order
-struct not_a_struct_with_fields {}; // Tag indicating a type is not a struct with fields
-
-template <typename T>
-struct get_struct_fields
-{
-    static constexpr not_a_struct_with_fields value {};
-};
-
+// provide a static member function with signature:
+// void apply(Self&, Callable&&), which will invoke Callable
+// with each field in the struct as argument (similar to std::apply).
+// Making the member function static with a Self template parameter
+// allows calling apply with const and non-const objects as self.
+// Types fulfilling this requirement will have the below function
+// return true
 template <typename T>
 constexpr bool is_struct_with_fields();
 
@@ -202,11 +227,6 @@ error_code deserialize_message(
 // Helpers for (de) serializing a set of fields
 template <typename... Types>
 void serialize_fields(serialization_context& ctx, const Types&... fields) noexcept;
-
-inline std::pair<error_code, std::uint8_t> deserialize_message_type(
-    deserialization_context& ctx
-);
-
 
 } // detail
 } // mysql

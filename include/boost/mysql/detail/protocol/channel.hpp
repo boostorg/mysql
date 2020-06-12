@@ -16,8 +16,8 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/coroutine.hpp>
+#include <boost/optional/optional.hpp>
 #include <array>
-#include <optional>
 
 namespace boost {
 namespace mysql {
@@ -39,7 +39,7 @@ class channel
     };
 
     Stream stream_;
-    std::optional<ssl_block> ssl_block_;
+    boost::optional<ssl_block> ssl_block_;
     std::uint8_t sequence_number_ {0};
     std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
     bytestring shared_buff_; // for async ops
@@ -61,10 +61,12 @@ class channel
     std::size_t write_impl(BufferSeq&& buff, error_code& ec);
 
     template <typename BufferSeq, typename CompletionToken>
-    auto async_read_impl(BufferSeq&& buff, CompletionToken&& token);
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+    async_read_impl(BufferSeq&& buff, CompletionToken&& token);
 
     template <typename BufferSeq, typename CompletionToken>
-    auto async_write_impl(BufferSeq&& buff, CompletionToken&& token);
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+    async_write_impl(BufferSeq&& buff, CompletionToken&& token);
 
     struct read_op;
     struct write_op;

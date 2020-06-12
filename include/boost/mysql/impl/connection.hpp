@@ -61,7 +61,7 @@ boost::mysql::connection<Stream>::async_handshake(
 // Query
 template <typename Stream>
 boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
-    std::string_view query_string,
+    boost::string_view query_string,
     error_code& err,
     error_info& info
 )
@@ -74,7 +74,7 @@ boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
 
 template <typename Stream>
 boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
-    std::string_view query_string
+    boost::string_view query_string
 )
 {
     resultset<Stream> res;
@@ -92,7 +92,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
 )
 boost::mysql::connection<Stream>::async_query(
-    std::string_view query_string,
+    boost::string_view query_string,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -108,7 +108,7 @@ boost::mysql::connection<Stream>::async_query(
 
 template <typename Stream>
 boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepare_statement(
-    std::string_view statement,
+    boost::string_view statement,
     error_code& err,
     error_info& info
 )
@@ -121,7 +121,7 @@ boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepa
 
 template <typename Stream>
 boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepare_statement(
-    std::string_view statement
+    boost::string_view statement
 )
 {
     mysql::prepared_statement<Stream> res;
@@ -139,7 +139,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code, boost::mysql::prepared_statement<Stream>)
 )
 boost::mysql::connection<Stream>::async_prepare_statement(
-    std::string_view statement,
+    boost::string_view statement,
     error_info& output_info,
     CompletionToken&& token
 )

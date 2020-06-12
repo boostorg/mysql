@@ -29,9 +29,14 @@ namespace
 template <typename Stream>
 class async_coroutinecpp20_errinfo : public network_functions<Stream>
 {
+    template <typename Callable>
+    using impl_result_type = typename decltype(std::declval<Callable>()(
+        std::declval<error_info&>()
+    ))::value_type;
+
     template <typename IoObj, typename Callable>
-    auto impl(IoObj& obj, Callable&& cb) {
-        using R = typename decltype(cb(std::declval<error_info&>()))::value_type;
+    network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb) {
+        using R = impl_result_type<Callable>;
         std::promise<network_result<R>> prom;
 
         boost::asio::co_spawn(obj.get_executor(), [&] () -> boost::asio::awaitable<void> {
@@ -51,7 +56,7 @@ class async_coroutinecpp20_errinfo : public network_functions<Stream>
     }
 
     template <typename IoObj, typename Callable>
-    auto impl_no_result(IoObj& obj, Callable&& cb) {
+    network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb) {
         std::promise<network_result<no_result>> prom;
 
         boost::asio::co_spawn(obj.get_executor(), [&] () -> boost::asio::awaitable<void> {
@@ -100,7 +105,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl(conn, [&](error_info& info) {
@@ -109,7 +114,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl(conn, [&](error_info& info) {
@@ -189,16 +194,19 @@ public:
 template <typename Stream>
 class async_coroutinecpp20_noerrinfo : public network_functions<Stream>
 {
+    template <typename Callable>
+    using impl_result_type = typename decltype(std::declval<Callable>()())::value_type;
+
     template <typename IoObj, typename Callable>
-    auto impl(IoObj& obj, Callable&& cb) {
-        using R = typename decltype(cb())::value_type;
+    network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
+    {
+        using R = impl_result_type<Callable>;
         std::promise<network_result<R>> prom;
 
         boost::asio::co_spawn(obj.get_executor(), [&] () -> boost::asio::awaitable<void> {
             try
             {
-                R result = co_await cb();
-                prom.set_value(network_result<R>(error_code(), std::move(result)));
+                prom.set_value(network_result<R>(error_code(), co_await cb()));
             }
             catch (const boost::system::system_error& err)
             {
@@ -210,7 +218,8 @@ class async_coroutinecpp20_noerrinfo : public network_functions<Stream>
     }
 
     template <typename IoObj, typename Callable>
-    auto impl_no_result(IoObj& obj, Callable&& cb) {
+    network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb)
+    {
         std::promise<network_result<no_result>> prom;
 
         boost::asio::co_spawn(obj.get_executor(), [&] () -> boost::asio::awaitable<void> {
@@ -258,7 +267,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl(conn, [&] {
@@ -267,7 +276,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl(conn, [&] {

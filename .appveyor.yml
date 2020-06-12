@@ -16,8 +16,8 @@ environment:
   global:
     B2_CI_VERSION: 1
     B2_CXXFLAGS: -permissive-
-    B2_VARIANR: release,debug
-    B2_CXXSTD: 17
+    B2_VARIANT: release,debug
+    B2_CXXSTD: 11,14,17
   matrix:
     # CMake
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019

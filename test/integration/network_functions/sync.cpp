@@ -26,9 +26,15 @@ template <typename Stream>
 class sync_errc : public network_functions<Stream>
 {
     template <typename Callable>
-    static auto impl(Callable&& cb) {
-        using R = decltype(cb(std::declval<error_code&>(), std::declval<error_info&>()));
-        network_result<R> res (
+    using impl_result_type = decltype(std::declval<Callable>()(
+        std::declval<error_code&>(),
+        std::declval<error_info&>()
+    ));
+
+    template <typename Callable>
+    static network_result<impl_result_type<Callable>> impl(Callable&& cb)
+    {
+        network_result<impl_result_type<Callable>> res (
             boost::mysql::detail::make_error_code(errc::no),
             error_info("error_info not cleared properly")
         );
@@ -64,7 +70,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl([&](error_code& code, error_info& info) {
@@ -73,7 +79,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl([&conn, statement](error_code& err, error_info& info) {
@@ -159,9 +165,12 @@ template <typename Stream>
 class sync_exc : public network_functions<Stream>
 {
     template <typename Callable>
-    static auto impl(Callable&& cb) {
-        using R = decltype(cb());
-        network_result<R> res;
+    using impl_result_type = decltype(std::declval<Callable>()());
+
+    template <typename Callable>
+    static network_result<impl_result_type<Callable>> impl(Callable&& cb)
+    {
+        network_result<impl_result_type<Callable>> res;
         try
         {
             res.value = cb();
@@ -202,7 +211,7 @@ public:
     }
     network_result<resultset_type> query(
         connection_type& conn,
-        std::string_view query
+        boost::string_view query
     ) override
     {
         return impl([&] {
@@ -211,7 +220,7 @@ public:
     }
     network_result<prepared_statement_type> prepare_statement(
         connection_type& conn,
-        std::string_view statement
+        boost::string_view statement
     ) override
     {
         return impl([&conn, statement] {

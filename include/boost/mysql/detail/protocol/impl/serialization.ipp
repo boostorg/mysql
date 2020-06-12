@@ -14,12 +14,12 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline std::string_view get_string(
+inline boost::string_view get_string(
     const std::uint8_t* from,
     std::size_t size
 )
 {
-    return std::string_view(reinterpret_cast<const char*>(from), size);
+    return boost::string_view(reinterpret_cast<const char*>(from), size);
 }
 
 } // detail
@@ -35,35 +35,35 @@ boost::mysql::detail::serialization_traits<
     int_lenenc& output
 ) noexcept
 {
-    int1 first_byte;
+    std::uint8_t first_byte = 0;
     errc err = deserialize(ctx, first_byte);
     if (err != errc::ok)
     {
         return err;
     }
 
-    if (first_byte.value == 0xFC)
+    if (first_byte == 0xFC)
     {
-        int2 value;
+        std::uint16_t value = 0;
         err = deserialize(ctx, value);
-        output.value = value.value;
+        output.value = value;
     }
-    else if (first_byte.value == 0xFD)
+    else if (first_byte == 0xFD)
     {
         int3 value;
         err = deserialize(ctx, value);
         output.value = value.value;
     }
-    else if (first_byte.value == 0xFE)
+    else if (first_byte == 0xFE)
     {
-        int8 value;
+        std::uint64_t value = 0;
         err = deserialize(ctx, value);
-        output.value = value.value;
+        output.value = value;
     }
     else
     {
         err = errc::ok;
-        output.value = first_byte.value;
+        output.value = first_byte;
     }
     return err;
 }
@@ -80,12 +80,12 @@ boost::mysql::detail::serialization_traits<
 {
     if (input.value < 251)
     {
-        serialize(ctx, int1(static_cast<std::uint8_t>(input.value)));
+        serialize(ctx, static_cast<std::uint8_t>(input.value));
     }
     else if (input.value < 0x10000)
     {
         ctx.write(0xfc);
-        serialize(ctx, int2(static_cast<std::uint16_t>(input.value)));
+        serialize(ctx, static_cast<std::uint16_t>(input.value));
     }
     else if (input.value < 0x1000000)
     {
@@ -95,7 +95,7 @@ boost::mysql::detail::serialization_traits<
     else
     {
         ctx.write(0xfe);
-        serialize(ctx, int8(static_cast<std::uint64_t>(input.value)));
+        serialize(ctx, static_cast<std::uint64_t>(input.value));
     }
 }
 
@@ -179,25 +179,6 @@ boost::mysql::detail::serialization_traits<
     output.value = get_string(ctx.first(), len);
     ctx.advance(len);
     return errc::ok;
-}
-
-inline std::pair<boost::mysql::error_code, std::uint8_t>
-boost::mysql::detail::deserialize_message_type(
-    deserialization_context& ctx
-)
-{
-    int1 msg_type;
-    std::pair<mysql::error_code, std::uint8_t> res {};
-    auto err = deserialize(ctx, msg_type);
-    if (err == errc::ok)
-    {
-        res.second = msg_type.value;
-    }
-    else
-    {
-        res.first = make_error_code(err);
-    }
-    return res;
 }
 
 

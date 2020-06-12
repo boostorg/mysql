@@ -8,19 +8,31 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP
 
-#include <variant>
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/auxiliar/tmp.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// ints and strings
-template <typename TargetType, typename DeserializableType=TargetType>
-errc deserialize_binary_value_value_holder(
+// strings
+inline errc deserialize_binary_value_string(
+    deserialization_context& ctx,
+    value& output
+) noexcept
+{
+    string_lenenc deser;
+    auto err = deserialize(ctx, deser);
+    if (err != errc::ok)
+        return err;
+    output = value(deser.value);
+    return errc::ok;
+}
+
+// ints
+template <typename TargetType, typename DeserializableType>
+errc deserialize_binary_value_int_impl(
     deserialization_context& ctx,
     value& output
 ) noexcept
@@ -29,7 +41,7 @@ errc deserialize_binary_value_value_holder(
     auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
-    output = value(static_cast<TargetType>(deser.value));
+    output = value(static_cast<TargetType>(deser));
     return errc::ok;
 }
 
@@ -44,9 +56,9 @@ errc deserialize_binary_value_int(
 ) noexcept
 {
     return meta.is_unsigned() ?
-        deserialize_binary_value_value_holder<
+        deserialize_binary_value_int_impl<
             std::uint64_t, DeserializableTypeUnsigned>(ctx, output) :
-        deserialize_binary_value_value_holder<
+        deserialize_binary_value_int_impl<
             std::int64_t, DeserializableTypeSigned>(ctx, output);
 }
 
@@ -62,15 +74,8 @@ errc deserialize_binary_value_float(
         return errc::incomplete_message;
 
     // Endianness conversion. Boost.Endian support for floats start at 1.71
-    T v;
-#if BOOST_ENDIAN_BIG_BYTE
-    char buf [sizeof(T)];
-    std::memcpy(buf, ctx.first(), sizeof(T));
-    std::reverse(buf, buf + sizeof(T));
-    std::memcpy(&v, buf, sizeof(T));
-#else
-    std::memcpy(&v, ctx.first(), sizeof(T));
-#endif
+    T v = boost::endian::endian_load<T, sizeof(T),
+        boost::endian::order::little>(ctx.first());
 
     // Nans and infs not allowed in SQL
     if (std::isnan(v) || std::isinf(v))
@@ -88,9 +93,9 @@ inline errc deserialize_binary_ymd(
     ::date::year_month_day& output
 )
 {
-    int2 year;
-    int1 month;
-    int1 day;
+    std::uint16_t year;
+    std::uint8_t month;
+    std::uint8_t day;
 
     // Deserialize
     auto err = deserialize(ctx, year, month, day);
@@ -98,17 +103,17 @@ inline errc deserialize_binary_ymd(
         return err;
 
     // Range check
-    if (year.value > max_year ||
-        month.value > max_month ||
-        day.value > max_day)
+    if (year > max_year ||
+        month > max_month ||
+        day > max_day)
     {
         return errc::protocol_value_error;
     }
 
     output = ::date::year_month_day (
-        ::date::year(year.value),
-        ::date::month(month.value),
-        ::date::day(day.value)
+        ::date::year(year),
+        ::date::month(month),
+        ::date::day(day)
     );
 
     return errc::ok;
@@ -120,13 +125,13 @@ inline errc deserialize_binary_value_date(
 ) noexcept
 {
     // Deserialize length
-    int1 length;
+    std::uint8_t length;
     auto err = deserialize(ctx, length);
     if (err != errc::ok)
         return err;
 
     // Check for zero dates, represented in C++ as a NULL
-    if (length.value < binc::date_sz)
+    if (length < binc::date_sz)
     {
         output = value(nullptr);
         return errc::ok;
@@ -163,7 +168,7 @@ inline errc deserialize_binary_value_datetime(
     using namespace binc;
 
     // Deserialize length
-    int1 length;
+    std::uint8_t length;
     auto err = deserialize(ctx, length);
     if (err != errc::ok)
         return err;
@@ -171,7 +176,7 @@ inline errc deserialize_binary_value_datetime(
     // Deserialize date. If the DATETIME does not contain these values,
     // they are supposed to be zero (invalid date)
     ::date::year_month_day ymd (::date::year(0), ::date::month(0), ::date::day(0));
-    if (length.value >= datetime_d_sz)
+    if (length >= datetime_d_sz)
     {
         err = deserialize_binary_ymd(ctx, ymd);
         if (err != errc::ok)
@@ -179,13 +184,13 @@ inline errc deserialize_binary_value_datetime(
     }
 
     // If the DATETIME contains no value for these fields, they are zero
-    int1 hours (0);
-    int1 minutes (0);
-    int1 seconds (0);
-    int4 micros (0);
+    std::uint8_t hours = 0;
+    std::uint8_t minutes = 0;
+    std::uint8_t seconds = 0;
+    std::uint32_t micros = 0;
 
     // Hours, minutes, seconds
-    if (length.value >= datetime_dhms_sz)
+    if (length >= datetime_dhms_sz)
     {
         err = deserialize(ctx, hours, minutes, seconds);
         if (err != errc::ok)
@@ -193,7 +198,7 @@ inline errc deserialize_binary_value_datetime(
     }
 
     // Microseconds
-    if (length.value >= datetime_dhmsu_sz)
+    if (length >= datetime_dhmsu_sz)
     {
         err = deserialize(ctx, micros);
         if (err != errc::ok)
@@ -203,10 +208,10 @@ inline errc deserialize_binary_value_datetime(
     // Validity check. We make this check before
     // the invalid date check to make invalid dates with incorrect
     // hours/mins/secs/micros fail
-    if (hours.value > max_hour ||
-        minutes.value > max_min ||
-        seconds.value > max_sec ||
-        micros.value > max_micro)
+    if (hours > max_hour ||
+        minutes > max_min ||
+        seconds > max_sec ||
+        micros > max_micro)
     {
         return errc::protocol_value_error;
     }
@@ -229,10 +234,10 @@ inline errc deserialize_binary_value_datetime(
 
     // Compose the final datetime. Doing time of day and date separately to avoid overflow
     auto time_of_day =
-        std::chrono::hours(hours.value) +
-        std::chrono::minutes(minutes.value) +
-        std::chrono::seconds(seconds.value) +
-        std::chrono::microseconds(micros.value);
+        std::chrono::hours(hours) +
+        std::chrono::minutes(minutes) +
+        std::chrono::seconds(seconds) +
+        std::chrono::microseconds(micros);
     output = value(d + time_of_day);
     return errc::ok;
 }
@@ -245,21 +250,21 @@ inline errc deserialize_binary_value_time(
     using namespace binc;
 
     // Deserialize length
-    int1 length;
+    std::uint8_t length;
     auto err = deserialize(ctx, length);
     if (err != errc::ok)
         return err;
 
     // If the TIME contains no value for these fields, they are zero
-    int1 is_negative (0);
-    int4 days (0);
-    int1 hours (0);
-    int1 minutes(0);
-    int1 seconds(0);
-    int4 microseconds(0);
+    std::uint8_t is_negative = 0;
+    std::uint32_t days = 0;
+    std::uint8_t hours = 0;
+    std::uint8_t minutes = 0;
+    std::uint8_t seconds = 0;
+    std::uint32_t microseconds = 0;
 
     // Sign, days, hours, minutes, seconds
-    if (length.value >= time_dhms_sz)
+    if (length >= time_dhms_sz)
     {
         err = deserialize(
             ctx,
@@ -274,7 +279,7 @@ inline errc deserialize_binary_value_time(
     }
 
     // Microseconds
-    if (length.value >= time_dhmsu_sz)
+    if (length >= time_dhmsu_sz)
     {
         err = deserialize(ctx, microseconds);
         if (err != errc::ok)
@@ -282,22 +287,22 @@ inline errc deserialize_binary_value_time(
     }
 
     // Range check
-    if (days.value > time_max_days ||
-        hours.value > max_hour ||
-        minutes.value > max_min ||
-        seconds.value > max_sec ||
-        microseconds.value > max_micro)
+    if (days > time_max_days ||
+        hours > max_hour ||
+        minutes > max_min ||
+        seconds > max_sec ||
+        microseconds > max_micro)
     {
         return errc::protocol_value_error;
     }
 
     // Compose the final time
-    output = value(time((is_negative.value ? -1 : 1) * (
-         ::date::days(days.value) +
-         std::chrono::hours(hours.value) +
-         std::chrono::minutes(minutes.value) +
-         std::chrono::seconds(seconds.value) +
-         std::chrono::microseconds(microseconds.value)
+    output = value(time((is_negative ? -1 : 1) * (
+         ::date::days(days) +
+         std::chrono::hours(hours) +
+         std::chrono::minutes(minutes) +
+         std::chrono::seconds(seconds) +
+         std::chrono::microseconds(microseconds)
     )));
     return errc::ok;
 }
@@ -316,15 +321,15 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     switch (meta.protocol_type())
     {
     case protocol_field_type::tiny:
-        return deserialize_binary_value_int<int1, int1_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<std::uint8_t, std::int8_t>(meta, ctx, output);
     case protocol_field_type::short_:
     case protocol_field_type::year:
-        return deserialize_binary_value_int<int2, int2_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<std::uint16_t, std::int16_t>(meta, ctx, output);
     case protocol_field_type::int24:
     case protocol_field_type::long_:
-        return deserialize_binary_value_int<int4, int4_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<std::uint32_t, std::int32_t>(meta, ctx, output);
     case protocol_field_type::longlong:
-        return deserialize_binary_value_int<int8, int8_signed>(meta, ctx, output);
+        return deserialize_binary_value_int<std::uint64_t, std::int64_t>(meta, ctx, output);
     case protocol_field_type::float_:
         return deserialize_binary_value_float<float>(ctx, output);
     case protocol_field_type::double_:
@@ -352,7 +357,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return deserialize_binary_value_value_holder<std::string_view, string_lenenc>(ctx, output);
+        return deserialize_binary_value_string(ctx, output);
     }
 }
 

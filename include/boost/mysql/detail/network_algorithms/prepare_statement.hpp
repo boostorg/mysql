@@ -18,7 +18,7 @@ namespace detail {
 template <typename StreamType>
 void prepare_statement(
     channel<StreamType>& chan,
-    std::string_view statement,
+    boost::string_view statement,
     error_code& err,
     error_info& info,
     prepared_statement<StreamType>& output
@@ -28,7 +28,7 @@ template <typename StreamType, typename CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, prepared_statement<StreamType>))
 async_prepare_statement(
     channel<StreamType>& chan,
-    std::string_view statement,
+    boost::string_view statement,
     CompletionToken&& token,
     error_info& info
 );

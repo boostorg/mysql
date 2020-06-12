@@ -9,7 +9,7 @@
 #include "metadata_validator.hpp"
 #include "test_common.hpp"
 #include <sstream>
-#include <unordered_map>
+#include <map>
 #include <bitset>
 
 using namespace boost::mysql::test;
@@ -19,6 +19,7 @@ using boost::mysql::field_metadata;
 using boost::mysql::field_type;
 using boost::mysql::row;
 using boost::mysql::datetime;
+using boost::mysql::detail::stringize;
 
 namespace
 {
@@ -29,13 +30,18 @@ namespace
  * we validate that we get the expected metadata and the expected value. The cases are
  * defined in SQL in db_setup.sql
  */
-struct database_types_testcase
+struct database_types_testcase : named_tag
 {
     std::string table;
     std::string field;
     std::string row_id;
     value expected_value;
     meta_validator mvalid;
+
+    std::string name() const
+    {
+        return stringize(table, '_', field, '_', row_id);
+    }
 
     template <typename ValueType, typename... Args>
     database_types_testcase(std::string table, std::string field, std::string row_id,
@@ -49,14 +55,8 @@ struct database_types_testcase
     }
 };
 
-std::ostream& operator<<(std::ostream& os, const database_types_testcase& v)
-{
-    return os << v.table << "." << v.field << "." << v.row_id;
-}
-
-// Note: NetworkTest with do_handshake=true requires GetParam() to have an ssl data member
 struct DatabaseTypesTest :
-    NetworkTest<boost::asio::ip::tcp::socket, false, database_types_testcase>
+    NetworkTest<boost::asio::ip::tcp::socket, database_types_testcase>
 {
     DatabaseTypesTest()
     {
@@ -384,7 +384,7 @@ database_types_testcase create_datetime_testcase(
     field_type type
 )
 {
-    static std::unordered_map<field_type, const char*> table_map {
+    static std::map<field_type, const char*> table_map {
         { field_type::datetime, "types_datetime" },
         { field_type::timestamp, "types_timestamp" },
         { field_type::time, "types_time" }
@@ -459,8 +459,8 @@ std::vector<database_types_testcase> generate_common_datetime_cases(
             std::bitset<4> bitset_id (int_id);
             if (bitset_id[3] && decimals == 0)
                 continue; // cases with micros don't make sense for fields with no decimals
-            auto [id, dt] = datetime_from_id(int_id, decimals);
-            res.push_back(create_datetime_testcase(decimals, move(id), value(dt), type));
+            auto dt = datetime_from_id(int_id, decimals);
+            res.push_back(create_datetime_testcase(decimals, move(dt.first), value(dt.second), type));
         }
     }
 
@@ -525,8 +525,8 @@ std::vector<database_types_testcase> generate_time_cases()
             std::bitset<6> bitset_id (int_id);
             if (bitset_id[5] && decimals == 0) continue; // cases with micros don't make sense for fields with no decimals
             if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
-            auto [id, t] = time_from_id(int_id, decimals);
-            res.push_back(create_datetime_testcase(decimals, move(id), value(t), field_type::time));
+            auto t = time_from_id(int_id, decimals);
+            res.push_back(create_datetime_testcase(decimals, move(t.first), value(t.second), field_type::time));
         }
 
         // min and max

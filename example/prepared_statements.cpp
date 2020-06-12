@@ -22,6 +22,13 @@
  * please have a look to the query_sync.cpp example.
  */
 
+#define ASSERT(expr) \
+    if (!(expr)) \
+    { \
+        std::cerr << "Assertion failed: " #expr << std::endl; \
+        exit(1); \
+    }
+
 void main_impl(int argc, char** argv)
 {
     if (argc != 3)
@@ -63,11 +70,11 @@ void main_impl(int argc, char** argv)
      */
     const char* salary_getter_sql = "SELECT salary FROM employee WHERE first_name = ?";
     boost::mysql::tcp_prepared_statement salary_getter = conn.prepare_statement(salary_getter_sql);
-    assert(salary_getter.num_params() == 1); // num_params() returns the number of parameters (question marks)
+    ASSERT(salary_getter.num_params() == 1); // num_params() returns the number of parameters (question marks)
 
     const char* salary_updater_sql = "UPDATE employee SET salary = ? WHERE first_name = ?";
     boost::mysql::tcp_prepared_statement salary_updater = conn.prepare_statement(salary_updater_sql);
-    assert(salary_updater.num_params() == 2);
+    ASSERT(salary_updater.num_params() == 2);
 
     /*
      * Once a statement has been prepared, it can be executed as many times as
@@ -88,8 +95,8 @@ void main_impl(int argc, char** argv)
      */
     boost::mysql::tcp_resultset result = salary_getter.execute(boost::mysql::make_values("Efficient"));
     std::vector<boost::mysql::owning_row> salaries = result.fetch_all(); // Get all the results
-    assert(salaries.size() == 1);
-    [[maybe_unused]] double salary = salaries[0].values().at(0).get<double>(); // First row, first column
+    ASSERT(salaries.size() == 1);
+    double salary = salaries[0].values().at(0).get<double>(); // First row, first column
     std::cout << "The salary before the payrise was: " << salary << std::endl;
 
     /**
@@ -109,9 +116,9 @@ void main_impl(int argc, char** argv)
      */
     result = salary_getter.execute(boost::mysql::make_values("Efficient"));
     salaries = result.fetch_all();
-    assert(salaries.size() == 1);
+    ASSERT(salaries.size() == 1);
     salary = salaries[0].values().at(0).get<double>();
-    assert(salary == 35000); // Our update took place, and the dev got his pay rise
+    ASSERT(salary == 35000); // Our update took place, and the dev got his pay rise
     std::cout << "The salary after the payrise was: " << salary << std::endl;
 
     /**

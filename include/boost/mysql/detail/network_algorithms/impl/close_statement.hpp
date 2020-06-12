@@ -19,7 +19,7 @@ void boost::mysql::detail::close_statement(
 )
 {
     // Compose the close message
-    com_stmt_close_packet packet {int4(statement_id)};
+    com_stmt_close_packet packet {statement_id};
 
     // Serialize it
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
@@ -42,7 +42,7 @@ boost::mysql::detail::async_close_statement(
 )
 {
     // Compose the close message
-    com_stmt_close_packet packet {int4(statement_id)};
+    com_stmt_close_packet packet {statement_id};
 
     // Serialize it
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());

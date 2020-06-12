@@ -12,9 +12,9 @@
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include <gtest/gtest.h>
 #include <string>
-#include <any>
 #include <functional>
 #include <boost/type_index.hpp>
+#include <boost/any.hpp>
 #include "test_common.hpp"
 
 namespace boost {
@@ -24,36 +24,47 @@ namespace test {
 template <std::size_t N>
 std::ostream& operator<<(std::ostream& os, const std::array<char, N>& v)
 {
-    return os << std::string_view(v.data(), N);
+    return os << boost::string_view(v.data(), N);
 }
 
 inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
 {
     return os << +value;
 }
-using ::date::operator<<;
 
-// Operator == for structs
-template <std::size_t index, typename T>
-bool equals_struct(const T& lhs, const T& rhs)
+// Operator == for structs. Very poor efficiency but does the
+// job for the purpose of testing
+template <typename T>
+struct struct_member_comparer_op
 {
-    constexpr auto fields = detail::get_struct_fields<T>::value;
-    if constexpr (index == std::tuple_size<decltype(fields)>::value)
+    const T& lhs;
+    const T& rhs;
+    bool result {};
+
+    struct_member_comparer_op(const T& lhs, const T& rhs) : lhs(lhs), rhs(rhs) {}
+
+    template <typename... Types>
+    void operator()(const Types&...)
     {
-        return true;
+        std::tuple<Types...> lhs_as_tuple;
+        std::tuple<Types...> rhs_as_tuple;
+        T::apply(lhs, [&lhs_as_tuple](const Types&... args) {
+            lhs_as_tuple = std::tuple<Types...>(args...);
+        });
+        T::apply(rhs, [&rhs_as_tuple](const Types&... args) {
+            rhs_as_tuple = std::tuple<Types...>(args...);
+        });
+        result = lhs_as_tuple == rhs_as_tuple;
     }
-    else
-    {
-        constexpr auto pmem = std::get<index>(fields);
-        return (rhs.*pmem == lhs.*pmem) && equals_struct<index+1>(lhs, rhs);
-    }
-}
+};
 
 template <typename T>
-std::enable_if_t<detail::is_struct_with_fields<T>(), bool>
+typename std::enable_if<detail::is_struct_with_fields<T>(), bool>::type
 operator==(const T& lhs, const T& rhs)
 {
-    return equals_struct<0>(lhs, rhs);
+    struct_member_comparer_op<T> op (lhs, rhs);
+    T::apply(lhs, op);
+    return op.result;
 }
 
 // Operator << for value_holder
@@ -64,32 +75,40 @@ std::ostream& operator<<(std::ostream& os, const detail::value_holder<T>& value)
 }
 
 template <typename T>
-std::enable_if_t<std::is_enum_v<T>, std::ostream&>
+typename std::enable_if<std::is_enum<T>::value, std::ostream&>::type
 operator<<(std::ostream& os, T value)
 {
     return os << boost::typeindex::type_id<T>().pretty_name() << "(" <<
-            static_cast<std::underlying_type_t<T>>(value) << ")";
+            static_cast<typename std::underlying_type<T>::type>(value) << ")";
 }
 
 // Operator << for structs
-template <std::size_t index, typename T>
-void print_struct(std::ostream& os, const T& value)
+struct struct_print_op
 {
-    constexpr auto fields = detail::get_struct_fields<T>::value;
-    if constexpr (index < std::tuple_size<decltype(fields)>::value)
+    std::ostream& os;
+
+    void impl() {}
+
+    template <typename T, typename... Tail>
+    void impl(const T& head, const Tail&... tail)
     {
-        constexpr auto pmem = std::get<index>(fields);
-        os << "    " << (value.*pmem) << ",\n";
-        print_struct<index+1>(os, value);
+        os << "    " << head << ",\n";
+        impl(tail...);
     }
-}
+
+    template <typename... Types>
+    void operator()(const Types&... values)
+    {
+        impl(values...);
+    }
+};
 
 template <typename T>
-std::enable_if_t<detail::is_struct_with_fields<T>(), std::ostream&>
+typename std::enable_if<detail::is_struct_with_fields<T>(), std::ostream&>::type
 operator<<(std::ostream& os, const T& value)
 {
     os << boost::typeindex::type_id<T>().pretty_name() << "(\n";
-    print_struct<0>(os, value);
+    T::apply(value, struct_print_op{os});
     os << ")\n";
     return os;
 }
@@ -146,20 +165,19 @@ public:
     }
 };
 
-struct serialization_testcase : test::named_param
+struct serialization_testcase : public test::named
 {
     std::shared_ptr<any_value> value;
     std::vector<uint8_t> expected_buffer;
-    std::string name;
     detail::capabilities caps;
-    std::any additional_storage;
+    boost::any additional_storage;
 
     template <typename T>
     serialization_testcase(const T& v, std::vector<uint8_t>&& buff,
-                    std::string&& name, std::uint32_t caps=0, std::any storage = {}):
+                    std::string&& name, std::uint32_t caps=0, boost::any&& storage = {}):
+        named(std::move(name)),
         value(std::make_shared<any_value_impl<T>>(v)),
-        expected_buffer(move(buff)),
-        name(move(name)),
+        expected_buffer(std::move(buff)),
         caps(caps),
         additional_storage(std::move(storage))
     {

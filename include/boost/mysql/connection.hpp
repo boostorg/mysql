@@ -186,10 +186,10 @@ public:
      * connection (like connection::query, connection::prepare_statement or
      * prepared_statement::execute). Otherwise, the results are undefined.
      */
-    resultset<Stream> query(std::string_view query_string, error_code&, error_info&);
+    resultset<Stream> query(boost::string_view query_string, error_code&, error_info&);
 
     /// Executes a SQL text query (sync with exceptions version).
-    resultset<Stream> query(std::string_view query_string);
+    resultset<Stream> query(boost::string_view query_string);
 
     /**
      * \brief Executes a SQL text query (async version without error_info).
@@ -203,7 +203,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
     async_query(
-        std::string_view query_string,
+        boost::string_view query_string,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -218,7 +218,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
     async_query(
-        std::string_view query_string,
+        boost::string_view query_string,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
@@ -234,10 +234,10 @@ public:
      * prepare_statement was called is alive and open. See prepared_statement docs
      * for more info.
      */
-    prepared_statement<Stream> prepare_statement(std::string_view statement, error_code&, error_info&);
+    prepared_statement<Stream> prepare_statement(boost::string_view statement, error_code&, error_info&);
 
     /// Prepares a statement (sync with exceptions version).
-    prepared_statement<Stream> prepare_statement(std::string_view statement);
+    prepared_statement<Stream> prepare_statement(boost::string_view statement);
 
     /**
      * \brief Prepares a statement (async version without error_info).
@@ -251,7 +251,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, prepared_statement<Stream>))
     async_prepare_statement(
-        std::string_view statement,
+        boost::string_view statement,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -266,7 +266,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, prepared_statement<Stream>))
     async_prepare_statement(
-        std::string_view statement,
+        boost::string_view statement,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

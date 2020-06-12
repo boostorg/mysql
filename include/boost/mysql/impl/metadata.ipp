@@ -85,7 +85,7 @@ inline boost::mysql::field_type boost::mysql::field_metadata::type() const noexc
 {
     if (field_type_ == field_type::_not_computed)
     {
-        field_type_ = detail::compute_field_type(msg_.type, msg_.flags.value);
+        field_type_ = detail::compute_field_type(msg_.type, msg_.flags);
         assert(field_type_ != field_type::_not_computed);
     }
     return field_type_;

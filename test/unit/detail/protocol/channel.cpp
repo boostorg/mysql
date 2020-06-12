@@ -124,38 +124,55 @@ struct MysqlChannelReadTest : public MysqlChannelFixture
     std::vector<uint8_t> bytes_to_read;
     std::size_t index {0};
 
+    struct buffer_copier
+    {
+        std::vector<std::uint8_t> buffer;
+
+        buffer_copier(std::vector<std::uint8_t> buff): buffer(std::move(buff)) {}
+        std::size_t operator()(boost::asio::mutable_buffer b, error_code& ec) const
+        {
+            assert(b.size() >= buffer.size());
+            memcpy(b.data(), buffer.data(), buffer.size());
+            ec.clear();
+            return buffer.size();
+        }
+    };
+
+    struct read_handler
+    {
+        MysqlChannelReadTest& self;
+
+        std::size_t operator()(boost::asio::mutable_buffer b, error_code& ec) const
+        {
+            std::size_t to_copy = std::min(b.size(), self.bytes_to_read.size() - self.index);
+            memcpy(b.data(), self.bytes_to_read.data() + self.index, to_copy);
+            self.index += to_copy;
+            ec.clear();
+            return to_copy;
+        }
+    };
+
+    struct read_failer
+    {
+        error_code error;
+
+        read_failer(error_code err): error(err) {}
+
+        std::size_t operator()(boost::asio::mutable_buffer, error_code& ec) const
+        {
+            ec = error;
+            return size_t(0);
+        }
+    };
+
     void verify_buffer(const std::vector<uint8_t>& expected)
     {
         EXPECT_EQ(buffer, expected);
     }
 
-    static auto buffer_copier(const std::vector<uint8_t>& buffer)
+    read_handler make_read_handler()
     {
-        return [buffer](boost::asio::mutable_buffer b, error_code& ec) {
-            assert(b.size() >= buffer.size());
-            memcpy(b.data(), buffer.data(), buffer.size());
-            ec.clear();
-            return buffer.size();
-        };
-    }
-
-    auto make_read_handler()
-    {
-        return [this](boost::asio::mutable_buffer b, error_code& ec) {
-            std::size_t to_copy = std::min(b.size(), bytes_to_read.size() - index);
-            memcpy(b.data(), bytes_to_read.data() + index, to_copy);
-            index += to_copy;
-            ec.clear();
-            return to_copy;
-        };
-    }
-
-    static auto read_failer(error_code error)
-    {
-        return [error](boost::asio::mutable_buffer, error_code& ec) {
-            ec = error;
-            return size_t(0);
-        };
+        return read_handler {*this};
     }
 };
 
@@ -272,27 +289,39 @@ struct MysqlChannelWriteTest : public MysqlChannelFixture
 {
     std::vector<uint8_t> bytes_written;
 
+    struct write_handler
+    {
+        MysqlChannelWriteTest& self;
+        std::size_t max_bytes_written;
+
+        std::size_t operator()(boost::asio::const_buffer buff, error_code& ec) const
+        {
+            auto actual_size = std::min(buff.size(), max_bytes_written);
+            concat(self.bytes_written, boost::asio::buffer(buff.data(), actual_size));
+            ec.clear();
+            return actual_size;
+        }
+    };
+
+    struct write_failer
+    {
+        boost::system::errc::errc_t error;
+        write_failer(boost::system::errc::errc_t error) : error(error) {}
+        std::size_t operator()(boost::asio::const_buffer, error_code& ec) const
+        {
+            ec = make_error_code(error);
+            return 0;
+        }
+    };
+
     void verify_buffer(const std::vector<uint8_t>& expected)
     {
         EXPECT_EQ(bytes_written, expected);
     }
 
-    auto make_write_handler(std::size_t max_bytes_written = 0xffffffff)
+    write_handler make_write_handler(std::size_t max_bytes_written = 0xffffffff)
     {
-        return [this, max_bytes_written](boost::asio::const_buffer buff, error_code& ec) {
-            auto actual_size = std::min(buff.size(), max_bytes_written);
-            concat(bytes_written, boost::asio::buffer(buff.data(), actual_size));
-            ec.clear();
-            return actual_size;
-        };
-    }
-
-    static auto write_failer(boost::system::errc::errc_t error)
-    {
-        return [error](boost::asio::const_buffer, error_code& ec) {
-            ec = make_error_code(error);
-            return 0;
-        };
+        return write_handler{*this, max_bytes_written};
     }
 };
 

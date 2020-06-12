@@ -18,6 +18,13 @@
  * This example uses synchronous functions and handles errors using exceptions.
  */
 
+#define ASSERT(expr) \
+    if (!(expr)) \
+    { \
+        std::cerr << "Assertion failed: " #expr << std::endl; \
+        exit(1); \
+    }
+
 /**
  * Prints an employee to std::cout. An employee here is a mysql::row,
  * which represents a row returned by a SQL query. You can access the values in
@@ -32,8 +39,8 @@
 void print_employee(const boost::mysql::row& employee)
 {
     std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type std::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type std::string_view)
+              << employee.values()[0] << " "                   // first_name (type boost::string_view)
+              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
               << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
 }
 
@@ -102,14 +109,14 @@ void main_impl(int argc, char** argv)
     // resultset will have no fields and no rows
     sql = "UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'";
     result = conn.query(sql);
-    assert(result.fields().size() == 0); // fields() returns a vector containing metadata about the query fields
+    ASSERT(result.fields().size() == 0); // fields() returns a vector containing metadata about the query fields
 
     // Check we have updated our poor intern salary
     result = conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'");
     auto rows = result.fetch_all();
-    assert(rows.size() == 1);
-    [[maybe_unused]] double salary = rows[0].values()[0].get<double>();
-    assert(salary == 10000);
+    ASSERT(rows.size() == 1);
+    double salary = rows[0].values()[0].get<double>();
+    ASSERT(salary == 10000);
 
     // Close the connection. This notifies the MySQL we want to log out
     // and then closes the underlying socket. This operation implies a network

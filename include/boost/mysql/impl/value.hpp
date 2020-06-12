@@ -22,12 +22,14 @@ inline bool is_out_of_range(
 }
 
 // Range checks
-static_assert(date::min() <= min_date);
-static_assert(date::max() >= max_date);
-static_assert(datetime::min() <= min_datetime);
-static_assert(datetime::max() >= max_datetime);
-static_assert(time::min() <= min_time);
-static_assert(time::max() >= max_time);
+#ifndef BOOST_NO_CXX14_CONSTEXPR
+static_assert(date::min() <= min_date, "Range check failed");
+static_assert(date::max() >= max_date, "Range check failed");
+static_assert(datetime::min() <= min_datetime, "Range check failed");
+static_assert(datetime::max() >= max_datetime, "Range check failed");
+static_assert(time::min() <= min_time, "Range check failed");
+static_assert(time::max() >= max_time, "Range check failed");
+#endif
 
 struct print_visitor
 {
@@ -62,31 +64,62 @@ struct print_visitor
     void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 
-template <typename T>
-constexpr std::optional<T> get_optional_noconv(
-    const value::variant_type& v
+template <typename T, template <typename> class Optional>
+struct value_converter
+{
+    static BOOST_CXX14_CONSTEXPR Optional<T> convert(const value::variant_type&) noexcept
+    {
+        return {};
+    }
+};
+
+template <template <typename> class Optional>
+struct value_converter<std::uint64_t, Optional>
+{
+    static BOOST_CXX14_CONSTEXPR Optional<std::uint64_t> convert(
+        const value::variant_type& repr
+    ) noexcept
+    {
+        auto* val = boost::variant2::get_if<std::int64_t>(&repr);
+        return (val && *val >= 0) ?
+            Optional<std::uint64_t>(static_cast<std::uint64_t>(*val)) :
+            Optional<std::uint64_t>();
+    }
+};
+
+template <template <typename> class Optional>
+struct value_converter<std::int64_t, Optional>
+{
+    static BOOST_CXX14_CONSTEXPR Optional<std::int64_t> convert(
+        const value::variant_type& repr
+    ) noexcept
+    {
+        auto* val = boost::variant2::get_if<std::uint64_t>(&repr);
+        return (val && *val <= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())) ?
+            Optional<std::int64_t>(static_cast<std::int64_t>(*val)) :
+            Optional<std::int64_t>();
+    }
+};
+
+template <template <typename> class Optional>
+struct value_converter<double, Optional>
+{
+    static BOOST_CXX14_CONSTEXPR Optional<double> convert(
+        const value::variant_type& repr
+    ) noexcept
+    {
+        auto* val = boost::variant2::get_if<float>(&repr);
+        return val ? Optional<double>(*val) : Optional<double>();
+    }
+};
+
+template <typename T, template <typename> class Optional>
+BOOST_CXX14_CONSTEXPR Optional<T> get_optional_impl(
+    const value::variant_type& val
 ) noexcept
 {
-    auto* res = std::get_if<T>(&v);
-    return res ? std::optional<T>(*res) : std::optional<T>();
-}
-
-// Helper to make integer constructors work
-template <typename T>
-constexpr decltype(auto) value_cast_int(const T& v) noexcept
-{
-    if constexpr (std::is_unsigned_v<T>)
-    {
-        return std::uint64_t(v);
-    }
-    else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>)
-    {
-        return std::int64_t(v);
-    }
-    else
-    {
-        return v;
-    }
+    auto* res = boost::variant2::get_if<T>(&val);
+    return res ? Optional<T>(*res) : value_converter<T, Optional>::convert(val);
 }
 
 } // detail
@@ -94,73 +127,44 @@ constexpr decltype(auto) value_cast_int(const T& v) noexcept
 } // boost
 
 template <typename T>
-constexpr boost::mysql::value::value(
+BOOST_CXX14_CONSTEXPR boost::mysql::value::value(
     const T& v
 ) noexcept :
-    repr_(detail::value_cast_int(v))
+    value(
+        v,
+        typename std::conditional<
+            std::is_unsigned<T>::value,
+            unsigned_int_tag,
+            typename std::conditional<
+                std::is_integral<T>::value && std::is_signed<T>::value,
+                signed_int_tag,
+                no_tag
+            >::type
+        >::type()
+    )
 {
 }
 
 template <typename T>
-constexpr std::optional<T> boost::mysql::value::get_optional() const noexcept
+boost::optional<T> boost::mysql::value::get_optional() const noexcept
 {
-    return detail::get_optional_noconv<T>(repr_);
+    return detail::get_optional_impl<T, boost::optional>(repr_);
 }
 
-template <>
-constexpr std::optional<std::uint64_t>
-boost::mysql::value::get_optional<std::uint64_t>() const noexcept
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+template <typename T>
+constexpr std::optional<T> boost::mysql::value::get_std_optional() const noexcept
 {
-    auto res = detail::get_optional_noconv<std::uint64_t>(repr_);
-    if (!res)
-    {
-        auto* val = std::get_if<std::int64_t>(&repr_);
-        if (val && *val >= 0)
-        {
-            res = static_cast<std::uint64_t>(*val);
-        }
-    }
-    return res;
+    return detail::get_optional_impl<T, std::optional>(repr_);
 }
-
-template <>
-constexpr std::optional<std::int64_t>
-boost::mysql::value::get_optional<std::int64_t>() const noexcept
-{
-    auto res = detail::get_optional_noconv<std::int64_t>(repr_);
-    if (!res)
-    {
-        auto* val = std::get_if<std::uint64_t>(&repr_);
-        if (val && *val <= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
-        {
-            res = static_cast<std::int64_t>(*val);
-        }
-    }
-    return res;
-}
-
-template <>
-constexpr std::optional<double>
-boost::mysql::value::get_optional<double>() const noexcept
-{
-    auto res = detail::get_optional_noconv<double>(repr_);
-    if (!res)
-    {
-        auto* val = std::get_if<float>(&repr_);
-        if (val)
-        {
-            res = *val;
-        }
-    }
-    return res;
-}
+#endif
 
 template <typename T>
-constexpr T boost::mysql::value::get() const
+T boost::mysql::value::get() const
 {
     auto res = get_optional<T>();
     if (!res)
-        throw std::bad_variant_access();
+        throw boost::variant2::bad_variant_access();
     return *res;
 }
 
@@ -169,12 +173,12 @@ inline std::ostream& boost::mysql::operator<<(
     const value& value
 )
 {
-    std::visit(detail::print_visitor(os), value.to_variant());
+    boost::variant2::visit(detail::print_visitor(os), value.to_variant());
     return os;
 }
 
 template <typename... Types>
-std::array<boost::mysql::value, sizeof...(Types)>
+BOOST_CXX14_CONSTEXPR std::array<boost::mysql::value, sizeof...(Types)>
 boost::mysql::make_values(
     Types&&... args
 )

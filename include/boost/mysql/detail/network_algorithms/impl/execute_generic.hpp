@@ -20,7 +20,7 @@ class execute_processor
     capabilities caps_;
     bytestring buffer_;
     std::size_t field_count_ {};
-    ok_packet ok_packet_;
+    ok_packet ok_packet_ {};
     std::vector<field_metadata> fields_;
     std::vector<bytestring> field_buffers_;
 public:
@@ -44,8 +44,8 @@ public:
         // If it is none of this, then the message type itself is the beginning of
         // a length-encoded int containing the field count
         deserialization_context ctx (boost::asio::buffer(buffer_), caps_);
-        std::uint8_t msg_type;
-        std::tie(err, msg_type) = deserialize_message_type(ctx);
+        std::uint8_t msg_type = 0;
+        err = make_error_code(deserialize(ctx, msg_type));
         if (err)
             return;
         if (msg_type == ok_packet_header)

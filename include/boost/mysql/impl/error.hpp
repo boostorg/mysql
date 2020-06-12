@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_IMPL_ERROR_HPP
 
 #include <boost/system/system_error.hpp>
+#include <boost/config.hpp>
 #include <algorithm>
 #include "boost/mysql/impl/error_descriptions.hpp"
 
@@ -45,11 +46,29 @@ public:
         return error_to_string(static_cast<errc>(ev));
     }
 };
+
+#ifdef BOOST_NO_CXX17_INLINE_VARIABLES
+
+inline mysql_error_category_t& get_mysql_error_category() noexcept
+{
+    static mysql_error_category_t res;
+    return res;
+}
+
+#else
+
 inline mysql_error_category_t mysql_error_category;
+
+inline mysql_error_category_t& get_mysql_error_category() noexcept
+{
+    return mysql_error_category;
+}
+
+#endif
 
 inline boost::system::error_code make_error_code(errc error)
 {
-    return boost::system::error_code(static_cast<int>(error), mysql_error_category);
+    return boost::system::error_code(static_cast<int>(error), get_mysql_error_category());
 }
 
 inline void check_error_code(const error_code& code, const error_info& info)
