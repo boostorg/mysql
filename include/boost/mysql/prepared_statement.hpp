@@ -37,6 +37,9 @@ constexpr std::array<value, 0> no_statement_params {};
  * When calling this method, you must pass in **exactly** as many parameters as
  * the statement has. You may pass in the parameters as a collection of
  * boost::mysql::value's or as an iterator range pointing to boost::mysql::value's.
+ * All the parameters should be in the MySQL range validity. Otherwise, the results are undefined.
+ * Concretely, passing in a date, datetime or time out of their valid range
+ * results in undefined behavior.
  *
  * Execution of a statement results in a mysql::resultset. The same considerations
  * as with connection::query apply. In particular, **you should read the entire

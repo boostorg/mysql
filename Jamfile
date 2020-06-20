@@ -9,18 +9,11 @@ import os ;
 
 project /boost/mysql ;
 
-local DATE_ROOT = [ os.environ DATE_ROOT ] ;
-
-alias date : : : : 
-    <include>$(DATE_ROOT)/include
-    ;
-
 alias boost_mysql
     : # Sources
         /boost/system//boost_system
         /user-config//ssl
         /user-config//crypto
-        date
     : # Requirements
     : # Default build
     : # Usage requirements

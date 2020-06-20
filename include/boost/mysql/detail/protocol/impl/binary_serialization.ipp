@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_SERIALIZATION_IPP
 
 #include "boost/mysql/detail/protocol/constants.hpp"
+#include "boost/mysql/detail/protocol/date.hpp"
 
 namespace boost {
 namespace mysql {
@@ -32,14 +33,15 @@ serialize_binary_value_impl(
 // Does not add the length prefix byte
 inline void serialize_binary_ymd(
     serialization_context& ctx,
-    const ::date::year_month_day& ymd
+    const year_month_day& ymd
 ) noexcept
 {
+    assert(ymd.years >= 0 && ymd.years <= 0xffff);
     serialize(
         ctx,
-        static_cast<std::uint16_t>(static_cast<int>(ymd.year())),
-        static_cast<std::uint8_t>(static_cast<unsigned>(ymd.month())),
-        static_cast<std::uint8_t>(static_cast<unsigned>(ymd.day()))
+        static_cast<std::uint16_t>(ymd.years),
+        static_cast<std::uint8_t>(ymd.month),
+        static_cast<std::uint8_t>(ymd.day)
     );
 }
 
@@ -48,8 +50,8 @@ inline void serialize_binary_value_impl(
     const date& input
 )
 {
-    ::date::year_month_day ymd (input);
-    assert(ymd.ok());
+    assert(input >= min_date && input <= max_date);
+    auto ymd = days_to_ymd(input.time_since_epoch().count());
 
     serialize(ctx, static_cast<std::uint8_t>(binc::date_sz));
     serialize_binary_ymd(ctx, ymd);
@@ -60,21 +62,26 @@ inline void serialize_binary_value_impl(
     const datetime& input
 )
 {
+    assert(input >= min_datetime && input <= max_datetime);
+
     // Break datetime
-    auto days = ::date::floor<::date::days>(input);
-    ::date::year_month_day ymd (days);
-    ::date::time_of_day<std::chrono::microseconds> tod (input - days);
-    assert(ymd.ok());
+    using namespace std::chrono;
+    auto input_dur = input.time_since_epoch();
+    auto num_micros = duration_cast<microseconds>(input_dur % seconds(1));
+    auto num_secs = duration_cast<seconds>(input_dur % minutes(1) - num_micros);
+    auto num_mins = duration_cast<minutes>(input_dur % hours(1) - num_secs);
+    auto num_hours = duration_cast<hours>(input_dur % days(1) - num_mins);
+    auto num_days = duration_cast<days>(input_dur - num_hours);
 
     // Serialize
     serialize(ctx, static_cast<std::uint8_t>(binc::datetime_dhmsu_sz));
-    serialize_binary_ymd(ctx, ymd);
+    serialize_binary_ymd(ctx, days_to_ymd(num_days.count()));
     serialize(
         ctx,
-        static_cast<std::uint8_t>(tod.hours().count()),
-        static_cast<std::uint8_t>(tod.minutes().count()),
-        static_cast<std::uint8_t>(tod.seconds().count()),
-        static_cast<std::uint32_t>(tod.subseconds().count())
+        static_cast<std::uint8_t>(num_hours.count()),
+        static_cast<std::uint8_t>(num_mins.count()),
+        static_cast<std::uint8_t>(num_secs.count()),
+        static_cast<std::uint32_t>(num_micros.count())
     );
 }
 
@@ -84,11 +91,12 @@ inline void serialize_binary_value_impl(
 )
 {
     // Break time
-    auto days = std::chrono::duration_cast<::date::days>(input);
-    auto hours = std::chrono::duration_cast<std::chrono::hours>(input % ::date::days(1));
-    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(input % std::chrono::hours(1));
-    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(input % std::chrono::minutes(1));
-    auto microseconds = input % std::chrono::seconds(1);
+    using namespace std::chrono;
+    auto num_micros = duration_cast<microseconds>(input % seconds(1));
+    auto num_secs = duration_cast<seconds>(input % minutes(1) - num_micros);
+    auto num_mins = duration_cast<minutes>(input % hours(1) - num_secs);
+    auto num_hours = duration_cast<hours>(input % days(1) - num_mins);
+    auto num_days = duration_cast<days>(input - num_hours);
     std::uint8_t is_negative = (input.count() < 0) ? 1 : 0;
 
     // Serialize
@@ -96,11 +104,11 @@ inline void serialize_binary_value_impl(
         ctx,
         static_cast<std::uint8_t>(binc::time_dhmsu_sz),
         is_negative,
-        static_cast<std::uint32_t>(std::abs(days.count())),
-        static_cast<std::uint8_t>(std::abs(hours.count())),
-        static_cast<std::uint8_t>(std::abs(minutes.count())),
-        static_cast<std::uint8_t>(std::abs(seconds.count())),
-        static_cast<std::uint32_t>(std::abs(microseconds.count()))
+        static_cast<std::uint32_t>(std::abs(num_days.count())),
+        static_cast<std::uint8_t>(std::abs(num_hours.count())),
+        static_cast<std::uint8_t>(std::abs(num_mins.count())),
+        static_cast<std::uint8_t>(std::abs(num_secs.count())),
+        static_cast<std::uint32_t>(std::abs(num_micros.count()))
     );
 }
 

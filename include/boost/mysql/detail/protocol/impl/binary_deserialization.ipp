@@ -11,6 +11,7 @@
 #include "boost/mysql/detail/protocol/serialization.hpp"
 #include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
+#include "boost/mysql/detail/protocol/date.hpp"
 
 namespace boost {
 namespace mysql {
@@ -90,7 +91,7 @@ errc deserialize_binary_value_float(
 // Time types
 inline errc deserialize_binary_ymd(
     deserialization_context& ctx,
-    ::date::year_month_day& output
+    year_month_day& output
 )
 {
     std::uint16_t year;
@@ -110,11 +111,7 @@ inline errc deserialize_binary_ymd(
         return errc::protocol_value_error;
     }
 
-    output = ::date::year_month_day (
-        ::date::year(year),
-        ::date::month(month),
-        ::date::day(day)
-    );
+    output = year_month_day {year, month, day};
 
     return errc::ok;
 }
@@ -138,25 +135,20 @@ inline errc deserialize_binary_value_date(
     }
 
     // Deserialize rest of fields
-    ::date::year_month_day ymd;
+    year_month_day ymd;
     err = deserialize_binary_ymd(ctx, ymd);
     if (err != errc::ok)
         return err;
 
     // Check for invalid dates, represented as NULL in C++
-    if (!ymd.ok())
+    if (!is_valid(ymd))
     {
         output = value(nullptr);
         return errc::ok;
     }
 
-    // Range check
-    date d (ymd);
-    if (is_out_of_range(d))
-        return errc::protocol_value_error;
-
-    // Convert to sys_days (date)
-    output = value(static_cast<date>(ymd));
+    // Convert to value
+    output = value(date(days(ymd_to_days(ymd))));
     return errc::ok;
 }
 
@@ -175,7 +167,7 @@ inline errc deserialize_binary_value_datetime(
 
     // Deserialize date. If the DATETIME does not contain these values,
     // they are supposed to be zero (invalid date)
-    ::date::year_month_day ymd (::date::year(0), ::date::month(0), ::date::day(0));
+    year_month_day ymd {};
     if (length >= datetime_d_sz)
     {
         err = deserialize_binary_ymd(ctx, ymd);
@@ -219,20 +211,14 @@ inline errc deserialize_binary_value_datetime(
     // Check for invalid dates, represented in C++ as NULL.
     // Note: we do the check here to ensure we consume all the bytes
     // associated to this datetime
-    if (!ymd.ok())
+    if (!is_valid(ymd))
     {
         output = value(nullptr);
         return errc::ok;
     }
 
-    // Range check
-    date d (ymd);
-    if (is_out_of_range(d))
-    {
-        return errc::protocol_value_error;
-    }
-
     // Compose the final datetime. Doing time of day and date separately to avoid overflow
+    date d (days(ymd_to_days(ymd)));
     auto time_of_day =
         std::chrono::hours(hours) +
         std::chrono::minutes(minutes) +
@@ -257,7 +243,7 @@ inline errc deserialize_binary_value_time(
 
     // If the TIME contains no value for these fields, they are zero
     std::uint8_t is_negative = 0;
-    std::uint32_t days = 0;
+    std::uint32_t num_days = 0;
     std::uint8_t hours = 0;
     std::uint8_t minutes = 0;
     std::uint8_t seconds = 0;
@@ -269,7 +255,7 @@ inline errc deserialize_binary_value_time(
         err = deserialize(
             ctx,
             is_negative,
-            days,
+            num_days,
             hours,
             minutes,
             seconds
@@ -287,7 +273,7 @@ inline errc deserialize_binary_value_time(
     }
 
     // Range check
-    if (days > time_max_days ||
+    if (num_days > time_max_days ||
         hours > max_hour ||
         minutes > max_min ||
         seconds > max_sec ||
@@ -298,7 +284,7 @@ inline errc deserialize_binary_value_time(
 
     // Compose the final time
     output = value(time((is_negative ? -1 : 1) * (
-         ::date::days(days) +
+         days(num_days) +
          std::chrono::hours(hours) +
          std::chrono::minutes(minutes) +
          std::chrono::seconds(seconds) +

@@ -14,6 +14,7 @@
 #include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include "boost/mysql/detail/protocol/constants.hpp"
+#include "boost/mysql/detail/protocol/date.hpp"
 
 #ifdef BOOST_MSVC
 #pragma warning( push )
@@ -90,7 +91,7 @@ inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexce
 
 inline errc deserialize_text_ymd(
     boost::string_view from,
-    ::date::year_month_day& to
+    year_month_day& to
 )
 {
     using namespace textc;
@@ -114,11 +115,7 @@ inline errc deserialize_text_ymd(
     if (year > max_year || month > max_month || day > max_day)
         return errc::protocol_value_error;
 
-    to = ::date::year_month_day(
-        ::date::year{static_cast<int>(year)},
-        ::date::month{month},
-        ::date::day{day}
-    );
+    to = year_month_day{static_cast<int>(year), month, day};
     return errc::ok;
 }
 
@@ -128,26 +125,21 @@ inline errc deserialize_text_value_date(
 ) noexcept
 {
     // Deserialize ymd
-    ::date::year_month_day ymd;
+    year_month_day ymd {};
     auto err = deserialize_text_ymd(from, ymd);
     if (err != errc::ok)
         return err;
 
     // Verify date validity. MySQL allows zero and invalid dates, which
     // we represent in C++ as NULL
-    if (!ymd.ok())
+    if (!is_valid(ymd))
     {
         to = value(nullptr);
         return errc::ok;
     }
 
-    // Range check
-    date d (ymd);
-    if (is_out_of_range(d))
-        return errc::protocol_value_error;
-
     // Done
-    to = value(d);
+    to = value(date(days(ymd_to_days(ymd))));
     return errc::ok;
 }
 
@@ -168,7 +160,7 @@ inline errc deserialize_text_value_datetime(
         return errc::protocol_value_error;
 
     // Deserialize date part
-    ::date::year_month_day ymd;
+    year_month_day ymd {};
     auto err = deserialize_text_ymd(from.substr(0, date_sz), ymd);
     if (err != errc::ok)
         return err;
@@ -211,18 +203,14 @@ inline errc deserialize_text_value_datetime(
 
     // Date validity. MySQL allows DATETIMEs with invalid dates, which
     // we represent here as NULL
-    if (!ymd.ok())
+    if (!is_valid(ymd))
     {
         to = value(nullptr);
         return errc::ok;
     }
 
-    // Range check for date
-    date d (ymd);
-    if (is_out_of_range(d))
-        return errc::protocol_value_error;
-
     // Sum it up. Doing time of day independently to prevent overflow
+    date d (days(ymd_to_days(ymd)));
     auto time_of_day =
         std::chrono::hours(hours) +
         std::chrono::minutes(minutes) +

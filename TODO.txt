@@ -1,3 +1,4 @@
+Remove gtest
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -5,9 +6,6 @@ Better docs
 	BoostBook
 	Automate the process
 	Make undocumented enum values show (for collation)
-License issues
-    date
-    gtest
 CI tests for older compilers
     GCCs
     Clangs
@@ -42,6 +40,8 @@ Other possible features
     CLIENT_OPTIONAL_RESULTSET_METADATA
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    Do we need --with-system --with-date_time
+    Constexpr issues with value and optional
     Increase int serialization test coverage
     Increase DB version test coverage
     Conan for dependencies
@@ -67,4 +67,3 @@ Technical debt
 	prepared_statement::execute(): static_assert(), handle value&, const value&, anything convertible
 	Test for too many connections
     Executor tests?
-    Update date version to remove target_compile_definitions() for default completion tokens

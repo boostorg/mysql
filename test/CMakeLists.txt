@@ -40,6 +40,7 @@ add_executable(
     unit/detail/protocol/row_deserialization.cpp
     unit/detail/protocol/binary_serialization.cpp
     unit/detail/protocol/null_bitmap_traits.cpp
+    unit/detail/protocol/date.cpp
     unit/detail/protocol/channel.cpp
     unit/metadata.cpp
     unit/value.cpp

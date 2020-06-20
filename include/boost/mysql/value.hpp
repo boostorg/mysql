@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <boost/utility/string_view.hpp>
-#include <date/date.h>
 #include <chrono>
 #include <ostream>
 #include <array>
@@ -31,15 +30,23 @@ namespace mysql {
 
 /**
  * \ingroup values
+ * \brief Duration representing a day (24 hours).
+ * \details Suitable to represent the range of dates MySQL offers.
+ * May differ in representation from std::chrono::days in C++20.
+ */
+using days = std::chrono::duration<int, std::ratio<3600 * 24>>;
+
+/**
+ * \ingroup values
  * \brief Type representing MySQL DATE data type.
  */
-using date = ::date::sys_days;
+using date = std::chrono::time_point<std::chrono::system_clock, days>;
 
 /**
  * \ingroup values
  * \brief Type representing MySQL DATETIME and TIMESTAMP data types.
  */
-using datetime = ::date::sys_time<std::chrono::microseconds>;
+using datetime = std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds>;
 
 /**
  * \ingroup values
@@ -349,6 +356,10 @@ private:
 
 /**
  * \brief Streams a value.
+ * \details The value should be in the MySQL valid range of values. Concretely,
+ * if the value is a date, datetime or time, it should be in the [min_date, max_date],
+ * [min_datetime, max_datetime] or [min_time, max_time], respectively. Otherwise,
+ * the results are undefined.
  * \relates value
  */
 inline std::ostream& operator<<(std::ostream& os, const value& v);
@@ -363,11 +374,11 @@ inline std::ostream& operator<<(std::ostream& os, const value& v);
 template <typename... Types>
 BOOST_CXX14_CONSTEXPR std::array<value, sizeof...(Types)> make_values(Types&&... args);
 
-/// The minimum allowed value for boost::mysql::date.
-BOOST_CXX14_CONSTEXPR const date min_date = ::date::day(1)/::date::January/::date::year(0); // slightly more flexible than official min
+/// The minimum allowed value for boost::mysql::date (0000-01-01).
+BOOST_CXX14_CONSTEXPR const date min_date { days(-719528) };
 
-/// The maximum allowed value for boost::mysql::date.
-BOOST_CXX14_CONSTEXPR const date max_date = ::date::day(31)/::date::December/::date::year(9999);
+/// The maximum allowed value for boost::mysql::date (9999-12-31).
+BOOST_CXX14_CONSTEXPR const date max_date { days(2932896) };
 
 /// The minimum allowed value for boost::mysql::datetime.
 BOOST_CXX14_CONSTEXPR const datetime min_datetime = min_date;

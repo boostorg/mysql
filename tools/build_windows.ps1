@@ -28,10 +28,6 @@ $Env:BOOST_MYSQL_SHA256_TESTS = "1"
 # DB setup
 Check-Call { docker run --name mysql -p 3306:3306 -d anarthal/mysql:8 }
 
-# Date
-$Env:DATE_ROOT = "C:\date"
-Check-Call { python tools\build_date.py $Env:DATE_ROOT }
-
 # Actual build
 if ($Env:B2_TOOLSET) # Use Boost.Build
 {
@@ -74,13 +70,11 @@ else # Use CMake
     Check-Call { cmake `
         "-G" "Ninja" `
         "-DCMAKE_INSTALL_PREFIX=$InstallPrefix"  `
-        "-DCMAKE_PREFIX_PATH=$DATE_ROOT" `
         "-DBOOST_ROOT=C:\Libraries\boost_1_73_0" `
         "-DCMAKE_BUILD_TYPE=$Env:CMAKE_BUILD_TYPE" `
         "-DCMAKE_CXX_STANDARD=17" `
         "-DCMAKE_C_COMPILER=cl" `
         "-DCMAKE_CXX_COMPILER=cl" `
-        "-DBOOST_MYSQL_ALLOW_FETCH_CONTENT=OFF" `
         ".."
     }
     Check-Call { cmake --build . -j --target install }
@@ -88,6 +82,6 @@ else # Use CMake
     Check-Call { ctest --output-on-failure }
     Check-Call { python `
         ..\tools\user_project_find_package\build.py `
-        "-DCMAKE_PREFIX_PATH=$InstallPrefix;$Env:DATE_ROOT;C:\Libraries\boost_1_73_0"
+        "-DCMAKE_PREFIX_PATH=$InstallPrefix;C:\Libraries\boost_1_73_0"
     }
 }

@@ -38,9 +38,6 @@
  * - Boost 1.72 or higher.
  * - OpenSSL.
  * - CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
- * - Howard Hinnant's date library (https://github.com/HowardHinnant/date) v2.4.1 or higher.
- *   If you are using CMake to link against Boost.MySQL (the preferred way), it will be fetched automatically.
- *   (no need for a manual download).
  * - Tested with MySQL v5.7.29, MySQL v8.0.19, MariaDB v10.3 and MariaDB v10.5.
  *
  * \section Features

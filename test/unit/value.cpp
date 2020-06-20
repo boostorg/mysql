@@ -484,18 +484,149 @@ TEST_P(ValueStreamTest, OutputStream_Trivial_ProducesExpectedString)
     EXPECT_EQ(ss.str(), GetParam().expected);
 }
 
-// Note: time is the only operator for which we fully implement the stream operation
-void add_time_cases(std::vector<stream_testcase>& output)
+// Helper struct to define stream operations for date, datetime and time
+// We will list the possibilities for each component (hours, minutes, days...) and will
+// take the Cartessian product of all them
+struct component_value
 {
-    // We will list the possibilities for each time part and will
-    // take the Cartessian product of all them
-    struct component_value
-    {
-        const char* name;
-        int v;
-        const char* repr;
+    const char* name;
+    int v;
+    const char* repr;
+};
+
+void add_date_cases(std::vector<stream_testcase>& output)
+{
+    constexpr component_value year_values [] = {
+        { "min", 0, "0000" },
+        { "onedig",  1, "0001" },
+        { "twodig", 98, "0098" },
+        { "threedig", 789, "0789" },
+        { "regular", 1999, "1999" },
+        { "max", 9999, "9999" }
     };
 
+    constexpr component_value month_values [] = {
+        { "min", 1, "01" },
+        { "max", 12, "12" }
+    };
+
+    constexpr component_value day_values [] = {
+        { "min", 1, "01" },
+        { "max", 31, "31" }
+    };
+
+    for (const auto& year : year_values)
+    {
+        for (const auto& month : month_values)
+        {
+            for (const auto& day : day_values)
+            {
+                std::string name = stringize(
+                    "date_year", year.name,
+                    "_month", month.name,
+                    "_day", day.name
+                );
+                std::string str_val = stringize(year.repr, '-', month.repr, '-', day.repr);
+                value val (makedate(year.v, static_cast<unsigned>(month.v), static_cast<unsigned>(day.v)));
+                output.emplace_back(std::move(name), val, std::move(str_val));
+            }
+        }
+    }
+}
+
+void add_datetime_cases(std::vector<stream_testcase>& output)
+{
+    constexpr component_value year_values [] = {
+        { "min", 0, "0000" },
+        { "onedig",  1, "0001" },
+        { "twodig", 98, "0098" },
+        { "threedig", 789, "0789" },
+        { "regular", 1999, "1999" },
+        { "max", 9999, "9999" }
+    };
+
+    constexpr component_value month_values [] = {
+        { "min", 1, "01" },
+        { "max", 12, "12" }
+    };
+
+    constexpr component_value day_values [] = {
+        { "min", 1, "01" },
+        { "max", 31, "31" }
+    };
+
+    constexpr component_value hours_values [] = {
+        { "zero", 0, "00" },
+        { "onedigit", 5, "05" },
+        { "max", 23, "23" }
+    };
+
+    constexpr component_value mins_secs_values [] = {
+        { "zero", 0, "00" },
+        { "onedigit", 5, "05" },
+        { "twodigits", 59, "59" }
+    };
+
+    constexpr component_value micros_values [] = {
+        { "zero", 0, "000000" },
+        { "onedigit", 5, "000005" },
+        { "twodigits", 50, "000050" },
+        { "max", 999999, "999999" },
+    };
+
+    for (const auto& year : year_values)
+    {
+        for (const auto& month : month_values)
+        {
+            for (const auto& day : day_values)
+            {
+                for (const auto& hours: hours_values)
+                {
+                    for (const auto& mins: mins_secs_values)
+                    {
+                        for (const auto& secs: mins_secs_values)
+                        {
+                            for (const auto& micros: micros_values)
+                            {
+                                std::string name = stringize(
+                                    "datetime_year", year.name,
+                                    "_month", month.name,
+                                    "_day", day.name,
+                                    "_h", hours.name,
+                                    "_m", mins.name,
+                                    "_s", secs.name,
+                                    "_u", micros.name
+                                );
+                                std::string str_val = stringize(
+                                    year.repr, '-',
+                                    month.repr, '-',
+                                    day.repr, ' ',
+                                    hours.repr, ':',
+                                    mins.repr, ':',
+                                    secs.repr, '.',
+                                    micros.repr
+                                );
+                                auto val = makedt(
+                                    year.v,
+                                    static_cast<unsigned>(month.v),
+                                    static_cast<unsigned>(day.v),
+                                    hours.v,
+                                    mins.v,
+                                    secs.v,
+                                    micros.v
+                                );
+                                output.emplace_back(std::move(name), value(val), std::move(str_val));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void add_time_cases(std::vector<stream_testcase>& output)
+{
     constexpr component_value sign_values [] = {
         { "positive", 1, "" },
         { "negative", -1, "-" }
@@ -569,11 +700,9 @@ std::vector<stream_testcase> make_stream_cases()
         { "string_view", "a_string", "a_string" },
         { "float", 2.43f, "2.43" },
         { "double", 8.12, "8.12" },
-        { "date_regular", makedate(2019, 9, 1), "2019-09-01" },
-        { "date_zero", makedate(0, 9, 1), "0000-09-01" },
-        { "datetime_dhmsu", makedt(2019, 1, 8, 9, 20, 11, 123), "2019-01-08 09:20:11.000123" },
-        { "datetime_d", makedt(2019, 1, 8), "2019-01-08 00:00:00.000000" },
     };
+    add_date_cases(res);
+    add_datetime_cases(res);
     add_time_cases(res);
     return res;
 }

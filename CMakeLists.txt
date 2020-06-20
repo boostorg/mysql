@@ -28,9 +28,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     mark_as_advanced(BOOST_MYSQL_SHA256_TESTS)
 endif()
 
-option(BOOST_MYSQL_ALLOW_FETCH_CONTENT ON "Allow FetchContent for date library")
-mark_as_advanced(BOOST_MYSQL_ALLOW_FETCH_CONTENT)
-
 # Includes
 include(GNUInstallDirs)
 include(FetchContent)
@@ -39,28 +36,6 @@ include(FetchContent)
 find_package(Boost 1.72.0 REQUIRED COMPONENTS system)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-if (NOT BOOST_MYSQL_ALLOW_FETCH_CONTENT)
-    find_package(date REQUIRED)
-else()
-    find_package(date QUIET)
-endif()
-
-if (NOT date_FOUND)
-    message("-- Could NOT find date, fetching it")
-    FetchContent_Declare(
-        date
-        GIT_REPOSITORY https://github.com/HowardHinnant/date.git
-        GIT_TAG        v2.4.1
-    )
-    
-    FetchContent_GetProperties(date)
-    if(NOT date_POPULATED)
-        FetchContent_Populate(date)
-        set(ENABLE_DATE_TESTING OFF CACHE BOOL "")
-        set(USE_SYSTEM_TZ_DB ON CACHE BOOL "")
-        add_subdirectory(${date_SOURCE_DIR} ${date_BINARY_DIR})
-    endif()
-endif()
 
 # Interface library (header-only)
 add_library(boost_mysql INTERFACE)
@@ -78,7 +53,6 @@ target_link_libraries(
     Threads::Threads
     OpenSSL::Crypto
     OpenSSL::SSL
-    date_interface
 )
 target_include_directories(
     boost_mysql
@@ -92,17 +66,10 @@ target_compile_features(
     cxx_std_11
 )
 
-# If we're on MSVC, the value of the __cplusplus macro is incorrect.
-# We could fix it using /Zc:__cplusplus, but that breaks date.h
-# Asio detects default function template arguments using __cplusplus,
-# which are required for default completion tokens. This feature is
-# available on every C++11 or higher capable compiler. Force it.
+# Asio bases C++ feature detection on __cplusplus. Make MSVC
+# define it correctly
 if (MSVC)
-    target_compile_definitions(
-        boost_mysql
-        INTERFACE
-        BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
-    )
+    target_compile_options(boost_mysql INTERFACE /Zc:__cplusplus)
 endif()
 
 # Installing

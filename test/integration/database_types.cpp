@@ -301,6 +301,8 @@ constexpr const char* invalid_date_cases [] = {
     "yregular_mzero_dregular",
     "yregular_mregular_dzero",
     "yregular_invalid_date",
+    "yregular_invalid_date_leapregular",
+    "yregular_invalid_date_leap100"
 };
 
 std::vector<database_types_testcase> make_date_cases()
@@ -312,7 +314,8 @@ std::vector<database_types_testcase> make_date_cases()
     // Regular cases
     std::vector<database_types_testcase> res {
         { table, field, "regular", makedate(2010, 3, 28), type },
-        { table, field, "leap", makedate(1788, 2, 29), type },
+        { table, field, "leap_regular", makedate(1788, 2, 29), type },
+        { table, field, "leap_400", makedate(2000, 2, 29), type },
         { table, field, "min", makedate(0, 1, 1), type },
         { table, field, "max", makedate(9999, 12, 31), type }
     };
@@ -462,6 +465,12 @@ std::vector<database_types_testcase> generate_common_datetime_cases(
             auto dt = datetime_from_id(int_id, decimals);
             res.push_back(create_datetime_testcase(decimals, move(dt.first), value(dt.second), type));
         }
+
+        // Tests for leap years (valid dates)
+        res.push_back(create_datetime_testcase(
+            decimals, "date_leap4", value(makedt(2004, 2, 29)), type));
+        res.push_back(create_datetime_testcase(
+            decimals, "date_leap400", value(makedt(2000, 2, 29)), type));
     }
 
     return res;
@@ -471,13 +480,16 @@ std::vector<database_types_testcase> generate_datetime_cases()
 {
     auto res = generate_common_datetime_cases(field_type::datetime);
 
-    // min and max
+
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
+        // min and max
         res.push_back(create_datetime_testcase(decimals, "min",
                 value(makedt(0, 1, 1)), field_type::datetime));
         res.push_back(create_datetime_testcase(decimals, "max",
                 value(makedt(9999, 12, 31, 23, 59, 59, round_micros(999999, decimals))), field_type::datetime));
+
+        // invalid dates
         const char* lengths [] = {"date", "hms", decimals ? "hmsu" : nullptr };
         for (const char* length:  lengths)
         {

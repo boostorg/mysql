@@ -9,27 +9,12 @@
 #define BOOST_MYSQL_IMPL_VALUE_HPP
 
 #include "boost/mysql/detail/auxiliar/container_equals.hpp"
+#include "boost/mysql/detail/protocol/date.hpp"
+#include <limits>
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-inline bool is_out_of_range(
-    const date& d
-)
-{
-    return d < min_date || d > max_date;
-}
-
-// Range checks
-#ifndef BOOST_NO_CXX14_CONSTEXPR
-static_assert(date::min() <= min_date, "Range check failed");
-static_assert(date::max() >= max_date, "Range check failed");
-static_assert(datetime::min() <= min_datetime, "Range check failed");
-static_assert(datetime::max() >= max_datetime, "Range check failed");
-static_assert(time::min() <= min_time, "Range check failed");
-static_assert(time::max() >= max_time, "Range check failed");
-#endif
 
 struct print_visitor
 {
@@ -40,27 +25,46 @@ struct print_visitor
     template <typename T>
     void operator()(const T& value) const { os << value; }
 
-    void operator()(const date& value) const { ::date::operator<<(os, value); }
+    void operator()(const date& value) const
+    {
+        assert(value >= min_date && value <= max_date);
+        auto ymd = days_to_ymd(value.time_since_epoch().count());
+        char buffer [32] {};
+        snprintf(buffer, sizeof(buffer), "%04d-%02u-%02u", ymd.years, ymd.month, ymd.day);
+        os << buffer;
+    }
+    void operator()(const datetime& value) const
+    {
+        using namespace std::chrono;
+        date date_part = time_point_cast<days>(value);
+        if (date_part > value)
+            date_part -= days(1);
+        auto tod = value - date_part;
+        (*this)(date_part); // date part
+        os << ' '; // separator
+        (*this)(duration_cast<time>(tod)); // time of day part
+    }
     void operator()(const time& value) const
     {
-        char buffer [100] {};
-        const char* sign = value < std::chrono::microseconds(0) ? "-" : "";
-        auto hours = std::abs(std::chrono::duration_cast<std::chrono::hours>(value).count());
-        auto mins = std::abs(std::chrono::duration_cast<std::chrono::minutes>(value % std::chrono::hours(1)).count());
-        auto secs = std::abs(std::chrono::duration_cast<std::chrono::seconds>(value % std::chrono::minutes(1)).count());
-        auto micros = std::abs((value % std::chrono::seconds(1)).count());
+        using namespace std::chrono;
+        assert(value >= min_time && value <= max_time);
+        char buffer [64] {};
+        const char* sign = value < microseconds(0) ? "-" : "";
+        auto num_micros = value % seconds(1);
+        auto num_secs = duration_cast<seconds>(value % minutes(1) - num_micros);
+        auto num_mins = duration_cast<minutes>(value % hours(1) - num_secs);
+        auto num_hours = duration_cast<hours>(value - num_mins);
 
         snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u.%06u",
             sign,
-            static_cast<int>(hours),
-            static_cast<unsigned>(mins),
-            static_cast<unsigned>(secs),
-            static_cast<unsigned>(micros)
+            static_cast<int>(std::abs(num_hours.count())),
+            static_cast<unsigned>(std::abs(num_mins.count())),
+            static_cast<unsigned>(std::abs(num_secs.count())),
+            static_cast<unsigned>(std::abs(num_micros.count()))
         );
 
         os << buffer;
     }
-    void operator()(const datetime& value) const { ::date::operator<<(os, value); }
     void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 

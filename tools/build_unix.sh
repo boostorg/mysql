@@ -10,9 +10,10 @@
 function get_cmake {
     if [ "$TRAVIS_OS_NAME" != "osx" ]; then # OSX cmake is good enough
         CMAKE_ROOT=/opt/cmake-latest
+        CMAKE_URL=https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh
         sudo mkdir $CMAKE_ROOT
         sudo chmod 777 $CMAKE_ROOT
-        wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.sh -q -O cmake-latest.sh
+        wget $CMAKE_URL -q -O cmake-latest.sh
         mkdir -p $CMAKE_ROOT
         bash cmake-latest.sh --prefix=$CMAKE_ROOT --skip-license
         export PATH=$CMAKE_ROOT/bin:$PATH
@@ -112,7 +113,7 @@ function cmake_build {
     cd build
     cmake \
         -DCMAKE_INSTALL_PREFIX=/tmp/boost_mysql \
-        "-DCMAKE_PREFIX_PATH=/tmp/date/;/opt/boost_1_73_0" \
+        -DCMAKE_PREFIX_PATH=/opt/boost_1_73_0 \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DCMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD \
         $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
@@ -120,7 +121,6 @@ function cmake_build {
         $(if [ $BOOST_MYSQL_SHA256_TESTS ]; then echo -DBOOST_MYSQL_SHA256_TESTS=ON; fi) \
         $openssl_arg \
         -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
-        -DBOOST_MYSQL_ALLOW_FETCH_CONTENT=OFF \
         $CMAKE_OPTIONS \
         .. 
     make -j6 CTEST_OUTPUT_ON_FAILURE=1 all install
@@ -131,7 +131,7 @@ function cmake_build {
     # Test that a user project could use our export
     python3 \
         tools/user_project_find_package/build.py \
-        "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;/tmp/date;/opt/boost_1_73_0" \
+        "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;/opt/boost_1_73_0" \
         $openssl_arg
 }
 
@@ -143,9 +143,7 @@ if [ "$B2_TOOLSET" != "" ]; then # Boost.Build
     cp tools/user-config.jam ~/user-config.jam
     
     # Dependencies
-    export DATE_ROOT=/tmp/date/
     export GTEST_ROOT=/tmp/gtest/
-    python3 tools/build_date.py $DATE_ROOT
     python3 tools/build_gtest.py $GTEST_ROOT
     # OSX requires setting OpenSSL root
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then 
@@ -162,7 +160,6 @@ if [ "$B2_TOOLSET" != "" ]; then # Boost.Build
     $BOOST_ROOT/libs/$SELF/ci/travis/build.sh
 else # CMake
     get_cmake
-    python3 tools/build_date.py /tmp/date/
     build_boost
     cmake_build
     if [ $USE_COVERAGE ]; then
