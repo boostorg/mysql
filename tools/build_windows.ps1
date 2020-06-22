@@ -48,10 +48,6 @@ if ($Env:B2_TOOLSET) # Use Boost.Build
         exit 1
     }
     
-    # GTest
-    $Env:GTEST_ROOT = "C:\gtest"
-    Check-Call { python tools\build_gtest.py $Env:GTEST_ROOT }
-    
     # Boost.Build setup
     Copy-Item -Path "tools\user-config.jam" -Destination "$HOME\user-config.jam"
     

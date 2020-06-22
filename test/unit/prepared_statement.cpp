@@ -15,59 +15,58 @@ using boost::mysql::prepared_statement;
 using boost::mysql::tcp_prepared_statement;
 using boost::asio::ip::tcp;
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_prepared_statement)
 
-struct PreparedStatementTest : public testing::Test
+struct prepared_statement_fixture
 {
-    boost::asio::io_context ctx; // TODO: change these for a mock stream
+    boost::asio::io_context ctx;
     channel<tcp::socket> chan {ctx};
 };
 
-TEST_F(PreparedStatementTest, DefaultConstructor_Trivial_Invalid)
+BOOST_FIXTURE_TEST_CASE(default_constructor, prepared_statement_fixture)
 {
     tcp_prepared_statement stmt;
-    EXPECT_FALSE(stmt.valid());
+    BOOST_TEST(!stmt.valid());
 }
 
-TEST_F(PreparedStatementTest, InitializingConstructor_Trivial_Valid)
+BOOST_FIXTURE_TEST_CASE(initializing_constructor, prepared_statement_fixture)
 {
     tcp_prepared_statement stmt (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
-    EXPECT_TRUE(stmt.valid());
-    EXPECT_EQ(stmt.id(), 10);
-    EXPECT_EQ(stmt.num_params(), 8);
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(stmt.id() == 10);
+    BOOST_TEST(stmt.num_params() == 8);
 }
 
-TEST_F(PreparedStatementTest, MoveConstructor_FromDefaultConstructed_Invalid)
+BOOST_FIXTURE_TEST_CASE(move_constructor_from_default_constructed, prepared_statement_fixture)
 {
     tcp_prepared_statement stmt {tcp_prepared_statement()};
-    EXPECT_FALSE(stmt.valid());
+    BOOST_TEST(!stmt.valid());
 }
 
-TEST_F(PreparedStatementTest, MoveConstructor_FromValid_Valid)
+BOOST_FIXTURE_TEST_CASE(move_constructor_from_valid, prepared_statement_fixture)
 {
 
     tcp_prepared_statement stmt (tcp_prepared_statement(
         chan, com_stmt_prepare_ok_packet{10, 9, 8, 7}
     ));
-    EXPECT_TRUE(stmt.valid());
-    EXPECT_EQ(stmt.id(), 10);
-    EXPECT_EQ(stmt.num_params(), 8);
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(stmt.id() == 10);
+    BOOST_TEST(stmt.num_params() == 8);
 }
 
-TEST_F(PreparedStatementTest, MoveAssignment_FromDefaultConstructed_Invalid)
+BOOST_FIXTURE_TEST_CASE(move_assignment_from_default_constructed, prepared_statement_fixture)
 {
     tcp_prepared_statement stmt (
         chan,
         com_stmt_prepare_ok_packet{10, 9, 8, 7}
     );
     stmt = tcp_prepared_statement();
-    EXPECT_FALSE(stmt.valid());
+    BOOST_TEST(!stmt.valid());
     stmt = tcp_prepared_statement();
-    EXPECT_FALSE(stmt.valid());
+    BOOST_TEST(!stmt.valid());
 }
 
-TEST_F(PreparedStatementTest, MoveAssignment_FromValid_Valid)
+BOOST_FIXTURE_TEST_CASE(move_assignment_from_valid, prepared_statement_fixture)
 {
 
     tcp_prepared_statement stmt;
@@ -75,19 +74,19 @@ TEST_F(PreparedStatementTest, MoveAssignment_FromValid_Valid)
         chan,
         com_stmt_prepare_ok_packet{10, 9, 8, 7}
     );
-    EXPECT_TRUE(stmt.valid());
-    EXPECT_EQ(stmt.id(), 10);
-    EXPECT_EQ(stmt.num_params(), 8);
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(stmt.id() == 10);
+    BOOST_TEST(stmt.num_params() == 8);
     stmt = tcp_prepared_statement(
         chan,
         com_stmt_prepare_ok_packet{1, 2, 3, 4}
     );
-    EXPECT_TRUE(stmt.valid());
-    EXPECT_EQ(stmt.id(), 1);
-    EXPECT_EQ(stmt.num_params(), 3);
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(stmt.id() == 1);
+    BOOST_TEST(stmt.num_params() == 3);
 }
 
-TEST_F(PreparedStatementTest, RebindExecutor_Trivial_ReturnsCorrectType)
+BOOST_AUTO_TEST_CASE(rebind_executor)
 {
     using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
     using rebound_type = tcp_prepared_statement::rebind_executor<other_executor>::other;
@@ -97,9 +96,7 @@ TEST_F(PreparedStatementTest, RebindExecutor_Trivial_ReturnsCorrectType)
             other_executor
         >
     >;
-    EXPECT_TRUE((std::is_same<rebound_type, expected_type>::value));
+    BOOST_TEST((std::is_same<rebound_type, expected_type>::value));
 }
 
-}
-
-
+BOOST_AUTO_TEST_SUITE_END() // test_prepared_statement

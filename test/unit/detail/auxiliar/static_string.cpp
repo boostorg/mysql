@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <gtest/gtest.h>
 #include "boost/mysql/detail/auxiliar/static_string.hpp"
+#include <boost/test/unit_test.hpp>
 
 using boost::mysql::detail::static_string;
 using boost::string_view;
@@ -14,7 +14,7 @@ using boost::string_view;
 namespace
 {
 
-struct StaticStringTest : public testing::Test
+struct test_static_string
 {
     static constexpr std::size_t max_size_value = 32;
     using string_type = static_string<max_size_value>;
@@ -30,194 +30,194 @@ struct StaticStringTest : public testing::Test
 };
 
 // Default ctor.
-TEST_F(StaticStringTest, DefaultConstructor_Trivial_Empty)
+BOOST_FIXTURE_TEST_CASE(default_constructor, test_static_string)
 {
     string_type v;
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
 // Init ctor.
-TEST_F(StaticStringTest, InitializingConstructor_EmptyArg_Empty)
+BOOST_FIXTURE_TEST_CASE(initializing_constructor_empty_arg, test_static_string)
 {
     string_type v ("");
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
-TEST_F(StaticStringTest, InitializingConstructor_MidSizeArg_CopiesIt)
+BOOST_FIXTURE_TEST_CASE(initializing_constructor_mid_size_arg, test_static_string)
 {
     string_type v (midsize);
     wipe_midsize();
-    EXPECT_EQ(v.value(), original_midsize());
+    BOOST_TEST(v.value() == original_midsize());
 }
 
-TEST_F(StaticStringTest, InitializingConstructor_MaxSizeArg_CopiesIt)
+BOOST_FIXTURE_TEST_CASE(initializing_constructor_max_size_arg, test_static_string)
 {
     string_type v (maxsize);
     wipe_maxsize();
-    EXPECT_EQ(v.value(), original_maxsize());
+    BOOST_TEST(v.value() == original_maxsize());
 }
 
 // Copy ctor.
-TEST_F(StaticStringTest, CopyConstructor_EmptyArg_Empty)
+BOOST_FIXTURE_TEST_CASE(copy_constructor_empty_arg, test_static_string)
 {
     string_type v (string_type{}); // {} prevent deambiguation as function declaration
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
-TEST_F(StaticStringTest, CopyConstructor_MidSizeArg_CopiesIt)
+BOOST_FIXTURE_TEST_CASE(copy_constructor_mid_size_arg, test_static_string)
 {
     string_type v (string_type{midsize});
     wipe_midsize();
-    EXPECT_EQ(v.value(), original_midsize());
+    BOOST_TEST(v.value() == original_midsize());
 }
 
-TEST_F(StaticStringTest, CopyConstructor_MaxSizeArg_CopiesIt)
+BOOST_FIXTURE_TEST_CASE(copy_constructor_max_size_arg, test_static_string)
 {
     string_type v (string_type{maxsize});
     wipe_maxsize();
-    EXPECT_EQ(v.value(), original_maxsize());
+    BOOST_TEST(v.value() == original_maxsize());
 }
 
 // Copy assignment
-TEST_F(StaticStringTest, CopyAssignment_EmptySource_Empty)
+BOOST_FIXTURE_TEST_CASE(copy_assignment_empty_source, test_static_string)
 {
     string_type v (maxsize);
     v = string_type();
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
-TEST_F(StaticStringTest, CopyAssignment_MidSizeSource_CopiesIt)
+BOOST_FIXTURE_TEST_CASE(copy_assignment_mid_size_source, test_static_string)
 {
     string_type v (maxsize);
     v = string_type(midsize);
     wipe_midsize();
-    EXPECT_EQ(v.value(), original_midsize());
+    BOOST_TEST(v.value() == original_midsize());
 }
 
-TEST_F(StaticStringTest, CopyAssignment_MaxSizeSource_CopiesIt)
+BOOST_FIXTURE_TEST_CASE(copy_assignment_max_size_source, test_static_string)
 {
     string_type v (midsize);
     v = string_type(maxsize);
     wipe_midsize();
     wipe_maxsize();
-    EXPECT_EQ(v.value(), original_maxsize());
+    BOOST_TEST(v.value() == original_maxsize());
 }
 
 // operator==
-TEST_F(StaticStringTest, OperatorEquals_BothEmpty_ReturnsTrue)
+BOOST_FIXTURE_TEST_CASE(operator_equals_both_empty, test_static_string)
 {
-    EXPECT_TRUE(string_type() == string_type());
+    BOOST_TEST(string_type() == string_type());
 }
 
-TEST_F(StaticStringTest, OperatorEquals_BothEmptyAfterClear_ReturnsTrue)
+BOOST_FIXTURE_TEST_CASE(operator_equals_both_empty_after_clear, test_static_string)
 {
     string_type s1 ("abc");
     string_type s2 ("def");
     s1.clear();
     s2.clear();
-    EXPECT_TRUE(s1 == s2);
+    BOOST_TEST(s1 == s2);
 }
 
-TEST_F(StaticStringTest, OperatorEquals_OneEmptyOneNot_ReturnsFalse)
+BOOST_FIXTURE_TEST_CASE(operator_equals_one_empty_one_not, test_static_string)
 {
-    EXPECT_FALSE(string_type() == string_type(midsize));
-    EXPECT_FALSE(string_type(midsize) == string_type());
-    EXPECT_FALSE(string_type() == string_type(maxsize));
-    EXPECT_FALSE(string_type(maxsize) == string_type());
+    BOOST_TEST(!(string_type() == string_type(midsize)));
+    BOOST_TEST(!(string_type(midsize) == string_type()));
+    BOOST_TEST(!(string_type() == string_type(maxsize)));
+    BOOST_TEST(!(string_type(maxsize) == string_type()));
 }
 
-TEST_F(StaticStringTest, OperatorEquals_SameBeginningDifferentSize_ReturnsFalse)
+BOOST_FIXTURE_TEST_CASE(operator_equals_same_beginning_different_size, test_static_string)
 {
     string_type s1 ("abcd");
     string_type s2 ("abcde");
-    EXPECT_FALSE(s1 == s2);
-    EXPECT_FALSE(s2 == s1);
+    BOOST_TEST(!(s1 == s2));
+    BOOST_TEST(!(s2 == s1));
 }
 
-TEST_F(StaticStringTest, OperatorEquals_SameSizeDifferentContents_ReturnsFalse)
+BOOST_FIXTURE_TEST_CASE(operator_equals_same_size_different_contents, test_static_string)
 {
     string_type s1 ("abcd");
     string_type s2 ("dcba");
-    EXPECT_FALSE(s1 == s2);
-    EXPECT_FALSE(s2 == s1);
+    BOOST_TEST(!(s1 == s2));
+    BOOST_TEST(!(s2 == s1));
 }
 
-TEST_F(StaticStringTest, OperatorEquals_SameContents_ReturnsTrue)
+BOOST_FIXTURE_TEST_CASE(operator_equals_same_contents, test_static_string)
 {
-    EXPECT_TRUE(string_type(midsize) == string_type(midsize));
-    EXPECT_TRUE(string_type(maxsize) == string_type(maxsize));
+    BOOST_TEST(string_type(midsize) == string_type(midsize));
+    BOOST_TEST(string_type(maxsize) == string_type(maxsize));
 }
 
 // operator !=
-TEST_F(StaticStringTest, OperatorNotEquals_Equals_ReturnsFalse)
+BOOST_FIXTURE_TEST_CASE(operator_not_equals_equals, test_static_string)
 {
-    EXPECT_FALSE(string_type() != string_type());
-    EXPECT_FALSE(string_type(midsize) != string_type(midsize));
-    EXPECT_FALSE(string_type(maxsize) != string_type(maxsize));
+    BOOST_TEST(!(string_type() != string_type()));
+    BOOST_TEST(!(string_type(midsize) != string_type(midsize)));
+    BOOST_TEST(!(string_type(maxsize) != string_type(maxsize)));
 }
 
-TEST_F(StaticStringTest, OperatorNotEquals_NotEquals_ReturnsTrue)
+BOOST_FIXTURE_TEST_CASE(operator_not_equals_not_equals, test_static_string)
 {
-    EXPECT_TRUE(string_type() != string_type(midsize));
-    EXPECT_TRUE(string_type("abc") != string_type("cba"));
-    EXPECT_TRUE(string_type(midsize) != string_type(maxsize));
+    BOOST_TEST(string_type() != string_type(midsize));
+    BOOST_TEST(string_type("abc") != string_type("cba"));
+    BOOST_TEST(string_type(midsize) != string_type(maxsize));
 }
 
 // clear
-TEST_F(StaticStringTest, Clear_Empty_Empty)
+BOOST_FIXTURE_TEST_CASE(clear_empty, test_static_string)
 {
     string_type v;
     v.clear();
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
-TEST_F(StaticStringTest, Clear_NotEmpty_Empty)
+BOOST_FIXTURE_TEST_CASE(clear_not_empty, test_static_string)
 {
     string_type v (maxsize);
     v.clear();
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
 // append
-TEST_F(StaticStringTest, Append_FromEmptyToEmpty_Empty)
+BOOST_FIXTURE_TEST_CASE(append_from_empty_to_empty, test_static_string)
 {
     string_type v;
     v.append(midsize.data(), 0);
     wipe_midsize();
-    EXPECT_EQ(v.value(), "");
+    BOOST_TEST(v.value() == "");
 }
 
-TEST_F(StaticStringTest, Append_FromEmptyToMidsize_Copies)
+BOOST_FIXTURE_TEST_CASE(append_from_empty_to_midsize, test_static_string)
 {
     string_type v;
     v.append(midsize.data(), midsize.size());
     wipe_midsize();
-    EXPECT_EQ(v.value(), original_midsize());
+    BOOST_TEST(v.value() == original_midsize());
 }
 
-TEST_F(StaticStringTest, Append_FromEmptyToMaxsize_Copies)
+BOOST_FIXTURE_TEST_CASE(append_from_empty_to_maxsize, test_static_string)
 {
     string_type v;
     v.append(maxsize.data(), maxsize.size());
     wipe_maxsize();
-    EXPECT_EQ(v.value(), original_maxsize());
+    BOOST_TEST(v.value() == original_maxsize());
 }
 
-TEST_F(StaticStringTest, Append_FromMidsizeToMidsize_Copies)
+BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, test_static_string)
 {
     string_type v ("222");
     v.append(midsize.data(), midsize.size());
     wipe_midsize();
-    EXPECT_EQ(v.value(), "222" + original_midsize());
+    BOOST_TEST(v.value() == "222" + original_midsize());
 }
 
-TEST_F(StaticStringTest, Append_FromMidsizeToMaxsize_Copies)
+BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_maxsize, test_static_string)
 {
     string_type v (midsize);
     std::string newbuff (max_size_value - midsize.size(), '1');
     v.append(newbuff.data(), newbuff.size());
     wipe_midsize();
-    EXPECT_EQ(v.value(), original_midsize() + newbuff);
+    BOOST_TEST(v.value() == original_midsize() + newbuff);
 }
 
 } // anon namespace

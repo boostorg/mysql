@@ -5,23 +5,27 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <gtest/gtest.h>
+#include "boost/mysql/value.hpp"
+#include "test_common.hpp"
 #include <boost/type_index.hpp>
+#include <boost/test/data/monomorphic/collection.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <sstream>
 #include <map>
-#include "boost/mysql/value.hpp"
-#include "boost/mysql/detail/auxiliar/stringize.hpp"
-#include "test_common.hpp"
+#include <tuple>
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::value::variant_type)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 using namespace boost::mysql::test;
-using namespace testing;
+using namespace boost::unit_test;
 using boost::mysql::value;
 using boost::typeindex::type_index;
 using boost::typeindex::type_id;
-using boost::mysql::detail::stringize;
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_value)
 
 using vt = value::variant_type;
 
@@ -29,22 +33,19 @@ template <typename T>
 std::string type_name() { return type_id<T>().pretty_name(); }
 
 // Constructors
-struct value_constructor_testcase : public named
+struct value_constructor_sample
 {
+    const char* name;
     value v;
     vt expected;
 
-    value_constructor_testcase(std::string name, value v, vt expected) :
-        named(std::move(name)), v(v), expected(expected) {}
+    value_constructor_sample(const char* name, value v, vt expected) :
+        name(name), v(v), expected(expected) {}
 };
 
-struct ValueConstructorTest :  public TestWithParam<value_constructor_testcase>
+std::ostream& operator<<(std::ostream& os, const value_constructor_sample& input)
 {
-};
-
-TEST_P(ValueConstructorTest, Constructor_Trivial_ContainedVariantMatches)
-{
-    EXPECT_EQ(GetParam().v.to_variant(), GetParam().expected);
+    return os << input.name;
 }
 
 std::string test_string ("test");
@@ -63,133 +64,135 @@ const T& const_int()
     return res;
 }
 
-INSTANTIATE_TEST_SUITE_P(Default, ValueConstructorTest, Values(
-    value_constructor_testcase("default_constructor", value(), vt(nullptr)),
-    value_constructor_testcase("from_nullptr", value(nullptr), vt(nullptr)),
-    value_constructor_testcase("from_u8", value(std::uint8_t(0xff)), vt(std::uint64_t(0xff))),
-    value_constructor_testcase("from_u8_const_lvalue", value(const_int<std::uint8_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u8_lvalue", value(non_const_int<std::uint8_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u16", value(std::uint16_t(0xffff)), vt(std::uint64_t(0xffff))),
-    value_constructor_testcase("from_u16_const_lvalue", value(const_int<std::uint16_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u16_lvalue", value(non_const_int<std::uint16_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_ushort", value((unsigned short)(0xffff)), vt(std::uint64_t(0xffff))),
-    value_constructor_testcase("from_u32", value(std::uint32_t(42)), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u32_const_lvalue", value(const_int<std::uint32_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u32_lvalue", value(non_const_int<std::uint32_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_uint", value(42u), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_ulong", value(42uL), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_ulonglong", value(42uLL), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u64", value(std::uint64_t(42)), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u64_const_lvalue", value(const_int<std::uint64_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_u64_lvalue", value(non_const_int<std::uint64_t>()), vt(std::uint64_t(42))),
-    value_constructor_testcase("from_s8", value(std::int8_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s8_const_lvalue", value(const_int<std::int8_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s8_lvalue", value(non_const_int<std::int8_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s16", value(std::int16_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s16_const_lvalue", value(const_int<std::int16_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s16_lvalue", value(non_const_int<std::int16_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_sshort", value(short(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s32", value(std::int32_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s32_const_lvalue", value(const_int<std::int32_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s32_lvalue", value(non_const_int<std::int32_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_sint", value(-42), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_slong", value(-42L), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_slonglong", value(-42LL), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s64", value(std::int64_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_testcase("from_s64_const_lvalue", value(const_int<std::int64_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_s64_lvalue", value(non_const_int<std::int64_t>()), vt(std::int64_t(42))),
-    value_constructor_testcase("from_string_view", value(boost::string_view("test")), vt("test")),
-    value_constructor_testcase("from_string", value(test_string), vt("test")),
-    value_constructor_testcase("from_const_char", value("test"), vt("test")),
-    value_constructor_testcase("from_float", value(4.2f), vt(4.2f)),
-    value_constructor_testcase("from_double", value(4.2), vt(4.2)),
-    value_constructor_testcase("from_date", value(makedate(2020, 1, 10)), vt(makedate(2020, 1, 10))),
-    value_constructor_testcase("from_datetime", value(makedt(2020, 1, 10, 5)), vt(makedt(2020, 1, 10, 5))),
-    value_constructor_testcase("from_time", value(maket(1, 2, 3)), vt(maket(1, 2, 3)))
-), test_name_generator);
+const value_constructor_sample all_value_constructor_samples [] {
+    value_constructor_sample("default_constructor", value(), vt(nullptr)),
+    value_constructor_sample("from_nullptr", value(nullptr), vt(nullptr)),
+    value_constructor_sample("from_u8", value(std::uint8_t(0xff)), vt(std::uint64_t(0xff))),
+    value_constructor_sample("from_u8_const_lvalue", value(const_int<std::uint8_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u8_lvalue", value(non_const_int<std::uint8_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u16", value(std::uint16_t(0xffff)), vt(std::uint64_t(0xffff))),
+    value_constructor_sample("from_u16_const_lvalue", value(const_int<std::uint16_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u16_lvalue", value(non_const_int<std::uint16_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_ushort", value((unsigned short)(0xffff)), vt(std::uint64_t(0xffff))),
+    value_constructor_sample("from_u32", value(std::uint32_t(42)), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u32_const_lvalue", value(const_int<std::uint32_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u32_lvalue", value(non_const_int<std::uint32_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_uint", value(42u), vt(std::uint64_t(42))),
+    value_constructor_sample("from_ulong", value(42uL), vt(std::uint64_t(42))),
+    value_constructor_sample("from_ulonglong", value(42uLL), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u64", value(std::uint64_t(42)), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u64_const_lvalue", value(const_int<std::uint64_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u64_lvalue", value(non_const_int<std::uint64_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_s8", value(std::int8_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s8_const_lvalue", value(const_int<std::int8_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s8_lvalue", value(non_const_int<std::int8_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s16", value(std::int16_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s16_const_lvalue", value(const_int<std::int16_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s16_lvalue", value(non_const_int<std::int16_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_sshort", value(short(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s32", value(std::int32_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s32_const_lvalue", value(const_int<std::int32_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s32_lvalue", value(non_const_int<std::int32_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_sint", value(-42), vt(std::int64_t(-42))),
+    value_constructor_sample("from_slong", value(-42L), vt(std::int64_t(-42))),
+    value_constructor_sample("from_slonglong", value(-42LL), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s64", value(std::int64_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s64_const_lvalue", value(const_int<std::int64_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s64_lvalue", value(non_const_int<std::int64_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_string_view", value(boost::string_view("test")), vt("test")),
+    value_constructor_sample("from_string", value(test_string), vt("test")),
+    value_constructor_sample("from_const_char", value("test"), vt("test")),
+    value_constructor_sample("from_float", value(4.2f), vt(4.2f)),
+    value_constructor_sample("from_double", value(4.2), vt(4.2)),
+    value_constructor_sample("from_date", value(makedate(2020, 1, 10)), vt(makedate(2020, 1, 10))),
+    value_constructor_sample("from_datetime", value(makedt(2020, 1, 10, 5)), vt(makedt(2020, 1, 10, 5))),
+    value_constructor_sample("from_time", value(maket(1, 2, 3)), vt(maket(1, 2, 3)))
+};
+
+BOOST_DATA_TEST_CASE(constructor, data::make(all_value_constructor_samples))
+{
+    BOOST_TEST(sample.v.to_variant() == sample.expected);
+}
 
 // Copy and move
-TEST(ValueTest, CopyConstructor_FromNonConstLValue_Copies)
+BOOST_AUTO_TEST_CASE(copy_constructor_from_non_const_lvalue)
 {
     value v (10);
     value v2 (v);
-    EXPECT_EQ(v2.to_variant(), vt(std::int64_t(10)));
+    BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
-TEST(ValueTest, CopyConstructor_FromConstLValue_Copies)
+BOOST_AUTO_TEST_CASE(copy_constructor_from_const_lvalue)
 {
     const value v (10);
     value v2 (v);
-    EXPECT_EQ(v2.to_variant(), vt(std::int64_t(10)));
+    BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
-TEST(ValueTest, MoveConstructor_Trivial_Copies)
+BOOST_AUTO_TEST_CASE(move_constructor)
 {
     value v (10);
     value v2 (std::move(v));
-    EXPECT_EQ(v2.to_variant(), vt(std::int64_t(10)));
+    BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
-TEST(ValueTest, CopyAssignment_FromNonConstLValue_Copies)
+BOOST_AUTO_TEST_CASE(copy_assignment_from_non_const_lvalue)
 {
     value v (10);
     value v2;
     v2 = v;
-    EXPECT_EQ(v2.to_variant(), vt(std::int64_t(10)));
+    BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
-TEST(ValueTest, CopyAssignament_FromConstLValue_Copies)
+BOOST_AUTO_TEST_CASE(copy_assignament_from_const_lvalue)
 {
     const value v (10);
     value v2;
     v2 = v;
-    EXPECT_EQ(v2.to_variant(), vt(std::int64_t(10)));
+    BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
-TEST(ValueTest, MoveAssignment_Trivial_Copies)
+BOOST_AUTO_TEST_CASE(move_assignment)
 {
     value v (10);
     value v2;
     v2 = std::move(v);
-    EXPECT_EQ(v2.to_variant(), vt(std::int64_t(10)));
+    BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
 // accessors: is, is_convertible_to, is_null, get, get_optional
-const vt all_types [] = {
-    vt(nullptr),
-    vt(std::uint64_t{}),
-    vt(std::int64_t{}),
-    vt(boost::string_view{}),
-    vt(float{}),
-    vt(double{}),
-    vt(boost::mysql::date{}),
-    vt(boost::mysql::datetime{}),
-    vt(boost::mysql::time{})
-};
+using all_types = std::tuple<
+    std::nullptr_t,
+    std::uint64_t,
+    std::int64_t,
+    boost::string_view,
+    float,
+    double,
+    boost::mysql::date,
+    boost::mysql::datetime,
+    boost::mysql::time
+>;
 
-template <typename Callable>
-void for_each_type(Callable&& cb)
+struct accessors_sample
 {
-    for (auto type_variant : all_types)
-    {
-        boost::variant2::visit(std::forward<Callable>(cb), type_variant);
-    }
-}
-
-struct accessors_testcase : public named
-{
+    const char* name;
     value v;
     type_index is_type; // the type for which is() should return true
     std::map<type_index, vt> conversions;
 
-    accessors_testcase(std::string&& name, value v, type_index is, std::map<type_index, vt>&& convs) :
-        named(std::move(name)),
+    accessors_sample(const char* name, value v, type_index is, std::map<type_index, vt>&& convs) :
+        name(name),
         v(v),
         is_type(is),
         conversions(std::move(convs))
     {
     }
 };
+
+std::ostream& operator<<(std::ostream& os, const accessors_sample& input)
+{
+    return os << input.name;
+}
 
 template <typename... Types>
 std::map<type_index, vt> make_conversions(const Types&... types)
@@ -198,209 +201,133 @@ std::map<type_index, vt> make_conversions(const Types&... types)
 }
 
 template <typename T>
-accessors_testcase make_default_accessors_testcase(
-    std::string&& name,
+accessors_sample make_default_accessors_sample(
+    const char* name,
     const T& v
 )
 {
-    return accessors_testcase(std::move(name), value(v), type_id<T>(), make_conversions(v));
+    return accessors_sample(name, value(v), type_id<T>(), make_conversions(v));
 }
 
-struct ValueAccessorsTest : TestWithParam<accessors_testcase>
-{
+const accessors_sample all_accessors_samples [] {
+    make_default_accessors_sample("null", nullptr),
+    accessors_sample("i64_positive", value(std::int64_t(42)), type_id<std::int64_t>(),
+            make_conversions(std::int64_t(42), std::uint64_t(42))),
+    accessors_sample("i64_negative", value(std::int64_t(-42)), type_id<std::int64_t>(),
+            make_conversions(std::int64_t(-42))),
+    accessors_sample("i64_zero", value(std::int64_t(0)), type_id<std::int64_t>(),
+            make_conversions(std::int64_t(0), std::uint64_t(0))),
+    accessors_sample("u64_small", value(std::uint64_t(42)), type_id<std::uint64_t>(),
+            make_conversions(std::int64_t(42), std::uint64_t(42))),
+    accessors_sample("u64_big", value(std::uint64_t(0xfffffffffffffffe)), type_id<std::uint64_t>(),
+            make_conversions(std::uint64_t(0xfffffffffffffffe))),
+    accessors_sample("u64_zero", value(std::uint64_t(0)), type_id<std::uint64_t>(),
+            make_conversions(std::int64_t(0), std::uint64_t(0))),
+            make_default_accessors_sample("string_view", makesv("test")),
+    accessors_sample("float", value(4.2f), type_id<float>(),
+            make_conversions(4.2f, double(4.2f))),
+    make_default_accessors_sample("double", 4.2),
+    make_default_accessors_sample("date", makedate(2020, 10, 5)),
+    make_default_accessors_sample("datetime", makedt(2020, 10, 5, 10, 20, 30)),
+    make_default_accessors_sample("time", maket(10, 20, 30))
 };
 
-TEST_P(ValueAccessorsTest, IsNull_Trivial_ReturnsTrueOnlyForNullptrAlternative)
+// Template + data tests not supported. We use template
+// test cases and use this function to emulate data test cases
+template <typename Callable>
+void for_each_accessors_sample(Callable&& cb)
 {
-    bool expected = GetParam().is_type == type_id<std::nullptr_t>();
-    EXPECT_EQ(GetParam().v.is_null(), expected);
-}
-
-struct is_visitor
-{
-    template <typename T>
-    void operator()(T) const
+    for (const auto& sample: all_accessors_samples)
     {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        bool expected = param.is_type == type_id<T>();
-        EXPECT_EQ(param.v.is<T>(), expected) << type_name<T>();
+        BOOST_TEST_CHECKPOINT(sample);
+        cb(sample);
     }
-};
-
-TEST_P(ValueAccessorsTest, Is_Trivial_ReturnsTrueOnlyIfTypeMatches)
-{
-    for_each_type(is_visitor());
 }
 
-struct is_convertible_to_visitor
+BOOST_DATA_TEST_CASE(is_null, data::make(all_accessors_samples))
 {
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        bool expected = it != param.conversions.end();
-        EXPECT_EQ(param.v.is_convertible_to<T>(), expected) << type_name<T>();
-    }
-};
-
-TEST_P(ValueAccessorsTest, IsConvertibleTo_TypeAllowsConversions_ReturnsTrue)
-{
-    for_each_type(is_convertible_to_visitor());
+    bool expected = sample.is_type == type_id<std::nullptr_t>();
+    BOOST_TEST(sample.v.is_null() == expected);
 }
 
-struct get_ok_visitor
+BOOST_AUTO_TEST_CASE_TEMPLATE(is, T, all_types)
 {
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        if (it != param.conversions.end())
+    for_each_accessors_sample([](const accessors_sample& sample) {
+        bool expected = sample.is_type == type_id<T>();
+        BOOST_TEST(sample.v.is<T>() == expected, sample);
+    });
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_convertible_to, T, all_types)
+{
+    for_each_accessors_sample([](const accessors_sample& sample) {
+        auto it = sample.conversions.find(type_id<T>());
+        bool expected = it != sample.conversions.end();
+        BOOST_TEST(sample.v.is_convertible_to<T>() == expected, sample);
+    });
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(get, T, all_types)
+{
+    for_each_accessors_sample([](const accessors_sample& sample) {
+        auto it = sample.conversions.find(type_id<T>());
+        if (it != sample.conversions.end())
         {
             T expected = boost::variant2::get<T>(it->second);
-            EXPECT_EQ(param.v.get<T>(), expected) << type_name<T>();
+            BOOST_TEST(sample.v.get<T>() == expected, sample);
         }
-    }
-};
-
-TEST_P(ValueAccessorsTest, Get_TypeConvertibleToTarget_ReturnsConvertedValue)
-{
-    for_each_type(get_ok_visitor());
-}
-
-struct get_nook_visitor
-{
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        if (it == param.conversions.end())
+        else
         {
-            EXPECT_THROW(param.v.get<T>(), boost::variant2::bad_variant_access) << type_name<T>();
+            BOOST_CHECK_THROW(sample.v.get<T>(), boost::variant2::bad_variant_access);
         }
-    }
-};
-
-TEST_P(ValueAccessorsTest, Get_TypeNotConvertibleToTarget_Throws)
-{
-    for_each_type(get_nook_visitor());
+    });
 }
 
-struct get_optional_ok_visitor
+BOOST_AUTO_TEST_CASE_TEMPLATE(get_optional, T, all_types)
 {
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        if (it != param.conversions.end())
+    for_each_accessors_sample([](const accessors_sample& sample) {
+        auto it = sample.conversions.find(type_id<T>());
+        if (it != sample.conversions.end())
         {
             auto expected = boost::variant2::get<T>(it->second);
-            auto opt = param.v.get_optional<T>();
-            ASSERT_TRUE(opt) << type_name<T>();
-            EXPECT_EQ(*opt, expected) << type_name<T>();
+            auto opt = sample.v.get_optional<T>();
+            BOOST_TEST_REQUIRE(opt.has_value(), sample);
+            BOOST_TEST(*opt == expected, sample);
         }
-    }
-};
-
-TEST_P(ValueAccessorsTest, GetOptional_TypeConvertibleToTarget_ReturnsConvertedValue)
-{
-    for_each_type(get_optional_ok_visitor());
-}
-
-struct get_optional_nook_visitor
-{
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        if (it == param.conversions.end())
+        else
         {
-            EXPECT_FALSE(param.v.get_optional<T>()) << type_name<T>();
+            BOOST_TEST(!sample.v.get_optional<T>().has_value(), sample);
         }
-    }
-};
-
-TEST_P(ValueAccessorsTest, GetOptional_TypeNotConvertibleToTarget_ReturnsEmptyOptional)
-{
-    for_each_type(get_optional_nook_visitor());
+    });
 }
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 
-struct get_std_optional_ok_visitor
+BOOST_AUTO_TEST_CASE_TEMPLATE(get_std_optional, T, all_types)
 {
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        if (it != param.conversions.end())
+    for_each_accessors_sample([](const accessors_sample& sample) {
+        auto it = sample.conversions.find(type_id<T>());
+        if (it != sample.conversions.end())
         {
             auto expected = boost::variant2::get<T>(it->second);
-            auto opt = param.v.get_std_optional<T>();
-            ASSERT_TRUE(opt) << type_name<T>();
-            EXPECT_EQ(*opt, expected) << type_name<T>();
+            auto opt = sample.v.get_std_optional<T>();
+            BOOST_TEST_REQUIRE(opt.has_value(), sample);
+            BOOST_TEST(*opt == expected, sample);
         }
-    }
-};
-
-TEST_P(ValueAccessorsTest, GetStdOptional_TypeConvertibleToTarget_ReturnsConvertedValue)
-{
-    for_each_type(get_std_optional_ok_visitor());
-}
-
-struct get_std_optional_nook_visitor
-{
-    template <typename T>
-    void operator()(T) const
-    {
-        const auto& param = WithParamInterface<accessors_testcase>::GetParam();
-        auto it = param.conversions.find(type_id<T>());
-        if (it == param.conversions.end())
+        else
         {
-            EXPECT_FALSE(param.v.get_std_optional<T>()) << type_name<T>();
+            BOOST_TEST(!sample.v.get_std_optional<T>().has_value(), sample);
         }
-    }
-};
-
-TEST_P(ValueAccessorsTest, GetStdOptional_TypeNotConvertibleToTarget_ReturnsEmptyOptional)
-{
-    for_each_type(get_std_optional_nook_visitor());
+    });
 }
 
 #endif // BOOST_NO_CXX17_HDR_OPTIONAL
 
-INSTANTIATE_TEST_SUITE_P(Default, ValueAccessorsTest, Values(
-    make_default_accessors_testcase("null", nullptr),
-    accessors_testcase("i64_positive", value(std::int64_t(42)), type_id<std::int64_t>(),
-            make_conversions(std::int64_t(42), std::uint64_t(42))),
-    accessors_testcase("i64_negative", value(std::int64_t(-42)), type_id<std::int64_t>(),
-            make_conversions(std::int64_t(-42))),
-    accessors_testcase("i64_zero", value(std::int64_t(0)), type_id<std::int64_t>(),
-            make_conversions(std::int64_t(0), std::uint64_t(0))),
-    accessors_testcase("u64_small", value(std::uint64_t(42)), type_id<std::uint64_t>(),
-            make_conversions(std::int64_t(42), std::uint64_t(42))),
-    accessors_testcase("u64_big", value(std::uint64_t(0xfffffffffffffffe)), type_id<std::uint64_t>(),
-            make_conversions(std::uint64_t(0xfffffffffffffffe))),
-    accessors_testcase("u64_zero", value(std::uint64_t(0)), type_id<std::uint64_t>(),
-            make_conversions(std::int64_t(0), std::uint64_t(0))),
-    make_default_accessors_testcase("string_view", makesv("test")),
-    accessors_testcase("float", value(4.2f), type_id<float>(),
-            make_conversions(4.2f, double(4.2f))),
-    make_default_accessors_testcase("double", 4.2),
-    make_default_accessors_testcase("date", makedate(2020, 10, 5)),
-    make_default_accessors_testcase("datetime", makedt(2020, 10, 5, 10, 20, 30)),
-    make_default_accessors_testcase("time", maket(10, 20, 30))
-), test_name_generator);
 
 // operator== and operator!=
-struct ValueEqualityTest : public Test
+struct value_equality_fixture
 {
-    std::vector<value> values = makevalues(
+    std::vector<value> values = make_value_vector(
         std::int64_t(-1),
         std::uint64_t(0x100000000),
         "string",
@@ -413,21 +340,21 @@ struct ValueEqualityTest : public Test
     );
 };
 
-TEST_F(ValueEqualityTest, OperatorsEqNe_DifferentType_ReturnNotEquals)
+BOOST_FIXTURE_TEST_CASE(operators_eq_ne_different_type, value_equality_fixture)
 {
     for (std::size_t i = 0; i < values.size(); ++i)
     {
         for (std::size_t j = 0; j < i; ++j)
         {
-            EXPECT_FALSE(values.at(i) == values.at(j)) << "i=" << i << ", j=" << j;
-            EXPECT_TRUE(values.at(i) != values.at(j))  << "i=" << i << ", j=" << j;
+            BOOST_TEST(!(values.at(i) == values.at(j)));
+            BOOST_TEST(values.at(i) != values.at(j));
         }
     }
 }
 
-TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeDifferentValue_ReturnNotEquals)
+BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_different_value, value_equality_fixture)
 {
-    auto other_values = makevalues(
+    auto other_values = make_value_vector(
         std::int64_t(-22),
         std::uint64_t(222),
         "other_string",
@@ -443,45 +370,49 @@ TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeDifferentValue_ReturnNotEquals)
     // so it is excluded from this test
     for (std::size_t i = 0; i < values.size() - 1; ++i)
     {
-        EXPECT_FALSE(values.at(i) == other_values.at(i)) << "i=" << i;
-        EXPECT_TRUE(values.at(i) != other_values.at(i))  << "i=" << i;
+        BOOST_TEST(!(values.at(i) == other_values.at(i)));
+        BOOST_TEST(values.at(i) != other_values.at(i));
     }
 }
 
-TEST_F(ValueEqualityTest, OperatorsEqNe_SameTypeSameValue_ReturnEquals)
+BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_same_value, value_equality_fixture)
 {
     std::vector<value> values_copy = values;
     for (std::size_t i = 0; i < values.size(); ++i)
     {
-        EXPECT_TRUE(values.at(i) == values_copy.at(i))  << "i=" << i;
-        EXPECT_FALSE(values.at(i) != values_copy.at(i)) << "i=" << i;
+        BOOST_TEST(values.at(i) == values_copy.at(i));
+        BOOST_TEST(!(values.at(i) != values_copy.at(i)));
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(operators_eq_ne_self_comparison, value_equality_fixture)
+{
+    for (std::size_t i = 0; i < values.size(); ++i)
+    {
+        BOOST_TEST(values.at(i) == values.at(i));
+        BOOST_TEST(!(values.at(i) != values.at(i)));
     }
 }
 
 // operator<<
-struct stream_testcase : public named
+struct stream_sample
 {
+    std::string name;
     value input;
     std::string expected;
 
     template <typename T>
-    stream_testcase(std::string&& name, T input, std::string&& expected) :
-        named(std::move(name)),
+    stream_sample(std::string&& name, T input, std::string&& expected) :
+        name(std::move(name)),
         input(input),
         expected(std::move(expected))
     {
     }
 };
 
-struct ValueStreamTest : TestWithParam<stream_testcase>
+std::ostream& operator<<(std::ostream& os, const stream_sample& input)
 {
-};
-
-TEST_P(ValueStreamTest, OutputStream_Trivial_ProducesExpectedString)
-{
-    std::ostringstream ss;
-    ss << GetParam().input;
-    EXPECT_EQ(ss.str(), GetParam().expected);
+    return os << input.name;
 }
 
 // Helper struct to define stream operations for date, datetime and time
@@ -494,7 +425,7 @@ struct component_value
     const char* repr;
 };
 
-void add_date_cases(std::vector<stream_testcase>& output)
+void add_date_samples(std::vector<stream_sample>& output)
 {
     constexpr component_value year_values [] = {
         { "min", 0, "0000" },
@@ -534,7 +465,7 @@ void add_date_cases(std::vector<stream_testcase>& output)
     }
 }
 
-void add_datetime_cases(std::vector<stream_testcase>& output)
+void add_datetime_samples(std::vector<stream_sample>& output)
 {
     constexpr component_value year_values [] = {
         { "min", 0, "0000" },
@@ -625,7 +556,7 @@ void add_datetime_cases(std::vector<stream_testcase>& output)
     }
 }
 
-void add_time_cases(std::vector<stream_testcase>& output)
+void add_time_samples(std::vector<stream_sample>& output)
 {
     constexpr component_value sign_values [] = {
         { "positive", 1, "" },
@@ -688,9 +619,9 @@ void add_time_cases(std::vector<stream_testcase>& output)
     }
 }
 
-std::vector<stream_testcase> make_stream_cases()
+std::vector<stream_sample> make_stream_samples()
 {
-    std::vector<stream_testcase> res {
+    std::vector<stream_sample> res {
         { "null", nullptr, "<NULL>" },
         { "i64_positive", std::int64_t(42), "42" },
         { "i64_negative", std::int64_t(-90), "-90" },
@@ -701,14 +632,17 @@ std::vector<stream_testcase> make_stream_cases()
         { "float", 2.43f, "2.43" },
         { "double", 8.12, "8.12" },
     };
-    add_date_cases(res);
-    add_datetime_cases(res);
-    add_time_cases(res);
+    add_date_samples(res);
+    add_datetime_samples(res);
+    add_time_samples(res);
     return res;
 }
 
-INSTANTIATE_TEST_SUITE_P(Default, ValueStreamTest, ValuesIn(
-    make_stream_cases()
-), test_name_generator);
-
+BOOST_DATA_TEST_CASE(operator_stream, data::make(make_stream_samples()))
+{
+    std::ostringstream ss;
+    ss << sample.input;
+    BOOST_TEST(ss.str() == sample.expected);
 }
+
+BOOST_AUTO_TEST_SUITE_END() // test_value

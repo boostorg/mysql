@@ -12,58 +12,37 @@ using boost::mysql::socket_connection;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 
-namespace
+BOOST_AUTO_TEST_SUITE(test_connect)
+
+BOOST_MYSQL_NETWORK_TEST(physical_and_handshake_ok, network_fixture, network_ssl_gen)
 {
+    auto ep = get_endpoint<Stream>(endpoint_kind::localhost);
+    auto result = sample.net->connect(this->conn, ep, this->params);
+    result.validate_no_error();
 
-template <typename Stream>
-struct ConnectTest : NetworkTest<Stream>
-{
-    network_functions<Stream>* net;
-    socket_connection<Stream> other_conn;
-
-    ConnectTest():
-        net(this->GetParam().net),
-        other_conn(this->ctx)
-    {
-    }
-
-    void AllSucceeded_SuccessfulLogin()
-    {
-        auto ep = get_endpoint<Stream>(endpoint_kind::localhost);
-        auto result = net->connect(other_conn, ep, this->params);
-        result.validate_no_error();
-
-        // We are able to query
-        auto query_result = net->query(other_conn, "SELECT 1");
-        query_result.validate_no_error();
-        query_result.value.fetch_all(); // discard any result
-    }
-
-    void PhysicalConnectFailed_FailsClosesStream()
-    {
-        auto ep = get_endpoint<Stream>(endpoint_kind::inexistent);
-        auto result = net->connect(other_conn, ep, this->params);
-        // depending on system and stream type, error code will be different
-        result.validate_any_error({"physical connect failed"});
-        EXPECT_FALSE(other_conn.next_layer().is_open());
-    }
-
-    void PhysicalConnectSucceededHandshakeFailed_FailsClosesStream()
-    {
-        auto ep = get_endpoint<Stream>(endpoint_kind::localhost);
-        this->set_credentials("integ_user", "bad_password");
-        auto result = net->connect(other_conn, ep, this->params);
-        result.validate_error(errc::access_denied_error, {"access denied", "integ_user"});
-        EXPECT_FALSE(other_conn.next_layer().is_open());
-    }
-
-};
-
-BOOST_MYSQL_NETWORK_TEST_SUITE(ConnectTest)
-
-BOOST_MYSQL_NETWORK_TEST(ConnectTest, AllSucceeded_SuccessfulLogin)
-BOOST_MYSQL_NETWORK_TEST(ConnectTest, PhysicalConnectFailed_FailsClosesStream)
-BOOST_MYSQL_NETWORK_TEST(ConnectTest, PhysicalConnectSucceededHandshakeFailed_FailsClosesStream)
-
+    // We are able to query
+    auto query_result = sample.net->query(this->conn, "SELECT 1");
+    query_result.validate_no_error();
+    query_result.value.fetch_all(); // discard any result
 }
+
+BOOST_MYSQL_NETWORK_TEST(physical_error, network_fixture, network_ssl_gen)
+{
+    auto ep = get_endpoint<Stream>(endpoint_kind::inexistent);
+    auto result = sample.net->connect(this->conn, ep, this->params);
+    // depending on system and stream type, error code will be different
+    result.validate_any_error({"physical connect failed"});
+    BOOST_TEST(!this->conn.next_layer().is_open());
+}
+
+BOOST_MYSQL_NETWORK_TEST(physical_ok_handshake_error, network_fixture, network_ssl_gen)
+{
+    auto ep = get_endpoint<Stream>(endpoint_kind::localhost);
+    this->set_credentials("integ_user", "bad_password");
+    auto result = sample.net->connect(this->conn, ep, this->params);
+    result.validate_error(errc::access_denied_error, {"access denied", "integ_user"});
+    BOOST_TEST(!this->conn.next_layer().is_open());
+}
+
+BOOST_AUTO_TEST_SUITE_END() // test_connect
 

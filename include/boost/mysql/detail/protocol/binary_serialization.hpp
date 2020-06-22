@@ -15,15 +15,15 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline std::size_t get_binary_value_size(
-    const serialization_context& ctx,
-    const value& input
-) noexcept;
-
-inline void serialize_binary_value(
-    serialization_context& ctx,
-    const value& input
-) noexcept;
+template <>
+struct serialization_traits<value, serialization_tag::none> :
+    noop_deserialize<value>
+{
+    static inline std::size_t get_size_(const serialization_context& ctx,
+            const value& input) noexcept;
+    static inline void serialize_(serialization_context& ctx,
+            const value& input) noexcept;
+};
 
 
 } // detail

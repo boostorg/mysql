@@ -10,34 +10,19 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 
-namespace
+BOOST_AUTO_TEST_SUITE(test_quit_connection)
+
+BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture, network_ssl_gen)
 {
+    this->connect(sample.ssl);
 
-template <typename Stream>
-struct QuitConnectionTest : public NetworkTest<Stream>
-{
-    QuitConnectionTest()
-    {
-        this->connect(this->GetParam().ssl);
-    }
+    // Quit
+    auto result = sample.net->quit(this->conn);
+    result.validate_no_error();
 
-    void ActiveConnection_ClosesIt()
-    {
-        network_functions<Stream>* net = this->GetParam().net;
+    // We are no longer able to query
+    auto query_result = sample.net->query(this->conn, "SELECT 1");
+    query_result.validate_any_error();
+}
 
-        // Quit
-        auto result = net->quit(this->conn);
-        result.validate_no_error();
-
-        // We are no longer able to query
-        auto query_result = net->query(this->conn, "SELECT 1");
-        query_result.validate_any_error();
-    }
-};
-
-BOOST_MYSQL_NETWORK_TEST_SUITE(QuitConnectionTest)
-
-BOOST_MYSQL_NETWORK_TEST(QuitConnectionTest, ActiveConnection_ClosesIt)
-
-} // anon namespace
-
+BOOST_AUTO_TEST_SUITE_END() // test_quit_connection

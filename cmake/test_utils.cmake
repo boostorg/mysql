@@ -5,8 +5,6 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-find_package(Python3 REQUIRED)
-
 # Utility function to set warnings and other compile properties of
 # our test targets
 function(common_target_settings TARGET_NAME)

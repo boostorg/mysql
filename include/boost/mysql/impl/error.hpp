@@ -98,5 +98,13 @@ struct error_block
 } // mysql
 } // boost
 
+inline std::ostream& boost::mysql::operator<<(
+    std::ostream& os,
+    errc value
+)
+{
+    return os << detail::error_to_string(value);
+}
+
 
 #endif

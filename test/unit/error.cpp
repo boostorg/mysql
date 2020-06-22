@@ -5,65 +5,81 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <gtest/gtest.h>
 #include "boost/mysql/error.hpp"
+#include "test_common.hpp"
 
-using namespace testing;
 using boost::mysql::errc;
 using boost::mysql::detail::error_to_string;
 using boost::mysql::error_info;
+using boost::mysql::test::stringize;
+
+BOOST_AUTO_TEST_SUITE(test_error)
 
 // error_to_string
-TEST(ErrcEnum, ErrorToString_Ok_ReturnsOk)
+BOOST_AUTO_TEST_SUITE(errc_error_to_string)
+
+BOOST_AUTO_TEST_CASE(ok)
 {
-    EXPECT_STREQ(error_to_string(errc::ok), "No error");
+    BOOST_TEST(error_to_string(errc::ok) == "No error");
 }
 
-TEST(ErrcEnum, ErrorToString_ClientError_ReturnsDescription)
+BOOST_AUTO_TEST_CASE(client_error)
 {
-    EXPECT_STREQ(error_to_string(errc::sequence_number_mismatch), "Mismatched sequence numbers");
+    BOOST_TEST(error_to_string(errc::sequence_number_mismatch)
+        == "Mismatched sequence numbers");
 }
 
-TEST(ErrcEnum, ErrorToString_ServerError_ReturnsEnumName)
+BOOST_AUTO_TEST_CASE(server_error)
 {
-    EXPECT_STREQ(error_to_string(errc::bad_db_error), "bad_db_error");
+    BOOST_TEST(error_to_string(errc::bad_db_error) == "bad_db_error");
 }
 
-TEST(ErrcEnum, ErrorToString_UnknownErrorOutOfRange_ReturnsUnknown)
+BOOST_AUTO_TEST_CASE(unknown_error_out_of_range)
 {
-    EXPECT_STREQ(error_to_string(static_cast<errc>(0xfffefdfc)), "<unknown error>");
+    BOOST_TEST(error_to_string(static_cast<errc>(0xfffefdfc)) == "<unknown error>");
 }
 
-TEST(ErrcEnum, ErrorToString_UnknownErrorServerRange_ReturnsUnknown)
+BOOST_AUTO_TEST_CASE(unknown_error_server_range)
 {
-    EXPECT_STREQ(error_to_string(static_cast<errc>(1009)), "<unknown error>");
+    BOOST_TEST(error_to_string(static_cast<errc>(1009)) == "<unknown error>");
 }
 
-TEST(ErrcEnum, ErrorToString_UnknownErrorBetweenServerAndClientRange_ReturnsUnknown)
+BOOST_AUTO_TEST_CASE(unknown_error_between_server_and_client_range)
 {
-    EXPECT_STREQ(error_to_string(static_cast<errc>(5000)), "<unknown error>");
+    BOOST_TEST(error_to_string(static_cast<errc>(5000)) == "<unknown error>");
+}
+
+BOOST_AUTO_TEST_SUITE_END() // errc_error_to_string
+
+BOOST_AUTO_TEST_CASE(errc_operator_stream)
+{
+    BOOST_TEST(stringize(errc::ok) == "No error");
 }
 
 // errro_info
-TEST(ErrorInfo, OperatorEquals_Trivial_ComparesMessages)
+BOOST_AUTO_TEST_SUITE(test_error_info)
+
+BOOST_AUTO_TEST_CASE(operator_equals)
 {
-    EXPECT_TRUE(error_info() == error_info());
-    EXPECT_TRUE(error_info("abc") == error_info("abc"));
-    EXPECT_FALSE(error_info() == error_info("abc"));
-    EXPECT_FALSE(error_info("def") == error_info("abc"));
+    BOOST_TEST(error_info() == error_info());
+    BOOST_TEST(error_info("abc") == error_info("abc"));
+    BOOST_TEST(!(error_info() == error_info("abc")));
+    BOOST_TEST(!(error_info("def") == error_info("abc")));
 }
 
-TEST(ErrorInfo, OperatorNotEquals_Trivial_ComparesMessages)
+BOOST_AUTO_TEST_CASE(operator_not_equals)
 {
-    EXPECT_FALSE(error_info() != error_info());
-    EXPECT_FALSE(error_info("abc") != error_info("abc"));
-    EXPECT_TRUE(error_info() != error_info("abc"));
-    EXPECT_TRUE(error_info("def") != error_info("abc"));
+    BOOST_TEST(!(error_info() != error_info()));
+    BOOST_TEST(!(error_info("abc") != error_info("abc")));
+    BOOST_TEST(error_info() != error_info("abc"));
+    BOOST_TEST(error_info("def") != error_info("abc"));
 }
 
-TEST(ErrorInfo, OperatorStream_Trivial_StreamsMessage)
+BOOST_AUTO_TEST_CASE(operator_stream)
 {
-    std::ostringstream ss;
-    ss << error_info("abc");
-    EXPECT_EQ(ss.str(), "abc");
+    BOOST_TEST(stringize(error_info("abc")) == "abc");
 }
+
+BOOST_AUTO_TEST_SUITE_END() // test_error_info
+
+BOOST_AUTO_TEST_SUITE_END() // test_error

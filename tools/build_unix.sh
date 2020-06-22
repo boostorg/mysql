@@ -33,8 +33,10 @@ function build_boost {
          --with-context \
          --with-coroutine \
          --with-date_time \
+         --with-test \
          -d0 \
          toolset=$TRAVIS_COMPILER \
+         $CMAKE_B2_OPTIONS \
          install
     cd ..
     export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
@@ -142,9 +144,6 @@ if [ "$B2_TOOLSET" != "" ]; then # Boost.Build
     # Boost.Build setup
     cp tools/user-config.jam ~/user-config.jam
     
-    # Dependencies
-    export GTEST_ROOT=/tmp/gtest/
-    python3 tools/build_gtest.py $GTEST_ROOT
     # OSX requires setting OpenSSL root
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then 
         export OPENSSL_ROOT=/usr/local/opt/openssl

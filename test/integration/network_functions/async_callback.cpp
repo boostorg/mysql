@@ -8,6 +8,7 @@
 
 #include "network_functions_impl.hpp"
 #include <boost/asio/use_future.hpp>
+#include <boost/test/unit_test.hpp>
 
 using namespace boost::mysql::test;
 using boost::mysql::connection_params;
@@ -36,8 +37,8 @@ public:
     std::thread::id calling_thread() const { return calling_thread_; }
     void verify()
     {
-        EXPECT_EQ(call_count(), 1); // we call handler exactly once
-        EXPECT_NE(calling_thread(), std::this_thread::get_id()); // handler runs in the io_context thread
+        BOOST_TEST(call_count() == 1); // we call handler exactly once
+        BOOST_TEST(calling_thread() != std::this_thread::get_id()); // handler runs in the io_context thread
     }
 };
 

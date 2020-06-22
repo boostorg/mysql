@@ -30,7 +30,6 @@ endif()
 
 # Includes
 include(GNUInstallDirs)
-include(FetchContent)
 
 # Dependencies
 find_package(Boost 1.72.0 REQUIRED COMPONENTS system)

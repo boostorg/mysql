@@ -1,4 +1,3 @@
-Remove gtest
 Better docs
 	Breaking up the tutorial in pieces
 	Explaining the different overloads and async methods available
@@ -40,6 +39,12 @@ Other possible features
     CLIENT_OPTIONAL_RESULTSET_METADATA
     Status flags accessors in resultset (for OK_Packet)
 Technical debt
+    1.74 asio breaking changes
+        Review strand names in unit tests (rebind_executor)
+        Review polymorphic executor name in examples
+        Recover Windows b2 builds
+    Review exception throw by value::get
+    Mock stream and recover channel unit tests
     Do we need --with-system --with-date_time
     Constexpr issues with value and optional
     Increase int serialization test coverage

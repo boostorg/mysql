@@ -9,46 +9,39 @@ import os ;
 
 if [ os.environ BOOST_MYSQL_SHA256_TESTS ]
 {
-    GTEST_FILTER = "*" ;
+    TEST_FILTER = "*" ;
 }
 else
 {
-    GTEST_FILTER = "-*RequiresSha256*" ;
+    TEST_FILTER = "!@sha256" ;
 }
 
 
 alias boost_mysql_test
     :
         /boost/mysql//boost_mysql
-        /user-config//gtest
-        /user-config//gmock
-        common/test_main.cpp
+        /boost/test//boost_unit_test_framework
     :
     :
     :
         <include>common
+        <link>shared
     ;
 
 unit-test boost_mysql_unittests 
     : 
         boost_mysql_test
-        unit/detail/auxiliar/static_string.cpp
         unit/detail/auth/auth_calculator.cpp
-        unit/detail/protocol/serialization_test_common.cpp
-        unit/detail/protocol/serialization.cpp
-        unit/detail/protocol/common_messages.cpp
-        unit/detail/protocol/handshake_messages.cpp
-        unit/detail/protocol/query_messages.cpp
-        unit/detail/protocol/prepared_statement_messages.cpp
+        unit/detail/auxiliar/static_string.cpp
         unit/detail/protocol/capabilities.cpp
+        unit/detail/protocol/date.cpp
+        unit/detail/protocol/null_bitmap_traits.cpp
+        unit/detail/protocol/serialization_test.cpp
         unit/detail/protocol/text_deserialization_value.cpp
         unit/detail/protocol/text_deserialization_error.cpp
         unit/detail/protocol/binary_deserialization_value.cpp
         unit/detail/protocol/binary_deserialization_error.cpp
         unit/detail/protocol/row_deserialization.cpp
-        unit/detail/protocol/binary_serialization.cpp
-        unit/detail/protocol/null_bitmap_traits.cpp
-        unit/detail/protocol/channel.cpp
         unit/metadata.cpp
         unit/value.cpp
         unit/row.cpp
@@ -56,6 +49,7 @@ unit-test boost_mysql_unittests
         unit/prepared_statement.cpp
         unit/resultset.cpp
         unit/connection.cpp
+        unit/entry_point.cpp
     ;
     
 unit-test boost_mysql_integrationtests 
@@ -78,11 +72,12 @@ unit-test boost_mysql_integrationtests
         integration/close_statement.cpp
         integration/resultset.cpp
         integration/prepared_statement_lifecycle.cpp
-        integration/database_types.cpp
         integration/quit_connection.cpp
         integration/close_connection.cpp
+        integration/database_types.cpp
+        integration/entry_point.cpp
     :
-        <testing.arg>"--gtest_filter=$(GTEST_FILTER)"
+        <testing.arg>"-t '$(TEST_FILTER)'"
     ;
     
 build-project ../example ;

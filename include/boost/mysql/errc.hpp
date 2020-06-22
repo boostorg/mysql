@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_ERRC_HPP
 #define BOOST_MYSQL_ERRC_HPP
 
+#include <iosfwd>
+
 namespace boost {
 namespace mysql {
 
@@ -1414,6 +1416,12 @@ enum class errc : int
     auth_plugin_requires_ssl = 65542, ///< The authentication plugin requires the connection to use SSL.
     wrong_num_params = 65543, ///< The number of parameters passed to the prepared statement does not match the number of actual parameters.
 };
+
+/**
+  * \relates errc
+  * \brief Streams an error code.
+  */
+inline std::ostream& operator<<(std::ostream&, errc);
 
 } // mysql
 } // boost

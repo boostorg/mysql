@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cassert>
 
 namespace boost {
 namespace mysql {

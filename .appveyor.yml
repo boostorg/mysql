@@ -19,6 +19,15 @@ environment:
     B2_VARIANT: release,debug
     B2_CXXSTD: 11,14,17
   matrix:
+    # Boost.Build (TODO: recover these when we figure out what happens with Asio 1.74 in Windows)
+    #- FLAVOR: Visual Studio 2019
+    #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    #  PLATFORM: x86
+    #  B2_TOOLSET: msvc-14.2
+    #- FLAVOR: Visual Studio 2019
+    #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    #  PLATFORM: x64
+    #  B2_TOOLSET: msvc-14.2
     # CMake
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_BUILD_TYPE: Debug
@@ -32,13 +41,3 @@ environment:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_BUILD_TYPE: Release
       PLATFORM: x86
-    # Boost.Build
-    - FLAVOR: Visual Studio 2019
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      PLATFORM: x86
-      B2_TOOLSET: msvc-14.2
-    - FLAVOR: Visual Studio 2019
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      PLATFORM: x64
-      B2_TOOLSET: msvc-14.2
-

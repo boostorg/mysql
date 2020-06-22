@@ -7,12 +7,11 @@
 
 #include "boost/mysql/resultset.hpp"
 #include <boost/asio/strand.hpp>
-#include <gtest/gtest.h>
+#include <boost/test/unit_test.hpp>
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_resultset)
 
-TEST(ResultsetTest, RebindExecutor_Trivial_ReturnsCorrectType)
+BOOST_AUTO_TEST_CASE(rebind_executor)
 {
     using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
     using rebound_type = boost::mysql::tcp_resultset::rebind_executor<other_executor>::other;
@@ -22,8 +21,7 @@ TEST(ResultsetTest, RebindExecutor_Trivial_ReturnsCorrectType)
             other_executor
         >
     >;
-    EXPECT_TRUE((std::is_same<rebound_type, expected_type>::value));
+    BOOST_TEST((std::is_same<rebound_type, expected_type>::value));
 }
 
-}
-
+BOOST_AUTO_TEST_SUITE_END() // test_resultset

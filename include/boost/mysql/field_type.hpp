@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_FIELD_TYPE_HPP
 
 #include <cstdint>
+#include <ostream>
 
 namespace boost {
 namespace mysql {
@@ -50,6 +51,41 @@ enum class field_type
     unknown,      ///< None of the known types; maybe a new MySQL type we have no knowledge of.
     _not_computed,
 };
+
+/**
+ * \relates field_type
+ * \brief Streams a boost::mysql::field_type.
+ */
+inline std::ostream& operator<<(std::ostream& os, field_type t)
+{
+    switch (t)
+    {
+    case field_type::tinyint: return os << "tinyint";
+    case field_type::smallint: return os << "smallint";
+    case field_type::mediumint: return os << "mediumint";
+    case field_type::int_: return os << "int_";
+    case field_type::bigint: return os << "bigint";
+    case field_type::float_: return os << "float_";
+    case field_type::double_: return os << "double_";
+    case field_type::decimal: return os << "decimal";
+    case field_type::bit: return os << "bit";
+    case field_type::year: return os << "year";
+    case field_type::time: return os << "time";
+    case field_type::date: return os << "date";
+    case field_type::datetime: return os << "datetime";
+    case field_type::timestamp: return os << "timestamp";
+    case field_type::char_: return os << "char_";
+    case field_type::varchar: return os << "varchar";
+    case field_type::binary: return os << "binary";
+    case field_type::varbinary: return os << "varbinary";
+    case field_type::text: return os << "text";
+    case field_type::blob: return os << "blob";
+    case field_type::enum_: return os << "enum_";
+    case field_type::set: return os << "set";
+    case field_type::geometry: return os << "geometry";
+    default: return os << "<unknown field type>";
+    }
+}
 
 } // mysql
 } // boost

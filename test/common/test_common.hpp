@@ -10,27 +10,22 @@
 
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/row.hpp"
-#include "boost/mysql/error.hpp"
 #include "boost/mysql/connection_params.hpp"
 #include "boost/mysql/detail/auxiliar/stringize.hpp"
-#include "boost/mysql/detail/protocol/date.hpp"
-#include <boost/asio/buffer.hpp>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <boost/test/unit_test.hpp>
 #include <vector>
 #include <algorithm>
-#include <sstream>
-#include <type_traits>
 #include <ostream>
 #include <cassert>
-#include <stdexcept>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
+using detail::stringize;
+
 template <typename... Types>
-std::vector<value> makevalues(Types&&... args)
+std::vector<value> make_value_vector(Types&&... args)
 {
     return std::vector<value>{mysql::value(std::forward<Types>(args))...};
 }
@@ -38,21 +33,7 @@ std::vector<value> makevalues(Types&&... args)
 template <typename... Types>
 row makerow(Types&&... args)
 {
-    return row(makevalues(std::forward<Types>(args)...));
-}
-
-template <typename... Types>
-std::vector<row> makerows(std::size_t row_size, Types&&... args)
-{
-    auto values = makevalues(std::forward<Types>(args)...);
-    assert(values.size() % row_size == 0);
-    std::vector<row> res;
-    for (std::size_t i = 0; i < values.size(); i += row_size)
-    {
-        std::vector<value> row_values (values.begin() + i, values.begin() + i + row_size);
-        res.push_back(row(std::move(row_values)));
-    }
-    return res;
+    return row(make_value_vector(std::forward<Types>(args)...));
 }
 
 inline date makedate(int num_years, unsigned num_months, unsigned num_days)
@@ -61,14 +42,15 @@ inline date makedate(int num_years, unsigned num_months, unsigned num_days)
         detail::year_month_day{num_years, num_months, num_days})));
 }
 
-inline datetime makedt(int years, unsigned months, unsigned days, int hours=0, int mins=0, int secs=0, int micros=0)
+inline datetime makedt(int years, unsigned months, unsigned days,
+    int hours=0, int mins=0, int secs=0, int micros=0)
 {
     return datetime(makedate(years, months, days)) +
            std::chrono::hours(hours) + std::chrono::minutes(mins) +
            std::chrono::seconds(secs) + std::chrono::microseconds(micros);
 }
 
-inline mysql::time maket(int hours, int mins, int secs, int micros=0)
+inline time maket(int hours, int mins, int secs, int micros=0)
 {
     return std::chrono::hours(hours) + std::chrono::minutes(mins)
          + std::chrono::seconds(secs) + std::chrono::microseconds(micros);
@@ -92,55 +74,29 @@ inline boost::string_view makesv(const std::uint8_t* value, std::size_t size)
 }
 
 
-inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
+inline void validate_string_contains(
+    std::string value,
+    const std::vector<std::string>& to_check
+)
 {
     std::transform(value.begin(), value.end(), value.begin(), &tolower);
     for (const auto& elm: to_check)
     {
-        EXPECT_THAT(value, testing::HasSubstr(elm));
+        BOOST_TEST(value.find(elm) != std::string::npos,
+            "Substring '" << elm << "' not found in '" << value << "'");
     }
 }
 
-inline void validate_error_info(const boost::mysql::error_info& value, const std::vector<std::string>& to_check)
-{
-    validate_string_contains(value.message(), to_check);
-}
-
-inline std::string buffer_diff(boost::string_view s0, boost::string_view s1)
-{
-    std::ostringstream ss;
-    ss << std::hex;
-    for (std::size_t i = 0; i < std::min(s0.size(), s1.size()); ++i)
-    {
-        unsigned b0 = reinterpret_cast<const std::uint8_t*>(s0.data())[i];
-        unsigned b1 = reinterpret_cast<const std::uint8_t*>(s1.data())[i];
-        if (b0 != b1)
-        {
-            ss << "i=" << i << ": " << b0 << " != " << b1 << "\n";
-        }
-    }
-    if (s0.size() != s1.size())
-    {
-        ss << "sizes: " << s0.size() << " != " << s1.size() << "\n";
-    }
-    return ss.str();
-}
-
-inline void compare_buffers(boost::string_view s0, boost::string_view s1, const char* msg = "")
-{
-    EXPECT_EQ(s0, s1) << msg << ":\n" << buffer_diff(s0, s1);
-}
-
-inline void concat(std::vector<std::uint8_t>& lhs, boost::asio::const_buffer rhs)
+inline void concat(std::vector<std::uint8_t>& lhs, const void* buff, std::size_t size)
 {
     auto current_size = lhs.size();
-    lhs.resize(current_size + rhs.size());
-    memcpy(lhs.data() + current_size, rhs.data(), rhs.size());
+    lhs.resize(current_size + size);
+    memcpy(lhs.data() + current_size, buff, size);
 }
 
 inline void concat(std::vector<std::uint8_t>& lhs, const std::vector<uint8_t>& rhs)
 {
-    concat(lhs, boost::asio::buffer(rhs));
+    concat(lhs, rhs.data(), rhs.size());
 }
 
 inline std::vector<std::uint8_t> concat_copy(
@@ -163,40 +119,53 @@ inline const char* to_string(ssl_mode m)
     }
 }
 
-// All the param types used in our parametric tests will have
-// a name() member function convertible to std::string. GTest needs
-// the parameter to be streamable; we tag our types with this named_tag
-// so the operator<< is found by ADL.
-struct named_tag {};
-
-class named : public named_tag
+inline const char* to_string(detail::protocol_field_type t) noexcept
 {
-    std::string name_;
-public:
-    named(std::string&& n): name_(std::move(n)) {}
-    const std::string& name() const noexcept { return name_; }
-};
-
-template <
-    typename T,
-    typename=typename std::enable_if<
-        std::is_base_of<named_tag, T>::value
-    >::type
->
-std::ostream& operator<<(std::ostream& os, const T& v) { return os << v.name(); }
-
-struct test_name_generator_t
-{
-    template <typename T>
-    std::string operator()(const testing::TestParamInfo<T>& param_info) const
+    switch (t)
     {
-        return param_info.param.name();
+    case detail::protocol_field_type::decimal: return "decimal";
+    case detail::protocol_field_type::tiny: return "tiny";
+    case detail::protocol_field_type::short_: return "short_";
+    case detail::protocol_field_type::long_: return "long_";
+    case detail::protocol_field_type::float_: return "float_";
+    case detail::protocol_field_type::double_: return "double_";
+    case detail::protocol_field_type::null: return "null";
+    case detail::protocol_field_type::timestamp: return "timestamp";
+    case detail::protocol_field_type::longlong: return "longlong";
+    case detail::protocol_field_type::int24: return "int24";
+    case detail::protocol_field_type::date: return "date";
+    case detail::protocol_field_type::time: return "time";
+    case detail::protocol_field_type::datetime: return "datetime";
+    case detail::protocol_field_type::year: return "year";
+    case detail::protocol_field_type::varchar: return "varchar";
+    case detail::protocol_field_type::bit: return "bit";
+    case detail::protocol_field_type::newdecimal: return "newdecimal";
+    case detail::protocol_field_type::enum_: return "enum_";
+    case detail::protocol_field_type::set: return "set";
+    case detail::protocol_field_type::tiny_blob: return "tiny_blob";
+    case detail::protocol_field_type::medium_blob: return "medium_blob";
+    case detail::protocol_field_type::long_blob: return "long_blob";
+    case detail::protocol_field_type::blob: return "blob";
+    case detail::protocol_field_type::var_string: return "var_string";
+    case detail::protocol_field_type::string: return "string";
+    case detail::protocol_field_type::geometry: return "geometry";
+    default: return "unknown";
     }
-};
-
-constexpr test_name_generator_t test_name_generator;
+}
 
 } // test
+
+// make protocol_field_type streamable
+namespace detail {
+
+inline std::ostream& operator<<(std::ostream& os, protocol_field_type t)
+{
+    return os << test::to_string(t);
+}
+
+} // detail
+
+
 } // mysql
 } // boost
 

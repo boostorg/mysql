@@ -41,6 +41,20 @@ env:
 
 matrix:
   include:
+    - name: cmake_linux_clang10_debug
+      <<: *__linux_defaults
+      compiler: clang
+      env:
+        - CMAKE_BUILD_TYPE=Debug
+        - CMAKE_CXX_STANDARD=20
+        - USE_COVERAGE=1
+        - CMAKE_CXX_FLAGS="-stdlib=libc++ -DBOOST_ASIO_DISABLE_CONCEPTS"
+        - CMAKE_OPTIONS="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10"
+        - CMAKE_B2_OPTIONS="stdlib=libc++"
+      install:
+        - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+        - sudo apt install clang-10 libc++-10-dev libc++abi-10-dev
+  
     # CMake OSX builds
     - name: cmake_osx_clang_debug
       <<: *__osx_defaults
@@ -66,19 +80,6 @@ matrix:
         - B2_TOOLSET=clang
         - B2_VARIANT=debug,release
     # Linux CMake builds
-    - name: cmake_linux_clang10_debug
-      <<: *__linux_defaults
-      compiler: clang
-      env:
-        - CMAKE_BUILD_TYPE=Debug
-        - CMAKE_CXX_STANDARD=20
-        - USE_COVERAGE=1
-        - CMAKE_CXX_FLAGS="-stdlib=libc++ -DBOOST_ASIO_DISABLE_CONCEPTS"
-        - CMAKE_OPTIONS="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10"
-      install:
-        - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
-        - sudo apt install clang-10 libc++-10-dev libc++abi-10-dev
-
     - name: cmake_linux_gcc_debug
       <<: *__linux_defaults
       compiler: gcc

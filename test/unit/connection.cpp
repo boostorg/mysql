@@ -7,14 +7,13 @@
 
 #include "boost/mysql/connection.hpp"
 #include <boost/asio/strand.hpp>
-#include <gtest/gtest.h>
+#include <boost/test/unit_test.hpp>
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_connection)
 
 using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
 
-TEST(ConnectionTest, RebindExecutor_Trivial_ReturnsCorrectType)
+BOOST_AUTO_TEST_CASE(connection_rebind_executor)
 {
     using original_type = boost::mysql::connection<boost::asio::ip::tcp::socket>;
     using rebound_type = original_type::rebind_executor<other_executor>::other;
@@ -24,10 +23,10 @@ TEST(ConnectionTest, RebindExecutor_Trivial_ReturnsCorrectType)
             other_executor
         >
     >;
-    EXPECT_TRUE((std::is_same<rebound_type, expected_type>::value));
+    BOOST_TEST((std::is_same<rebound_type, expected_type>::value));
 }
 
-TEST(SocketConnectionTest, RebindExecutor_Trivial_ReturnsCorrectType)
+BOOST_AUTO_TEST_CASE(socket_connection_rebind_executor)
 {
     using rebound_type = boost::mysql::tcp_connection::rebind_executor<other_executor>::other;
     using expected_type = boost::mysql::socket_connection<
@@ -36,8 +35,7 @@ TEST(SocketConnectionTest, RebindExecutor_Trivial_ReturnsCorrectType)
             other_executor
         >
     >;
-    EXPECT_TRUE((std::is_same<rebound_type, expected_type>::value));
+    BOOST_TEST((std::is_same<rebound_type, expected_type>::value));
 }
 
-}
-
+BOOST_AUTO_TEST_SUITE_END() // test_connection

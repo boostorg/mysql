@@ -7,25 +7,20 @@
 
 #include "boost/mysql/connection.hpp"
 #include "integration_test_common.hpp"
-#include <gtest/gtest.h>
+#include "get_endpoint.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::connection;
 using boost::mysql::socket_connection;
 using boost::asio::ip::tcp;
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_connection)
 
-struct ConnectionTest : IntegTest<tcp::socket>
-{
-};
-
-TEST_F(ConnectionTest, MoveConstructor_ConnectedConnection_UsableConnection)
+BOOST_FIXTURE_TEST_CASE(move_constructor_connected_connection, network_fixture<tcp::socket>)
 {
     // First connection
     connection<tcp::socket> first (ctx);
-    EXPECT_TRUE(first.valid());
+    BOOST_TEST(first.valid());
 
     // Connect
     first.next_layer().connect(get_endpoint<tcp::socket>(endpoint_kind::localhost));
@@ -33,18 +28,18 @@ TEST_F(ConnectionTest, MoveConstructor_ConnectedConnection_UsableConnection)
 
     // Construct second connection
     connection<tcp::socket> second (std::move(first));
-    EXPECT_FALSE(first.valid());
-    EXPECT_TRUE(second.valid());
-    EXPECT_NO_THROW(second.query("SELECT 1"));
+    BOOST_TEST(!first.valid());
+    BOOST_TEST(second.valid());
+    second.query("SELECT 1"); // doesn't throw
 }
 
-TEST_F(ConnectionTest, MoveAssignment_FromConnectedConnection_UsableConnection)
+BOOST_FIXTURE_TEST_CASE(move_assignment_from_connected_connection, network_fixture<tcp::socket>)
 {
     // First connection
     connection<tcp::socket> first (ctx);
     connection<tcp::socket> second (ctx);
-    EXPECT_TRUE(first.valid());
-    EXPECT_TRUE(second.valid());
+    BOOST_TEST(first.valid());
+    BOOST_TEST(second.valid());
 
     // Connect
     first.next_layer().connect(get_endpoint<tcp::socket>(endpoint_kind::localhost));
@@ -52,47 +47,47 @@ TEST_F(ConnectionTest, MoveAssignment_FromConnectedConnection_UsableConnection)
 
     // Move
     second = std::move(first);
-    EXPECT_FALSE(first.valid());
-    EXPECT_TRUE(second.valid());
-    EXPECT_NO_THROW(second.query("SELECT 1"));
+    BOOST_TEST(!first.valid());
+    BOOST_TEST(second.valid());
+    second.query("SELECT 1"); // doesn't throw
 }
 
-struct SocketConnectionTest : IntegTest<tcp::socket>
-{
-};
+BOOST_AUTO_TEST_SUITE_END() // test_connection
 
-TEST_F(SocketConnectionTest, MoveConstructor_ConnectedConnection_UsableConnection)
+BOOST_AUTO_TEST_SUITE(test_socket_connection)
+
+BOOST_FIXTURE_TEST_CASE(move_constructor_connected_connection, network_fixture<tcp::socket>)
 {
     // First connection
     socket_connection<tcp::socket> first (ctx);
-    EXPECT_TRUE(first.valid());
+    BOOST_TEST(first.valid());
 
     // Connect
     first.connect(get_endpoint<tcp::socket>(endpoint_kind::localhost), params);
 
     // Construct second connection
     socket_connection<tcp::socket> second (std::move(first));
-    EXPECT_FALSE(first.valid());
-    EXPECT_TRUE(second.valid());
-    EXPECT_NO_THROW(second.query("SELECT 1"));
+    BOOST_TEST(!first.valid());
+    BOOST_TEST(second.valid());
+    second.query("SELECT 1"); // doesn't throw
 }
 
-TEST_F(SocketConnectionTest, MoveAssignment_FromConnectedConnection_UsableConnection)
+BOOST_FIXTURE_TEST_CASE(move_assignment_from_connected_connection, network_fixture<tcp::socket>)
 {
     // First connection
     socket_connection<tcp::socket> first (ctx);
     socket_connection<tcp::socket> second (ctx);
-    EXPECT_TRUE(first.valid());
-    EXPECT_TRUE(second.valid());
+    BOOST_TEST(first.valid());
+    BOOST_TEST(second.valid());
 
     // Connect
     first.connect(get_endpoint<tcp::socket>(endpoint_kind::localhost), params);
 
     // Move
     second = std::move(first);
-    EXPECT_FALSE(first.valid());
-    EXPECT_TRUE(second.valid());
-    EXPECT_NO_THROW(second.query("SELECT 1"));
+    BOOST_TEST(!first.valid());
+    BOOST_TEST(second.valid());
+    second.query("SELECT 1"); // doesn't throw
 }
 
-}
+BOOST_AUTO_TEST_SUITE_END() // test_socket_connection

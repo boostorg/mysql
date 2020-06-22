@@ -149,8 +149,11 @@ struct serialize_visitor
 } // mysql
 } // boost
 
-
-inline std::size_t boost::mysql::detail::get_binary_value_size(
+inline std::size_t
+boost::mysql::detail::serialization_traits<
+    boost::mysql::value,
+    boost::mysql::detail::serialization_tag::none
+>::get_size_(
     const serialization_context& ctx,
     const value& input
 ) noexcept
@@ -158,7 +161,11 @@ inline std::size_t boost::mysql::detail::get_binary_value_size(
     return boost::variant2::visit(size_visitor(ctx), input.to_variant());
 }
 
-inline void boost::mysql::detail::serialize_binary_value(
+inline void
+boost::mysql::detail::serialization_traits<
+    boost::mysql::value,
+    boost::mysql::detail::serialization_tag::none
+>::serialize_(
     serialization_context& ctx,
     const value& input
 ) noexcept

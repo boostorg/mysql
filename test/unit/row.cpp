@@ -5,79 +5,83 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <gtest/gtest.h>
 #include "boost/mysql/row.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using namespace testing;
 using boost::mysql::row;
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_row)
 
 // Equality operators
-TEST(RowTest, OperatorsEqNe_BothEmpty_ReturnEquals)
+BOOST_AUTO_TEST_SUITE(operators_eq_ne)
+
+BOOST_AUTO_TEST_CASE(both_empty)
 {
-    EXPECT_TRUE(row() == row());
-    EXPECT_FALSE(row() != row());
+    BOOST_TEST(row() == row());
+    BOOST_TEST(!(row() != row()));
 }
 
-TEST(RowTest, OperatorsEqNe_OneEmptyOtherNotEmpty_ReturnNotEquals)
+BOOST_AUTO_TEST_CASE(one_empty_other_not_empty)
 {
     row empty_row;
-    row non_empty_row (makevalues("a_value"));
-    EXPECT_FALSE(empty_row == non_empty_row);
-    EXPECT_TRUE(empty_row != non_empty_row);
+    row non_empty_row = makerow("a_value");
+    BOOST_TEST(!(empty_row == non_empty_row));
+    BOOST_TEST(empty_row != non_empty_row);
 }
 
-TEST(RowTest, OperatorsEqNe_Subset_ReturnNotEquals)
+BOOST_AUTO_TEST_CASE(subset)
 {
-    row lhs (makevalues("a_value", 42));
-    row rhs (makevalues("a_value"));
-    EXPECT_FALSE(lhs == rhs);
-    EXPECT_TRUE(lhs != rhs);
+    row lhs = makerow("a_value", 42);
+    row rhs = makerow("a_value");
+    BOOST_TEST(!(lhs == rhs));
+    BOOST_TEST(lhs != rhs);
 }
 
-TEST(RowTest, OperatorsEqNe_SameSizeDifferentValues_ReturnNotEquals)
+BOOST_AUTO_TEST_CASE(same_size_different_values)
 {
-    row lhs (makevalues("a_value", 42));
-    row rhs (makevalues("another_value", 42));
-    EXPECT_FALSE(lhs == rhs);
-    EXPECT_TRUE(lhs != rhs);
+    row lhs = makerow("a_value", 42);
+    row rhs = makerow("another_value", 42);
+    BOOST_TEST(!(lhs == rhs));
+    BOOST_TEST(lhs != rhs);
 }
 
-TEST(RowTest, OperatorsEqNe_SameSizeAndValues_ReturnEquals)
+BOOST_AUTO_TEST_CASE(same_size_and_values)
 {
-    row lhs (makevalues("a_value", 42));
-    row rhs (makevalues("a_value", 42));
-    EXPECT_TRUE(lhs == rhs);
-    EXPECT_FALSE(lhs != rhs);
+    row lhs = makerow("a_value", 42);
+    row rhs = makerow("a_value", 42);
+    BOOST_TEST(lhs == rhs);
+    BOOST_TEST(!(lhs != rhs));
 }
+
+BOOST_AUTO_TEST_SUITE_END() // operators_eq_ne
 
 // Stream operators
-std::string to_string(const row& input)
+BOOST_AUTO_TEST_SUITE(operator_stream)
+
+BOOST_AUTO_TEST_CASE(empty_row)
 {
-    std::ostringstream ss;
-    ss << input;
-    return ss.str();
+    BOOST_TEST(stringize(row()) == "{}");
 }
 
-TEST(RowTest, OperatorStream_EmptyRow)
+BOOST_AUTO_TEST_CASE(one_element)
 {
-    EXPECT_EQ(to_string(row()), "{}");
+    BOOST_TEST(stringize(makerow(42)) == "{42}");
 }
 
-TEST(RowTest, OperatorStream_OneElement)
+BOOST_AUTO_TEST_CASE(two_elements)
 {
-    EXPECT_EQ(to_string(makerow(42)), "{42}");
+    auto actual = stringize(makerow("value", nullptr));
+    BOOST_TEST(actual == "{value, <NULL>}");
 }
 
-TEST(RowTest, OperatorStream_SeveralElements)
+BOOST_AUTO_TEST_CASE(three_elements)
 {
-    EXPECT_EQ((to_string(makerow("value", nullptr))), "{value, <NULL>}");
-    EXPECT_EQ((to_string(makerow("value", std::uint32_t(2019), 3.14f))), "{value, 2019, 3.14}");
+    auto actual = stringize(makerow("value", std::uint32_t(2019), 3.14f));
+    BOOST_TEST(actual == "{value, 2019, 3.14}");
 }
 
-}
+BOOST_AUTO_TEST_SUITE_END() // operator_stream
+
+BOOST_AUTO_TEST_SUITE_END() // test_row
 

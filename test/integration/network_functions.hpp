@@ -9,11 +9,9 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP
 
 #include "boost/mysql/connection.hpp"
-#include "test_common.hpp"
-#include <gtest/gtest.h>
+#include "tcp_future_socket.hpp"
 #include <forward_list>
 #include <boost/optional/optional.hpp>
-#include <boost/asio/use_future.hpp>
 
 /**
  * A mechanism to test all variants of a network algorithm (e.g. synchronous
@@ -23,23 +21,14 @@
  * All network algorithm variants are transformed to a single one: a synchronous
  * one, returning a network_result<T>. A network_result<T> contains a T, an error_code
  * and an error_info. network_functions is an interface, which each variant implements.
- * Instead of directly calling connection, prepared_statement and resultset network
- * functions directly, tests use the network_functions interface. Tests are then
- * parameterized (e.g. TEST_P) and run over all possible implementations of
- * network_functions.
+ * Instead of calling connection, prepared_statement and resultset network
+ * functions directly, tests use the network_functions interface. network_functions
+ * is also a template, allowing tests to be run over different stream types.
+ * network_functions is intended to be used as part of a test sample, together with
+ * BOOST_MYSQL_NETWORK_TEST.
  *
- * To make things more interesting, network_functions interface is also a template,
- * allowing tests to be run over different stream types (e.g. TCP, UNIX sockets...).
- * Use BOOST_MYSQL_NETWORK_TEST* macros and NetworkTest<Stream> to achieve this.
- *
- * The following variants are currently supported:
- *  - Synchronous with error codes.
- *  - Synchronous with exceptions.
- *  - Asynchronous, with callbacks, with error_info.
- *  - Asynchronous, with callbacks, without error_info.
- *  - Asynchronous, with coroutines, with error_info.
- *  - Asynchronous, with coroutines, without error_info.
- *  - Asynchronous, with futures.
+ * See the implementation of all_network_functions<Stream>() for the list
+ * of supported network functions.
  */
 
 namespace boost {
@@ -48,55 +37,24 @@ namespace test {
 
 struct no_result {};
 
-template <typename T>
-struct network_result
+struct network_result_base
 {
     error_code err;
-    boost::optional<error_info> info; // some async initiators (futures) don't support this
-    T value;
+    boost::optional<error_info> info; // some network_function's don't provide this
 
-    network_result() = default;
+    network_result_base() = default;
+    network_result_base(error_code ec) : err(ec) {}
+    network_result_base(error_code ec, error_info&& info): err(ec), info(std::move(info)) {}
 
-    network_result(error_code ec, error_info info, T&& value = {}):
-        err(ec), info(std::move(info)), value(std::move(value)) {}
-
-    network_result(error_code ec, T&& value = {}):
-        err(ec), value(std::move(value)) {}
-
-    void validate_no_error() const
-    {
-        ASSERT_EQ(err, error_code()) << "with error_info= " <<
-                (info ? info->message().c_str() : "<unavailable>");
-        if (info)
-        {
-            EXPECT_EQ(*info, error_info());
-        }
-    }
+    void validate_no_error() const;
 
     // Use when you don't care or can't determine the kind of error
-    void validate_any_error(
-        const std::vector<std::string>& expected_msg={}
-    ) const
-    {
-        ASSERT_NE(err, error_code()) << "with error_info= " <<
-                (info ? info->message().c_str() : "<unavailable>");
-        if (info)
-        {
-            validate_string_contains(info->message(), expected_msg);
-        }
-    }
+    void validate_any_error(const std::vector<std::string>& expected_msg={}) const;
 
     void validate_error(
         error_code expected_errc,
         const std::vector<std::string>& expected_msg
-    ) const
-    {
-        EXPECT_EQ(err, expected_errc);
-        if (info)
-        {
-            validate_string_contains(info->message(), expected_msg);
-        }
-    }
+    ) const;
 
     void validate_error(
         errc expected_errc,
@@ -107,20 +65,19 @@ struct network_result
     }
 };
 
-using value_list_it = std::forward_list<value>::const_iterator;
-
-// A TCP socket that has use_future as default completion token
-class future_executor : public boost::asio::io_context::executor_type
+template <typename T>
+struct network_result : network_result_base
 {
-public:
-    future_executor(const boost::asio::io_context::executor_type& base) :
-        boost::asio::io_context::executor_type(base) {}
-    using default_completion_token_type = boost::asio::use_future_t<>;
+    T value;
+
+    network_result() = default;
+    network_result(error_code ec, error_info&& info, T&& value = {}):
+        network_result_base(ec, std::move(info)), value(std::move(value)) {}
+    network_result(error_code ec, T&& value = {}):
+        network_result_base(ec), value(std::move(value)) {}
 };
-using tcp_future_socket = boost::asio::basic_stream_socket<
-    boost::asio::ip::tcp,
-    future_executor
->;
+
+using value_list_it = std::forward_list<value>::const_iterator;
 
 template <typename Stream>
 class network_functions
@@ -151,11 +108,11 @@ public:
 };
 
 template <typename Stream>
-std::vector<network_functions<Stream>*> make_all_network_functions();
+const std::vector<network_functions<Stream>*>& all_network_functions();
 
 template <>
-std::vector<network_functions<tcp_future_socket>*>
-make_all_network_functions<tcp_future_socket>();
+const std::vector<network_functions<tcp_future_socket>*>&
+all_network_functions<tcp_future_socket>();
 
 } // test
 } // mysql

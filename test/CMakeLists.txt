@@ -5,43 +5,41 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# GTest/GMock
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG        release-1.10.0
+find_package(Boost 1.72 REQUIRED COMPONENTS
+    unit_test_framework
+    coroutine
 )
 
-FetchContent_GetProperties(googletest)
-if(NOT googletest_POPULATED)
-    FetchContent_Populate(googletest)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE) # Avoid GTest linking against wrong CRT
-    add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
-endif()
+# Test common
+add_library(boost_mysql_testing INTERFACE)
+target_include_directories(
+    boost_mysql_testing
+    INTERFACE
+    common
+)
+target_link_libraries(
+    boost_mysql_testing
+    INTERFACE
+    Boost::unit_test_framework
+    Boost::mysql
+    Boost::disable_autolinking
+    Boost::dynamic_linking
+)
 
-# Unit testing. We do not use gtest_discover_tests because
-# of the runtime penalty (specially considerable in integration tests)
+# Unit testing
 add_executable(
     boost_mysql_unittests
-    common/test_main.cpp
-    unit/detail/auxiliar/static_string.cpp
     unit/detail/auth/auth_calculator.cpp
-    unit/detail/protocol/serialization_test_common.cpp
-    unit/detail/protocol/serialization.cpp
-    unit/detail/protocol/common_messages.cpp
-    unit/detail/protocol/handshake_messages.cpp
-    unit/detail/protocol/query_messages.cpp
-    unit/detail/protocol/prepared_statement_messages.cpp
+    unit/detail/auxiliar/static_string.cpp
     unit/detail/protocol/capabilities.cpp
+    unit/detail/protocol/date.cpp
+    unit/detail/protocol/null_bitmap_traits.cpp
+    unit/detail/protocol/serialization_test.cpp
     unit/detail/protocol/text_deserialization_value.cpp
     unit/detail/protocol/text_deserialization_error.cpp
     unit/detail/protocol/binary_deserialization_value.cpp
     unit/detail/protocol/binary_deserialization_error.cpp
     unit/detail/protocol/row_deserialization.cpp
-    unit/detail/protocol/binary_serialization.cpp
-    unit/detail/protocol/null_bitmap_traits.cpp
-    unit/detail/protocol/date.cpp
-    unit/detail/protocol/channel.cpp
     unit/metadata.cpp
     unit/value.cpp
     unit/row.cpp
@@ -49,18 +47,12 @@ add_executable(
     unit/prepared_statement.cpp
     unit/resultset.cpp
     unit/connection.cpp
-)
-target_include_directories(
-    boost_mysql_unittests
-    PRIVATE
-    common
+    unit/entry_point.cpp
 )
 target_link_libraries(
     boost_mysql_unittests
     PRIVATE
-    gtest
-    gmock
-    Boost::mysql
+    boost_mysql_testing
 )
 common_target_settings(boost_mysql_unittests)
 
@@ -77,11 +69,8 @@ else()
 endif()
 
 # Integration testing
-find_package(Boost REQUIRED COMPONENTS coroutine)
-
 add_executable(
     boost_mysql_integrationtests
-    common/test_main.cpp
     integration/network_functions/network_functions_impl.cpp
     integration/network_functions/sync.cpp
     integration/network_functions/async_callback.cpp
@@ -98,22 +87,16 @@ add_executable(
     integration/close_statement.cpp
     integration/resultset.cpp
     integration/prepared_statement_lifecycle.cpp
-    integration/database_types.cpp
     integration/quit_connection.cpp
     integration/close_connection.cpp
+    integration/database_types.cpp
+    integration/entry_point.cpp
 )
 target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
-    gtest
-    gmock
-    Boost::mysql
+    boost_mysql_testing
     Boost::coroutine
-)
-target_include_directories(
-    boost_mysql_integrationtests
-    PRIVATE
-    common
 )
 common_target_settings(boost_mysql_integrationtests)
 
@@ -122,17 +105,17 @@ add_test(
     NAME boost_mysql_integrationtests
     COMMAND 
         ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
-        "--gtest_filter=-*RequiresSha256*" # Exclude anything using SHA256
+        "-t" "!@sha256" # Exclude anything using SHA256
 )
 
 # If we are using memcheck, then run a subset of the integration tests
 # under valgrind. Coroutine tests don't work well under Valgrind, and
 # SSL tests are too slow. We do some other exclusions to reduce runtime
 if (BOOST_MYSQL_VALGRIND_TESTS)
-    set(GTEST_FILTER "--gtest_filter=-*RequiresSha256*:*sslrequire*:*coroutine*:*UNIX*:*noerrinfo*:*TCPDefaultToken*")
+    set(TEST_FILTER "!@sha256:!@sslrequire:!@async_coroutine_errinfo:!@async_coroutine_noerrinfo:!@unix:!@tcp_default_token")
     add_memcheck_test(
         NAME boost_mysql_integrationtests_memcheck
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests ${GTEST_FILTER}
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests "-t" ${TEST_FILTER}
     )
 endif()
 
@@ -143,6 +126,6 @@ if (BOOST_MYSQL_SHA256_TESTS)
         NAME boost_mysql_integrationtests_sha256
         COMMAND 
             ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
-            "--gtest_filter=*RequiresSha256*" # Run only SHA256 stuff
+            "-t" "@sha256" # Run only SHA256 stuff
     )
 endif()

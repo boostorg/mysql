@@ -6,9 +6,10 @@
 //
 
 #include "metadata_validator.hpp"
-#include <gtest/gtest.h>
+#include <boost/test/unit_test.hpp>
 
 using namespace boost::mysql::test;
+
 
 #define MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(getter) \
     { #getter, &boost::mysql::field_metadata::getter }
@@ -29,6 +30,8 @@ static struct flag_entry
     MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(is_set_to_now_on_update)
 };
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(std::vector<flag_entry>::iterator)
+
 static bool contains(
     meta_validator::flag_getter flag,
     const std::vector<meta_validator::flag_getter>& flagvec
@@ -38,18 +41,18 @@ static bool contains(
 }
 
 void meta_validator::validate(
-    const mysql::field_metadata& value
+    const field_metadata& value
 ) const
 {
     // Fixed fields
-    EXPECT_EQ(value.database(), "boost_mysql_integtests");
-    EXPECT_EQ(value.table(), table_);
-    EXPECT_EQ(value.original_table(), org_table_);
-    EXPECT_EQ(value.field_name(), field_);
-    EXPECT_EQ(value.original_field_name(), org_field_);
-    EXPECT_GT(value.column_length(), 0u);
-    EXPECT_EQ(value.type(), type_);
-    EXPECT_EQ(value.decimals(), decimals_);
+    BOOST_TEST(value.database() == "boost_mysql_integtests");
+    BOOST_TEST(value.table() == table_);
+    BOOST_TEST(value.original_table() == org_table_);
+    BOOST_TEST(value.field_name() == field_);
+    BOOST_TEST(value.original_field_name() == org_field_);
+    BOOST_TEST(value.column_length() > 0u);
+    BOOST_TEST(value.type() == type_);
+    BOOST_TEST(value.decimals() == decimals_);
 
     // Flags
     std::vector<flag_entry> all_flags (std::begin(flag_names), std::end(flag_names));
@@ -61,9 +64,9 @@ void meta_validator::validate(
             all_flags.end(),
             [true_flag](const flag_entry& entry) { return entry.getter == true_flag; }
         );
-        ASSERT_NE(it, all_flags.end()); // no repeated flag
-        ASSERT_FALSE(contains(true_flag, ignore_flags_)); // ignore flags cannot be set to true
-        EXPECT_TRUE((value.*true_flag)()) << it->name;
+        BOOST_TEST_REQUIRE(it != all_flags.end()); // no repeated flag
+        BOOST_TEST_REQUIRE(!contains(true_flag, ignore_flags_)); // ignore flags cannot be set to true
+        BOOST_TEST((value.*true_flag)(), it->name);
         all_flags.erase(it);
     }
 
@@ -71,7 +74,7 @@ void meta_validator::validate(
     {
         if (!contains(entry.getter, ignore_flags_))
         {
-            EXPECT_FALSE((value.*entry.getter)()) << entry.name;
+            BOOST_TEST(!(value.*entry.getter)(), entry.name);
         }
     }
 }
@@ -81,7 +84,7 @@ void boost::mysql::test::validate_meta(
     const std::vector<meta_validator>& expected
 )
 {
-    ASSERT_EQ(actual.size(), expected.size());
+    BOOST_TEST_REQUIRE(actual.size() == expected.size());
     for (std::size_t i = 0; i < actual.size(); ++i)
     {
         expected[i].validate(actual[i]);

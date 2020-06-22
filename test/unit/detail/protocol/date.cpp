@@ -5,24 +5,21 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <gtest/gtest.h>
 #include "boost/mysql/detail/protocol/date.hpp"
-#include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include "test_common.hpp"
 #include <algorithm>
 #include <limits>
 #include <cstdio>
 #include <array>
 
-using namespace testing;
+using namespace boost::unit_test;
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 
 // These tests are very extensive in range. Making them parameterized
 // proves very runtime expensive. We rather use plain loops.
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_date)
 
 // Helpers
 constexpr int leap_years [] = {
@@ -59,7 +56,7 @@ std::array<char, 32> date_to_string(int year, unsigned month, unsigned day)
 }
 
 // is_valid
-TEST(IsValidYmdTest, ValidYearMonthMaybeInvalidDay_ReturnsExpectedValue)
+BOOST_AUTO_TEST_CASE(is_valid_ymd_valid_year_month_invalid_day)
 {
     for (int year = 1804; year <= 2204; ++year)
     {
@@ -72,49 +69,51 @@ TEST(IsValidYmdTest, ValidYearMonthMaybeInvalidDay_ReturnsExpectedValue)
             {
                 auto test_name = date_to_string(year, month, day);
                 year_month_day ymd {year, month, day};
-                EXPECT_EQ(is_valid(ymd), day <= last_month_day) << test_name.data();
+                BOOST_TEST(is_valid(ymd) == (day <= last_month_day), test_name.data());
             }
         }
     }
 }
 
-TEST(IsValidYmdTest, YearOutOfMysqlRange_ReturnsFalse)
+BOOST_AUTO_TEST_CASE(is_valid_ymd_year_out_of_mysql_range)
 {
-    EXPECT_FALSE(is_valid(year_month_day{-1, 1, 1}));
-    EXPECT_FALSE(is_valid(year_month_day{10000, 1, 1}));
-    EXPECT_FALSE(is_valid(year_month_day{std::numeric_limits<int>::min(), 1, 1}));
-    EXPECT_FALSE(is_valid(year_month_day{std::numeric_limits<int>::max(), 1, 1}));
+    BOOST_TEST(!is_valid(year_month_day{-1, 1, 1}));
+    BOOST_TEST(!is_valid(year_month_day{10000, 1, 1}));
+    BOOST_TEST(!is_valid(year_month_day{std::numeric_limits<int>::min(), 1, 1}));
+    BOOST_TEST(!is_valid(year_month_day{std::numeric_limits<int>::max(), 1, 1}));
 }
 
-TEST(IsValidYmdTest, YearInMysqlRange_ReturnsTrue)
+BOOST_AUTO_TEST_CASE(is_valid_ymd_year_in_mysql_range)
 {
-    EXPECT_TRUE(is_valid(year_month_day{0, 1, 1}));
-    EXPECT_TRUE(is_valid(year_month_day{9999, 1, 1}));
+    BOOST_TEST(is_valid(year_month_day{0, 1, 1}));
+    BOOST_TEST(is_valid(year_month_day{9999, 1, 1}));
 }
 
-TEST(IsValidYmdTest, MonthOutOfRange_ReturnsFalse)
+BOOST_AUTO_TEST_CASE(is_valid_ymd_month_out_of_range)
 {
-    EXPECT_FALSE(is_valid(year_month_day{2010, 0, 1}));
-    EXPECT_FALSE(is_valid(year_month_day{2010, 13, 1}));
-    EXPECT_FALSE(is_valid(year_month_day{2010, std::numeric_limits<unsigned>::max(), 1}));
+    BOOST_TEST(!is_valid(year_month_day{2010, 0, 1}));
+    BOOST_TEST(!is_valid(year_month_day{2010, 13, 1}));
+    BOOST_TEST(!is_valid(year_month_day{2010, std::numeric_limits<unsigned>::max(), 1}));
 }
 
 // ymd_to_days, days_to_ymd
 // Helper function that actually performs the assertions for us
 void ymd_years_test(int year, unsigned month, unsigned day, int num_days)
 {
-    year_month_day ymd {year, month, day};
     auto test_name = date_to_string(year, month, day);
+    BOOST_TEST_CHECKPOINT(test_name.data());
 
-    EXPECT_TRUE(is_valid(ymd)) << test_name.data();
-    EXPECT_EQ(ymd_to_days(ymd), num_days)  << test_name.data();
+    year_month_day ymd {year, month, day};
+
+    BOOST_TEST(is_valid(ymd), test_name.data());
+    BOOST_TEST(ymd_to_days(ymd) == num_days, test_name.data());
     auto actual_ymd = days_to_ymd(num_days);
-    EXPECT_EQ(actual_ymd.day, day)  << test_name.data();
-    EXPECT_EQ(actual_ymd.month, month)  << test_name.data();
-    EXPECT_EQ(actual_ymd.years, year)  << test_name.data();
+    BOOST_TEST(actual_ymd.day == day, test_name.data());
+    BOOST_TEST(actual_ymd.month == month, test_name.data());
+    BOOST_TEST(actual_ymd.years == year, test_name.data());
 }
 
-TEST(YmdYearsTest, DaysToYmdAndYmdToDays)
+BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
 {
     // Starting from 1970, going up
     int num_days = 0;
@@ -149,5 +148,5 @@ TEST(YmdYearsTest, DaysToYmdAndYmdToDays)
     }
 }
 
-} // anon namespace
+BOOST_AUTO_TEST_SUITE_END() // test_date
 

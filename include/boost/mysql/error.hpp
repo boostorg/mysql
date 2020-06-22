@@ -10,6 +10,7 @@
 
 #include <boost/system/error_code.hpp>
 #include <string>
+#include <ostream>
 #include "boost/mysql/errc.hpp"
 
 /**

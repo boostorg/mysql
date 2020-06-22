@@ -98,31 +98,6 @@ inline std::ostream& operator<<(std::ostream& os, const row& value)
     return os << '}';
 }
 
-// Allow comparisons between vectors of rows and owning rows
-template <
-    typename RowTypeLeft,
-    typename RowTypeRight,
-    typename=typename std::enable_if<
-        std::is_base_of<row, RowTypeLeft>::value && std::is_base_of<row, RowTypeRight>::value
-    >::type
->
-inline bool operator==(const std::vector<RowTypeLeft>& lhs, const std::vector<RowTypeRight>& rhs)
-{
-    return detail::container_equals(lhs, rhs);
-}
-
-template <
-    typename RowTypeLeft,
-    typename RowTypeRight,
-    typename=typename std::enable_if<
-        std::is_base_of<row, RowTypeLeft>::value && std::is_base_of<row, RowTypeRight>::value
-    >::type
->
-inline bool operator!=(const std::vector<RowTypeLeft>& lhs, const std::vector<RowTypeRight>& rhs)
-{
-    return !(lhs == rhs);
-}
-
 } // mysql
 } // boost
 

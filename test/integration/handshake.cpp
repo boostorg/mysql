@@ -8,148 +8,94 @@
 #include "boost/mysql/connection.hpp"
 #include "integration_test_common.hpp"
 #include "test_common.hpp"
-#include <boost/asio/use_future.hpp>
-#include <cstdlib>
 
-// Tests containing 'RequiresSha256' in their name require SHA256 functionality.
-// This is used by a calling script to exclude these tests on systems
+// Tests containing with label 'sha256' require SHA256 functionality.
+// This is used by the build script to exclude these tests on databases
 // that do not support this functionality
 
 namespace net = boost::asio;
-using namespace testing;
 using namespace boost::mysql::test;
 
+using boost::mysql::socket_connection;
 using boost::mysql::ssl_mode;
+using boost::mysql::ssl_options;
 using boost::mysql::detail::make_error_code;
 using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::tcp_connection;
 using boost::mysql::connection_params;
-using boost::mysql::detail::stringize;
 
-namespace
+BOOST_AUTO_TEST_SUITE(test_handshake)
+
+template <typename Stream>
+network_result<no_result> do_handshake(
+    socket_connection<Stream>& conn,
+    connection_params params,
+    network_functions<Stream>* net,
+    ssl_mode ssl
+)
 {
+    params.set_ssl(boost::mysql::ssl_options(ssl));
+    return net->handshake(conn, params);
+}
+
+template <typename Stream>
+void do_handshake_ok(
+    socket_connection<Stream>& conn,
+    connection_params params,
+    network_functions<Stream>* net,
+    ssl_mode ssl
+)
+{
+    auto result = do_handshake(conn, params, net, ssl);
+    result.validate_no_error();
+    validate_ssl(conn, ssl);
+}
+
 
 // Handshake tests not depending on whether we use SSL or not
 template <typename Stream>
-struct SslIndifferentHandshakeTest : NetworkTest<Stream>
+struct handshake_fixture : network_fixture<Stream>
 {
-    SslIndifferentHandshakeTest()
+    handshake_fixture()
     {
         this->physical_connect();
-    }
-
-    network_result<no_result> do_handshake()
-    {
-        this->params.set_ssl(boost::mysql::ssl_options(this->GetParam().ssl));
-        return this->GetParam().net->handshake(this->conn, this->params);
-    }
-
-    // does handshake and verifies it went OK
-    void do_handshake_ok()
-    {
-        auto result = do_handshake();
-        result.validate_no_error();
-        this->validate_ssl(this->GetParam().ssl);
-    }
-};
-
-template <typename Stream>
-struct SslSensitiveHandshakeTest : NetworkTest<Stream, network_testcase<Stream>>
-{
-    SslSensitiveHandshakeTest()
-    {
-        this->physical_connect();
-    }
-
-    void set_ssl(ssl_mode m)
-    {
-        this->params.set_ssl(boost::mysql::ssl_options(m));
-    }
-
-    network_result<no_result> do_handshake()
-    {
-        return this->GetParam().net->handshake(this->conn, this->params);
-    }
-
-    void do_handshake_ok(ssl_mode m)
-    {
-        set_ssl(m);
-        auto result = do_handshake();
-        result.validate_no_error();
-        this->validate_ssl(m);
     }
 };
 
 // mysql_native_password
-template <typename Stream>
-struct MysqlNativePasswordHandshakeTest : SslIndifferentHandshakeTest<Stream>
+BOOST_AUTO_TEST_SUITE(mysql_native_password)
+
+BOOST_MYSQL_NETWORK_TEST(regular_user, handshake_fixture, network_ssl_gen)
 {
-    void RegularUser_SuccessfulLogin()
-    {
-        this->set_credentials("mysqlnp_user", "mysqlnp_password");
-        this->do_handshake_ok();
-    }
+    this->set_credentials("mysqlnp_user", "mysqlnp_password");
+    do_handshake_ok(this->conn, this->params, sample.net, sample.ssl);
+}
 
-    void EmptyPassword_SuccessfulLogin()
-    {
-        this->set_credentials("mysqlnp_empty_password_user", "");
-        this->do_handshake_ok();
-    }
-
-    void BadPassword_FailedLogin()
-    {
-        this->set_credentials("mysqlnp_user", "bad_password");
-        auto result = this->do_handshake();
-        result.validate_error(errc::access_denied_error, {"access denied", "mysqlnp_user"});
-    }
-};
-
-BOOST_MYSQL_NETWORK_TEST_SUITE(MysqlNativePasswordHandshakeTest)
-
-BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, RegularUser_SuccessfulLogin)
-BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, EmptyPassword_SuccessfulLogin)
-BOOST_MYSQL_NETWORK_TEST(MysqlNativePasswordHandshakeTest, BadPassword_FailedLogin)
-
-
-// Other handshake tests not depending on SSL mode
-template <typename Stream>
-struct MiscSslIndifferentHandshakeTest : SslIndifferentHandshakeTest<Stream>
+BOOST_MYSQL_NETWORK_TEST(empty_password, handshake_fixture, network_ssl_gen)
 {
-    void NoDatabase_SuccessfulLogin()
-    {
-        this->params.set_database("");
-        this->do_handshake_ok();
-    }
+    this->set_credentials("mysqlnp_empty_password_user", "");
+    do_handshake_ok(this->conn, this->params, sample.net, sample.ssl);
+}
 
-    void BadDatabase_FailedLogin()
-    {
-        this->params.set_database("bad_database");
-        auto result = this->do_handshake();
-        result.validate_error(errc::dbaccess_denied_error, {"database", "bad_database"});
-    }
+BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, network_ssl_gen)
+{
+    this->set_credentials("mysqlnp_user", "bad_password");
+    auto result = do_handshake(this->conn, this->params, sample.net, sample.ssl);
+    result.validate_error(errc::access_denied_error, {"access denied", "mysqlnp_user"});
+}
 
-    void UnknownAuthPlugin_FailedLogin_RequiresSha256()
-    {
-        // Note: sha256_password is not supported, so it's an unknown plugin to us
-        this->set_credentials("sha2p_user", "sha2p_password");
-        auto result = this->do_handshake();
-        result.validate_error(errc::unknown_auth_plugin, {});
-    }
-};
-
-BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslIndifferentHandshakeTest)
-
-BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, NoDatabase_SuccessfulLogin)
-BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, BadDatabase_FailedLogin)
-BOOST_MYSQL_NETWORK_TEST(MiscSslIndifferentHandshakeTest, UnknownAuthPlugin_FailedLogin_RequiresSha256)
+BOOST_AUTO_TEST_SUITE_END() // mysql_native_password
 
 // caching_sha2_password
+BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
+BOOST_AUTO_TEST_SUITE(caching_sha2_password)
+
 template <typename Stream>
-struct CachingSha2HandshakeTest : SslSensitiveHandshakeTest<Stream>
+struct caching_sha2_fixture : handshake_fixture<Stream>
 {
-    void load_sha256_cache(const std::string& user, const std::string& password)
+    void load_sha256_cache(boost::string_view user, boost::string_view password)
     {
         tcp_connection conn (this->ctx);
         conn.connect(
@@ -169,129 +115,128 @@ struct CachingSha2HandshakeTest : SslSensitiveHandshakeTest<Stream>
         conn.query("FLUSH PRIVILEGES");
         conn.close();
     }
-
-    // Actual tests
-    void SslOnCacheHit_SuccessfulLogin_RequiresSha256()
-    {
-        this->set_credentials("csha2p_user", "csha2p_password");
-        load_sha256_cache("csha2p_user", "csha2p_password");
-        this->do_handshake_ok(ssl_mode::require);
-    }
-
-    void SslOffCacheHit_SuccessfulLogin_RequiresSha256()
-    {
-        // As we are sending password hashed, it is OK to not have SSL for this
-        this->set_credentials("csha2p_user", "csha2p_password");
-        load_sha256_cache("csha2p_user", "csha2p_password");
-        this->do_handshake_ok(ssl_mode::disable);
-    }
-
-    void SslOnCacheMiss_SuccessfulLogin_RequiresSha256()
-    {
-        this->set_credentials("csha2p_user", "csha2p_password");
-        clear_sha256_cache();
-        this->do_handshake_ok(ssl_mode::require);
-    }
-
-    void SslOffCacheMiss_FailedLogin_RequiresSha256()
-    {
-        // A cache miss would force us send a plaintext password over
-        // a non-TLS connection, so we fail
-        this->set_ssl(ssl_mode::disable);
-        this->set_credentials("csha2p_user", "csha2p_password");
-        clear_sha256_cache();
-        auto result = this->do_handshake();
-        result.validate_error(errc::auth_plugin_requires_ssl, {});
-    }
-
-    void EmptyPasswordSslOnCacheHit_SuccessfulLogin_RequiresSha256()
-    {
-        this->set_credentials("csha2p_empty_password_user", "");
-        load_sha256_cache("csha2p_empty_password_user", "");
-        this->do_handshake_ok(ssl_mode::require);
-    }
-
-    void EmptyPasswordSslOffCacheHit_SuccessfulLogin_RequiresSha256()
-    {
-        // Empty passwords are allowed over non-TLS connections
-        this->set_credentials("csha2p_empty_password_user", "");
-        load_sha256_cache("csha2p_empty_password_user", "");
-        this->do_handshake_ok(ssl_mode::disable);
-    }
-
-    void EmptyPasswordSslOnCacheMiss_SuccessfulLogin_RequiresSha256()
-    {
-        this->set_credentials("csha2p_empty_password_user", "");
-        clear_sha256_cache();
-        this->do_handshake_ok(ssl_mode::require);
-    }
-
-    void EmptyPasswordSslOffCacheMiss_SuccessfulLogin_RequiresSha256()
-    {
-        // Empty passwords are allowed over non-TLS connections
-        this->set_credentials("csha2p_empty_password_user", "");
-        clear_sha256_cache();
-        this->do_handshake_ok(ssl_mode::disable);
-    }
-
-    void BadPasswordSslOnCacheMiss_FailedLogin_RequiresSha256()
-    {
-        this->set_ssl(ssl_mode::require); // Note: test over non-TLS would return "ssl required"
-        clear_sha256_cache();
-        this->set_credentials("csha2p_user", "bad_password");
-        auto result = this->do_handshake();
-        result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
-    }
-
-    void BadPasswordSslOnCacheHit_FailedLogin_RequiresSha256()
-    {
-        this->set_ssl(ssl_mode::require); // Note: test over non-TLS would return "ssl required"
-        this->set_credentials("csha2p_user", "bad_password");
-        load_sha256_cache("csha2p_user", "csha2p_password");
-        auto result = this->do_handshake();
-        result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
-    }
 };
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(CachingSha2HandshakeTest)
-
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheHit_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheHit_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOnCacheMiss_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, SslOffCacheMiss_FailedLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOnCacheHit_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOffCacheHit_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOnCacheMiss_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, EmptyPasswordSslOffCacheMiss_SuccessfulLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, BadPasswordSslOnCacheMiss_FailedLogin_RequiresSha256)
-BOOST_MYSQL_NETWORK_TEST(CachingSha2HandshakeTest, BadPasswordSslOnCacheHit_FailedLogin_RequiresSha256)
-
-// Misc tests that are sensitive on SSL
-template <typename Stream>
-struct MiscSslSensitiveHandshakeTest : SslSensitiveHandshakeTest<Stream>
+BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_hit, caching_sha2_fixture, network_gen)
 {
-    void BadUser_FailedLogin()
-    {
-        // unreliable without SSL. If the default plugin requires SSL
-        // (like SHA256), this would fail with 'ssl required'
-        this->set_ssl(ssl_mode::require);
-        this->set_credentials("non_existing_user", "bad_password");
-        auto result = this->do_handshake();
-        result.validate_any_error(); // may be access denied or unknown auth plugin
-    }
+    this->set_credentials("csha2p_user", "csha2p_password");
+    this->load_sha256_cache("csha2p_user", "csha2p_password");
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::require);
+}
 
-    void SslEnable_SuccessfulLogin()
-    {
-        // In all our CI systems, our servers support SSL, so
-        // ssl_mode::enable will do the same as ssl_mode::require.
-        // We test for this fact.
-        this->do_handshake_ok(ssl_mode::enable);
-    }
-};
+BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_hit, caching_sha2_fixture, network_gen)
+{
+    // As we are sending password hashed, it is OK to not have SSL for this
+    this->set_credentials("csha2p_user", "csha2p_password");
+    this->load_sha256_cache("csha2p_user", "csha2p_password");
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::disable);
+}
 
-BOOST_MYSQL_NETWORK_TEST_SUITE(MiscSslSensitiveHandshakeTest)
+BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_miss, caching_sha2_fixture, network_gen)
+{
+    this->set_credentials("csha2p_user", "csha2p_password");
+    this->clear_sha256_cache();
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::require);
+}
 
-BOOST_MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, BadUser_FailedLogin)
-BOOST_MYSQL_NETWORK_TEST(MiscSslSensitiveHandshakeTest, SslEnable_SuccessfulLogin)
+BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture, network_gen)
+{
+    // A cache miss would force us send a plaintext password over
+    // a non-TLS connection, so we fail
+    this->set_credentials("csha2p_user", "csha2p_password");
+    this->clear_sha256_cache();
+    auto result = do_handshake(this->conn, this->params, sample.net, ssl_mode::disable);
+    result.validate_error(errc::auth_plugin_requires_ssl, {});
+}
 
-} // anon namespace
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_hit, caching_sha2_fixture, network_gen)
+{
+    this->set_credentials("csha2p_empty_password_user", "");
+    this->load_sha256_cache("csha2p_empty_password_user", "");
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::require);
+}
+
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_hit, caching_sha2_fixture, network_gen)
+{
+    // Empty passwords are allowed over non-TLS connections
+    this->set_credentials("csha2p_empty_password_user", "");
+    this->load_sha256_cache("csha2p_empty_password_user", "");
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::disable);
+}
+
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_miss, caching_sha2_fixture, network_gen)
+{
+    this->set_credentials("csha2p_empty_password_user", "");
+    this->clear_sha256_cache();
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::require);
+}
+
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_miss, caching_sha2_fixture, network_gen)
+{
+    // Empty passwords are allowed over non-TLS connections
+    this->set_credentials("csha2p_empty_password_user", "");
+    this->clear_sha256_cache();
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::disable);
+}
+
+BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_hit, caching_sha2_fixture, network_gen)
+{
+    // Note: test over non-TLS would return "ssl required"
+    this->set_credentials("csha2p_user", "bad_password");
+    this->load_sha256_cache("csha2p_user", "csha2p_password");
+    auto result = do_handshake(this->conn, this->params, sample.net, ssl_mode::require);
+    result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
+}
+
+BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, network_gen)
+{
+    // Note: test over non-TLS would return "ssl required"
+    this->set_credentials("csha2p_user", "bad_password");
+    this->clear_sha256_cache();
+    auto result = do_handshake(this->conn, this->params, sample.net, ssl_mode::require);
+    result.validate_error(errc::access_denied_error, {"access denied", "csha2p_user"});
+}
+
+BOOST_AUTO_TEST_SUITE_END() // caching_sha2_password
+
+// Other handshake tests
+BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture, network_ssl_gen)
+{
+    this->params.set_database("");
+    do_handshake_ok(this->conn, this->params, sample.net, sample.ssl);
+}
+
+BOOST_MYSQL_NETWORK_TEST(bad_database, handshake_fixture, network_ssl_gen)
+{
+    this->params.set_database("bad_database");
+    auto result = do_handshake(this->conn, this->params, sample.net, sample.ssl);
+    result.validate_error(errc::dbaccess_denied_error, {"database", "bad_database"});
+}
+
+BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
+BOOST_MYSQL_NETWORK_TEST(unknown_auth_plugin, handshake_fixture, network_ssl_gen)
+{
+    // Note: sha256_password is not supported, so it's an unknown plugin to us
+    this->set_credentials("sha2p_user", "sha2p_password");
+    auto result = do_handshake(this->conn, this->params, sample.net, sample.ssl);
+    result.validate_error(errc::unknown_auth_plugin, {});
+}
+
+BOOST_MYSQL_NETWORK_TEST(bad_user, handshake_fixture, network_gen)
+{
+    // unreliable without SSL. If the default plugin requires SSL
+    // (like SHA256), this would fail with 'ssl required'
+    this->set_credentials("non_existing_user", "bad_password");
+    auto result = do_handshake(this->conn, this->params, sample.net, ssl_mode::require);
+    result.validate_any_error(); // may be access denied or unknown auth plugin
+}
+
+BOOST_MYSQL_NETWORK_TEST(ssl_enable, handshake_fixture, network_gen)
+{
+    // In all our CI systems, our servers support SSL, so
+    // ssl_mode::enable will do the same as ssl_mode::require.
+    // We test for this fact.
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::enable);
+}
+
+BOOST_AUTO_TEST_SUITE_END() // test_handshake

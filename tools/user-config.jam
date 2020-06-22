@@ -8,7 +8,6 @@
 import os ;
 
 local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
-local GTEST_ROOT = [ os.environ GTEST_ROOT ] ;
 
 lib crypto ;
 lib crypto : : <target-os>windows <address-model>32 <variant>debug <name>libcrypto32MDd ;
@@ -22,18 +21,10 @@ lib ssl : : <target-os>windows <address-model>32 <variant>release <name>libssl32
 lib ssl : : <target-os>windows <address-model>64 <variant>debug <name>libssl64MDd ;
 lib ssl : : <target-os>windows <address-model>64 <variant>release <name>libssl64MD ;
 
-lib gtest ;
-lib gtest : : <variant>debug <name>gtestd ;
-    
-lib gmock ;
-lib gmock : : <variant>debug <name>gmockd ;
-
 project user-config
     : requirements
         <include>$(OPENSSL_ROOT)/include
-        <include>$(GTEST_ROOT)/include
         <library-path>$(OPENSSL_ROOT)/lib
         <library-path>$(OPENSSL_ROOT)/lib/VC
-        <library-path>$(GTEST_ROOT)/lib
     ;
     

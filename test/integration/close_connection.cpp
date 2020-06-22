@@ -11,64 +11,49 @@ using namespace boost::mysql::test;
 using boost::mysql::error_code;
 using boost::mysql::socket_connection;
 
-namespace
+BOOST_AUTO_TEST_SUITE(test_close_connection)
+
+BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture, network_ssl_gen)
 {
+    // Connect
+    this->connect(sample.ssl);
 
-template <typename Stream>
-struct CloseConnectionTest : public NetworkTest<Stream>
+    // Close
+    auto result = sample.net->close(this->conn);
+    result.validate_no_error();
+
+    // We are no longer able to query
+    auto query_result = sample.net->query(this->conn, "SELECT 1");
+    query_result.validate_any_error();
+
+    // The stream is closed
+    BOOST_TEST(!this->conn.next_layer().is_open());
+}
+
+BOOST_MYSQL_NETWORK_TEST(double_close, network_fixture, network_ssl_gen)
 {
-    network_functions<Stream>* net = NetworkTest<Stream>::GetParam().net;
+    // Connect
+    this->connect(sample.ssl);
 
-    void ActiveConnection_ClosesIt()
-    {
-        // Connect
-        this->connect(this->GetParam().ssl);
+    // Close
+    auto result = sample.net->close(this->conn);
+    result.validate_no_error();
 
-        // Close
-        auto result = net->close(this->conn);
-        result.validate_no_error();
+    // The stream (socket) is closed
+    BOOST_TEST(!this->conn.next_layer().is_open());
 
-        // We are no longer able to query
-        auto query_result = net->query(this->conn, "SELECT 1");
-        query_result.validate_any_error();
+    // Closing again returns OK (and does nothing)
+    result = sample.net->close(this->conn);
+    result.validate_no_error();
 
-        // The stream is closed
-        EXPECT_FALSE(this->conn.next_layer().is_open());
-    }
+    // Stream (socket) still closed
+    BOOST_TEST(!this->conn.next_layer().is_open());
+}
 
-    void DoubleClose_Ok()
-    {
-        // Connect
-        this->connect(this->GetParam().ssl);
+BOOST_MYSQL_NETWORK_TEST(not_open_connection, network_fixture, network_ssl_gen)
+{
+    auto result = sample.net->close(this->conn);
+    result.validate_no_error();
+}
 
-        // Close
-        auto result = net->close(this->conn);
-        result.validate_no_error();
-
-        // The stream (socket) is closed
-        EXPECT_FALSE(this->conn.next_layer().is_open());
-
-        // Closing again returns OK (and does nothing)
-        result = net->close(this->conn);
-        result.validate_no_error();
-
-        // Stream (socket) still closed
-        EXPECT_FALSE(this->conn.next_layer().is_open());
-    }
-
-    void CloseNotOpenedConnection_Ok()
-    {
-        auto result = net->close(this->conn);
-        result.validate_no_error();
-    }
-};
-
-BOOST_MYSQL_NETWORK_TEST_SUITE(CloseConnectionTest)
-
-BOOST_MYSQL_NETWORK_TEST(CloseConnectionTest, ActiveConnection_ClosesIt)
-BOOST_MYSQL_NETWORK_TEST(CloseConnectionTest, DoubleClose_Ok)
-BOOST_MYSQL_NETWORK_TEST(CloseConnectionTest, CloseNotOpenedConnection_Ok)
-
-} // anon namespace
-
-
+BOOST_AUTO_TEST_SUITE_END() // test_close_connection

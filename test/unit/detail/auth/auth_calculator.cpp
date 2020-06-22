@@ -7,19 +7,16 @@
 
 #include "boost/mysql/detail/auth/auth_calculator.hpp"
 #include "test_common.hpp"
-#include <gtest/gtest.h>
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
-using namespace testing;
 using boost::mysql::error_code;
 using boost::mysql::errc;
 
-namespace
-{
+BOOST_AUTO_TEST_SUITE(test_auth_calculator)
 
 // mysql_native_password
-struct MysqlNativePasswordTest : public Test
+struct mysql_native_password
 {
     auth_calculator calc;
     std::uint8_t challenge_buffer [20] {
@@ -36,48 +33,48 @@ struct MysqlNativePasswordTest : public Test
     boost::string_view expected = makesv(expected_buffer);
 };
 
-TEST_F(MysqlNativePasswordTest, NonEmptyPasswordSslFalse_ReturnsExpectedHash)
+BOOST_FIXTURE_TEST_CASE(non_empty_password_ssl_false, mysql_native_password)
 {
     auto err = calc.calculate("mysql_native_password", "root", challenge, false);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), expected);
-    EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == expected);
+    BOOST_TEST(calc.plugin_name() == "mysql_native_password");
 }
 
-TEST_F(MysqlNativePasswordTest, NonEmptyPasswordSslTrue_ReturnsExpectedHash)
+BOOST_FIXTURE_TEST_CASE(non_empty_password_ssl_true, mysql_native_password)
 {
     auto err = calc.calculate("mysql_native_password", "root", challenge, true);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), expected);
-    EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == expected);
+    BOOST_TEST(calc.plugin_name() == "mysql_native_password");
 }
 
-TEST_F(MysqlNativePasswordTest, EmptyPasswordSslFalse_ReturnsEmpty)
+BOOST_FIXTURE_TEST_CASE(empty_password_ssl_false, mysql_native_password)
 {
     auto err = calc.calculate("mysql_native_password", "", challenge, false);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), "");
-    EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == "");
+    BOOST_TEST(calc.plugin_name() == "mysql_native_password");
 }
 
-TEST_F(MysqlNativePasswordTest, EmptyPasswordSslTrue_ReturnsEmpty)
+BOOST_FIXTURE_TEST_CASE(empty_password_ssl_true, mysql_native_password)
 {
     auto err = calc.calculate("mysql_native_password", "", challenge, false);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), "");
-    EXPECT_EQ(calc.plugin_name(), "mysql_native_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == "");
+    BOOST_TEST(calc.plugin_name() == "mysql_native_password");
 }
 
-TEST_F(MysqlNativePasswordTest, BadChallengeLength_Fail)
+BOOST_FIXTURE_TEST_CASE(bad_challenge_length, mysql_native_password)
 {
-    EXPECT_EQ((calc.calculate("mysql_native_password", "password", "", true)),
+    BOOST_TEST((calc.calculate("mysql_native_password", "password", "", true)) ==
             make_error_code(errc::protocol_value_error));
-    EXPECT_EQ((calc.calculate("mysql_native_password", "password", "bad_challenge", true)),
+    BOOST_TEST((calc.calculate("mysql_native_password", "password", "bad_challenge", true)) ==
             make_error_code(errc::protocol_value_error));
 }
 
 // caching_sha2_password
-struct CachingSha2PasswordTest : public Test
+struct caching_sha2_password_test
 {
     auth_calculator calc;
     std::uint8_t challenge_buffer [20] {
@@ -96,85 +93,85 @@ struct CachingSha2PasswordTest : public Test
     boost::string_view cleartext_challenge { "\4" };
 };
 
-TEST_F(CachingSha2PasswordTest, NonEmptyPasswordChallengeAuthSslFalse_ReturnsExpectedHash)
+BOOST_FIXTURE_TEST_CASE(non_empty_password_challenge_auth_ssl_false, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", challenge, false);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), expected);
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == expected);
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, NonEmptyPasswordChallengeAuthSslTrue_ReturnsExpectedHash)
+BOOST_FIXTURE_TEST_CASE(non_empty_password_challenge_auth_ssl_true, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", challenge, true);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), expected);
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == expected);
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, NonEmptyPasswordCleartextAuthSslFalse_Fail)
+BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_false, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", cleartext_challenge, false);
-    EXPECT_EQ(err, make_error_code(errc::auth_plugin_requires_ssl));
+    BOOST_TEST(err == make_error_code(errc::auth_plugin_requires_ssl));
 }
 
-TEST_F(CachingSha2PasswordTest, NonEmptyPasswordCleartextAuthSslTrue_ReturnsPassword)
+BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_true, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", cleartext_challenge, true);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), std::string("hola") + '\0');
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == std::string("hola") + '\0');
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, EmptyPasswordChallengeAuthSslFalse_ReturnsEmpty)
+BOOST_FIXTURE_TEST_CASE(empty_password_challenge_auth_ssl_false, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "", challenge, false);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), "");
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == "");
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, EmptyPasswordChallengeAuthSslTrue_ReturnsEmpty)
+BOOST_FIXTURE_TEST_CASE(empty_password_challenge_auth_ssl_true, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "", challenge, true);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), "");
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == "");
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, EmptyPasswordCleartextAuthSslFalse_ReturnsEmpty)
+BOOST_FIXTURE_TEST_CASE(empty_password_cleartext_auth_ssl_false, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "", cleartext_challenge, false);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), "");
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == "");
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, EmptyPasswordCleartextAuthSslTrue_ReturnsEmpty)
+BOOST_FIXTURE_TEST_CASE(empty_password_cleartext_auth_ssl_true, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "", cleartext_challenge, true);
-    ASSERT_EQ(err, error_code());
-    EXPECT_EQ(calc.response(), "");
-    EXPECT_EQ(calc.plugin_name(), "caching_sha2_password");
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(calc.response() == "");
+    BOOST_TEST(calc.plugin_name() == "caching_sha2_password");
 }
 
-TEST_F(CachingSha2PasswordTest, BadChallengeLength_Fail)
+BOOST_FIXTURE_TEST_CASE(caching_sha2_bad_challenge_length, caching_sha2_password_test)
 {
-    EXPECT_EQ((calc.calculate("caching_sha2_password", "password", "", true)),
+    BOOST_TEST((calc.calculate("caching_sha2_password", "password", "", true)) ==
             make_error_code(errc::protocol_value_error));
-    EXPECT_EQ((calc.calculate("caching_sha2_password", "password", "bad_challenge", true)),
+    BOOST_TEST((calc.calculate("caching_sha2_password", "password", "bad_challenge", true)) ==
             make_error_code(errc::protocol_value_error));
 }
 
 // Bad authentication plugin
-TEST(AuthCalculator, UnknownAuthPlugin_Fail)
+BOOST_AUTO_TEST_CASE(unknown_auth_plugin)
 {
     auth_calculator calc;
-    EXPECT_EQ((calc.calculate("bad_plugin", "password", "challenge", true)),
+    BOOST_TEST((calc.calculate("bad_plugin", "password", "challenge", true)) ==
             make_error_code(errc::unknown_auth_plugin));
-    EXPECT_EQ((calc.calculate("", "password", "challenge", true)),
+    BOOST_TEST((calc.calculate("", "password", "challenge", true)) ==
             make_error_code(errc::unknown_auth_plugin));
 }
 
+BOOST_AUTO_TEST_SUITE_END() // test_auth_calculator
 
-}
