@@ -12,13 +12,13 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType>
+template <class Stream>
 class prepare_statement_processor
 {
-    channel<StreamType>& channel_;
+    channel<Stream>& channel_;
     com_stmt_prepare_ok_packet response_ {};
 public:
-    prepare_statement_processor(channel<StreamType>& chan): channel_(chan) {}
+    prepare_statement_processor(channel<Stream>& chan): channel_(chan) {}
     void process_request(boost::string_view statement)
     {
         com_stmt_prepare_packet packet { string_eof(statement) };
@@ -50,7 +50,7 @@ public:
         }
     }
     bytestring& get_buffer() noexcept { return channel_.shared_buffer(); }
-    channel<StreamType>& get_channel() noexcept { return channel_; }
+    channel<Stream>& get_channel() noexcept { return channel_; }
     const com_stmt_prepare_ok_packet& get_response() const noexcept { return response_; }
 
     unsigned get_num_metadata_packets() const noexcept
@@ -59,15 +59,15 @@ public:
     }
 };
 
-template<typename StreamType>
+template<class Stream>
 struct prepare_statement_op : boost::asio::coroutine
 {
-    prepare_statement_processor<StreamType> processor_;
+    prepare_statement_processor<Stream> processor_;
     error_info& output_info_;
     unsigned remaining_meta_ {0};
 
     prepare_statement_op(
-        channel<StreamType>& chan,
+        channel<Stream>& chan,
         error_info& output_info,
         boost::string_view statement
     ) :
@@ -86,12 +86,12 @@ struct prepare_statement_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err, prepared_statement<StreamType>());
+            self.complete(err, prepared_statement<Stream>());
             return;
         }
 
         // Regular coroutine body; if there has been an error, we don't get here
-        channel<StreamType>& chan = processor_.get_channel();
+        channel<Stream>& chan = processor_.get_channel();
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Write message (already serialized at this point)
@@ -104,7 +104,7 @@ struct prepare_statement_op : boost::asio::coroutine
             processor_.process_response(err, output_info_);
             if (err)
             {
-                self.complete(err, prepared_statement<StreamType>());
+                self.complete(err, prepared_statement<Stream>());
                 BOOST_ASIO_CORO_YIELD break;
             }
 
@@ -119,7 +119,7 @@ struct prepare_statement_op : boost::asio::coroutine
             // Compose response
             self.complete(
                 err,
-                prepared_statement<StreamType>(processor_.get_channel(), processor_.get_response())
+                prepared_statement<Stream>(processor_.get_channel(), processor_.get_response())
             );
         }
     }
@@ -129,17 +129,17 @@ struct prepare_statement_op : boost::asio::coroutine
 } // mysql
 } // boost
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::prepare_statement(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     boost::string_view statement,
     error_code& err,
     error_info& info,
-    prepared_statement<StreamType>& output
+    prepared_statement<Stream>& output
 )
 {
     // Prepare message
-    prepare_statement_processor<StreamType> processor (channel);
+    prepare_statement_processor<Stream> processor (channel);
     processor.process_request(statement);
 
     // Write message
@@ -167,16 +167,16 @@ void boost::mysql::detail::prepare_statement(
     }
 
     // Compose response
-    output = prepared_statement<StreamType>(channel, processor.get_response());
+    output = prepared_statement<Stream>(channel, processor.get_response());
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::prepared_statement<StreamType>)
+    void(boost::mysql::error_code, boost::mysql::prepared_statement<Stream>)
 )
 boost::mysql::detail::async_prepare_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     boost::string_view statement,
     CompletionToken&& token,
     error_info& info
@@ -184,9 +184,9 @@ boost::mysql::detail::async_prepare_statement(
 {
     return boost::asio::async_compose<
         CompletionToken,
-        void(error_code, prepared_statement<StreamType>)
+        void(error_code, prepared_statement<Stream>)
     >(
-        prepare_statement_op<StreamType>{chan, info, statement},
+        prepare_statement_op<Stream>{chan, info, statement},
         token,
         chan
     );

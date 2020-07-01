@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef TEST_INTEGRATION_TCP_FUTURE_SOCKET_HPP_
-#define TEST_INTEGRATION_TCP_FUTURE_SOCKET_HPP_
+#ifndef BOOST_MYSQL_TEST_INTEGRATION_TCP_FUTURE_SOCKET_HPP
+#define BOOST_MYSQL_TEST_INTEGRATION_TCP_FUTURE_SOCKET_HPP
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/use_future.hpp>

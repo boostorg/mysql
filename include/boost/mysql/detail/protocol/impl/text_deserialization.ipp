@@ -26,7 +26,7 @@ namespace mysql {
 namespace detail {
 
 // Integers
-template <typename T>
+template <class T>
 errc deserialize_text_value_int_impl(
     boost::string_view from,
     value& to
@@ -52,7 +52,7 @@ inline errc deserialize_text_value_int(
 }
 
 // Floating points
-template <typename T>
+template <class T>
 errc deserialize_text_value_float(
     boost::string_view from,
     value& to

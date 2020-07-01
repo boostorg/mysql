@@ -10,9 +10,9 @@
 
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::close_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
     error_code& code,
     error_info&
@@ -29,13 +29,13 @@ void boost::mysql::detail::close_statement(
     chan.write(boost::asio::buffer(chan.shared_buffer()), code);
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_close_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
     CompletionToken&& token,
     error_info&

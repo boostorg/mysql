@@ -29,7 +29,7 @@ struct handshake_packet
     std::uint16_t status_flags; // server_status_flags
     string_null auth_plugin_name;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -64,7 +64,7 @@ struct handshake_response_packet
     string_null client_plugin_name; // we require CLIENT_PLUGIN_AUTH
     // CLIENT_CONNECT_ATTRS: not implemented
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -97,7 +97,7 @@ struct ssl_request
     std::uint8_t character_set;
     string_fixed<23> filler;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -115,7 +115,7 @@ struct auth_switch_request_packet
     string_null plugin_name;
     string_eof auth_plugin_data;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -130,7 +130,7 @@ struct auth_switch_response_packet
 {
     string_eof auth_plugin_data;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -152,7 +152,7 @@ struct auth_more_data_packet
 {
     string_eof auth_plugin_data;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(

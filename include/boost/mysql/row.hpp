@@ -18,17 +18,19 @@ namespace boost {
 namespace mysql {
 
 /**
- * \ingroup resultsets
  * \brief Represents a row returned from a query.
- * \details Call row::values() to get the actual sequence of mysql::value.
+ * \details Call [refmem row values] to get the actual sequence of
+ * [reflinl value]s the row contains.
+ *
  * There will be the same number of values and in the same order as fields
  * in the SQL query that produced the row. You can get more information
- * about these fields using resultset::fields().
+ * about these fields using [refmem resultset fields].
  *
- * If any of the values is a string (mysql::value having string_view
- * as actual type), it will point to an externally owned piece of memory.
- * Thus, the row base class is not owning; this is contrary to owning_row,
- * that actually owns the string memory of its values.
+ * If any of the values is a string, it will point to an externally owned piece of memory.
+ * Thus, the [reflink row] class is not owning, as opposed to [reflink owning_row].
+ * Note that, in any case, the sequence of [reflink value]s __is__ owned by the
+ * row object. The distinction applies only to the memory pointed to by
+ * string [reflink value]s.
  */
 class row
 {
@@ -46,7 +48,6 @@ public:
 };
 
 /**
- * \ingroup resultsets
  * \brief A row that owns a chunk of memory for its string values.
  * \details Default constructible and movable, but not copyable.
  */

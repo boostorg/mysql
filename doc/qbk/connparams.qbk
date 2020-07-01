@@ -1,0 +1,114 @@
+[/
+    Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:connparams Connection parameters]
+[nochunk]
+
+This section discusses several aspects regarding the establishment
+of a connection with the MySQL server, including a detailed
+description of the parameters in [reflink connection_params].
+
+[section:auth Authentication]
+
+The parameters [refmem connection_params username] and
+[refmem connection_params password] are mandatory. The
+password is provided to __Self__ in plain text,
+but it is not sent like that to the server (see below for more info).
+If your password is empty, just provide an empty string.
+
+MySQL implements several ways of authentication with the server,
+in what is called [mysqllink pluggable-authentication.html
+pluggable authentication]. The decission of which authentication
+plugin to use is made in a per-user basis. This information
+is stored in the `mysql.user` table. In addition to this,
+servers define a default authentication plugin
+(see [mysqllink server-system-variables.html#sysvar_default_authentication_plugin
+`default_authentication_plugin`]). The default plugin will
+be used for newly created users, and may affect how the handshake works.
+
+__Self__ implements the two most common authentication plugins:
+
+* [mysqllink native-pluggable-authentication.html `mysql_native_password`].
+  Unless otherwise configured, this is the default plugin for
+  MySQL 5.7 and MariaDB. It can be used over both TLS and non-TLS
+  connections. It sends the password hashed, salted by a nonce.
+* [mysqllink caching-sha2-pluggable-authentication.html
+  `caching_sha2_password`]. Unless otherwise configured, this is the default plugin for
+  MySQL 8.0. It can only be used over TLS, which makes it less vulnerable.
+  
+Note that the `sha256_password` plugin is [*not] supported.
+
+If you try to establish a connection (using [refmem connection handshake] or
+[refmem socket_connection connect]) and you specify a user with
+an unsupported authentication plugin, the operation will fail.
+
+[note
+    Servers configured with a default authentication plugin
+    not implemented in __Self__ are not supported, regardless
+    of the actual plugin the concrete user employs. This is due to
+    an oddity in the MySQL protocol.
+]
+
+[endsect]
+
+[section:database Connect with database]
+
+The parameter [refmem connection_params database] is a string
+with the database name to connect to. If you specify it,
+your connection will default to use that database, as if
+you had issued a __USE__ statement. You can leave it blank
+to select no database. You can always employ a __USE__
+statement to select a different database after establishing
+the connection.
+
+[endsect]
+
+[section:collation Connection encoding and collation]
+
+When establishing a connection, you specify a [reflink collation]
+parameter ([refmem connection_params connection_collation]).
+This parameter defines the expected encoding of the SQL query strings
+you issue. When you establish a connection, you specify a 
+[reflink collation], which is a character set plus a 
+defined order for the characters. [mysqllink charset-general.html
+This section of the MySQL documentation] provides more details
+on collations.
+
+If left unspecified, `utf8_general_ci` will be used.
+You can change it at any time issuing a __SET_NAMES__ statement 
+(e.g. using [refmem connection query]). 
+
+[endsect]
+
+[section:ssl SSL/TLS]
+
+All connection options regarding the use of SSL/TLS live within
+[refmem connection_params ssl], of type [reflink ssl_options].
+At this moment, a single option, [reflink ssl_mode], is
+available. This option controls whether to use SSL/TLS or not:
+
+* If set to `enable`, the connection will use TLS if
+  available, falling back to an unencrypted connection if the server
+  does not support it. This is the default.
+* If set to `require`, the connection will use TLS. If the
+  server does not support it, the connection will be refused.
+* If set to `disable`, the connection will never use TLS.
+
+The server certificate is not validated. An option to do this
+may be added in a future release.
+
+If you are using `enable` [reflink ssl_mode], you can use
+[refmem connection uses_ssl] to query whether the connection
+uses SSL or not. 
+
+You can find more information about how to configure SSL/TLS
+within a MySQL server [mysqllink using-encrypted-connections.html
+here].
+
+[endsect]
+
+[endsect] [/ connparams]

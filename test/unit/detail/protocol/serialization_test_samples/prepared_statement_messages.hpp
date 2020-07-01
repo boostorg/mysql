@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_TESTCASES_PREPARED_STATEMENT_MESSAGES_HPP
-#define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_TESTCASES_PREPARED_STATEMENT_MESSAGES_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_PREPARED_STATEMENT_MESSAGES_HPP
+#define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_PREPARED_STATEMENT_MESSAGES_HPP
 
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
 #include "../serialization_test.hpp"
@@ -48,7 +48,7 @@ const serialization_test_spec com_stmt_prepare_ok_packet_spec {
 };
 
 // Helper for composing ComStmtExecute tests
-template <std::size_t N, typename Collection = std::vector<value>>
+template <std::size_t N, class Collection = std::vector<value>>
 serialization_sample make_stmt_execute_sample(
     std::uint32_t stmt_id,
     std::uint8_t flags,

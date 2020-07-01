@@ -5,20 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_unix_socket
+
 #include "boost/mysql/mysql.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>
-
-/**
- * For this example, we will be using the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- * This example assumes you are connecting to MySQL server using
- * a UNIX socket. The socket path can be configured using command line
- * arguments, and defaults to /var/run/mysqld/mysqld.sock
- *
- * This example uses synchronous functions and handles errors using exceptions.
- */
 
 void print_employee(const boost::mysql::row& employee)
 {
@@ -132,3 +124,4 @@ int main(int argc, char** argv)
     }
 }
 
+//]

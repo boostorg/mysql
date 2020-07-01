@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 #
 # Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #

@@ -65,7 +65,7 @@ struct network_result_base
     }
 };
 
-template <typename T>
+template <class T>
 struct network_result : network_result_base
 {
     T value;
@@ -79,7 +79,7 @@ struct network_result : network_result_base
 
 using value_list_it = std::forward_list<value>::const_iterator;
 
-template <typename Stream>
+template <class Stream>
 class network_functions
 {
 public:
@@ -107,7 +107,7 @@ public:
     virtual network_result<no_result> close(connection_type&) = 0;
 };
 
-template <typename Stream>
+template <class Stream>
 const std::vector<network_functions<Stream>*>& all_network_functions();
 
 template <>

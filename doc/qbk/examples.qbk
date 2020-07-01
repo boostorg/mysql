@@ -1,0 +1,181 @@
+[/
+    Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:examples Examples]
+
+Welcome to __Self__ examples. If you are intending to
+run the examples, please go through the [link mysql.examples.setup
+setup] first.
+
+Here is a list of available examples:
+
+# [link mysql.examples.query_sync Text query, synchronous]
+# [link mysql.examples.prepared_statements Prepared statements]
+# [link mysql.examples.metadata Metadata]
+# [link mysql.examples.unix_socket UNIX sockets]
+# [link mysql.examples.query_async_callbacks Text query, async with callbacks]
+# [link mysql.examples.query_async_futures Text query, async with futures]
+# [link mysql.examples.query_async_coroutines Text query, async with Boost.Coroutine coroutines]
+# [link mysql.examples.query_async_coroutinescpp20 Text query, async with C++20 coroutines]
+# [link mysql.examples.default_completion_tokens Default completion tokens]
+
+[section:setup Setup]
+
+All examples assume you have a MySQL server running in localhost.
+Examples make use of a database named `boost_mysql_examples`.
+The username and password to used are passed using the command
+line.
+
+You can set the required database up by running
+(this assumes the root password is empty):
+
+``
+> mysql -u root < PATH/TO/BOOST/MYSQL/example/db_setup.sql
+``
+
+This will also create a user `example_user` with a password
+`example_password`, with the appropriate privileges on the database.
+
+[endsect]
+
+[section:query_sync Text query, synchronous]
+
+This example demonstrates how to connect a [reflink socket_connection],
+how to issue a [link mysql.queries text query], and how to
+[link mysql.resultsets read a resultset]. It employs synchronous
+functions with exceptions as error handling. __see_error_handling__
+
+__assume_setup__
+
+[import ../../example/query_sync.cpp]
+[example_query_sync]
+
+[endsect]
+
+[section:prepared_statements Prepared statements]
+
+This example demonstrates how to use [link mysql.prepared_statements
+prepared statements]. It employs synchronous functions with
+exceptions as error handling. __see_error_handling__
+
+__assume_setup__
+
+[import ../../example/prepared_statements.cpp]
+[example_prepared_statements]
+
+[endsect]
+
+[section:metadata Metadata]
+
+This example demonstrates how to use the available
+[link mysql.resultsets.metadata metadata] in a [reflink resultset].
+It employs synchronous functions with
+exceptions as error handling. __see_error_handling__
+
+__assume_setup__
+
+[import ../../example/metadata.cpp]
+[example_metadata]
+
+[endsect]
+
+[section:unix_socket UNIX sockets]
+
+This example demonstrates how to establish a connection
+to a MySQL server using a UNIX domain socket. The path
+to the UNIX socket can be passed in as third parameter
+in the command line, and defaults to `/var/run/mysqld/mysqld.sock`,
+the default on most systems.
+
+The example employs synchronous functions with
+exceptions as error handling. __see_error_handling__
+
+__assume_setup__
+
+[import ../../example/unix_socket.cpp]
+[example_unix_socket]
+
+[endsect]
+
+[section:query_async_callbacks Text query, async with callbacks]
+
+This example demonstrates how to connect a [reflink socket_connection],
+how to issue a [link mysql.queries text query], and how to
+[link mysql.resultsets read a resultset] using
+[link mysql.async asynchronous functions] with callbacks.
+
+__assume_setup__
+
+[import ../../example/query_async_callbacks.cpp]
+[example_query_async_callbacks]
+
+[endsect]
+
+[section:query_async_futures Text query, async with futures]
+
+This example demonstrates how to connect a [reflink socket_connection],
+how to issue a [link mysql.queries text query], and how to
+[link mysql.resultsets read a resultset] using
+[link mysql.async asynchronous functions] with futures
+([asioreflink use_future use_future]).
+
+__assume_setup__
+
+[import ../../example/query_async_futures.cpp]
+[example_query_async_futures]
+
+[endsect]
+
+[section:query_async_coroutines Text query, async with Boost.Coroutine coroutines]
+
+This example demonstrates how to connect a [reflink socket_connection],
+how to issue a [link mysql.queries text query], and how to
+[link mysql.resultsets read a resultset] using
+[link mysql.async asynchronous functions] with __Coroutine__ coroutines
+(using [asioreflink yield_context yield_context] and
+[asioreflink spawn spawn]).
+
+__assume_setup__
+
+[import ../../example/query_async_coroutines.cpp]
+[example_query_async_coroutines]
+
+[endsect]
+
+[section:query_async_coroutinescpp20 Text query, async with C++20 coroutines]
+
+This example demonstrates how to connect a [reflink socket_connection],
+how to issue a [link mysql.queries text query], and how to
+[link mysql.resultsets read a resultset] using
+[link mysql.async asynchronous functions] with C++20 coroutines
+([asioreflink use_awaitable use_awaitable] and [asioreflink
+co_spawn co_spawn]).
+
+__assume_setup__
+
+[import ../../example/query_async_coroutinescpp20.cpp]
+[example_query_async_coroutinescpp20]
+
+[endsect]
+
+[section:default_completion_tokens Default completion tokens]
+
+This example demonstrates how to use Boost.Asio's
+default completion token functionality with __Self__.
+For that purpose, it employs C++20 coroutines.
+If you are not familiar with them, look at
+[link mysql.examples.query_async_coroutinescpp20 this example]
+first.
+
+__assume_setup__
+
+[import ../../example/default_completion_tokens.cpp]
+[example_default_completion_tokens]
+
+[endsect]
+
+[endsect] [/ examples]

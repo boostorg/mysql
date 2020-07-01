@@ -13,22 +13,13 @@
 #include <ostream>
 #include "boost/mysql/errc.hpp"
 
-/**
- * \defgroup error Error handling
- * \brief Classes and functions used in error handling.
- */
-
 namespace boost {
 namespace mysql {
 
-/**
- * \ingroup error
- * \brief An alias for boost::system error codes.
- */
+/// An alias for boost::system error codes.
 using error_code = boost::system::error_code;
 
 /**
- * \ingroup error
  * \brief Additional information about error conditions
  * \details Contains an error message describing what happened. Not all error
  * conditions are able to generate this extended information - those that

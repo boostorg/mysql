@@ -19,7 +19,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename T>
+template <class T>
 struct value_holder
 {
     using value_type = T;

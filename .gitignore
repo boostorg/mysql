@@ -8,3 +8,5 @@ build-*/
 CMakeSettings.json
 out/
 .vs/
+doc/html/
+doc/qbk/reference.qbk

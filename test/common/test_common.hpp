@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_COMMON_COMMON_HPP
-#define BOOST_MYSQL_TEST_COMMON_COMMON_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
+#define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
 #include "boost/mysql/value.hpp"
 #include "boost/mysql/row.hpp"
@@ -24,13 +24,13 @@ namespace test {
 
 using detail::stringize;
 
-template <typename... Types>
+template <class... Types>
 std::vector<value> make_value_vector(Types&&... args)
 {
     return std::vector<value>{mysql::value(std::forward<Types>(args))...};
 }
 
-template <typename... Types>
+template <class... Types>
 row makerow(Types&&... args)
 {
     return row(make_value_vector(std::forward<Types>(args)...));

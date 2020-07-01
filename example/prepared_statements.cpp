@@ -5,22 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_prepared_statements
+
 #include "boost/mysql/mysql.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>
-
-/**
- * For this example, we will be using the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- * This example assumes you are connecting to a localhost MySQL server.
- *
- * This example uses synchronous functions and handles errors using exceptions.
- *
- * This example assumes you are already familiar with the basic concepts
- * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
- * please have a look to the query_sync.cpp example.
- */
 
 #define ASSERT(expr) \
     if (!(expr)) \
@@ -68,8 +58,10 @@ void main_impl(int argc, char** argv)
      *
      * We prepare two statements, a SELECT and an UPDATE.
      */
+    //[prepared_statements_prepare
     const char* salary_getter_sql = "SELECT salary FROM employee WHERE first_name = ?";
     boost::mysql::tcp_prepared_statement salary_getter = conn.prepare_statement(salary_getter_sql);
+    //]
     ASSERT(salary_getter.num_params() == 1); // num_params() returns the number of parameters (question marks)
 
     const char* salary_updater_sql = "UPDATE employee SET salary = ? WHERE first_name = ?";
@@ -93,8 +85,10 @@ void main_impl(int argc, char** argv)
      * which creates a std::array with the passed in values converted to mysql::value's.
      * An iterator version of execute() is also available.
      */
+    //[prepared_statements_execute
     boost::mysql::tcp_resultset result = salary_getter.execute(boost::mysql::make_values("Efficient"));
     std::vector<boost::mysql::owning_row> salaries = result.fetch_all(); // Get all the results
+    //]
     ASSERT(salaries.size() == 1);
     double salary = salaries[0].values().at(0).get<double>(); // First row, first column
     std::cout << "The salary before the payrise was: " << salary << std::endl;
@@ -157,3 +151,5 @@ int main(int argc, char** argv)
         return 1;
     }
 }
+
+//]

@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_TESTCASES_BINARY_SERIALIZATION_HPP
-#define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_TESTCASES_BINARY_SERIALIZATION_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BINARY_SERIALIZATION_HPP
+#define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BINARY_SERIALIZATION_HPP
 
 
 #include "boost/mysql/detail/protocol/binary_serialization.hpp"
@@ -16,7 +16,7 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-template <typename T>
+template <class T>
 serialization_sample make_binary_serialization_sample(
     std::string&& name,
     const T& expected,

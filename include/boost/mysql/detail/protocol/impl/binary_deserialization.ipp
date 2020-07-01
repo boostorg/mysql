@@ -32,7 +32,7 @@ inline errc deserialize_binary_value_string(
 }
 
 // ints
-template <typename TargetType, typename DeserializableType>
+template <class TargetType, class DeserializableType>
 errc deserialize_binary_value_int_impl(
     deserialization_context& ctx,
     value& output
@@ -47,8 +47,8 @@ errc deserialize_binary_value_int_impl(
 }
 
 template <
-    typename DeserializableTypeUnsigned,
-    typename DeserializableTypeSigned
+    class DeserializableTypeUnsigned,
+    class DeserializableTypeSigned
 >
 errc deserialize_binary_value_int(
     const field_metadata& meta,
@@ -64,7 +64,7 @@ errc deserialize_binary_value_int(
 }
 
 // Floats
-template <typename T>
+template <class T>
 errc deserialize_binary_value_float(
     deserialization_context& ctx,
     value& output

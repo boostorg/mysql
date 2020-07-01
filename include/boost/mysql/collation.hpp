@@ -14,10 +14,10 @@ namespace boost {
 namespace mysql {
 
 /**
- * \ingroup connparams
  * \brief A character set and a collation.
- * \details Names and ids for this enum correspond to the "Collation" and "Id"
- * fields returned by MySQL "SHOW COLLATION" statement.
+ * Names and ids for this enum correspond to the `Collation` and `Id`
+ * fields returned by MySQL
+ * [mysqllink show-collation.html `SHOW COLLATION`] statement.
  */
 enum class collation : std::uint16_t
 {

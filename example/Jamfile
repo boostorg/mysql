@@ -6,6 +6,8 @@
 #
 
 local EXAMPLES =
+    tutorial
+    value
     query_sync
     query_async_callbacks
     query_async_coroutines

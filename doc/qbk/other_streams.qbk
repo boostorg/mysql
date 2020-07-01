@@ -1,0 +1,82 @@
+[/
+    Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:other_streams UNIX sockets and other stream types]
+
+All I/O objects ([reflink connection], [reflink prepared_statement]
+and [reflink resultset]) are templatized on the stream type.
+Any object fulfilling the __Stream__ concept may be used
+as template argument.
+
+[warning
+    Do not use SSL streams with [reflink connection] or
+    [reflink socket_connection]. Deciding whether to use SSL 
+    or not and when to start using it is part of the MySQL protocol.
+    If you pass in a SSL stream, you won't be able to connect to the server.
+]
+
+[heading [reflink socket_connection] and [reflink connection]]
+
+There are two types of connection objects: [reflink connection]
+and [reflink socket_connection]. The first one is the most basic object,
+and requires the passed in stream to just fulfill the __Stream__
+requirements. The second derives from the first one and provides
+additional functionality, but can only be used on streams
+that inherit from [asioreflink basic_stream_socket basic_stream_socket].
+
+In general, prefer [reflink socket_connection] over [reflink connection],
+as the additional functionality makes establishing and cleaning up
+connections easier. In fact, [reflink tcp_connection] and
+[reflink unix_connection] are really [reflink socket_connection]s.
+If you are dealing with a different stream type and you cannot
+employ [reflink socket_connection], see [link mysql.other_streams.connection
+the section below].
+
+[heading Convinience type aliases]
+
+__Self__ provides helper type aliases for the most common cases:
+
+* [reflink tcp_connection], [reflink tcp_prepared_statement] and
+  [reflink tcp_resultset] are alias for [reflink socket_connection],
+  [reflink prepared_statement] and [reflink resultset], respectively,
+  instantiated with [asioreflink ip__tcp/socket ip::tcp::socket].
+* [reflink unix_connection], [reflink unix_prepared_statement] and
+  [reflink unix_resultset] are alias for [reflink socket_connection],
+  [reflink prepared_statement] and [reflink resultset], respectively,
+  instantiated with [asioreflink local__stream_protocol/socket local::stream_protocol::socket].
+  Note that these type aliases only exist when the macro
+  `BOOST_ASIO_HAS_LOCAL_SOCKETS` is defined (i.e. on UNIX systems).
+  
+[link mysql.examples.unix_socket This example] employs a UNIX
+domain socket to establish a connection to a MySQL server.
+
+[heading:connection Using plain connection objects]
+
+If you are using [reflink connection] objects instead of
+[reflink socket_connection]s, you cannot use the convinience
+[refmem socket_connection connect] and [refmem socket_connection close]
+functions.
+
+Instead, to establish a connection, you should follow these two steps,
+roughly equivalent to [refmem socket_connection connect]:
+
+* Connect the underlying stream. You can access it using
+  [refmem connection next_layer]. Use whatever connection establishment
+  mechanism the stream implements.
+* Perform the MySQL handshake by calling [refmem connection handshake]
+  or [refmem connection async_handshake]. If the handshake operation
+  fails, close the stream.
+  
+To clean up a connection, follow these two steps,
+roughly equivalent to [refmem socket_connection close]:
+
+* Inform the MySQL server that you are quitting the connection
+  by calling [refmem connection quit] or [refmem connection async_quit].
+* Close the underlying stream.
+
+
+[endsect]

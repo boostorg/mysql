@@ -44,6 +44,8 @@ endfunction()
 
 # The list of all the examples we have
 set(BOOST_MYSQL_EXAMPLES
+    tutorial
+    value
     query_sync
     query_async_callbacks
     query_async_coroutines
@@ -52,6 +54,7 @@ set(BOOST_MYSQL_EXAMPLES
     metadata
     prepared_statements
     unix_socket
+    default_completion_tokens
 )
 
 # The examples we do NOT want to ever memcheck

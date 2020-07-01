@@ -58,7 +58,7 @@ void network_result_base::validate_error(
 }
 
 // free functions
-template <typename Stream>
+template <class Stream>
 const std::vector<network_functions<Stream>*>&
 boost::mysql::test::all_network_functions()
 {

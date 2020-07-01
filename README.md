@@ -4,8 +4,10 @@
 -----------|---------|----------
 [![Build Status](https://travis-ci.com/anarthal/mysql-asio.png?branch=master)](https://github.com/anarthal/mysql-asio) | [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql-asio/branch/master) | [![codecov](https://codecov.io/gh/anarthal/mysql-asio/branch/master/graph/badge.svg)](https://codecov.io/gh/anarthal/mysql-asio/branch/master)
 
-Boost.MySQL (former MySQL.Asio) is a C++11 client for the MySQL database server, based on Boost.Asio.
+Boost.Mysql (former MySQL.Asio) is a C++11 client for the MySQL database server, based on Boost.Asio.
 This library is in the process of being proposed for Boost.
+
+Documentation and examples are [here](https://anarthal.github.io/boost-mysql/index.html).
 
 ## Why another MySQL C++ client?
 
@@ -36,11 +38,6 @@ Finally, link your target against the **Boost::mysql** interface library, and yo
 - OpenSSL.
 - CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
 - Tested with MySQL v5.7.29, MySQL v8.0.19, MariaDB v10.3 and MariaDB v10.5.
-
-## Documentation and examples
-
-You can check the online user manual and reference [here](https://anarthal.github.io/boost-mysql-docs/index.html).
-The user manual contains a tutorial and several examples.
 
 ## Features
 

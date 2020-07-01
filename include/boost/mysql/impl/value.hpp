@@ -22,7 +22,7 @@ struct print_visitor
 
     print_visitor(std::ostream& os): os(os) {};
 
-    template <typename T>
+    template <class T>
     void operator()(const T& value) const { os << value; }
 
     void operator()(const date& value) const
@@ -68,7 +68,7 @@ struct print_visitor
     void operator()(std::nullptr_t) const { os << "<NULL>"; }
 };
 
-template <typename T, template <typename> class Optional>
+template <class T, template <class> class Optional>
 struct value_converter
 {
     static BOOST_CXX14_CONSTEXPR Optional<T> convert(const value::variant_type&) noexcept
@@ -77,7 +77,7 @@ struct value_converter
     }
 };
 
-template <template <typename> class Optional>
+template <template <class> class Optional>
 struct value_converter<std::uint64_t, Optional>
 {
     static BOOST_CXX14_CONSTEXPR Optional<std::uint64_t> convert(
@@ -91,7 +91,7 @@ struct value_converter<std::uint64_t, Optional>
     }
 };
 
-template <template <typename> class Optional>
+template <template <class> class Optional>
 struct value_converter<std::int64_t, Optional>
 {
     static BOOST_CXX14_CONSTEXPR Optional<std::int64_t> convert(
@@ -105,7 +105,7 @@ struct value_converter<std::int64_t, Optional>
     }
 };
 
-template <template <typename> class Optional>
+template <template <class> class Optional>
 struct value_converter<double, Optional>
 {
     static BOOST_CXX14_CONSTEXPR Optional<double> convert(
@@ -117,7 +117,7 @@ struct value_converter<double, Optional>
     }
 };
 
-template <typename T, template <typename> class Optional>
+template <class T, template <class> class Optional>
 BOOST_CXX14_CONSTEXPR Optional<T> get_optional_impl(
     const value::variant_type& val
 ) noexcept
@@ -130,7 +130,7 @@ BOOST_CXX14_CONSTEXPR Optional<T> get_optional_impl(
 } // mysql
 } // boost
 
-template <typename T>
+template <class T>
 BOOST_CXX14_CONSTEXPR boost::mysql::value::value(
     const T& v
 ) noexcept :
@@ -149,21 +149,21 @@ BOOST_CXX14_CONSTEXPR boost::mysql::value::value(
 {
 }
 
-template <typename T>
+template <class T>
 boost::optional<T> boost::mysql::value::get_optional() const noexcept
 {
     return detail::get_optional_impl<T, boost::optional>(repr_);
 }
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-template <typename T>
+template <class T>
 constexpr std::optional<T> boost::mysql::value::get_std_optional() const noexcept
 {
     return detail::get_optional_impl<T, std::optional>(repr_);
 }
 #endif
 
-template <typename T>
+template <class T>
 T boost::mysql::value::get() const
 {
     auto res = get_optional<T>();
@@ -181,7 +181,7 @@ inline std::ostream& boost::mysql::operator<<(
     return os;
 }
 
-template <typename... Types>
+template <class... Types>
 BOOST_CXX14_CONSTEXPR std::array<boost::mysql::value, sizeof...(Types)>
 boost::mysql::make_values(
     Types&&... args

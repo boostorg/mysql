@@ -31,7 +31,7 @@ struct text_value_sample
     unsigned decimals;
     std::uint16_t flags;
 
-    template <typename T>
+    template <class T>
     text_value_sample(
         std::string&& name,
         std::string&& from,
@@ -162,7 +162,7 @@ void add_int_samples(std::vector<text_value_sample>& output)
     output.emplace_back("zero", "0000", std::uint64_t(0), protocol_field_type::year, column_flags::unsigned_);
 }
 
-template <typename T>
+template <class T>
 void add_float_samples(
     protocol_field_type type,
     std::vector<text_value_sample>& output

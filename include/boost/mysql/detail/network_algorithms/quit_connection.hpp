@@ -14,17 +14,17 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType>
+template <class Stream>
 void quit_connection(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     error_code& code,
     error_info& info
 );
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_quit_connection(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     CompletionToken&& token,
     error_info& info
 );

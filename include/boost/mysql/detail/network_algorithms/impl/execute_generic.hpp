@@ -27,7 +27,7 @@ public:
     execute_processor(deserialize_row_fn deserializer, capabilities caps):
         deserializer_(deserializer), caps_(caps) {};
 
-    template <typename Serializable>
+    template <class Serializable>
     void process_request(
         const Serializable& request
     )
@@ -108,12 +108,12 @@ public:
         return error_code();
     }
 
-    template <typename StreamType>
-    resultset<StreamType> create_resultset(channel<StreamType>& chan) &&
+    template <class Stream>
+    resultset<Stream> create_resultset(channel<Stream>& chan) &&
     {
         if (field_count_ == 0)
         {
-            return resultset<StreamType>(
+            return resultset<Stream>(
                 chan,
                 std::move(buffer_),
                 ok_packet_
@@ -121,7 +121,7 @@ public:
         }
         else
         {
-            return resultset<StreamType>(
+            return resultset<Stream>(
                 chan,
                 resultset_metadata(std::move(field_buffers_), std::move(fields_)),
                 deserializer_
@@ -134,16 +134,16 @@ public:
     std::size_t field_count() const noexcept { return field_count_; }
 };
 
-template<class StreamType>
+template<class Stream>
 struct execute_generic_op : boost::asio::coroutine
 {
-    channel<StreamType>& chan_;
+    channel<Stream>& chan_;
     error_info& output_info_;
     std::shared_ptr<execute_processor> processor_;
     std::uint64_t remaining_fields_ {0};
 
     execute_generic_op(
-        channel<StreamType>& chan,
+        channel<Stream>& chan,
         error_info& output_info,
         std::shared_ptr<execute_processor>&& processor
     ) :
@@ -162,7 +162,7 @@ struct execute_generic_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err, resultset<StreamType>());
+            self.complete(err, resultset<Stream>());
             return;
         }
 
@@ -182,7 +182,7 @@ struct execute_generic_op : boost::asio::coroutine
             processor_->process_response(err, output_info_);
             if (err)
             {
-                self.complete(err, resultset<StreamType>());
+                self.complete(err, resultset<Stream>());
                 BOOST_ASIO_CORO_YIELD break;
             }
             remaining_fields_ = processor_->field_count();
@@ -197,7 +197,7 @@ struct execute_generic_op : boost::asio::coroutine
                 err = processor_->process_field_definition();
                 if (err)
                 {
-                    self.complete(err, resultset<StreamType>());
+                    self.complete(err, resultset<Stream>());
                     BOOST_ASIO_CORO_YIELD break;
                 }
 
@@ -207,7 +207,7 @@ struct execute_generic_op : boost::asio::coroutine
             // No EOF packet is expected here, as we require deprecate EOF capabilities
             self.complete(
                 error_code(),
-                resultset<StreamType>(std::move(*processor_).create_resultset(chan_))
+                resultset<Stream>(std::move(*processor_).create_resultset(chan_))
             );
         }
     }
@@ -217,12 +217,12 @@ struct execute_generic_op : boost::asio::coroutine
 } // mysql
 } // boost
 
-template <typename StreamType, typename Serializable>
+template <class Stream, class Serializable>
 void boost::mysql::detail::execute_generic(
     deserialize_row_fn deserializer,
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const Serializable& request,
-    resultset<StreamType>& output,
+    resultset<Stream>& output,
     error_code& err,
     error_info& info
 )
@@ -265,14 +265,14 @@ void boost::mysql::detail::execute_generic(
     output = std::move(processor).create_resultset(channel);
 }
 
-template <typename StreamType, typename Serializable, typename CompletionToken>
+template <class Stream, class Serializable, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
+    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
 )
 boost::mysql::detail::async_execute_generic(
     deserialize_row_fn deserializer,
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     const Serializable& request,
     CompletionToken&& token,
     error_info& info
@@ -282,9 +282,9 @@ boost::mysql::detail::async_execute_generic(
     processor->process_request(request);
     return boost::asio::async_compose<
         CompletionToken,
-        void(error_code, resultset<StreamType>)
+        void(error_code, resultset<Stream>)
     >(
-        execute_generic_op<StreamType>(chan, info, std::move(processor)),
+        execute_generic_op<Stream>(chan, info, std::move(processor)),
         token,
         chan
     );

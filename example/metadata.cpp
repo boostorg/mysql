@@ -5,22 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_metadata
+
 #include "boost/mysql/mysql.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>
-
-/**
- * For this example, we will be using the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- * This example assumes you are connecting to a localhost MySQL server.
- *
- * This example shows how to use the metadata contained in a resultset.
- *
- * This example assumes you are already familiar with the basic concepts
- * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
- * please have a look to the query_sync.cpp example.
- */
 
 #define ASSERT(expr) \
     if (!(expr)) \
@@ -107,5 +97,5 @@ int main(int argc, char** argv)
     }
 }
 
-
+//]
 

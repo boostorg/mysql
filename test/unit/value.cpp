@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_SUITE(test_value)
 
 using vt = value::variant_type;
 
-template <typename T>
+template <class T>
 std::string type_name() { return type_id<T>().pretty_name(); }
 
 // Constructors
@@ -50,14 +50,14 @@ std::ostream& operator<<(std::ostream& os, const value_constructor_sample& input
 
 std::string test_string ("test");
 
-template <typename T>
+template <class T>
 T& non_const_int()
 {
     static T res = 42;
     return res;
 }
 
-template <typename T>
+template <class T>
 const T& const_int()
 {
     static T res = 42;
@@ -194,13 +194,13 @@ std::ostream& operator<<(std::ostream& os, const accessors_sample& input)
     return os << input.name;
 }
 
-template <typename... Types>
+template <class... Types>
 std::map<type_index, vt> make_conversions(const Types&... types)
 {
     return { { type_id<Types>(), types }... };
 }
 
-template <typename T>
+template <class T>
 accessors_sample make_default_accessors_sample(
     const char* name,
     const T& v
@@ -234,7 +234,7 @@ const accessors_sample all_accessors_samples [] {
 
 // Template + data tests not supported. We use template
 // test cases and use this function to emulate data test cases
-template <typename Callable>
+template <class Callable>
 void for_each_accessors_sample(Callable&& cb)
 {
     for (const auto& sample: all_accessors_samples)
@@ -401,7 +401,7 @@ struct stream_sample
     value input;
     std::string expected;
 
-    template <typename T>
+    template <class T>
     stream_sample(std::string&& name, T input, std::string&& expected) :
         name(std::move(name)),
         input(input),

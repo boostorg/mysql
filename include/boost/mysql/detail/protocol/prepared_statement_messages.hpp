@@ -23,7 +23,7 @@ struct com_stmt_prepare_packet
 
     static constexpr std::uint8_t command_id = 0x16;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -43,7 +43,7 @@ struct com_stmt_prepare_ok_packet
     std::uint16_t warning_count;
     // std::uint8_t metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA: not implemented
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -64,7 +64,7 @@ struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struc
 };
 
 // execute
-template <typename ForwardIterator>
+template <class ValueForwardIterator>
 struct com_stmt_execute_packet
 {
     std::uint32_t statement_id;
@@ -72,12 +72,12 @@ struct com_stmt_execute_packet
     std::uint32_t iteration_count;
     // if num_params > 0: NULL bitmap
     std::uint8_t new_params_bind_flag;
-    ForwardIterator params_begin;
-    ForwardIterator params_end;
+    ValueForwardIterator params_begin;
+    ValueForwardIterator params_end;
 
     static constexpr std::uint8_t command_id = 0x17;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -89,16 +89,16 @@ struct com_stmt_execute_packet
     }
 };
 
-template <typename ForwardIterator>
+template <class ValueForwardIterator>
 struct serialization_traits<
-    com_stmt_execute_packet<ForwardIterator>,
+    com_stmt_execute_packet<ValueForwardIterator>,
     serialization_tag::struct_with_fields
-> : noop_deserialize<com_stmt_execute_packet<ForwardIterator>>
+> : noop_deserialize<com_stmt_execute_packet<ValueForwardIterator>>
 {
     static inline std::size_t get_size_(const serialization_context& ctx,
-            const com_stmt_execute_packet<ForwardIterator>& value) noexcept;
+            const com_stmt_execute_packet<ValueForwardIterator>& value) noexcept;
     static inline void serialize_(serialization_context& ctx,
-            const com_stmt_execute_packet<ForwardIterator>& input) noexcept;
+            const com_stmt_execute_packet<ValueForwardIterator>& input) noexcept;
 };
 
 struct com_stmt_execute_param_meta_packet
@@ -106,7 +106,7 @@ struct com_stmt_execute_param_meta_packet
     protocol_field_type type;
     std::uint8_t unsigned_flag;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -123,7 +123,7 @@ struct com_stmt_close_packet
 
     static constexpr std::uint8_t command_id = 0x19;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(

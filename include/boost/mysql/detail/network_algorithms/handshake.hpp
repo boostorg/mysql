@@ -19,18 +19,18 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType>
+template <class Stream>
 void handshake(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const connection_params& params,
     error_code& err,
     error_info& info
 );
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_handshake(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const connection_params& params,
     CompletionToken&& token,
     error_info& info

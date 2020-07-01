@@ -23,7 +23,7 @@ struct packet_header
     int3 packet_size;
     std::uint8_t sequence_number;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -44,7 +44,7 @@ struct ok_packet
     // CLIENT_SESSION_TRACK: not implemented
     string_lenenc info;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -73,7 +73,7 @@ struct err_packet
     string_fixed<5> sql_state;
     string_eof error_message;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -102,7 +102,7 @@ struct column_definition_packet
     std::uint16_t flags; // Flags as defined in Column Definition Flags
     std::uint8_t decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(
@@ -133,7 +133,7 @@ struct quit_packet
 {
     static constexpr std::uint8_t command_id = 0x01;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self&, Callable&&) noexcept {}
 };
 

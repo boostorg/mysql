@@ -14,18 +14,18 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType>
+template <class Stream>
 void close_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
     error_code& code,
     error_info& info
 );
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_close_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
     CompletionToken&& token,
     error_info& info

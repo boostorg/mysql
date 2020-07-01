@@ -38,7 +38,7 @@ struct database_types_sample
     value expected_value;
     meta_validator mvalid;
 
-    template <typename ValueType, typename... Args>
+    template <class ValueType, class... Args>
     database_types_sample(std::string table, std::string field, std::string row_id,
             ValueType&& expected_value, Args&&... args) :
         table(table),

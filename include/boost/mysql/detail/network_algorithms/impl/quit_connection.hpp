@@ -12,9 +12,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType>
+template <class Stream>
 void compose_quit(
-    channel<StreamType>& chan
+    channel<Stream>& chan
 )
 {
     serialize_message(
@@ -29,9 +29,9 @@ void compose_quit(
 } // mysql
 } // boost
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::quit_connection(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     error_code& code,
     error_info&
 )
@@ -40,13 +40,13 @@ void boost::mysql::detail::quit_connection(
     chan.write(chan.shared_buffer(), code);
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_quit_connection(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     CompletionToken&& token,
     error_info&
 )

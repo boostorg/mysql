@@ -68,14 +68,14 @@ boost::mysql::detail::serialization_traits<
     );
 }
 
-template <typename ForwardIterator>
+template <class ValueForwardIterator>
 inline std::size_t
 boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
+    boost::mysql::detail::com_stmt_execute_packet<ValueForwardIterator>,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(
     const serialization_context& ctx,
-    const com_stmt_execute_packet<ForwardIterator>& value
+    const com_stmt_execute_packet<ValueForwardIterator>& value
 ) noexcept
 {
     std::size_t res = 1 + // command ID
@@ -92,17 +92,17 @@ boost::mysql::detail::serialization_traits<
     return res;
 }
 
-template <typename ForwardIterator>
+template <class ValueForwardIterator>
 inline void
 boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::com_stmt_execute_packet<ForwardIterator>,
+    boost::mysql::detail::com_stmt_execute_packet<ValueForwardIterator>,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
     serialization_context& ctx,
-    const com_stmt_execute_packet<ForwardIterator>& input
+    const com_stmt_execute_packet<ValueForwardIterator>& input
 ) noexcept
 {
-    constexpr std::uint8_t command_id = com_stmt_execute_packet<ForwardIterator>::command_id;
+    constexpr std::uint8_t command_id = com_stmt_execute_packet<ValueForwardIterator>::command_id;
     serialize(
         ctx,
         command_id,

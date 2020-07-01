@@ -13,7 +13,7 @@ using boost::mysql::value;
 
 BOOST_AUTO_TEST_SUITE(test_prepared_statement_lifecycle)
 
-template <typename Stream>
+template <class Stream>
 value get_updates_table_value(
     boost::mysql::connection<Stream>& conn,
     const std::string& field_varchar="f0"

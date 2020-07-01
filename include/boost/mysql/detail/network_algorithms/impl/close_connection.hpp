@@ -10,9 +10,9 @@
 
 #include "boost/mysql/detail/network_algorithms/quit_connection.hpp"
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::close_connection(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     error_code& code,
     error_info& info
 )
@@ -33,13 +33,13 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template<class StreamType>
+template<class Stream>
 struct close_connection_op : boost::asio::coroutine
 {
-    channel<StreamType>& chan_;
+    channel<Stream>& chan_;
     error_info& output_info_;
 
-    close_connection_op(channel<StreamType>& chan, error_info& output_info) :
+    close_connection_op(channel<Stream>& chan, error_info& output_info) :
         chan_(chan),
         output_info_(output_info)
     {
@@ -78,13 +78,13 @@ struct close_connection_op : boost::asio::coroutine
 }
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_close_connection(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     CompletionToken&& token,
     error_info& info
 )
@@ -92,7 +92,7 @@ boost::mysql::detail::async_close_connection(
     return boost::asio::async_compose<
         CompletionToken,
         void(boost::mysql::error_code)
-    >(close_connection_op<StreamType>{chan, info}, token, chan);
+    >(close_connection_op<Stream>{chan, info}, token, chan);
 }
 
 

@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_query_async_callbacks
+
 #include "boost/mysql/mysql.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -16,36 +18,6 @@ using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::tcp_resultset;
 using boost::mysql::owning_row;
-
-/**
- * For this example, we will be using the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- * This example assumes you are connecting to a localhost MySQL server.
- *
- * This example uses asynchronous functions with callbacks.
- *
- * This example assumes you are already familiar with the basic concepts
- * of mysql-asio (tcp_connection, resultset, rows, values). If you are not,
- * please have a look to the query_sync.cpp example.
- *
- * In this library, all asynchronous operations follow Boost.Asio universal
- * asynchronous models, and thus may be used with callbacks, Boost stackful
- * coroutines, C++20 coroutines or futures.
- * The handler signature is always one of:
- *   - void(error_code): for operations that do not have a "return type" (e.g. handshake)
- *   - void(error_code, T): for operations that have a "return type" (e.g. query, for which
- *     T = resultset<StreamType>).
- *
- * There are two overloads for all asynchronous operations. One accepts an output error_info&
- * parameter right before the completion token. This error_info will be populated
- * in case of error if any extra information provided by the server. The other overload
- * does not have this error_info& parameter.
- *
- * Design note: handler signatures in Boost.Asio should have two parameters, at
- * most, and the first one should be an error_code - otherwise some of the asynchronous
- * features (e.g. coroutines) won't work. This is why error_info is not part of any
- * of the handler signatures.
- */
 
 #define ASSERT(expr) \
     if (!(expr)) \
@@ -185,3 +157,5 @@ int main(int argc, char** argv)
         return 1;
     }
 }
+
+//]

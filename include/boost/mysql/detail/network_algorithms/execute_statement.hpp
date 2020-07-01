@@ -16,24 +16,24 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType, typename ForwardIterator>
+template <class Stream, class ValueForwardIterator>
 void execute_statement(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     std::uint32_t statement_id,
-    ForwardIterator params_begin,
-    ForwardIterator params_end,
-    resultset<StreamType>& output,
+    ValueForwardIterator params_begin,
+    ValueForwardIterator params_end,
+    resultset<Stream>& output,
     error_code& err,
     error_info& info
 );
 
-template <typename StreamType, typename ForwardIterator, typename CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<StreamType>))
+template <class Stream, class ValueForwardIterator, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
 async_execute_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
-    ForwardIterator params_begin,
-    ForwardIterator params_end,
+    ValueForwardIterator params_begin,
+    ValueForwardIterator params_end,
     CompletionToken&& token,
     error_info& info
 );

@@ -15,41 +15,42 @@ namespace boost {
 namespace mysql {
 
 /**
- * \ingroup resultsets
  * \brief Represents the type of a MySQL field.
  * \details Unless otherwise noted, the names in this enumeration
  * directly correspond to the names of the types you would use in
- * a CREATE TABLE statement to create a field of this type
- * (e.g. VARCHAR corresponds to field_type::varchar).
+ * a `CREATE TABLE` statement to create a field of this type
+ * (e.g. `__VARCHAR__` corresponds to `field_type::varchar`).
  */
 enum class field_type
 {
-    tinyint,      ///< TINYINT (signed and unsigned).
-    smallint,     ///< SMALLINT (signed and unsigned).
-    mediumint,    ///< MEDIUMINT (signed and unsigned).
-    int_,         ///< Plain INT (signed and unsigned).
-    bigint,       ///< BIGINT (signed and unsigned).
-    float_,       ///< FLOAT (warning: FLOAT(p) where p >= 24 creates a DOUBLE column).
-    double_,      ///< DOUBLE
-    decimal,      ///< DECIMAL
-    bit,          ///< BIT
-    year,         ///< YEAR
-    time,         ///< TIME
-    date,         ///< DATE
-    datetime,     ///< DATETIME
-    timestamp,    ///< TIMESTAMP
-    char_,        ///< CHAR (any length)
-    varchar,      ///< VARCHAR (any length)
-    binary,       ///< BINARY (any length)
-    varbinary,    ///< VARBINARY (any length)
-    text,         ///< TINYTEXT, TEXT, MEDIUMTEXT and LONGTEXT
-    blob,         ///< TINYBLOB, BLOB, MEDIUMBLOB and LONGBLOB
-    enum_,        ///< ENUM
-    set,          ///< SET
-    geometry,     ///< GEOMETRY
+    tinyint,      ///< `__TINYINT__` (signed and unsigned).
+    smallint,     ///< `__SMALLINT__` (signed and unsigned).
+    mediumint,    ///< `__MEDIUMINT__` (signed and unsigned).
+    int_,         ///< `__INT__` (signed and unsigned).
+    bigint,       ///< `__BIGINT__` (signed and unsigned).
+    float_,       ///< `__FLOAT__` (warning: FLOAT(p) where p >= 24 creates a DOUBLE column).
+    double_,      ///< `__DOUBLE__`
+    decimal,      ///< `__DECIMAL__`
+    bit,          ///< `__BIT__`
+    year,         ///< `__YEAR__`
+    time,         ///< `__TIME__`
+    date,         ///< `__DATE__`
+    datetime,     ///< `__DATETIME__`
+    timestamp,    ///< `__TIMESTAMP__`
+    char_,        ///< `__CHAR__` (any length)
+    varchar,      ///< `__VARCHAR__` (any length)
+    binary,       ///< `__BINARY__` (any length)
+    varbinary,    ///< `__VARBINARY__` (any length)
+    text,         ///< `__TEXT__` types (`TINYTEXT`, `MEDIUMTEXT`, `TEXT` and `LONGTEXT`)
+    blob,         ///< `__BLOB__` types (`TINYBLOB`, `MEDIUMBLOB`, `BLOB` and `LONGBLOB`)
+    enum_,        ///< `__ENUM__`
+    set,          ///< `__SET__`
+    geometry,     ///< `__GEOMETRY__`
 
     unknown,      ///< None of the known types; maybe a new MySQL type we have no knowledge of.
+#ifndef BOOST_MYSQL_DOXYGEN
     _not_computed,
+#endif
 };
 
 /**

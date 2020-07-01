@@ -5,18 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_query_sync
 #include "boost/mysql/mysql.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>
-
-/**
- * For this example, we will be using the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- * This example assumes you are connecting to a localhost MySQL server.
- *
- * This example uses synchronous functions and handles errors using exceptions.
- */
 
 #define ASSERT(expr) \
     if (!(expr)) \
@@ -141,3 +134,5 @@ int main(int argc, char** argv)
         return 1;
     }
 }
+
+//]

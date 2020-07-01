@@ -11,30 +11,34 @@
 #include <boost/utility/string_view.hpp>
 #include "boost/mysql/collation.hpp"
 
-/**
- * \defgroup connparams Connection parameters
- * \ingroup connection
- * \brief Parameters for estabilishing the connection to the MySQL server.
- */
-
 namespace boost {
 namespace mysql {
 
-/**
- * \ingroup connparams
- * \brief Determines whether to use TLS for the connection or not.
- */
+/// Determines whether to use TLS for the connection or not.
 enum class ssl_mode
 {
-    disable, ///< Never use TLS
-    enable,  ///< Use TLS if the server supports it, fall back to non-encrypted connection if it does not.
-    require  ///< Always use TLS; abort the connection if the server does not support it.
+    /** Never use TLS
+
+        Test.
+     */
+    disable,
+
+    /** Use TLS if the server supports it, fall back to non-encrypted connection if it does not.
+
+        Test.
+     */
+    enable,
+
+    /** Always use TLS; abort the connection if the server does not support it.
+
+        Test.
+     */
+    require
 };
 
 /**
- * \ingroup connparams
  * \brief Connection options regarding TLS.
- * \details At the moment, contains only the ssl_mode, which
+ * \details At the moment, contains only the [reflink ssl_mode], which
  * indicates whether to use TLS on the connection or not.
  */
 class ssl_options
@@ -44,7 +48,8 @@ public:
     /**
      * \brief Default and initialization constructor.
      * \details By default, SSL is enabled for the connection
-     * if the server supports is (ssl_mode::enable).
+     * if the server supports it (ssl_mode::enable).
+     * See [reflink ssl_mode].
      */
     explicit ssl_options(ssl_mode mode=ssl_mode::enable) noexcept:
         mode_(mode) {}
@@ -55,8 +60,9 @@ public:
 
 
 /**
- * \ingroup connparams
- * \brief Parameters defining how to authenticate to a MySQL server.
+ * \brief Parameters defining how to perform the handshake
+ * with a MySQL server. See [link mysql.connparams this section]
+ * for more information on each parameter.
  */
 class connection_params
 {
@@ -66,13 +72,21 @@ class connection_params
     collation connection_collation_;
     ssl_options ssl_;
 public:
-    /// Initializing constructor
+    /**
+     * \brief Initializing constructor
+     * \param username User name to authenticate as.
+     * \param password Password for that username, possibly empty.
+     * \param db Database name to use, or empty string for no database (this is the default).
+     * \param connection_col [reflink2 collation Collation] to use for the connection.
+     * Impacts how text queries and prepared statements are interpreted. Defaults to utf8_general_ci.
+     * \param opts The [reflink2 ssl_options TLS options] to use with this connection.
+     */
     connection_params(
-        boost::string_view username,  ///< Username to authenticate as
-        boost::string_view password,  ///< Password for that username, possibly empty.
-        boost::string_view db = "",   ///< Database to use, or empty string for no database.
-        collation connection_col = collation::utf8_general_ci, ///< The default character set and collation for the connection.
-        const ssl_options& opts = ssl_options() ///< The TLS options to use with this connection.
+        boost::string_view username,
+        boost::string_view password,
+        boost::string_view db = "",
+        collation connection_col = collation::utf8_general_ci,
+        const ssl_options& opts = ssl_options()
     ) :
         username_(username),
         password_(password),

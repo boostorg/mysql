@@ -24,7 +24,7 @@ namespace mysql {
 namespace detail {
 
 // Implements the message layer of the MySQL protocol
-template <typename Stream>
+template <class Stream>
 class channel
 {
     // TODO: static asserts for Stream concept
@@ -54,24 +54,24 @@ class channel
 
     void create_ssl_block() { ssl_block_.emplace(stream_); }
 
-    template <typename BufferSeq>
+    template <class BufferSeq>
     std::size_t read_impl(BufferSeq&& buff, error_code& ec);
 
-    template <typename BufferSeq>
+    template <class BufferSeq>
     std::size_t write_impl(BufferSeq&& buff, error_code& ec);
 
-    template <typename BufferSeq, typename CompletionToken>
+    template <class BufferSeq, class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_impl(BufferSeq&& buff, CompletionToken&& token);
 
-    template <typename BufferSeq, typename CompletionToken>
+    template <class BufferSeq, class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_write_impl(BufferSeq&& buff, CompletionToken&& token);
 
     struct read_op;
     struct write_op;
 public:
-    template <typename... Args>
+    template <class... Args>
     channel(Args&&... args): stream_(std::forward<Args>(args)...) {}
 
     // Executor
@@ -81,7 +81,7 @@ public:
     // Reading
     void read(bytestring& buffer, error_code& code);
 
-    template <typename CompletionToken>
+    template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read(bytestring& buffer, CompletionToken&& token);
 
@@ -92,11 +92,11 @@ public:
         write(boost::asio::buffer(buffer), code);
     }
 
-    template <typename CompletionToken>
+    template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(boost::asio::const_buffer buffer, CompletionToken&& token);
 
-    template <typename CompletionToken>
+    template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(const bytestring& buffer, CompletionToken&& token)
     {
@@ -108,7 +108,7 @@ public:
 
     void ssl_handshake(error_code& ec);
 
-    template <typename CompletionToken>
+    template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_ssl_handshake(CompletionToken&& token);
 

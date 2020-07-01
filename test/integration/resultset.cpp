@@ -24,7 +24,7 @@ namespace net = boost::asio;
 BOOST_AUTO_TEST_SUITE(test_resultset)
 
 // Helpers
-template <typename... Types>
+template <class... Types>
 std::vector<owning_row> makerows(std::size_t row_size, Types&&... args)
 {
     auto values = make_value_vector(std::forward<Types>(args)...);
@@ -44,7 +44,7 @@ bool operator==(const std::vector<owning_row>& lhs, const std::vector<owning_row
     return boost::mysql::detail::container_equals(lhs, rhs);
 }
 
-template <typename Stream>
+template <class Stream>
 void validate_eof(
     const resultset<Stream>& result,
     int affected_rows=0,
@@ -62,7 +62,7 @@ void validate_eof(
 }
 
 // Interface to generate a resultset
-template <typename Stream>
+template <class Stream>
 class resultset_generator
 {
 public:
@@ -71,7 +71,7 @@ public:
     virtual resultset<Stream> generate(connection<Stream>&, boost::string_view) = 0;
 };
 
-template <typename Stream>
+template <class Stream>
 class text_resultset_generator : public resultset_generator<Stream>
 {
 public:
@@ -82,7 +82,7 @@ public:
     }
 };
 
-template <typename Stream>
+template <class Stream>
 class binary_resultset_generator : public resultset_generator<Stream>
 {
 public:
@@ -94,7 +94,7 @@ public:
 };
 
 // Sample type
-template <typename Stream>
+template <class Stream>
 struct resultset_sample
 {
     network_functions<Stream>* net;
@@ -115,7 +115,7 @@ struct resultset_sample
     }
 };
 
-template <typename Stream>
+template <class Stream>
 std::ostream& operator<<(std::ostream& os, const resultset_sample<Stream>& input)
 {
     return os << input.net->name() << '_'
@@ -125,7 +125,7 @@ std::ostream& operator<<(std::ostream& os, const resultset_sample<Stream>& input
 
 struct sample_gen
 {
-    template <typename Stream>
+    template <class Stream>
     static std::vector<resultset_sample<Stream>> make_all()
     {
         static text_resultset_generator<Stream> text_obj;
@@ -154,7 +154,7 @@ struct sample_gen
         return res;
     }
 
-    template <typename Stream>
+    template <class Stream>
     static const std::vector<resultset_sample<Stream>>& generate()
     {
         static auto res = make_all<Stream>();

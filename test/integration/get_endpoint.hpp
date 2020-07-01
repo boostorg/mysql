@@ -22,10 +22,10 @@ enum class endpoint_kind
     inexistent
 };
 
-template <typename Protocol, typename Executor>
+template <class Protocol, class Executor>
 struct endpoint_getter;
 
-template <typename Executor>
+template <class Executor>
 struct endpoint_getter<boost::asio::ip::tcp, Executor>
 {
     boost::asio::ip::tcp::endpoint operator()(endpoint_kind kind)
@@ -46,7 +46,7 @@ struct endpoint_getter<boost::asio::ip::tcp, Executor>
 };
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-template <typename Executor>
+template <class Executor>
 struct endpoint_getter<boost::asio::local::stream_protocol, Executor>
 {
     boost::asio::local::stream_protocol::endpoint operator()(endpoint_kind kind)
@@ -67,7 +67,7 @@ struct endpoint_getter<boost::asio::local::stream_protocol, Executor>
 };
 #endif
 
-template <typename Stream>
+template <class Stream>
 typename Stream::endpoint_type get_endpoint(
     endpoint_kind kind
 )

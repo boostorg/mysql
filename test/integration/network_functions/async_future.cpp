@@ -22,7 +22,7 @@ namespace
 {
 
 // Helpers
-template <typename Callable>
+template <class Callable>
 auto impl_errinfo(
     Callable&& cb
 ) -> network_result<decltype(cb(std::declval<error_info&>()).get())>
@@ -45,7 +45,7 @@ auto impl_errinfo(
     }
 }
 
-template <typename Callable>
+template <class Callable>
 network_result<no_result> impl_no_result_errinfo(
     Callable&& cb
 )
@@ -63,7 +63,7 @@ network_result<no_result> impl_no_result_errinfo(
     }
 }
 
-template <typename Callable>
+template <class Callable>
 auto impl_noerrinfo(
     Callable&& cb
 ) -> network_result<decltype(cb().get())>
@@ -83,7 +83,7 @@ auto impl_noerrinfo(
     }
 }
 
-template <typename Callable>
+template <class Callable>
 network_result<no_result> impl_no_result_noerrinfo(
     Callable&& cb
 )
@@ -101,7 +101,7 @@ network_result<no_result> impl_no_result_noerrinfo(
 }
 
 // Base templates (no default completion tokens)
-template <typename Stream>
+template <class Stream>
 class async_future_errinfo : public network_functions<Stream>
 {
 public:
@@ -217,7 +217,7 @@ public:
     }
 };
 
-template <typename Stream>
+template <class Stream>
 class async_future_noerrinfo : public network_functions<Stream>
 {
 public:
@@ -569,14 +569,14 @@ public:
 } // anon namespace
 
 // Visible stuff
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_future_errinfo_functions()
 {
     static async_future_errinfo<Stream> res;
     return &res;
 }
 
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_future_noerrinfo_functions()
 {
     static async_future_noerrinfo<Stream> res;

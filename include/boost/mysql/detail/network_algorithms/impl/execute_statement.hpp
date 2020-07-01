@@ -16,14 +16,14 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename ForwardIterator>
-com_stmt_execute_packet<ForwardIterator> make_stmt_execute_packet(
+template <class ValueForwardIterator>
+com_stmt_execute_packet<ValueForwardIterator> make_stmt_execute_packet(
     std::uint32_t statement_id,
-    ForwardIterator params_begin,
-    ForwardIterator params_end
+    ValueForwardIterator params_begin,
+    ValueForwardIterator params_end
 )
 {
-    return com_stmt_execute_packet<ForwardIterator> {
+    return com_stmt_execute_packet<ValueForwardIterator> {
         statement_id,
         std::uint8_t(0),  // flags
         std::uint32_t(1), // iteration count
@@ -37,13 +37,13 @@ com_stmt_execute_packet<ForwardIterator> make_stmt_execute_packet(
 } // mysql
 } // boost
 
-template <typename StreamType, typename ForwardIterator>
+template <class Stream, class ValueForwardIterator>
 void boost::mysql::detail::execute_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
-    ForwardIterator params_begin,
-    ForwardIterator params_end,
-    resultset<StreamType>& output,
+    ValueForwardIterator params_begin,
+    ValueForwardIterator params_end,
+    resultset<Stream>& output,
     error_code& err,
     error_info& info
 )
@@ -58,16 +58,16 @@ void boost::mysql::detail::execute_statement(
     );
 }
 
-template <typename StreamType, typename ForwardIterator, typename CompletionToken>
+template <class Stream, class ValueForwardIterator, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
+    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
 )
 boost::mysql::detail::async_execute_statement(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     std::uint32_t statement_id,
-    ForwardIterator params_begin,
-    ForwardIterator params_end,
+    ValueForwardIterator params_begin,
+    ValueForwardIterator params_end,
     CompletionToken&& token,
     error_info& info
 )

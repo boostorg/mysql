@@ -12,11 +12,11 @@
 #include "boost/mysql/detail/protocol/query_messages.hpp"
 #include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::execute_query(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     boost::string_view query,
-    resultset<StreamType>& output,
+    resultset<Stream>& output,
     error_code& err,
     error_info& info
 )
@@ -33,13 +33,13 @@ void boost::mysql::detail::execute_query(
 }
 
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::resultset<StreamType>)
+    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
 )
 boost::mysql::detail::async_execute_query(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     boost::string_view query,
     CompletionToken&& token,
     error_info& info

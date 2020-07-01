@@ -35,7 +35,7 @@ inline std::uint32_t compute_size_to_write(
 } // mysql
 } // boost
 
-template <typename Stream>
+template <class Stream>
 bool boost::mysql::detail::channel<Stream>::process_sequence_number(
     std::uint8_t got
 )
@@ -51,7 +51,7 @@ bool boost::mysql::detail::channel<Stream>::process_sequence_number(
     }
 }
 
-template <typename Stream>
+template <class Stream>
 boost::mysql::error_code boost::mysql::detail::channel<Stream>::process_header_read(
     std::uint32_t& size_to_read
 )
@@ -71,7 +71,7 @@ boost::mysql::error_code boost::mysql::detail::channel<Stream>::process_header_r
     return error_code();
 }
 
-template <typename Stream>
+template <class Stream>
 void boost::mysql::detail::channel<Stream>::process_header_write(
     std::uint32_t size_to_write
 )
@@ -83,8 +83,8 @@ void boost::mysql::detail::channel<Stream>::process_header_write(
     serialize(ctx, header);
 }
 
-template <typename Stream>
-template <typename BufferSeq>
+template <class Stream>
+template <class BufferSeq>
 std::size_t boost::mysql::detail::channel<Stream>::read_impl(
     BufferSeq&& buff,
     error_code& ec
@@ -100,8 +100,8 @@ std::size_t boost::mysql::detail::channel<Stream>::read_impl(
     }
 }
 
-template <typename Stream>
-template <typename BufferSeq>
+template <class Stream>
+template <class BufferSeq>
 std::size_t boost::mysql::detail::channel<Stream>::write_impl(
     BufferSeq&& buff,
     error_code& ec
@@ -117,8 +117,8 @@ std::size_t boost::mysql::detail::channel<Stream>::write_impl(
     }
 }
 
-template <typename Stream>
-template <typename BufferSeq, typename CompletionToken>
+template <class Stream>
+template <class BufferSeq, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::channel<Stream>::async_read_impl(
     BufferSeq&& buff,
@@ -145,8 +145,8 @@ boost::mysql::detail::channel<Stream>::async_read_impl(
     }
 }
 
-template <typename Stream>
-template <typename BufferSeq, typename CompletionToken>
+template <class Stream>
+template <class BufferSeq, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::channel<Stream>::async_write_impl(
     BufferSeq&& buff,
@@ -171,7 +171,7 @@ boost::mysql::detail::channel<Stream>::async_write_impl(
     }
 }
 
-template <typename Stream>
+template <class Stream>
 void boost::mysql::detail::channel<Stream>::read(
     bytestring& buffer,
     error_code& code
@@ -208,7 +208,7 @@ void boost::mysql::detail::channel<Stream>::read(
     } while (size_to_read == MAX_PACKET_SIZE);
 }
 
-template <typename Stream>
+template <class Stream>
 void boost::mysql::detail::channel<Stream>::write(
     boost::asio::const_buffer buffer,
     error_code& code
@@ -305,8 +305,8 @@ struct boost::mysql::detail::channel<Stream>::read_op
     }
 };
 
-template <typename Stream>
-template <typename CompletionToken>
+template <class Stream>
+template <class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
@@ -324,7 +324,7 @@ boost::mysql::detail::channel<Stream>::async_read(
     );
 }
 
-template<typename Stream>
+template<class Stream>
 struct boost::mysql::detail::channel<Stream>::write_op
     : boost::asio::coroutine
 {
@@ -382,8 +382,8 @@ struct boost::mysql::detail::channel<Stream>::write_op
     }
 };
 
-template <typename Stream>
-template <typename CompletionToken>
+template <class Stream>
+template <class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
@@ -400,7 +400,7 @@ boost::mysql::detail::channel<Stream>::async_write(
     );
 }
 
-template <typename Stream>
+template <class Stream>
 void boost::mysql::detail::channel<Stream>::ssl_handshake(
     error_code& ec
 )
@@ -409,8 +409,8 @@ void boost::mysql::detail::channel<Stream>::ssl_handshake(
     ssl_block_->stream.handshake(boost::asio::ssl::stream_base::client, ec);
 }
 
-template <typename Stream>
-template <typename CompletionToken>
+template <class Stream>
+template <class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
@@ -426,7 +426,7 @@ boost::mysql::detail::channel<Stream>::async_ssl_handshake(
     );
 }
 
-template <typename Stream>
+template <class Stream>
 boost::mysql::error_code boost::mysql::detail::channel<Stream>::close()
 {
     error_code err;

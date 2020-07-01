@@ -19,7 +19,7 @@ using boost::asio::ip::tcp;
 
 BOOST_AUTO_TEST_SUITE(test_execute_statement)
 
-template <typename Stream>
+template <class Stream>
 prepared_statement<Stream> do_prepare(
     network_functions<Stream>* net,
     socket_connection<Stream>& conn,

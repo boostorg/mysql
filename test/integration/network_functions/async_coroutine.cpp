@@ -22,16 +22,16 @@ using boost::asio::yield_context;
 namespace
 {
 
-template <typename Stream>
+template <class Stream>
 class async_coroutine_errinfo : public network_functions<Stream>
 {
-    template <typename Callable>
+    template <class Callable>
     using impl_result_type = decltype(std::declval<Callable>()(
         std::declval<yield_context>(),
         std::declval<error_info&>()
     ));
 
-    template <typename IoObj, typename Callable>
+    template <class IoObj, class Callable>
     network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
     {
         using R = impl_result_type<Callable>;
@@ -169,15 +169,15 @@ public:
     }
 };
 
-template <typename Stream>
+template <class Stream>
 class async_coroutine_noerrinfo : public network_functions<Stream>
 {
-    template <typename Callable>
+    template <class Callable>
     using impl_result_type = decltype(std::declval<Callable>()(
         std::declval<yield_context>()
     ));
 
-    template <typename IoObj, typename Callable>
+    template <class IoObj, class Callable>
     network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
     {
         using R = impl_result_type<Callable>;
@@ -317,14 +317,14 @@ public:
 } // anon namespace
 
 // Visible stuff
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_coroutine_errinfo_functions()
 {
     static async_coroutine_errinfo<Stream> res;
     return &res;
 }
 
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_coroutine_noerrinfo_functions()
 {
     static async_coroutine_noerrinfo<Stream> res;

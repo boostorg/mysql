@@ -16,7 +16,7 @@ namespace mysql {
 namespace detail {
 
 // Floating point types
-template <typename T>
+template <class T>
 typename std::enable_if<std::is_floating_point<T>::value>::type
 serialize_binary_value_impl(
     serialization_context& ctx,
@@ -120,7 +120,7 @@ struct size_visitor
     size_visitor(const serialization_context& ctx) noexcept: ctx(ctx) {}
 
     // ints and floats
-    template <typename T>
+    template <class T>
     std::size_t operator()(T) noexcept { return sizeof(T); }
 
     std::size_t operator()(boost::string_view v) noexcept { return get_size(ctx, string_lenenc(v)); }
@@ -136,7 +136,7 @@ struct serialize_visitor
 
     serialize_visitor(serialization_context& ctx) noexcept: ctx(ctx) {}
 
-    template <typename T>
+    template <class T>
     void operator()(const T& v) noexcept { serialize_binary_value_impl(ctx, v); }
 
     void operator()(std::int64_t v) noexcept { serialize(ctx, v); }

@@ -15,7 +15,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename TLeft, typename TRight>
+template <class TLeft, class TRight>
 inline bool container_equals(
     const std::vector<TLeft>& lhs,
     const std::vector<TRight>& rhs

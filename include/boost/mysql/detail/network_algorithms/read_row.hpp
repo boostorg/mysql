@@ -24,10 +24,10 @@ enum class read_row_result
     eof
 };
 
-template <typename StreamType>
+template <class Stream>
 read_row_result read_row(
     deserialize_row_fn deserializer,
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const std::vector<field_metadata>& meta,
     bytestring& buffer,
     std::vector<value>& output_values,
@@ -36,11 +36,11 @@ read_row_result read_row(
     error_info& info
 );
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, read_row_result))
 async_read_row(
     deserialize_row_fn deserializer,
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const std::vector<field_metadata>& meta,
     bytestring& buffer,
     std::vector<value>& output_values,

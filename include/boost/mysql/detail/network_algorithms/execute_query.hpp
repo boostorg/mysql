@@ -16,19 +16,19 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType>
+template <class Stream>
 void execute_query(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     boost::string_view query,
-    resultset<StreamType>& output,
+    resultset<Stream>& output,
     error_code& err,
     error_info& info
 );
 
-template <typename StreamType, typename CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<StreamType>))
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
 async_execute_query(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     boost::string_view query,
     CompletionToken&& token,
     error_info& info

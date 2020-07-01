@@ -17,14 +17,14 @@ namespace detail {
 // Helpers for structs
 struct is_command_helper
 {
-    template <typename T>
+    template <class T>
     static constexpr std::true_type get(decltype(T::command_id)*);
 
-    template <typename T>
+    template <class T>
     static constexpr std::false_type get(...);
 };
 
-template <typename T>
+template <class T>
 struct is_command : decltype(is_command_helper::get<T>(nullptr))
 {
 };
@@ -33,14 +33,14 @@ struct is_struct_with_fields_helper
 {
     struct test_op
     {
-        template <typename T>
+        template <class T>
         void operator()(const T&) {}
     };
 
-    template <typename T>
+    template <class T>
     static constexpr std::true_type get(decltype(T::apply(std::declval<T&>(), test_op()))*);
 
-    template <typename T>
+    template <class T>
     static constexpr std::false_type get(...);
 };
 
@@ -52,7 +52,7 @@ struct struct_deserialize_op
     struct_deserialize_op(deserialization_context& ctx) noexcept :
         ctx(ctx), result(errc::ok) {}
 
-    template <typename... Types>
+    template <class... Types>
     void operator()(Types&... output) noexcept
     {
         result = deserialize(ctx, output...);
@@ -67,7 +67,7 @@ struct struct_get_size_op
     struct_get_size_op(const serialization_context& ctx, std::size_t init_value) noexcept :
         ctx(ctx), result(init_value) {}
 
-    template <typename... Types>
+    template <class... Types>
     void operator()(const Types&... input) noexcept
     {
         result += get_size(ctx, input...);
@@ -80,7 +80,7 @@ struct struct_serialize_op
 
     struct_serialize_op(serialization_context& ctx) noexcept : ctx(ctx) {}
 
-    template <typename... Types>
+    template <class... Types>
     void operator()(const Types&... input) noexcept
     {
         serialize(ctx, input...);
@@ -88,7 +88,7 @@ struct struct_serialize_op
 };
 
 // Helpers to serialize the command id byte
-template <typename T>
+template <class T>
 void serialize_command_id(
     serialization_context& ctx,
     std::true_type
@@ -98,7 +98,7 @@ void serialize_command_id(
     serialize(ctx, command_id);
 }
 
-template <typename T>
+template <class T>
 void serialize_command_id(serialization_context&, std::false_type) noexcept {}
 
 inline errc deserialize_helper(deserialization_context&) noexcept
@@ -106,7 +106,7 @@ inline errc deserialize_helper(deserialization_context&) noexcept
     return errc::ok;
 }
 
-template <typename FirstType, typename... Types>
+template <class FirstType, class... Types>
 errc deserialize_helper(
     deserialization_context& ctx,
     FirstType& first,
@@ -123,7 +123,7 @@ errc deserialize_helper(
 
 inline void serialize_helper(serialization_context&) noexcept {}
 
-template <typename FirstType, typename... Types>
+template <class FirstType, class... Types>
 void serialize_helper(
     serialization_context& ctx,
     const FirstType& first,
@@ -139,7 +139,7 @@ inline std::size_t get_size_helper(const serialization_context&) noexcept
     return 0;
 }
 
-template <typename FirstType, typename... Types>
+template <class FirstType, class... Types>
 std::size_t get_size_helper(
     const serialization_context& ctx,
     const FirstType& input,
@@ -155,7 +155,7 @@ std::size_t get_size_helper(
 } // boost
 
 // Common
-template <typename... Types>
+template <class... Types>
 boost::mysql::errc boost::mysql::detail::deserialize(
     deserialization_context& ctx,
     Types&... output
@@ -164,7 +164,7 @@ boost::mysql::errc boost::mysql::detail::deserialize(
     return deserialize_helper(ctx, output...);
 }
 
-template <typename... Types>
+template <class... Types>
 void boost::mysql::detail::serialize(
     serialization_context& ctx,
     const Types&... input
@@ -173,7 +173,7 @@ void boost::mysql::detail::serialize(
     serialize_helper(ctx, input...);
 }
 
-template <typename... Types>
+template <class... Types>
 std::size_t boost::mysql::detail::get_size(
     const serialization_context& ctx,
     const Types&... input
@@ -183,7 +183,7 @@ std::size_t boost::mysql::detail::get_size(
 }
 
 // Plain ints
-template <typename T>
+template <class T>
 boost::mysql::errc
 boost::mysql::detail::serialization_traits<
     T,
@@ -204,7 +204,7 @@ boost::mysql::detail::serialization_traits<
     return errc::ok;
 }
 
-template <typename T>
+template <class T>
 void boost::mysql::detail::serialization_traits<
     T,
     boost::mysql::detail::serialization_tag::plain_int
@@ -219,13 +219,13 @@ void boost::mysql::detail::serialization_traits<
 }
 
 // Structs
-template <typename T>
+template <class T>
 constexpr bool boost::mysql::detail::is_struct_with_fields()
 {
     return decltype(is_struct_with_fields_helper::get<T>(nullptr))::value;
 }
 
-template <typename T>
+template <class T>
 boost::mysql::errc
 boost::mysql::detail::serialization_traits<
     T,
@@ -240,7 +240,7 @@ boost::mysql::detail::serialization_traits<
     return op.result;
 }
 
-template <typename T>
+template <class T>
 void
 boost::mysql::detail::serialization_traits<
     T,
@@ -256,7 +256,7 @@ boost::mysql::detail::serialization_traits<
     T::apply(input, struct_serialize_op(ctx));
 }
 
-template <typename T>
+template <class T>
 std::size_t
 boost::mysql::detail::serialization_traits<
     T,
@@ -269,7 +269,7 @@ boost::mysql::detail::serialization_traits<
 }
 
 // Miscellanea
-template <typename Serializable, typename Allocator>
+template <class Serializable, class Allocator>
 void boost::mysql::detail::serialize_message(
     const Serializable& input,
     capabilities caps,
@@ -284,7 +284,7 @@ void boost::mysql::detail::serialize_message(
     assert(ctx.first() == buffer.data() + buffer.size());
 }
 
-template <typename Deserializable>
+template <class Deserializable>
 boost::mysql::error_code boost::mysql::detail::deserialize_message(
     deserialization_context& ctx,
     Deserializable& output
@@ -298,7 +298,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_message(
     return error_code();
 }
 
-template <typename... Types>
+template <class... Types>
 void boost::mysql::detail::serialize_fields(
     serialization_context& ctx,
     const Types&... fields
@@ -307,7 +307,7 @@ void boost::mysql::detail::serialize_fields(
     serialize_fields_helper(ctx, fields...);
 }
 
-template <typename T>
+template <class T>
 constexpr boost::mysql::detail::serialization_tag
 boost::mysql::detail::get_serialization_tag()
 {

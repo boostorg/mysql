@@ -243,16 +243,16 @@ public:
     }
 };
 
-template<class StreamType>
+template<class Stream>
 struct handshake_op : boost::asio::coroutine
 {
-    channel<StreamType>& chan_;
+    channel<Stream>& chan_;
     error_info& output_info_;
     handshake_processor processor_;
     auth_result auth_state_ {auth_result::invalid};
 
     handshake_op(
-        channel<StreamType>& channel,
+        channel<Stream>& channel,
         error_info& output_info,
         const connection_params& params
     ) :
@@ -338,9 +338,9 @@ struct handshake_op : boost::asio::coroutine
 } // mysql
 } // boost
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::handshake(
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const connection_params& params,
     error_code& err,
     error_info& info
@@ -405,13 +405,13 @@ void boost::mysql::detail::handshake(
     channel.set_current_capabilities(processor.negotiated_capabilities());
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_handshake(
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     const connection_params& params,
     CompletionToken&& token,
     error_info& info
@@ -421,7 +421,7 @@ boost::mysql::detail::async_handshake(
         CompletionToken,
         void(error_code)
     >(
-        handshake_op<StreamType>(chan, info, params),
+        handshake_op<Stream>(chan, info, params),
         token,
         chan
     );

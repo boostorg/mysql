@@ -23,7 +23,7 @@ namespace mysql {
 namespace test {
 
 // Verifies that we are or are not using SSL, depending on what mode was requested.
-template <typename Stream>
+template <class Stream>
 void validate_ssl(const connection<Stream>& conn, ssl_mode m)
 {
     // All our test systems MUST support SSL to run these tests
@@ -38,7 +38,7 @@ void validate_ssl(const connection<Stream>& conn, ssl_mode m)
  * The fixture is template-parameterized by a stream type, as required
  * by BOOST_MYSQL_NETWORK_TEST.
  */
-template <typename Stream>
+template <class Stream>
 struct network_fixture
 {
     using stream_type = Stream;
@@ -126,7 +126,7 @@ struct network_fixture
 
 // To be used as sample in data driven tests, when a test case should be run
 // over all different network_function's.
-template <typename Stream>
+template <class Stream>
 struct network_sample
 {
     network_functions<Stream>* net;
@@ -142,7 +142,7 @@ struct network_sample
     }
 };
 
-template <typename Stream>
+template <class Stream>
 std::ostream& operator<<(std::ostream& os, const network_sample<Stream>& value)
 {
     return os << value.net->name();
@@ -151,7 +151,7 @@ std::ostream& operator<<(std::ostream& os, const network_sample<Stream>& value)
 // Data generator for network_sample
 struct network_gen
 {
-    template <typename Stream>
+    template <class Stream>
     static std::vector<network_sample<Stream>> make_all()
     {
         std::vector<network_sample<Stream>> res;
@@ -162,7 +162,7 @@ struct network_gen
         return res;
     }
 
-    template <typename Stream>
+    template <class Stream>
     static const std::vector<network_sample<Stream>>& generate()
     {
         static std::vector<network_sample<Stream>> res = make_all<Stream>();
@@ -173,7 +173,7 @@ struct network_gen
 // To be used as sample in data driven tests,
 // when a test should be run over
 // all network_function's and ssl_mode's
-template <typename Stream>
+template <class Stream>
 struct network_ssl_sample
 {
     network_functions<Stream>* net;
@@ -192,7 +192,7 @@ struct network_ssl_sample
     }
 };
 
-template <typename Stream>
+template <class Stream>
 std::ostream& operator<<(std::ostream& os, const network_ssl_sample<Stream>& value)
 {
     return os << value.net->name() << '_' << to_string(value.ssl);
@@ -201,7 +201,7 @@ std::ostream& operator<<(std::ostream& os, const network_ssl_sample<Stream>& val
 // Data generator for network_ssl_sample
 struct network_ssl_gen
 {
-    template <typename Stream>
+    template <class Stream>
     static std::vector<network_ssl_sample<Stream>> make_all()
     {
         std::vector<network_ssl_sample<Stream>> res;
@@ -215,7 +215,7 @@ struct network_ssl_gen
         return res;
     }
 
-    template <typename Stream>
+    template <class Stream>
     static const std::vector<network_ssl_sample<Stream>>& generate()
     {
         static auto res = make_all<Stream>();

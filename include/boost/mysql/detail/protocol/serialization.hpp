@@ -30,23 +30,23 @@ enum class serialization_tag
     struct_with_fields
 };
 
-template <typename T>
+template <class T>
 constexpr serialization_tag get_serialization_tag();
 
-template <typename T, serialization_tag=get_serialization_tag<T>()>
+template <class T, serialization_tag=get_serialization_tag<T>()>
 struct serialization_traits;
 
-template <typename... Types>
+template <class... Types>
 errc deserialize(deserialization_context& ctx, Types&... output) noexcept;
 
-template <typename... Types>
+template <class... Types>
 void serialize(serialization_context& ctx, const Types&... input) noexcept;
 
-template <typename... Types>
+template <class... Types>
 std::size_t get_size(const serialization_context& ctx, const Types&... input) noexcept;
 
 // Plain integers
-template <typename T>
+template <class T>
 struct serialization_traits<T, serialization_tag::plain_int>
 {
     static errc deserialize_(deserialization_context& ctx, T& output) noexcept;
@@ -155,7 +155,7 @@ struct serialization_traits<string_lenenc, serialization_tag::none>
 };
 
 // Enums
-template <typename T>
+template <class T>
 struct serialization_traits<T, serialization_tag::enumeration>
 {
     using underlying_type = typename std::underlying_type<T>::type;
@@ -183,10 +183,10 @@ struct serialization_traits<T, serialization_tag::enumeration>
 // allows calling apply with const and non-const objects as self.
 // Types fulfilling this requirement will have the below function
 // return true
-template <typename T>
+template <class T>
 constexpr bool is_struct_with_fields();
 
-template <typename T>
+template <class T>
 struct serialization_traits<T, serialization_tag::struct_with_fields>
 {
     static errc deserialize_(deserialization_context& ctx, T& output) noexcept;
@@ -197,35 +197,35 @@ struct serialization_traits<T, serialization_tag::struct_with_fields>
 // Use these to make all messages implement all methods, leaving the not required
 // ones with a default implementation. While this is not strictly required,
 // it simplifies the testing infrastructure
-template <typename T>
+template <class T>
 struct noop_serialize
 {
     static inline std::size_t get_size_(const serialization_context&, const T&) noexcept { return 0; }
     static inline void serialize_(serialization_context&, const T&) noexcept {}
 };
 
-template <typename T>
+template <class T>
 struct noop_deserialize
 {
     static inline errc deserialize_(deserialization_context&, T&) noexcept { return errc::ok; }
 };
 
 // Helper to serialize top-level messages
-template <typename Serializable, typename Allocator>
+template <class Serializable, class Allocator>
 void serialize_message(
     const Serializable& input,
     capabilities caps,
     basic_bytestring<Allocator>& buffer
 );
 
-template <typename Deserializable>
+template <class Deserializable>
 error_code deserialize_message(
     deserialization_context& ctx,
     Deserializable& output
 );
 
 // Helpers for (de) serializing a set of fields
-template <typename... Types>
+template <class... Types>
 void serialize_fields(serialization_context& ctx, const Types&... fields) noexcept;
 
 } // detail

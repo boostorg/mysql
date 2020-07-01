@@ -16,21 +16,21 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename StreamType, typename Serializable>
+template <class Stream, class Serializable>
 void execute_generic(
     deserialize_row_fn deserializer,
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const Serializable& request,
-    resultset<StreamType>& output,
+    resultset<Stream>& output,
     error_code& err,
     error_info& info
 );
 
-template <typename StreamType, typename Serializable, typename CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<StreamType>))
+template <class Stream, class Serializable, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
 async_execute_generic(
     deserialize_row_fn deserializer,
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     const Serializable& request,
     CompletionToken&& token,
     error_info& info

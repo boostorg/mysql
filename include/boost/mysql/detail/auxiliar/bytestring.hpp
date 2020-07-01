@@ -15,7 +15,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <typename Allocator>
+template <class Allocator>
 using basic_bytestring = std::vector<std::uint8_t, Allocator>;
 
 using bytestring = std::vector<std::uint8_t>;

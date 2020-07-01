@@ -30,7 +30,7 @@ struct binary_value_sample
     protocol_field_type type;
     std::uint16_t flags;
 
-    template <typename T>
+    template <class T>
     binary_value_sample(
         std::string name,
         std::vector<std::uint8_t> from,

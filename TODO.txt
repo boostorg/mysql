@@ -1,10 +1,3 @@
-Better docs
-	Breaking up the tutorial in pieces
-	Explaining the different overloads and async methods available
-	Try to include Readme instead of copying it
-	BoostBook
-	Automate the process
-	Make undocumented enum values show (for collation)
 CI tests for older compilers
     GCCs
     Clangs
@@ -17,6 +10,9 @@ Handshake
 	SSL certificate & common name validation
 	sha256_password
 Usability
+    Simplify rows
+        Single row type
+        Make rows copyable
 	Should make_error_code be public?
 	Incomplete query reads: how does this affect further queries?
 	Metadata in rows: being able to index by name
@@ -43,6 +39,7 @@ Technical debt
         Review strand names in unit tests (rebind_executor)
         Review polymorphic executor name in examples
         Recover Windows b2 builds
+        Valgrind suppressions
     Review exception throw by value::get
     Mock stream and recover channel unit tests
     Do we need --with-system --with-date_time

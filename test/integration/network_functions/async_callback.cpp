@@ -42,10 +42,10 @@ public:
     }
 };
 
-template <typename Stream>
+template <class Stream>
 class async_callback_errinfo : public network_functions<Stream>
 {
-    template <typename R>
+    template <class R>
     struct handler
     {
         std::promise<network_result<R>>& prom_;
@@ -66,7 +66,7 @@ class async_callback_errinfo : public network_functions<Stream>
         }
     };
 
-    template <typename R, typename Callable>
+    template <class R, class Callable>
     network_result<R> impl(Callable&& cb)
     {
         handler_call_tracker call_tracker;
@@ -195,10 +195,10 @@ public:
     }
 };
 
-template <typename Stream>
+template <class Stream>
 class async_callback_noerrinfo : public network_functions<Stream>
 {
-    template <typename R>
+    template <class R>
     struct handler
     {
         std::promise<network_result<R>>& prom_;
@@ -219,7 +219,7 @@ class async_callback_noerrinfo : public network_functions<Stream>
         }
     };
 
-    template <typename R, typename Callable>
+    template <class R, class Callable>
     network_result<R> impl(Callable&& cb)
     {
         handler_call_tracker call_tracker;
@@ -347,14 +347,14 @@ public:
 } // anon namespace
 
 // Visible stuff
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_callback_errinfo_functions()
 {
     static async_callback_errinfo<Stream> res;
     return &res;
 }
 
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_callback_noerrinfo_functions()
 {
     static async_callback_noerrinfo<Stream> res;

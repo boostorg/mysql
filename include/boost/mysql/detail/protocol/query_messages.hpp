@@ -21,7 +21,7 @@ struct com_query_packet
 
     static constexpr std::uint8_t command_id = 3;
 
-    template <typename Self, typename Callable>
+    template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
         std::forward<Callable>(cb)(

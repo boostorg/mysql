@@ -22,16 +22,16 @@ using boost::mysql::owning_row;
 namespace
 {
 
-template <typename Stream>
+template <class Stream>
 class sync_errc : public network_functions<Stream>
 {
-    template <typename Callable>
+    template <class Callable>
     using impl_result_type = decltype(std::declval<Callable>()(
         std::declval<error_code&>(),
         std::declval<error_info&>()
     ));
 
-    template <typename Callable>
+    template <class Callable>
     static network_result<impl_result_type<Callable>> impl(Callable&& cb)
     {
         network_result<impl_result_type<Callable>> res (
@@ -161,13 +161,13 @@ public:
     static sync_errc obj;
 };
 
-template <typename Stream>
+template <class Stream>
 class sync_exc : public network_functions<Stream>
 {
-    template <typename Callable>
+    template <class Callable>
     using impl_result_type = decltype(std::declval<Callable>()());
 
-    template <typename Callable>
+    template <class Callable>
     static network_result<impl_result_type<Callable>> impl(Callable&& cb)
     {
         network_result<impl_result_type<Callable>> res;
@@ -303,14 +303,14 @@ public:
 } // anon namespace
 
 // Visible stuff
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::sync_errc_functions()
 {
     static sync_errc<Stream> res;
     return &res;
 }
 
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::sync_exc_functions()
 {
     static sync_exc<Stream> res;

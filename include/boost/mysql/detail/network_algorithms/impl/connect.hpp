@@ -14,18 +14,18 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template<class StreamType>
+template<class Stream>
 struct connect_op : boost::asio::coroutine
 {
-    using endpoint_type = typename StreamType::endpoint_type;
+    using endpoint_type = typename Stream::endpoint_type;
 
-    channel<StreamType>& chan_;
+    channel<Stream>& chan_;
     error_info& output_info_;
     const endpoint_type& ep_; // No need for a copy, as we will call it in the first operator() call
     connection_params params_;
 
     connect_op(
-        channel<StreamType>& chan,
+        channel<Stream>& chan,
         error_info& output_info,
         const endpoint_type& ep,
         const connection_params& params
@@ -75,10 +75,10 @@ struct connect_op : boost::asio::coroutine
 } // mysql
 } // boost
 
-template <typename StreamType>
+template <class Stream>
 void boost::mysql::detail::connect(
-    channel<StreamType>& chan,
-    const typename StreamType::endpoint_type& endpoint,
+    channel<Stream>& chan,
+    const typename Stream::endpoint_type& endpoint,
     const connection_params& params,
     error_code& err,
     error_info& info
@@ -98,21 +98,21 @@ void boost::mysql::detail::connect(
     }
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_connect(
-    channel<StreamType>& chan,
-    const typename StreamType::endpoint_type& endpoint,
+    channel<Stream>& chan,
+    const typename Stream::endpoint_type& endpoint,
     const connection_params& params,
     CompletionToken&& token,
     error_info& info
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        connect_op<StreamType>{chan, info, endpoint, params}, token, chan);
+        connect_op<Stream>{chan, info, endpoint, params}, token, chan);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP_ */

@@ -26,15 +26,15 @@ using boost::asio::use_awaitable;
 namespace
 {
 
-template <typename Stream>
+template <class Stream>
 class async_coroutinecpp20_errinfo : public network_functions<Stream>
 {
-    template <typename Callable>
+    template <class Callable>
     using impl_result_type = typename decltype(std::declval<Callable>()(
         std::declval<error_info&>()
     ))::value_type;
 
-    template <typename IoObj, typename Callable>
+    template <class IoObj, class Callable>
     network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb) {
         using R = impl_result_type<Callable>;
         std::promise<network_result<R>> prom;
@@ -55,7 +55,7 @@ class async_coroutinecpp20_errinfo : public network_functions<Stream>
         return prom.get_future().get();
     }
 
-    template <typename IoObj, typename Callable>
+    template <class IoObj, class Callable>
     network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb) {
         std::promise<network_result<no_result>> prom;
 
@@ -191,13 +191,13 @@ public:
     }
 };
 
-template <typename Stream>
+template <class Stream>
 class async_coroutinecpp20_noerrinfo : public network_functions<Stream>
 {
-    template <typename Callable>
+    template <class Callable>
     using impl_result_type = typename decltype(std::declval<Callable>()())::value_type;
 
-    template <typename IoObj, typename Callable>
+    template <class IoObj, class Callable>
     network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
     {
         using R = impl_result_type<Callable>;
@@ -217,7 +217,7 @@ class async_coroutinecpp20_noerrinfo : public network_functions<Stream>
         return prom.get_future().get();
     }
 
-    template <typename IoObj, typename Callable>
+    template <class IoObj, class Callable>
     network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb)
     {
         std::promise<network_result<no_result>> prom;
@@ -357,14 +357,14 @@ public:
 
 // Visible stuff
 // Visible stuff
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_coroutinecpp20_errinfo_functions()
 {
     static async_coroutinecpp20_errinfo<Stream> res;
     return &res;
 }
 
-template <typename Stream>
+template <class Stream>
 network_functions<Stream>* boost::mysql::test::async_coroutinecpp20_noerrinfo_functions()
 {
     static async_coroutinecpp20_noerrinfo<Stream> res;

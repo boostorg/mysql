@@ -59,10 +59,10 @@ inline read_row_result process_read_message(
     }
 }
 
-template<class StreamType>
+template<class Stream>
 struct read_row_op : boost::asio::coroutine
 {
-    channel<StreamType>& chan_;
+    channel<Stream>& chan_;
     error_info& output_info_;
     deserialize_row_fn deserializer_;
     const std::vector<field_metadata>& meta_;
@@ -71,7 +71,7 @@ struct read_row_op : boost::asio::coroutine
     ok_packet& output_ok_packet_;
 
     read_row_op(
-        channel<StreamType>& chan,
+        channel<Stream>& chan,
         error_info& output_info,
         deserialize_row_fn deserializer,
         const std::vector<field_metadata>& meta,
@@ -131,10 +131,10 @@ struct read_row_op : boost::asio::coroutine
 } // boost
 
 
-template <typename StreamType>
+template <class Stream>
 boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
     deserialize_row_fn deserializer,
-    channel<StreamType>& channel,
+    channel<Stream>& channel,
     const std::vector<field_metadata>& meta,
     bytestring& buffer,
     std::vector<value>& output_values,
@@ -160,14 +160,14 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
     );
 }
 
-template <typename StreamType, typename CompletionToken>
+template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::detail::read_row_result)
 )
 boost::mysql::detail::async_read_row(
     deserialize_row_fn deserializer,
-    channel<StreamType>& chan,
+    channel<Stream>& chan,
     const std::vector<field_metadata>& meta,
     bytestring& buffer,
     std::vector<value>& output_values,
@@ -177,7 +177,7 @@ boost::mysql::detail::async_read_row(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, read_row_result)> (
-        read_row_op<StreamType>(
+        read_row_op<Stream>(
             chan,
             output_info,
             deserializer,

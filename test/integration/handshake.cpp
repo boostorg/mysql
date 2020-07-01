@@ -28,7 +28,7 @@ using boost::mysql::connection_params;
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
-template <typename Stream>
+template <class Stream>
 network_result<no_result> do_handshake(
     socket_connection<Stream>& conn,
     connection_params params,
@@ -40,7 +40,7 @@ network_result<no_result> do_handshake(
     return net->handshake(conn, params);
 }
 
-template <typename Stream>
+template <class Stream>
 void do_handshake_ok(
     socket_connection<Stream>& conn,
     connection_params params,
@@ -55,7 +55,7 @@ void do_handshake_ok(
 
 
 // Handshake tests not depending on whether we use SSL or not
-template <typename Stream>
+template <class Stream>
 struct handshake_fixture : network_fixture<Stream>
 {
     handshake_fixture()
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_SUITE_END() // mysql_native_password
 BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
 BOOST_AUTO_TEST_SUITE(caching_sha2_password)
 
-template <typename Stream>
+template <class Stream>
 struct caching_sha2_fixture : handshake_fixture<Stream>
 {
     void load_sha256_cache(boost::string_view user, boost::string_view password)

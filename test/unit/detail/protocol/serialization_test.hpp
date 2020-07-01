@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
 
 // Operator == for structs. Very poor efficiency but does the
 // job for the purpose of testing
-template <typename T>
+template <class T>
 struct struct_member_comparer_op
 {
     const T& lhs;
@@ -80,7 +80,7 @@ struct struct_member_comparer_op
 
     struct_member_comparer_op(const T& lhs, const T& rhs) : lhs(lhs), rhs(rhs) {}
 
-    template <typename... Types>
+    template <class... Types>
     void operator()(const Types&...)
     {
         std::tuple<Types...> lhs_as_tuple;
@@ -95,7 +95,7 @@ struct struct_member_comparer_op
     }
 };
 
-template <typename T>
+template <class T>
 typename std::enable_if<detail::is_struct_with_fields<T>(), bool>::type
 operator==(const T& lhs, const T& rhs)
 {
@@ -105,13 +105,13 @@ operator==(const T& lhs, const T& rhs)
 }
 
 // Operator << for value_holder
-template <typename T>
+template <class T>
 std::ostream& operator<<(std::ostream& os, const detail::value_holder<T>& value)
 {
     return os << value.value;
 }
 
-template <typename T>
+template <class T>
 typename std::enable_if<std::is_enum<T>::value, std::ostream&>::type
 operator<<(std::ostream& os, T value)
 {
@@ -126,21 +126,21 @@ struct struct_print_op
 
     void impl() {}
 
-    template <typename T, typename... Tail>
+    template <class T, class... Tail>
     void impl(const T& head, const Tail&... tail)
     {
         os << "    " << head << ",\n";
         impl(tail...);
     }
 
-    template <typename... Types>
+    template <class... Types>
     void operator()(const Types&... values)
     {
         impl(values...);
     }
 };
 
-template <typename T>
+template <class T>
 typename std::enable_if<detail::is_struct_with_fields<T>(), std::ostream&>::type
 operator<<(std::ostream& os, const T& value)
 {
@@ -170,7 +170,7 @@ inline std::ostream& operator<<(std::ostream& os, const any_value& value)
     return os;
 }
 
-template <typename T>
+template <class T>
 class any_value_impl : public any_value
 {
     T value_;
@@ -215,7 +215,7 @@ struct serialization_sample
     detail::capabilities caps;
     boost::any additional_storage;
 
-    template <typename T>
+    template <class T>
     serialization_sample(
         std::string&& name,
         const T& v,
