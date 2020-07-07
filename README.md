@@ -1,4 +1,4 @@
-# Boost.MySQL (MySQL-Asio)
+# Boost.MySQL
 
  Linux/OSX | Windows | Coverage
 -----------|---------|----------
