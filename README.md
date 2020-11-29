@@ -2,7 +2,7 @@
 
  Linux/OSX | Windows | Coverage
 -----------|---------|----------
-[![Build Status](https://travis-ci.com/anarthal/mysql-asio.png?branch=master)](https://github.com/anarthal/mysql-asio) | [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql-asio/branch/master) | [![codecov](https://codecov.io/gh/anarthal/mysql-asio/branch/master/graph/badge.svg)](https://codecov.io/gh/anarthal/mysql-asio/branch/master)
+[![Build Status](https://travis-ci.com/anarthal/mysql.png?branch=master)](https://github.com/anarthal/mysql) | [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql/branch/master) | [![codecov](https://codecov.io/gh/anarthal/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/anarthal/mysql-asio/branch/master)
 
 Boost.Mysql (former MySQL.Asio) is a C++11 client for the MySQL database server, based on Boost.Asio.
 This library is in the process of being proposed for Boost.

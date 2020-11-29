@@ -10,3 +10,4 @@ out/
 .vs/
 doc/html/
 doc/qbk/reference.qbk
+.vscode/
