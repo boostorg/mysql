@@ -100,32 +100,25 @@ target_link_libraries(
 )
 common_target_settings(boost_mysql_integrationtests)
 
-# Regular integration tests
-add_test(
-    NAME boost_mysql_integrationtests
-    COMMAND 
-        ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
-        "-t" "!@sha256" # Exclude anything using SHA256
-)
+if ("$ENV{BOOST_MYSQL_TEST_FILTER}" STREQUAL "")
+    add_test(
+        NAME boost_mysql_integrationtests
+        COMMAND boost_mysql_integrationtests
+    )
+else()
+    add_test(
+        NAME boost_mysql_integrationtests
+        COMMAND boost_mysql_integrationtests "-t" $ENV{BOOST_MYSQL_TEST_FILTER}
+    )
+endif()
 
 # If we are using memcheck, then run a subset of the integration tests
 # under valgrind. Coroutine tests don't work well under Valgrind, and
 # SSL tests are too slow. We do some other exclusions to reduce runtime
 if (BOOST_MYSQL_VALGRIND_TESTS)
-    set(TEST_FILTER "!@sha256:!@sslrequire:!@async_coroutine_errinfo:!@async_coroutine_noerrinfo:!@unix:!@tcp_default_token")
+    set(TEST_FILTER "!@sha256:!@sslrequire:!@async_coroutine_errinfo:!@async_coroutine_noerrinfo:!@unix:!@tcp_default_token:!@unix")
     add_memcheck_test(
         NAME boost_mysql_integrationtests_memcheck
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests "-t" ${TEST_FILTER}
-    )
-endif()
-
-# SHA256 tests 
-if (BOOST_MYSQL_SHA256_TESTS)
-    # Actual tests
-    add_test(
-        NAME boost_mysql_integrationtests_sha256
-        COMMAND 
-            ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests
-            "-t" "@sha256" # Run only SHA256 stuff
     )
 endif()

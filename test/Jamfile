@@ -7,15 +7,14 @@
 
 import os ;
 
-if [ os.environ BOOST_MYSQL_SHA256_TESTS ]
+# SHA256 tests and UNIX tests overlap, so we cannot just create
+# different testing targets for each
+local TEST_FILTER = [ os.environ BOOST_MYSQL_TEST_FILTER ] ;
+local TEST_COMMAND = "" ;
+if $(TEST_FILTER)
 {
-    TEST_FILTER = "*" ;
+    TEST_COMMAND = "-t $(TEST_FILTER)" ;
 }
-else
-{
-    TEST_FILTER = "!@sha256" ;
-}
-
 
 alias boost_mysql_test
     :
@@ -77,8 +76,5 @@ unit-test boost_mysql_integrationtests
         integration/database_types.cpp
         integration/entry_point.cpp
     :
-        <testing.arg>"-t '$(TEST_FILTER)'"
+        <testing.arg>$(TEST_COMMAND)
     ;
-    
-build-project ../example ;
-

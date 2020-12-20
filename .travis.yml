@@ -87,6 +87,7 @@ matrix:
         - CMAKE_BUILD_TYPE=Debug
         - USE_VALGRIND=1
         - USE_COVERAGE=1
+        - NUM_JOBS=1
     - name: cmake_linux_gcc_release
       <<: *__linux_defaults
       compiler: gcc

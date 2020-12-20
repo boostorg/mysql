@@ -57,8 +57,11 @@ BOOST_MYSQL_NETWORK_TEST(iterator_mismatched_num_params, network_fixture, networ
 {
     this->connect(sample.ssl);
     std::forward_list<value> params { value("item") };
-    auto stmt = do_prepare(sample.net, this->conn,
-        "SELECT * FROM empty_table WHERE id IN (?, ?)");
+    auto stmt = do_prepare<Stream>(
+        sample.net,
+        this->conn,
+        "SELECT * FROM empty_table WHERE id IN (?, ?)"
+    );
     auto result = sample.net->execute_statement(stmt, params.begin(), params.end());
     result.validate_error(errc::wrong_num_params,
         {"param", "2", "1", "statement", "execute"});

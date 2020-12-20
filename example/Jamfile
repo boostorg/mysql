@@ -15,10 +15,13 @@ local EXAMPLES =
     query_async_futures
     prepared_statements
     metadata
+;
+
+local EXPLICIT_EXAMPLES = 
     unix_socket
 ;
 
-for local example in $(EXAMPLES)
+for local example in $(EXAMPLES) $(EXPLICIT_EXAMPLES)
 {
     unit-test "boost_mysql_example_$(example)" 
         :
@@ -28,4 +31,9 @@ for local example in $(EXAMPLES)
         :
             <testing.arg>"example_user example_password"
         ;
+}
+
+for local example in $(EXPLICIT_EXAMPLES)
+{
+    explicit "boost_mysql_example_$(example)" ;
 }

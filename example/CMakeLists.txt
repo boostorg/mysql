@@ -53,8 +53,8 @@ set(BOOST_MYSQL_EXAMPLES
     query_async_futures
     metadata
     prepared_statements
-    unix_socket
     default_completion_tokens
+    unix_socket
 )
 
 # The examples we do NOT want to ever memcheck

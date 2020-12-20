@@ -60,3 +60,5 @@ Yet to be done (but it is on our list - PRs welcome):
 
 - Further authentication methods: sha256_password
 - Multi-resultset: being able to specify several semicolon-separated queries. 
+
+

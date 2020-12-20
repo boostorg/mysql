@@ -10,6 +10,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/use_future.hpp>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -19,9 +20,15 @@ namespace test {
 class future_executor : public boost::asio::io_context::executor_type
 {
 public:
-    future_executor(const boost::asio::io_context::executor_type& base) :
-        boost::asio::io_context::executor_type(base) {}
+    future_executor(const boost::asio::io_context::executor_type& inner) :
+        boost::asio::io_context::executor_type(inner) {}
     using default_completion_token_type = boost::asio::use_future_t<>;
+    
+    // Required to build in MSVC for some arcane reason
+    operator boost::asio::any_io_executor() const
+    {
+        return boost::asio::any_io_executor(static_cast<const boost::asio::io_context::executor_type>(*this));
+    }
 };
 using tcp_future_socket = boost::asio::basic_stream_socket<
     boost::asio::ip::tcp,

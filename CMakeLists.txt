@@ -22,10 +22,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     # Build with coverage
     option(BOOST_MYSQL_COVERAGE OFF "Whether to build using coverage")
     mark_as_advanced(BOOST_MYSQL_COVERAGE)
-    
-    # Run SHA256 tests
-    option(BOOST_MYSQL_SHA256_TESTS OFF "Whether to run SHA256 tests or not")
-    mark_as_advanced(BOOST_MYSQL_SHA256_TESTS)
 endif()
 
 # Includes

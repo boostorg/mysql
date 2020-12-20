@@ -8,13 +8,12 @@
 
 from sys import argv
 from subprocess import check_call
-from os import chdir
+from os import chdir, path
 
 REPO_BASE = path.abspath(path.join(path.dirname(__file__), '..'))
 
 BASE_CONFIG = {
-    'CMAKE_PREFIX_PATH': '/opt/boost_latest',
-    'BOOST_MYSQL_SHA256_TESTS': 'ON',
+    'CMAKE_PREFIX_PATH': '/opt/boost-latest',
     'CMAKE_INSTALL_PREFIX': '/tmp/boost_mysql'
 }
 
@@ -24,11 +23,16 @@ CLANG_CONFIG = {
 }
 
 ALL_CONFIGS = {
+    'gcc-7': {
+        **BASE_CONFIG,
+        'CMAKE_C_COMPILER': 'gcc-7',
+        'CMAKE_CXX_COMPILER': 'g++-7',
+        'CMAKE_BUILD_TYPE': 'Debug'
+    },
     'clang-debug': {
         **BASE_CONFIG,
         **CLANG_CONFIG,
-        'CMAKE_BUILD_TYPE': 'Debug',
-        'BOOST_MYSQL_VALGRIND_TESTS': 'ON'
+        'CMAKE_BUILD_TYPE': 'Debug'
     },
     'clang-release': {
         **BASE_CONFIG,

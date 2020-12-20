@@ -6,6 +6,9 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+# Config
+BOOST_ROOT=/opt/boost-latest
+
 # Get latest cmake
 function get_cmake {
     if [ "$TRAVIS_OS_NAME" != "osx" ]; then # OSX cmake is good enough
@@ -22,7 +25,6 @@ function get_cmake {
 
 # Build latest boost (for CMake builds)
 function build_boost {
-    BOOST_ROOT=/opt/boost_1_73_0
     sudo mkdir $BOOST_ROOT
     sudo chmod 777 $BOOST_ROOT
     git clone https://github.com/anarthal/boost-unix-mirror.git boost-latest
@@ -65,8 +67,8 @@ function setup_db {
             -d \
             anarthal/$DATABASE
     fi
-    if [ "$DATABASE" == "mysql:8" ]; then
-        export BOOST_MYSQL_SHA256_TESTS=1
+    if [ "$DATABASE" != "mysql:8" ]; then
+        export BOOST_MYSQL_TEST_FILTER='!@sha256'
     fi
 }
 
@@ -115,25 +117,24 @@ function cmake_build {
     cd build
     cmake \
         -DCMAKE_INSTALL_PREFIX=/tmp/boost_mysql \
-        -DCMAKE_PREFIX_PATH=/opt/boost_1_73_0 \
+        -DCMAKE_PREFIX_PATH=$BOOST_ROOT \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DCMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD \
         $(if [ $USE_VALGRIND ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
         $(if [ $USE_COVERAGE ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
-        $(if [ $BOOST_MYSQL_SHA256_TESTS ]; then echo -DBOOST_MYSQL_SHA256_TESTS=ON; fi) \
         $openssl_arg \
         -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
         $CMAKE_OPTIONS \
         .. 
-    make -j6 CTEST_OUTPUT_ON_FAILURE=1 all install
+    make "-j$(if [ $NUM_JOBS ]; then echo $NUM_JOBS; else echo 4; fi)" all install
     wait_for_db
-    ctest --output-on-failure
+    ctest --verbose
     cd ..
     
     # Test that a user project could use our export
     python3 \
         tools/user_project_find_package/build.py \
-        "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;/opt/boost_1_73_0" \
+        "-DCMAKE_PREFIX_PATH=/tmp/boost_mysql;$BOOST_ROOT" \
         $openssl_arg
 }
 
@@ -156,7 +157,10 @@ if [ "$B2_TOOLSET" != "" ]; then # Boost.Build
     source ci/travis/install.sh
     
     # Boost.CI build. Note: takes time enough for DB container to load
-    $BOOST_ROOT/libs/$SELF/ci/travis/build.sh
+    $BOOST_ROOT/libs/$SELF/ci/build.sh \
+        libs/mysql/example \
+        libs/mysql/example//boost_mysql_example_unix_socket
+
 else # CMake
     get_cmake
     build_boost
