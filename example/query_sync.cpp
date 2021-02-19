@@ -83,8 +83,8 @@ void main_impl(int argc, char** argv)
      *
      * Resultset objects represent the result of a query, in tabular format.
      * They hold metadata describing the fields the resultset holds (in this case, first_name,
-     * last_name and salary). To get the actual data, use fetch_one, fetch_many or fetch_all.
-     * We will use fetch_all, which returns all the received rows as a std::vector.
+     * last_name and salary). To get the actual data, use read_one, read_many or read_all.
+     * We will use read_all, which returns all the received rows as a std::vector.
      *
      * We will get all employees working for 'High Growth Startup'.
      */
@@ -92,7 +92,7 @@ void main_impl(int argc, char** argv)
     boost::mysql::tcp_resultset result = conn.query(sql);
 
     // Get all the rows in the resultset
-    std::vector<boost::mysql::owning_row> employees = result.fetch_all();
+    std::vector<boost::mysql::row> employees = result.read_all();
     for (const auto& employee: employees)
     {
         print_employee(employee);
@@ -106,7 +106,7 @@ void main_impl(int argc, char** argv)
 
     // Check we have updated our poor intern salary
     result = conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'");
-    auto rows = result.fetch_all();
+    auto rows = result.read_all();
     ASSERT(rows.size() == 1);
     double salary = rows[0].values()[0].get<double>();
     ASSERT(salary == 10000);

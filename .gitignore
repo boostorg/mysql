@@ -11,3 +11,5 @@ out/
 doc/html/
 doc/qbk/reference.qbk
 .vscode/
+compile_commands.json
+.cache/

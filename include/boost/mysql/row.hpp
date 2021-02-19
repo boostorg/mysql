@@ -18,51 +18,64 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents a row returned from a query.
- * \details Call [refmem row values] to get the actual sequence of
- * [reflinl value]s the row contains.
+ * \brief Represents a row returned from a database operation.
+ * \details A row is a collection of values, plus a buffer holding memory
+ * for the string [reflink value]s.
+ *
+ * Call [refmem row values] to get the actual sequence of
+ * [reflink value]s the row contains.
  *
  * There will be the same number of values and in the same order as fields
  * in the SQL query that produced the row. You can get more information
  * about these fields using [refmem resultset fields].
  *
- * If any of the values is a string, it will point to an externally owned piece of memory.
- * Thus, the [reflink row] class is not owning, as opposed to [reflink owning_row].
- * Note that, in any case, the sequence of [reflink value]s __is__ owned by the
- * row object. The distinction applies only to the memory pointed to by
- * string [reflink value]s.
+ * If any of the values is a string, it will be represented as a `string_view`
+ * pointing into the row's buffer. These string values will be valid as long as
+ * the [reflink row] object containing the memory they point to is alive and valid. Concretely:
+ * - Destroying the row object invalidates the string values.
+ * - Move assigning against the row invalidates the string values.
+ * - Calling [refmem row clear] invalidates the string values.
+ * - Move-constructing a [reflink row] from the current row does **not**
+ *   invalidate the string values.
+ *
+ * Default constructible and movable, but not copyable.
  */
 class row
 {
     std::vector<value> values_;
+    detail::bytestring buffer_;
 public:
-    /// Default and initializing constructor.
-    row(std::vector<value>&& values = {}):
-        values_(std::move(values)) {};
+    row() = default;
+    row(std::vector<value>&& values, detail::bytestring&& buffer) noexcept :
+            values_(std::move(values)), buffer_(std::move(buffer)) {};
+    row(const row&) = delete;
+    row(row&&) = default;
+    row& operator=(const row&) = delete;
+    row& operator=(row&&) = default;
+    ~row() = default;
 
     /// Accessor for the sequence of values.
     const std::vector<value>& values() const noexcept { return values_; }
 
     /// Accessor for the sequence of values.
     std::vector<value>& values() noexcept { return values_; }
-};
 
-/**
- * \brief A row that owns a chunk of memory for its string values.
- * \details Default constructible and movable, but not copyable.
- */
-class owning_row : public row
-{
-    detail::bytestring buffer_;
-public:
-    owning_row() = default;
-    owning_row(std::vector<value>&& values, detail::bytestring&& buffer) :
-            row(std::move(values)), buffer_(std::move(buffer)) {};
-    owning_row(const owning_row&) = delete;
-    owning_row(owning_row&&) = default;
-    owning_row& operator=(const owning_row&) = delete;
-    owning_row& operator=(owning_row&&) = default;
-    ~owning_row() = default;
+    /**
+     * \brief Clears the row object.
+     * \details Clears the value array and the memory buffer associated to this row.
+     * After calling this operation, [refmem row values] will be the empty array. Any
+     * pointers, references and iterators to elements in [refmem row values] will be invalidated.
+     * Any string values using the memory held by this row will also become invalid. 
+     */
+    void clear() noexcept
+    {
+        values_.clear();
+        buffer_.clear();
+    }
+
+    // Private, do not use
+    const detail::bytestring& buffer() const noexcept { return buffer_; }
+    detail::bytestring& buffer() noexcept { return buffer_; }
 };
 
 /**

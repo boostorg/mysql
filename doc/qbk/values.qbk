@@ -132,11 +132,10 @@ Instead, prefer the following:
 ]
 
 In __Self__, the memory pointed to by string [reflink value]s
-is owned by either [reflink resultset] or [reflink owning_row]
-objects. This avoids unnecessary copies and makes the [reflink value]
+is owned by the [reflink row] objects the values belong to. 
+This avoids unnecessary copies and makes the [reflink value]
 class lightweight and cheap to copy. In exchange, you must pay attention
-to the lifetime of the [reflink resultset] or [reflink owning_row]
-object you used to obtain the [reflink value] to not incur in
+to the lifetime of the [reflink row] object you used to obtain the [reflink value] to not incur in
 undefined behavior. For more information on resultset mechanics,
 see [link mysql.resultsets this section].
 
@@ -147,7 +146,7 @@ see [link mysql.resultsets this section].
 Values may be streamed and compared for equality. If you need
 to `visit()` a [reflink value], use [refmem value to_variant]
 and use `visit()` on the returned variant. Additionally,
-[reflink row] and [reflink owning_row] objects may also
+[reflink row] objects may also
 be streamed and compared for equality.
 
 [endsect]

@@ -28,3 +28,6 @@ project user-config
         <library-path>$(OPENSSL_ROOT)/lib/VC
     ;
     
+using doxygen ;
+using boostbook ; 
+using saxonhe ;

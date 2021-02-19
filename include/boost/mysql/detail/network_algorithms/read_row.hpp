@@ -10,6 +10,7 @@
 
 #include "boost/mysql/detail/network_algorithms/common.hpp"
 #include "boost/mysql/metadata.hpp"
+#include "boost/mysql/row.hpp"
 #include <boost/utility/string_view.hpp>
 #include <vector>
 
@@ -29,8 +30,8 @@ read_row_result read_row(
     deserialize_row_fn deserializer,
     channel<Stream>& channel,
     const std::vector<field_metadata>& meta,
-    bytestring& buffer,
-    std::vector<value>& output_values,
+	row& output,
+	bytestring& ok_packet_buffer,
     ok_packet& output_ok_packet,
     error_code& err,
     error_info& info
@@ -42,9 +43,9 @@ async_read_row(
     deserialize_row_fn deserializer,
     channel<Stream>& channel,
     const std::vector<field_metadata>& meta,
-    bytestring& buffer,
-    std::vector<value>& output_values,
-    ok_packet& output_ok_packet,
+	row& output,
+    bytestring& ok_packet_buffer,
+	ok_packet& output_ok_packet,
     CompletionToken&& token,
     error_info& output_info
 );

@@ -114,13 +114,13 @@ struct network_fixture
     // make the testing environment more stable and speed up the tests
     void start_transaction()
     {
-        this->conn.query("START TRANSACTION").fetch_all();
+        this->conn.query("START TRANSACTION").read_all();
     }
 
     std::int64_t get_table_size(const std::string& table)
     {
         return this->conn.query("SELECT COUNT(*) FROM " + table)
-                .fetch_all().at(0).values().at(0).template get<std::int64_t>();
+                .read_all().at(0).values().at(0).template get<std::int64_t>();
     }
 };
 

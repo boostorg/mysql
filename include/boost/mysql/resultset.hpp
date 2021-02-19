@@ -42,16 +42,15 @@ class resultset
     detail::deserialize_row_fn deserializer_ {};
     detail::channel<Stream>* channel_;
     detail::resultset_metadata meta_;
-    row current_row_;
-    detail::bytestring buffer_;
+    detail::bytestring ok_packet_buffer_;
     detail::ok_packet ok_packet_;
     bool eof_received_ {false};
 
     error_info& shared_info() noexcept { assert(channel_); return channel_->shared_info(); }
 
-    struct fetch_one_op;
-    struct fetch_many_op;
-    struct fetch_many_op_impl;
+    struct read_one_op;
+    struct read_many_op;
+    struct read_many_op_impl;
 
   public:
     /// \brief Default constructor.
@@ -65,7 +64,7 @@ class resultset
         deserializer_(deserializer), channel_(&channel), meta_(std::move(meta)) {};
     resultset(detail::channel<Stream>& channel, detail::bytestring&& buffer,
         const detail::ok_packet& ok_pack):
-        channel_(&channel), buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
+        channel_(&channel), ok_packet_buffer_(std::move(buffer)), ok_packet_(ok_pack), eof_received_(true) {};
 #endif
 
     /// The executor type associated to the object.
@@ -82,184 +81,167 @@ class resultset
 
     /**
      * \brief Fetches a single row (sync with error code version).
-     * \details The returned object will be `nullptr` if there are no more rows
-     * to read. Calling this function on a complete resultset returns `nullptr`.
-     *
-     * The returned [reflink row] points into memory owned by the resultset. Destroying
-     * or moving the resultset object invalidates it. Calling
-     * any of the fetch methods again also invalidates it.
+     * \details Returns `true` if a row was read successfully, `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and returns `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but returns `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
      */
-    const row* fetch_one(error_code& err, error_info& info);
+    bool read_one(row& output, error_code& err, error_info& info);
 
     /**
      * \brief Fetches a single row (sync with exceptions version).
-     * \details The returned object will be `nullptr` if there are no more rows
-     * to read. Calling this function on a complete resultset returns `nullptr`.
-     *
-     * The returned [reflink row] points into memory owned by the resultset. Destroying
-     * or moving the resultset object invalidates it. Calling
-     * any of the fetch methods again also invalidates it.
+     * \details Returns `true` if a row was read successfully, `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and returns `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but returns `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
      */
-    const row* fetch_one();
+    bool read_one(row& output);
 
     /**
      * \brief Fetches a single row (async without [reflink error_info] version).
-     * \details The pointer passed to the completion handler
-     * will be `nullptr` if there are no more rows
-     * to read. Calling this function on a complete resultset returns `nullptr`.
-     *
-     * The [reflink row] passed to the completion handler
-     * points into memory owned by the resultset. Destroying
-     * or moving the resultset object invalidates it. Calling
-     * any of the fetch methods again also invalidates it.
+     * \details Completes with `true` if a row was read successfully, and with `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and completes with `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but completes with `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
      *
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, const boost::mysql::row*)`.
+     * `void(boost::mysql::error_code, bool)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, const row*))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, bool))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, const row*))
-    async_fetch_one(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    async_read_one(row& output, CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return async_fetch_one(shared_info(), std::forward<CompletionToken>(token));
+        return async_read_one(output, shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
      * \brief Fetches a single row (async with [reflink error_info] version).
-     * \details The pointer passed to the completion handler
-     * will be `nullptr` if there are no more rows
-     * to read. Calling this function on a complete resultset returns `nullptr`.
-     *
-     * The [reflink row] passed to the completion handler
-     * points into memory owned by the resultset. Destroying
-     * or moving the resultset object invalidates it. Calling
-     * any of the fetch methods again also invalidates it.
+     * \details Completes with `true` if a row was read successfully, and with `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and completes with `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but completes with `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
      *
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, const boost::mysql::row*)`.
+     * `void(boost::mysql::error_code, bool)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, const row*))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, bool))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, const row*))
-    async_fetch_one(
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    async_read_one(
+    	row& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    /**
-     * \brief Fetches several rows, up to a maximum
-     *        (sync with error code version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     */
-    std::vector<owning_row> fetch_many(std::size_t count, error_code& err, error_info& info);
+    /// Fetches several rows, up to a maximum (sync with error code version).
+    std::vector<row> read_many(std::size_t count, error_code& err, error_info& info);
 
-    /**
-     * \brief Fetches several rows, up to a maximum
-     *        (sync with exceptions version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     */
-    std::vector<owning_row> fetch_many(std::size_t count);
+    /// Fetches several rows, up to a maximum (sync with exceptions version).
+    std::vector<row> read_many(std::size_t count);
 
     /**
      * \brief Fetches several rows, up to a maximum
      *        (async without [reflink error_info] version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     *
+     * \details
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)`.
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
-    async_fetch_many(
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<row>))
+    async_read_many(
         std::size_t count,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_fetch_many(count, shared_info(), std::forward<CompletionToken>(token));
+        return async_read_many(count, shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
      * \brief Fetches several rows, up to a maximum
      *        (async with [reflink error_info] version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     *
+     * \details
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)`.
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
-    async_fetch_many(
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<row>))
+    async_read_many(
         std::size_t count,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    /**
-     * \brief Fetches all available rows (sync with error code version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     */
-    std::vector<owning_row> fetch_all(error_code& err, error_info& info);
+    /// Fetches all available rows (sync with error code version).
+    std::vector<row> read_all(error_code& err, error_info& info);
 
-    /**
-     * \brief Fetches all available rows (sync with exceptions version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     */
-    std::vector<owning_row> fetch_all();
+    /// Fetches all available rows (sync with exceptions version).
+    std::vector<row> read_all();
 
     /**
      * \brief Fetches all available rows (async without [reflink error_info] version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     *
+     * \details
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)`.
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
-    async_fetch_all(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<row>))
+    async_read_all(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return async_fetch_all(shared_info(), std::forward<CompletionToken>(token));
+        return async_read_all(shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
      * \brief Fetches all available rows (async with [reflink error_info] version).
-     * \details The returned rows may outlive the resultset.
-     * Subsequent calls to any of the fetch methods do not invalidate the returned rows.
-     *
+     * \details
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)`.
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<owning_row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<owning_row>))
-    async_fetch_all(
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::vector<row>))
+    async_read_all(
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

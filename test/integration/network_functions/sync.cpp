@@ -17,7 +17,6 @@ using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
-using boost::mysql::owning_row;
 
 namespace
 {
@@ -114,29 +113,30 @@ public:
             return no_result();
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl([&](error_code& code, error_info& info) {
-            return r.fetch_one(code, info);
+            return r.read_one(output, code, info);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl([&](error_code& code, error_info& info) {
-            return r.fetch_many(count, code, info);
+            return r.read_many(count, code, info);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl([&](error_code& code, error_info& info) {
-            return r.fetch_all(code, info);
+            return r.read_all(code, info);
         });
     }
     network_result<no_result> quit(
@@ -255,29 +255,30 @@ public:
             return no_result();
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl([&] {
-            return r.fetch_one();
+            return r.read_one(output);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl([&] {
-            return r.fetch_many(count);
+            return r.read_many(count);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl([&] {
-            return r.fetch_all();
+            return r.read_all();
         });
     }
     network_result<no_result> quit(

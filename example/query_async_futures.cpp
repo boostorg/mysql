@@ -8,6 +8,7 @@
 //[example_query_async_futures
 
 #include "boost/mysql/mysql.hpp"
+#include "boost/mysql/row.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/use_future.hpp>
@@ -90,15 +91,15 @@ void main_impl(int argc, char** argv)
     boost::mysql::tcp_resultset result = resultset_fut.get();
 
     /**
-     * Get all rows in the resultset. We will employ resultset::async_fetch_one(),
-     * which returns a single row at every call. The returned row is a pointer
-     * to memory owned by the resultset, and is re-used for each row. Thus, returned
-     * rows remain valid until the next call to async_fetch_one(). When no more
-     * rows are available, async_fetch_one returns nullptr.
-     */
-    while (const boost::mysql::row* current_row = result.async_fetch_one(use_future).get())
+      * Get all rows in the resultset. We will employ resultset::async_read_one(),
+      * which reads a single row at every call. The row is read in-place, preventing
+      * unnecessary copies. resultset::async_read_one() returns true if a row has been
+      * read, false if no more rows are available or an error occurred.
+      */
+    boost::mysql::row row;
+    while (result.async_read_one(row, use_future).get())
     {
-        print_employee(*current_row);
+        print_employee(row);
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.

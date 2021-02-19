@@ -18,8 +18,8 @@ inline read_row_result process_read_message(
     deserialize_row_fn deserializer,
     capabilities current_capabilities,
     const std::vector<field_metadata>& meta,
-    const bytestring& buffer,
-    std::vector<value>& output_values,
+	row& output,
+    bytestring& ok_packet_buffer,
     ok_packet& output_ok_packet,
     error_code& err,
     error_info& info
@@ -29,17 +29,19 @@ inline read_row_result process_read_message(
 
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
-    deserialization_context ctx (boost::asio::buffer(buffer), current_capabilities);
+    deserialization_context ctx (boost::asio::buffer(output.buffer()), current_capabilities);
     err = make_error_code(deserialize(ctx, msg_type));
     if (err)
         return read_row_result::error;
     if (msg_type == eof_packet_header)
     {
-        // end of resultset
+        // end of resultset => we read the packet against the row, but it is the ok_packet, instead
         err = deserialize_message(ctx, output_ok_packet);
-        return err ? read_row_result::error : read_row_result::eof;
         if (err)
             return read_row_result::error;
+        std::swap(output.buffer(), ok_packet_buffer);
+        output.buffer().clear();
+        output.values().clear();
         return read_row_result::eof;
     }
     else if (msg_type == error_packet_header)
@@ -52,7 +54,7 @@ inline read_row_result process_read_message(
     {
         // An actual row
         ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
-        err = deserializer(ctx, meta, output_values);
+        err = deserializer(ctx, meta, output.values());
         if (err)
             return read_row_result::error;
         return read_row_result::row;
@@ -66,8 +68,8 @@ struct read_row_op : boost::asio::coroutine
     error_info& output_info_;
     deserialize_row_fn deserializer_;
     const std::vector<field_metadata>& meta_;
-    bytestring& buffer_;
-    std::vector<value>& output_values_;
+    row& output_;
+    bytestring& ok_packet_buffer_;
     ok_packet& output_ok_packet_;
 
     read_row_op(
@@ -75,16 +77,16 @@ struct read_row_op : boost::asio::coroutine
         error_info& output_info,
         deserialize_row_fn deserializer,
         const std::vector<field_metadata>& meta,
-        bytestring& buffer,
-        std::vector<value>& output_values,
+		row& output,
+        bytestring& ok_packet_buffer,
         ok_packet& output_ok_packet
     ) :
         chan_(chan),
         output_info_(output_info),
         deserializer_(deserializer),
         meta_(meta),
-        buffer_(buffer),
-        output_values_(output_values),
+		output_(output),
+        ok_packet_buffer_(ok_packet_buffer),
         output_ok_packet_(output_ok_packet)
     {
     }
@@ -108,15 +110,15 @@ struct read_row_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Read the message
-            BOOST_ASIO_CORO_YIELD chan_.async_read(buffer_, std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read(output_.buffer(), std::move(self));
 
             // Process it
             result = process_read_message(
                 deserializer_,
                 chan_.current_capabilities(),
                 meta_,
-                buffer_,
-                output_values_,
+				output_,
+                ok_packet_buffer_,
                 output_ok_packet_,
                 err,
                 output_info_
@@ -136,15 +138,15 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
     deserialize_row_fn deserializer,
     channel<Stream>& channel,
     const std::vector<field_metadata>& meta,
-    bytestring& buffer,
-    std::vector<value>& output_values,
+	row& output,
+    bytestring& ok_packet_buffer,
     ok_packet& output_ok_packet,
     error_code& err,
     error_info& info
 )
 {
     // Read a packet
-    channel.read(buffer, err);
+    channel.read(output.buffer(), err);
     if (err)
         return read_row_result::error;
 
@@ -152,8 +154,8 @@ boost::mysql::detail::read_row_result boost::mysql::detail::read_row(
         deserializer,
         channel.current_capabilities(),
         meta,
-        buffer,
-        output_values,
+		output,
+        ok_packet_buffer,
         output_ok_packet,
         err,
         info
@@ -169,8 +171,8 @@ boost::mysql::detail::async_read_row(
     deserialize_row_fn deserializer,
     channel<Stream>& chan,
     const std::vector<field_metadata>& meta,
-    bytestring& buffer,
-    std::vector<value>& output_values,
+	row& output,
+    bytestring& ok_packet_buffer,
     ok_packet& output_ok_packet,
     CompletionToken&& token,
     error_info& output_info
@@ -182,8 +184,8 @@ boost::mysql::detail::async_read_row(
             output_info,
             deserializer,
             meta,
-            buffer,
-            output_values,
+			output,
+            ok_packet_buffer,
             output_ok_packet
         ),
         token,

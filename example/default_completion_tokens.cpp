@@ -7,6 +7,7 @@
 
 //[example_default_completion_tokens]
 #include "boost/mysql/mysql.hpp"
+#include "boost/mysql/row.hpp"
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -111,15 +112,15 @@ boost::asio::awaitable<void, base_executor_type> start_query(
     auto result = co_await conn.async_query(sql);
 
     /**
-     * Get all rows in the resultset. We will employ resultset::async_fetch_one(),
-     * which returns a single row at every call. The returned row is a pointer
-     * to memory owned by the resultset, and is re-used for each row. Thus, returned
-     * rows remain valid until the next call to async_fetch_one(). When no more
-     * rows are available, async_fetch_one returns nullptr.
+     * Get all rows in the resultset. We will employ resultset::async_read_one(),
+     * which reads a single row at every call. The row is read in-place, preventing
+     * unnecessary copies. resultset::async_read_one() returns true if a row has been
+     * read, false if no more rows are available or an error occurred.
      */
-    while (const boost::mysql::row* row = co_await result.async_fetch_one())
+    boost::mysql::row row;
+    while (co_await result.async_read_one(row))
     {
-        print_employee(*row);
+        print_employee(row);
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.

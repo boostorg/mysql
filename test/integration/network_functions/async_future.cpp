@@ -12,10 +12,8 @@ using namespace boost::mysql::test;
 using boost::mysql::connection_params;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
-using boost::mysql::owning_row;
 using boost::asio::use_future;
 
 namespace
@@ -174,29 +172,30 @@ public:
             return stmt.async_close(output_info, use_future);
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return r.async_fetch_one(output_info, use_future);
+            return r.async_read_one(output, output_info, use_future);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return r.async_fetch_many(count, output_info, use_future);
+            return r.async_read_many(count, output_info, use_future);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return r.async_fetch_all(output_info, use_future);
+            return r.async_read_all(output_info, use_future);
         });
     }
     network_result<no_result> quit(
@@ -290,29 +289,30 @@ public:
             return stmt.async_close(use_future);
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl_noerrinfo([&] {
-            return r.async_fetch_one(use_future);
+            return r.async_read_one(output, use_future);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl_noerrinfo([&] {
-            return r.async_fetch_many(count, use_future);
+            return r.async_read_many(count, use_future);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl_noerrinfo([&] {
-            return r.async_fetch_all(use_future);
+            return r.async_read_all(use_future);
         });
     }
     network_result<no_result> quit(
@@ -407,29 +407,30 @@ public:
             return stmt.async_close(output_info);
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return r.async_fetch_one(output_info);
+            return r.async_read_one(output, output_info);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return r.async_fetch_many(count, output_info);
+            return r.async_read_many(count, output_info);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return r.async_fetch_all(output_info);
+            return r.async_read_all(output_info);
         });
     }
     network_result<no_result> quit(
@@ -523,29 +524,30 @@ public:
             return stmt.async_close();
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl_noerrinfo([&] {
-            return r.async_fetch_one();
+            return r.async_read_one(output);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl_noerrinfo([&] {
-            return r.async_fetch_many(count);
+            return r.async_read_many(count);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl_noerrinfo([&] {
-            return r.async_fetch_all();
+            return r.async_read_all();
         });
     }
     network_result<no_result> quit(

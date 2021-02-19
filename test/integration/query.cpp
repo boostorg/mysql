@@ -76,7 +76,7 @@ BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture, network_ssl_gen)
     result = sample.net->query(this->conn,
         "SELECT field_int FROM updates_table WHERE field_varchar = 'f0'");
     result.validate_no_error();
-    auto updated_value = result.value.fetch_all().at(0).values().at(0).template get<std::int64_t>();
+    auto updated_value = result.value.read_all().at(0).values().at(0).template get<std::int64_t>();
     BOOST_TEST(updated_value == 52); // initial value was 42
 }
 

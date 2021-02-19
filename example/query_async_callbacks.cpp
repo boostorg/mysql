@@ -17,7 +17,7 @@
 using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::tcp_resultset;
-using boost::mysql::owning_row;
+using boost::mysql::row;
 
 #define ASSERT(expr) \
     if (!(expr)) \
@@ -78,7 +78,7 @@ public:
         connection.async_query(sql, additional_info, [this](error_code err, tcp_resultset&& result) {
             die_on_error(err, additional_info);
             resultset = std::move(result);
-            resultset.async_fetch_all(additional_info, [this](error_code err, const std::vector<owning_row>& rows) {
+            resultset.async_read_all(additional_info, [this](error_code err, const std::vector<row>& rows) {
                 die_on_error(err, additional_info);
                 for (const auto& employee: rows)
                 {
@@ -106,7 +106,7 @@ public:
         connection.async_query(sql, additional_info, [this](error_code err, tcp_resultset&& result) {
             die_on_error(err, additional_info);
             resultset = std::move(result);
-            resultset.async_fetch_all(additional_info, [this](error_code err, const std::vector<owning_row>& rows) {
+            resultset.async_read_all(additional_info, [this](error_code err, const std::vector<row>& rows) {
                 die_on_error(err, additional_info);
                 ASSERT(rows.size() == 1);
                 auto salary = rows[0].values()[0].get<double>();

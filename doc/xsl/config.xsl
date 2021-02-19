@@ -11,4 +11,5 @@
 <xsl:variable name="doc-ref" select="'mysql.ref'"/>
 <xsl:variable name="debug" select="0"/>
 <xsl:variable name="private" select="0"/>
+<xsl:variable name="include-private-members" select="false()"/>
 <!-- End Variables -->

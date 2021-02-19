@@ -23,7 +23,7 @@ BOOST_MYSQL_NETWORK_TEST(physical_and_handshake_ok, network_fixture, network_ssl
     // We are able to query
     auto query_result = sample.net->query(this->conn, "SELECT 1");
     query_result.validate_no_error();
-    query_result.value.fetch_all(); // discard any result
+    query_result.value.read_all(); // discard any result
 }
 
 BOOST_MYSQL_NETWORK_TEST(physical_error, network_fixture, network_ssl_gen)

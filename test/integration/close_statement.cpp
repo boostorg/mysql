@@ -23,7 +23,7 @@ BOOST_MYSQL_NETWORK_TEST(existing_or_closed_statement, network_fixture, network_
     // Verify it works fine
     auto exec_result = net->execute_statement(stmt.value, {});
     exec_result.validate_no_error();
-    exec_result.value.fetch_all(); // clean all packets sent for this execution
+    exec_result.value.read_all(); // clean all packets sent for this execution
 
     // Close the statement
     auto close_result = net->close_statement(stmt.value);

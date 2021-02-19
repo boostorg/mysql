@@ -100,9 +100,9 @@ public:
     virtual network_result<resultset_type> execute_statement(
             prepared_statement_type&, const std::vector<value>&) = 0;
     virtual network_result<no_result> close_statement(prepared_statement_type&) = 0;
-    virtual network_result<const row*> fetch_one(resultset_type&) = 0;
-    virtual network_result<std::vector<owning_row>> fetch_many(resultset_type&, std::size_t count) = 0;
-    virtual network_result<std::vector<owning_row>> fetch_all(resultset_type&) = 0;
+    virtual network_result<bool> read_one(resultset_type&, row&) = 0;
+    virtual network_result<std::vector<row>> read_many(resultset_type&, std::size_t count) = 0;
+    virtual network_result<std::vector<row>> read_all(resultset_type&) = 0;
     virtual network_result<no_result> quit(connection_type&) = 0;
     virtual network_result<no_result> close(connection_type&) = 0;
 };

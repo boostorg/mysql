@@ -16,7 +16,7 @@ INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          =
 RECURSIVE              = NO
 EXCLUDE                = $(LIB_DIR)/include/boost/mysql/detail/ \
-                         $(LIB_DIR)/include/boost/mysql/impl
+                         $(LIB_DIR)/include/boost/mysql/impl/
 EXCLUDE_SYMLINKS       = NO
 EXCLUDE_PATTERNS       = 
 EXCLUDE_SYMBOLS        =
@@ -36,16 +36,16 @@ USE_MDFILE_AS_MAINPAGE =
 ENABLE_PREPROCESSING   = YES
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = YES
-SEARCH_INCLUDES        = YES
+SEARCH_INCLUDES        = NO
 
 PREDEFINED             = BOOST_MYSQL_DOXYGEN \
-                        BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto \
-                        BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)=class \
-                        BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(ct,sig)=auto \
-                        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(ex)= \
-                        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(ex)= \
-                        protected=private \
-                        BOOST_CXX14_CONSTEXPR=constexpr
+                        "BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto" \
+                        "BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)=class" \
+                        "BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(ct,sig)=auto" \
+                        "BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(ex)=" \
+                        "BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(ex)=" \
+                        "protected=private" \
+                        "BOOST_CXX14_CONSTEXPR=constexpr"
 
 SKIP_FUNCTION_MACROS   = NO
 
@@ -189,7 +189,7 @@ HAVE_DOT               = NO
 #---------------------------------------------------------------------------
 GENERATE_XML           = YES
 XML_OUTPUT             = $(XML_OUTPUT)
-XML_PROGRAMLISTING     = YES
+XML_PROGRAMLISTING     = NO
 
 #---------------------------------------------------------------------------
 # Configuration options related to external references
@@ -199,4 +199,3 @@ GENERATE_TAGFILE       =
 ALLEXTERNALS           = NO
 EXTERNAL_GROUPS        = YES
 EXTERNAL_PAGES         = YES
-PERL_PATH              = /usr/bin/perl

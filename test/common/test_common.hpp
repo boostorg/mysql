@@ -33,7 +33,7 @@ std::vector<value> make_value_vector(Types&&... args)
 template <class... Types>
 row makerow(Types&&... args)
 {
-    return row(make_value_vector(std::forward<Types>(args)...));
+    return row(make_value_vector(std::forward<Types>(args)...), {});
 }
 
 inline date makedate(int num_years, unsigned num_months, unsigned num_days)

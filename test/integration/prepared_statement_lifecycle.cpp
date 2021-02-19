@@ -8,7 +8,6 @@
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::row;
 using boost::mysql::value;
 
 BOOST_AUTO_TEST_SUITE(test_prepared_statement_lifecycle)
@@ -21,7 +20,7 @@ value get_updates_table_value(
 {
     return conn.query(
         "SELECT field_int FROM updates_table WHERE field_varchar = '" + field_varchar + "'")
-            .fetch_all().at(0).values().at(0);
+            .read_all().at(0).values().at(0);
 }
 
 BOOST_MYSQL_NETWORK_TEST(select_with_parameters_multiple_executions, network_fixture, network_ssl_gen)
@@ -43,7 +42,7 @@ BOOST_MYSQL_NETWORK_TEST(select_with_parameters_multiple_executions, network_fix
     BOOST_TEST(!result.value.complete());
     this->validate_2fields_meta(result.value, "two_rows_table");
 
-    auto rows = net->fetch_all(result.value);
+    auto rows = net->read_all(result.value);
     rows.validate_no_error();
     BOOST_TEST_REQUIRE(rows.value.size() == 1);
     BOOST_TEST((rows.value[0] == makerow(1, "f0")));
@@ -56,7 +55,7 @@ BOOST_MYSQL_NETWORK_TEST(select_with_parameters_multiple_executions, network_fix
     BOOST_TEST(!result.value.complete());
     this->validate_2fields_meta(result.value, "two_rows_table");
 
-    rows = net->fetch_all(result.value);
+    rows = net->read_all(result.value);
     rows.validate_no_error();
     BOOST_TEST_REQUIRE(rows.value.size() == 2);
     BOOST_TEST((rows.value[0] == makerow(1, "f0")));
@@ -172,7 +171,7 @@ BOOST_MYSQL_NETWORK_TEST(multiple_statements, network_fixture, network_ssl_gen)
     // Execute select
     auto select_result = net->execute_statement(stmt_select.value, make_value_vector("f0"));
     select_result.validate_no_error();
-    auto rows = net->fetch_all(select_result.value);
+    auto rows = net->read_all(select_result.value);
     rows.validate_no_error();
     BOOST_TEST(rows.value.size() == 1);
     BOOST_TEST(rows.value[0] == makerow(210));
@@ -189,7 +188,7 @@ BOOST_MYSQL_NETWORK_TEST(multiple_statements, network_fixture, network_ssl_gen)
     // Execute select again
     select_result = net->execute_statement(stmt_select.value, make_value_vector("f0"));
     select_result.validate_no_error();
-    rows = net->fetch_all(select_result.value);
+    rows = net->read_all(select_result.value);
     rows.validate_no_error();
     BOOST_TEST(rows.value.size() == 1);
     BOOST_TEST(rows.value[0] == makerow(220));

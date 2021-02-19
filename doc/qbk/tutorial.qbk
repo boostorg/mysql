@@ -73,15 +73,15 @@ A [reflink resultset] is an object that represents the result of a query,
 in tabular format. Resultsets are not containers, but I/O objects:
 they do not contain by themselves the entire result of the query, but allow
 the user to fetch it using several methods. We will use
-[reflink2 resultset.fetch_all tcp_resultset::fetch_all], which just
+[reflink2 resultset.read_all tcp_resultset::read_all], which just
 reads all the rows in the resultset and places them in a `std::vector`
-of [reflink owning_row] objects:
+of [reflink row] objects:
 
 [tutorial_fetch]
 
 Rows are essentially arrays of [reflink value]s . A [reflink value]
 is a union-like class of all types allowed in MySQL. You can access the row's
-contents using [refmem owning_row values].
+contents using [refmem row values].
 
 [tutorial_values]
 

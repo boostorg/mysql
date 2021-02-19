@@ -13,9 +13,11 @@
 #include <boost/asio/bind_executor.hpp>
 #include <cassert>
 #include <limits>
+#include <memory>
 
 template <class Stream>
-const boost::mysql::row* boost::mysql::resultset<Stream>::fetch_one(
+bool boost::mysql::resultset<Stream>::read_one(
+	row& output,
     error_code& err,
     error_info& info
 )
@@ -26,33 +28,36 @@ const boost::mysql::row* boost::mysql::resultset<Stream>::fetch_one(
 
     if (complete())
     {
-        return nullptr;
+        output.clear();
+        return false;
     }
     auto result = detail::read_row(
         deserializer_,
         *channel_,
         meta_.fields(),
-        buffer_,
-        current_row_.values(),
+        output,
+		ok_packet_buffer_,
         ok_packet_,
         err,
         info
     );
     eof_received_ = result == detail::read_row_result::eof;
-    return result == detail::read_row_result::row ? &current_row_ : nullptr;
+    return result == detail::read_row_result::row;
 }
 
 template <class Stream>
-const boost::mysql::row* boost::mysql::resultset<Stream>::fetch_one()
+bool boost::mysql::resultset<Stream>::read_one(
+	row& output
+)
 {
     detail::error_block blk;
-    const row* res = fetch_one(blk.err, blk.info);
+    bool res = read_one(output, blk.err, blk.info);
     blk.check();
     return res;
 }
 
 template <class Stream>
-std::vector<boost::mysql::owning_row> boost::mysql::resultset<Stream>::fetch_many(
+std::vector<boost::mysql::row> boost::mysql::resultset<Stream>::read_many(
     std::size_t count,
     error_code& err,
     error_info& info
@@ -62,78 +67,65 @@ std::vector<boost::mysql::owning_row> boost::mysql::resultset<Stream>::fetch_man
 
     detail::clear_errors(err, info);
 
-    std::vector<mysql::owning_row> res;
+    std::vector<row> res;
 
-    if (!complete()) // support calling fetch on already exhausted resultset
-    {
-        for (std::size_t i = 0; i < count; ++i)
-        {
-            detail::bytestring buff;
-            std::vector<value> values;
-
-            auto result = detail::read_row(
-                deserializer_,
-                *channel_,
-                meta_.fields(),
-                buff,
-                values,
-                ok_packet_,
-                err,
-                info
-            );
-            eof_received_ = result == detail::read_row_result::eof;
-            if (result == detail::read_row_result::row)
-            {
-                res.emplace_back(std::move(values), std::move(buff));
-            }
-            else
-            {
-                break;
-            }
-        }
-    }
+	for (std::size_t i = 0; i < count; ++i)
+	{
+		row r;
+		if (this->read_one(r, err, info))
+		{
+			res.push_back(std::move(r));
+		}
+		else
+		{
+			break;
+		}
+	}
 
     return res;
 }
 
 template <class Stream>
-std::vector<boost::mysql::owning_row> boost::mysql::resultset<Stream>::fetch_many(
+std::vector<boost::mysql::row> boost::mysql::resultset<Stream>::read_many(
     std::size_t count
 )
 {
     detail::error_block blk;
-    auto res = fetch_many(count, blk.err, blk.info);
+    auto res = read_many(count, blk.err, blk.info);
     blk.check();
     return res;
 }
 
 template <class Stream>
-std::vector<boost::mysql::owning_row> boost::mysql::resultset<Stream>::fetch_all(
+std::vector<boost::mysql::row> boost::mysql::resultset<Stream>::read_all(
     error_code& err,
     error_info& info
 )
 {
-    return fetch_many(std::numeric_limits<std::size_t>::max(), err, info);
+    return read_many(std::numeric_limits<std::size_t>::max(), err, info);
 }
 
 template <class Stream>
-std::vector<boost::mysql::owning_row> boost::mysql::resultset<Stream>::fetch_all()
+std::vector<boost::mysql::row> boost::mysql::resultset<Stream>::read_all()
 {
-    return fetch_many(std::numeric_limits<std::size_t>::max());
+    return read_many(std::numeric_limits<std::size_t>::max());
 }
 
 template<class Stream>
-struct boost::mysql::resultset<Stream>::fetch_one_op
+struct boost::mysql::resultset<Stream>::read_one_op
     : boost::asio::coroutine
 {
     resultset<Stream>& resultset_;
+    row& output_;
     error_info& output_info_;
 
-    fetch_one_op(
+    read_one_op(
         resultset<Stream>& obj,
+		row& output,
         error_info& output_info
     ) :
         resultset_(obj),
+		output_(output),
         output_info_(output_info)
     {
     }
@@ -151,15 +143,16 @@ struct boost::mysql::resultset<Stream>::fetch_one_op
             {
                 // ensure return as if by post
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-                self.complete(error_code(), nullptr);
+                output_.clear();
+                self.complete(error_code(), false);
                 BOOST_ASIO_CORO_YIELD break;
             }
             BOOST_ASIO_CORO_YIELD detail::async_read_row(
                 resultset_.deserializer_,
                 *resultset_.channel_,
                 resultset_.meta_.fields(),
-                resultset_.buffer_,
-                resultset_.current_row_.values(),
+				output_,
+                resultset_.ok_packet_buffer_,
                 resultset_.ok_packet_,
                 std::move(self),
                 output_info_
@@ -167,7 +160,7 @@ struct boost::mysql::resultset<Stream>::fetch_one_op
             resultset_.eof_received_ = result == detail::read_row_result::eof;
             self.complete(
                 err,
-                result == detail::read_row_result::row ? &resultset_.current_row_ : nullptr
+                result == detail::read_row_result::row
             );
         }
     }
@@ -175,20 +168,21 @@ struct boost::mysql::resultset<Stream>::fetch_one_op
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, const boost::mysql::row*)) CompletionToken>
+    void(boost::mysql::error_code, bool)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, const boost::mysql::row*)
+    void(boost::mysql::error_code, bool)
 )
-boost::mysql::resultset<Stream>::async_fetch_one(
+boost::mysql::resultset<Stream>::async_read_one(
+	row& output,
     error_info& output_info,
     CompletionToken&& token
 )
 {
     assert(valid());
     output_info.clear();
-    return boost::asio::async_compose<CompletionToken, void(error_code, const row*)>(
-        fetch_one_op(*this, output_info),
+    return boost::asio::async_compose<CompletionToken, void(error_code, bool)>(
+        read_one_op(*this, output, output_info),
         token,
         *this
     );
@@ -197,15 +191,14 @@ boost::mysql::resultset<Stream>::async_fetch_one(
 
 
 template<class Stream>
-struct boost::mysql::resultset<Stream>::fetch_many_op
+struct boost::mysql::resultset<Stream>::read_many_op
     : boost::asio::coroutine
 {
     struct impl_struct
     {
         resultset<Stream>& parent_resultset;
-        std::vector<owning_row> rows;
-        detail::bytestring buffer;
-        std::vector<value> values;
+        std::vector<row> rows;
+        row current_row;
         std::size_t remaining;
         error_info& output_info;
         bool cont {false};
@@ -219,16 +212,15 @@ struct boost::mysql::resultset<Stream>::fetch_many_op
 
         void row_received()
         {
-            rows.emplace_back(std::move(values), std::move(buffer));
-            values = std::vector<value>();
-            buffer = detail::bytestring();
+            rows.push_back(std::move(current_row));
+            current_row = row();
             --remaining;
         }
     };
 
     std::shared_ptr<impl_struct> impl_;
 
-    fetch_many_op(
+    read_many_op(
         resultset<Stream>& obj,
         error_info& output_info,
         std::size_t count
@@ -258,7 +250,7 @@ struct boost::mysql::resultset<Stream>::fetch_many_op
     void operator()(
         Self& self,
         error_code err = {},
-        detail::read_row_result result=detail::read_row_result::error
+        detail::read_row_result result = detail::read_row_result::error
     )
     {
         impl_struct& impl = *impl_;
@@ -271,8 +263,8 @@ struct boost::mysql::resultset<Stream>::fetch_many_op
                     impl.parent_resultset.deserializer_,
                     *impl.parent_resultset.channel_,
                     impl.parent_resultset.meta_.fields(),
-                    impl.buffer,
-                    impl.values,
+					impl.current_row,
+					impl.parent_resultset.ok_packet_buffer_,
                     impl.parent_resultset.ok_packet_,
                     std::move(self),
                     impl.output_info
@@ -307,12 +299,12 @@ struct boost::mysql::resultset<Stream>::fetch_many_op
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)) CompletionToken>
+    void(boost::mysql::error_code, std::vector<boost::mysql::row>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)
+    void(boost::mysql::error_code, std::vector<boost::mysql::row>)
 )
-boost::mysql::resultset<Stream>::async_fetch_many(
+boost::mysql::resultset<Stream>::async_read_many(
     std::size_t count,
     error_info& output_info,
     CompletionToken&& token
@@ -322,9 +314,9 @@ boost::mysql::resultset<Stream>::async_fetch_many(
     output_info.clear();
     return boost::asio::async_compose<
         CompletionToken,
-        void(error_code, std::vector<owning_row>)
+        void(error_code, std::vector<row>)
     >(
-        fetch_many_op(*this, output_info, count),
+        read_many_op(*this, output_info, count),
         token,
         *this
     );
@@ -332,17 +324,17 @@ boost::mysql::resultset<Stream>::async_fetch_many(
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)) CompletionToken>
+    void(boost::mysql::error_code, std::vector<boost::mysql::row>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, std::vector<boost::mysql::owning_row>)
+    void(boost::mysql::error_code, std::vector<boost::mysql::row>)
 )
-boost::mysql::resultset<Stream>::async_fetch_all(
+boost::mysql::resultset<Stream>::async_read_all(
     error_info& info,
     CompletionToken&& token
 )
 {
-    return async_fetch_many(
+    return async_read_many(
         std::numeric_limits<std::size_t>::max(),
         info,
         std::forward<CompletionToken>(token)

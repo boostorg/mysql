@@ -6,12 +6,86 @@
 //
 
 #include "boost/mysql/row.hpp"
+#include "boost/mysql/connection.hpp"
+#include "boost/mysql/detail/auxiliar/bytestring.hpp"
+#include "boost/mysql/value.hpp"
 #include "test_common.hpp"
+#include <boost/test/unit_test_suite.hpp>
+#include <boost/utility/string_view_fwd.hpp>
+#include <vector>
 
 using namespace boost::mysql::test;
 using boost::mysql::row;
+using boost::mysql::value;
+using boost::mysql::detail::bytestring;
 
 BOOST_AUTO_TEST_SUITE(test_row)
+
+// Constructors
+BOOST_AUTO_TEST_SUITE(constructors)
+
+static std::vector<value> string_value_from_buffer(const bytestring& buffer)
+{
+    return make_value_vector(boost::string_view(reinterpret_cast<const char*>(buffer.data()), buffer.size()));
+}
+
+BOOST_AUTO_TEST_CASE(init_ctor)
+{
+    // Given a value vector with strings pointing into a buffer, after initializing
+    // the row via moves, the string still points to valid memory
+    bytestring buffer {'a', 'b', 'c', 'd'};
+    auto values = string_value_from_buffer(buffer);
+    row r (std::move(values), std::move(buffer));
+    buffer = {'e', 'f'};
+    BOOST_TEST(r.values()[0] == value("abcd"));
+}
+
+BOOST_AUTO_TEST_CASE(move_ctor)
+{
+    // Given a row with strings, after a move construction,
+    // the string still points to valid memory
+    bytestring buffer {'a', 'b', 'c', 'd'};
+    auto values = string_value_from_buffer(buffer);
+    row r (std::move(values), std::move(buffer));
+    row r2 (std::move(r));
+    r = row({}, {'e', 'f'});
+    BOOST_TEST(r2.values()[0] == value("abcd"));
+}
+
+BOOST_AUTO_TEST_CASE(move_assignment)
+{
+    // Given a row with strings, after a move assignment,
+    // the string still points to valid memory
+    bytestring buffer {'a', 'b', 'c', 'd'};
+    auto values = string_value_from_buffer(buffer);
+    row r (std::move(values), std::move(buffer));
+    row r2;
+    r2 = std::move(r);
+    r = row({}, {'e', 'f'});
+    BOOST_TEST(r2.values()[0] == value("abcd"));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Clear
+BOOST_AUTO_TEST_SUITE(clear)
+
+BOOST_AUTO_TEST_CASE(empty_row)
+{
+    row r;
+    r.clear();
+    BOOST_TEST(r.values().empty());
+}
+
+BOOST_AUTO_TEST_CASE(non_empty_row)
+{
+    row r = makerow("abc");
+    r.clear();
+    BOOST_TEST(r.values().empty());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 
 // Equality operators
 BOOST_AUTO_TEST_SUITE(operators_eq_ne)

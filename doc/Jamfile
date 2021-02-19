@@ -97,7 +97,8 @@ make base-extract-xml-pages.xsl : $(docca)/include/docca/base-extract-xml-pages.
 make common.xsl                 : $(docca)/include/docca/common.xsl                 : @copy_script ;
 make stage1.xsl                 : $(docca)/include/docca/stage1.xsl                 : @copy_script ;
 make base-stage1.xsl            : $(docca)/include/docca/base-stage1.xsl            : @copy_script ;
-make stage2.xsl                 : $(docca)/include/docca/stage2.xsl                 : @copy_script ;
+# Workaround to prevent docca from escaping quickbook from Doxygen comments
+make stage2.xsl                 : $(BOOST_ROOT)/libs/mysql/doc/docca-stage2-noescape.xsl          : @copy_script ;
 make assemble-quickbook.xsl     : $(docca)/include/docca/assemble-quickbook.xsl     : @copy_script ;
 make emphasized-types.xsl       : $(docca)/include/docca/emphasized-types.xsl       : @copy_script ;
 

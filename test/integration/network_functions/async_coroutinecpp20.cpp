@@ -20,7 +20,6 @@ using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
-using boost::mysql::owning_row;
 using boost::asio::use_awaitable;
 
 namespace
@@ -148,29 +147,30 @@ public:
             return stmt.async_close(info, use_awaitable);
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl(r, [&](error_info& info) {
-            return r.async_fetch_one(info, use_awaitable);
+            return r.async_read_one(output, info, use_awaitable);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl(r, [&](error_info& info) {
-            return r.async_fetch_many(count, info, use_awaitable);
+            return r.async_read_many(count, info, use_awaitable);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl(r, [&](error_info& info) {
-            return r.async_fetch_all(info, use_awaitable);
+            return r.async_read_all(info, use_awaitable);
         });
     }
     network_result<no_result> quit(
@@ -310,29 +310,30 @@ public:
             return stmt.async_close(use_awaitable);
         });
     }
-    network_result<const row*> fetch_one(
-        resultset_type& r
+    network_result<bool> read_one(
+        resultset_type& r,
+		row& output
     ) override
     {
         return impl(r, [&] {
-            return r.async_fetch_one(use_awaitable);
+            return r.async_read_one(output, use_awaitable);
         });
     }
-    network_result<std::vector<owning_row>> fetch_many(
+    network_result<std::vector<row>> read_many(
         resultset_type& r,
         std::size_t count
     ) override
     {
         return impl(r, [&] {
-            return r.async_fetch_many(count, use_awaitable);
+            return r.async_read_many(count, use_awaitable);
         });
     }
-    network_result<std::vector<owning_row>> fetch_all(
+    network_result<std::vector<row>> read_all(
         resultset_type& r
     ) override
     {
         return impl(r, [&] {
-            return r.async_fetch_all(use_awaitable);
+            return r.async_read_all(use_awaitable);
         });
     }
     network_result<no_result> quit(

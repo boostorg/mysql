@@ -5,41 +5,36 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "boost/mysql/row.hpp"
 #include "integration_test_common.hpp"
+#include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::detail::make_error_code;
-using boost::mysql::field_metadata;
-using boost::mysql::field_type;
 using boost::mysql::error_code;
-using boost::mysql::error_info;
 using boost::mysql::ssl_mode;
 using boost::mysql::connection;
 using boost::mysql::resultset;
-using boost::mysql::prepared_statement;
 using boost::mysql::row;
-using boost::mysql::owning_row;
-namespace net = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_resultset)
 
 // Helpers
 template <class... Types>
-std::vector<owning_row> makerows(std::size_t row_size, Types&&... args)
+std::vector<row> makerows(std::size_t row_size, Types&&... args)
 {
     auto values = make_value_vector(std::forward<Types>(args)...);
     assert(values.size() % row_size == 0);
-    std::vector<owning_row> res;
+    std::vector<row> res;
     for (std::size_t i = 0; i < values.size(); i += row_size)
     {
         std::vector<boost::mysql::value> row_values (
             values.begin() + i, values.begin() + i + row_size);
-        res.push_back(owning_row(std::move(row_values), {}));
+        res.push_back(row(std::move(row_values), {}));
     }
     return res;
 }
 
-bool operator==(const std::vector<owning_row>& lhs, const std::vector<owning_row>& rhs)
+bool operator==(const std::vector<row>& lhs, const std::vector<row>& rhs)
 {
     return boost::mysql::detail::container_equals(lhs, rhs);
 }
@@ -162,7 +157,13 @@ struct sample_gen
     }
 };
 
-BOOST_AUTO_TEST_SUITE(fetch_one)
+BOOST_AUTO_TEST_SUITE(read_one)
+
+// Verify read_one clears its paremeter correctly
+static row make_initial_row()
+{
+    return row(make_value_vector(10), {});
+}
 
 BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
 {
@@ -174,15 +175,19 @@ BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
     BOOST_TEST(result.fields().size() == 2);
 
     // Already in the end of the resultset, we receive the EOF
-    auto row_result = sample.net->fetch_one(result);
+    row r = make_initial_row();
+    auto row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST(row_result.value == nullptr);
+    BOOST_TEST(!row_result.value);
+    BOOST_TEST(r == row());
     validate_eof(result);
 
     // Fetching again just returns null
-    row_result = sample.net->fetch_one(result);
+    r = make_initial_row();
+    row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST(row_result.value == nullptr);
+    BOOST_TEST(!row_result.value);
+    BOOST_TEST(r == row());
     validate_eof(result);
 }
 
@@ -196,17 +201,20 @@ BOOST_MYSQL_NETWORK_TEST(one_row, network_fixture, sample_gen)
     BOOST_TEST(result.fields().size() == 2);
 
     // Fetch only row
-    auto row_result = sample.net->fetch_one(result);
+    row r = make_initial_row();
+    auto row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST_REQUIRE(row_result.value != nullptr);
     this->validate_2fields_meta(result, "one_row_table");
-    BOOST_TEST((*row_result.value == makerow(1, "f0")));
+    BOOST_TEST(row_result.value);
+    BOOST_TEST((r == makerow(1, "f0")));
     BOOST_TEST(!result.complete());
 
     // Fetch next: end of resultset
-    row_result = sample.net->fetch_one(result);
+    r = make_initial_row();
+    row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST(row_result.value == nullptr);
+    BOOST_TEST(!row_result.value);
+    BOOST_TEST(r == row());
     validate_eof(result);
 }
 
@@ -220,33 +228,37 @@ BOOST_MYSQL_NETWORK_TEST(two_rows, network_fixture, sample_gen)
     BOOST_TEST(result.fields().size() == 2);
 
     // Fetch first row
-    auto row_result = sample.net->fetch_one(result);
+    row r = make_initial_row();
+    auto row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST_REQUIRE(row_result.value != nullptr);
+    BOOST_TEST(row_result.value);
     this->validate_2fields_meta(result, "two_rows_table");
-    BOOST_TEST((*row_result.value == makerow(1, "f0")));
+    BOOST_TEST((r == makerow(1, "f0")));
     BOOST_TEST(!result.complete());
 
     // Fetch next row
-    row_result = sample.net->fetch_one(result);
+    r = make_initial_row();
+    row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST_REQUIRE(row_result.value != nullptr);
+    BOOST_TEST(row_result.value);
     this->validate_2fields_meta(result, "two_rows_table");
-    BOOST_TEST(*row_result.value == makerow(2, "f1"));
+    BOOST_TEST((r == makerow(2, "f1")));
     BOOST_TEST(!result.complete());
 
     // Fetch next: end of resultset
-    row_result = sample.net->fetch_one(result);
+    r = make_initial_row();
+    row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
-    BOOST_TEST(row_result.value == nullptr);
+    BOOST_TEST(!row_result.value);
+    BOOST_TEST(r == row());
     validate_eof(result);
 }
 
 // There seems to be no real case where fetch can fail (other than net fails)
 
-BOOST_AUTO_TEST_SUITE_END() // fetch_one
+BOOST_AUTO_TEST_SUITE_END() // read_one
 
-BOOST_AUTO_TEST_SUITE(fetch_many)
+BOOST_AUTO_TEST_SUITE(read_many)
 
 BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
 {
@@ -255,13 +267,13 @@ BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
         "SELECT * FROM empty_table");
 
     // Fetch many, but there are no results
-    auto rows_result = sample.net->fetch_many(result, 10);
+    auto rows_result = sample.net->read_many(result, 10);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     validate_eof(result);
 
     // Fetch again, should return OK and empty
-    rows_result = sample.net->fetch_many(result, 10);
+    rows_result = sample.net->read_many(result, 10);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     validate_eof(result);
@@ -274,13 +286,13 @@ BOOST_MYSQL_NETWORK_TEST(more_rows_than_count, network_fixture, sample_gen)
         "SELECT * FROM three_rows_table");
 
     // Fetch 2, one remaining
-    auto rows_result = sample.net->fetch_many(result, 2);
+    auto rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     BOOST_TEST(!result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
 
     // Fetch another two (completes the resultset)
-    rows_result = sample.net->fetch_many(result, 2);
+    rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     validate_eof(result);
     BOOST_TEST((rows_result.value == makerows(2, 3, "f2")));
@@ -293,7 +305,7 @@ BOOST_MYSQL_NETWORK_TEST(less_rows_than_count, network_fixture, sample_gen)
         "SELECT * FROM two_rows_table");
 
     // Fetch 3, resultset exhausted
-    auto rows_result = sample.net->fetch_many(result, 3);
+    auto rows_result = sample.net->read_many(result, 3);
     rows_result.validate_no_error();
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
     validate_eof(result);
@@ -306,13 +318,13 @@ BOOST_MYSQL_NETWORK_TEST(same_rows_as_count, network_fixture, sample_gen)
         "SELECT * FROM two_rows_table");
 
     // Fetch 2, 0 remaining but resultset not exhausted
-    auto rows_result = sample.net->fetch_many(result, 2);
+    auto rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     BOOST_TEST(!result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
 
     // Fetch again, exhausts the resultset
-    rows_result = sample.net->fetch_many(result, 2);
+    rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     validate_eof(result);
@@ -325,15 +337,15 @@ BOOST_MYSQL_NETWORK_TEST(count_equals_one, network_fixture, sample_gen)
         "SELECT * FROM one_row_table");
 
     // Fetch 1, 1 remaining
-    auto rows_result = sample.net->fetch_many(result, 1);
+    auto rows_result = sample.net->read_many(result, 1);
     rows_result.validate_no_error();
     BOOST_TEST(!result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0")));
 }
 
-BOOST_AUTO_TEST_SUITE_END() // fetch_many
+BOOST_AUTO_TEST_SUITE_END() // read_many
 
-BOOST_AUTO_TEST_SUITE(fetch_all)
+BOOST_AUTO_TEST_SUITE(read_all)
 
 BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
 {
@@ -342,13 +354,13 @@ BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
         "SELECT * FROM empty_table");
 
     // Fetch many, but there are no results
-    auto rows_result = sample.net->fetch_all(result);
+    auto rows_result = sample.net->read_all(result);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     BOOST_TEST(result.complete());
 
     // Fetch again, should return OK and empty
-    rows_result = sample.net->fetch_all(result);
+    rows_result = sample.net->read_all(result);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     validate_eof(result);
@@ -360,7 +372,7 @@ BOOST_MYSQL_NETWORK_TEST(one_row, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM one_row_table");
 
-    auto rows_result = sample.net->fetch_all(result);
+    auto rows_result = sample.net->read_all(result);
     rows_result.validate_no_error();
     BOOST_TEST(result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0")));
@@ -372,14 +384,14 @@ BOOST_MYSQL_NETWORK_TEST(several_rows, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM two_rows_table");
 
-    auto rows_result = sample.net->fetch_all(result);
+    auto rows_result = sample.net->read_all(result);
     rows_result.validate_no_error();
     validate_eof(result);
     BOOST_TEST(result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
 }
 
-BOOST_AUTO_TEST_SUITE_END() // fetch_all
+BOOST_AUTO_TEST_SUITE_END() // read_all
 
 BOOST_AUTO_TEST_SUITE_END() // test_resultset
 

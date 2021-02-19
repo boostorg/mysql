@@ -87,7 +87,7 @@ void main_impl(int argc, char** argv)
      */
     //[prepared_statements_execute
     boost::mysql::tcp_resultset result = salary_getter.execute(boost::mysql::make_values("Efficient"));
-    std::vector<boost::mysql::owning_row> salaries = result.fetch_all(); // Get all the results
+    std::vector<boost::mysql::row> salaries = result.read_all(); // Get all the results
     //]
     ASSERT(salaries.size() == 1);
     double salary = salaries[0].values().at(0).get<double>(); // First row, first column
@@ -109,7 +109,7 @@ void main_impl(int argc, char** argv)
      * connection::prepare_statement() again.
      */
     result = salary_getter.execute(boost::mysql::make_values("Efficient"));
-    salaries = result.fetch_all();
+    salaries = result.read_all();
     ASSERT(salaries.size() == 1);
     salary = salaries[0].values().at(0).get<double>();
     ASSERT(salary == 35000); // Our update took place, and the dev got his pay rise

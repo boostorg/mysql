@@ -18,7 +18,6 @@ using namespace boost::unit_test;
 using boost::mysql::value;
 using boost::mysql::field_metadata;
 using boost::mysql::field_type;
-using boost::mysql::row;
 using boost::mysql::datetime;
 using boost::mysql::make_values;
 
@@ -591,7 +590,7 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture, query, data::make(all_samples))
 
     // Execute it
     auto result = conn.query(query);
-    auto rows = result.fetch_all();
+    auto rows = result.read_all();
 
     // Validate the received metadata
     validate_meta(result.fields(), {sample.mvalid});
@@ -614,7 +613,7 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture, prepared_statement, data::make(al
 
     // Execute it with the provided parameters
     auto result = stmt.execute(make_values(sample.row_id));
-    auto rows = result.fetch_all();
+    auto rows = result.read_all();
 
     // Validate the received metadata
     validate_meta(result.fields(), {sample.mvalid});
@@ -661,7 +660,7 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture,
 
     // Execute it with the provided parameters
     auto result = stmt.execute(make_values(sample.row_id, sample.expected_value));
-    auto rows = result.fetch_all();
+    auto rows = result.read_all();
 
     // Validate the returned value
     BOOST_TEST_REQUIRE(rows.size() == 1);

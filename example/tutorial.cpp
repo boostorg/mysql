@@ -52,7 +52,7 @@ void main_impl(int argc, char** argv)
     //]
 
     //[tutorial_fetch
-    std::vector<boost::mysql::owning_row> employees = result.fetch_all();
+    std::vector<boost::mysql::row> employees = result.read_all();
     //]
 
     //[tutorial_values
