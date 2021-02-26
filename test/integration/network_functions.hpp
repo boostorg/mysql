@@ -96,7 +96,7 @@ public:
     virtual network_result<prepared_statement_type> prepare_statement(
             connection_type&, boost::string_view statement) = 0;
     virtual network_result<resultset_type> execute_statement(
-            prepared_statement_type&, value_list_it params_first, value_list_it params_last) = 0;
+            prepared_statement_type&, const execute_params<value_list_it>& params) = 0;
     virtual network_result<resultset_type> execute_statement(
             prepared_statement_type&, const std::vector<value>&) = 0;
     virtual network_result<no_result> close_statement(prepared_statement_type&) = 0;

@@ -17,6 +17,7 @@ using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
 using boost::asio::yield_context;
+using boost::mysql::execute_params;
 
 namespace
 {
@@ -97,12 +98,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl(stmt, [&](yield_context yield, error_info& info) {
-            return stmt.async_execute(params_first, params_last, info, yield);
+            return stmt.async_execute(params, info, yield);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -243,12 +243,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl(stmt, [&](yield_context yield) {
-            return stmt.async_execute(params_first, params_last, yield);
+            return stmt.async_execute(params, yield);
         });
     }
     network_result<resultset_type> execute_statement(

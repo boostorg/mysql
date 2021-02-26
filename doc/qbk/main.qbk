@@ -35,8 +35,8 @@
 [def __Stream__ [@boost:/libs/beast/doc/html/beast/concepts/streams.html ['Stream]]]
 [def __Executor__ [@boost:/doc/html/boost_asio/reference/Executor1.html ['Executor]]]
 [def __CompletionToken__ [@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers ['CompletionToken]]]
-[def __ValueCollection__ [link mysql.ref.ValueCollection ['CompletionToken]]]
-[def __ValueForwardIterator__ [link mysql.ref.ValueForwardIterator ['ValueForwardIterator]]]
+[def __ValueCollection__ [reflink2 ValueCollection ['ValueCollection]]]
+[def __ValueForwardIterator__ [reflink2 ValueForwardIterator ['ValueForwardIterator]]]
 
 [def __Boost__ [@https://www.boost.org/ Boost]]
 [def __Asio__ [@boost:/libs/asio/index.html Boost.Asio]]

@@ -14,6 +14,7 @@ using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::value;
 using boost::mysql::row;
+using boost::mysql::execute_params;
 using boost::asio::use_future;
 
 namespace
@@ -147,12 +148,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return stmt.async_execute(params_first, params_last, output_info, use_future);
+            return stmt.async_execute(params, output_info, use_future);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -264,12 +264,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl_noerrinfo([&]{
-            return stmt.async_execute(params_first, params_last, use_future);
+            return stmt.async_execute(params, use_future);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -382,12 +381,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl_errinfo([&] (error_info& output_info) {
-            return stmt.async_execute(params_first, params_last, output_info);
+            return stmt.async_execute(params, output_info);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -499,12 +497,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl_noerrinfo([&]{
-            return stmt.async_execute(params_first, params_last);
+            return stmt.async_execute(params);
         });
     }
     network_result<resultset_type> execute_statement(

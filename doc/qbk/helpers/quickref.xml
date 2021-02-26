@@ -21,9 +21,9 @@
 			<member><link linkend="mysql.ref.boost__mysql__resultset">resultset</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__value">value</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__row">row</link></member>
-			<member><link linkend="mysql.ref.boost__mysql__owning_row">owning_row</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__field_metadata">field_metadata</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__connection_params">connection_params</link></member>
+			<member><link linkend="mysql.ref.boost__mysql__execute_params">execute_params</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__ssl_options">ssl_options</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__error_info">error_info</link></member>
         </simplelist>

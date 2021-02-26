@@ -182,7 +182,7 @@ BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
     BOOST_TEST(r == row());
     validate_eof(result);
 
-    // Fetching again just returns null
+    // Reading again just returns null
     r = make_initial_row();
     row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
@@ -200,7 +200,7 @@ BOOST_MYSQL_NETWORK_TEST(one_row, network_fixture, sample_gen)
     BOOST_TEST(!result.complete());
     BOOST_TEST(result.fields().size() == 2);
 
-    // Fetch only row
+    // Read the only row
     row r = make_initial_row();
     auto row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
@@ -209,7 +209,7 @@ BOOST_MYSQL_NETWORK_TEST(one_row, network_fixture, sample_gen)
     BOOST_TEST((r == makerow(1, "f0")));
     BOOST_TEST(!result.complete());
 
-    // Fetch next: end of resultset
+    // Read next: end of resultset
     r = make_initial_row();
     row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
@@ -227,7 +227,7 @@ BOOST_MYSQL_NETWORK_TEST(two_rows, network_fixture, sample_gen)
     BOOST_TEST(!result.complete());
     BOOST_TEST(result.fields().size() == 2);
 
-    // Fetch first row
+    // Read first row
     row r = make_initial_row();
     auto row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
@@ -236,7 +236,7 @@ BOOST_MYSQL_NETWORK_TEST(two_rows, network_fixture, sample_gen)
     BOOST_TEST((r == makerow(1, "f0")));
     BOOST_TEST(!result.complete());
 
-    // Fetch next row
+    // Read next row
     r = make_initial_row();
     row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
@@ -245,7 +245,7 @@ BOOST_MYSQL_NETWORK_TEST(two_rows, network_fixture, sample_gen)
     BOOST_TEST((r == makerow(2, "f1")));
     BOOST_TEST(!result.complete());
 
-    // Fetch next: end of resultset
+    // Read next: end of resultset
     r = make_initial_row();
     row_result = sample.net->read_one(result, r);
     row_result.validate_no_error();
@@ -254,7 +254,7 @@ BOOST_MYSQL_NETWORK_TEST(two_rows, network_fixture, sample_gen)
     validate_eof(result);
 }
 
-// There seems to be no real case where fetch can fail (other than net fails)
+// There seems to be no real case where read can fail (other than net fails)
 
 BOOST_AUTO_TEST_SUITE_END() // read_one
 
@@ -266,13 +266,13 @@ BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM empty_table");
 
-    // Fetch many, but there are no results
+    // Read many, but there are no results
     auto rows_result = sample.net->read_many(result, 10);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     validate_eof(result);
 
-    // Fetch again, should return OK and empty
+    // Read again, should return OK and empty
     rows_result = sample.net->read_many(result, 10);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
@@ -285,13 +285,13 @@ BOOST_MYSQL_NETWORK_TEST(more_rows_than_count, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM three_rows_table");
 
-    // Fetch 2, one remaining
+    // Read 2, one remaining
     auto rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     BOOST_TEST(!result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
 
-    // Fetch another two (completes the resultset)
+    // Read another two (completes the resultset)
     rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     validate_eof(result);
@@ -304,7 +304,7 @@ BOOST_MYSQL_NETWORK_TEST(less_rows_than_count, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM two_rows_table");
 
-    // Fetch 3, resultset exhausted
+    // Read 3, resultset exhausted
     auto rows_result = sample.net->read_many(result, 3);
     rows_result.validate_no_error();
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
@@ -317,13 +317,13 @@ BOOST_MYSQL_NETWORK_TEST(same_rows_as_count, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM two_rows_table");
 
-    // Fetch 2, 0 remaining but resultset not exhausted
+    // Read 2, 0 remaining but resultset not exhausted
     auto rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     BOOST_TEST(!result.complete());
     BOOST_TEST((rows_result.value == makerows(2, 1, "f0", 2, "f1")));
 
-    // Fetch again, exhausts the resultset
+    // Read again, exhausts the resultset
     rows_result = sample.net->read_many(result, 2);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
@@ -336,7 +336,7 @@ BOOST_MYSQL_NETWORK_TEST(count_equals_one, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM one_row_table");
 
-    // Fetch 1, 1 remaining
+    // Read 1, 1 remaining
     auto rows_result = sample.net->read_many(result, 1);
     rows_result.validate_no_error();
     BOOST_TEST(!result.complete());
@@ -353,13 +353,13 @@ BOOST_MYSQL_NETWORK_TEST(no_results, network_fixture, sample_gen)
     auto result = sample.gen->generate(this->conn,
         "SELECT * FROM empty_table");
 
-    // Fetch many, but there are no results
+    // Read many, but there are no results
     auto rows_result = sample.net->read_all(result);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());
     BOOST_TEST(result.complete());
 
-    // Fetch again, should return OK and empty
+    // Read again, should return OK and empty
     rows_result = sample.net->read_all(result);
     rows_result.validate_no_error();
     BOOST_TEST(rows_result.value.empty());

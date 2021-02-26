@@ -9,6 +9,7 @@
 
 ValueForwardIterator should be a type fulfilling the
 `LegacyForwardIterator` standard concept. Additionally,
-its `value_type` should be implicitly convertible to [reflink value].
+its `value_type` should be either [reflink value] or a
+reference to [reflink value] of any type.
 
 [endsect]

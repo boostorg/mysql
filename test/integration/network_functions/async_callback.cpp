@@ -6,12 +6,14 @@
 //
 
 
+#include "boost/mysql/execute_params.hpp"
 #include "network_functions_impl.hpp"
 #include <boost/asio/use_future.hpp>
 #include <boost/test/unit_test.hpp>
 
 using namespace boost::mysql::test;
 using boost::mysql::connection_params;
+using boost::mysql::execute_params;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::value;
@@ -125,12 +127,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl<resultset_type>([&](handler<resultset_type> h, error_info& info) {
-            return stmt.async_execute(params_first, params_last, info, std::move(h));
+            return stmt.async_execute(params, info, std::move(h));
         });
     }
     network_result<resultset_type> execute_statement(
@@ -275,12 +276,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl<resultset_type>([&](handler<resultset_type> h) {
-            return stmt.async_execute(params_first, params_last, std::move(h));
+            return stmt.async_execute(params, std::move(h));
         });
     }
     network_result<resultset_type> execute_statement(

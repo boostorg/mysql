@@ -35,8 +35,7 @@ void boost::mysql::prepared_statement<Stream>::check_num_params(
 template <class Stream>
 template <class ValueForwardIterator>
 boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execute(
-    ValueForwardIterator params_first,
-    ValueForwardIterator params_last,
+    const execute_params<ValueForwardIterator>& params,
     error_code& err,
     error_info& info
 )
@@ -47,14 +46,14 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
     detail::clear_errors(err, info);
 
     // Verify we got passed the right number of params
-    check_num_params(params_first, params_last, err, info);
+    check_num_params(params.first(), params.last(), err, info);
     if (!err)
     {
         detail::execute_statement(
             *channel_,
             stmt_msg_.statement_id,
-            params_first,
-            params_last,
+            params.first(),
+            params.last(),
             res,
             err,
             info
@@ -67,12 +66,11 @@ boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execut
 template <class Stream>
 template <class ValueForwardIterator>
 boost::mysql::resultset<Stream> boost::mysql::prepared_statement<Stream>::execute(
-    ValueForwardIterator params_first,
-    ValueForwardIterator params_last
+    const execute_params<ValueForwardIterator>& params
 )
 {
     detail::error_block blk;
-    auto res = execute(params_first, params_last, blk.err, blk.info);
+    auto res = execute(params, blk.err, blk.info);
     blk.check();
     return res;
 }
@@ -138,8 +136,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
 )
 boost::mysql::prepared_statement<Stream>::async_execute(
-    ValueForwardIterator params_first,
-    ValueForwardIterator params_last,
+    const execute_params<ValueForwardIterator>& params,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -149,7 +146,7 @@ boost::mysql::prepared_statement<Stream>::async_execute(
 
     // Check we got passed the right number of params
     error_code err;
-    check_num_params(params_first, params_last, err, output_info);
+    check_num_params(params.first(), params.last(), err, output_info);
 
     return boost::asio::async_initiate<CompletionToken, void(error_code, resultset<Stream>)>(
         async_execute_initiation(),
@@ -157,8 +154,8 @@ boost::mysql::prepared_statement<Stream>::async_execute(
         err,
         std::ref(output_info),
         std::ref(*this),
-        params_first,
-        params_last
+        params.first(),
+        params.last()
     );
 }
 

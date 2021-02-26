@@ -9,7 +9,7 @@
 
 [import ../../example/prepared_statements.cpp]
 
-This sections covers using [mysqllink sql-prepared-statements.html
+This section covers using [mysqllink sql-prepared-statements.html
 server-side prepared statements]. The functionality is broadly
 similar to the `PREPARE`, `EXECUTE` and `DEALLOCATE`
 SQL commands. However, note that the functions and classes
@@ -61,10 +61,17 @@ Values should be in the MySQL range of validity. In particular,
 [reflink date]s, [reflink datetime]s and [reflink time]s should
 be in their validity range; otherwise the results are undefined.
 
-Execute functions accept either a range of forward iterators
-pointing to [reflink value]s or a collection such that
-`std::begin()` and `std::end()` yield these kind of
-iterators. You may use the [reflink2 value.make_values make_values] function
+There are two different signatures for execute functions:
+
+* One accepting an [reflink execute_params] object, which
+  represents a range of forward iterators pointing to [reflink value]s.
+  You can use [reflink2 execute_params.make_execute_params make_execute_params] to create [reflink execute_params]
+  objects easier.
+* Another accepting a collection such that `std::begin()` and `std::end()`
+  yield forward iterators pointing to [reflink value]s. This is syntactic
+  sugar over the former.
+
+You may use the [reflink2 value.make_values make_values] function
 to create a `std::array` of [reflink value]s suitable for
 the container version, or the [reflink no_statement_params] variable
 if your statement has no parameters.

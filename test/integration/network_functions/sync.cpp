@@ -16,6 +16,7 @@ using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::value;
+using boost::mysql::execute_params;
 using boost::mysql::row;
 
 namespace
@@ -87,12 +88,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl([=, &stmt](error_code& err, error_info& info) {
-            return stmt.execute(params_first, params_last, err, info);
+            return stmt.execute(params, err, info);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -229,12 +229,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl([&]{
-            return stmt.execute(params_first, params_last);
+            return stmt.execute(params);
         });
     }
     network_result<resultset_type> execute_statement(

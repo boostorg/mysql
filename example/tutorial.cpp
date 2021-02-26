@@ -51,7 +51,7 @@ void main_impl(int argc, char** argv)
     boost::mysql::tcp_resultset result = conn.query(sql);
     //]
 
-    //[tutorial_fetch
+    //[tutorial_read
     std::vector<boost::mysql::row> employees = result.read_all();
     //]
 

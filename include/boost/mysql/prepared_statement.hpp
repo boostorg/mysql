@@ -9,10 +9,13 @@
 #define BOOST_MYSQL_PREPARED_STATEMENT_HPP
 
 #include "boost/mysql/resultset.hpp"
+#include "boost/mysql/execute_params.hpp"
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
+#include "boost/mysql/detail/auxiliar/value_type_traits.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -96,10 +99,10 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class ValueCollection>
+    template <class ValueCollection, class EnableIf = detail::enable_if_value_collection<ValueCollection>>
     resultset<Stream> execute(const ValueCollection& params, error_code& err, error_info& info)
     {
-        return execute(std::begin(params), std::end(params), err, info);
+        return execute(make_execute_params(params), err, info);
     }
 
     /**
@@ -111,10 +114,10 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class ValueCollection>
+    template <class ValueCollection, class EnableIf = detail::enable_if_value_collection<ValueCollection>>
     resultset<Stream> execute(const ValueCollection& params)
     {
-        return execute(std::begin(params), std::end(params));
+        return execute(make_execute_params(params));
     }
 
     /**
@@ -136,7 +139,8 @@ public:
         class ValueCollection,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
             CompletionToken
-            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+            class EnableIf = detail::enable_if_value_collection<ValueCollection>
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
     async_execute(
@@ -145,8 +149,7 @@ public:
     )
     {
         return async_execute(
-            std::begin(params),
-            std::end(params),
+            make_execute_params(params),
             std::forward<CompletionToken>(token)
         );
     }
@@ -170,7 +173,8 @@ public:
         class ValueCollection,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
             CompletionToken
-            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+            class EnableIf = detail::enable_if_value_collection<ValueCollection>
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
     async_execute(
@@ -180,8 +184,7 @@ public:
     )
     {
         return async_execute(
-            std::begin(params),
-            std::end(params),
+            make_execute_params(params),
             output_info,
             std::forward<CompletionToken>(token)
         );
@@ -189,43 +192,48 @@ public:
 
 
     /**
-     * \brief Executes a statement (iterator, sync with error code version).
+     * \brief Executes a statement (`execute_params`, sync with error code version).
      * \details
      * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
      *
      * After this function has returned, you should read the entire resultset
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
     template <class ValueForwardIterator>
-    resultset<Stream> execute(ValueForwardIterator params_first, ValueForwardIterator params_last,
+    resultset<Stream> execute(const execute_params<ValueForwardIterator>& params,
             error_code&, error_info&);
 
     /**
-     * \brief Executes a statement (iterator, sync with exceptions version).
+     * \brief Executes a statement (`execute_params`, sync with exceptions version).
      * \details
      * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
      *
      * After this function has returned, you should read the entire resultset
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
     template <class ValueForwardIterator>
-    resultset<Stream> execute(ValueForwardIterator params_first, ValueForwardIterator params_last);
+    resultset<Stream> execute(const execute_params<ValueForwardIterator>& params);
 
     /**
-     * \brief Executes a statement (iterator,
+     * \brief Executes a statement (`execute_params`,
      *        async without [reflink error_info] version).
      * \details
      * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
-     * \\[`params_begin`, `params_end`) should be a valid range.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
      *
      * After this operation completes, you should read the entire resultset
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      *
      * It is __not__ necessary to keep the objects in
-     * \\[`params_begin`, `params_end`) or the
+     * \\[`params.first()`, `params.last()`) or the
      * values they may point to alive after the initiating function returns.
      *
      * The handler signature for this operation is
@@ -239,27 +247,27 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
     async_execute(
-        ValueForwardIterator params_first,
-        ValueForwardIterator params_last,
+        const execute_params<ValueForwardIterator>& params,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_execute(params_first, params_last, shared_info(), std::forward<CompletionToken>(token));
+        return async_execute(params, shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
-     * \brief Executes a statement (iterator,
+     * \brief Executes a statement (`execute_params`,
      *        async with [reflink error_info] version).
      * \details
      * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
-     * \\[`params_begin`, `params_end`) should be a valid range.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
      *
      * After this operation completes, you should read the entire resultset
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      *
      * It is __not__ necessary to keep the objects in
-     * \\[`params_begin`, `params_end`) or the
+     * \\[`params.first()`, `params.last()`) or the
      * values they may point to alive after the initiating function returns.
      *
      * The handler signature for this operation is
@@ -273,8 +281,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
     async_execute(
-        ValueForwardIterator params_first,
-        ValueForwardIterator params_last,
+        const execute_params<ValueForwardIterator>& params,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

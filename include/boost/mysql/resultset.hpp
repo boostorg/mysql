@@ -80,7 +80,7 @@ class resultset
     const Stream& next_layer() const noexcept { assert(channel_); return channel_->next_layer(); }
 
     /**
-     * \brief Fetches a single row (sync with error code version).
+     * \brief Reads a single row (sync with error code version).
      * \details Returns `true` if a row was read successfully, `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset always returns `false`.
@@ -94,7 +94,7 @@ class resultset
     bool read_one(row& output, error_code& err, error_info& info);
 
     /**
-     * \brief Fetches a single row (sync with exceptions version).
+     * \brief Reads a single row (sync with exceptions version).
      * \details Returns `true` if a row was read successfully, `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset always returns `false`.
@@ -108,7 +108,7 @@ class resultset
     bool read_one(row& output);
 
     /**
-     * \brief Fetches a single row (async without [reflink error_info] version).
+     * \brief Reads a single row (async without [reflink error_info] version).
      * \details Completes with `true` if a row was read successfully, and with `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset always returns `false`.
@@ -134,7 +134,7 @@ class resultset
     }
 
     /**
-     * \brief Fetches a single row (async with [reflink error_info] version).
+     * \brief Reads a single row (async with [reflink error_info] version).
      * \details Completes with `true` if a row was read successfully, and with `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset always returns `false`.
@@ -160,14 +160,14 @@ class resultset
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    /// Fetches several rows, up to a maximum (sync with error code version).
+    /// Reads several rows, up to a maximum (sync with error code version).
     std::vector<row> read_many(std::size_t count, error_code& err, error_info& info);
 
-    /// Fetches several rows, up to a maximum (sync with exceptions version).
+    /// Reads several rows, up to a maximum (sync with exceptions version).
     std::vector<row> read_many(std::size_t count);
 
     /**
-     * \brief Fetches several rows, up to a maximum
+     * \brief Reads several rows, up to a maximum
      *        (async without [reflink error_info] version).
      * \details
      * The handler signature for this operation is
@@ -188,7 +188,7 @@ class resultset
     }
 
     /**
-     * \brief Fetches several rows, up to a maximum
+     * \brief Reads several rows, up to a maximum
      *        (async with [reflink error_info] version).
      * \details
      * The handler signature for this operation is
@@ -206,14 +206,14 @@ class resultset
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    /// Fetches all available rows (sync with error code version).
+    /// Reads all available rows (sync with error code version).
     std::vector<row> read_all(error_code& err, error_info& info);
 
-    /// Fetches all available rows (sync with exceptions version).
+    /// Reads all available rows (sync with exceptions version).
     std::vector<row> read_all();
 
     /**
-     * \brief Fetches all available rows (async without [reflink error_info] version).
+     * \brief Reads all available rows (async without [reflink error_info] version).
      * \details
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
@@ -230,7 +230,7 @@ class resultset
     }
 
     /**
-     * \brief Fetches all available rows (async with [reflink error_info] version).
+     * \brief Reads all available rows (async with [reflink error_info] version).
      * \details
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.

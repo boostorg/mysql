@@ -20,6 +20,7 @@ using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::value;
 using boost::mysql::row;
+using boost::mysql::execute_params;
 using boost::asio::use_awaitable;
 
 namespace
@@ -122,12 +123,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl(stmt, [&](error_info& info) {
-            return stmt.async_execute(params_first, params_last, info, use_awaitable);
+            return stmt.async_execute(params, info, use_awaitable);
         });
     }
     network_result<resultset_type> execute_statement(
@@ -285,12 +285,11 @@ public:
     }
     network_result<resultset_type> execute_statement(
         prepared_statement_type& stmt,
-        value_list_it params_first,
-        value_list_it params_last
+        const execute_params<value_list_it>& params
     ) override
     {
         return impl(stmt, [&] {
-            return stmt.async_execute(params_first, params_last, use_awaitable);
+            return stmt.async_execute(params, use_awaitable);
         });
     }
     network_result<resultset_type> execute_statement(

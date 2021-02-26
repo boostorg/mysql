@@ -25,7 +25,7 @@ For example, let `rowobj` an [reflink row] obtained from a [reflink resultset]
 originated from the query `"SELECT first_name, last_name, age FROM employees"`:
 
 ``
-const row& rowobj = /* fetch the row, see below for more info */
+const row& rowobj = /* read the row, see below for more info */
 const std::vector<value>& vals = 
     rowobj.values(); // vals will have three elements
 value first_name = vals[0]; // stored type boost::string_view
@@ -35,7 +35,7 @@ value age        = vals[2]; // stored type std::int64_t
 
 [endsect]
 
-[section:fetch Fetching rows]
+[section:read Reading rows]
 
 A [reflink resultset] does not read all the retrieved information into memory
 directly. Instead, [reflink resultset]s are I/O objects, which know how to
@@ -51,7 +51,7 @@ There are three methods of retrieving rows:
 * [refmem resultset read_all] and [refmem resultset async_read_all]:
   retrieves all the remaining rows.
 
-[heading Fetching a single row]
+[heading Reading a single row]
 
 The [refmem resultset read_one] family retrieve the next row.
 The functions get passed a [reflink row] lvalue reference, which
@@ -77,7 +77,7 @@ futures], [link mysql.examples.query_async_coroutines Boost.Coroutine coroutines
 and [link mysql.examples.query_async_coroutinescpp20 C++20 coroutines]
 make use of [refmem resultset async_read_one].
 
-[heading Fetching multiple rows]
+[heading Reading multiple rows]
 
 The [refmem resultset read_many] family retrieve many
 rows at a single time. When you call them, you pass in
@@ -134,7 +134,7 @@ call [refmem resultset read_one] to make them complete.
 
 Note also that, since resultsets perform network transfers,
 you must keep the [reflink connection] object alive and
-open while fetching rows.
+open while reading rows.
 
 [endsect]
 
@@ -157,7 +157,7 @@ returns an empty collection.
 
 [section:server_send When does the server send the rows?]
 
-We said resultsets allow you to fetch the rows progressively.
+We said resultsets allow you to read the rows progressively.
 However, what are the details of the process of the communications
 between __Self__ and the server? The exact behavior depends on
 how the [reflink resultset] was generated:

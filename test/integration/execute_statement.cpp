@@ -5,13 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "boost/mysql/execute_params.hpp"
 #include "integration_test_common.hpp"
 #include <forward_list>
 
 using namespace boost::mysql::test;
 using boost::mysql::value;
 using boost::mysql::error_code;
-using boost::mysql::error_info;
+using boost::mysql::make_execute_params;
 using boost::mysql::errc;
 using boost::mysql::prepared_statement;
 using boost::mysql::socket_connection;
@@ -37,7 +38,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_ok_no_params, network_fixture, network_ssl_gen
     this->connect(sample.ssl);
     std::forward_list<value> params;
     auto stmt = do_prepare(sample.net, this->conn, "SELECT * FROM empty_table");
-    auto result = sample.net->execute_statement(stmt, params.begin(), params.end()); // execute
+    auto result = sample.net->execute_statement(stmt, make_execute_params(params)); // execute
     result.validate_no_error();
     BOOST_TEST(result.value.valid());
 }
@@ -48,7 +49,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_ok_with_params, network_fixture, network_ssl_g
     std::forward_list<value> params { value("item"), value(42) };
     auto stmt = do_prepare(sample.net, this->conn,
         "SELECT * FROM empty_table WHERE id IN (?, ?)");
-    auto result = sample.net->execute_statement(stmt, params.begin(), params.end());
+    auto result = sample.net->execute_statement(stmt, make_execute_params(params));
     result.validate_no_error();
     BOOST_TEST(result.value.valid());
 }
@@ -62,7 +63,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_mismatched_num_params, network_fixture, networ
         this->conn,
         "SELECT * FROM empty_table WHERE id IN (?, ?)"
     );
-    auto result = sample.net->execute_statement(stmt, params.begin(), params.end());
+    auto result = sample.net->execute_statement(stmt, make_execute_params(params));
     result.validate_error(errc::wrong_num_params,
         {"param", "2", "1", "statement", "execute"});
     BOOST_TEST(!result.value.valid());
@@ -75,7 +76,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_server_error, network_fixture, network_ssl_gen
     std::forward_list<value> params { value("f0"), value("bad_date") };
     auto stmt = do_prepare(sample.net, this->conn,
         "INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)");
-    auto result = sample.net->execute_statement(stmt, params.begin(), params.end());
+    auto result = sample.net->execute_statement(stmt, make_execute_params(params));
     result.validate_error(errc::truncated_wrong_value,
         {"field_date", "bad_date", "incorrect date value"});
     BOOST_TEST(!result.value.valid());
