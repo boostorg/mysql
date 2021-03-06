@@ -1,0 +1,61 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>row::clear</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../boost__mysql__row.html" title="row">
+<link rel="prev" href="values/overload2.html" title="row::values (2 of 2 overloads)">
+<link rel="next" href="buffer.html" title="row::buffer">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="values/overload2.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__row.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="buffer.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="mysql.ref.boost__mysql__row.clear"></a><a class="link" href="clear.html" title="row::clear">row::clear</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm15233"></a>
+        </p>
+<p>
+          Clears the row object.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__row.clear.h0"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__row.clear.synopsis"></a></span><a class="link" href="clear.html#mysql.ref.boost__mysql__row.clear.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">void</span>
+<span class="identifier">clear</span><span class="special">();</span>
+</pre>
+<h6>
+<a name="mysql.ref.boost__mysql__row.clear.h1"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__row.clear.description"></a></span><a class="link" href="clear.html#mysql.ref.boost__mysql__row.clear.description">Description</a>
+        </h6>
+<p>
+          Clears the value array and the memory buffer associated to this row. After
+          calling this operation, <a class="link" href="values.html" title="row::values"><code class="literal">row::values</code></a>
+          will be the empty array. Any pointers, references and iterators to elements
+          in <a class="link" href="values.html" title="row::values"><code class="literal">row::values</code></a>
+          will be invalidated. Any string values using the memory held by this row
+          will also become invalid.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="values/overload2.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__row.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="buffer.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

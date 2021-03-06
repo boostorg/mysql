@@ -1,0 +1,102 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 1. Boost.Mysql</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Mysql">
+<link rel="next" href="mysql/intro.html" title="Introduction">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="mysql/intro.html"><img src="images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="mysql"></a>Chapter 1. Boost.Mysql</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Ruben</span> <span class="surname">Perez</span>
+</h3></div></div>
+<div><p class="copyright">Copyright © 2019, 2020 Ruben Perez</p></div>
+<div><div class="legalnotice">
+<a name="mysql.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="mysql/intro.html">Introduction</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/intro.html#mysql.intro.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="mysql/intro.html#mysql.intro.requirements">Requirements</a></span></dt>
+<dt><span class="section"><a href="mysql/intro.html#mysql.intro.acknowledgements">Acknowledgements</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/tutorial.html">Tutorial</a></span></dt>
+<dt><span class="section"><a href="mysql/values.html">MySQL values</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/values.html#mysql.values.conversions">Conversions</a></span></dt>
+<dt><span class="section"><a href="mysql/values.html#mysql.values.strings">A note on string values</a></span></dt>
+<dt><span class="section"><a href="mysql/values.html#mysql.values.relational">Relational operators</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/queries.html">Text queries</a></span></dt>
+<dt><span class="section"><a href="mysql/prepared_statements.html">Prepared statements</a></span></dt>
+<dt><span class="section"><a href="mysql/resultsets.html">Resultsets</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.rows">Rows</a></span></dt>
+<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.read">Reading rows</a></span></dt>
+<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.complete">Resultsets becoming complete</a></span></dt>
+<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.metadata">Metadata</a></span></dt>
+<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.server_send">When does the server send
+      the rows?</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/async.html">Going async</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/async.html#mysql.async.completion_tokens">Completion tokens</a></span></dt>
+<dt><span class="section"><a href="mysql/async.html#mysql.async.default_completion_tokens">Default completion
+      tokens</a></span></dt>
+<dt><span class="section"><a href="mysql/async.html#mysql.async.sequencing">Sequencing of operations</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/other_streams.html">UNIX sockets and other stream types</a></span></dt>
+<dt><span class="section"><a href="mysql/error_handling.html">Error handling and available overloads</a></span></dt>
+<dt><span class="section"><a href="mysql/connparams.html">Connection parameters</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.auth">Authentication</a></span></dt>
+<dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.database">Connect with database</a></span></dt>
+<dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.collation">Connection encoding and collation</a></span></dt>
+<dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.ssl">SSL/TLS</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/examples.html">Examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/examples/setup.html">Setup</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/query_sync.html">Text query, synchronous</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/prepared_statements.html">Prepared statements</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/metadata.html">Metadata</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/unix_socket.html">UNIX sockets</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/query_async_callbacks.html">Text query, async
+      with callbacks</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/query_async_futures.html">Text query, async
+      with futures</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/query_async_coroutines.html">Text query, async
+      with Boost.Coroutine coroutines</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/query_async_coroutinescpp20.html">Text query,
+      async with C++20 coroutines</a></span></dt>
+<dt><span class="section"><a href="mysql/examples/default_completion_tokens.html">Default completion
+      tokens</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/types.html">MySQL to C++ mapping reference</a></span></dt>
+<dt><span class="section"><a href="mysql/quickref.html">Reference</a></span></dt>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: March 06, 2021 at 13:35:52 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="mysql/intro.html"><img src="images/next.png" alt="Next"></a></div>
+</body>
+</html>

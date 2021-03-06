@@ -1,0 +1,145 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Error handling and available overloads</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="other_streams.html" title="UNIX sockets and other stream types">
+<link rel="next" href="connparams.html" title="Connection parameters">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="other_streams.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="connparams.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.error_handling"></a><a class="link" href="error_handling.html" title="Error handling and available overloads">Error handling and available overloads</a>
+</h2></div></div></div>
+<p>
+      This section describes the different error handling strategies you may use
+      with <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+      as well as the different overloads available for each function involving network
+      transfers.
+    </p>
+<p>
+      The different overloads differ in how they deal with errors. Most of them use
+      a strategy based on <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>'s
+      (which is an alias for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span></code>).
+      Aditionally, some of them use the <a class="link" href="ref/boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+      class. This is used as a container for additional information about the error,
+      if available. For example, if you issue a query using <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">connection::query</code></a>
+      and one of the referenced fields does not exist, the function will fail. The
+      <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>
+      will acknowledge this fact, and the <a class="link" href="ref/boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+      will contain information about which field caused the problem.
+    </p>
+<h4>
+<a name="mysql.error_handling.h0"></a>
+      <span class="phrase"><a name="mysql.error_handling.synchronous_functions"></a></span><a class="link" href="error_handling.html#mysql.error_handling.synchronous_functions">Synchronous
+      functions</a>
+    </h4>
+<p>
+      There are two overloads for each synchronous network function:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Synchronous with exceptions. These are the easier to use, and the ones
+          employed in the <a class="link" href="tutorial.html" title="Tutorial">tutorial</a>. When they
+          fail, they throw a <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">system_error</span></code>
+          exception, which contains an <code class="computeroutput"><span class="identifier">error_code</span></code>
+          and a diagnostic message.
+        </li>
+<li class="listitem">
+          Synchronous with <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>
+          and <a class="link" href="ref/boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>.
+          These functions output an <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>
+          and an <a class="link" href="ref/boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+          by lvalue reference when they fail.
+        </li>
+</ul></div>
+<h4>
+<a name="mysql.error_handling.h1"></a>
+      <span class="phrase"><a name="mysql.error_handling.asynchronous_functions"></a></span><a class="link" href="error_handling.html#mysql.error_handling.asynchronous_functions">Asynchronous
+      functions</a>
+    </h4>
+<p>
+      The associated handler signature of all asynchronous functions has one of the
+      following two forms:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">)</span></code>.
+          Used in operations that do not have a proper result, e.g. <a class="link" href="ref/boost__mysql__socket_connection/async_connect.html" title="socket_connection::async_connect"><code class="literal">socket_connection::async_connect</code></a>.
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">,</span>
+          <span class="identifier">T</span><span class="special">)</span></code>.
+          Used in operations that have a result, e.g. <a class="link" href="ref/boost__mysql__connection/async_query.html" title="connection::async_query"><code class="literal">connection::async_query</code></a>.
+        </li>
+</ul></div>
+<p>
+      When asynchronous operations fail, they communicate it by calling the handler
+      with a non-zero <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>.
+    </p>
+<p>
+      If you are interested in also obtaining an <a class="link" href="ref/boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+      when using asynchronous functions, there is an extra overload of each asynchronous
+      function taking an additional output lvalue reference <a class="link" href="ref/boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+      parameter. This parameter is set before calling the handler.
+    </p>
+<h4>
+<a name="mysql.error_handling.h2"></a>
+      <span class="phrase"><a name="mysql.error_handling.server_side_and_client_side_erro"></a></span><a class="link" href="error_handling.html#mysql.error_handling.server_side_and_client_side_erro">Server-side
+      and client-side error codes</a>
+    </h4>
+<p>
+      <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>s
+      use <a class="link" href="ref/boost__mysql__errc.html" title="errc"><code class="literal">errc</code></a>
+      as the underlying error enumeration. This enum combines codes from two different
+      origins:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <span class="bold"><strong>Server defined</strong></span> error codes. These codes
+          are defined by the MySQL server. They range between 1 and 0xffff. They
+          are described in detail <a href="https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html" target="_top">in
+          the MySQL error reference</a>.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Client defined</strong></span> error codes. These are
+          defined by <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+          and are always greater than 0xffff.
+        </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        No validation is in place to guarantee that the error codes sent by the server
+        are the ones defined in <a class="link" href="ref/boost__mysql__errc.html" title="errc"><code class="literal">errc</code></a>.
+        The server may define additional error codes, and that should not make operations
+        fail.
+      </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="other_streams.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="connparams.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

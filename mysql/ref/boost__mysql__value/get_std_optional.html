@@ -1,0 +1,63 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>value::get_std_optional</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../boost__mysql__value.html" title="value">
+<link rel="prev" href="get_optional.html" title="value::get_optional">
+<link rel="next" href="to_variant.html" title="value::to_variant">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="get_optional.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__value.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="to_variant.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="mysql.ref.boost__mysql__value.get_std_optional"></a><a class="link" href="get_std_optional.html" title="value::get_std_optional">value::get_std_optional</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm18192"></a>
+        </p>
+<p>
+          Retrieves the stored value as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">optional</span></code>.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__value.get_std_optional.h0"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__value.get_std_optional.synopsis"></a></span><a class="link" href="get_std_optional.html#mysql.ref.boost__mysql__value.get_std_optional.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">get_std_optional</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<h6>
+<a name="mysql.ref.boost__mysql__value.get_std_optional.h1"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__value.get_std_optional.description"></a></span><a class="link" href="get_std_optional.html#mysql.ref.boost__mysql__value.get_std_optional.description">Description</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">T</span></code> should be one of <a class="link" href="variant_type.html" title="value::variant_type"><code class="literal">value::variant_type</code></a>'s
+          type alternatives. If the stored value is a <code class="computeroutput"><span class="identifier">T</span></code>,
+          or can be converted to <code class="computeroutput"><span class="identifier">T</span></code>
+          using one of <a class="link" href="../../values.html#mysql.values.conversions" title="Conversions">the allowed conversions</a>,
+          returns an optional containing the converted value. Otherwise returns an
+          empty optional.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="get_optional.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__value.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="to_variant.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

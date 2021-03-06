@@ -1,0 +1,52 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Setup</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../examples.html" title="Examples">
+<link rel="prev" href="../examples.html" title="Examples">
+<link rel="next" href="query_sync.html" title="Text query, synchronous">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../examples.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="query_sync.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.examples.setup"></a><a class="link" href="setup.html" title="Setup">Setup</a>
+</h3></div></div></div>
+<p>
+        All examples assume you have a MySQL server running in localhost. Examples
+        make use of a database named <code class="computeroutput"><span class="identifier">boost_mysql_examples</span></code>.
+        The username and password to used are passed using the command line.
+      </p>
+<p>
+        You can set the required database up by running (this assumes the root password
+        is empty):
+      </p>
+<pre class="programlisting"><span class="special">&gt;</span> <span class="identifier">mysql</span> <span class="special">-</span><span class="identifier">u</span> <span class="identifier">root</span> <span class="special">&lt;</span> <span class="identifier">PATH</span><span class="special">/</span><span class="identifier">TO</span><span class="special">/</span><span class="identifier">BOOST</span><span class="special">/</span><span class="identifier">MYSQL</span><span class="special">/</span><span class="identifier">example</span><span class="special">/</span><span class="identifier">db_setup</span><span class="special">.</span><span class="identifier">sql</span>
+</pre>
+<p>
+        This will also create a user <code class="computeroutput"><span class="identifier">example_user</span></code>
+        with a password <code class="computeroutput"><span class="identifier">example_password</span></code>,
+        with the appropriate privileges on the database.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../examples.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="query_sync.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

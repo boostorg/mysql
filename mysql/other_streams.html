@@ -1,0 +1,154 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>UNIX sockets and other stream types</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="async.html" title="Going async">
+<link rel="next" href="error_handling.html" title="Error handling and available overloads">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="error_handling.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.other_streams"></a><a class="link" href="other_streams.html" title="UNIX sockets and other stream types">UNIX sockets and other stream types</a>
+</h2></div></div></div>
+<p>
+      All I/O objects (<a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>,
+      <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
+      and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>)
+      are templatized on the stream type. Any object fulfilling the <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
+      concept may be used as template argument.
+    </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Do not use SSL streams with <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+        or <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>.
+        Deciding whether to use SSL or not and when to start using it is part of
+        the MySQL protocol. If you pass in a SSL stream, you won't be able to connect
+        to the server.
+      </p></td></tr>
+</table></div>
+<h4>
+<a name="mysql.other_streams.h0"></a>
+      <span class="phrase"><a name="mysql.other_streams.reflink_socket_connection_and_re"></a></span><a class="link" href="other_streams.html#mysql.other_streams.reflink_socket_connection_and_re"><code class="literal">socket_connection</code>
+      and <code class="literal">connection</code></a>
+    </h4>
+<p>
+      There are two types of connection objects: <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+      and <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>.
+      The first one is the most basic object, and requires the passed in stream to
+      just fulfill the <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
+      requirements. The second derives from the first one and provides additional
+      functionality, but can only be used on streams that inherit from <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/basic_stream_socket.html" target="_top"><code class="literal">boost::asio::basic_stream_socket</code></a>.
+    </p>
+<p>
+      In general, prefer <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>
+      over <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>,
+      as the additional functionality makes establishing and cleaning up connections
+      easier. In fact, <a class="link" href="ref/boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>
+      and <a class="link" href="ref/boost__mysql__unix_connection.html" title="unix_connection"><code class="literal">unix_connection</code></a>
+      are really <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>s.
+      If you are dealing with a different stream type and you cannot employ <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>,
+      see <a class="link" href="other_streams.html#mysql.other_streams.connection">the section below</a>.
+    </p>
+<h4>
+<a name="mysql.other_streams.h1"></a>
+      <span class="phrase"><a name="mysql.other_streams.convinience_type_aliases"></a></span><a class="link" href="other_streams.html#mysql.other_streams.convinience_type_aliases">Convinience
+      type aliases</a>
+    </h4>
+<p>
+      <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      provides helper type aliases for the most common cases:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a class="link" href="ref/boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>,
+          <a class="link" href="ref/boost__mysql__tcp_prepared_statement.html" title="tcp_prepared_statement"><code class="literal">tcp_prepared_statement</code></a>
+          and <a class="link" href="ref/boost__mysql__tcp_resultset.html" title="tcp_resultset"><code class="literal">tcp_resultset</code></a>
+          are alias for <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>,
+          <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
+          and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
+          respectively, instantiated with <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/ip__tcp/socket.html" target="_top"><code class="literal">boost::asio::ip::tcp::socket</code></a>.
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__mysql__unix_connection.html" title="unix_connection"><code class="literal">unix_connection</code></a>,
+          <a class="link" href="ref/boost__mysql__unix_prepared_statement.html" title="unix_prepared_statement"><code class="literal">unix_prepared_statement</code></a>
+          and <a class="link" href="ref/boost__mysql__unix_resultset.html" title="unix_resultset"><code class="literal">unix_resultset</code></a>
+          are alias for <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>,
+          <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
+          and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
+          respectively, instantiated with <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/local__stream_protocol/socket.html" target="_top"><code class="literal">boost::asio::local::stream_protocol::socket</code></a>.
+          Note that these type aliases only exist when the macro <code class="computeroutput"><span class="identifier">BOOST_ASIO_HAS_LOCAL_SOCKETS</span></code>
+          is defined (i.e. on UNIX systems).
+        </li>
+</ul></div>
+<p>
+      <a class="link" href="examples/unix_socket.html" title="UNIX sockets">This example</a> employs a UNIX
+      domain socket to establish a connection to a MySQL server.
+    </p>
+<h4>
+<a name="mysql.other_streams.h2"></a>
+      <span class="phrase"><a name="mysql.other_streams.connection"></a></span><a class="link" href="other_streams.html#mysql.other_streams.connection">Using
+      plain connection objects</a>
+    </h4>
+<p>
+      If you are using <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+      objects instead of <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>s,
+      you cannot use the convinience <a class="link" href="ref/boost__mysql__socket_connection/connect.html" title="socket_connection::connect"><code class="literal">socket_connection::connect</code></a>
+      and <a class="link" href="ref/boost__mysql__socket_connection/close.html" title="socket_connection::close"><code class="literal">socket_connection::close</code></a>
+      functions.
+    </p>
+<p>
+      Instead, to establish a connection, you should follow these two steps, roughly
+      equivalent to <a class="link" href="ref/boost__mysql__socket_connection/connect.html" title="socket_connection::connect"><code class="literal">socket_connection::connect</code></a>:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Connect the underlying stream. You can access it using <a class="link" href="ref/boost__mysql__connection/next_layer.html" title="connection::next_layer"><code class="literal">connection::next_layer</code></a>.
+          Use whatever connection establishment mechanism the stream implements.
+        </li>
+<li class="listitem">
+          Perform the MySQL handshake by calling <a class="link" href="ref/boost__mysql__connection/handshake.html" title="connection::handshake"><code class="literal">connection::handshake</code></a>
+          or <a class="link" href="ref/boost__mysql__connection/async_handshake.html" title="connection::async_handshake"><code class="literal">connection::async_handshake</code></a>.
+          If the handshake operation fails, close the stream.
+        </li>
+</ul></div>
+<p>
+      To clean up a connection, follow these two steps, roughly equivalent to <a class="link" href="ref/boost__mysql__socket_connection/close.html" title="socket_connection::close"><code class="literal">socket_connection::close</code></a>:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Inform the MySQL server that you are quitting the connection by calling
+          <a class="link" href="ref/boost__mysql__connection/quit.html" title="connection::quit"><code class="literal">connection::quit</code></a>
+          or <a class="link" href="ref/boost__mysql__connection/async_quit.html" title="connection::async_quit"><code class="literal">connection::async_quit</code></a>.
+        </li>
+<li class="listitem">
+          Close the underlying stream.
+        </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="async.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="error_handling.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

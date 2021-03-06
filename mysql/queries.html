@@ -1,0 +1,97 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Text queries</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="values.html" title="MySQL values">
+<link rel="next" href="prepared_statements.html" title="Prepared statements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="values.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="prepared_statements.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.queries"></a><a class="link" href="queries.html" title="Text queries">Text queries</a>
+</h2></div></div></div>
+<p>
+      This section describes issuing text SQL queries in detail.
+    </p>
+<p>
+      Text queries are started by calling the <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">connection::query</code></a>
+      and <a class="link" href="ref/boost__mysql__connection/async_query.html" title="connection::async_query"><code class="literal">connection::async_query</code></a>
+      functions. They accept a SQL text query as parameter, which will be executed
+      in the MySQL server. They return a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+      with the query results. This is commonly called the "text protocol"
+      in MySQL slang.
+    </p>
+<p>
+      Almost any query that may be issued in the <code class="computeroutput"><span class="identifier">mysql</span></code>
+      command line can be executed using this method. This includes <code class="computeroutput"><span class="identifier">SELECT</span></code>s, <code class="computeroutput"><span class="identifier">UPDATE</span></code>s,
+      <code class="computeroutput"><span class="identifier">INSERT</span></code>s, <code class="computeroutput"><span class="identifier">DELETE</span></code>s,
+      <code class="computeroutput"><span class="identifier">CREATE</span> <span class="identifier">TABLE</span></code>s...
+      In particular, you may start transactions issuing a <code class="computeroutput"><span class="identifier">START</span>
+      <span class="identifier">TRANSACTION</span></code>, commit them using <code class="computeroutput"><span class="identifier">COMMIT</span></code> and rolling them back using <code class="computeroutput"><span class="identifier">ROLLBACK</span></code>. You can also access the prepared
+      statement functionality by issuing <code class="computeroutput"><span class="identifier">PREPARE</span></code>
+      and <code class="computeroutput"><span class="identifier">EXECUTE</span></code> commands. However,
+      it is advised to use <a class="link" href="prepared_statements.html" title="Prepared statements">the dedicated
+      prepared statement functionality</a> in <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      for this task.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        You can only execute a single query at a time. Passing in several queries
+        separated by semicolons won't work.
+      </p></td></tr>
+</table></div>
+<p>
+      Query strings are assumed to be encoded using the connection's character set.
+      You can set this value when establishing the connection (see <a class="link" href="connparams.html#mysql.connparams.collation" title="Connection encoding and collation">this
+      section</a>) or change it using a <a href="https://dev.mysql.com/doc/refman/8.0/en/set-names.html" target="_top"><code class="computeroutput"><span class="identifier">SET</span> <span class="identifier">NAMES</span></code></a>
+      statement.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Client-side SQL query composition is not available. This is considered the
+        resposibility of a higher-level component rather than <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>'s.
+        <a class="link" href="prepared_statements.html" title="Prepared statements">Prepared statements</a> offer
+        server-side query composition that should cover most needs without the potentital
+        security issues that client-side composition may introduce.
+      </p></td></tr>
+</table></div>
+<p>
+      <a class="link" href="examples/query_sync.html" title="Text query, synchronous">This example</a> shows how to
+      use sync query functions. There are also examples covering the use of async
+      queries with <a class="link" href="examples/query_async_callbacks.html" title="Text query, async with callbacks">callbacks</a>,
+      <a class="link" href="examples/query_async_futures.html" title="Text query, async with futures">futures</a>, <a class="link" href="examples/query_async_coroutines.html" title="Text query, async with Boost.Coroutine coroutines">Boost.Coroutine
+      coroutines</a> and <a class="link" href="examples/query_async_coroutinescpp20.html" title="Text query, async with C++20 coroutines">C++20
+      coroutines</a>.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="values.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="prepared_statements.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

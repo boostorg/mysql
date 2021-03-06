@@ -1,0 +1,349 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>value</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__mysql__ssl_options/mode.html" title="ssl_options::mode">
+<link rel="next" href="boost__mysql__value/variant_type.html" title="value::variant_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__mysql__ssl_options/mode.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__value/variant_type.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="mysql.ref.boost__mysql__value"></a><a class="link" href="boost__mysql__value.html" title="value">value</a>
+</h4></div></div></div>
+<p>
+        Represents a value in the database of any of the allowed types. See <a class="link" href="../values.html" title="MySQL values">this section</a> for more info.
+      </p>
+<h5>
+<a name="mysql.ref.boost__mysql__value.h0"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__value.synopsis"></a></span><a class="link" href="boost__mysql__value.html#mysql.ref.boost__mysql__value.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/value.hpp" target="_top">boost/mysql/value.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">value</span>
+</pre>
+<h5>
+<a name="mysql.ref.boost__mysql__value.h1"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__value.types"></a></span><a class="link" href="boost__mysql__value.html#mysql.ref.boost__mysql__value.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/variant_type.html" title="value::variant_type">variant_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Type of a variant representing the value.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="mysql.ref.boost__mysql__value.h2"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__value.member_functions"></a></span><a class="link" href="boost__mysql__value.html#mysql.ref.boost__mysql__value.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/get.html" title="value::get">get</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Retrieves the stored value or throws an exception.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/get_optional.html" title="value::get_optional">get_optional</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Retrieves the stored value as a <span class="bold"><strong>boost_optional</strong></span>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/get_std_optional.html" title="value::get_std_optional">get_std_optional</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Retrieves the stored value as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">optional</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/is.html" title="value::is">is</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks if the current type alternative is <code class="computeroutput"><span class="identifier">T</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/is_convertible_to.html" title="value::is_convertible_to">is_convertible_to</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks if the current value can be converted to <code class="computeroutput"><span class="identifier">T</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/is_null.html" title="value::is_null">is_null</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks if the value is NULL.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_not__eq_.html" title="value::operator!=">operator!=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests for inequality (type and value); see <a class="link" href="../values.html#mysql.values.relational" title="Relational operators">this
+                  section</a> for more info.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_lt_.html" title="value::operator&lt;">operator&lt;</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests for inequality (type and value); see <a class="link" href="../values.html#mysql.values.relational" title="Relational operators">this
+                  section</a> for more info.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_lt__eq_.html" title="value::operator&lt;=">operator&lt;=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests for inequality (type and value); see <a class="link" href="../values.html#mysql.values.relational" title="Relational operators">this
+                  section</a> for more info.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_eq__eq_.html" title="value::operator==">operator==</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests for equality (type and value); see <a class="link" href="../values.html#mysql.values.relational" title="Relational operators">this
+                  section</a> for more info.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_gt_.html" title="value::operator&gt;">operator&gt;</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests for inequality (type and value); see <a class="link" href="../values.html#mysql.values.relational" title="Relational operators">this
+                  section</a> for more info.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_gt__eq_.html" title="value::operator&gt;=">operator&gt;=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Tests for inequality (type and value); see <a class="link" href="../values.html#mysql.values.relational" title="Relational operators">this
+                  section</a> for more info.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/to_variant.html" title="value::to_variant">to_variant</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Converts a value to an actual variant of type <a class="link" href="boost__mysql__value/variant_type.html" title="value::variant_type"><code class="literal">value::variant_type</code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/value.html" title="value::value">value</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructs a NULL value. <br> <span class="silver">—</span><br>
+                  Initialization constructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="mysql.ref.boost__mysql__value.h3"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__value.related_functions"></a></span><a class="link" href="boost__mysql__value.html#mysql.ref.boost__mysql__value.related_functions">Related
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/make_values.html" title="value::make_values">make_values</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Creates an array of <a class="link" href="boost__mysql__value.html" title="value"><code class="literal">value</code></a>s
+                  out of the passed in arguments.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__value/operator_lt__lt_.html" title="value::operator&lt;&lt;">operator&lt;&lt;</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Streams a value.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="mysql.ref.boost__mysql__value.h4"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__value.description"></a></span><a class="link" href="boost__mysql__value.html#mysql.ref.boost__mysql__value.description">Description</a>
+      </h5>
+<p>
+        A <a class="link" href="boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+        is a variant-like class. At a given time, it always holds a value of one
+        of the type alternatives. See <a class="link" href="../values.html" title="MySQL values">this section</a>
+        for information on how to use this class. This is a lightweight, cheap-to-copy
+        class. Strings are represented as string_views, not as owning strings. This
+        implies that if a value is a string, it will point to a <span class="bold"><strong>externally
+        owned</strong></span> piece of memory. See <a class="link" href="../values.html#mysql.values.strings" title="A note on string values">this
+        section</a> for more info.
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__mysql__ssl_options/mode.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__value/variant_type.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

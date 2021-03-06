@@ -1,0 +1,336 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>MySQL values</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="tutorial.html" title="Tutorial">
+<link rel="next" href="queries.html" title="Text queries">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="queries.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.values"></a><a class="link" href="values.html" title="MySQL values">MySQL values</a>
+</h2></div></div></div>
+<p>
+      This section describes the <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">boost::mysql::value</code></a>
+      class, presents several examples and discusses some topics regarding its usage.
+    </p>
+<p>
+      A <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+      is a variant-like type. At a given time, it always holds a value of one of
+      the type alternatives. See <a class="link" href="ref/boost__mysql__value/variant_type.html" title="value::variant_type"><code class="literal">value::variant_type</code></a>
+      for the list of all possible type alternatives. A value can be converted to
+      an actual variant using <a class="link" href="ref/boost__mysql__value/to_variant.html" title="value::to_variant"><code class="literal">value::to_variant</code></a>.
+      <a href="https://www.boost.org/doc/libs/1_73_0/libs/variant2/doc/html/variant2.html" target="_top">Boost.Variant2</a>
+      is used to represent values as variants.
+    </p>
+<h4>
+<a name="mysql.values.h0"></a>
+      <span class="phrase"><a name="mysql.values.mysql_types_in_c"></a></span><a class="link" href="values.html#mysql.values.mysql_types_in_c">MySQL
+      types in C++</a>
+    </h4>
+<p>
+      MySQL supports a wide variety of types. There is no one-to-one mapping between
+      MySQL types and C++ types, as this would make <a class="link" href="ref/boost__mysql__value/variant_type.html" title="value::variant_type"><code class="literal">value::variant_type</code></a>
+      have a lot of options, adding unnecessary complexity and overhead.
+    </p>
+<p>
+      The mappings are intended to be lossless and intuitive. For more information
+      about the type mappings, see <a class="link" href="types.html" title="MySQL to C++ mapping reference">this section</a>.
+    </p>
+<h4>
+<a name="mysql.values.h1"></a>
+      <span class="phrase"><a name="mysql.values.null_values"></a></span><a class="link" href="values.html#mysql.values.null_values">NULL
+      values</a>
+    </h4>
+<p>
+      NULL values are represented as a <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+      containing the monostate type <a class="link" href="ref/boost__mysql__null_t.html" title="null_t"><code class="literal">null_t</code></a>.
+      You can test if a value is NULL using <a class="link" href="ref/boost__mysql__value/is_null.html" title="value::is_null"><code class="literal">value::is_null</code></a>
+    </p>
+<h4>
+<a name="mysql.values.h2"></a>
+      <span class="phrase"><a name="mysql.values.accessing_the_underlying_value"></a></span><a class="link" href="values.html#mysql.values.accessing_the_underlying_value">Accessing
+      the underlying value</a>
+    </h4>
+<p>
+      You can access the actual typed value of a <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span></code> using one of the following accessors.
+      All these methods are function templates, where the only template parameter
+      <code class="computeroutput"><span class="identifier">T</span></code> is the type you want to cast
+      the value to. They differ in how they behave when the underlying value cannot
+      be converted to <code class="computeroutput"><span class="identifier">T</span></code>:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a class="link" href="ref/boost__mysql__value/get.html" title="value::get"><code class="literal">value::get</code></a>:
+          returns a <code class="computeroutput"><span class="identifier">T</span></code>, throws an
+          exception if not convertible.
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__mysql__value/get_optional.html" title="value::get_optional"><code class="literal">value::get_optional</code></a>:
+          returns a <a href="https://www.boost.org/doc/libs/1_73_0/libs/optional/index.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span></code></a>,
+          empty if not convertible.
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__mysql__value/get_std_optional.html" title="value::get_std_optional"><code class="literal">value::get_std_optional</code></a>:
+          same as <a class="link" href="ref/boost__mysql__value/get_optional.html" title="value::get_optional"><code class="literal">value::get_optional</code></a>,
+          but using C++17 <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">optional</span></code>.
+        </li>
+</ul></div>
+<p>
+      Example of <a class="link" href="ref/boost__mysql__value/get.html" title="value::get"><code class="literal">value::get</code></a>:
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="string">"hello"</span><span class="special">);</span> <span class="comment">// v contains type boost::string_view</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">typed_val</span> <span class="special">=</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span><span class="special">&gt;();</span> <span class="comment">// retrieves the underlying string</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">typed_val</span> <span class="special">==</span> <span class="string">"hello"</span><span class="special">);</span>
+<span class="keyword">try</span>
+<span class="special">{</span>
+    <span class="identifier">v</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span> <span class="comment">// wrong type! throws boost::variant2::bad_variant_access</span>
+<span class="special">}</span>
+<span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">variant2</span><span class="special">::</span><span class="identifier">bad_variant_access</span><span class="special">&amp;)</span>
+<span class="special">{</span>
+<span class="special">}</span>
+</pre>
+<p>
+      Example of <a class="link" href="ref/boost__mysql__value/get_optional.html" title="value::get_optional"><code class="literal">value::get_optional</code></a>:
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="number">3.14</span><span class="special">);</span> <span class="comment">// v contains type double</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">typed_val</span> <span class="special">=</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">get_optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">typed_val</span><span class="special">.</span><span class="identifier">has_value</span><span class="special">());</span> <span class="comment">// the optional is not empty</span>
+<span class="identifier">ASSERT</span><span class="special">(*</span><span class="identifier">typed_val</span> <span class="special">==</span> <span class="number">3.14</span><span class="special">);</span> <span class="comment">// and contains the right value</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span><span class="special">&gt;</span> <span class="identifier">other</span> <span class="special">=</span>
+    <span class="identifier">v</span><span class="special">.</span><span class="identifier">get_optional</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span><span class="special">&gt;();</span> <span class="comment">// wrong type!</span>
+<span class="identifier">ASSERT</span><span class="special">(!</span><span class="identifier">other</span><span class="special">.</span><span class="identifier">has_value</span><span class="special">());</span> <span class="comment">// empty optional</span>
+</pre>
+<p>
+      Example of <a class="link" href="ref/boost__mysql__value/get_std_optional.html" title="value::get_std_optional"><code class="literal">value::get_std_optional</code></a>
+      (requires C++17):
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="number">3.14</span><span class="special">);</span> <span class="comment">// v contains type double</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">typed_val</span> <span class="special">=</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">get_std_optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">typed_val</span><span class="special">.</span><span class="identifier">has_value</span><span class="special">());</span> <span class="comment">// the optional is not empty</span>
+<span class="identifier">ASSERT</span><span class="special">(*</span><span class="identifier">typed_val</span> <span class="special">==</span> <span class="number">3.14</span><span class="special">);</span> <span class="comment">// and contains the right value</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span><span class="special">&gt;</span> <span class="identifier">other</span> <span class="special">=</span>
+    <span class="identifier">v</span><span class="special">.</span><span class="identifier">get_std_optional</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span><span class="special">&gt;();</span> <span class="comment">// wrong type!</span>
+<span class="identifier">ASSERT</span><span class="special">(!</span><span class="identifier">other</span><span class="special">.</span><span class="identifier">has_value</span><span class="special">());</span> <span class="comment">// empty optional</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        When calling these functions, unless otherwise noted, <code class="computeroutput"><span class="identifier">T</span></code>
+        must be one of the types in <a class="link" href="ref/boost__mysql__value/variant_type.html" title="value::variant_type"><code class="literal">value::variant_type</code></a>.
+      </p></td></tr>
+</table></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.values.conversions"></a><a class="link" href="values.html#mysql.values.conversions" title="Conversions">Conversions</a>
+</h3></div></div></div>
+<p>
+        In general, when calling accessor functions, the passed in <code class="computeroutput"><span class="identifier">T</span></code> type must match exactly the type alternative
+        the value holds (e.g. if the value contains a <code class="computeroutput"><span class="keyword">double</span></code>,
+        trying to retrieve a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+        will fail).
+      </p>
+<p>
+        However, there are certain cases where this behavior does not make sense,
+        and an automatic conversion will happen evein if <code class="computeroutput"><span class="identifier">T</span></code>
+        does not exactly match the stored type:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            If the stored type is <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
+            the requested type (<code class="computeroutput"><span class="identifier">T</span></code>)
+            is <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>, and the value is within the
+            range of a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>, it will be converted to this
+            type.
+          </li>
+<li class="listitem">
+            If the stored type is <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>,
+            the requested type (<code class="computeroutput"><span class="identifier">T</span></code>)
+            is <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>, and the value is within the
+            range of a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>, it will be converted to this
+            type.
+          </li>
+<li class="listitem">
+            If the stored type is <code class="computeroutput"><span class="keyword">float</span></code>,
+            and the requested type is <code class="computeroutput"><span class="keyword">double</span></code>,
+            it will be converted.
+          </li>
+</ul></div>
+<p>
+        The motivation behind this conversions is: given the SQL query <code class="computeroutput"><span class="string">"SELECT COUNT(*) AS cnt FROM my_table"</span></code>,
+        which should be <code class="computeroutput"><span class="identifier">T</span></code> for a
+        <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+        representing the <code class="computeroutput"><span class="identifier">cnt</span></code> column?
+        Is it <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code> or <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>?
+        The answer is that it actually depends on how the database represents <code class="computeroutput"><span class="identifier">cnt</span></code>. This information is transmitted to
+        the client, but is not obvious to the user.
+      </p>
+<p>
+        Example:
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">(</span><span class="number">42</span><span class="special">));</span> <span class="comment">// v contains type std::uint64_t</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;()</span> <span class="special">==</span> <span class="number">42u</span><span class="special">);</span> <span class="comment">// exact type match</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span><span class="special">&gt;()</span> <span class="special">==</span> <span class="number">42</span><span class="special">);</span> <span class="comment">// converts from std::uint64_t -&gt; std::int64_t</span>
+</pre>
+</div>
+<h4>
+<a name="mysql.values.h3"></a>
+      <span class="phrase"><a name="mysql.values.querying_the_stored_type"></a></span><a class="link" href="values.html#mysql.values.querying_the_stored_type">Querying
+      the stored type</a>
+    </h4>
+<p>
+      You may query if a <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+      has stored type <code class="computeroutput"><span class="identifier">T</span></code> using one
+      of <a class="link" href="ref/boost__mysql__value/is.html" title="value::is"><code class="literal">value::is</code></a>
+      and <a class="link" href="ref/boost__mysql__value/is_convertible_to.html" title="value::is_convertible_to"><code class="literal">value::is_convertible_to</code></a>.
+      The difference between the two is that the later will consider the above <a class="link" href="values.html#mysql.values.conversions" title="Conversions">conversions</a>, while the former won't:
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">(</span><span class="number">42</span><span class="special">));</span> <span class="comment">// v contains type std::uint64_t</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">is</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;());</span> <span class="comment">// exact type match</span>
+<span class="identifier">ASSERT</span><span class="special">(!</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">is</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span><span class="special">&gt;());</span> <span class="comment">// does not consider conversions</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">is_convertible_to</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;());</span> <span class="comment">// exact type match</span>
+<span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">is_convertible_to</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span><span class="special">&gt;());</span> <span class="comment">// considers conversions</span>
+</pre>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Use the above functions when you don't need the underlying value. The following
+        pattern is inefficient, please avoid it:
+      </p></td></tr>
+</table></div>
+<pre class="programlisting"><span class="comment">// WARNING!! Inefficient, do NOT do</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="number">3.14</span><span class="special">);</span> <span class="comment">// get the value e.g. using query</span>
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">is_convertible_to</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;())</span> <span class="comment">// it should be double, but we are not use</span>
+<span class="special">{</span>
+    <span class="keyword">double</span> <span class="identifier">val</span> <span class="special">=</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span>
+    <span class="comment">// Do stuff with val</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">val</span> <span class="special">==</span> <span class="number">3.14</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">else</span>
+<span class="special">{</span>
+    <span class="comment">// oops, value didn't contain a double, handle the error</span>
+<span class="special">}</span>
+</pre>
+<p>
+      Instead, prefer the following:
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">v</span> <span class="special">(</span><span class="number">3.14</span><span class="special">);</span> <span class="comment">// get the value e.g. using query</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">val</span> <span class="special">=</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">get_optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span>
+<span class="comment">// it should be double, but we are not use</span>
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">val</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Do stuff with val</span>
+    <span class="identifier">ASSERT</span><span class="special">(*</span><span class="identifier">val</span> <span class="special">==</span> <span class="number">3.14</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">else</span>
+<span class="special">{</span>
+    <span class="comment">// oops, value didn't contain a double, handle the error</span>
+<span class="special">}</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.values.strings"></a><a class="link" href="values.html#mysql.values.strings" title="A note on string values">A note on string values</a>
+</h3></div></div></div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          String types are represented as <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span></code>s,
+          as detailed <a class="link" href="types.html" title="MySQL to C++ mapping reference">here</a>. This is a non-owning,
+          lightweight string type, that points to an externally owned piece of memory.
+          This makes the <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+          class <span class="bold"><strong>non-owning</strong></span> in the case of strings.
+        </p></td></tr>
+</table></div>
+<p>
+        In <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+        the memory pointed to by string <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s
+        is owned by the <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        objects the values belong to. This avoids unnecessary copies and makes the
+        <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+        class lightweight and cheap to copy. In exchange, you must pay attention
+        to the lifetime of the <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        object you used to obtain the <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+        to not incur in undefined behavior. For more information on resultset mechanics,
+        see <a class="link" href="resultsets.html" title="Resultsets">this section</a>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.values.relational"></a><a class="link" href="values.html#mysql.values.relational" title="Relational operators">Relational operators</a>
+</h3></div></div></div>
+<p>
+        Values can be compared for equality (<a class="link" href="ref/boost__mysql__value/operator_eq__eq_.html" title="value::operator=="><code class="literal">value::operator==</code></a>
+        and <a class="link" href="ref/boost__mysql__value/operator_not__eq_.html" title="value::operator!="><code class="literal">value::operator!=</code></a>).
+        These operators take into account both type and value, so <code class="computeroutput"><span class="identifier">value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span><span class="special">(</span><span class="number">200</span><span class="special">))</span> <span class="special">!=</span>
+        <span class="identifier">value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">(</span><span class="number">200</span><span class="special">))</span></code>.
+      </p>
+<p>
+        Values also define the four inequality operators (<a class="link" href="ref/boost__mysql__value/operator_gt_.html" title="value::operator&gt;"><code class="literal">value::operator&gt;</code></a>,
+        <a class="link" href="ref/boost__mysql__value/operator_gt__eq_.html" title="value::operator&gt;="><code class="literal">value::operator&gt;=</code></a>,
+        <a class="link" href="ref/boost__mysql__value/operator_lt_.html" title="value::operator&lt;"><code class="literal">value::operator&lt;</code></a>
+        and <a class="link" href="ref/boost__mysql__value/operator_lt__eq_.html" title="value::operator&lt;="><code class="literal">value::operator&lt;=</code></a>).
+      </p>
+<p>
+        These operators use the underlying variant's definition for inequality, so
+        they also take into account both type and value. This may lead to counter-intuitive
+        results, such as <code class="computeroutput"><span class="identifier">value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">(</span><span class="number">10</span><span class="special">))</span>
+        <span class="special">&gt;</span> <span class="identifier">value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span><span class="special">(</span><span class="number">20</span><span class="special">))</span></code>. The main
+        purpose of these operators is allowing <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s
+        as keys to ordered containers. If you need to perform actual logical comparisons
+        between integers, cast the values to integer types using one of the accessor
+        functions, instead. This behavior may change in the future.
+      </p>
+<p>
+        Values do not define <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">hash</span></code>
+        yet, as <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span></code> does not support it. This means
+        that <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s
+        cannot be used as keys to unordered containers.
+      </p>
+</div>
+<h4>
+<a name="mysql.values.h4"></a>
+      <span class="phrase"><a name="mysql.values.other_operations"></a></span><a class="link" href="values.html#mysql.values.other_operations">Other
+      operations</a>
+    </h4>
+<p>
+      Values may also be streamed. If you need to <code class="computeroutput"><span class="identifier">visit</span><span class="special">()</span></code> a <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>,
+      use <a class="link" href="ref/boost__mysql__value/to_variant.html" title="value::to_variant"><code class="literal">value::to_variant</code></a>
+      and use <code class="computeroutput"><span class="identifier">visit</span><span class="special">()</span></code>
+      on the returned variant. Additionally, <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+      objects may also be streamed and compared for equality.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="queries.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

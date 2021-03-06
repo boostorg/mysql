@@ -1,0 +1,186 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Prepared statements</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../examples.html" title="Examples">
+<link rel="prev" href="query_sync.html" title="Text query, synchronous">
+<link rel="next" href="metadata.html" title="Metadata">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="query_sync.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="metadata.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.examples.prepared_statements"></a><a class="link" href="prepared_statements.html" title="Prepared statements">Prepared statements</a>
+</h3></div></div></div>
+<p>
+        This example demonstrates how to use <a class="link" href="../prepared_statements.html" title="Prepared statements">prepared
+        statements</a>. It employs synchronous functions with exceptions as error
+        handling. See <a class="link" href="../error_handling.html" title="Error handling and available overloads">this section</a> for
+        more info on error handling.
+      </p>
+<p>
+        This example assumes you have gone through the <a class="link" href="setup.html" title="Setup">setup</a>.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="string">"boost/mysql/mysql.hpp"</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">system</span><span class="special">/</span><span class="identifier">system_error</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">expr</span><span class="special">)</span> <span class="special">\</span>
+    <span class="keyword">if</span> <span class="special">(!(</span><span class="identifier">expr</span><span class="special">))</span> <span class="special">\</span>
+    <span class="special">{</span> <span class="special">\</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Assertion failed: "</span> <span class="special">#</span><span class="identifier">expr</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="special">\</span>
+        <span class="identifier">exit</span><span class="special">(</span><span class="number">1</span><span class="special">);</span> <span class="special">\</span>
+    <span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">main_impl</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(</span><span class="identifier">argc</span> <span class="special">!=</span> <span class="number">3</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Usage: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" &lt;username&gt; &lt;password&gt;\n"</span><span class="special">;</span>
+        <span class="identifier">exit</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Connection parameters</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">ep</span> <span class="special">(</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">address_v4</span><span class="special">::</span><span class="identifier">loopback</span><span class="special">(),</span> <span class="comment">// host</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">default_port</span>                         <span class="comment">// port</span>
+    <span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection_params</span> <span class="identifier">params</span> <span class="special">(</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>               <span class="comment">// username</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>               <span class="comment">// password</span>
+        <span class="string">"boost_mysql_examples"</span> <span class="comment">// database to use; leave empty or omit the parameter for no database</span>
+    <span class="special">);</span>
+
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
+
+    <span class="comment">// Declare the connection object and authenticate to the server</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_connection</span> <span class="identifier">conn</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">);</span>
+    <span class="identifier">conn</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">ep</span><span class="special">,</span> <span class="identifier">params</span><span class="special">);</span>
+
+    <span class="comment">/**
+     * We can tell MySQL to prepare a statement using connection::prepare_statement.
+     * We provide a string SQL statement, which can include any number of parameters,
+     * identified by question marks. Parameters are optional: you can prepare a statement
+     * with no parameters.
+     *
+     * Prepared statements are stored in the server on a per-connection basis.
+     * Once a connection is closed, all prepared statements for that connection are deallocated.
+     *
+     * The result of prepare_statement is a mysql::prepared_statement object, which is
+     * templatized on the stream type of the connection (tcp_prepared_statement in our case).
+     *
+     * We prepare two statements, a SELECT and an UPDATE.
+     */</span>
+    <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">salary_getter_sql</span> <span class="special">=</span> <span class="string">"SELECT salary FROM employee WHERE first_name = ?"</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_prepared_statement</span> <span class="identifier">salary_getter</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">prepare_statement</span><span class="special">(</span><span class="identifier">salary_getter_sql</span><span class="special">);</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">num_params</span><span class="special">()</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span> <span class="comment">// num_params() returns the number of parameters (question marks)</span>
+
+    <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">salary_updater_sql</span> <span class="special">=</span> <span class="string">"UPDATE employee SET salary = ? WHERE first_name = ?"</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_prepared_statement</span> <span class="identifier">salary_updater</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">prepare_statement</span><span class="special">(</span><span class="identifier">salary_updater_sql</span><span class="special">);</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">salary_updater</span><span class="special">.</span><span class="identifier">num_params</span><span class="special">()</span> <span class="special">==</span> <span class="number">2</span><span class="special">);</span>
+
+    <span class="comment">/*
+     * Once a statement has been prepared, it can be executed as many times as
+     * desired, by calling prepared_statement::execute(). execute takes as input a
+     * (possibly empty) collection of mysql::value's and returns a resultset.
+     * The returned resultset works the same as the one returned by connection::query().
+     *
+     * The parameters passed to execute() are replaced in order of declaration:
+     * the first question mark will be replaced by the first passed parameter,
+     * the second question mark by the second parameter and so on. The number
+     * of passed parameters must match exactly the number of parameters for
+     * the prepared statement.
+     *
+     * Any collection providing member functions begin() and end() returning
+     * forward iterators to mysql::value's is acceptable. We use mysql::make_values(),
+     * which creates a std::array with the passed in values converted to mysql::value's.
+     * An iterator version of execute() is also available.
+     */</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">make_values</span><span class="special">(</span><span class="string">"Efficient"</span><span class="special">));</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&gt;</span> <span class="identifier">salaries</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">();</span> <span class="comment">// Get all the results</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">salaries</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+    <span class="keyword">double</span> <span class="identifier">salary</span> <span class="special">=</span> <span class="identifier">salaries</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">values</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span> <span class="comment">// First row, first column</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"The salary before the payrise was: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">salary</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="comment">/**
+     * Run the update. In this case, we must pass in two parameters.
+     * Note that MySQL is flexible in the types passed as parameters.
+     * In this case, we are sending the value 35000, which gets converted
+     * into a mysql::value with type std::int32_t, while the 'salary'
+     * column is declared as a DOUBLE. The MySQL server will do
+     * the right thing for us.
+     */</span>
+    <span class="identifier">salary_updater</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">make_values</span><span class="special">(</span><span class="number">35000</span><span class="special">,</span> <span class="string">"Efficient"</span><span class="special">));</span>
+
+    <span class="comment">/**
+     * Execute the select again. We can execute a prepared statement
+     * as many times as we want. We do NOT need to call
+     * connection::prepare_statement() again.
+     */</span>
+    <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">make_values</span><span class="special">(</span><span class="string">"Efficient"</span><span class="special">));</span>
+    <span class="identifier">salaries</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">();</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">salaries</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+    <span class="identifier">salary</span> <span class="special">=</span> <span class="identifier">salaries</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">values</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">salary</span> <span class="special">==</span> <span class="number">35000</span><span class="special">);</span> <span class="comment">// Our update took place, and the dev got his pay rise</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"The salary after the payrise was: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">salary</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="comment">/**
+     * Close the statements. Closing a statement deallocates it from the server.
+     * Once a statement is closed, trying to execute it will return an error.
+     *
+     * Closing statements implies communicating with the server and can thus fail.
+     *
+     * Statements are automatically deallocated once the connection is closed.
+     * If you are re-using connection objects and preparing statements over time,
+     * you should close() your statements to prevent excessive resource usage.
+     * If you are not re-using the connections, or are preparing your statements
+     * just once at application startup, there is no need to perform this step.
+     */</span>
+    <span class="identifier">salary_updater</span><span class="special">.</span><span class="identifier">close</span><span class="special">();</span>
+    <span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">close</span><span class="special">();</span>
+
+    <span class="comment">// Close the connection</span>
+    <span class="identifier">conn</span><span class="special">.</span><span class="identifier">close</span><span class="special">();</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">try</span>
+    <span class="special">{</span>
+        <span class="identifier">main_impl</span><span class="special">(</span><span class="identifier">argc</span><span class="special">,</span> <span class="identifier">argv</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">system_error</span><span class="special">&amp;</span> <span class="identifier">err</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">err</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">", error code: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">err</span><span class="special">.</span><span class="identifier">code</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="number">1</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">err</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">err</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="number">1</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="query_sync.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="metadata.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

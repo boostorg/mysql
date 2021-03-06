@@ -1,0 +1,153 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Introduction</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="next" href="tutorial.html" title="Tutorial">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.intro"></a><a class="link" href="intro.html" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      is a C++11 client for the <a href="https://www.mysql.com/" target="_top">MySQL</a>
+      database server, based on <a href="https://www.boost.org/doc/libs/1_73_0/libs/asio/index.html" target="_top">Boost.Asio</a>.
+      This library is in the process of being proposed for <a href="https://www.boost.org/" target="_top">Boost</a>.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.intro.motivation"></a><a class="link" href="intro.html#mysql.intro.motivation" title="Motivation">Motivation</a>
+</h3></div></div></div>
+<p>
+        <a href="https://www.mysql.com/" target="_top">MySQL</a> is one of the most widespread
+        SQL database servers. MySQL clients connect to the server in order to issue
+        SQL queries. For this purpose, MySQL employs a dedicated protocol. <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+        is an implementation of the client side of this protocol.
+      </p>
+<p>
+        The design goals of this library are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>Ease of use</strong></span>: designed to be intuitive
+            and hide the <a href="https://www.mysql.com/" target="_top">MySQL</a> protocol
+            complexities.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Interoperability with Asio</strong></span>: this library
+            employs the same principles as <a href="https://www.boost.org/doc/libs/1_73_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+            and <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/index.html" target="_top">Boost.Beast</a>. Users
+            of any of these libraries will immediately understand Boost.Mysql, and
+            will have it easy to integrate it in their programs.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Basis for further abstraction</strong></span>: this
+            library is focused on doing a single thing and doing it well. For this
+            reason, it can be used easily by higher level components as a building
+            block.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Efficiency</strong></span>.
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.intro.requirements"></a><a class="link" href="intro.html#mysql.intro.requirements" title="Requirements">Requirements</a>
+</h3></div></div></div>
+<p>
+        Boost.Mysql requires:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>C++11</strong></span> capable compiler (tested with
+            gcc 7.4, clang 7.0, Apple clang 11.0, MSVC 19.25).
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Boost</strong></span>. Boost.Mysql does not work with
+            the standalone version of <a href="https://www.boost.org/doc/libs/1_73_0/libs/asio/index.html" target="_top">Boost.Asio</a>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>OpenSSL</strong></span>.
+          </li>
+</ul></div>
+<p>
+        Boost.Mysql is a header-only library. The following additional libraries
+        are needed at link time:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            OpenSSL is always required.
+          </li>
+<li class="listitem">
+            <a href="https://www.boost.org/doc/libs/1_73_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
+            is required when using coroutines created by <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">spawn</span></code></a>.
+          </li>
+</ul></div>
+<p>
+        If you are using CMake (finding the library using <span class="bold"><strong>find_package</strong></span>
+        or fetching it using <span class="bold"><strong>FetchContent</strong></span>), you
+        can link against the <span class="bold"><strong>Boost::mysql*</strong></span> CMake
+        target, which will take care of the details for you.
+      </p>
+<p>
+        Boost.Mysql has been tested with the following versions of MySQL:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a href="https://dev.mysql.com/downloads/mysql/5.7.html" target="_top">MySQL v5.7.29</a>.
+          </li>
+<li class="listitem">
+            <a href="https://dev.mysql.com/downloads/mysql/8.0.html" target="_top">MySQL v8.0.19</a>.
+          </li>
+<li class="listitem">
+            <a href="https://downloads.mariadb.org/mariadb/10.3.13/" target="_top">MariaDB v10.3</a>.
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.intro.acknowledgements"></a><a class="link" href="intro.html#mysql.intro.acknowledgements" title="Acknowledgements">Acknowledgements</a>
+</h3></div></div></div>
+<p>
+        I would like to specially acknowledge <a href="https://github.com/madmongo1" target="_top">Richard
+        Hodges</a> (hodges.r@gmail.com) for his invaluable technical guidance
+        during development. Thanks also to <a href="https://github.com/LeonineKing1199" target="_top">Christian
+        Mazakas</a> for his ideas in early stages, and to <a href="https://github.com/vinniefalco" target="_top">Vinnie
+        Falco</a> for writing <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/index.html" target="_top">Boost.Beast</a>,
+        my source of inspiration, and <a href="https://github.com/boostorg/docca" target="_top">docca</a>,
+        which is used to generate these pages.
+      </p>
+<p>
+        Finally, thanks to <a href="https://github.com/chriskohlhoff" target="_top">Christopher
+        Kohlhoff</a> for his awesome <a href="https://www.boost.org/doc/libs/1_73_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+        library, and to <a href="https://github.com/HowardHinnant" target="_top">Howard Hinnant</a>
+        for his date algorithms, shamelessly copied in this lib.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>prepared_statement::rebind_executor::other</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../boost__mysql__prepared_statement__rebind_executor.html" title="prepared_statement::rebind_executor">
+<link rel="prev" href="../boost__mysql__prepared_statement__rebind_executor.html" title="prepared_statement::rebind_executor">
+<link rel="next" href="../boost__mysql__connection__rebind_executor.html" title="connection::rebind_executor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost__mysql__prepared_statement__rebind_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__prepared_statement__rebind_executor.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other"></a><a class="link" href="other.html" title="prepared_statement::rebind_executor::other">prepared_statement::rebind_executor::other</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm12974"></a>
+        </p>
+<p>
+          The prepared statement type when rebound to the specified executor.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.h0"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.synopsis"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">other</span> <span class="special">=</span> <span class="identifier">prepared_statement</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Stream</span><span class="special">::</span><span class="keyword">template</span> <span class="identifier">rebind_executor</span><span class="special">&lt;</span> <span class="identifier">Executor</span> <span class="special">&gt;::</span><span class="identifier">other</span> <span class="special">&gt;;</span>
+</pre>
+<h6>
+<a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.h1"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.types"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.types">Types</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/executor_type.html" title="prepared_statement::executor_type">executor_type</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The executor type associated to this object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement__rebind_executor.html" title="prepared_statement::rebind_executor">rebind_executor</a> <span class="silver">[constructor]</span></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Rebinds the prepared statement type to another executor.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.h2"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.member_functions"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.member_functions">Member
+          Functions</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/async_close.html" title="prepared_statement::async_close">async_close</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Closes a prepared statement, deallocating it from the server
+                    (async without <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+                    version). <br> <span class="silver">—</span><br> Closes
+                    a prepared statement, deallocating it from the server (async
+                    with <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+                    version).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/async_execute.html" title="prepared_statement::async_execute">async_execute</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Executes a statement (collection, async without <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+                    version). <br> <span class="silver">—</span><br> Executes
+                    a statement (collection, async with <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+                    version). <br> <span class="silver">—</span><br> Executes
+                    a statement (<code class="computeroutput"><span class="identifier">execute_params</span></code>,
+                    async without <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+                    version). <br> <span class="silver">—</span><br> Executes
+                    a statement (<code class="computeroutput"><span class="identifier">execute_params</span></code>,
+                    async with <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+                    version).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/close.html" title="prepared_statement::close">close</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Closes a prepared statement, deallocating it from the server
+                    (sync with error code version). <br> <span class="silver">—</span><br>
+                    Closes a prepared statement, deallocating it from the server
+                    (sync with exceptions version).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/execute.html" title="prepared_statement::execute">execute</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Executes a statement (collection, sync with error code version).
+                    <br> <span class="silver">—</span><br> Executes a statement
+                    (collection, sync with exceptions version). <br> <span class="silver">—</span><br>
+                    Executes a statement (<code class="computeroutput"><span class="identifier">execute_params</span></code>,
+                    sync with error code version). <br> <span class="silver">—</span><br>
+                    Executes a statement (<code class="computeroutput"><span class="identifier">execute_params</span></code>,
+                    sync with exceptions version).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/get_executor.html" title="prepared_statement::get_executor">get_executor</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves the executor associated to this object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/id.html" title="prepared_statement::id">id</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns a server-side identifier for the statement (unique in
+                    a per-connection basis).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/next_layer.html" title="prepared_statement::next_layer">next_layer</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves the stream object associated with the underlying connection.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/num_params.html" title="prepared_statement::num_params">num_params</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns the number of parameters that should be provided when
+                    executing the statement.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/prepared_statement.html" title="prepared_statement::prepared_statement">prepared_statement</a></strong></span>
+                  </p>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__prepared_statement/valid.html" title="prepared_statement::valid">valid</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns <code class="computeroutput"><span class="keyword">true</span></code> if
+                    the statement is not a default-constructed object.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+          This class is a handle to a server-side prepared statement. The main use
+          of a prepared statement is executing it using <a class="link" href="../boost__mysql__prepared_statement/execute.html" title="prepared_statement::execute"><code class="literal">prepared_statement::execute</code></a>,
+          which yields a <a class="link" href="../boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>.
+          Prepared statements are default constructible. A default-constructed prepared
+          statement is considered invalid (<a class="link" href="../boost__mysql__prepared_statement/valid.html" title="prepared_statement::valid"><code class="literal">prepared_statement::valid</code></a>
+          will return <code class="computeroutput"><span class="keyword">false</span></code>). Calling
+          any function other than assignment on an invalid statement results in undefined
+          behavior. Prepared statements are managed by the server in a per-connection
+          basis: once created, a prepared statement may be used as long as the parent
+          <a class="link" href="../boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+          object (i.e. the connection that originated the resultset) is alive and
+          open. Calling any function on a prepared_statement whose parent connection
+          has been closed or destroyed results in undefined behavior.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.h3"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.types0"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.types0">Types</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="other.html" title="prepared_statement::rebind_executor::other">other</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The prepared statement type when rebound to the specified executor.
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+<h6>
+<a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.h4"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.description"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__prepared_statement__rebind_executor.other.description">Description</a>
+        </h6>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost__mysql__prepared_statement__rebind_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__prepared_statement__rebind_executor.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

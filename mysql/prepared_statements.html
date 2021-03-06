@@ -1,0 +1,180 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Prepared statements</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="queries.html" title="Text queries">
+<link rel="next" href="resultsets.html" title="Resultsets">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="queries.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="resultsets.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.prepared_statements"></a><a class="link" href="prepared_statements.html" title="Prepared statements">Prepared statements</a>
+</h2></div></div></div>
+<p>
+      This section covers using <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-prepared-statements.html" target="_top">server-side
+      prepared statements</a>. The functionality is broadly similar to the <code class="computeroutput"><span class="identifier">PREPARE</span></code>, <code class="computeroutput"><span class="identifier">EXECUTE</span></code>
+      and <code class="computeroutput"><span class="identifier">DEALLOCATE</span></code> SQL commands.
+      However, note that the functions and classes here described are <span class="bold"><strong>not
+      based on SQL query composition</strong></span>, but rather use of dedicated protocol
+      functionality (sometimes called the binary protocol). This makes using this
+      API preferable to using query composition in terms of security and efficiency.
+    </p>
+<p>
+      The rest of this section contains a detailed explanation of prepared statement
+      mechanics, together with some code snippets. You can find the full code listing
+      <a class="link" href="examples/prepared_statements.html" title="Prepared statements">here</a>.
+    </p>
+<h4>
+<a name="mysql.prepared_statements.h0"></a>
+      <span class="phrase"><a name="mysql.prepared_statements.preparing_a_statement"></a></span><a class="link" href="prepared_statements.html#mysql.prepared_statements.preparing_a_statement">Preparing
+      a statement</a>
+    </h4>
+<p>
+      To prepare a statement, call <a class="link" href="ref/boost__mysql__connection/prepare_statement.html" title="connection::prepare_statement"><code class="literal">connection::prepare_statement</code></a>
+      or <a class="link" href="ref/boost__mysql__connection/async_prepare_statement.html" title="connection::async_prepare_statement"><code class="literal">connection::async_prepare_statement</code></a>.
+      You must pass in a string containing the text of the SQL statement (similar
+      to how <a class="link" href="queries.html" title="Text queries">text queries</a> work). These functions
+      return a <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
+      object.
+    </p>
+<p>
+      In addition to regular SQL, you can also use question mark characters (<code class="computeroutput"><span class="special">?</span></code>) to represent parameters (as described <a href="https://dev.mysql.com/doc/refman/8.0/en/prepare.html" target="_top">here</a>). When
+      you execute the statement (next section), you provide values for each of the
+      parameters you declared. You don't need to escape or sanitize these values
+      anyhow, thus avoiding the possibility of SQL injection attacks.
+    </p>
+<p>
+      The following prepares a statement with one parameter (<code class="computeroutput"><span class="identifier">conn</span></code>
+      is a <a class="link" href="ref/boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>):
+    </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">salary_getter_sql</span> <span class="special">=</span> <span class="string">"SELECT salary FROM employee WHERE first_name = ?"</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_prepared_statement</span> <span class="identifier">salary_getter</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">prepare_statement</span><span class="special">(</span><span class="identifier">salary_getter_sql</span><span class="special">);</span>
+</pre>
+<p>
+      Query strings are assumed to be encoded using the connection's character set.
+      You can set this value when establishing the connection (see <a class="link" href="connparams.html#mysql.connparams.collation" title="Connection encoding and collation">this
+      section</a>) or change it using a <a href="https://dev.mysql.com/doc/refman/8.0/en/set-names.html" target="_top"><code class="computeroutput"><span class="identifier">SET</span> <span class="identifier">NAMES</span></code></a>
+      statement.
+    </p>
+<h4>
+<a name="mysql.prepared_statements.h1"></a>
+      <span class="phrase"><a name="mysql.prepared_statements.executing_a_statement"></a></span><a class="link" href="prepared_statements.html#mysql.prepared_statements.executing_a_statement">Executing
+      a statement</a>
+    </h4>
+<p>
+      To execute a statement, use the <a class="link" href="ref/boost__mysql__prepared_statement/execute.html" title="prepared_statement::execute"><code class="literal">prepared_statement::execute</code></a>
+      or <a class="link" href="ref/boost__mysql__prepared_statement/async_execute.html" title="prepared_statement::async_execute"><code class="literal">prepared_statement::async_execute</code></a>
+      function family. Executing a statement yields a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>.
+    </p>
+<p>
+      When executing a statement, you must pass in <span class="bold"><strong>exactly
+      as many parameters as the statement has</strong></span>. Failing to do so will result
+      in an error. Parameters are passed in as <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">boost::mysql::value</code></a>
+      objects, and in the same order as they appear in the statement text. Values
+      should be in the MySQL range of validity. In particular, <a class="link" href="ref/boost__mysql__date.html" title="date"><code class="literal">date</code></a>s,
+      <a class="link" href="ref/boost__mysql__datetime.html" title="datetime"><code class="literal">datetime</code></a>s
+      and <a class="link" href="ref/boost__mysql__time.html" title="time"><code class="literal">time</code></a>s
+      should be in their validity range; otherwise the results are undefined.
+    </p>
+<p>
+      There are two different signatures for execute functions:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          One accepting an <a class="link" href="ref/boost__mysql__execute_params.html" title="execute_params"><code class="literal">execute_params</code></a>
+          object, which represents a range of forward iterators pointing to <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s.
+          You can use <a class="link" href="ref/boost__mysql__execute_params/make_execute_params.html" title="execute_params::make_execute_params"><code class="literal">make_execute_params</code></a>
+          to create <a class="link" href="ref/boost__mysql__execute_params.html" title="execute_params"><code class="literal">execute_params</code></a>
+          objects easier.
+        </li>
+<li class="listitem">
+          Another accepting a collection such that <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">()</span></code> yield forward iterators pointing to
+          <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s.
+          This is syntactic sugar over the former.
+        </li>
+</ul></div>
+<p>
+      You may use the <a class="link" href="ref/boost__mysql__value/make_values.html" title="value::make_values"><code class="literal">make_values</code></a>
+      function to create a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span></code> of <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s
+      suitable for the container version, or the <a class="link" href="ref/boost__mysql__no_statement_params.html" title="no_statement_params"><code class="literal">no_statement_params</code></a>
+      variable if your statement has no parameters.
+    </p>
+<p>
+      The following executes the statement we prepared in the previous section, binding
+      the <code class="computeroutput"><span class="identifier">first_name</span></code> parameter to
+      <code class="computeroutput"><span class="string">"Efficient"</span></code>:
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">make_values</span><span class="special">(</span><span class="string">"Efficient"</span><span class="special">));</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&gt;</span> <span class="identifier">salaries</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">();</span> <span class="comment">// Get all the results</span>
+</pre>
+<p>
+      You can execute a statement as many times as you want. However, recall that
+      once you obtain a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
+      <span class="bold"><strong>you must read it completely before engaging in any other
+      network operation</strong></span> (e.g. executing the statement again). See <a class="link" href="resultsets.html#mysql.resultsets.complete" title="Resultsets becoming complete">this section</a> for more information
+      on resultsets.
+    </p>
+<h4>
+<a name="mysql.prepared_statements.h2"></a>
+      <span class="phrase"><a name="mysql.prepared_statements.closing_a_statement"></a></span><a class="link" href="prepared_statements.html#mysql.prepared_statements.closing_a_statement">Closing
+      a statement</a>
+    </h4>
+<p>
+      Prepared statements are created in the server side, and thus consume server
+      resources. Once you don't need a <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
+      anymore, you can call <a class="link" href="ref/boost__mysql__prepared_statement/close.html" title="prepared_statement::close"><code class="literal">prepared_statement::close</code></a>
+      or <a class="link" href="ref/boost__mysql__prepared_statement/async_close.html" title="prepared_statement::async_close"><code class="literal">prepared_statement::async_close</code></a>
+      to instruct the server to deallocate it. You must not execute a closed prepared
+      statement. As a close operation involves a network transfer, you should finish
+      reading any incomplete <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+      before starting it.
+    </p>
+<p>
+      Prepared statements are managed by the server on a per-connection basis. Once
+      you close your connection with the server, all prepared statements you have
+      created using this connection will be automatically deallocated. This also
+      means that you must keep the <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+      object alive and open to use a <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
+      object.
+    </p>
+<p>
+      If you are creating your prepared statements at the beginning of your program
+      and keeping them alive until the connection is closed, then there is no need
+      to call <a class="link" href="ref/boost__mysql__prepared_statement/close.html" title="prepared_statement::close"><code class="literal">prepared_statement::close</code></a>
+      or <a class="link" href="ref/boost__mysql__prepared_statement/async_close.html" title="prepared_statement::async_close"><code class="literal">prepared_statement::async_close</code></a>,
+      as closing the connection will do the cleanup for you. If you are creating
+      and destroying prepared statements dynamically, then it is advised to use
+      <a class="link" href="ref/boost__mysql__prepared_statement/close.html" title="prepared_statement::close"><code class="literal">prepared_statement::close</code></a>
+      or <a class="link" href="ref/boost__mysql__prepared_statement/async_close.html" title="prepared_statement::async_close"><code class="literal">prepared_statement::async_close</code></a>
+      to prevent excessive resource usage in the server.
+    </p>
+<p>
+      Finally, note that <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>'s
+      destructor does not perform any server-side deallocation of the statement.
+      This is because closing a statement involves a network operation that may block
+      your code or fail.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="queries.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="resultsets.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Resultsets</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="prepared_statements.html" title="Prepared statements">
+<link rel="next" href="async.html" title="Going async">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="prepared_statements.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="async.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.resultsets"></a><a class="link" href="resultsets.html" title="Resultsets">Resultsets</a>
+</h2></div></div></div>
+<p>
+      <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">Resultset objects</code></a>
+      represent the result of a SQL query. They are returned by the <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">connection::query</code></a>
+      and <a class="link" href="ref/boost__mysql__prepared_statement/execute.html" title="prepared_statement::execute"><code class="literal">prepared_statement::execute</code></a>
+      functions, as well as their corresponding asynchronous versions.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.resultsets.rows"></a><a class="link" href="resultsets.html#mysql.resultsets.rows" title="Rows">Rows</a>
+</h3></div></div></div>
+<p>
+        A <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        represents tabular data. Data is represented row-by-row, using the <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a> class,
+        which represent an array of <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>s,
+        which you can retrieve using <a class="link" href="ref/boost__mysql__row/values.html" title="row::values"><code class="literal">row::values</code></a>.
+        This array will have a single element for each field (column) in the <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>.
+        Fields appear in the resultset in the same order as in the SQL query.
+      </p>
+<p>
+        For example, let <code class="computeroutput"><span class="identifier">rowobj</span></code> an
+        <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        obtained from a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        originated from the query <code class="computeroutput"><span class="string">"SELECT first_name,
+        last_name, age FROM employees"</span></code>:
+      </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">rowobj</span> <span class="special">=</span> <span class="comment">/* read the row, see below for more info */</span>
+<span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">value</span><span class="special">&gt;&amp;</span> <span class="identifier">vals</span> <span class="special">=</span>
+    <span class="identifier">rowobj</span><span class="special">.</span><span class="identifier">values</span><span class="special">();</span> <span class="comment">// vals will have three elements</span>
+<span class="identifier">value</span> <span class="identifier">first_name</span> <span class="special">=</span> <span class="identifier">vals</span><span class="special">[</span><span class="number">0</span><span class="special">];</span> <span class="comment">// stored type boost::string_view</span>
+<span class="identifier">value</span> <span class="identifier">last_name</span>  <span class="special">=</span> <span class="identifier">vals</span><span class="special">[</span><span class="number">1</span><span class="special">];</span> <span class="comment">// stored type boost::string_view</span>
+<span class="identifier">value</span> <span class="identifier">age</span>        <span class="special">=</span> <span class="identifier">vals</span><span class="special">[</span><span class="number">2</span><span class="special">];</span> <span class="comment">// stored type std::int64_t</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.resultsets.read"></a><a class="link" href="resultsets.html#mysql.resultsets.read" title="Reading rows">Reading rows</a>
+</h3></div></div></div>
+<p>
+        A <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        does not read all the retrieved information into memory directly. Instead,
+        <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>s
+        are I/O objects, which know how to retrieve rows. This allows to read rows
+        progressively, allowing for better efficiency.
+      </p>
+<p>
+        There are three methods of retrieving rows:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>
+            and <a class="link" href="ref/boost__mysql__resultset/async_read_one.html" title="resultset::async_read_one"><code class="literal">resultset::async_read_one</code></a>:
+            retrieves a single row.
+          </li>
+<li class="listitem">
+            <a class="link" href="ref/boost__mysql__resultset/read_many.html" title="resultset::read_many"><code class="literal">resultset::read_many</code></a>
+            and <a class="link" href="ref/boost__mysql__resultset/async_read_many.html" title="resultset::async_read_many"><code class="literal">resultset::async_read_many</code></a>:
+            retrieves an array of rows, up to a certain count.
+          </li>
+<li class="listitem">
+            <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">resultset::read_all</code></a>
+            and <a class="link" href="ref/boost__mysql__resultset/async_read_all.html" title="resultset::async_read_all"><code class="literal">resultset::async_read_all</code></a>:
+            retrieves all the remaining rows.
+          </li>
+</ul></div>
+<h5>
+<a name="mysql.resultsets.read.h0"></a>
+        <span class="phrase"><a name="mysql.resultsets.read.reading_a_single_row"></a></span><a class="link" href="resultsets.html#mysql.resultsets.read.reading_a_single_row">Reading
+        a single row</a>
+      </h5>
+<p>
+        The <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>
+        family retrieve the next row. The functions get passed a <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        lvalue reference, which will get populated by the next read row. The function
+        returns a <code class="computeroutput"><span class="keyword">bool</span></code> indicating whether
+        a row was read or not. You can use it as follows:
+      </p>
+<pre class="programlisting"><span class="identifier">tcp_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="comment">/* obtain a resultset, e.g. via connection::query */</span>
+<span class="identifier">row</span> <span class="identifier">row_obj</span><span class="special">;</span>
+<span class="keyword">while</span> <span class="special">(</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">read_one</span><span class="special">(</span><span class="identifier">row_obj</span><span class="special">))</span>
+<span class="special">{</span>
+    <span class="comment">// Do stuff with row_obj</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Note that if any of the fields are strings, the memory pointed to by the
+        values will be owned by the <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        object. Thus, these values will be valid as long as the <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        object is kept alive and valid.
+      </p>
+<p>
+        The examples on async queries with <a class="link" href="examples/query_async_futures.html" title="Text query, async with futures">futures</a>,
+        <a class="link" href="examples/query_async_coroutines.html" title="Text query, async with Boost.Coroutine coroutines">Boost.Coroutine coroutines</a>
+        and <a class="link" href="examples/query_async_coroutinescpp20.html" title="Text query, async with C++20 coroutines">C++20 coroutines</a>
+        make use of <a class="link" href="ref/boost__mysql__resultset/async_read_one.html" title="resultset::async_read_one"><code class="literal">resultset::async_read_one</code></a>.
+      </p>
+<h5>
+<a name="mysql.resultsets.read.h1"></a>
+        <span class="phrase"><a name="mysql.resultsets.read.reading_multiple_rows"></a></span><a class="link" href="resultsets.html#mysql.resultsets.read.reading_multiple_rows">Reading
+        multiple rows</a>
+      </h5>
+<p>
+        The <a class="link" href="ref/boost__mysql__resultset/read_many.html" title="resultset::read_many"><code class="literal">resultset::read_many</code></a>
+        family retrieve many rows at a single time. When you call them, you pass
+        in the maximum number of rows you want to read. For example:
+      </p>
+<pre class="programlisting"><span class="identifier">tcp_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="comment">/* obtain a resultset, e.g. via connection::query */</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">row</span><span class="special">&gt;</span> <span class="identifier">rows</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_many</span><span class="special">(</span><span class="number">5</span><span class="special">);</span> <span class="comment">// at most 5 rows</span>
+</pre>
+<p>
+        The <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">resultset::read_all</code></a>
+        functions work similarly to <a class="link" href="ref/boost__mysql__resultset/read_many.html" title="resultset::read_many"><code class="literal">resultset::read_many</code></a>,
+        except that they retrieve all the rows in the resultset.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.resultsets.complete"></a><a class="link" href="resultsets.html#mysql.resultsets.complete" title="Resultsets becoming complete">Resultsets becoming complete</a>
+</h3></div></div></div>
+<p>
+        When you have read every single row in a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
+        then we say the resultset is <span class="bold"><strong>complete</strong></span>. You
+        can query for this fact calling the <a class="link" href="ref/boost__mysql__resultset/complete.html" title="resultset::complete"><code class="literal">resultset::complete</code></a>
+        member function.
+      </p>
+<p>
+        A <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        completes the first time you try to read a row, but there are not any more
+        rows available. For example, in a resultset with 4 rows, any of the following
+        actions will complete the resultset:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Calling <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>
+            5 times.
+          </li>
+<li class="listitem">
+            Calling <a class="link" href="ref/boost__mysql__resultset/read_many.html" title="resultset::read_many"><code class="literal">resultset::read_many</code></a>
+            with a count of 5 or greater (or several times, with a total count of
+            5 or greater).
+          </li>
+<li class="listitem">
+            Calling <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">resultset::read_all</code></a>.
+          </li>
+</ul></div>
+<p>
+        After a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        is complete, some extra information about the query becomes available, like
+        <a class="link" href="ref/boost__mysql__resultset/warning_count.html" title="resultset::warning_count"><code class="literal">resultset::warning_count</code></a>
+        or <a class="link" href="ref/boost__mysql__resultset/affected_rows.html" title="resultset::affected_rows"><code class="literal">resultset::affected_rows</code></a>.
+        MySQL sends this information as an extra packet only after sending every
+        single resultset row, hence this mechanic.
+      </p>
+<p>
+        A resultset may also be <span class="bold"><strong>empty</strong></span>, which means
+        it has no row to be retrieved. Non <code class="computeroutput"><span class="identifier">SELECT</span></code>
+        SQL statements (e.g. <code class="computeroutput"><span class="identifier">UPDATE</span></code>
+        and <code class="computeroutput"><span class="identifier">INSERT</span></code>) generate empty
+        resultsets. Empty resultsets are complete from the beginning: you don't need
+        to call <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>
+        to make them complete.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Because of how the MySQL protocol works, once you obtain a <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
+          <span class="bold"><strong>you must read it entirely</strong></span> (i.e. until
+          it's complete) <span class="bold"><strong>before engaging in any subsequent
+          operation that implies communication with the server</strong></span> (e.g. issuing
+          another query, preparing a statement, closing a statement...). Failing
+          to do so results in undefined behavior.
+        </p></td></tr>
+</table></div>
+<p>
+        Note also that, since resultsets perform network transfers, you must keep
+        the <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+        object alive and open while reading rows.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.resultsets.metadata"></a><a class="link" href="resultsets.html#mysql.resultsets.metadata" title="Metadata">Metadata</a>
+</h3></div></div></div>
+<p>
+        Resultset objects hold metadata describing the fields they contain. You can
+        access these data using <a class="link" href="ref/boost__mysql__resultset/fields.html" title="resultset::fields"><code class="literal">resultset::fields</code></a>.
+        This function returns a collection of <a class="link" href="ref/boost__mysql__field_metadata.html" title="field_metadata"><code class="literal">field_metadata</code></a>
+        objects. There is one object for each field in the SQL query, and in the
+        same order as in the query. You can find a bunch of useful information in
+        this object, like the field name, its type, whether it's a key or not, and
+        so on.
+      </p>
+<p>
+        Metadata is always available (i.e. you don't need to make the <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        <a class="link" href="resultsets.html#mysql.resultsets.complete" title="Resultsets becoming complete">complete</a> before accessing
+        it). For empty resultsets, <a class="link" href="ref/boost__mysql__resultset/fields.html" title="resultset::fields"><code class="literal">resultset::fields</code></a>
+        returns an empty collection.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.resultsets.server_send"></a><a class="link" href="resultsets.html#mysql.resultsets.server_send" title="When does the server send the rows?">When does the server send
+      the rows?</a>
+</h3></div></div></div>
+<p>
+        We said resultsets allow you to read the rows progressively. However, what
+        are the details of the process of the communications between <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+        and the server? The exact behavior depends on how the <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        was generated:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            If it was generated using <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">connection::query</code></a>
+            or <a class="link" href="ref/boost__mysql__connection/async_query.html" title="connection::async_query"><code class="literal">connection::async_query</code></a>,
+            then you are using the <span class="bold"><strong>text protocol</strong></span>.
+            In this case, the server will send every row immediately after processing
+            the query (the protocol provides no option to avoid this). However you
+            can choose to start processing them as soon as the first one arrives
+            by using <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>
+            or <a class="link" href="ref/boost__mysql__resultset/read_many.html" title="resultset::read_many"><code class="literal">resultset::read_many</code></a>.
+          </li>
+<li class="listitem">
+            If it was generated using <a class="link" href="ref/boost__mysql__prepared_statement/execute.html" title="prepared_statement::execute"><code class="literal">prepared_statement::execute</code></a>
+            or <a class="link" href="ref/boost__mysql__prepared_statement/async_execute.html" title="prepared_statement::async_execute"><code class="literal">prepared_statement::async_execute</code></a>,
+            then you are using the <span class="bold"><strong>binary protocol</strong></span>.
+            The current implementation asks the server to send every row after the
+            execution, making it similar to the case above. However, the protocol
+            does allow sending rows progressively. Future implementations may take
+            advantage of this fact when using <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>
+            or <a class="link" href="ref/boost__mysql__resultset/read_many.html" title="resultset::read_many"><code class="literal">resultset::read_many</code></a>.
+          </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="prepared_statements.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="async.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

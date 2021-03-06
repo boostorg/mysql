@@ -1,0 +1,70 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>value::is_convertible_to</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../boost__mysql__value.html" title="value">
+<link rel="prev" href="is.html" title="value::is">
+<link rel="next" href="get.html" title="value::get">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__value.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="get.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="mysql.ref.boost__mysql__value.is_convertible_to"></a><a class="link" href="is_convertible_to.html" title="value::is_convertible_to">value::is_convertible_to</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm18053"></a>
+        </p>
+<p>
+          Checks if the current value can be converted to <code class="computeroutput"><span class="identifier">T</span></code>.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__value.is_convertible_to.h0"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__value.is_convertible_to.synopsis"></a></span><a class="link" href="is_convertible_to.html#mysql.ref.boost__mysql__value.is_convertible_to.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">BOOST_CXX14_CONSTEXPR</span> <span class="keyword">bool</span>
+<span class="identifier">is_convertible_to</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<h6>
+<a name="mysql.ref.boost__mysql__value.is_convertible_to.h1"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__value.is_convertible_to.description"></a></span><a class="link" href="is_convertible_to.html#mysql.ref.boost__mysql__value.is_convertible_to.description">Description</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">T</span></code> should be one of <a class="link" href="variant_type.html" title="value::variant_type"><code class="literal">value::variant_type</code></a>'s
+          type alternatives. This function returns <code class="computeroutput"><span class="keyword">true</span></code>
+          if the current type alternative is <code class="computeroutput"><span class="identifier">T</span></code>
+          (<code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">is</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;()</span></code>
+          returns <code class="computeroutput"><span class="keyword">true</span></code>) or if there
+          exists a conversion from the current alternative to <code class="computeroutput"><span class="identifier">T</span></code>
+          that does not cause loss of precision (e.g. <code class="computeroutput"><span class="keyword">float</span></code>
+          to <code class="computeroutput"><span class="keyword">double</span></code>). See <a class="link" href="../../values.html#mysql.values.conversions" title="Conversions">this
+          section</a> for more information about conversions. Use this function
+          if you only need to know if a conversion is possible or not. If you also
+          need to access the stored value, use <a class="link" href="get_optional.html" title="value::get_optional"><code class="literal">value::get_optional</code></a>
+          or <a class="link" href="get_std_optional.html" title="value::get_std_optional"><code class="literal">value::get_std_optional</code></a>
+          and check the returned optional instead.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__value.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="get.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

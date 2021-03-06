@@ -1,0 +1,332 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>field_metadata</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__mysql__execute_params/make_execute_params/overload2.html" title="execute_params::make_execute_params (2 of 2 overloads)">
+<link rel="next" href="boost__mysql__field_metadata/field_metadata.html" title="field_metadata::field_metadata">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__mysql__execute_params/make_execute_params/overload2.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__field_metadata/field_metadata.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="mysql.ref.boost__mysql__field_metadata"></a><a class="link" href="boost__mysql__field_metadata.html" title="field_metadata">field_metadata</a>
+</h4></div></div></div>
+<p>
+        Holds <a class="link" href="../resultsets.html#mysql.resultsets.metadata" title="Metadata">metadata</a> about a field
+        in a SQL query.
+      </p>
+<h5>
+<a name="mysql.ref.boost__mysql__field_metadata.h0"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__field_metadata.synopsis"></a></span><a class="link" href="boost__mysql__field_metadata.html#mysql.ref.boost__mysql__field_metadata.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/metadata.hpp" target="_top">boost/mysql/metadata.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">field_metadata</span>
+</pre>
+<h5>
+<a name="mysql.ref.boost__mysql__field_metadata.h1"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__field_metadata.member_functions"></a></span><a class="link" href="boost__mysql__field_metadata.html#mysql.ref.boost__mysql__field_metadata.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/character_set.html" title="field_metadata::character_set">character_set</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the character set (<a class="link" href="boost__mysql__collation.html" title="collation"><code class="literal">collation</code></a>)
+                  for the column.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/column_length.html" title="field_metadata::column_length">column_length</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the maximum length of the field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/database.html" title="field_metadata::database">database</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the name of the database (schema) the field belongs to.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/decimals.html" title="field_metadata::decimals">decimals</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the number of decimals of the field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/field_metadata.html" title="field_metadata::field_metadata">field_metadata</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Default constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/field_name.html" title="field_metadata::field_name">field_name</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the actual name of the field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/has_no_default_value.html" title="field_metadata::has_no_default_value">has_no_default_value</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field does not have a default value.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_auto_increment.html" title="field_metadata::is_auto_increment">is_auto_increment</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is defined as <code class="computeroutput"><span class="identifier">AUTO_INCREMENT</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_multiple_key.html" title="field_metadata::is_multiple_key">is_multiple_key</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is part of a <code class="computeroutput"><span class="identifier">KEY</span></code>
+                  (but not a <code class="computeroutput"><span class="identifier">UNIQUE</span> <span class="identifier">KEY</span></code> or <code class="computeroutput"><span class="identifier">PRIMARY</span>
+                  <span class="identifier">KEY</span></code>).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_not_null.html" title="field_metadata::is_not_null">is_not_null</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is not allowed to be NULL, <code class="computeroutput"><span class="keyword">false</span></code>
+                  if it is nullable.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_primary_key.html" title="field_metadata::is_primary_key">is_primary_key</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is part of a <code class="computeroutput"><span class="identifier">PRIMARY</span>
+                  <span class="identifier">KEY</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_set_to_now_on_update.html" title="field_metadata::is_set_to_now_on_update">is_set_to_now_on_update</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is defined as <code class="computeroutput"><span class="identifier">ON</span>
+                  <span class="identifier">UPDATE</span> <span class="identifier">CURRENT_TIMESTAMP</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_unique_key.html" title="field_metadata::is_unique_key">is_unique_key</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is part of a <code class="computeroutput"><span class="identifier">UNIQUE</span>
+                  <span class="identifier">KEY</span></code> (but not a <code class="computeroutput"><span class="identifier">PRIMARY</span> <span class="identifier">KEY</span></code>).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_unsigned.html" title="field_metadata::is_unsigned">is_unsigned</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field has no sign (is <code class="computeroutput"><span class="identifier">UNSIGNED</span></code>).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/is_zerofill.html" title="field_metadata::is_zerofill">is_zerofill</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  field is defined as <code class="computeroutput"><span class="identifier">ZEROFILL</span></code>
+                  (padded to its maximum length by zeros).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/original_field_name.html" title="field_metadata::original_field_name">original_field_name</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the original (physical) name of the field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/original_table.html" title="field_metadata::original_table">original_table</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the name of the physical table the field belongs to.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/table.html" title="field_metadata::table">table</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the name of the virtual table the field belongs to.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__field_metadata/type.html" title="field_metadata::type">type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the type of the field (see <a class="link" href="boost__mysql__field_type.html" title="field_type"><code class="literal">field_type</code></a>
+                  for more info).
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="mysql.ref.boost__mysql__field_metadata.h2"></a>
+        <span class="phrase"><a name="mysql.ref.boost__mysql__field_metadata.description"></a></span><a class="link" href="boost__mysql__field_metadata.html#mysql.ref.boost__mysql__field_metadata.description">Description</a>
+      </h5>
+<p>
+        All strings point into externally owned memory. The object will be valid
+        while the parent object is alive (typically, a <a class="link" href="boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>
+        object).
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__mysql__execute_params/make_execute_params/overload2.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__field_metadata/field_metadata.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
