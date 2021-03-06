@@ -2,7 +2,7 @@
 <!DOCTYPE library PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "../../../../../tools/boostbook/dtd/boostbook.dtd">
 
 <!--
-    Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -41,6 +41,7 @@
 			<member><link linkend="mysql.ref.boost__mysql__date">date</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__time">time</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__datetime">datetime</link></member>
+			<member><link linkend="mysql.ref.boost__mysql__null_t">null_t</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__error_code">error_code</link></member>
         </simplelist>
       </entry>

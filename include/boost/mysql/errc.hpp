@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -621,7 +621,6 @@ enum class errc : int
     too_long_index_comment = 1688, ///< Server error. Error number: 1688, symbol: [mysqllink server-error-reference.html\#error_er_too_long_index_comment ER_TOO_LONG_INDEX_COMMENT].
     lock_aborted = 1689, ///< Server error. Error number: 1689, symbol: [mysqllink server-error-reference.html\#error_er_lock_aborted ER_LOCK_ABORTED].
     data_out_of_range = 1690, ///< Server error. Error number: 1690, symbol: [mysqllink server-error-reference.html\#error_er_data_out_of_range ER_DATA_OUT_OF_RANGE].
-    wrong_spvar_type_in_limit = 1691, ///< Server error. Error number: 1691, symbol: [mysqllink server-error-reference.html\#error_er_wrong_spvar_type_in_limit ER_WRONG_SPVAR_TYPE_IN_LIMIT].
     binlog_unsafe_multiple_engines_and_self_logging_engine = 1692, ///< Server error. Error number: 1692, symbol: [mysqllink server-error-reference.html\#error_er_binlog_unsafe_multiple_engines_and_self_logging_engine ER_BINLOG_UNSAFE_MULTIPLE_ENGINES_AND_SELF_LOGGING_ENGINE].
     binlog_unsafe_mixed_statement = 1693, ///< Server error. Error number: 1693, symbol: [mysqllink server-error-reference.html\#error_er_binlog_unsafe_mixed_statement ER_BINLOG_UNSAFE_MIXED_STATEMENT].
     inside_transaction_prevents_switch_sql_log_bin = 1694, ///< Server error. Error number: 1694, symbol: [mysqllink server-error-reference.html\#error_er_inside_transaction_prevents_switch_sql_log_bin ER_INSIDE_TRANSACTION_PREVENTS_SWITCH_SQL_LOG_BIN].
@@ -773,7 +772,6 @@ enum class errc : int
     alter_operation_not_supported_reason_hidden_fts = 1855, ///< Server error. Error number: 1855, symbol: [mysqllink server-error-reference.html\#error_er_alter_operation_not_supported_reason_hidden_fts ER_ALTER_OPERATION_NOT_SUPPORTED_REASON_HIDDEN_FTS].
     alter_operation_not_supported_reason_change_fts = 1856, ///< Server error. Error number: 1856, symbol: [mysqllink server-error-reference.html\#error_er_alter_operation_not_supported_reason_change_fts ER_ALTER_OPERATION_NOT_SUPPORTED_REASON_CHANGE_FTS].
     alter_operation_not_supported_reason_fts = 1857, ///< Server error. Error number: 1857, symbol: [mysqllink server-error-reference.html\#error_er_alter_operation_not_supported_reason_fts ER_ALTER_OPERATION_NOT_SUPPORTED_REASON_FTS].
-    sql_slave_skip_counter_not_settable_in_gtid_mode = 1858, ///< Server error. Error number: 1858, symbol: [mysqllink server-error-reference.html\#error_er_sql_slave_skip_counter_not_settable_in_gtid_mode ER_SQL_SLAVE_SKIP_COUNTER_NOT_SETTABLE_IN_GTID_MODE].
     dup_unknown_in_index = 1859, ///< Server error. Error number: 1859, symbol: [mysqllink server-error-reference.html\#error_er_dup_unknown_in_index ER_DUP_UNKNOWN_IN_INDEX].
     ident_causes_too_long_path = 1860, ///< Server error. Error number: 1860, symbol: [mysqllink server-error-reference.html\#error_er_ident_causes_too_long_path ER_IDENT_CAUSES_TOO_LONG_PATH].
     alter_operation_not_supported_reason_not_null = 1861, ///< Server error. Error number: 1861, symbol: [mysqllink server-error-reference.html\#error_er_alter_operation_not_supported_reason_not_null ER_ALTER_OPERATION_NOT_SUPPORTED_REASON_NOT_NULL].
@@ -992,6 +990,7 @@ enum class errc : int
     keyring_access_denied_error = 3202, ///< Server error. Error number: 3202, symbol: [mysqllink server-error-reference.html\#error_er_keyring_access_denied_error ER_KEYRING_ACCESS_DENIED_ERROR].
     keyring_migration_status = 3203, ///< Server error. Error number: 3203, symbol: [mysqllink server-error-reference.html\#error_er_keyring_migration_status ER_KEYRING_MIGRATION_STATUS].
     audit_log_udf_read_invalid_max_array_length_arg_value = 3218, ///< Server error. Error number: 3218, symbol: [mysqllink server-error-reference.html\#error_er_audit_log_udf_read_invalid_max_array_length_arg_value ER_AUDIT_LOG_UDF_READ_INVALID_MAX_ARRAY_LENGTH_ARG_VALUE].
+    write_set_exceeds_limit = 3231, ///< Server error. Error number: 3231, symbol: [mysqllink server-error-reference.html\#error_er_write_set_exceeds_limit ER_WRITE_SET_EXCEEDS_LIMIT].
     unsupport_compressed_temporary_table = 3500, ///< Server error. Error number: 3500, symbol: [mysqllink server-error-reference.html\#error_er_unsupport_compressed_temporary_table ER_UNSUPPORT_COMPRESSED_TEMPORARY_TABLE].
     acl_operation_failed = 3501, ///< Server error. Error number: 3501, symbol: [mysqllink server-error-reference.html\#error_er_acl_operation_failed ER_ACL_OPERATION_FAILED].
     unsupported_index_algorithm = 3502, ///< Server error. Error number: 3502, symbol: [mysqllink server-error-reference.html\#error_er_unsupported_index_algorithm ER_UNSUPPORTED_INDEX_ALGORITHM].
@@ -1454,6 +1453,70 @@ enum class errc : int
     warn_deprecated_values_function_always_null = 3963, ///< Server error. Error number: 3963, symbol: [mysqllink server-error-reference.html\#error_er_warn_deprecated_values_function_always_null ER_WARN_DEPRECATED_VALUES_FUNCTION_ALWAYS_NULL].
     warn_deprecated_sql_calc_found_rows = 3964, ///< Server error. Error number: 3964, symbol: [mysqllink server-error-reference.html\#error_er_warn_deprecated_sql_calc_found_rows ER_WARN_DEPRECATED_SQL_CALC_FOUND_ROWS].
     warn_deprecated_found_rows = 3965, ///< Server error. Error number: 3965, symbol: [mysqllink server-error-reference.html\#error_er_warn_deprecated_found_rows ER_WARN_DEPRECATED_FOUND_ROWS].
+    missing_json_value = 3966, ///< Server error. Error number: 3966, symbol: [mysqllink server-error-reference.html\#error_er_missing_json_value ER_MISSING_JSON_VALUE].
+    multiple_json_values = 3967, ///< Server error. Error number: 3967, symbol: [mysqllink server-error-reference.html\#error_er_multiple_json_values ER_MULTIPLE_JSON_VALUES].
+    hostname_too_long = 3968, ///< Server error. Error number: 3968, symbol: [mysqllink server-error-reference.html\#error_er_hostname_too_long ER_HOSTNAME_TOO_LONG].
+    warn_client_deprecated_partition_prefix_key = 3969, ///< Server error. Error number: 3969, symbol: [mysqllink server-error-reference.html\#error_er_warn_client_deprecated_partition_prefix_key ER_WARN_CLIENT_DEPRECATED_PARTITION_PREFIX_KEY].
+    group_replication_user_empty_msg = 3970, ///< Server error. Error number: 3970, symbol: [mysqllink server-error-reference.html\#error_er_group_replication_user_empty_msg ER_GROUP_REPLICATION_USER_EMPTY_MSG].
+    group_replication_user_mandatory_msg = 3971, ///< Server error. Error number: 3971, symbol: [mysqllink server-error-reference.html\#error_er_group_replication_user_mandatory_msg ER_GROUP_REPLICATION_USER_MANDATORY_MSG].
+    group_replication_password_length = 3972, ///< Server error. Error number: 3972, symbol: [mysqllink server-error-reference.html\#error_er_group_replication_password_length ER_GROUP_REPLICATION_PASSWORD_LENGTH].
+    subquery_transform_rejected = 3973, ///< Server error. Error number: 3973, symbol: [mysqllink server-error-reference.html\#error_er_subquery_transform_rejected ER_SUBQUERY_TRANSFORM_REJECTED].
+    da_grp_rpl_recovery_endpoint_format = 3974, ///< Server error. Error number: 3974, symbol: [mysqllink server-error-reference.html\#error_er_da_grp_rpl_recovery_endpoint_format ER_DA_GRP_RPL_RECOVERY_ENDPOINT_FORMAT].
+    da_grp_rpl_recovery_endpoint_invalid = 3975, ///< Server error. Error number: 3975, symbol: [mysqllink server-error-reference.html\#error_er_da_grp_rpl_recovery_endpoint_invalid ER_DA_GRP_RPL_RECOVERY_ENDPOINT_INVALID].
+    wrong_value_for_var_plus_actionable_part = 3976, ///< Server error. Error number: 3976, symbol: [mysqllink server-error-reference.html\#error_er_wrong_value_for_var_plus_actionable_part ER_WRONG_VALUE_FOR_VAR_PLUS_ACTIONABLE_PART].
+    statement_not_allowed_after_start_transaction = 3977, ///< Server error. Error number: 3977, symbol: [mysqllink server-error-reference.html\#error_er_statement_not_allowed_after_start_transaction ER_STATEMENT_NOT_ALLOWED_AFTER_START_TRANSACTION].
+    foreign_key_with_atomic_create_select = 3978, ///< Server error. Error number: 3978, symbol: [mysqllink server-error-reference.html\#error_er_foreign_key_with_atomic_create_select ER_FOREIGN_KEY_WITH_ATOMIC_CREATE_SELECT].
+    not_allowed_with_start_transaction = 3979, ///< Server error. Error number: 3979, symbol: [mysqllink server-error-reference.html\#error_er_not_allowed_with_start_transaction ER_NOT_ALLOWED_WITH_START_TRANSACTION].
+    invalid_json_attribute = 3980, ///< Server error. Error number: 3980, symbol: [mysqllink server-error-reference.html\#error_er_invalid_json_attribute ER_INVALID_JSON_ATTRIBUTE].
+    engine_attribute_not_supported = 3981, ///< Server error. Error number: 3981, symbol: [mysqllink server-error-reference.html\#error_er_engine_attribute_not_supported ER_ENGINE_ATTRIBUTE_NOT_SUPPORTED].
+    invalid_user_attribute_json = 3982, ///< Server error. Error number: 3982, symbol: [mysqllink server-error-reference.html\#error_er_invalid_user_attribute_json ER_INVALID_USER_ATTRIBUTE_JSON].
+    innodb_redo_disabled = 3983, ///< Server error. Error number: 3983, symbol: [mysqllink server-error-reference.html\#error_er_innodb_redo_disabled ER_INNODB_REDO_DISABLED].
+    innodb_redo_archiving_enabled = 3984, ///< Server error. Error number: 3984, symbol: [mysqllink server-error-reference.html\#error_er_innodb_redo_archiving_enabled ER_INNODB_REDO_ARCHIVING_ENABLED].
+    mdl_out_of_resources = 3985, ///< Server error. Error number: 3985, symbol: [mysqllink server-error-reference.html\#error_er_mdl_out_of_resources ER_MDL_OUT_OF_RESOURCES].
+    implicit_comparison_for_json = 3986, ///< Server error. Error number: 3986, symbol: [mysqllink server-error-reference.html\#error_er_implicit_comparison_for_json ER_IMPLICIT_COMPARISON_FOR_JSON].
+    function_does_not_support_character_set = 3987, ///< Server error. Error number: 3987, symbol: [mysqllink server-error-reference.html\#error_er_function_does_not_support_character_set ER_FUNCTION_DOES_NOT_SUPPORT_CHARACTER_SET].
+    impossible_string_conversion = 3988, ///< Server error. Error number: 3988, symbol: [mysqllink server-error-reference.html\#error_er_impossible_string_conversion ER_IMPOSSIBLE_STRING_CONVERSION].
+    schema_read_only = 3989, ///< Server error. Error number: 3989, symbol: [mysqllink server-error-reference.html\#error_er_schema_read_only ER_SCHEMA_READ_ONLY].
+    rpl_async_reconnect_gtid_mode_off = 3990, ///< Server error. Error number: 3990, symbol: [mysqllink server-error-reference.html\#error_er_rpl_async_reconnect_gtid_mode_off ER_RPL_ASYNC_RECONNECT_GTID_MODE_OFF].
+    rpl_async_reconnect_auto_position_off = 3991, ///< Server error. Error number: 3991, symbol: [mysqllink server-error-reference.html\#error_er_rpl_async_reconnect_auto_position_off ER_RPL_ASYNC_RECONNECT_AUTO_POSITION_OFF].
+    disable_gtid_mode_requires_async_reconnect_off = 3992, ///< Server error. Error number: 3992, symbol: [mysqllink server-error-reference.html\#error_er_disable_gtid_mode_requires_async_reconnect_off ER_DISABLE_GTID_MODE_REQUIRES_ASYNC_RECONNECT_OFF].
+    disable_auto_position_requires_async_reconnect_off = 3993, ///< Server error. Error number: 3993, symbol: [mysqllink server-error-reference.html\#error_er_disable_auto_position_requires_async_reconnect_off ER_DISABLE_AUTO_POSITION_REQUIRES_ASYNC_RECONNECT_OFF].
+    invalid_parameter_use = 3994, ///< Server error. Error number: 3994, symbol: [mysqllink server-error-reference.html\#error_er_invalid_parameter_use ER_INVALID_PARAMETER_USE].
+    character_set_mismatch = 3995, ///< Server error. Error number: 3995, symbol: [mysqllink server-error-reference.html\#error_er_character_set_mismatch ER_CHARACTER_SET_MISMATCH].
+    warn_var_value_change_not_supported = 3996, ///< Server error. Error number: 3996, symbol: [mysqllink server-error-reference.html\#error_er_warn_var_value_change_not_supported ER_WARN_VAR_VALUE_CHANGE_NOT_SUPPORTED].
+    invalid_time_zone_interval = 3997, ///< Server error. Error number: 3997, symbol: [mysqllink server-error-reference.html\#error_er_invalid_time_zone_interval ER_INVALID_TIME_ZONE_INTERVAL].
+    invalid_cast = 3998, ///< Server error. Error number: 3998, symbol: [mysqllink server-error-reference.html\#error_er_invalid_cast ER_INVALID_CAST].
+    hypergraph_not_supported_yet = 3999, ///< Server error. Error number: 3999, symbol: [mysqllink server-error-reference.html\#error_er_hypergraph_not_supported_yet ER_HYPERGRAPH_NOT_SUPPORTED_YET].
+    warn_hypergraph_experimental = 4000, ///< Server error. Error number: 4000, symbol: [mysqllink server-error-reference.html\#error_er_warn_hypergraph_experimental ER_WARN_HYPERGRAPH_EXPERIMENTAL].
+    da_no_error_log_parser_configured = 4001, ///< Server error. Error number: 4001, symbol: [mysqllink server-error-reference.html\#error_er_da_no_error_log_parser_configured ER_DA_NO_ERROR_LOG_PARSER_CONFIGURED].
+    da_error_log_table_disabled = 4002, ///< Server error. Error number: 4002, symbol: [mysqllink server-error-reference.html\#error_er_da_error_log_table_disabled ER_DA_ERROR_LOG_TABLE_DISABLED].
+    da_error_log_multiple_filters = 4003, ///< Server error. Error number: 4003, symbol: [mysqllink server-error-reference.html\#error_er_da_error_log_multiple_filters ER_DA_ERROR_LOG_MULTIPLE_FILTERS].
+    da_cant_open_error_log = 4004, ///< Server error. Error number: 4004, symbol: [mysqllink server-error-reference.html\#error_er_da_cant_open_error_log ER_DA_CANT_OPEN_ERROR_LOG].
+    user_referenced_as_definer = 4005, ///< Server error. Error number: 4005, symbol: [mysqllink server-error-reference.html\#error_er_user_referenced_as_definer ER_USER_REFERENCED_AS_DEFINER].
+    cannot_user_referenced_as_definer = 4006, ///< Server error. Error number: 4006, symbol: [mysqllink server-error-reference.html\#error_er_cannot_user_referenced_as_definer ER_CANNOT_USER_REFERENCED_AS_DEFINER].
+    regex_number_too_big = 4007, ///< Server error. Error number: 4007, symbol: [mysqllink server-error-reference.html\#error_er_regex_number_too_big ER_REGEX_NUMBER_TOO_BIG].
+    spvar_noninteger_type = 4008, ///< Server error. Error number: 4008, symbol: [mysqllink server-error-reference.html\#error_er_spvar_noninteger_type ER_SPVAR_NONINTEGER_TYPE].
+    binlog_unsafe_acl_table_read_in_dml_ddl = 4010, ///< Server error. Error number: 4010, symbol: [mysqllink server-error-reference.html\#error_er_binlog_unsafe_acl_table_read_in_dml_ddl ER_BINLOG_UNSAFE_ACL_TABLE_READ_IN_DML_DDL].
+    stop_replica_monitor_io_thread_timeout = 4011, ///< Server error. Error number: 4011, symbol: [mysqllink server-error-reference.html\#error_er_stop_replica_monitor_io_thread_timeout ER_STOP_REPLICA_MONITOR_IO_THREAD_TIMEOUT].
+    starting_replica_monitor_io_thread = 4012, ///< Server error. Error number: 4012, symbol: [mysqllink server-error-reference.html\#error_er_starting_replica_monitor_io_thread ER_STARTING_REPLICA_MONITOR_IO_THREAD].
+    cant_use_anonymous_to_gtid_with_gtid_mode_not_on = 4013, ///< Server error. Error number: 4013, symbol: [mysqllink server-error-reference.html\#error_er_cant_use_anonymous_to_gtid_with_gtid_mode_not_on ER_CANT_USE_ANONYMOUS_TO_GTID_WITH_GTID_MODE_NOT_ON].
+    cant_combine_anonymous_to_gtid_and_autoposition = 4014, ///< Server error. Error number: 4014, symbol: [mysqllink server-error-reference.html\#error_er_cant_combine_anonymous_to_gtid_and_autoposition ER_CANT_COMBINE_ANONYMOUS_TO_GTID_AND_AUTOPOSITION].
+    assign_gtids_to_anonymous_transactions_requires_gtid_mode_on = 4015, ///< Server error. Error number: 4015, symbol: [mysqllink server-error-reference.html\#error_er_assign_gtids_to_anonymous_transactions_requires_gtid_mode_on ER_ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS_REQUIRES_GTID_MODE_ON].
+    sql_slave_skip_counter_used_with_gtid_mode_on = 4016, ///< Server error. Error number: 4016, symbol: [mysqllink server-error-reference.html\#error_er_sql_slave_skip_counter_used_with_gtid_mode_on ER_SQL_SLAVE_SKIP_COUNTER_USED_WITH_GTID_MODE_ON].
+    using_assign_gtids_to_anonymous_transactions_as_local_or_uuid = 4017, ///< Server error. Error number: 4017, symbol: [mysqllink server-error-reference.html\#error_er_using_assign_gtids_to_anonymous_transactions_as_local_or_uuid ER_USING_ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS_AS_LOCAL_OR_UUID].
+    cant_set_anonymous_to_gtid_and_wait_until_sql_thd_after_gtids = 4018, ///< Server error. Error number: 4018, symbol: [mysqllink server-error-reference.html\#error_er_cant_set_anonymous_to_gtid_and_wait_until_sql_thd_after_gtids ER_CANT_SET_ANONYMOUS_TO_GTID_AND_WAIT_UNTIL_SQL_THD_AFTER_GTIDS].
+    cant_set_sql_after_or_before_gtids_with_anonymous_to_gtid = 4019, ///< Server error. Error number: 4019, symbol: [mysqllink server-error-reference.html\#error_er_cant_set_sql_after_or_before_gtids_with_anonymous_to_gtid ER_CANT_SET_SQL_AFTER_OR_BEFORE_GTIDS_WITH_ANONYMOUS_TO_GTID].
+    anonymous_to_gtid_uuid_same_as_group_name = 4020, ///< Server error. Error number: 4020, symbol: [mysqllink server-error-reference.html\#error_er_anonymous_to_gtid_uuid_same_as_group_name ER_ANONYMOUS_TO_GTID_UUID_SAME_AS_GROUP_NAME].
+    cant_use_same_uuid_as_group_name = 4021, ///< Server error. Error number: 4021, symbol: [mysqllink server-error-reference.html\#error_er_cant_use_same_uuid_as_group_name ER_CANT_USE_SAME_UUID_AS_GROUP_NAME].
+    grp_rpl_recovery_channel_still_running = 4022, ///< Server error. Error number: 4022, symbol: [mysqllink server-error-reference.html\#error_er_grp_rpl_recovery_channel_still_running ER_GRP_RPL_RECOVERY_CHANNEL_STILL_RUNNING].
+    innodb_invalid_autoextend_size_value = 4023, ///< Server error. Error number: 4023, symbol: [mysqllink server-error-reference.html\#error_er_innodb_invalid_autoextend_size_value ER_INNODB_INVALID_AUTOEXTEND_SIZE_VALUE].
+    innodb_incompatible_with_tablespace = 4024, ///< Server error. Error number: 4024, symbol: [mysqllink server-error-reference.html\#error_er_innodb_incompatible_with_tablespace ER_INNODB_INCOMPATIBLE_WITH_TABLESPACE].
+    innodb_autoextend_size_out_of_range = 4025, ///< Server error. Error number: 4025, symbol: [mysqllink server-error-reference.html\#error_er_innodb_autoextend_size_out_of_range ER_INNODB_AUTOEXTEND_SIZE_OUT_OF_RANGE].
+    cannot_use_autoextend_size_clause = 4026, ///< Server error. Error number: 4026, symbol: [mysqllink server-error-reference.html\#error_er_cannot_use_autoextend_size_clause ER_CANNOT_USE_AUTOEXTEND_SIZE_CLAUSE].
+    role_granted_to_itself = 4027, ///< Server error. Error number: 4027, symbol: [mysqllink server-error-reference.html\#error_er_role_granted_to_itself ER_ROLE_GRANTED_TO_ITSELF].
+    table_must_have_a_visible_column = 4028, ///< Server error. Error number: 4028, symbol: [mysqllink server-error-reference.html\#error_er_table_must_have_a_visible_column ER_TABLE_MUST_HAVE_A_VISIBLE_COLUMN].
+    innodb_compression_failure = 4029, ///< Server error. Error number: 4029, symbol: [mysqllink server-error-reference.html\#error_er_innodb_compression_failure ER_INNODB_COMPRESSION_FAILURE].
+    warn_async_conn_failover_network_namespace = 4030, ///< Server error. Error number: 4030, symbol: [mysqllink server-error-reference.html\#error_er_warn_async_conn_failover_network_namespace ER_WARN_ASYNC_CONN_FAILOVER_NETWORK_NAMESPACE].
     incomplete_message = 65536, ///< Client error. An incomplete message was received from the server
     extra_bytes = 65537, ///< Client error. Unexpected extra bytes at the end of a message were received
     sequence_number_mismatch = 65538, ///< Client error. Mismatched sequence numbers

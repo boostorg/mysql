@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -30,7 +30,7 @@ inline protocol_field_type get_protocol_field_type(
         protocol_field_type operator()(date) const noexcept { return protocol_field_type::date; }
         protocol_field_type operator()(datetime) const noexcept { return protocol_field_type::datetime; }
         protocol_field_type operator()(time) const noexcept { return protocol_field_type::time; }
-        protocol_field_type operator()(std::nullptr_t) const noexcept { return protocol_field_type::null; }
+        protocol_field_type operator()(null_t) const noexcept { return protocol_field_type::null; }
     };
     return boost::variant2::visit(visitor(), input.to_variant());
 }

@@ -13,11 +13,10 @@
   xmlns:d="http://github.com/vinniefalco/docca"
   expand-text="yes">
 
-  <xsl:output method="text"/>
-
   <xsl:import href="common.xsl"/>
 
-  <xsl:include href="config.xsl"/>
+  <xsl:output method="text"/>
+
   <xsl:include href="emphasized-types.xsl"/>
 
   <xsl:param name="DEBUG" select="false()"/>
@@ -146,6 +145,9 @@
   <xsl:template mode="before" match="emphasis">['</xsl:template>
   <xsl:template mode="after"  match="emphasis">]</xsl:template>
 
+  <xsl:template mode="before" match="role">[role {@class} </xsl:template>
+  <xsl:template mode="after"  match="role">]</xsl:template>
+
   <xsl:template mode="before" match="ulink">[@{@url} </xsl:template>
   <xsl:template mode="after"  match="ulink">]</xsl:template>
 
@@ -188,6 +190,8 @@
 
   <xsl:template match="linebreak">{$nl}{$nl}</xsl:template>
 
+  <xsl:template match="br">[br]</xsl:template>
+
   <xsl:template mode="before" match="programlisting">{$nl}```{$nl}</xsl:template>
   <xsl:template mode="after"  match="programlisting"     >```{$nl}</xsl:template>
 
@@ -195,6 +199,10 @@
 
   <!-- Ignore whitespace-only text nodes -->
   <xsl:template match="text()[not(normalize-space())]"/>
+
+  <xsl:template match="text()">
+    <xsl:sequence select="d:qb-escape(.)"/>
+  </xsl:template>
 
   <!-- Boilerplate default rules for elements -->
   <!-- Convention of this stylesheet is to favor use of just "before" and "after"

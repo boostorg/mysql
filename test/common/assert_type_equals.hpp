@@ -1,9 +1,12 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
+
+#ifndef BOOST_MYSQL_TEST_COMMON_ASSERT_TYPE_EQUALS_HPP
+#define BOOST_MYSQL_TEST_COMMON_ASSERT_TYPE_EQUALS_HPP
 
 #include <type_traits>
 #include <boost/type_index.hpp>
@@ -25,3 +28,5 @@ void assert_type_equals()
 }
 }
 }
+
+#endif

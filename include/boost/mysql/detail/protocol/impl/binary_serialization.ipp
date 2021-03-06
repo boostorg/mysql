@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -127,7 +127,7 @@ struct size_visitor
     std::size_t operator()(const date&) noexcept { return binc::date_sz + binc::length_sz; }
     std::size_t operator()(const datetime&) noexcept { return binc::datetime_dhmsu_sz + binc::length_sz; }
     std::size_t operator()(const time&) noexcept { return binc::time_dhmsu_sz + binc::length_sz; }
-    std::size_t operator()(std::nullptr_t) noexcept { return 0; }
+    std::size_t operator()(null_t) noexcept { return 0; }
 };
 
 struct serialize_visitor
@@ -142,7 +142,7 @@ struct serialize_visitor
     void operator()(std::int64_t v) noexcept { serialize(ctx, v); }
     void operator()(std::uint64_t v) noexcept { serialize(ctx, v); }
     void operator()(boost::string_view v) noexcept { serialize(ctx, string_lenenc(v)); }
-    void operator()(std::nullptr_t) noexcept {}
+    void operator()(null_t) noexcept {}
 };
 
 } // detail

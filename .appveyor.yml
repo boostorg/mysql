@@ -5,6 +5,11 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+branches:
+  except:
+    - value-relational-operators
+    - gh-pages
+
 matrix:
   fast_finish: true
 

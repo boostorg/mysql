@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,9 +7,11 @@
 
 #include "boost/mysql/value.hpp"
 #include "test_common.hpp"
+#include <boost/test/unit_test_suite.hpp>
 #include <boost/type_index.hpp>
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
+#include <set>
 #include <sstream>
 #include <map>
 #include <tuple>
@@ -18,6 +20,7 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::value::variant_type)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::null_t)
 
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
@@ -65,8 +68,9 @@ const T& const_int()
 }
 
 const value_constructor_sample all_value_constructor_samples [] {
-    value_constructor_sample("default_constructor", value(), vt(nullptr)),
-    value_constructor_sample("from_nullptr", value(nullptr), vt(nullptr)),
+    value_constructor_sample("default_constructor", value(), vt(boost::variant2::monostate())),
+    value_constructor_sample("from_null_t", value(boost::mysql::null_t()), vt(boost::variant2::monostate())),
+    value_constructor_sample("from_nullptr", value(nullptr), vt(boost::variant2::monostate())),
     value_constructor_sample("from_u8", value(std::uint8_t(0xff)), vt(std::uint64_t(0xff))),
     value_constructor_sample("from_u8_const_lvalue", value(const_int<std::uint8_t>()), vt(std::uint64_t(42))),
     value_constructor_sample("from_u8_lvalue", value(non_const_int<std::uint8_t>()), vt(std::uint64_t(42))),
@@ -162,7 +166,7 @@ BOOST_AUTO_TEST_CASE(move_assignment)
 
 // accessors: is, is_convertible_to, is_null, get, get_optional
 using all_types = std::tuple<
-    std::nullptr_t,
+    boost::mysql::null_t,
     std::uint64_t,
     std::int64_t,
     boost::string_view,
@@ -179,12 +183,14 @@ struct accessors_sample
     value v;
     type_index is_type; // the type for which is() should return true
     std::map<type_index, vt> conversions;
+    bool is_null;
 
-    accessors_sample(const char* name, value v, type_index is, std::map<type_index, vt>&& convs) :
+    accessors_sample(const char* name, value v, type_index is, std::map<type_index, vt>&& convs, bool is_null = false) :
         name(name),
         v(v),
         is_type(is),
-        conversions(std::move(convs))
+        conversions(std::move(convs)),
+        is_null(is_null)
     {
     }
 };
@@ -203,14 +209,15 @@ std::map<type_index, vt> make_conversions(const Types&... types)
 template <class T>
 accessors_sample make_default_accessors_sample(
     const char* name,
-    const T& v
+    const T& v,
+    bool is_null = false
 )
 {
-    return accessors_sample(name, value(v), type_id<T>(), make_conversions(v));
+    return accessors_sample(name, value(v), type_id<T>(), make_conversions(v), is_null);
 }
 
 const accessors_sample all_accessors_samples [] {
-    make_default_accessors_sample("null", nullptr),
+    make_default_accessors_sample("null", boost::mysql::null_t(), true),
     accessors_sample("i64_positive", value(std::int64_t(42)), type_id<std::int64_t>(),
             make_conversions(std::int64_t(42), std::uint64_t(42))),
     accessors_sample("i64_negative", value(std::int64_t(-42)), type_id<std::int64_t>(),
@@ -246,8 +253,7 @@ void for_each_accessors_sample(Callable&& cb)
 
 BOOST_DATA_TEST_CASE(is_null, data::make(all_accessors_samples))
 {
-    bool expected = sample.is_type == type_id<std::nullptr_t>();
-    BOOST_TEST(sample.v.is_null() == expected);
+    BOOST_TEST(sample.v.is_null() == sample.is_null);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(is, T, all_types)
@@ -336,7 +342,7 @@ struct value_equality_fixture
         makedate(2019, 10, 1),
         makedt(2019, 10, 1, 10),
         maket(0, 0, -10),
-        nullptr
+        boost::mysql::null_t()
     );
 };
 
@@ -363,10 +369,10 @@ BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_different_value, value_equalit
         makedate(2019, 9, 1),
         makedt(2019, 9, 1, 10),
         maket(0, 0, 10),
-        nullptr
+        boost::mysql::null_t()
     );
 
-    // Note: nullptr_t (the last value) can't have other value than nullptr
+    // Note: null_t (the last value) can't have other value than null_t()
     // so it is excluded from this test
     for (std::size_t i = 0; i < values.size() - 1; ++i)
     {
@@ -622,7 +628,7 @@ void add_time_samples(std::vector<stream_sample>& output)
 std::vector<stream_sample> make_stream_samples()
 {
     std::vector<stream_sample> res {
-        { "null", nullptr, "<NULL>" },
+        { "null", boost::mysql::null_t(), "<NULL>" },
         { "i64_positive", std::int64_t(42), "42" },
         { "i64_negative", std::int64_t(-90), "-90" },
         { "i64_zero", std::int64_t(0), "0" },
@@ -643,6 +649,61 @@ BOOST_DATA_TEST_CASE(operator_stream, data::make(make_stream_samples()))
     std::ostringstream ss;
     ss << sample.input;
     BOOST_TEST(ss.str() == sample.expected);
+}
+
+// Operators <, <=, >, >= (variant behavior)
+BOOST_AUTO_TEST_CASE(operator_lt)
+{
+    BOOST_TEST(value(100) < value(200)); // same type
+    BOOST_TEST(value(-2) < value("hola")); // different type
+    BOOST_TEST(!(value(200) < value(200))); // same type
+    BOOST_TEST(!(value("hola") < value(2))); // different type
+}
+
+BOOST_AUTO_TEST_CASE(operator_lte)
+{
+    BOOST_TEST(value(200) <= value(200)); // same type
+    BOOST_TEST(value(-2) <= value("hola")); // different type
+    BOOST_TEST(!(value(300) <= value(200))); // same type
+    BOOST_TEST(!(value("hola") <= value(2))); // different type
+}
+
+BOOST_AUTO_TEST_CASE(operator_gt)
+{
+    BOOST_TEST(value(200) > value(100)); // same type
+    BOOST_TEST(value("hola") > value(2)); // different type
+    BOOST_TEST(!(value(200) > value(200))); // same type
+    BOOST_TEST(!(value(-2) > value("hola"))); // different type
+    BOOST_TEST(value(std::uint64_t(10)) > value(std::int64_t(20))); // example
+}
+
+BOOST_AUTO_TEST_CASE(operator_gte)
+{
+    BOOST_TEST(value(200) >= value(200)); // same type
+    BOOST_TEST(value("hola") >= value(-2)); // different type
+    BOOST_TEST(!(value(200) >= value(300))); // same type
+    BOOST_TEST(!(value(2) >= value("hola"))); // different type
+}
+
+// Can be placed in containers
+BOOST_AUTO_TEST_CASE(can_be_placed_in_set)
+{
+    std::set<value> s { value(200), value("hola"), value(200) };
+    BOOST_TEST(s.size() == 2);
+    s.emplace("test");
+    BOOST_TEST(s.size() == 3);
+}
+
+BOOST_AUTO_TEST_CASE(can_be_placed_in_map)
+{
+    std::map<value, const char*> m;
+    m[value(200)] = "msg0";
+    m[value("key")] = "msg1";
+    BOOST_TEST(m.size() == 2);
+    BOOST_TEST(m.at(value("key")) == "msg1");
+    m[value("key")] = "msg2";
+    BOOST_TEST(m.size() == 2);
+    BOOST_TEST(m.at(value("key")) == "msg2");
 }
 
 BOOST_AUTO_TEST_SUITE_END() // test_value

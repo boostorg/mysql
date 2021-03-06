@@ -32,7 +32,7 @@ BASE_FILES = [
 HTML_GEN_PATH = path.join(REPO_BASE, 'doc', 'html')
 
 HEADER_TEMPLATE = '''{begin}
-{linesym} Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+{linesym} Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 {linesym}
 {linesym} Distributed under the Boost Software License, Version 1.0. (See accompanying
 {linesym} file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -130,6 +130,7 @@ bash_processor = NormalProcessor('bash', gen_header('#', shebang='#!/bin/bash'))
 bat_processor = NormalProcessor('bat', gen_header('REM'))
 
 FILE_PROCESSORS = [
+    ('docca-stage2-noescape.xsl', IgnoreProcessor()),
     ('CMakeLists.txt', hash_processor),
     ('.cmake', hash_processor),
     ('.cmake.in', hash_processor),

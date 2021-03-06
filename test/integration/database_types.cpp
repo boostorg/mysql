@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -401,7 +401,7 @@ void add_datetime_samples(std::vector<database_types_sample>& output)
                 output.push_back(create_datetime_sample(
                     decimals,
                     stringize(length, '_', invalid_date_case),
-                    value(nullptr),
+                    value(),
                     field_type::datetime
                 ));
             }
@@ -418,7 +418,7 @@ void add_timestamp_samples(std::vector<database_types_sample>& output)
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
         output.push_back(create_datetime_sample(decimals,
-            "zero", value(nullptr), field_type::timestamp));
+            "zero", value(), field_type::timestamp));
     }
 }
 

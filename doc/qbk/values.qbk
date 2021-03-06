@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -33,8 +33,8 @@ For more information about the type mappings, see [link mysql.types this section
 
 [heading NULL values]
 
-NULL values are represented as a [reflink value] containing `nullptr`,
-of type `std::nullptr_t`. You can test if a value is NULL using
+NULL values are represented as a [reflink value] containing the monostate
+type [reflink null_t]. You can test if a value is NULL using
 [refmem value is_null]
 
 [heading Accessing the underlying value]
@@ -141,9 +141,31 @@ see [link mysql.resultsets this section].
 
 [endsect]
 
+[section:relational Relational operators]
+
+Values can be compared for equality ([reflink2 value.operator_eq__eq_ value::operator==]
+and [reflink2 value.operator_not__eq_ value::operator!=]). These operators take into account both type and value,
+so `value(std::int64_t(200)) != value(std::uint64_t(200))`.
+
+Values also define the four inequality operators ([reflink2 value.operator_gt_ value::operator>],
+[reflink2 value.operator_gt__eq_ value::operator>=], [reflink2 value.operator_lt_ value::operator<] and
+[reflink2 value.operator_lt__eq_ value::operator<=]).
+
+These operators use the underlying variant's definition
+for inequality, so they also take into account both type and value. This may lead to counter-intuitive
+results, such as `value(std::uint64_t(10)) > value(std::int64_t(20))`. The main purpose of these
+operators is allowing [reflink value]s as keys to ordered containers. If you need to perform
+actual logical comparisons between integers, cast the values to integer types using one of
+the accessor functions, instead. This behavior may change in the future.
+
+Values do not define `std::hash` yet, as `boost::string_view` does not support it.
+This means that [reflink value]s cannot be used as keys to unordered containers.
+
+[endsect]
+
 [heading Other operations]
 
-Values may be streamed and compared for equality. If you need
+Values may also be streamed. If you need
 to `visit()` a [reflink value], use [refmem value to_variant]
 and use `visit()` on the returned variant. Additionally,
 [reflink row] objects may also

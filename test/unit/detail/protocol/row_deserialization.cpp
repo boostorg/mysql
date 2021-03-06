@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -132,10 +132,10 @@ std::vector<row_sample> make_ok_samples()
                 make_value_vector(nullptr, nullptr),
                 {protocol_field_type::tiny, protocol_field_type::tiny}),
         row_sample(bin, "six_nulls", {0x00, 0xfc},
-                std::vector<value>(6, value(nullptr)),
+                std::vector<value>(6, value()),
                 std::vector<protocol_field_type>(6, protocol_field_type::tiny)),
         row_sample(bin, "seven_nulls", {0x00, 0xfc, 0x01},
-                std::vector<value>(7, value(nullptr)),
+                std::vector<value>(7, value()),
                 std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
         row_sample(bin, "several_values", {
                 0x00, 0x90, 0x00, 0xfd, 0x14, 0x00, 0xc3, 0xf5, 0x48,

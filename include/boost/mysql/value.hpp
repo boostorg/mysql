@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -38,6 +38,9 @@ using datetime = std::chrono::time_point<std::chrono::system_clock, std::chrono:
 /// Type representing MySQL `__TIME__` data type.
 using time = std::chrono::microseconds;
 
+/// Monostate type representing a NULL value.
+using null_t = boost::variant2::monostate;
+
 /**
  * \brief Represents a value in the database of any of the allowed types.
  *        See [link mysql.values this section] for more info.
@@ -59,10 +62,10 @@ class value
 public:
     /// Type of a variant representing the value.
     using variant_type = boost::variant2::variant<
-        std::nullptr_t,    // Any of the below when the value is NULL
+        null_t,            // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
         std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR
-        boost::string_view,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+        boost::string_view,// CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
         float,             // FLOAT
         double,            // DOUBLE
         date,              // DATE
@@ -72,6 +75,14 @@ public:
 
     /// Constructs a NULL value.
     BOOST_CXX14_CONSTEXPR value() = default;
+
+    /**
+      * \brief Constructs a NULL value.
+      * \details
+      * Caution: `value(NULL)` will __NOT__ match this overload. It will try to construct
+      * a `boost::string_view` from a NULL C string, causing undefined behavior.
+      */
+    BOOST_CXX14_CONSTEXPR value(std::nullptr_t) noexcept {}
 
     /**
      * \brief Initialization constructor.
@@ -95,11 +106,11 @@ public:
     /**
      * \brief Checks if the value is NULL.
      * \details Returns `true` only if the value's current type alternative
-     * is `std::nullptr_t`. Equivalent to `value::is<std::nullptr_t>()`.
+     * is `std::nullptr_t`. Equivalent to `value::is<null_t>()`.
      */
     BOOST_CXX14_CONSTEXPR bool is_null() const noexcept
     {
-        return boost::variant2::holds_alternative<std::nullptr_t>(repr_);
+        return boost::variant2::holds_alternative<null_t>(repr_);
     }
 
     /**
@@ -174,11 +185,23 @@ public:
     /// Converts a value to an actual variant of type [refmem value variant_type].
     BOOST_CXX14_CONSTEXPR variant_type to_variant() const noexcept { return repr_; }
 
-    /// Tests for equality (type and value).
+    /// Tests for equality (type and value); see [link mysql.values.relational this section] for more info.
     BOOST_CXX14_CONSTEXPR bool operator==(const value& rhs) const noexcept { return repr_ == rhs.repr_; }
 
-    /// Tests for inequality (type and value).
+    /// Tests for inequality (type and value); see [link mysql.values.relational this section] for more info.
     BOOST_CXX14_CONSTEXPR bool operator!=(const value& rhs) const noexcept { return !(*this==rhs); }
+
+    /// Tests for inequality (type and value); see [link mysql.values.relational this section] for more info.
+    BOOST_CXX14_CONSTEXPR bool operator<(const value& rhs) const noexcept { return repr_ < rhs.repr_; }
+
+    /// Tests for inequality (type and value); see [link mysql.values.relational this section] for more info.
+    BOOST_CXX14_CONSTEXPR bool operator<=(const value& rhs) const noexcept { return repr_ <= rhs.repr_; }
+
+    /// Tests for inequality (type and value); see [link mysql.values.relational this section] for more info.
+    BOOST_CXX14_CONSTEXPR bool operator>(const value& rhs) const noexcept { return repr_ > rhs.repr_; }
+
+    /// Tests for inequality (type and value); see [link mysql.values.relational this section] for more info.
+    BOOST_CXX14_CONSTEXPR bool operator>=(const value& rhs) const noexcept { return repr_ >= rhs.repr_; }
 private:
     struct unsigned_int_tag {};
     struct signed_int_tag {};
