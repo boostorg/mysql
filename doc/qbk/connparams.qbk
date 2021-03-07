@@ -86,10 +86,8 @@ You can change it at any time issuing a __SET_NAMES__ statement
 
 [section:ssl SSL/TLS]
 
-All connection options regarding the use of SSL/TLS live within
-[refmem connection_params ssl], of type [reflink ssl_options].
-At this moment, a single option, [reflink ssl_mode], is
-available. This option controls whether to use SSL/TLS or not:
+When establising a connection, you can specify a [reflink ssl_mode]
+value to configure whether to use SSL/TLS or not:
 
 * If set to `enable`, the connection will use TLS if
   available, falling back to an unencrypted connection if the server
@@ -98,8 +96,9 @@ available. This option controls whether to use SSL/TLS or not:
   server does not support it, the connection will be refused.
 * If set to `disable`, the connection will never use TLS.
 
-The server certificate is not validated. An option to do this
-may be added in a future release.
+You can fine-tune the SSL/TLS configuration by passing a [asioreflink ssl__context ssl::context]
+object to [reflink connection]'s constructor (using [reflink2 connection.connection.overload2 this overload]).
+See [link mysql.examples.ssl this section] for an example on how to do this.
 
 If you are using `enable` [reflink ssl_mode], you can use
 [refmem connection uses_ssl] to query whether the connection

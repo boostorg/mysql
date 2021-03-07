@@ -7,7 +7,6 @@
 
 branches:
   except:
-    - value-relational-operators
     - gh-pages
 
 __linux_defaults: &__linux_defaults

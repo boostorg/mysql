@@ -23,9 +23,9 @@ void example_get()
     ASSERT(typed_val == "hello");
     try
     {
-        v.get<double>(); // wrong type! throws boost::variant2::bad_variant_access
+        v.get<double>(); // wrong type! throws boost::mysql::bad_value_access
     }
-    catch (const boost::variant2::bad_variant_access&)
+    catch (const boost::mysql::bad_value_access&)
     {
     }
     //]

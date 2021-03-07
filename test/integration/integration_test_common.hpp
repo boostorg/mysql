@@ -10,6 +10,7 @@
 
 #include "boost/mysql/connection.hpp"
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <thread>
 #include "test_common.hpp"
@@ -32,6 +33,9 @@ void validate_ssl(const connection<Stream>& conn, ssl_mode m)
     BOOST_TEST(conn.uses_ssl() == should_use_ssl);
 }
 
+struct use_external_ctx_t {};
+constexpr use_external_ctx_t use_external_ctx {};
+
 /**
  * Base fixture to use in integration tests. The fixture constructor creates
  * a connection, an asio io_context and a thread to run it.
@@ -43,6 +47,7 @@ struct network_fixture
 {
     using stream_type = Stream;
 
+    boost::asio::ssl::context external_ctx {boost::asio::ssl::context::tls_client}; // for external ctx tests
     connection_params params;
     boost::asio::io_context ctx;
     socket_connection<Stream> conn;
@@ -52,6 +57,14 @@ struct network_fixture
     network_fixture() :
         params("integ_user", "integ_password", "boost_mysql_integtests"),
         conn(ctx.get_executor()),
+        guard(ctx.get_executor()),
+        runner([this] { ctx.run(); })
+    {
+    }
+
+    network_fixture(use_external_ctx_t) :
+        params("integ_user", "integ_password", "boost_mysql_integtests"),
+        conn(external_ctx, ctx.get_executor()),
         guard(ctx.get_executor()),
         runner([this] { ctx.run(); })
     {
@@ -79,7 +92,7 @@ struct network_fixture
 
     void handshake(ssl_mode m = ssl_mode::require)
     {
-        params.set_ssl(ssl_options(m));
+        params.set_ssl(m);
         conn.handshake(params);
         validate_ssl(conn, m);
     }

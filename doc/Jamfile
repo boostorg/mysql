@@ -276,7 +276,7 @@ boostbook mysql
     :
         mysql_doc
     :
-        <xsl:param>"boost.root=https://www.boost.org/doc/libs/1_73_0"
+        <xsl:param>"boost.root=https://www.boost.org/doc/libs/1_75_0"
         <xsl:param>boost.image.src=images/proposed_for_boost.svg
         <xsl:param>boost.graphics.root=images/
         <xsl:param>nav.layout=none

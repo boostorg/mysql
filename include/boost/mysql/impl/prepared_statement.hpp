@@ -13,6 +13,7 @@
 #include "boost/mysql/detail/auxiliar/stringize.hpp"
 #include <boost/asio/bind_executor.hpp>
 
+
 template <class Stream>
 template <class ValueForwardIterator>
 void boost::mysql::prepared_statement<Stream>::check_num_params(

@@ -5,91 +5,108 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "boost/mysql/detail/protocol/channel.hpp"
 #include "test_common.hpp"
+#include "test_stream.hpp"
 #include "boost/mysql/prepared_statement.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 using namespace boost::mysql::detail;
 using boost::mysql::prepared_statement;
-using boost::mysql::tcp_prepared_statement;
-using boost::asio::ip::tcp;
+
+using chan_t = boost::mysql::detail::channel<boost::mysql::test::test_stream>;
+using stmt_t = prepared_statement<boost::mysql::test::test_stream>;
 
 BOOST_AUTO_TEST_SUITE(test_prepared_statement)
 
-struct prepared_statement_fixture
+// default ctor
+BOOST_AUTO_TEST_CASE(default_ctor)
 {
-    boost::asio::io_context ctx;
-    channel<tcp::socket> chan {ctx};
-};
-
-BOOST_FIXTURE_TEST_CASE(default_constructor, prepared_statement_fixture)
-{
-    tcp_prepared_statement stmt;
-    BOOST_TEST(!stmt.valid());
+    stmt_t s;
+    BOOST_TEST(!s.valid());
 }
 
-BOOST_FIXTURE_TEST_CASE(initializing_constructor, prepared_statement_fixture)
+// init ctor
+BOOST_AUTO_TEST_CASE(init_ctor)
 {
-    tcp_prepared_statement stmt (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
-    BOOST_TEST(stmt.valid());
-    BOOST_TEST(stmt.id() == 10);
-    BOOST_TEST(stmt.num_params() == 8);
+    chan_t chan;
+    stmt_t s (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
+    BOOST_TEST(s.valid());
+    BOOST_TEST(s.id() == 10);
+    BOOST_TEST(s.num_params() == 8);
 }
 
-BOOST_FIXTURE_TEST_CASE(move_constructor_from_default_constructed, prepared_statement_fixture)
+// move ctor
+BOOST_AUTO_TEST_CASE(move_ctor_from_invalid)
 {
-    tcp_prepared_statement stmt {tcp_prepared_statement()};
-    BOOST_TEST(!stmt.valid());
+    stmt_t s1;
+    stmt_t s2 {std::move(s1)};
+    BOOST_TEST(!s1.valid());
+    BOOST_TEST(!s2.valid());
 }
 
-BOOST_FIXTURE_TEST_CASE(move_constructor_from_valid, prepared_statement_fixture)
+BOOST_AUTO_TEST_CASE(move_ctor_from_valid)
 {
-
-    tcp_prepared_statement stmt (tcp_prepared_statement(
-        chan, com_stmt_prepare_ok_packet{10, 9, 8, 7}
-    ));
-    BOOST_TEST(stmt.valid());
-    BOOST_TEST(stmt.id() == 10);
-    BOOST_TEST(stmt.num_params() == 8);
+    chan_t chan;
+    stmt_t s1 (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
+    stmt_t s2 (std::move(s1));
+    BOOST_TEST(!s1.valid());
+    BOOST_TEST(s2.valid());
+    BOOST_TEST(s2.id() == 10);
+    BOOST_TEST(s2.num_params() == 8);
 }
 
-BOOST_FIXTURE_TEST_CASE(move_assignment_from_default_constructed, prepared_statement_fixture)
+// move assign
+BOOST_AUTO_TEST_CASE(move_assign_invalid_to_invalid)
 {
-    tcp_prepared_statement stmt (
-        chan,
-        com_stmt_prepare_ok_packet{10, 9, 8, 7}
-    );
-    stmt = tcp_prepared_statement();
-    BOOST_TEST(!stmt.valid());
-    stmt = tcp_prepared_statement();
-    BOOST_TEST(!stmt.valid());
+    stmt_t s1;
+    stmt_t s2;
+    s2 = std::move(s1);
+    BOOST_TEST(!s1.valid());
+    BOOST_TEST(!s2.valid());
 }
 
-BOOST_FIXTURE_TEST_CASE(move_assignment_from_valid, prepared_statement_fixture)
+BOOST_AUTO_TEST_CASE(move_assign_invalid_to_valid)
 {
-
-    tcp_prepared_statement stmt;
-    stmt = tcp_prepared_statement (
-        chan,
-        com_stmt_prepare_ok_packet{10, 9, 8, 7}
-    );
-    BOOST_TEST(stmt.valid());
-    BOOST_TEST(stmt.id() == 10);
-    BOOST_TEST(stmt.num_params() == 8);
-    stmt = tcp_prepared_statement(
-        chan,
-        com_stmt_prepare_ok_packet{1, 2, 3, 4}
-    );
-    BOOST_TEST(stmt.valid());
-    BOOST_TEST(stmt.id() == 1);
-    BOOST_TEST(stmt.num_params() == 3);
+    chan_t chan;
+    stmt_t s1;
+    stmt_t s2 (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
+    s2 = std::move(s1);
+    BOOST_TEST(!s1.valid());
+    BOOST_TEST(!s2.valid());
 }
 
+BOOST_AUTO_TEST_CASE(move_assign_valid_to_invalid)
+{
+    chan_t chan;
+    stmt_t s1 (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
+    stmt_t s2;
+    s2 = std::move(s1);
+    BOOST_TEST(!s1.valid());
+    BOOST_TEST(s2.valid());
+    BOOST_TEST(s2.id() == 10);
+    BOOST_TEST(s2.num_params() == 8);
+}
+
+BOOST_AUTO_TEST_CASE(move_assign_valid_to_valid)
+{
+    chan_t chan;
+    stmt_t s1 (chan, com_stmt_prepare_ok_packet{10, 9, 8, 7});
+    stmt_t s2 (chan, com_stmt_prepare_ok_packet{1, 2, 3, 4});
+    s2 = std::move(s1);
+    BOOST_TEST(!s1.valid());
+    BOOST_TEST(s2.valid());
+    BOOST_TEST(s2.id() == 10);
+    BOOST_TEST(s2.num_params() == 8);
+}
+
+// rebind executor
 BOOST_AUTO_TEST_CASE(rebind_executor)
 {
     using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
-    using rebound_type = tcp_prepared_statement::rebind_executor<other_executor>::other;
+    using rebound_type = boost::mysql::tcp_prepared_statement::rebind_executor<other_executor>::other;
     using expected_type = boost::mysql::prepared_statement<
         boost::asio::basic_stream_socket<
             boost::asio::ip::tcp,

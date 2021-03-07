@@ -1,0 +1,14 @@
+.cache/
+.cproject
+.project
+.settings/
+.pydevproject
+private/
+build*/
+out/
+.vs/
+.vscode/
+compile_commands.json
+.cache/
+doc/
+include/

@@ -7,7 +7,6 @@
 
 branches:
   except:
-    - value-relational-operators
     - gh-pages
 
 matrix:

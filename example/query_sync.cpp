@@ -61,9 +61,8 @@ void main_impl(int argc, char** argv)
         "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
     );
     // Note: by default, SSL will be used if the server supports it.
-    // connection_params accepts an optional ssl_options argument
-    // determining whether to use SSL or not. See ssl_options and ssl_mode
-    // documentation for further details on SSL.
+    // connection_params accepts an optional ssl_mode argument
+    // determining whether to use SSL or not.
 
     boost::asio::io_context ctx;
 

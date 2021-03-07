@@ -13,7 +13,7 @@ ENV MYSQL_ROOT_PASSWORD=
 COPY example/db_setup.sql /docker-entrypoint-initdb.d/example_db_setup.sql
 COPY test/integration/db_setup.sql /docker-entrypoint-initdb.d/
 COPY tools/docker/mysql_entrypoint.sh /
-COPY tools/docker/*.pem /etc/ssl/certs/mysql/
-COPY tools/docker/mariadb10.3.ssl.cnf /etc/mysql/conf.d/
+COPY tools/docker/ssl.cnf /etc/mysql/conf.d/
+COPY tools/ssl/*.pem /etc/ssl/certs/mysql/
 
 ENTRYPOINT ["/bin/bash", "/mysql_entrypoint.sh"]

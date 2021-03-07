@@ -5,9 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "boost/mysql/resultset.hpp"
 #include "boost/mysql/row.hpp"
 #include "integration_test_common.hpp"
 #include "test_common.hpp"
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
@@ -15,6 +18,8 @@ using boost::mysql::ssl_mode;
 using boost::mysql::connection;
 using boost::mysql::resultset;
 using boost::mysql::row;
+using boost::asio::ip::tcp;
+using boost::mysql::tcp_resultset;
 
 BOOST_AUTO_TEST_SUITE(test_resultset)
 
@@ -392,6 +397,65 @@ BOOST_MYSQL_NETWORK_TEST(several_rows, network_fixture, sample_gen)
 }
 
 BOOST_AUTO_TEST_SUITE_END() // read_all
+
+// Move operations
+BOOST_AUTO_TEST_SUITE(move_operations)
+
+BOOST_FIXTURE_TEST_CASE(move_ctor, network_fixture<tcp::socket>)
+{
+    // Get a valid resultset and perform a move construction
+    this->connect(boost::mysql::ssl_mode::disable);
+    tcp_resultset r = this->conn.query("SELECT * FROM one_row_table");
+    tcp_resultset r2 (std::move(r));
+
+    // Validate valid()
+    BOOST_TEST(!r.valid());
+    BOOST_TEST(r2.valid());
+
+    // We can use the 2nd resultset
+    auto rows = r2.read_all();
+    BOOST_TEST((rows == makerows(2, 1, "f0")));
+    BOOST_TEST(r2.complete());
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assignment_to_invalid, network_fixture<tcp::socket>)
+{
+    // Get a valid resultset and perform a move assignment
+    this->connect(boost::mysql::ssl_mode::disable);
+    tcp_resultset r = this->conn.query("SELECT * FROM one_row_table");
+    tcp_resultset r2;
+    r2 = std::move(r);
+
+    // Validate valid()
+    BOOST_TEST(!r.valid());
+    BOOST_TEST(r2.valid());
+
+    // We can use the 2nd resultset
+    auto rows = r2.read_all();
+    BOOST_TEST((rows == makerows(2, 1, "f0")));
+    BOOST_TEST(r2.complete());
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, network_fixture<tcp::socket>)
+{
+    // Get a valid resultset and perform a move assignment
+    this->connect(boost::mysql::ssl_mode::disable);
+    tcp_resultset r2 = this->conn.query("SELECT * FROM empty_table");
+    r2.read_all(); // clean any remaining packets
+    tcp_resultset r = this->conn.query("SELECT * FROM one_row_table");
+    r2 = std::move(r);
+
+    // Validate valid()
+    BOOST_TEST(!r.valid());
+    BOOST_TEST(r2.valid());
+
+    // We can use the 2nd resultset
+    auto rows = r2.read_all();
+    BOOST_TEST((rows == makerows(2, 1, "f0")));
+    BOOST_TEST(r2.complete());
+}
+
+BOOST_AUTO_TEST_SUITE_END() // move_operations
 
 BOOST_AUTO_TEST_SUITE_END() // test_resultset
 

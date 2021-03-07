@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(get, T, all_types)
         }
         else
         {
-            BOOST_CHECK_THROW(sample.v.get<T>(), boost::variant2::bad_variant_access);
+            BOOST_CHECK_THROW(sample.v.get<T>(), boost::mysql::bad_value_access);
         }
     });
 }

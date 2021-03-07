@@ -55,6 +55,7 @@ set(BOOST_MYSQL_EXAMPLES
     prepared_statements
     default_completion_tokens
     unix_socket
+    ssl
 )
 
 # The examples we do NOT want to ever memcheck

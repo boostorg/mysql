@@ -30,10 +30,10 @@ constexpr std::array<value, 0> no_statement_params {};
  * The main use of a prepared statement is executing it
  * using [refmem prepared_statement execute], which yields a [reflink resultset].
  *
- * Prepared statements are default constructible. A default-constructed prepared statement
- * is considered invalid ([refmem prepared_statement valid] will return `false`). Calling
- * any function other than assignment on an invalid statement results in
- * undefined behavior.
+ * Prepared statements are default-constructible and movable, but not copyable. 
+ * [refmem prepared_statement valid] returns `false` for default-constructed 
+ * and moved-from prepared statements. Calling any member function on an invalid
+ * prepared statements, other than assignment, results in undefined behavior.
  *
  * Prepared statements are managed by the server in a per-connection basis:
  * once created, a prepared statement may be used as long as the parent
@@ -45,7 +45,7 @@ constexpr std::array<value, 0> no_statement_params {};
 template <class Stream>
 class prepared_statement
 {
-    detail::channel<Stream>* channel_ {};
+    detail::channel_observer_ptr<Stream> channel_;
     detail::com_stmt_prepare_ok_packet stmt_msg_;
 
     template <class ValueForwardIterator>
@@ -55,11 +55,29 @@ class prepared_statement
 
     struct async_execute_initiation;
 public:
-    /// Default constructor. Default constructed statements
-    /// have [refmem prepared_statement valid] return `false`.
+    /**
+      * \brief Default constructor. 
+      * \details Default constructed statements have [refmem prepared_statement valid] return `false`.
+      */
     prepared_statement() = default;
 
+    /**
+      * \brief Move constructor.
+      * \details The constructed statement will be valid if `other` is valid.
+      * After this operation, `other` is guaranteed to be invalid.
+      */
+    prepared_statement(prepared_statement&& other) = default;
+
+    /**
+      * \brief Move assignment.
+      * \details The assigned-to statement will be valid if `other` is valid.
+      */
+    prepared_statement& operator=(prepared_statement&& rhs) = default;
+
 #ifndef BOOST_MYSQL_DOXYGEN
+    prepared_statement(const prepared_statement&) = delete;
+    prepared_statement& operator=(const prepared_statement&) = delete;
+
     // Private. Do not use.
     prepared_statement(detail::channel<Stream>& chan, const detail::com_stmt_prepare_ok_packet& msg) noexcept:
         channel_(&chan), stmt_msg_(msg) {}

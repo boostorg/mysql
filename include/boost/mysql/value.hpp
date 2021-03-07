@@ -13,6 +13,7 @@
 #include <chrono>
 #include <ostream>
 #include <array>
+#include <exception>
 #include <boost/variant2/variant.hpp>
 #include <boost/optional/optional.hpp>
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -40,6 +41,13 @@ using time = std::chrono::microseconds;
 
 /// Monostate type representing a NULL value.
 using null_t = boost::variant2::monostate;
+
+/// Exception type thrown when trying to access a [reflink value] with an incorrect type.
+class bad_value_access : public std::exception
+{
+public:
+    const char* what() const noexcept override { return "bad_value_access"; }
+};
 
 /**
  * \brief Represents a value in the database of any of the allowed types.
@@ -82,7 +90,7 @@ public:
       * Caution: `value(NULL)` will __NOT__ match this overload. It will try to construct
       * a `boost::string_view` from a NULL C string, causing undefined behavior.
       */
-    BOOST_CXX14_CONSTEXPR value(std::nullptr_t) noexcept {}
+    BOOST_CXX14_CONSTEXPR value(std::nullptr_t) noexcept : repr_(null_t()) {}
 
     /**
      * \brief Initialization constructor.
@@ -142,10 +150,7 @@ public:
      * [refmem value get_std_optional] and check the returned optional instead.
      */
     template <class T>
-    BOOST_CXX14_CONSTEXPR bool is_convertible_to() const noexcept
-    {
-        return get_optional<T>().has_value();
-    }
+    BOOST_CXX14_CONSTEXPR bool is_convertible_to() const noexcept;
 
     /**
      * \brief Retrieves the stored value or throws an exception.
@@ -153,7 +158,7 @@ public:
      * If the stored value is a `T`, or can be converted to `T` using
      * one of [link mysql.values.conversions the allowed conversions],
      * returns the converted value. Otherwise throws
-     * `boost::variant2::bad_variant_access`.
+     * [reflink bad_value_access].
      */
     template <class T>
     T get() const;

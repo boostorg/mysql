@@ -92,7 +92,7 @@ std::size_t boost::mysql::detail::channel<Stream>::read_impl(
 {
     if (ssl_active())
     {
-        return boost::asio::read(ssl_block_->stream, std::forward<BufferSeq>(buff), ec);
+        return boost::asio::read(*ssl_stream_, std::forward<BufferSeq>(buff), ec);
     }
     else
     {
@@ -109,7 +109,7 @@ std::size_t boost::mysql::detail::channel<Stream>::write_impl(
 {
     if (ssl_active())
     {
-        return boost::asio::write(ssl_block_->stream, std::forward<BufferSeq>(buff), ec);
+        return boost::asio::write(*ssl_stream_, std::forward<BufferSeq>(buff), ec);
     }
     else
     {
@@ -128,7 +128,7 @@ boost::mysql::detail::channel<Stream>::async_read_impl(
     if (ssl_active())
     {
         return boost::asio::async_read(
-            ssl_block_->stream,
+            *ssl_stream_,
             std::forward<BufferSeq>(buff),
             boost::asio::transfer_all(),
             std::forward<CompletionToken>(token)
@@ -156,7 +156,7 @@ boost::mysql::detail::channel<Stream>::async_write_impl(
     if (ssl_active())
     {
         return boost::asio::async_write(
-            ssl_block_->stream,
+            *ssl_stream_,
             std::forward<BufferSeq>(buff),
             std::forward<CompletionToken>(token)
         );
@@ -400,13 +400,28 @@ boost::mysql::detail::channel<Stream>::async_write(
     );
 }
 
+template <typename Stream>
+void boost::mysql::detail::channel<Stream>::create_ssl_stream()
+{
+    // Determine the context to use
+    boost::asio::ssl::context* ctx = external_ctx_;
+    if (!ctx)
+    {
+        local_ctx_.emplace(boost::asio::ssl::context::tls_client);
+        ctx = &*local_ctx_;
+    }
+
+    // Actually create the stream
+    ssl_stream_.emplace(stream_, *ctx);
+}
+
 template <class Stream>
 void boost::mysql::detail::channel<Stream>::ssl_handshake(
     error_code& ec
 )
 {
-    create_ssl_block();
-    ssl_block_->stream.handshake(boost::asio::ssl::stream_base::client, ec);
+    create_ssl_stream();
+    ssl_stream_->handshake(boost::asio::ssl::stream_base::client, ec);
 }
 
 template <class Stream>
@@ -419,8 +434,8 @@ boost::mysql::detail::channel<Stream>::async_ssl_handshake(
     CompletionToken&& token
 )
 {
-    create_ssl_block();
-    return ssl_block_->stream.async_handshake(
+    create_ssl_stream();
+    return ssl_stream_->async_handshake(
         boost::asio::ssl::stream_base::client,
         std::forward<CompletionToken>(token)
     );

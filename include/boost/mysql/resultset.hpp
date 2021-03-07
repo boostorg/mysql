@@ -29,10 +29,10 @@ namespace mysql {
  * that allows reading rows progressively. [link mysql.resultsets This section]
  * provides an in-depth explanation of the mechanics of this class.
  *
- * Resultsets are default-constructible. A default-constructed resultset has
- * [refmem resultset valid] return `false`. Calling any member function on an invalid
+ * Resultsets are default-constructible and movable, but not copyable. 
+ * [refmem resultset valid] returns `false` for default-constructed 
+ * and moved-from resultsets. Calling any member function on an invalid
  * resultset, other than assignment, results in undefined behavior.
- * Resultsets are movable but not copyable.
  */
 template <
     class Stream
@@ -40,7 +40,7 @@ template <
 class resultset
 {
     detail::deserialize_row_fn deserializer_ {};
-    detail::channel<Stream>* channel_;
+    detail::channel_observer_ptr<Stream> channel_;
     detail::resultset_metadata meta_;
     detail::bytestring ok_packet_buffer_;
     detail::ok_packet ok_packet_;
@@ -57,7 +57,23 @@ class resultset
     /// \details Default constructed resultsets have [refmem resultset valid] return `false`.
     resultset(): channel_(nullptr) {};
 
+    /**
+      * \brief Move constructor.
+      * \details The constructed resultset will be valid if `other` is valid.
+      * After this operation, `other` is guaranteed to be invalid.
+      */
+    resultset(resultset&& other) = default;
+
+    /**
+      * \brief Move assignment.
+      * \details The assigned-to resultset will be valid if `other` is valid.
+      */
+    resultset& operator=(resultset&& rhs) = default;
+
 #ifndef BOOST_MYSQL_DOXYGEN
+    resultset(const resultset&) = delete;
+    resultset& operator=(const resultset&) = delete;
+
     // Private, do not use
     resultset(detail::channel<Stream>& channel, detail::resultset_metadata&& meta,
         detail::deserialize_row_fn deserializer):
@@ -248,7 +264,7 @@ class resultset
 
     /**
      * \brief Returns whether this object represents a valid resultset.
-     * \details Returns `false` for default-constructed resultsets.
+     * \details Returns `false` for default-constructed and moved-from resultsets.
      * Calling any member function on an invalid resultset,
      * other than assignment, results in undefined behavior.
      */

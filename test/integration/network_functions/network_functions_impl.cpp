@@ -25,7 +25,7 @@ static const char* get_message(
 void network_result_base::validate_no_error() const
 {
     BOOST_TEST_REQUIRE(err == error_code(),
-        "with error_info= " << get_message(info));
+        "with error_info= " << get_message(info) << ", error_code=" << err.message());
     if (info)
     {
         BOOST_TEST(*info == error_info());

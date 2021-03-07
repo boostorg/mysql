@@ -6,21 +6,23 @@
 //
 
 #include "boost/mysql/connection.hpp"
+#include "boost/mysql/connection_params.hpp"
 #include "integration_test_common.hpp"
+#include "network_functions.hpp"
 #include "test_common.hpp"
+#include <boost/asio/ssl/error.hpp>
+#include <boost/asio/ssl/verify_mode.hpp>
+#include <boost/asio/ssl/host_name_verification.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 // Tests containing with label 'sha256' require SHA256 functionality.
 // This is used by the build script to exclude these tests on databases
 // that do not support this functionality
 
-namespace net = boost::asio;
 using namespace boost::mysql::test;
 
 using boost::mysql::socket_connection;
 using boost::mysql::ssl_mode;
-using boost::mysql::ssl_options;
-using boost::mysql::detail::make_error_code;
-using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::tcp_connection;
@@ -36,7 +38,7 @@ network_result<no_result> do_handshake(
     ssl_mode ssl
 )
 {
-    params.set_ssl(boost::mysql::ssl_options(ssl));
+    params.set_ssl(ssl);
     return net->handshake(conn, params);
 }
 
@@ -198,6 +200,83 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, n
 }
 
 BOOST_AUTO_TEST_SUITE_END() // caching_sha2_password
+
+// Externally-provided SSL context tests
+BOOST_AUTO_TEST_SUITE(external_ssl_context)
+
+template <class Stream>
+struct external_ssl_context_fixture : public network_fixture<Stream>
+{
+    external_ssl_context_fixture(): network_fixture<Stream>(use_external_ctx) {}
+};
+
+// The CA file that signed the server's certificate
+constexpr const char CA_PEM [] = R"%(-----BEGIN CERTIFICATE-----
+MIIDZzCCAk+gAwIBAgIUWznm2UoxXw3j7HCcp9PpiayTvFQwDQYJKoZIhvcNAQEL
+BQAwQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAMBgNVBAoM
+BW15c3FsMQ4wDAYDVQQDDAVteXNxbDAgFw0yMDA0MDQxNDMwMjNaGA8zMDE5MDgw
+NjE0MzAyM1owQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAM
+BgNVBAoMBW15c3FsMQ4wDAYDVQQDDAVteXNxbDCCASIwDQYJKoZIhvcNAQEBBQAD
+ggEPADCCAQoCggEBAN0WYdvsDb+a0TxOGPejcwZT0zvTrf921mmDUlrLN1Z0hJ/S
+ydgQCSD7Q+6za4lTFZCXcvs52xvvS2gfC0yXyYLCT/jA4RQRxuF+/+w1gDWEbGk0
+KzEpsBuKrEIvEaVdoS78SxInnW/aegshdrRRocp4JQ6KHsZgkLTxSwPfYSUmMUo0
+cRO0Q/ak3VK8NP13A6ZFvZjrBxjS3cSw9HqilgADcyj1D4EokvfI1C9LrgwgLlZC
+XVkjjBqqoMXGGlnXOEK+pm8bU68HM/QvMBkb1Amo8pioNaaYgqJUCP0Ch0iu1nUU
+HtsWt6emXv0jANgIW0oga7xcT4MDGN/M+IRWLTECAwEAAaNTMFEwHQYDVR0OBBYE
+FNxhaGwf5ePPhzK7yOAKD3VF6wm2MB8GA1UdIwQYMBaAFNxhaGwf5ePPhzK7yOAK
+D3VF6wm2MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAAoeJCAX
+IDCFoAaZoQ1niI6Ac/cds8G8It0UCcFGSg+HrZ0YujJxWIruRCUG60Q2OAbEvn0+
+uRpTm+4tV1Wt92WFeuRyqkomozx0g4CyfsxGX/x8mLhKPFK/7K9iTXM4/t+xQC4f
+J+iRmPVsMKQ8YsHYiWVhlOMH9XJQiqERCB2kOKJCH6xkaF2k0GbM2sGgbS7Z6lrd
+fsFTOIVx0VxLVsZnWX3byE9ghnDR5jn18u30Cpb/R/ShxNUGIHqRa4DkM5la6uZX
+W1fpSW11JBSUv4WnOO0C2rlIu7UJWOROqZZ0OsybPRGGwagcyff2qVRuI2XFvAMk
+OzBrmpfHEhF6NDU=
+-----END CERTIFICATE-----
+)%";
+
+BOOST_MYSQL_NETWORK_TEST(certificate_valid, external_ssl_context_fixture, network_gen)
+{
+    this->external_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    this->external_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    this->physical_connect();
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::require);
+}
+
+BOOST_MYSQL_NETWORK_TEST(certificate_invalid, external_ssl_context_fixture, network_gen)
+{
+    this->external_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    this->physical_connect();
+    auto result = do_handshake(this->conn, this->params, sample.net, ssl_mode::require);
+    BOOST_TEST(result.err.message() == "certificate verify failed");
+}
+
+BOOST_MYSQL_NETWORK_TEST(custom_certificate_verification_failed, external_ssl_context_fixture, network_gen)
+{
+    this->external_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    this->external_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    this->external_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
+    this->physical_connect();
+    auto result = do_handshake(this->conn, this->params, sample.net, ssl_mode::require);
+    BOOST_TEST(result.err.message() == "certificate verify failed");
+}
+
+BOOST_MYSQL_NETWORK_TEST(custom_certificate_verification_ok, external_ssl_context_fixture, network_gen)
+{
+    this->external_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    this->external_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    this->external_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
+    this->physical_connect();
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::require);
+}
+
+BOOST_MYSQL_NETWORK_TEST(ssl_disable, external_ssl_context_fixture, network_gen)
+{
+    this->external_ctx.set_verify_mode(boost::asio::ssl::verify_peer); // should have no effect
+    this->physical_connect();
+    do_handshake_ok(this->conn, this->params, sample.net, ssl_mode::disable);
+}
+
+BOOST_AUTO_TEST_SUITE_END() // external_ssl_context
 
 // Other handshake tests
 BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture, network_ssl_gen)

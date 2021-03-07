@@ -22,6 +22,7 @@ Here is a list of available examples:
 # [link mysql.examples.query_async_coroutines Text query, async with Boost.Coroutine coroutines]
 # [link mysql.examples.query_async_coroutinescpp20 Text query, async with C++20 coroutines]
 # [link mysql.examples.default_completion_tokens Default completion tokens]
+# [link mysql.examples.ssl Advanced SSL configuration]
 
 [section:setup Setup]
 
@@ -175,6 +176,24 @@ __assume_setup__
 
 [import ../../example/default_completion_tokens.cpp]
 [example_default_completion_tokens]
+
+[endsect]
+
+[section:ssl Advanced SSL configuration]
+
+This example demonstrates how to configure advanced SSL
+options, like server certificate verification and hostname
+validation.
+
+The example employs synchronous functions with
+exceptions as error handling. __see_error_handling__
+
+__assume_setup__ Additionally, you should run your MySQL server
+with some test certificates we created your you, just for this example.
+You can find them in this project's GitHub repository, under `BOOST_MYQL_ROOT/tools/ssl`.
+
+[import ../../example/ssl.cpp]
+[example_ssl]
 
 [endsect]
 

@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_CONNECTION_HPP
 #define BOOST_MYSQL_CONNECTION_HPP
 
+#include <boost/asio/ssl/context.hpp>
+#include <type_traits>
 #ifndef BOOST_MYSQL_DOXYGEN // For some arcane reason, Doxygen fails to expand Asio macros without this
 #include "boost/mysql/detail/protocol/channel.hpp"
 #include "boost/mysql/detail/protocol/protocol_types.hpp"
@@ -72,18 +74,71 @@ protected:
     error_info& shared_info() noexcept { return get_channel().shared_info(); }
 public:
     /**
-     * \brief Initializing constructor.
+     * \brief Initializing constructor (no user-provided SSL context).
      * \details
      * As part of the initialization, a Stream object is created
      * by forwarding any passed in arguments to its constructor.
+     * If SSL ends up being used for this connection, a
+     * [asioreflink ssl__context ssl::context] object will be created
+     * on-demmand, with the minimum configuration settings to make SSL work.
+     * In particular, no certificate validation will be performed. If you need
+     * more flexibility, have a look at the other constructor overloads.
+     * 
      * The constructed connection will have [refmem connection valid]
      * return `true`.
      */
-    template <class... Args>
+    template<
+        class... Args,
+        class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type
+    >
     connection(Args&&... args) :
-        channel_(new detail::channel<Stream>(std::forward<Args>(args)...))
+        channel_(new detail::channel<Stream>(nullptr, std::forward<Args>(args)...))
     {
     }
+
+    /**
+     * \brief Initializing constructor (user-provided SSL context).
+     * \details
+     * As part of the initialization, a Stream object is created
+     * by forwarding any passed in arguments to its constructor.
+     * If SSL ends up being used for this connection, `ctx` will be
+     * used to initialize a [asioreflink ssl__stream ssl::stream] object.
+     * By providing a SSL context you can specify extra SSL configuration options
+     * like certificate verification and hostname validation. You can use a single
+     * context in multiple connections.
+     *
+     * The provided context must be kept alive for the lifetime of the [reflink connection]
+     * object. Otherwise, the results are undefined.
+     * 
+     * The constructed connection will have [refmem connection valid]
+     * return `true`.
+     */
+    template<
+        class... Args,
+        class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type
+    >
+    connection(boost::asio::ssl::context& ctx, Args&&... args) :
+        channel_(new detail::channel<Stream>(&ctx, std::forward<Args>(args)...))
+    {
+    }
+
+    /**
+      * \brief Move constructor.
+      * \details The constructed connection will be valid if `other` is valid.
+      * After this operation, `other` is guaranteed to be invalid.
+      */
+    connection(connection&& other) = default;
+
+    /**
+      * \brief Move assignment.
+      * \details The assigned-to connection will be valid if `other` is valid.
+      */
+    connection& operator=(connection&& rhs) = default;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    connection(const connection&) = delete;
+    connection& operator=(const connection&) = delete;
+#endif
 
     /**
      * \brief Returns `true` if the object is in a valid state.
@@ -119,8 +174,11 @@ public:
 
     /**
      * \brief Performs the MySQL-level handshake (sync with error code version).
-     * \details Does not connect the underlying stream.
+     * \details Does not connect the underlying stream. 
      * Prefer [refmem socket_connection connect] if possible.
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
      */
     void handshake(const connection_params& params, error_code& ec, error_info& info);
 
@@ -128,6 +186,9 @@ public:
      * \brief Performs the MySQL-level handshake (sync with exceptions version).
      * \details Does not connect the underlying stream.
      * Prefer [refmem socket_connection connect] if possible.
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
      */
     void handshake(const connection_params& params);
 
@@ -138,6 +199,10 @@ public:
      * Prefer [refmem socket_connection async_connect] if possible.
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
+     *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -161,6 +226,10 @@ public:
      * Prefer [refmem socket_connection async_connect] if possible.
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
+     *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -417,6 +486,9 @@ public:
      * \details Connects the underlying socket and then performs the handshake
      * with the server. The underlying socket is closed in case of error. Prefer
      * this function to [refmem connection handshake].
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
      */
     void connect(const endpoint_type& endpoint, const connection_params& params,
             error_code& ec, error_info& info);
@@ -426,6 +498,9 @@ public:
      * \details Connects the underlying socket and then performs the handshake
      * with the server. The underlying socket is closed in case of error. Prefer
      * this function to [refmem connection handshake].
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
      */
     void connect(const endpoint_type& endpoint, const connection_params& params);
 
@@ -439,6 +514,9 @@ public:
      *
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
@@ -467,6 +545,9 @@ public:
      *
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
+     *
+     * If SSL certificate validation was configured (by providing a custom SSL context
+     * to this class' constructor) and fails, this function will fail.
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */

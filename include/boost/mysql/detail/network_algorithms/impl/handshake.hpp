@@ -85,7 +85,7 @@ public:
     // Initial greeting processing
     error_code process_capabilities(const handshake_packet& handshake)
     {
-        auto ssl = params_.ssl().mode();
+        auto ssl = params_.ssl();
         capabilities server_caps (handshake.capability_falgs);
         capabilities required_caps = mandatory_capabilities |
                 conditional_capability(!params_.database().empty(), CLIENT_CONNECT_WITH_DB) |
