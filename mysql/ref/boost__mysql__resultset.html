@@ -31,7 +31,7 @@
         Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/resultset.hpp" target="_top">boost/mysql/resultset.hpp</a>&gt;</code>
       </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a><span class="special">&gt;</span>
 <span class="keyword">class</span> <span class="identifier">resultset</span>
 </pre>
 <h5>
@@ -239,6 +239,18 @@
 <tr>
 <td>
                 <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/operator_eq_.html" title="resultset::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <span class="bold"><strong><a class="link" href="boost__mysql__resultset/read_all.html" title="resultset::read_all">read_all</a></strong></span>
                 </p>
               </td>
@@ -285,7 +297,8 @@
               </td>
 <td>
                 <p>
-                  Default constructor.
+                  Default constructor. <br> <span class="silver">—</span><br>
+                  Move constructor.
                 </p>
               </td>
 </tr>
@@ -325,11 +338,11 @@
         or a <a class="link" href="../prepared_statements.html" title="Prepared statements">statement execution</a>.
         It is an I/O object that allows reading rows progressively. <a class="link" href="../resultsets.html" title="Resultsets">This
         section</a> provides an in-depth explanation of the mechanics of this
-        class. Resultsets are default-constructible. A default-constructed resultset
-        has <a class="link" href="boost__mysql__resultset/valid.html" title="resultset::valid"><code class="literal">resultset::valid</code></a>
-        return <code class="computeroutput"><span class="keyword">false</span></code>. Calling any member
-        function on an invalid resultset, other than assignment, results in undefined
-        behavior. Resultsets are movable but not copyable.
+        class. Resultsets are default-constructible and movable, but not copyable.
+        <a class="link" href="boost__mysql__resultset/valid.html" title="resultset::valid"><code class="literal">resultset::valid</code></a>
+        returns <code class="computeroutput"><span class="keyword">false</span></code> for default-constructed
+        and moved-from resultsets. Calling any member function on an invalid resultset,
+        other than assignment, results in undefined behavior.
       </p>
 <p>
         Convenience header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>

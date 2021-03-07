@@ -20,7 +20,7 @@
 <a name="mysql.ref.boost__mysql__tcp_resultset"></a><a class="link" href="boost__mysql__tcp_resultset.html" title="tcp_resultset">tcp_resultset</a>
 </h4></div></div></div>
 <p>
-        <a class="indexterm" name="idm33277"></a>
+        <a class="indexterm" name="idm34237"></a>
       </p>
 <p>
         A resultset associated with a <a class="link" href="boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>.
@@ -238,6 +238,18 @@
 <tr>
 <td>
                 <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/operator_eq_.html" title="resultset::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <span class="bold"><strong><a class="link" href="boost__mysql__resultset/read_all.html" title="resultset::read_all">read_all</a></strong></span>
                 </p>
               </td>
@@ -284,7 +296,8 @@
               </td>
 <td>
                 <p>
-                  Default constructor.
+                  Default constructor. <br> <span class="silver">—</span><br>
+                  Move constructor.
                 </p>
               </td>
 </tr>
@@ -320,11 +333,11 @@
         or a <a class="link" href="../prepared_statements.html" title="Prepared statements">statement execution</a>.
         It is an I/O object that allows reading rows progressively. <a class="link" href="../resultsets.html" title="Resultsets">This
         section</a> provides an in-depth explanation of the mechanics of this
-        class. Resultsets are default-constructible. A default-constructed resultset
-        has <a class="link" href="boost__mysql__resultset/valid.html" title="resultset::valid"><code class="literal">resultset::valid</code></a>
-        return <code class="computeroutput"><span class="keyword">false</span></code>. Calling any member
-        function on an invalid resultset, other than assignment, results in undefined
-        behavior. Resultsets are movable but not copyable.
+        class. Resultsets are default-constructible and movable, but not copyable.
+        <a class="link" href="boost__mysql__resultset/valid.html" title="resultset::valid"><code class="literal">resultset::valid</code></a>
+        returns <code class="computeroutput"><span class="keyword">false</span></code> for default-constructed
+        and moved-from resultsets. Calling any member function on an invalid resultset,
+        other than assignment, results in undefined behavior.
       </p>
 <h5>
 <a name="mysql.ref.boost__mysql__tcp_resultset.h3"></a>

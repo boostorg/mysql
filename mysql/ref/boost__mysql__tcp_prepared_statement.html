@@ -20,7 +20,7 @@
 <a name="mysql.ref.boost__mysql__tcp_prepared_statement"></a><a class="link" href="boost__mysql__tcp_prepared_statement.html" title="tcp_prepared_statement">tcp_prepared_statement</a>
 </h4></div></div></div>
 <p>
-        <a class="indexterm" name="idm32875"></a>
+        <a class="indexterm" name="idm33813"></a>
       </p>
 <p>
         A prepared statement associated to a <a class="link" href="boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>.
@@ -229,10 +229,26 @@
 <tr>
 <td>
                 <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__prepared_statement/operator_eq_.html" title="prepared_statement::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <span class="bold"><strong><a class="link" href="boost__mysql__prepared_statement/prepared_statement.html" title="prepared_statement::prepared_statement">prepared_statement</a></strong></span>
                 </p>
               </td>
 <td>
+                <p>
+                  Default constructor. <br> <span class="silver">—</span><br>
+                  Move constructor.
+                </p>
               </td>
 </tr>
 <tr>
@@ -254,13 +270,13 @@
         This class is a handle to a server-side prepared statement. The main use
         of a prepared statement is executing it using <a class="link" href="boost__mysql__prepared_statement/execute.html" title="prepared_statement::execute"><code class="literal">prepared_statement::execute</code></a>,
         which yields a <a class="link" href="boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>.
-        Prepared statements are default constructible. A default-constructed prepared
-        statement is considered invalid (<a class="link" href="boost__mysql__prepared_statement/valid.html" title="prepared_statement::valid"><code class="literal">prepared_statement::valid</code></a>
-        will return <code class="computeroutput"><span class="keyword">false</span></code>). Calling
-        any function other than assignment on an invalid statement results in undefined
-        behavior. Prepared statements are managed by the server in a per-connection
-        basis: once created, a prepared statement may be used as long as the parent
-        <a class="link" href="boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+        Prepared statements are default-constructible and movable, but not copyable.
+        <a class="link" href="boost__mysql__prepared_statement/valid.html" title="prepared_statement::valid"><code class="literal">prepared_statement::valid</code></a>
+        returns <code class="computeroutput"><span class="keyword">false</span></code> for default-constructed
+        and moved-from prepared statements. Calling any member function on an invalid
+        prepared statements, other than assignment, results in undefined behavior.
+        Prepared statements are managed by the server in a per-connection basis:
+        once created, a prepared statement may be used as long as the parent <a class="link" href="boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
         object (i.e. the connection that originated the resultset) is alive and open.
         Calling any function on a prepared_statement whose parent connection has
         been closed or destroyed results in undefined behavior.

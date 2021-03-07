@@ -27,7 +27,7 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.async_connect.overload1.h0"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.async_connect.overload1.synopsis"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__socket_connection.async_connect.overload1.synopsis">Synopsis</a>
           </h7><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
 <span class="keyword">auto</span>
 <span class="identifier">async_connect</span><span class="special">(</span>
     <span class="keyword">const</span> <span class="identifier">endpoint_type</span><span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">,</span>
@@ -41,8 +41,10 @@
             server. The underlying socket is closed in case of error. Prefer this
             function to <a class="link" href="../../boost__mysql__connection/async_handshake.html" title="connection::async_handshake"><code class="literal">connection::async_handshake</code></a>.
             The strings pointed to by params should be kept alive by the caller until
-            the operation completes, as no copy is made by the library. The handler
-            signature for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
+            the operation completes, as no copy is made by the library. If SSL certificate
+            validation was configured (by providing a custom SSL context to this
+            class' constructor) and fails, this function will fail. The handler signature
+            for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>

@@ -23,7 +23,7 @@
       All I/O objects (<a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>,
       <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
       and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>)
-      are templatized on the stream type. Any object fulfilling the <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
+      are templatized on the stream type. Any object fulfilling the <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
       concept may be used as template argument.
     </p>
 <div class="warning"><table border="0" summary="Warning">
@@ -48,9 +48,9 @@
       There are two types of connection objects: <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
       and <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>.
       The first one is the most basic object, and requires the passed in stream to
-      just fulfill the <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
+      just fulfill the <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
       requirements. The second derives from the first one and provides additional
-      functionality, but can only be used on streams that inherit from <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/basic_stream_socket.html" target="_top"><code class="literal">boost::asio::basic_stream_socket</code></a>.
+      functionality, but can only be used on streams that inherit from <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/basic_stream_socket.html" target="_top"><code class="literal">boost::asio::basic_stream_socket</code></a>.
     </p>
 <p>
       In general, prefer <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>
@@ -79,7 +79,7 @@
           are alias for <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>,
           <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
           and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
-          respectively, instantiated with <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/ip__tcp/socket.html" target="_top"><code class="literal">boost::asio::ip::tcp::socket</code></a>.
+          respectively, instantiated with <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/ip__tcp/socket.html" target="_top"><code class="literal">boost::asio::ip::tcp::socket</code></a>.
         </li>
 <li class="listitem">
           <a class="link" href="ref/boost__mysql__unix_connection.html" title="unix_connection"><code class="literal">unix_connection</code></a>,
@@ -88,7 +88,7 @@
           are alias for <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>,
           <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
           and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>,
-          respectively, instantiated with <a href="https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/reference/local__stream_protocol/socket.html" target="_top"><code class="literal">boost::asio::local::stream_protocol::socket</code></a>.
+          respectively, instantiated with <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/local__stream_protocol/socket.html" target="_top"><code class="literal">boost::asio::local::stream_protocol::socket</code></a>.
           Note that these type aliases only exist when the macro <code class="computeroutput"><span class="identifier">BOOST_ASIO_HAS_LOCAL_SOCKETS</span></code>
           is defined (i.e. on UNIX systems).
         </li>

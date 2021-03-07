@@ -120,10 +120,8 @@
 <a name="mysql.connparams.ssl"></a><a class="link" href="connparams.html#mysql.connparams.ssl" title="SSL/TLS">SSL/TLS</a>
 </h3></div></div></div>
 <p>
-        All connection options regarding the use of SSL/TLS live within <a class="link" href="ref/boost__mysql__connection_params/ssl.html" title="connection_params::ssl"><code class="literal">connection_params::ssl</code></a>,
-        of type <a class="link" href="ref/boost__mysql__ssl_options.html" title="ssl_options"><code class="literal">ssl_options</code></a>.
-        At this moment, a single option, <a class="link" href="ref/boost__mysql__ssl_mode.html" title="ssl_mode"><code class="literal">ssl_mode</code></a>,
-        is available. This option controls whether to use SSL/TLS or not:
+        When establising a connection, you can specify a <a class="link" href="ref/boost__mysql__ssl_mode.html" title="ssl_mode"><code class="literal">ssl_mode</code></a>
+        value to configure whether to use SSL/TLS or not:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
@@ -142,8 +140,11 @@
           </li>
 </ul></div>
 <p>
-        The server certificate is not validated. An option to do this may be added
-        in a future release.
+        You can fine-tune the SSL/TLS configuration by passing a <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>
+        object to <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>'s
+        constructor (using <a class="link" href="ref/boost__mysql__connection/connection/overload2.html" title="connection::connection (2 of 3 overloads)"><code class="literal">this
+        overload</code></a>). See <a class="link" href="examples/ssl.html" title="Advanced SSL configuration">this section</a>
+        for an example on how to do this.
       </p>
 <p>
         If you are using <code class="computeroutput"><span class="identifier">enable</span></code>

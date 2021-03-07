@@ -38,7 +38,9 @@
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.handshake.overload1.description"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__socket_connection.handshake.overload1.description">Description</a>
           </h7><p>
             Does not connect the underlying stream. Prefer <a class="link" href="../connect.html" title="socket_connection::connect"><code class="literal">socket_connection::connect</code></a>
-            if possible.
+            if possible. If SSL certificate validation was configured (by providing
+            a custom SSL context to this class' constructor) and fails, this function
+            will fail.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>

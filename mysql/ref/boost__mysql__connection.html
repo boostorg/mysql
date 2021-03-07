@@ -6,14 +6,14 @@
 <meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
-<link rel="prev" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__mysql__bad_value_access/what.html" title="bad_value_access::what">
 <link rel="next" href="boost__mysql__connection/executor_type.html" title="connection::executor_type">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="../ref.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__connection/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__bad_value_access/what.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__connection/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
@@ -32,7 +32,7 @@
         Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/connection.hpp" target="_top">boost/mysql/connection.hpp</a>&gt;</code>
       </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_73_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a><span class="special">&gt;</span>
 <span class="keyword">class</span> <span class="identifier">connection</span>
 </pre>
 <h5>
@@ -176,7 +176,10 @@
               </td>
 <td>
                 <p>
-                  Initializing constructor.
+                  Initializing constructor (no user-provided SSL context). <br>
+                  <span class="silver">—</span><br> Initializing constructor
+                  (user-provided SSL context). <br> <span class="silver">—</span><br>
+                  Move constructor.
                 </p>
               </td>
 </tr>
@@ -215,6 +218,18 @@
 <td>
                 <p>
                   Retrieves the underlying Stream object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__connection/operator_eq_.html" title="connection::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
                 </p>
               </td>
 </tr>
@@ -333,7 +348,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="../ref.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__connection/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__bad_value_access/what.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__connection/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 </body>
 </html>

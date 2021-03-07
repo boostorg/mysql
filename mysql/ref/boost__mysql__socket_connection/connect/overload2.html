@@ -36,6 +36,8 @@
             Connects the underlying socket and then performs the handshake with the
             server. The underlying socket is closed in case of error. Prefer this
             function to <a class="link" href="../../boost__mysql__connection/handshake.html" title="connection::handshake"><code class="literal">connection::handshake</code></a>.
+            If SSL certificate validation was configured (by providing a custom SSL
+            context to this class' constructor) and fails, this function will fail.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>

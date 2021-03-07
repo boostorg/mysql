@@ -20,7 +20,7 @@
 <a name="mysql.ref.boost__mysql__connection__rebind_executor.other"></a><a class="link" href="other.html" title="connection::rebind_executor::other">connection::rebind_executor::other</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idm13232"></a>
+          <a class="indexterm" name="idm14172"></a>
         </p>
 <p>
           The connection type when rebound to the specified executor.
@@ -172,7 +172,10 @@
                 </td>
 <td>
                   <p>
-                    Initializing constructor.
+                    Initializing constructor (no user-provided SSL context). <br>
+                    <span class="silver">—</span><br> Initializing constructor
+                    (user-provided SSL context). <br> <span class="silver">—</span><br>
+                    Move constructor.
                   </p>
                 </td>
 </tr>
@@ -211,6 +214,18 @@
 <td>
                   <p>
                     Retrieves the underlying Stream object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__connection/operator_eq_.html" title="connection::operator=">operator=</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Move assignment.
                   </p>
                 </td>
 </tr>
