@@ -41,8 +41,9 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       PLATFORM: x86
       B2_TOOLSET: msvc-14.2
-      B2_CXXSTD: 11,14 # Hitting an internal compiler error under C++17 x86, can't reproduce locally 
+      B2_CXXSTD: 11,14 # Hitting an internal compiler error under C++17, can't reproduce locally 
     - FLAVOR: Visual Studio 2019
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       PLATFORM: x64
       B2_TOOLSET: msvc-14.2
+      B2_CXXSTD: 14,17 # Hitting an internal compiler error under C++11, can't reproduce locally 
