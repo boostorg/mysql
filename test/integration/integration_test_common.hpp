@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP
 
-#include "boost/mysql/connection.hpp"
+#include <boost/mysql/socket_connection.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/test/unit_test.hpp>

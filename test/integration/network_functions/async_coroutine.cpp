@@ -39,7 +39,7 @@ class async_coroutine_errinfo : public network_functions<Stream>
         std::promise<network_result<R>> prom;
 
         boost::asio::spawn(obj.get_executor(), [&](yield_context yield) {
-            error_code ec = boost::mysql::detail::make_error_code(errc::no);
+            error_code ec = boost::mysql::make_error_code(errc::no);
             error_info info ("error_info not cleared properly");
             R result = cb(yield[ec], info);
             prom.set_value(network_result<R>(ec, std::move(info), std::move(result)));
@@ -185,7 +185,7 @@ class async_coroutine_noerrinfo : public network_functions<Stream>
         std::promise<network_result<R>> prom;
 
         boost::asio::spawn(obj.get_executor(), [&](yield_context yield) {
-            error_code ec = boost::mysql::detail::make_error_code(errc::no);
+            error_code ec = boost::mysql::make_error_code(errc::no);
             R result = cb(yield[ec]);
             prom.set_value(network_result<R>(ec, std::move(result)));
         });

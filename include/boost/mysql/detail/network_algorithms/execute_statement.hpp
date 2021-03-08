@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/resultset.hpp"
-#include "boost/mysql/value.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/value.hpp>
 
 namespace boost {
 namespace mysql {
@@ -42,6 +42,6 @@ async_execute_statement(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/network_algorithms/impl/execute_statement.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/execute_statement.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP_ */

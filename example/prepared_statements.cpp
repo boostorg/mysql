@@ -7,7 +7,7 @@
 
 //[example_prepared_statements
 
-#include "boost/mysql/mysql.hpp"
+#include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <iostream>

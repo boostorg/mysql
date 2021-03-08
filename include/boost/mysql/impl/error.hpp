@@ -11,7 +11,7 @@
 #include <boost/system/system_error.hpp>
 #include <boost/config.hpp>
 #include <algorithm>
-#include "boost/mysql/impl/error_descriptions.hpp"
+#include <boost/mysql/impl/error_descriptions.hpp>
 
 namespace boost {
 namespace system {
@@ -66,11 +66,6 @@ inline mysql_error_category_t& get_mysql_error_category() noexcept
 
 #endif
 
-inline boost::system::error_code make_error_code(errc error)
-{
-    return boost::system::error_code(static_cast<int>(error), get_mysql_error_category());
-}
-
 inline void check_error_code(const error_code& code, const error_info& info)
 {
     if (code)
@@ -104,6 +99,13 @@ inline std::ostream& boost::mysql::operator<<(
 )
 {
     return os << detail::error_to_string(value);
+}
+
+inline boost::mysql::error_code boost::mysql::make_error_code(
+    errc error
+)
+{
+    return boost::system::error_code(static_cast<int>(error), detail::get_mysql_error_category());
 }
 
 

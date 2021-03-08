@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
 
-#include "boost/mysql/error.hpp"
-#include "boost/mysql/detail/auxiliar/bytestring.hpp"
-#include "boost/mysql/detail/protocol/capabilities.hpp"
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/ssl/stream.hpp>
@@ -145,6 +145,6 @@ using channel_observer_ptr = std::unique_ptr<channel<Stream>, null_channel_delet
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/channel.hpp"
+#include <boost/mysql/detail/protocol/impl/channel.hpp>
 
 #endif

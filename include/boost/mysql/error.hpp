@@ -11,13 +11,16 @@
 #include <boost/system/error_code.hpp>
 #include <string>
 #include <ostream>
-#include "boost/mysql/errc.hpp"
+#include <boost/mysql/errc.hpp>
 
 namespace boost {
 namespace mysql {
 
 /// An alias for boost::system error codes.
 using error_code = boost::system::error_code;
+
+/// Creates an [reflink error_code] from an [reflink errc].
+inline error_code make_error_code(errc error);
 
 /**
  * \brief Additional information about error conditions
@@ -66,6 +69,6 @@ inline std::ostream& operator<<(std::ostream& os, const error_info& v) { return 
 } // mysql
 } // boost
 
-#include "boost/mysql/impl/error.hpp"
+#include <boost/mysql/impl/error.hpp>
 
 #endif

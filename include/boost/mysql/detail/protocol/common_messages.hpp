@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/collation.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/collation.hpp>
 #include <tuple>
 
 namespace boost {
@@ -145,6 +145,6 @@ inline error_code process_error_packet(deserialization_context& ctx, error_info&
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/common_messages.ipp"
+#include <boost/mysql/detail/protocol/impl/common_messages.ipp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP_ */

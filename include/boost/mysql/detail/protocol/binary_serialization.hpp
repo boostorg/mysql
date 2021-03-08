@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP
 
-#include "boost/mysql/value.hpp"
-#include "boost/mysql/detail/protocol/serialization.hpp"
+#include <boost/mysql/value.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 
 namespace boost {
 namespace mysql {
@@ -30,6 +30,6 @@ struct serialization_traits<value, serialization_tag::none> :
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/binary_serialization.ipp"
+#include <boost/mysql/detail/protocol/impl/binary_serialization.ipp>
 
 #endif

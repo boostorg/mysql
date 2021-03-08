@@ -10,6 +10,7 @@
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
+#include <cstdint>
 #include <map>
 #include <bitset>
 
@@ -108,6 +109,34 @@ void add_int_samples(std::vector<database_types_sample>& output)
         -0x80000000LL, 0x7fffffff, 0xffffffff, output);
     add_int_samples_helper("types_bigint", field_type::bigint,
         -0x7fffffffffffffff - 1, 0x7fffffffffffffff, 0xffffffffffffffff, output);
+}
+
+// BIT cases
+void add_bit_samples_helper(
+    std::vector<database_types_sample>& output,
+    const char* field_name,
+    std::uint64_t regular_value,
+    std::uint64_t max_value
+)
+{
+    output.emplace_back("types_bit", field_name, "min",     std::uint64_t(0), field_type::bit, flags_unsigned);
+    output.emplace_back("types_bit", field_name, "regular", regular_value,    field_type::bit, flags_unsigned);
+    output.emplace_back("types_bit", field_name, "max",     max_value,        field_type::bit, flags_unsigned);
+}
+
+void add_bit_samples(std::vector<database_types_sample>& output)
+{
+    add_bit_samples_helper(output, "field_1",  0x01,               0x01);
+    add_bit_samples_helper(output, "field_8",  0x9e,               0xff);
+    add_bit_samples_helper(output, "field_14", 0x1e2a,             0x3fff);
+    add_bit_samples_helper(output, "field_16", 0x1234,             0xffff);
+    add_bit_samples_helper(output, "field_24", 0x123456,           0xffffff);
+    add_bit_samples_helper(output, "field_25", 0x154abe0,          0x1ffffff);
+    add_bit_samples_helper(output, "field_32", 0x12345678,         0xffffffff);
+    add_bit_samples_helper(output, "field_40", 0x123456789a,       0xffffffffff);
+    add_bit_samples_helper(output, "field_48", 0x123456789abc,     0xffffffffffff);
+    add_bit_samples_helper(output, "field_56", 0x123456789abcde,   0xffffffffffffff);
+    add_bit_samples_helper(output, "field_64", 0x1234567812345678, 0xffffffffffffffff);
 }
 
 // Floating point cases
@@ -533,8 +562,6 @@ std::uint8_t geometry_value [] = {
 
 void add_not_implemented_samples(std::vector<database_types_sample>& output)
 {
-    output.emplace_back("types_not_implemented", "field_bit", "regular",
-        "\xfe", field_type::bit, flags_unsigned);
     output.emplace_back("types_not_implemented", "field_decimal", "regular",
         "300", field_type::decimal);
     output.emplace_back("types_not_implemented", "field_geometry", "regular",
@@ -563,6 +590,7 @@ std::vector<database_types_sample> make_all_samples()
 {
     std::vector<database_types_sample> res;
     add_int_samples(res);
+    add_bit_samples(res);
     add_float_samples(res);
     add_double_samples(res);
     add_date_samples(res);
@@ -625,10 +653,9 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture, prepared_statement, data::make(al
 }
 
 // The prepared statement param tests binary serialization.
-// This test is not applicable (yet) to nullptr values or bit values.
-// Doing "field = ?" where ? is nullptr never matches anything.
-// Bit values are returned as strings bit need to be sent as integers in
-// prepared statements. Filter the cases to remove the ones that
+// This test is not applicable (yet) to NULL values.
+// Doing "field = ?" where ? is NULL never matches anything.
+// Filter the cases to remove the ones that
 // are not applicable
 std::vector<database_types_sample>
 make_prepared_stmt_param_samples()
@@ -637,8 +664,7 @@ make_prepared_stmt_param_samples()
     res.reserve(all_samples.size());
     for (const auto& test : all_samples)
     {
-        if (!test.expected_value.is_null() &&
-             test.mvalid.type() != field_type::bit)
+        if (!test.expected_value.is_null())
         {
             res.push_back(test);
         }

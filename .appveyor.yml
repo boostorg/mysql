@@ -23,6 +23,17 @@ environment:
     B2_VARIANT: release,debug
     B2_CXXSTD: 11,14,17
   matrix:
+    # Boost.Build
+    - FLAVOR: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PLATFORM: x64
+      B2_TOOLSET: msvc-14.2
+      B2_CXXSTD: 11,14,17
+    - FLAVOR: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PLATFORM: x86
+      B2_TOOLSET: msvc-14.2
+      B2_CXXSTD: 11,14,17
     # CMake
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_BUILD_TYPE: Debug
@@ -36,14 +47,4 @@ environment:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_BUILD_TYPE: Release
       PLATFORM: x86
-    # Boost.Build
-    - FLAVOR: Visual Studio 2019
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      PLATFORM: x86
-      B2_TOOLSET: msvc-14.2
-      B2_CXXSTD: 11,14 # Hitting an internal compiler error under C++17, can't reproduce locally 
-    - FLAVOR: Visual Studio 2019
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      PLATFORM: x64
-      B2_TOOLSET: msvc-14.2
-      B2_CXXSTD: 14,17 # Hitting an internal compiler error under C++11, can't reproduce locally 
+    

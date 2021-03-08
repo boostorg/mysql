@@ -5,18 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/connection.hpp"
+#include <boost/mysql/connection.hpp>
 #include "metadata_validator.hpp"
 #include "integration_test_common.hpp"
 #include "test_common.hpp"
 
-namespace net = boost::asio;
 using namespace boost::mysql::test;
-using boost::mysql::detail::make_error_code;
-using boost::mysql::field_metadata;
-using boost::mysql::field_type;
 using boost::mysql::errc;
-using boost::mysql::resultset;
 
 BOOST_AUTO_TEST_SUITE(test_query)
 

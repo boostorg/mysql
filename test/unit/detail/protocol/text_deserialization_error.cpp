@@ -7,7 +7,7 @@
 
 // Test deserialize_text_value(), only error cases
 
-#include "boost/mysql/detail/protocol/text_deserialization.hpp"
+#include <boost/mysql/detail/protocol/text_deserialization.hpp>
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -70,6 +70,14 @@ void add_int_samples(
     output.emplace_back("unsigned_exp", "2e10", t, column_flags::unsigned_);
     output.emplace_back("unsigned_lt_min", "-18446744073709551616", t, column_flags::unsigned_);
     output.emplace_back("unsigned_gt_max", "18446744073709551616", t, column_flags::unsigned_);
+}
+
+void add_bit_samples(
+    std::vector<text_value_err_sample>& output
+)
+{
+    output.emplace_back("bit_string_view_too_short", "", protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_string_view_too_long", "123456789", protocol_field_type::bit, column_flags::unsigned_);
 }
 
 void add_float_samples(
@@ -237,6 +245,7 @@ std::vector<text_value_err_sample> make_all_samples()
     add_int_samples(protocol_field_type::long_, res);
     add_int_samples(protocol_field_type::longlong, res);
     add_int_samples(protocol_field_type::year, res);
+    add_bit_samples(res);
     add_float_samples(protocol_field_type::float_, "-2e90", "2e90", res);
     add_float_samples(protocol_field_type::double_, "-2e9999", "2e9999", res);
     add_date_samples(res);

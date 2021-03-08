@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BINARY_SERIALIZATION_HPP
 
 
-#include "boost/mysql/detail/protocol/binary_serialization.hpp"
+#include <boost/mysql/detail/protocol/binary_serialization.hpp>
 #include "../serialization_test.hpp"
 
 namespace boost {

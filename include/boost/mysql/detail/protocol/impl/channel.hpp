@@ -12,9 +12,9 @@
 #include <boost/asio/write.hpp>
 #include <boost/asio/compose.hpp>
 #include <cassert>
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/auxiliar/valgrind.hpp"
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/auxiliar/valgrind.hpp>
 
 namespace boost {
 namespace mysql {

@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP
 
-#include "boost/mysql/detail/protocol/text_deserialization.hpp"
-#include "boost/mysql/detail/protocol/query_messages.hpp"
-#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
+#include <boost/mysql/detail/protocol/text_deserialization.hpp>
+#include <boost/mysql/detail/protocol/query_messages.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 
 template <class Stream>
 void boost::mysql::detail::execute_query(

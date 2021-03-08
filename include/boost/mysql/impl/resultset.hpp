@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_RESULTSET_HPP
 #define BOOST_MYSQL_IMPL_RESULTSET_HPP
 
-#include "boost/mysql/detail/network_algorithms/read_row.hpp"
+#include <boost/mysql/detail/network_algorithms/read_row.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <cassert>

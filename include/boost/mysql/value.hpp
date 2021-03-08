@@ -72,8 +72,8 @@ public:
     using variant_type = boost::variant2::variant<
         null_t,            // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
-        std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR
-        boost::string_view,// CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, BIT, GEOMTRY
+        std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR, BIT
+        boost::string_view,// CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, GEOMTRY
         float,             // FLOAT
         double,            // DOUBLE
         date,              // DATE
@@ -265,7 +265,7 @@ constexpr time max_time = std::chrono::hours(839);
 } // mysql
 } // boost
 
-#include "boost/mysql/impl/value.hpp"
+#include <boost/mysql/impl/value.hpp>
 
 
 #endif

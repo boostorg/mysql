@@ -8,12 +8,12 @@
 #ifndef BOOST_MYSQL_RESULTSET_HPP
 #define BOOST_MYSQL_RESULTSET_HPP
 
-#include "boost/mysql/row.hpp"
-#include "boost/mysql/metadata.hpp"
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/channel.hpp"
-#include "boost/mysql/detail/auxiliar/bytestring.hpp"
-#include "boost/mysql/detail/network_algorithms/common.hpp" // deserialize_row_fn
+#include <boost/mysql/row.hpp>
+#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/channel.hpp>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/network_algorithms/common.hpp> // deserialize_row_fn
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <cassert>
@@ -335,6 +335,6 @@ using unix_resultset = resultset<boost::asio::local::stream_protocol::socket>;
 } // mysql
 } // boost
 
-#include "boost/mysql/impl/resultset.hpp"
+#include <boost/mysql/impl/resultset.hpp>
 
 #endif

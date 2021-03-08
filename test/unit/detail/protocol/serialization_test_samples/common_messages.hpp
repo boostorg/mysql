@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_COMMON_MESSAGES_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_COMMON_MESSAGES_HPP
 
-#include "boost/mysql/detail/protocol/common_messages.hpp"
+#include <boost/mysql/detail/protocol/common_messages.hpp>
 #include "../serialization_test.hpp"
 
 namespace boost {

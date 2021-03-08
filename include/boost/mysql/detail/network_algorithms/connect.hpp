@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/connection_params.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/connection_params.hpp>
 
 namespace boost {
 namespace mysql {
@@ -38,6 +38,6 @@ async_connect(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/network_algorithms/impl/connect.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/connect.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP_ */

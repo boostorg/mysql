@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/connection.hpp"
-#include "boost/mysql/connection_params.hpp"
+#include <boost/mysql/socket_connection.hpp>
+#include <boost/mysql/connection_params.hpp>
 #include "integration_test_common.hpp"
 #include "network_functions.hpp"
 #include "test_common.hpp"
@@ -50,7 +50,7 @@ void do_handshake_ok(
     ssl_mode ssl
 )
 {
-    auto result = do_handshake(conn, params, net, ssl);
+    network_result<no_result> result = do_handshake(conn, params, net, ssl);
     result.validate_no_error();
     validate_ssl(conn, ssl);
 }

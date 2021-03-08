@@ -216,7 +216,7 @@ DESCRIPTIONS_TEMPLATE='''
 #ifndef BOOST_MYSQL_IMPL_ERROR_DESCRIPTIONS_HPP
 #define BOOST_MYSQL_IMPL_ERROR_DESCRIPTIONS_HPP
 
-#include "boost/mysql/errc.hpp"
+#include <boost/mysql/errc.hpp>
 
 namespace boost {{
 namespace mysql {{

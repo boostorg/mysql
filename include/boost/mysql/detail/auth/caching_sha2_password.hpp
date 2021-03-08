@@ -10,7 +10,7 @@
 
 #include <cstddef>
 #include <boost/utility/string_view.hpp>
-#include "boost/mysql/error.hpp"
+#include <boost/mysql/error.hpp>
 
 namespace boost {
 namespace mysql {
@@ -38,6 +38,6 @@ inline error_code compute_response(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/auth/impl/caching_sha2_password.ipp"
+#include <boost/mysql/detail/auth/impl/caching_sha2_password.ipp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP_ */

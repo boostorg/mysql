@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/resultset.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/utility/string_view.hpp>
 
 namespace boost {
@@ -40,6 +40,6 @@ async_execute_generic(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/network_algorithms/impl/execute_generic.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/execute_generic.hpp>
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_HPP_ */

@@ -8,12 +8,10 @@
 #ifndef BOOST_MYSQL_IMPL_CONNECTION_HPP
 #define BOOST_MYSQL_IMPL_CONNECTION_HPP
 
-#include "boost/mysql/detail/network_algorithms/handshake.hpp"
-#include "boost/mysql/detail/network_algorithms/execute_query.hpp"
-#include "boost/mysql/detail/network_algorithms/prepare_statement.hpp"
-#include "boost/mysql/detail/network_algorithms/quit_connection.hpp"
-#include "boost/mysql/detail/network_algorithms/close_connection.hpp"
-#include "boost/mysql/detail/network_algorithms/connect.hpp"
+#include <boost/mysql/detail/network_algorithms/handshake.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_query.hpp>
+#include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
+#include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/asio/buffer.hpp>
 
 template <class Stream>
@@ -185,90 +183,6 @@ boost::mysql::connection<Stream>::async_quit(
     output_info.clear();
     return detail::async_quit_connection(
         get_channel(),
-        std::forward<CompletionToken>(token),
-        output_info
-    );
-}
-
-// socket_connection: connect
-template <class Stream>
-void boost::mysql::socket_connection<Stream>::connect(
-    const endpoint_type& endpoint,
-    const connection_params& params,
-    error_code& ec,
-    error_info& info
-)
-{
-    detail::clear_errors(ec, info);
-    detail::connect(this->get_channel(), endpoint, params, ec, info);
-}
-
-template <class Stream>
-void boost::mysql::socket_connection<Stream>::connect(
-    const endpoint_type& endpoint,
-    const connection_params& params
-)
-{
-    detail::error_block blk;
-    detail::connect(this->get_channel(), endpoint, params, blk.err, blk.info);
-    blk.check();
-}
-
-template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
-boost::mysql::socket_connection<Stream>::async_connect(
-    const endpoint_type& endpoint,
-    const connection_params& params,
-    error_info& output_info,
-    CompletionToken&& token
-)
-{
-    output_info.clear();
-    return detail::async_connect(
-        this->get_channel(),
-        endpoint,
-        params,
-        std::forward<CompletionToken>(token),
-        output_info
-    );
-}
-
-template <class Stream>
-void boost::mysql::socket_connection<Stream>::close(
-    error_code& err,
-    error_info& info
-)
-{
-    detail::clear_errors(err, info);
-    detail::close_connection(this->get_channel(), err, info);
-}
-
-template <class Stream>
-void boost::mysql::socket_connection<Stream>::close()
-{
-    detail::error_block blk;
-    detail::close_connection(this->get_channel(), blk.err, blk.info);
-    blk.check();
-}
-
-template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
-boost::mysql::socket_connection<Stream>::async_close(
-    error_info& output_info,
-    CompletionToken&& token
-)
-{
-    output_info.clear();
-    return detail::async_close_connection(
-        this->get_channel(),
         std::forward<CompletionToken>(token),
         output_info
     );

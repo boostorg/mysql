@@ -6,9 +6,7 @@
 //
 
 //[example_ssl
-#include "boost/mysql/collation.hpp"
-#include "boost/mysql/connection_params.hpp"
-#include "boost/mysql/mysql.hpp"
+#include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/ssl/context.hpp>

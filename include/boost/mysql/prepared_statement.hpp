@@ -8,11 +8,11 @@
 #ifndef BOOST_MYSQL_PREPARED_STATEMENT_HPP
 #define BOOST_MYSQL_PREPARED_STATEMENT_HPP
 
-#include "boost/mysql/resultset.hpp"
-#include "boost/mysql/execute_params.hpp"
-#include "boost/mysql/detail/protocol/channel.hpp"
-#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
-#include "boost/mysql/detail/auxiliar/value_type_traits.hpp"
+#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/detail/protocol/channel.hpp>
+#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
+#include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <type_traits>
@@ -386,6 +386,6 @@ using unix_prepared_statement = prepared_statement<boost::asio::local::stream_pr
 } // mysql
 } // boost
 
-#include "boost/mysql/impl/prepared_statement.hpp"
+#include <boost/mysql/impl/prepared_statement.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_PREPARED_STATEMENT_HPP_ */

@@ -7,7 +7,7 @@
 
 // Test deserialize_text_value(), just positive cases
 
-#include "boost/mysql/detail/protocol/text_deserialization.hpp"
+#include <boost/mysql/detail/protocol/text_deserialization.hpp>
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -69,7 +69,6 @@ void add_string_samples(std::vector<text_value_sample>& output)
     output.emplace_back("enum", "value", "value", protocol_field_type::string, column_flags::enum_);
     output.emplace_back("set", "value1,value2", "value1,value2", protocol_field_type::string, column_flags::set);
 
-    output.emplace_back("bit", "\1", "\1", protocol_field_type::bit);
     output.emplace_back("decimal", "\1", "\1", protocol_field_type::newdecimal);
     output.emplace_back("geometry", "\1", "\1", protocol_field_type::geometry,
             column_flags::binary | column_flags::blob);
@@ -160,6 +159,27 @@ void add_int_samples(std::vector<text_value_sample>& output)
     output.emplace_back("min", "1901", std::uint64_t(1901), protocol_field_type::year, column_flags::unsigned_);
     output.emplace_back("max", "2155", std::uint64_t(2155), protocol_field_type::year, column_flags::unsigned_);
     output.emplace_back("zero", "0000", std::uint64_t(0), protocol_field_type::year, column_flags::unsigned_);
+}
+
+// bit
+void add_bit_types(std::vector<text_value_sample>& output)
+{
+    output.emplace_back("bit_8", "\x12", std::uint64_t(0x12), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_16", "\x12\x34", std::uint64_t(0x1234), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_24", "\x12\x34\x56", std::uint64_t(0x123456), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_32", "\x12\x34\x56\x78", std::uint64_t(0x12345678), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_40", "\x12\x34\x56\x78\x9a", std::uint64_t(0x123456789a), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_48", "\x12\x34\x56\x78\x9a\xbc", std::uint64_t(0x123456789abc), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_56", "\x12\x34\x56\x78\x9a\xbc\xde", std::uint64_t(0x123456789abcde), 
+        protocol_field_type::bit, column_flags::unsigned_);
+    output.emplace_back("bit_64", "\x12\x34\x56\x78\x9a\xbc\xde\xf0", std::uint64_t(0x123456789abcdef0), 
+        protocol_field_type::bit, column_flags::unsigned_);
 }
 
 template <class T>
@@ -350,6 +370,7 @@ std::vector<text_value_sample> make_all_samples()
     std::vector<text_value_sample> res;
     add_string_samples(res);
     add_int_samples(res);
+    add_bit_types(res);
     add_float_samples<float>(protocol_field_type::float_, res);
     add_float_samples<double>(protocol_field_type::double_, res);
     add_date_samples(res);

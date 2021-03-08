@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/protocol/date.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/date.hpp>
+#include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 
 namespace boost {
 namespace mysql {
@@ -61,6 +62,19 @@ errc deserialize_binary_value_int(
             std::uint64_t, DeserializableTypeUnsigned>(ctx, output) :
         deserialize_binary_value_int_impl<
             std::int64_t, DeserializableTypeSigned>(ctx, output);
+}
+
+// Bits. These come as a binary value between 1 and 8 bytes,
+// packed in a string
+inline errc deserialize_binary_value_bit(
+    deserialization_context& ctx,
+    value& output
+) noexcept
+{
+    string_lenenc buffer;
+    auto err = deserialize(ctx, buffer);
+    if (err != errc::ok) return err;
+    return deserialize_bit(buffer.value, output);
 }
 
 // Floats
@@ -316,6 +330,8 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
         return deserialize_binary_value_int<std::uint32_t, std::int32_t>(meta, ctx, output);
     case protocol_field_type::longlong:
         return deserialize_binary_value_int<std::uint64_t, std::int64_t>(meta, ctx, output);
+    case protocol_field_type::bit:
+        return deserialize_binary_value_bit(ctx, output);
     case protocol_field_type::float_:
         return deserialize_binary_value_float<float>(ctx, output);
     case protocol_field_type::double_:
@@ -339,7 +355,6 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     case protocol_field_type::set:
     // Anything else that we do not know how to interpret, we return as a binary string
     case protocol_field_type::decimal:
-    case protocol_field_type::bit:
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:

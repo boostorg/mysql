@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP
 
-#include "boost/mysql/detail/network_algorithms/handshake.hpp"
+#include <boost/mysql/detail/network_algorithms/handshake.hpp>
 
 namespace boost {
 namespace mysql {

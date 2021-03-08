@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_CONNECTION_PARAMS_HPP
 
 #include <boost/utility/string_view.hpp>
-#include "boost/mysql/collation.hpp"
+#include <boost/mysql/collation.hpp>
 
 namespace boost {
 namespace mysql {

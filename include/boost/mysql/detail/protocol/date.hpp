@@ -33,6 +33,6 @@ BOOST_CXX14_CONSTEXPR inline year_month_day days_to_ymd(int num_days) noexcept;
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/date.hpp"
+#include <boost/mysql/detail/protocol/impl/date.hpp>
 
 #endif

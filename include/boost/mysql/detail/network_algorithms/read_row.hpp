@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ROW_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ROW_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/metadata.hpp"
-#include "boost/mysql/row.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/row.hpp>
 #include <boost/utility/string_view.hpp>
 #include <vector>
 
@@ -55,7 +55,7 @@ async_read_row(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/network_algorithms/impl/read_row.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/read_row.hpp>
 
 
 

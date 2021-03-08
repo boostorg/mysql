@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DATE_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DATE_HPP
 
-#include "boost/mysql/detail/protocol/constants.hpp"
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include <cassert>
 
 namespace boost {

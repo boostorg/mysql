@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_STATEMENT_HPP
 
-#include "boost/mysql/detail/protocol/binary_deserialization.hpp"
-#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
-#include "boost/mysql/detail/network_algorithms/execute_generic.hpp"
+#include <boost/mysql/detail/protocol/binary_deserialization.hpp>
+#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 
 namespace boost {
 namespace mysql {

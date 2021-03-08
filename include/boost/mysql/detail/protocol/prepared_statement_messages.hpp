@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/value.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/value.hpp>
 
 namespace boost {
 namespace mysql {
@@ -137,6 +137,6 @@ struct com_stmt_close_packet
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/prepared_statement_messages.hpp"
+#include <boost/mysql/detail/protocol/impl/prepared_statement_messages.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP_ */

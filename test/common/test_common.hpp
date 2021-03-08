@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
-#include "boost/mysql/value.hpp"
-#include "boost/mysql/row.hpp"
-#include "boost/mysql/connection_params.hpp"
-#include "boost/mysql/detail/auxiliar/stringize.hpp"
+#include <boost/mysql/value.hpp>
+#include <boost/mysql/row.hpp>
+#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/test/unit_test.hpp>
 #include <vector>
 #include <algorithm>

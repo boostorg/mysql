@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_QUIT_CONNECTION_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_QUIT_CONNECTION_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
 
 namespace boost {
 namespace mysql {
@@ -33,6 +33,6 @@ async_quit_connection(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/network_algorithms/impl/quit_connection.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/quit_connection.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_QUIT_CONNECTION_HPP_ */

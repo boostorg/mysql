@@ -50,6 +50,7 @@ add_executable(
     unit/prepared_statement.cpp
     unit/resultset.cpp
     unit/connection.cpp
+    unit/socket_connection.cpp
     unit/entry_point.cpp
 )
 target_link_libraries(

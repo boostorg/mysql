@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_QUERY_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_QUERY_MESSAGES_HPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
 #include <tuple>
 
 namespace boost {

@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HANDSHAKE_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HANDSHAKE_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/detail/protocol/capabilities.hpp"
-#include "boost/mysql/detail/protocol/handshake_messages.hpp"
-#include "boost/mysql/detail/auth/auth_calculator.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/handshake_messages.hpp>
+#include <boost/mysql/detail/auth/auth_calculator.hpp>
 
 namespace boost {
 namespace mysql {

@@ -5,9 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_MYSQL_HPP
-#define BOOST_MYSQL_MYSQL_HPP
+#ifndef BOOST_MYSQL_HPP
+#define BOOST_MYSQL_HPP
 
-#include "boost/mysql/connection.hpp"
+#include <boost/mysql/connection.hpp>
+#include <boost/mysql/socket_connection.hpp>
 
 #endif

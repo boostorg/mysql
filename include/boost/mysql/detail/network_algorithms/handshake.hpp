@@ -9,11 +9,11 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_HANDSHAKE_HPP
 
 #include <boost/utility/string_view.hpp>
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/detail/protocol/channel.hpp"
-#include "boost/mysql/detail/protocol/protocol_types.hpp"
-#include "boost/mysql/connection_params.hpp"
-#include "boost/mysql/collation.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/detail/protocol/channel.hpp>
+#include <boost/mysql/detail/protocol/protocol_types.hpp>
+#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/collation.hpp>
 
 namespace boost {
 namespace mysql {
@@ -40,7 +40,7 @@ async_handshake(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/network_algorithms/impl/handshake.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/handshake.hpp>
 
 
 #endif

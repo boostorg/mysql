@@ -68,6 +68,8 @@
       <entry valign="top">
         <bridgehead renderas="sect3">Concepts</bridgehead>
         <simplelist type="vert" columns="1">
+            <member><link linkend="mysql.ref.boost__mysql__Stream">Stream</link></member>
+            <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
             <member><link linkend="mysql.ref.boost__mysql__ValueCollection">ValueCollection</link></member>
             <member><link linkend="mysql.ref.boost__mysql__ValueForwardIterator">ValueForwardIterator</link></member>
         </simplelist>

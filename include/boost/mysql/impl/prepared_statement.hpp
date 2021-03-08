@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_IMPL_PREPARED_STATEMENT_HPP
 #define BOOST_MYSQL_IMPL_PREPARED_STATEMENT_HPP
 
-#include "boost/mysql/detail/network_algorithms/execute_statement.hpp"
-#include "boost/mysql/detail/network_algorithms/close_statement.hpp"
-#include "boost/mysql/detail/auxiliar/stringize.hpp"
+#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
+#include <boost/mysql/detail/network_algorithms/close_statement.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/asio/bind_executor.hpp>
 
 
@@ -26,7 +26,7 @@ void boost::mysql::prepared_statement<Stream>::check_num_params(
     auto param_count = std::distance(first, last);
     if (param_count != num_params())
     {
-        err = detail::make_error_code(errc::wrong_num_params);
+        err = make_error_code(errc::wrong_num_params);
         info.set_message(detail::stringize(
                 "prepared_statement::execute: expected ", num_params(), " params, but got ", param_count));
     }

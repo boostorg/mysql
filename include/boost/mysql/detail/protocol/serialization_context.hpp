@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_SERIALIZATION_CONTEXT_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_SERIALIZATION_CONTEXT_HPP
 
-#include "boost/mysql/detail/protocol/capabilities.hpp"
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/asio/buffer.hpp>
 #include <cstdint>
 #include <cstring>

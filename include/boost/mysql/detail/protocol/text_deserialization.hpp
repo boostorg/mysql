@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_TEXT_DESERIALIZATION_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_TEXT_DESERIALIZATION_HPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/error.hpp"
-#include "boost/mysql/value.hpp"
-#include "boost/mysql/metadata.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/value.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <vector>
 
 namespace boost {
@@ -34,6 +34,6 @@ inline error_code deserialize_text_row(
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/text_deserialization.ipp"
+#include <boost/mysql/detail/protocol/impl/text_deserialization.ipp>
 
 #endif

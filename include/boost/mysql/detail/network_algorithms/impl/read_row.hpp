@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_ROW_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_ROW_HPP
 
-#include "boost/mysql/detail/protocol/text_deserialization.hpp"
+#include <boost/mysql/detail/protocol/text_deserialization.hpp>
 
 namespace boost {
 namespace mysql {

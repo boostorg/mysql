@@ -37,6 +37,8 @@ for each one.
     \[`1901`, `2155`\], plus zero. Zero is often employed to represent
     invalid year values. We represent zero year here as a numeric 0.
     YEAR is represented as a `std::uint64_t`.
+  * __BIT__. A bitset between 1 and 64 bits wide. Represented here as
+    a `std::uint64_t` ranging between `0` and `0xffffffffffffffff`.
 * Floating point types:
   * __FLOAT__. 4 byte floating point type. Represented as `float`.
   * __DOUBLE__. 8 byte floating point type. Represented as `double`.
@@ -113,8 +115,6 @@ for each one.
     * __DECIMAL__ and __NUMERIC__ (equivalent). 
       A fixed precision numeric value. In this case, the string will contain
       the textual representation of the number (e.g. the string `"20.52"` for `20.52`).
-    * __BIT__. A bitset between 1 and 64 bits wide. In this case, the string will contain
-      the binary representation of the bitset.
     * __GEOMETRY__. In this case, the string will contain
       the binary representation of the geometry type.
       

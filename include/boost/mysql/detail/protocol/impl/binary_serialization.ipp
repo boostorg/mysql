@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_SERIALIZATION_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_SERIALIZATION_IPP
 
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/protocol/date.hpp"
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/date.hpp>
 
 namespace boost {
 namespace mysql {

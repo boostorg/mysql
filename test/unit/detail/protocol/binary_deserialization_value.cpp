@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/detail/protocol/binary_deserialization.hpp"
+#include <boost/mysql/detail/protocol/binary_deserialization.hpp>
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -70,8 +70,6 @@ void add_string_samples(std::vector<binary_value_sample>& output)
         {0x04, 0x74, 0x65, 0x73, 0x74}, "test", protocol_field_type::string, column_flags::enum_));
     output.push_back(binary_value_sample("set",
         {0x04, 0x74, 0x65, 0x73, 0x74}, "test", protocol_field_type::string, column_flags::set));
-    output.push_back(binary_value_sample("bit",
-        {0x02, 0x02, 0x01}, "\2\1", protocol_field_type::bit));
     output.push_back(binary_value_sample("decimal",
         {0x02, 0x31, 0x30}, "10", protocol_field_type::newdecimal));
     output.push_back(binary_value_sample("geomtry",
@@ -119,6 +117,35 @@ void add_int_samples(std::vector<binary_value_sample>& output)
 
     output.push_back(binary_value_sample("year", {0xe3, 0x07}, std::uint64_t(2019),
         protocol_field_type::year, column_flags::unsigned_));
+}
+
+// bit
+void add_bit_types(std::vector<binary_value_sample>& output)
+{
+    output.push_back(binary_value_sample("bit_8",
+        {0x01, 0x12}, std::uint64_t(0x12),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_16",
+        {0x02, 0x12, 0x34}, std::uint64_t(0x1234),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_24",
+        {0x03, 0x12, 0x34, 0x56}, std::uint64_t(0x123456),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_32",
+        {0x04, 0x12, 0x34, 0x56, 0x78}, std::uint64_t(0x12345678),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_40",
+        {0x05, 0x12, 0x34, 0x56, 0x78, 0x9a}, std::uint64_t(0x123456789a),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_48",
+        {0x06, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc}, std::uint64_t(0x123456789abc),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_56",
+        {0x07, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde}, std::uint64_t(0x123456789abcde),
+        protocol_field_type::bit, column_flags::unsigned_));
+    output.push_back(binary_value_sample("bit_64",
+        {0x08, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0}, std::uint64_t(0x123456789abcdef0),
+        protocol_field_type::bit, column_flags::unsigned_));
 }
 
 void add_float_samples(std::vector<binary_value_sample>& output)
@@ -317,6 +344,7 @@ std::vector<binary_value_sample> make_all_samples()
     std::vector<binary_value_sample> res;
     add_string_samples(res);
     add_int_samples(res);
+    add_bit_types(res);
     add_float_samples(res);
     add_double_samples(res);
     add_date_samples(res);

@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/detail/protocol/channel.hpp"
+#include <boost/mysql/detail/protocol/channel.hpp>
 #include "test_common.hpp"
 #include "test_stream.hpp"
-#include "boost/mysql/prepared_statement.hpp"
+#include <boost/mysql/prepared_statement.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test_suite.hpp>

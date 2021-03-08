@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP
 #define BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP
 
-#include "boost/mysql/detail/auth/mysql_native_password.hpp"
-#include "boost/mysql/detail/auth/caching_sha2_password.hpp"
-#include "boost/mysql/detail/auxiliar/make_string_view.hpp"
+#include <boost/mysql/detail/auth/mysql_native_password.hpp>
+#include <boost/mysql/detail/auth/caching_sha2_password.hpp>
+#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 
 namespace boost {
 namespace mysql {

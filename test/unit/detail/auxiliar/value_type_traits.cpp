@@ -10,7 +10,7 @@
 #include <boost/mysql/value.hpp>
 #include <boost/type_index.hpp>
 #include <boost/type_index/stl_type_index.hpp>
-#include "boost/mysql/detail/auxiliar/value_type_traits.hpp"
+#include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <cstddef>
 #include <functional>
 #include <iostream>

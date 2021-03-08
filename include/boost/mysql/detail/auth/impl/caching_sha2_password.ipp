@@ -10,7 +10,7 @@
 
 #include <openssl/sha.h>
 #include <cstring>
-#include "boost/mysql/detail/auxiliar/make_string_view.hpp"
+#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 
 namespace boost {
 namespace mysql {

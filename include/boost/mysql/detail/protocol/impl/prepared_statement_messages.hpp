@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_PREPARED_STATEMENT_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_PREPARED_STATEMENT_MESSAGES_HPP
 
-#include "boost/mysql/detail/protocol/null_bitmap_traits.hpp"
-#include "boost/mysql/detail/protocol/binary_serialization.hpp"
+#include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
+#include <boost/mysql/detail/protocol/binary_serialization.hpp>
 
 namespace boost {
 namespace mysql {

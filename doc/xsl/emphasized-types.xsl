@@ -13,6 +13,7 @@
   <xsl:variable name="emphasized-template-parameter-types" select="
     'CompletionToken',
     'Stream',
+    'SocketStream',
     'Executor',
     'ValueCollection',
     'ValueForwardIterator'

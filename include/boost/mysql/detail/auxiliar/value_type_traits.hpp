@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_VALUE_TYPE_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_VALUE_TYPE_TRAITS_HPP
 
-#include "boost/mysql/value.hpp"
+#include <boost/mysql/value.hpp>
 #include <cstddef>
 #include <iterator>
 #include <type_traits>

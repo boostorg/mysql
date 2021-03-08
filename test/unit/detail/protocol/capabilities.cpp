@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/detail/protocol/capabilities.hpp"
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/test/unit_test.hpp>
 
 using namespace boost::mysql::detail;

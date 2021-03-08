@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/execute_params.hpp"
+#include <boost/mysql/execute_params.hpp>
 #include "integration_test_common.hpp"
 #include <forward_list>
 

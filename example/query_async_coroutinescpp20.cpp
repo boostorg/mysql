@@ -7,8 +7,7 @@
 
 //[example_query_async_coroutinescpp20
 
-#include "boost/mysql/mysql.hpp"
-#include "boost/mysql/row.hpp"
+#include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/co_spawn.hpp>

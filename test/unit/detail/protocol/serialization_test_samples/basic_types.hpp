@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BASIC_TYPES_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BASIC_TYPES_HPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
 #include "../serialization_test.hpp"
 
 

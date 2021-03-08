@@ -404,14 +404,33 @@ INSERT INTO types_binary VALUES
     ("empty",   "",          "",             "",            "",        "",              "")
 ;
 
+CREATE TABLE types_bit(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_1 BIT(1),
+    field_8 BIT(8),
+    field_14 BIT(14),
+    field_16 BIT(16),
+    field_24 BIT(24),
+    field_25 BIT(25),
+    field_32 BIT(32),
+    field_40 BIT(40),
+    field_48 BIT(48),
+    field_56 BIT(56),
+    field_64 BIT(64)
+);
+INSERT INTO types_bit VALUES
+    ("min",     0, 0x00, 0x0000, 0x0000, 0x000000, 0x0000000, 0x00000000, 0x0000000000, 0x000000000000, 0x00000000000000, 0x0000000000000000),
+    ("regular", 1, 0x9e, 0x1e2a, 0x1234, 0x123456, 0x154abe0, 0x12345678, 0x123456789a, 0x123456789abc, 0x123456789abcde, 0x1234567812345678),
+    ("max",     1, 0xff, 0x3fff, 0xffff, 0xffffff, 0x1ffffff, 0xffffffff, 0xffffffffff, 0xffffffffffff, 0xffffffffffffff, 0xffffffffffffffff)
+;
+
 CREATE TABLE types_not_implemented(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
-    field_bit BIT(8),
     field_decimal DECIMAL,
     field_geometry GEOMETRY
 );
 INSERT INTO types_not_implemented VALUES
-    ("regular", 0xfe, 300, POINT(1, 2))
+    ("regular", 300, POINT(1, 2))
 ;
 
 CREATE TABLE types_flags(

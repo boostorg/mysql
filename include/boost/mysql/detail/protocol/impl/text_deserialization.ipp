@@ -13,8 +13,9 @@
 #include <type_traits>
 #include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/protocol/date.hpp"
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/date.hpp>
+#include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 
 #ifdef BOOST_MSVC
 #pragma warning( push )
@@ -317,6 +318,8 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     case protocol_field_type::year:
     case protocol_field_type::longlong:
         return deserialize_text_value_int(from, output, meta);
+    case protocol_field_type::bit:
+        return deserialize_bit(from, output);
     case protocol_field_type::float_:
         return deserialize_text_value_float<float>(from, output);
     case protocol_field_type::double_:
@@ -340,7 +343,6 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     case protocol_field_type::set:
     // Anything else that we do not know how to interpret, we return as a binary string
     case protocol_field_type::decimal:
-    case protocol_field_type::bit:
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:

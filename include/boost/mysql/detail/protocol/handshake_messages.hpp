@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_HANDSHAKE_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_HANDSHAKE_MESSAGES_HPP
 
-#include "boost/mysql/detail/protocol/serialization.hpp"
-#include "boost/mysql/detail/auxiliar/static_string.hpp"
+#include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/detail/auxiliar/static_string.hpp>
 
 namespace boost {
 namespace mysql {
@@ -165,6 +165,6 @@ struct auth_more_data_packet
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/handshake_messages.ipp"
+#include <boost/mysql/detail/protocol/impl/handshake_messages.ipp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_HANDSHAKE_MESSAGES_HPP_ */

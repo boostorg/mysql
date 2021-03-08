@@ -6,8 +6,7 @@
 //
 
 //[example_default_completion_tokens]
-#include "boost/mysql/mysql.hpp"
-#include "boost/mysql/row.hpp"
+#include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/co_spawn.hpp>

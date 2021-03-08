@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_QUERY_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_QUERY_HPP
 
-#include "boost/mysql/detail/network_algorithms/common.hpp"
-#include "boost/mysql/resultset.hpp"
+#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/utility/string_view.hpp>
 
 namespace boost {
@@ -38,6 +38,6 @@ async_execute_query(
 }
 }
 
-#include "boost/mysql/detail/network_algorithms/impl/execute_query.hpp"
+#include <boost/mysql/detail/network_algorithms/impl/execute_query.hpp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_QUERY_HPP_ */

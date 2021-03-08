@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP
 #define BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP
 
-#include "boost/mysql/error.hpp"
-#include "boost/mysql/detail/auxiliar/bytestring.hpp"
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <array>
 #include <vector>
 #include <boost/utility/string_view.hpp>
@@ -59,6 +59,6 @@ public:
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/auth/impl/auth_calculator.ipp"
+#include <boost/mysql/detail/auth/impl/auth_calculator.ipp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP_ */

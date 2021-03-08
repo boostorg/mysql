@@ -32,7 +32,8 @@
 [template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^boost::asio::[term]]]]
 [template mysqllink[id text][@https://dev.mysql.com/doc/refman/8.0/en/[id] [text]]]
 
-[def __Stream__ [@boost:/libs/beast/doc/html/beast/concepts/streams.html ['Stream]]]
+[def __Stream__ [reflink2 Stream ['Stream]]]
+[def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]
 [def __Executor__ [@boost:/doc/html/boost_asio/reference/Executor1.html ['Executor]]]
 [def __CompletionToken__ [@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers ['CompletionToken]]]
 [def __ValueCollection__ [reflink2 ValueCollection ['ValueCollection]]]
@@ -101,6 +102,8 @@
 [block'''<reference><title>This Page Intentionally Left Blank 1/2</title>''']
 [section:ref This Page Intentionally Left Blank 2/2]
 [include reference.qbk]
+[include helpers/Stream.qbk]
+[include helpers/SocketStream.qbk]
 [include helpers/ValueCollection.qbk]
 [include helpers/ValueForwardIterator.qbk]
 [endsect]

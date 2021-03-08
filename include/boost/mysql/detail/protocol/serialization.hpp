@@ -11,12 +11,12 @@
 #include <boost/endian/conversion.hpp>
 #include <type_traits>
 #include <algorithm>
-#include "boost/mysql/detail/protocol/protocol_types.hpp"
-#include "boost/mysql/detail/protocol/serialization_context.hpp"
-#include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/auxiliar/bytestring.hpp"
-#include "boost/mysql/value.hpp"
-#include "boost/mysql/error.hpp"
+#include <boost/mysql/detail/protocol/protocol_types.hpp>
+#include <boost/mysql/detail/protocol/serialization_context.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/value.hpp>
+#include <boost/mysql/error.hpp>
 
 namespace boost {
 namespace mysql {
@@ -232,7 +232,7 @@ void serialize_fields(serialization_context& ctx, const Types&... fields) noexce
 } // mysql
 } // boost
 
-#include "boost/mysql/detail/protocol/impl/serialization.hpp"
-#include "boost/mysql/detail/protocol/impl/serialization.ipp"
+#include <boost/mysql/detail/protocol/impl/serialization.hpp>
+#include <boost/mysql/detail/protocol/impl/serialization.ipp>
 
 #endif

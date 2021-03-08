@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/detail/protocol/date.hpp"
+#include <boost/mysql/detail/protocol/date.hpp>
 #include "test_common.hpp"
 #include <algorithm>
 #include <limits>

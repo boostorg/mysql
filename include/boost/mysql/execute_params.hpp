@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_EXECUTE_PARAMS_HPP
 #define BOOST_MYSQL_EXECUTE_PARAMS_HPP
 
-#include "boost/mysql/value.hpp"
-#include "boost/mysql/detail/auxiliar/value_type_traits.hpp"
+#include <boost/mysql/value.hpp>
+#include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <iterator>
 #include <type_traits>
 

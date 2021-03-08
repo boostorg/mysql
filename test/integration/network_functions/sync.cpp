@@ -35,7 +35,7 @@ class sync_errc : public network_functions<Stream>
     static network_result<impl_result_type<Callable>> impl(Callable&& cb)
     {
         network_result<impl_result_type<Callable>> res (
-            boost::mysql::detail::make_error_code(errc::no),
+            boost::mysql::make_error_code(errc::no),
             error_info("error_info not cleared properly")
         );
         res.value = cb(res.err, *res.info);

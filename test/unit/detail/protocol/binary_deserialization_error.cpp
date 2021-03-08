@@ -7,7 +7,8 @@
 
 // Test deserialize_binary_value(), only error cases
 
-#include "boost/mysql/detail/protocol/binary_deserialization.hpp"
+#include <boost/mysql/detail/protocol/binary_deserialization.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -68,6 +69,19 @@ void add_int_samples(
         bytestring(num_bytes, 0x0a), type, errc::incomplete_message));
     output.emplace_back(binary_value_err_sample("unsigned_not_enough_space",
         bytestring(num_bytes, 0x0a), type, column_flags::unsigned_, errc::incomplete_message));
+}
+
+void add_bit_samples(
+    std::vector<binary_value_err_sample>& output
+)
+{
+    output.emplace_back(binary_value_err_sample("bit_error_deserializing_string_view",
+        {0x01}, protocol_field_type::bit, column_flags::unsigned_, errc::incomplete_message));
+    output.emplace_back(binary_value_err_sample("bit_string_view_too_short",
+        {0x00}, protocol_field_type::bit, column_flags::unsigned_));
+    output.emplace_back(binary_value_err_sample("bit_string_view_too_long",
+        {0x09, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09}, 
+        protocol_field_type::bit, column_flags::unsigned_));
 }
 
 void add_float_samples(std::vector<binary_value_err_sample>& output)
@@ -238,6 +252,7 @@ std::vector<binary_value_err_sample> make_all_samples()
     add_int_samples(protocol_field_type::long_, 3, res);
     add_int_samples(protocol_field_type::longlong, 7, res);
     add_int_samples(protocol_field_type::year, 1, res);
+    add_bit_samples(res);
     add_float_samples(res);
     add_double_samples(res);
     add_date_samples(res);

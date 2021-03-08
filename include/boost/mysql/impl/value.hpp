@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_IMPL_VALUE_HPP
 #define BOOST_MYSQL_IMPL_VALUE_HPP
 
-#include "boost/mysql/detail/auxiliar/container_equals.hpp"
-#include "boost/mysql/detail/protocol/date.hpp"
+#include <boost/mysql/detail/auxiliar/container_equals.hpp>
+#include <boost/mysql/detail/protocol/date.hpp>
 #include <limits>
 
 namespace boost {

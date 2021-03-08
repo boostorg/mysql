@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/error.hpp"
+#include <boost/mysql/error.hpp>
 #include "test_common.hpp"
 
 using boost::mysql::errc;
@@ -81,5 +81,12 @@ BOOST_AUTO_TEST_CASE(operator_stream)
 }
 
 BOOST_AUTO_TEST_SUITE_END() // test_error_info
+
+// error_code construction from errc
+BOOST_AUTO_TEST_CASE(error_code_from_errc)
+{
+    boost::mysql::error_code code (errc::protocol_value_error);
+    BOOST_TEST(code.value() == static_cast<int>(errc::protocol_value_error));
+}
 
 BOOST_AUTO_TEST_SUITE_END() // test_error

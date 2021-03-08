@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_STATEMENT_HPP
 
-#include "boost/mysql/detail/protocol/prepared_statement_messages.hpp"
+#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
 template <class Stream>
 void boost::mysql::detail::close_statement(

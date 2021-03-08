@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_NETWORK_FUNCTIONS_HPP
 
-#include "boost/mysql/connection.hpp"
+#include <boost/mysql/socket_connection.hpp>
 #include "tcp_future_socket.hpp"
 #include <forward_list>
 #include <boost/optional/optional.hpp>
@@ -61,7 +61,7 @@ struct network_result_base
         const std::vector<std::string>& expected_msg
     ) const
     {
-        validate_error(detail::make_error_code(expected_errc), expected_msg);
+        validate_error(make_error_code(expected_errc), expected_msg);
     }
 };
 
