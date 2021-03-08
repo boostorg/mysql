@@ -27,12 +27,12 @@
         <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.synopsis"></a></span><a class="link" href="boost__mysql__socket_connection.html#mysql.ref.boost__mysql__socket_connection.synopsis">Synopsis</a>
       </h5>
 <p>
-        Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/connection.hpp" target="_top">boost/mysql/connection.hpp</a>&gt;</code>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/socket_connection.hpp" target="_top">boost/mysql/socket_connection.hpp</a>&gt;</code>
       </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a class="link" href="boost__mysql__SocketStream.html" title="SocketStream concept"><code class="literal"><span class="emphasis"><em>SocketStream</em></span></code></a><span class="special">&gt;</span>
 <span class="keyword">class</span> <span class="identifier">socket_connection</span> <span class="special">:</span>
-    <span class="keyword">public</span> <span class="identifier">connection</span><span class="special">&lt;</span> <span class="identifier">Stream</span> <span class="special">&gt;</span>
+    <span class="keyword">public</span> <span class="identifier">connection</span><span class="special">&lt;</span> <span class="identifier">SocketStream</span> <span class="special">&gt;</span>
 </pre>
 <h5>
 <a name="mysql.ref.boost__mysql__socket_connection.h1"></a>
@@ -349,8 +349,7 @@
       </h5>
 <p>
         Extends <a class="link" href="boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
-        with additional functions that require Stream to be a socket. Stream should
-        inherit from an instantiation of <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/basic_socket.html" target="_top"><code class="literal">boost::asio::basic_socket</code></a>.
+        with additional functions that require the undrlying stream to be a socket.
         In general, prefer this class over <a class="link" href="boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>.
         See also <a class="link" href="boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>
         and <a class="link" href="boost__mysql__unix_connection.html" title="unix_connection"><code class="literal">unix_connection</code></a>

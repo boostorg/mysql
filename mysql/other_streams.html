@@ -23,7 +23,7 @@
       All I/O objects (<a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>,
       <a class="link" href="ref/boost__mysql__prepared_statement.html" title="prepared_statement"><code class="literal">prepared_statement</code></a>
       and <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>)
-      are templatized on the stream type. Any object fulfilling the <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
+      are templatized on the stream type. Any object fulfilling the <a class="link" href="ref/boost__mysql__Stream.html" title="Stream concept"><code class="literal"><span class="emphasis"><em>Stream</em></span></code></a>
       concept may be used as template argument.
     </p>
 <div class="warning"><table border="0" summary="Warning">
@@ -48,7 +48,7 @@
       There are two types of connection objects: <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
       and <a class="link" href="ref/boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>.
       The first one is the most basic object, and requires the passed in stream to
-      just fulfill the <a href="https://www.boost.org/doc/libs/1_75_0/libs/beast/doc/html/beast/concepts/streams.html" target="_top"><span class="emphasis"><em>Stream</em></span></a>
+      just fulfill the <a class="link" href="ref/boost__mysql__Stream.html" title="Stream concept"><code class="literal"><span class="emphasis"><em>Stream</em></span></code></a>
       requirements. The second derives from the first one and provides additional
       functionality, but can only be used on streams that inherit from <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/basic_stream_socket.html" target="_top"><code class="literal">boost::asio::basic_stream_socket</code></a>.
     </p>

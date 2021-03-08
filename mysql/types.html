@@ -75,6 +75,12 @@
                 is often employed to represent invalid year values. We represent
                 zero year here as a numeric 0. YEAR is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>.
               </li>
+<li class="listitem">
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/bit-type.html" target="_top"><code class="computeroutput"><span class="identifier">BIT</span></code></a>. A bitset between 1
+                and 64 bits wide. Represented here as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                ranging between <code class="computeroutput"><span class="number">0</span></code> and
+                <code class="computeroutput"><span class="number">0</span><span class="identifier">xffffffffffffffff</span></code>.
+              </li>
 </ul></div>
         </li>
 <li class="listitem">
@@ -238,11 +244,6 @@
                 <a href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">DECIMAL</span></code></a> and <a href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">NUMERIC</span></code></a> (equivalent). A
                 fixed precision numeric value. In this case, the string will contain
                 the textual representation of the number (e.g. the string <code class="computeroutput"><span class="string">"20.52"</span></code> for <code class="computeroutput"><span class="number">20.52</span></code>).
-              </li>
-<li class="listitem">
-                <a href="https://dev.mysql.com/doc/refman/8.0/en/bit-type.html" target="_top"><code class="computeroutput"><span class="identifier">BIT</span></code></a>. A bitset between 1
-                and 64 bits wide. In this case, the string will contain the binary
-                representation of the bitset.
               </li>
 <li class="listitem">
                 <a href="https://dev.mysql.com/doc/refman/8.0/en/spatial-type-overview.html" target="_top"><code class="computeroutput"><span class="identifier">GEOMETRY</span></code></a>. In this case,
