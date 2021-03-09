@@ -407,7 +407,10 @@ void boost::mysql::detail::channel<Stream>::create_ssl_stream()
     boost::asio::ssl::context* ctx = external_ctx_;
     if (!ctx)
     {
-        local_ctx_.emplace(boost::asio::ssl::context::tls_client);
+        if (!local_ctx_)
+        {
+            local_ctx_.emplace(boost::asio::ssl::context::tls_client);
+        }
         ctx = &*local_ctx_;
     }
 

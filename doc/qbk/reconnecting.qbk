@@ -1,0 +1,38 @@
+[/
+    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:reconnecting Reconnecting a MySQL connection]
+
+After you close a connection or an error has occurred, and if its underlying [reflink Stream]
+supports it, you can re-open an existing connection. This is definitely the case for
+[reflink socket_connection], [reflink tcp_connection] and [reflink unix_connection].
+
+If you are using a [reflink socket_connection] (including [reflink tcp_connection] and [reflink unix_connection]):
+
+* After calling [refmem socket_connection close], you can re-open the connection later by calling
+  [refmem socket_connection connect] normally, even if the close operation failed.
+* If your [refmem socket_connection connect] operation failed, you can try opening it again
+  by simply calling [refmem socket_connection connect] again.
+* If you connected your connection successfully but encountered a network problem in any subsequent operation,
+  and you would like to re-establish connection, you should first call [refmem socket_connection close] first, and
+  then try opening the connection again by calling [refmem socket_connection connect].
+
+If you are using [reflink connection], then you are responsible for establishing the physical connection
+and closing the underlying stream, if necessary. Some guidelines:
+
+* After calling [refmem connection quit], you should close the underlying stream, if required. You should then re-establish the physical connection on the stream, and call [refmem connection handshake] afterwards.
+* If your [refmem connection handshake] operation failed, you are responsible for closing the underlying stream if required.
+  You should then establish the physical connection again, and then call [refmem connection handshake].
+* If you connected your connection successfully but encountered a network problem in any subsequent operation,
+  and you would like to re-establish connection, you should first call [refmem connection quit] first, then close and re-open
+  the physical connection, and finally call [refmem connection handshake].
+
+Note that __Self__ does not perform any built-in retry strategy, as different use cases have different requirements.
+You can implement it as you best like with these tools. If you implemented your own and you would like to contribute it,
+please create a PR in the GitHub repository.
+
+[endsect]

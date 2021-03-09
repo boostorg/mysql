@@ -72,6 +72,12 @@ public:
     {
     }
 
+    void reset()
+    {
+        reset_sequence_number();
+        ssl_stream_.reset();
+    }
+
     // Executor
     using executor_type = typename Stream::executor_type;
     executor_type get_executor() { return stream_.get_executor(); }

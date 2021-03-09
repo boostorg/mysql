@@ -93,6 +93,7 @@ add_executable(
     integration/prepared_statement_lifecycle.cpp
     integration/quit_connection.cpp
     integration/close_connection.cpp
+    integration/reconnect.cpp
     integration/database_types.cpp
     integration/entry_point.cpp
 )

@@ -7,7 +7,7 @@
 
 [library Boost.Mysql
     [quickbook 1.7]
-    [copyright 2019 - 2020 Ruben Perez]
+    [copyright 2019 - 2021 Ruben Perez]
     [id mysql]
     [purpose MySQL client library]
     [license
@@ -92,6 +92,7 @@
 [include other_streams.qbk]
 [include error_handling.qbk]
 [include connparams.qbk]
+[include reconnecting.qbk]
 [include examples.qbk]
 [include types.qbk]
 

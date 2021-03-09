@@ -346,6 +346,8 @@ void boost::mysql::detail::handshake(
     error_info& info
 )
 {
+    channel.reset();
+
     // Set up processor
     handshake_processor processor (params);
 
@@ -417,6 +419,7 @@ boost::mysql::detail::async_handshake(
     error_info& info
 )
 {
+    chan.reset();
     return boost::asio::async_compose<
         CompletionToken,
         void(error_code)

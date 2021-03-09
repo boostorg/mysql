@@ -9,7 +9,6 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-using boost::mysql::socket_connection;
 
 BOOST_AUTO_TEST_SUITE(test_close_connection)
 
@@ -55,5 +54,6 @@ BOOST_MYSQL_NETWORK_TEST(not_open_connection, network_fixture, network_ssl_gen)
     auto result = sample.net->close(this->conn);
     result.validate_no_error();
 }
+
 
 BOOST_AUTO_TEST_SUITE_END() // test_close_connection

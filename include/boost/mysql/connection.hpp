@@ -29,7 +29,8 @@ namespace mysql {
 /**
  * \brief A connection to a MySQL server. See the following sections for how to use
  * [link mysql.queries text queries], [link mysql.prepared_statements prepared statements],
- * [link mysql.connparams connect], [link mysql.other_streams.connection handshake and quit].
+ * [link mysql.connparams connect], [link mysql.other_streams.connection handshake and quit]
+ * and [link mysql.reconnecting error recovery].
  *
  * \details
  * Represents a connection to a MySQL server, allowing you to interact with it.
