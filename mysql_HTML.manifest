@@ -9,6 +9,7 @@ mysql/async.html
 mysql/other_streams.html
 mysql/error_handling.html
 mysql/connparams.html
+mysql/reconnecting.html
 mysql/examples.html
 mysql/examples/setup.html
 mysql/examples/query_sync.html
