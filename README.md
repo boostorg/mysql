@@ -1,4 +1,4 @@
-# Boost.MySQL
+# <Proposed for> Boost.MySQL (not yet in Boost)
 
  Linux/OSX | Windows | Coverage | Documentation
 -----------|---------|----------|--------------
