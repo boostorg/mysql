@@ -1,4 +1,4 @@
-# <Proposed for> Boost.MySQL (not yet in Boost)
+# \<Proposed for\> Boost.MySQL (not yet in Boost)
 
  Linux/OSX | Windows | Coverage | Documentation
 -----------|---------|----------|--------------
