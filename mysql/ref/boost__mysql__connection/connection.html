@@ -3,11 +3,11 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>connection::connection</title>
 <link rel="stylesheet" href="../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../boost__mysql__connection.html" title="connection">
 <link rel="prev" href="executor_type.html" title="connection::executor_type">
-<link rel="next" href="connection/overload1.html" title="connection::connection (1 of 3 overloads)">
+<link rel="next" href="connection/overload1.html" title="connection::connection (1 of 2 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
@@ -20,44 +20,29 @@
 <a name="mysql.ref.boost__mysql__connection.connection"></a><a class="link" href="connection.html" title="connection::connection">connection::connection</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idm8689"></a>
+          <a class="indexterm" name="idp9454"></a>
         </p>
 <p>
-          Initializing constructor (no user-provided SSL context).
+          Initializing constructor.
         </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
     <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">,</span>
     <span class="keyword">class</span> <span class="identifier">EnableIf</span> <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">Stream</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...&gt;::</span><a class="link" href="../boost__mysql__value.html" title="value">value</a><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
-<a class="link" href="connection/overload1.html" title="connection::connection (1 of 3 overloads)">connection</a><span class="special">(</span>
+<a class="link" href="connection/overload1.html" title="connection::connection (1 of 2 overloads)">connection</a><span class="special">(</span>
     <span class="identifier">Args</span><span class="special">&amp;&amp;...</span> <span class="identifier">args</span><span class="special">);</span>
-  <span class="emphasis"><em>» <a class="link" href="connection/overload1.html" title="connection::connection (1 of 3 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
-</pre>
-<p>
-          Initializing constructor (user-provided SSL context).
-        </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">,</span>
-    <span class="keyword">class</span> <span class="identifier">EnableIf</span> <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">Stream</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...&gt;::</span><a class="link" href="../boost__mysql__value.html" title="value">value</a><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
-<a class="link" href="connection/overload2.html" title="connection::connection (2 of 3 overloads)">connection</a><span class="special">(</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">&amp;</span> <span class="identifier">ctx</span><span class="special">,</span>
-    <span class="identifier">Args</span><span class="special">&amp;&amp;...</span> <span class="identifier">args</span><span class="special">);</span>
-  <span class="emphasis"><em>» <a class="link" href="connection/overload2.html" title="connection::connection (2 of 3 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
+  <span class="emphasis"><em>» <a class="link" href="connection/overload1.html" title="connection::connection (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
 </pre>
 <p>
           Move constructor.
         </p>
-<pre class="programlisting"><a class="link" href="connection/overload3.html" title="connection::connection (3 of 3 overloads)">connection</a><span class="special">(</span>
+<pre class="programlisting"><a class="link" href="connection/overload2.html" title="connection::connection (2 of 2 overloads)">connection</a><span class="special">(</span>
     <span class="identifier">connection</span><span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">);</span>
-  <span class="emphasis"><em>» <a class="link" href="connection/overload3.html" title="connection::connection (3 of 3 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
+  <span class="emphasis"><em>» <a class="link" href="connection/overload2.html" title="connection::connection (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
-        Distributed under the Boost Software License, Version 1.0. (See accompanying
-        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
-      </p>
-</div></td>
+<td align="right"><div class="copyright-footer"></div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

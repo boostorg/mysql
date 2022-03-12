@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>socket_connection::async_quit (2 of 2 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../async_quit.html" title="socket_connection::async_quit">
 <link rel="prev" href="overload1.html" title="socket_connection::async_quit (1 of 2 overloads)">
@@ -38,21 +38,18 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.async_quit.overload2.h1"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.async_quit.overload2.description"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__socket_connection.async_quit.overload2.description">Description</a>
           </h7><p>
-            Sends a quit request to the MySQL server. Both server and client should
-            close the underlying physical connection after this. This operation involves
-            a network transfer and thus can fail. This is a low-level operation.
-            See <a class="link" href="../../../other_streams.html#mysql.other_streams.connection">this section</a>
-            for more info. Prefer <a class="link" href="../async_close.html" title="socket_connection::async_close"><code class="literal">socket_connection::async_close</code></a>
-            instead. The handler signature for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
+            Sends a quit request to the MySQL server. If the connection is using
+            SSL, this function will also perform the SSL shutdown. You should close
+            the underlying physical connection after calling this function. If you're
+            using <a class="link" href="../../boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>,
+            prefer <a class="link" href="../close.html" title="socket_connection::close"><code class="literal">socket_connection::close</code></a>,
+            as it also takes care of closing the underlying stream. The handler signature
+            for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
-        Distributed under the Boost Software License, Version 1.0. (See accompanying
-        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
-      </p>
-</div></td>
+<td align="right"><div class="copyright-footer"></div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">
