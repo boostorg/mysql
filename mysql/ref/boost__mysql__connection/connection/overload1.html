@@ -1,13 +1,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>connection::connection (1 of 2 overloads)</title>
+<title>connection::connection (1 of 3 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../connection.html" title="connection::connection">
 <link rel="prev" href="../connection.html" title="connection::connection">
-<link rel="next" href="overload2.html" title="connection::connection (2 of 2 overloads)">
+<link rel="next" href="overload2.html" title="connection::connection (2 of 3 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../images/proposed_for_boost.svg"></td></tr></table>
@@ -17,11 +17,11 @@
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h6 class="title">
-<a name="mysql.ref.boost__mysql__connection.connection.overload1"></a><a class="link" href="overload1.html" title="connection::connection (1 of 2 overloads)">connection::connection
-          (1 of 2 overloads)</a>
+<a name="mysql.ref.boost__mysql__connection.connection.overload1"></a><a class="link" href="overload1.html" title="connection::connection (1 of 3 overloads)">connection::connection
+          (1 of 3 overloads)</a>
 </h6></div></div></div>
 <p>
-            Initializing constructor.
+            Initializing constructor (no user-provided SSL context).
           </p>
 <h7><a name="mysql.ref.boost__mysql__connection.connection.overload1.h0"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__connection.connection.overload1.synopsis"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__connection.connection.overload1.synopsis">Synopsis</a>
@@ -35,14 +35,22 @@
             <span class="phrase"><a name="mysql.ref.boost__mysql__connection.connection.overload1.description"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__connection.connection.overload1.description">Description</a>
           </h7><p>
             As part of the initialization, a Stream object is created by forwarding
-            any passed in arguments to its constructor. The constructed connection
-            will have <a class="link" href="../valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
+            any passed in arguments to its constructor. If SSL ends up being used
+            for this connection, a <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>
+            object will be created on-demmand, with the minimum configuration settings
+            to make SSL work. In particular, no certificate validation will be performed.
+            If you need more flexibility, have a look at the other constructor overloads.
+            The constructed connection will have <a class="link" href="../valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
             return <code class="computeroutput"><span class="keyword">true</span></code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

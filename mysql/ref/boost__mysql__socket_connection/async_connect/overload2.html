@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>socket_connection::async_connect (2 of 2 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../async_connect.html" title="socket_connection::async_connect">
 <link rel="prev" href="overload1.html" title="socket_connection::async_connect (1 of 2 overloads)">
@@ -27,7 +27,7 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.async_connect.overload2.h0"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.async_connect.overload2.synopsis"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__socket_connection.async_connect.overload2.synopsis">Synopsis</a>
           </h7><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
 <span class="keyword">auto</span>
 <span class="identifier">async_connect</span><span class="special">(</span>
     <span class="keyword">const</span> <span class="identifier">endpoint_type</span><span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">,</span>
@@ -38,19 +38,23 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.async_connect.overload2.h1"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.async_connect.overload2.description"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__socket_connection.async_connect.overload2.description">Description</a>
           </h7><p>
-            Connects the underlying stream and then performs the handshake with the
-            server. The underlying stream is closed in case of error. Prefer this
+            Connects the underlying socket and then performs the handshake with the
+            server. The underlying socket is closed in case of error. Prefer this
             function to <a class="link" href="../../boost__mysql__connection/async_handshake.html" title="connection::async_handshake"><code class="literal">connection::async_handshake</code></a>.
             The strings pointed to by params should be kept alive by the caller until
-            the operation completes, as no copy is made by the library. If using
-            a SSL-capable stream, the SSL handshake will be performed by this function.
-            See <a class="link" href="../../../ssl.html#mysql.ssl.handshake" title="When is the SSL handshake performed?">this section</a> for more
-            info. The handler signature for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
+            the operation completes, as no copy is made by the library. If SSL certificate
+            validation was configured (by providing a custom SSL context to this
+            class' constructor) and fails, this function will fail. The handler signature
+            for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

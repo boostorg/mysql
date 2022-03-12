@@ -3,10 +3,10 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>MySQL to C++ mapping reference</title>
 <link rel="stylesheet" href="../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
-<link rel="prev" href="examples/ssl.html" title="Setting SSL options">
+<link rel="prev" href="examples/ssl.html" title="Advanced SSL configuration">
 <link rel="next" href="quickref.html" title="Reference">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -28,7 +28,7 @@
           Integral types:
           <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">TINYINT</span></code></a>. 1 byte integer
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">TINYINT</span></code></a>. 1 byte integer
                 type. If it is signed, it is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>,
                 and its range is between <code class="computeroutput"><span class="special">-</span><span class="number">0x80</span></code> and <code class="computeroutput"><span class="number">0x7f</span></code>.
                 If unsigned, represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
@@ -36,7 +36,7 @@
                 and <code class="computeroutput"><span class="number">0xff</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">SMALLINT</span></code></a>. 2 byte integer
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">SMALLINT</span></code></a>. 2 byte integer
                 type. If it is signed, it is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>,
                 and its range is between <code class="computeroutput"><span class="special">-</span><span class="number">0x8000</span></code> and <code class="computeroutput"><span class="number">0x7fff</span></code>.
                 If unsigned, represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
@@ -44,7 +44,7 @@
                 and <code class="computeroutput"><span class="number">0xffff</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">MEDIUMINT</span></code></a>. 3 byte integer
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">MEDIUMINT</span></code></a>. 3 byte integer
                 type. If it is signed, it is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>,
                 and its range is between <code class="computeroutput"><span class="special">-</span><span class="number">0x800000</span></code> and <code class="computeroutput"><span class="number">0x7fffff</span></code>.
                 If unsigned, represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
@@ -52,7 +52,7 @@
                 and <code class="computeroutput"><span class="number">0xffffff</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">INT</span></code></a>. 4 byte integer type.
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">INT</span></code></a>. 4 byte integer type.
                 If it is signed, it is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>,
                 and its range is between <code class="computeroutput"><span class="special">-</span><span class="number">0x80000000</span></code> and <code class="computeroutput"><span class="number">0x7fffffff</span></code>.
                 If unsigned, represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>,
@@ -60,7 +60,7 @@
                 and <code class="computeroutput"><span class="number">0xffffffff</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">BIGINT</span></code></a>. 8 byte integer
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/integer-types.html" target="_top"><code class="computeroutput"><span class="identifier">BIGINT</span></code></a>. 8 byte integer
                 type. If it is signed, it is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>,
                 and its range is between <code class="computeroutput"><span class="special">-</span><span class="number">0</span><span class="identifier">x8000000000000000</span></code>
                 and <code class="computeroutput"><span class="number">0</span><span class="identifier">x7fffffffffffffff</span></code>.
@@ -69,14 +69,14 @@
                 and <code class="computeroutput"><span class="number">0</span><span class="identifier">xffffffffffffffff</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/year.html" target="_top"><code class="computeroutput"><span class="identifier">YEAR</span></code></a>. 1 byte integer type
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/year.html" target="_top"><code class="computeroutput"><span class="identifier">YEAR</span></code></a>. 1 byte integer type
                 used to represent years. Its range is [<code class="computeroutput"><span class="number">1901</span></code>,
                 <code class="computeroutput"><span class="number">2155</span></code>], plus zero. Zero
                 is often employed to represent invalid year values. We represent
                 zero year here as a numeric 0. YEAR is represented as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/bit-type.html" target="_top"><code class="computeroutput"><span class="identifier">BIT</span></code></a>. A bitset between 1
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/bit-type.html" target="_top"><code class="computeroutput"><span class="identifier">BIT</span></code></a>. A bitset between 1
                 and 64 bits wide. Represented here as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
                 ranging between <code class="computeroutput"><span class="number">0</span></code> and
                 <code class="computeroutput"><span class="number">0</span><span class="identifier">xffffffffffffffff</span></code>.
@@ -87,11 +87,11 @@
           Floating point types:
           <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">FLOAT</span></code></a>. 4 byte floating
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">FLOAT</span></code></a>. 4 byte floating
                 point type. Represented as <code class="computeroutput"><span class="keyword">float</span></code>.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">DOUBLE</span></code></a>. 8 byte floating
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/floating-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">DOUBLE</span></code></a>. 8 byte floating
                 point type. Represented as <code class="computeroutput"><span class="keyword">double</span></code>.
               </li>
 </ul></div>
@@ -101,17 +101,17 @@
           <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
 <p class="simpara">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATE</span></code></a>. Represented as a
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATE</span></code></a>. Represented as a
                 boost::mysql::date. All dates retrieved from the database are guaranteed
                 to be in the range [<a class="link" href="ref/boost__mysql__min_date.html" title="min_date"><code class="literal">min_date</code></a>,
                 <a class="link" href="ref/boost__mysql__max_date.html" title="max_date"><code class="literal">max_date</code></a>].
                 Note that these limits are slightly more flexible than the official
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATE</span></code></a> limits.
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATE</span></code></a> limits.
               </p>
 <p class="simpara">
-                If the <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_allow_invalid_dates" target="_top"><code class="computeroutput"><span class="identifier">ALLOW_INVALID_DATES</span></code></a> <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html" target="_top"><code class="computeroutput"><span class="identifier">sql_mode</span></code></a> is set, MySQL
+                If the <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_allow_invalid_dates" target="_top"><code class="computeroutput"><span class="identifier">ALLOW_INVALID_DATES</span></code></a> <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html" target="_top"><code class="computeroutput"><span class="identifier">sql_mode</span></code></a> is set, MySQL
                 will accept invalid dates, like <code class="computeroutput"><span class="string">"2010-02-31"</span></code>.
-                Furthermore, if <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict" target="_top">strict
+                Furthermore, if <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict" target="_top">strict
                 SQL mode</a> is not enabled, MySQL will accept zero dates, like
                 <code class="computeroutput"><span class="string">"0000-00-00"</span></code>,
                 and dates with zero components, like <code class="computeroutput"><span class="string">"2010-00-20"</span></code>.
@@ -125,7 +125,7 @@
 </li>
 <li class="listitem">
 <p class="simpara">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATETIME</span></code></a>. MySQL representation
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATETIME</span></code></a>. MySQL representation
                 of a time point without time zone, with a resolution of one microsecond.
                 Represented as a <a class="link" href="ref/boost__mysql__datetime.html" title="datetime"><code class="literal">datetime</code></a>.
                 All datetimes retrieved from the database are guaranteed to be in
@@ -133,9 +133,9 @@
                 <a class="link" href="ref/boost__mysql__max_datetime.html" title="max_datetime"><code class="literal">max_datetime</code></a>].
               </p>
 <p class="simpara">
-                If <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_allow_invalid_dates" target="_top"><code class="computeroutput"><span class="identifier">ALLOW_INVALID_DATES</span></code></a> <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html" target="_top"><code class="computeroutput"><span class="identifier">sql_mode</span></code></a> is set, MySQL
+                If <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_allow_invalid_dates" target="_top"><code class="computeroutput"><span class="identifier">ALLOW_INVALID_DATES</span></code></a> <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html" target="_top"><code class="computeroutput"><span class="identifier">sql_mode</span></code></a> is set, MySQL
                 will accept datetimes with invalid dates, like <code class="computeroutput"><span class="string">"2010-02-31
-                10:10:10"</span></code>. Furthermore, if <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict" target="_top">strict
+                10:10:10"</span></code>. Furthermore, if <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict" target="_top">strict
                 SQL mode</a> is not enabled, MySQL will accept zero datetimes,
                 like <code class="computeroutput"><span class="string">"0000-00-00 00:00:00"</span></code>,
                 and datetimes with zero date components, like <code class="computeroutput"><span class="string">"2010-00-20
@@ -151,22 +151,22 @@
 </li>
 <li class="listitem">
 <p class="simpara">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a>. Like <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATETIME</span></code></a>, it also represents
-                a time point. When inserted, <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a>'s are interpreted
-                as local times, according to the <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_time_zone" target="_top"><code class="computeroutput"><span class="identifier">time_zone</span></code></a> variable, and
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a>. Like <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATETIME</span></code></a>, it also represents
+                a time point. When inserted, <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a>'s are interpreted
+                as local times, according to the <a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_time_zone" target="_top"><code class="computeroutput"><span class="identifier">time_zone</span></code></a> variable, and
                 converted to UTC for storage. When retrieved, they are converted
-                back to the time zone indicated by <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_time_zone" target="_top"><code class="computeroutput"><span class="identifier">time_zone</span></code></a>. The retrieved
-                value of a <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a> field is thus
-                a time point in some local time zone, dictated by the current <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_time_zone" target="_top"><code class="computeroutput"><span class="identifier">time_zone</span></code></a> variable. As
+                back to the time zone indicated by <a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_time_zone" target="_top"><code class="computeroutput"><span class="identifier">time_zone</span></code></a>. The retrieved
+                value of a <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a> field is thus
+                a time point in some local time zone, dictated by the current <a href="https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_time_zone" target="_top"><code class="computeroutput"><span class="identifier">time_zone</span></code></a> variable. As
                 this variable can be changed programmatically, without the client
                 knowing it, we represent __TIMESTAMP__s without their time zone,
                 using <a class="link" href="ref/boost__mysql__datetime.html" title="datetime"><code class="literal">datetime</code></a>.
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a>'s range is narrower
-                than <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATETIME</span></code></a>'s, but we do not
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">TIMESTAMP</span></code></a>'s range is narrower
+                than <a href="https://dev.mysql.com/doc/refman/8.0/en/datetime.html" target="_top"><code class="computeroutput"><span class="identifier">DATETIME</span></code></a>'s, but we do not
                 enforce it in the client.
               </p>
 <p class="simpara">
-                If <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict" target="_top">strict
+                If <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict" target="_top">strict
                 SQL mode</a> is not enabled, MySQL accepts zero <code class="computeroutput"><span class="identifier">TIMESTAMPs</span></code>, like <code class="computeroutput"><span class="string">"0000-00-00 00:00:00"</span></code>. These
                 timestamps are invalid because they do not represent any real time
                 point, and are thus not representable as a <a class="link" href="ref/boost__mysql__datetime.html" title="datetime"><code class="literal">datetime</code></a>.
@@ -178,7 +178,7 @@
               </p>
 </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/time.html" target="_top"><code class="computeroutput"><span class="identifier">TIME</span></code></a>. A signed time duration,
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/time.html" target="_top"><code class="computeroutput"><span class="identifier">TIME</span></code></a>. A signed time duration,
                 with a resolution of one microsecond. Represented as a <a class="link" href="ref/boost__mysql__time.html" title="time"><code class="literal">time</code></a>
                 (alias for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">microseconds</span></code>). Guaranteed to be
                 in range [<a class="link" href="ref/boost__mysql__min_time.html" title="min_time"><code class="literal">min_time</code></a>,
@@ -202,34 +202,34 @@
 <p class="simpara">
           <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/char.html" target="_top"><code class="computeroutput"><span class="identifier">CHAR</span></code></a>. Fixed-size character
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/char.html" target="_top"><code class="computeroutput"><span class="identifier">CHAR</span></code></a>. Fixed-size character
                 string.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html" target="_top"><code class="computeroutput"><span class="identifier">BINARY</span></code></a>. Fixed-size blob.
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html" target="_top"><code class="computeroutput"><span class="identifier">BINARY</span></code></a>. Fixed-size blob.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/char.html" target="_top"><code class="computeroutput"><span class="identifier">VARCHAR</span></code></a>. Variable size
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/char.html" target="_top"><code class="computeroutput"><span class="identifier">VARCHAR</span></code></a>. Variable size
                 character string with a maximum size.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html" target="_top"><code class="computeroutput"><span class="identifier">VARBINARY</span></code></a>. Variable size
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html" target="_top"><code class="computeroutput"><span class="identifier">VARBINARY</span></code></a>. Variable size
                 blob with a maximum size.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/blob.html" target="_top"><code class="computeroutput"><span class="identifier">TEXT</span></code></a> (all sizes). Variable
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/blob.html" target="_top"><code class="computeroutput"><span class="identifier">TEXT</span></code></a> (all sizes). Variable
                 size character string.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/blob.html" target="_top"><code class="computeroutput"><span class="identifier">BLOB</span></code></a> (all sizes). Variable
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/blob.html" target="_top"><code class="computeroutput"><span class="identifier">BLOB</span></code></a> (all sizes). Variable
                 size blob.
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/enum.html" target="_top"><code class="computeroutput"><span class="identifier">ENUM</span></code></a>. Character string
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/enum.html" target="_top"><code class="computeroutput"><span class="identifier">ENUM</span></code></a>. Character string
                 with a fixed set of possible values (only one possible).
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/set.html" target="_top"><code class="computeroutput"><span class="identifier">SET</span></code></a>. Character string with
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/set.html" target="_top"><code class="computeroutput"><span class="identifier">SET</span></code></a>. Character string with
                 a fixed set of possible values (many possible).
               </li>
 </ul></div>
@@ -241,12 +241,12 @@
 <p class="simpara">
           <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">DECIMAL</span></code></a> and <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">NUMERIC</span></code></a> (equivalent). A
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">DECIMAL</span></code></a> and <a href="https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html" target="_top"><code class="computeroutput"><span class="identifier">NUMERIC</span></code></a> (equivalent). A
                 fixed precision numeric value. In this case, the string will contain
                 the textual representation of the number (e.g. the string <code class="computeroutput"><span class="string">"20.52"</span></code> for <code class="computeroutput"><span class="number">20.52</span></code>).
               </li>
 <li class="listitem">
-                <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/spatial-type-overview.html" target="_top"><code class="computeroutput"><span class="identifier">GEOMETRY</span></code></a>. In this case,
+                <a href="https://dev.mysql.com/doc/refman/8.0/en/spatial-type-overview.html" target="_top"><code class="computeroutput"><span class="identifier">GEOMETRY</span></code></a>. In this case,
                 the string will contain the binary representation of the geometry
                 type.
               </li>
@@ -268,7 +268,11 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

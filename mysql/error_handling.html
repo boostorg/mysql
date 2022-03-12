@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Error handling and available overloads</title>
 <link rel="stylesheet" href="../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="prev" href="other_streams.html" title="UNIX sockets and other stream types">
@@ -21,7 +21,7 @@
 </h2></div></div></div>
 <p>
       This section describes the different error handling strategies you may use
-      with <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+      with <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
       as well as the different overloads available for each function involving network
       transfers.
     </p>
@@ -97,7 +97,7 @@
       and client-side error codes</a>
     </h4>
 <p>
-      <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
       <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>s
       use <a class="link" href="ref/boost__mysql__errc.html" title="errc"><code class="literal">errc</code></a>
       as the underlying error enumeration. This enum combines codes from two different
@@ -107,12 +107,12 @@
 <li class="listitem">
           <span class="bold"><strong>Server defined</strong></span> error codes. These codes
           are defined by the MySQL server. They range between 1 and 0xffff. They
-          are described in detail <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html" target="_top">in
+          are described in detail <a href="https://dev.mysql.com/doc/refman/8.0/en/server-error-reference.html" target="_top">in
           the MySQL error reference</a>.
         </li>
 <li class="listitem">
           <span class="bold"><strong>Client defined</strong></span> error codes. These are
-          defined by <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+          defined by <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
           and are always greater than 0xffff.
         </li>
 </ul></div>
@@ -131,7 +131,11 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

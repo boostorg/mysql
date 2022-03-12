@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Prepared statements</title>
 <link rel="stylesheet" href="../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="prev" href="queries.html" title="Text queries">
@@ -20,7 +20,7 @@
 <a name="mysql.prepared_statements"></a><a class="link" href="prepared_statements.html" title="Prepared statements">Prepared statements</a>
 </h2></div></div></div>
 <p>
-      This section covers using <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/sql-prepared-statements.html" target="_top">server-side
+      This section covers using <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-prepared-statements.html" target="_top">server-side
       prepared statements</a>. The functionality is broadly similar to the <code class="computeroutput"><span class="identifier">PREPARE</span></code>, <code class="computeroutput"><span class="identifier">EXECUTE</span></code>
       and <code class="computeroutput"><span class="identifier">DEALLOCATE</span></code> SQL commands.
       However, note that the functions and classes here described are <span class="bold"><strong>not
@@ -47,7 +47,7 @@
       object.
     </p>
 <p>
-      In addition to regular SQL, you can also use question mark characters (<code class="computeroutput"><span class="special">?</span></code>) to represent parameters (as described <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/prepare.html" target="_top">here</a>). When
+      In addition to regular SQL, you can also use question mark characters (<code class="computeroutput"><span class="special">?</span></code>) to represent parameters (as described <a href="https://dev.mysql.com/doc/refman/8.0/en/prepare.html" target="_top">here</a>). When
       you execute the statement (next section), you provide values for each of the
       parameters you declared. You don't need to escape or sanitize these values
       anyhow, thus avoiding the possibility of SQL injection attacks.
@@ -57,12 +57,12 @@
       is a <a class="link" href="ref/boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>):
     </p>
 <pre class="programlisting"><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">salary_getter_sql</span> <span class="special">=</span> <span class="string">"SELECT salary FROM employee WHERE first_name = ?"</span><span class="special">;</span>
-<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_prepared_statement</span> <span class="identifier">salary_getter</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">prepare_statement</span><span class="special">(</span><span class="identifier">salary_getter_sql</span><span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_prepared_statement</span> <span class="identifier">salary_getter</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">prepare_statement</span><span class="special">(</span><span class="identifier">salary_getter_sql</span><span class="special">);</span>
 </pre>
 <p>
       Query strings are assumed to be encoded using the connection's character set.
       You can set this value when establishing the connection (see <a class="link" href="connparams.html#mysql.connparams.collation" title="Connection encoding and collation">this
-      section</a>) or change it using a <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/set-names.html" target="_top"><code class="computeroutput"><span class="identifier">SET</span> <span class="identifier">NAMES</span></code></a>
+      section</a>) or change it using a <a href="https://dev.mysql.com/doc/refman/8.0/en/set-names.html" target="_top"><code class="computeroutput"><span class="identifier">SET</span> <span class="identifier">NAMES</span></code></a>
       statement.
     </p>
 <h4>
@@ -113,7 +113,7 @@
       the <code class="computeroutput"><span class="identifier">first_name</span></code> parameter to
       <code class="computeroutput"><span class="string">"Efficient"</span></code>:
     </p>
-<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">make_values</span><span class="special">(</span><span class="string">"Efficient"</span><span class="special">));</span>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">salary_getter</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">make_values</span><span class="special">(</span><span class="string">"Efficient"</span><span class="special">));</span>
 <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&gt;</span> <span class="identifier">salaries</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">();</span> <span class="comment">// Get all the results</span>
 </pre>
 <p>
@@ -166,7 +166,11 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>socket_connection::async_close (2 of 2 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../async_close.html" title="socket_connection::async_close">
 <link rel="prev" href="overload1.html" title="socket_connection::async_close (1 of 2 overloads)">
@@ -27,7 +27,7 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.async_close.overload2.h0"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.async_close.overload2.synopsis"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__socket_connection.async_close.overload2.synopsis">Synopsis</a>
           </h7><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
 <span class="keyword">auto</span>
 <span class="identifier">async_close</span><span class="special">(</span>
     <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">output_info</span><span class="special">,</span>
@@ -36,14 +36,18 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.async_close.overload2.h1"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.async_close.overload2.description"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__socket_connection.async_close.overload2.description">Description</a>
           </h7><p>
-            Sends a quit request, performs the TLS shutdown (if required) and closes
-            the underlying stream. Prefer this function to <a class="link" href="../../boost__mysql__connection/quit.html" title="connection::quit"><code class="literal">connection::quit</code></a>.
+            Sends a quit request and closes the underlying socket. Prefer this function
+            to <a class="link" href="../../boost__mysql__connection/async_quit.html" title="connection::async_quit"><code class="literal">connection::async_quit</code></a>.
             The handler signature for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

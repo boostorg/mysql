@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>socket_connection::connect (2 of 2 overloads)</title>
 <link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../connect.html" title="socket_connection::connect">
 <link rel="prev" href="overload1.html" title="socket_connection::connect (1 of 2 overloads)">
@@ -33,17 +33,20 @@
 <h7><a name="mysql.ref.boost__mysql__socket_connection.connect.overload2.h1"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__socket_connection.connect.overload2.description"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__socket_connection.connect.overload2.description">Description</a>
           </h7><p>
-            Connects the underlying stream and then performs the handshake with the
-            server. The underlying stream is closed in case of error. Prefer this
+            Connects the underlying socket and then performs the handshake with the
+            server. The underlying socket is closed in case of error. Prefer this
             function to <a class="link" href="../../boost__mysql__connection/handshake.html" title="connection::handshake"><code class="literal">connection::handshake</code></a>.
-            If using a SSL-capable stream, the SSL handshake will be performed by
-            this function. See <a class="link" href="../../../ssl.html#mysql.ssl.handshake" title="When is the SSL handshake performed?">this section</a>
-            for more info.
+            If SSL certificate validation was configured (by providing a custom SSL
+            context to this class' constructor) and fails, this function will fail.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

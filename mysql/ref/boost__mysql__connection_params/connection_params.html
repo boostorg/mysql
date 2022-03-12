@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>connection_params::connection_params</title>
 <link rel="stylesheet" href="../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../boost__mysql__connection_params.html" title="connection_params">
 <link rel="prev" href="../boost__mysql__connection_params.html" title="connection_params">
@@ -20,7 +20,7 @@
 <a name="mysql.ref.boost__mysql__connection_params.connection_params"></a><a class="link" href="connection_params.html" title="connection_params::connection_params">connection_params::connection_params</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idp10811"></a>
+          <a class="indexterm" name="idm10199"></a>
         </p>
 <p>
           Initializing constructor.
@@ -34,7 +34,7 @@
     <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">password</span><span class="special">,</span>
     <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">db</span> <span class="special">=</span> <span class="string">""</span><span class="special">,</span>
     <span class="identifier">collation</span> <span class="identifier">connection_col</span> <span class="special">=</span> <span class="identifier">collation</span><span class="special">::</span><span class="identifier">utf8_general_ci</span><span class="special">,</span>
-    <span class="identifier">ssl_mode</span> <span class="identifier">mode</span> <span class="special">=</span> <a class="link" href="../boost__mysql__ssl_mode.html" title="ssl_mode">ssl_mode::require</a><span class="special">);</span>
+    <span class="identifier">ssl_mode</span> <span class="identifier">mode</span> <span class="special">=</span> <a class="link" href="../boost__mysql__ssl_mode.html" title="ssl_mode">ssl_mode::enable</a><span class="special">);</span>
 </pre>
 <h6>
 <a name="mysql.ref.boost__mysql__connection_params.connection_params.h1"></a>
@@ -44,7 +44,7 @@
 <a name="mysql.ref.boost__mysql__connection_params.connection_params.h2"></a>
           <span class="phrase"><a name="mysql.ref.boost__mysql__connection_params.connection_params.parameters"></a></span><a class="link" href="connection_params.html#mysql.ref.boost__mysql__connection_params.connection_params.parameters">Parameters</a>
         </h6>
-<div class="informaltable"><table class="informaltable" border="1">
+<div class="informaltable"><table class="table">
 <colgroup>
 <col>
 <col>
@@ -122,8 +122,7 @@
 <td>
                   <p>
                     The <a class="link" href="../boost__mysql__ssl_mode.html" title="ssl_mode"><code class="literal">ssl_mode</code></a>
-                    to use with this connection; ignored if the connection does not
-                    support SSL.
+                    to use with this connection.
                   </p>
                 </td>
 </tr>
@@ -132,7 +131,11 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

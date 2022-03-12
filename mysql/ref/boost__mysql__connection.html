@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>connection</title>
 <link rel="stylesheet" href="../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
 <link rel="prev" href="boost__mysql__bad_value_access/what.html" title="bad_value_access::what">
@@ -29,7 +29,7 @@
         <span class="phrase"><a name="mysql.ref.boost__mysql__connection.synopsis"></a></span><a class="link" href="boost__mysql__connection.html#mysql.ref.boost__mysql__connection.synopsis">Synopsis</a>
       </h5>
 <p>
-        Defined in header <code class="literal">&lt;<a class="ulink" href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/connection.hpp" target="_top">boost/mysql/connection.hpp</a>&gt;</code>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql/connection.hpp" target="_top">boost/mysql/connection.hpp</a>&gt;</code>
       </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
     <span class="keyword">class</span> <a class="link" href="boost__mysql__Stream.html" title="Stream concept"><code class="literal"><span class="emphasis"><em>Stream</em></span></code></a><span class="special">&gt;</span>
@@ -39,7 +39,7 @@
 <a name="mysql.ref.boost__mysql__connection.h1"></a>
         <span class="phrase"><a name="mysql.ref.boost__mysql__connection.types"></a></span><a class="link" href="boost__mysql__connection.html#mysql.ref.boost__mysql__connection.types">Types</a>
       </h5>
-<div class="informaltable"><table class="informaltable" border="1">
+<div class="informaltable"><table class="table">
 <colgroup>
 <col>
 <col>
@@ -88,7 +88,7 @@
         <span class="phrase"><a name="mysql.ref.boost__mysql__connection.member_functions"></a></span><a class="link" href="boost__mysql__connection.html#mysql.ref.boost__mysql__connection.member_functions">Member
         Functions</a>
       </h5>
-<div class="informaltable"><table class="informaltable" border="1">
+<div class="informaltable"><table class="table">
 <colgroup>
 <col>
 <col>
@@ -176,7 +176,9 @@
               </td>
 <td>
                 <p>
-                  Initializing constructor. <br> <span class="silver">—</span><br>
+                  Initializing constructor (no user-provided SSL context). <br>
+                  <span class="silver">—</span><br> Initializing constructor
+                  (user-provided SSL context). <br> <span class="silver">—</span><br>
                   Move constructor.
                 </p>
               </td>
@@ -306,14 +308,13 @@
       </h5>
 <p>
         Represents a connection to a MySQL server, allowing you to interact with
-        it. If your stream is a socket (e.g. TCP or UNIX), or a SSL stream on an
-        underlying socket, consider using <a class="link" href="boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>
-        instead of this class. Because of how the MySQL protocol works, you must
-        fully perform an operation before starting the next one. More information
-        <a class="link" href="../async.html#mysql.async.sequencing" title="Sequencing of operations">here</a>. Otherwise, the results
-        are undefined. connection is move constructible and move assignable, but
-        not copyable. Moved-from connection objects are left in a state that makes
-        them not usable for most of the operations. The function <a class="link" href="boost__mysql__connection/valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
+        it. If using a socket (e.g. TCP or UNIX), consider using <a class="link" href="boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>.
+        Because of how the MySQL protocol works, you must fully perform an operation
+        before starting the next one. More information <a class="link" href="../async.html#mysql.async.sequencing" title="Sequencing of operations">here</a>.
+        Otherwise, the results are undefined. connection is move constructible and
+        move assignable, but not copyable. Moved-from connection objects are left
+        in a state that makes them not usable for most of the operations. The function
+        <a class="link" href="boost__mysql__connection/valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
         returns whether an object is in a usable state or not. The only allowed operations
         on moved-from connections are:
       </p>
@@ -334,12 +335,16 @@
         on a moved-from connection in order to re-open it.
       </p>
 <p>
-        Convenience header <code class="literal">&lt;<a class="ulink" href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/anarthal/mysql-asio/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>
       </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

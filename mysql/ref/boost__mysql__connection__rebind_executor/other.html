@@ -3,24 +3,24 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>connection::rebind_executor::other</title>
 <link rel="stylesheet" href="../../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
 <link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../boost__mysql__connection__rebind_executor.html" title="connection::rebind_executor">
 <link rel="prev" href="../boost__mysql__connection__rebind_executor.html" title="connection::rebind_executor">
-<link rel="next" href="../boost__mysql__prepared_statement__rebind_executor.html" title="prepared_statement::rebind_executor">
+<link rel="next" href="../boost__mysql__resultset__rebind_executor.html" title="resultset::rebind_executor">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
 <table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../boost__mysql__prepared_statement__rebind_executor.html"><img src="../../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../boost__mysql__resultset__rebind_executor.html"><img src="../../../images/next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h5 class="title">
 <a name="mysql.ref.boost__mysql__connection__rebind_executor.other"></a><a class="link" href="other.html" title="connection::rebind_executor::other">connection::rebind_executor::other</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idp13812"></a>
+          <a class="indexterm" name="idm13412"></a>
         </p>
 <p>
           The connection type when rebound to the specified executor.
@@ -35,7 +35,7 @@
 <a name="mysql.ref.boost__mysql__connection__rebind_executor.other.h1"></a>
           <span class="phrase"><a name="mysql.ref.boost__mysql__connection__rebind_executor.other.types"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__connection__rebind_executor.other.types">Types</a>
         </h6>
-<div class="informaltable"><table class="informaltable" border="1">
+<div class="informaltable"><table class="table">
 <colgroup>
 <col>
 <col>
@@ -84,7 +84,7 @@
           <span class="phrase"><a name="mysql.ref.boost__mysql__connection__rebind_executor.other.member_functions"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__connection__rebind_executor.other.member_functions">Member
           Functions</a>
         </h6>
-<div class="informaltable"><table class="informaltable" border="1">
+<div class="informaltable"><table class="table">
 <colgroup>
 <col>
 <col>
@@ -172,7 +172,9 @@
                 </td>
 <td>
                   <p>
-                    Initializing constructor. <br> <span class="silver">—</span><br>
+                    Initializing constructor (no user-provided SSL context). <br>
+                    <span class="silver">—</span><br> Initializing constructor
+                    (user-provided SSL context). <br> <span class="silver">—</span><br>
                     Move constructor.
                   </p>
                 </td>
@@ -299,14 +301,13 @@
 </table></div>
 <p>
           Represents a connection to a MySQL server, allowing you to interact with
-          it. If your stream is a socket (e.g. TCP or UNIX), or a SSL stream on an
-          underlying socket, consider using <a class="link" href="../boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>
-          instead of this class. Because of how the MySQL protocol works, you must
-          fully perform an operation before starting the next one. More information
-          <a class="link" href="../../async.html#mysql.async.sequencing" title="Sequencing of operations">here</a>. Otherwise, the results
-          are undefined. connection is move constructible and move assignable, but
-          not copyable. Moved-from connection objects are left in a state that makes
-          them not usable for most of the operations. The function <a class="link" href="../boost__mysql__connection/valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
+          it. If using a socket (e.g. TCP or UNIX), consider using <a class="link" href="../boost__mysql__socket_connection.html" title="socket_connection"><code class="literal">socket_connection</code></a>.
+          Because of how the MySQL protocol works, you must fully perform an operation
+          before starting the next one. More information <a class="link" href="../../async.html#mysql.async.sequencing" title="Sequencing of operations">here</a>.
+          Otherwise, the results are undefined. connection is move constructible
+          and move assignable, but not copyable. Moved-from connection objects are
+          left in a state that makes them not usable for most of the operations.
+          The function <a class="link" href="../boost__mysql__connection/valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
           returns whether an object is in a usable state or not. The only allowed
           operations on moved-from connections are:
         </p>
@@ -330,7 +331,7 @@
 <a name="mysql.ref.boost__mysql__connection__rebind_executor.other.h3"></a>
           <span class="phrase"><a name="mysql.ref.boost__mysql__connection__rebind_executor.other.types0"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__connection__rebind_executor.other.types0">Types</a>
         </h6>
-<div class="informaltable"><table class="informaltable" border="1">
+<div class="informaltable"><table class="table">
 <colgroup>
 <col>
 <col>
@@ -360,14 +361,22 @@
                 </td>
 </tr></tbody>
 </table></div>
+<h6>
+<a name="mysql.ref.boost__mysql__connection__rebind_executor.other.h4"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__connection__rebind_executor.other.description"></a></span><a class="link" href="other.html#mysql.ref.boost__mysql__connection__rebind_executor.other.description">Description</a>
+        </h6>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer"></div></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../boost__mysql__prepared_statement__rebind_executor.html"><img src="../../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection__rebind_executor.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../boost__mysql__resultset__rebind_executor.html"><img src="../../../images/next.png" alt="Next"></a>
 </div>
 </body>
 </html>
