@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Tutorial</title>
 <link rel="stylesheet" href="../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="prev" href="intro.html" title="Introduction">
@@ -30,8 +30,8 @@
       MySQL user (username and password). No further setup is needed.
     </p>
 <p>
-      This tutorial assumes you have a basic familiarity with <a href="https://www.boost.org/doc/libs/1_75_0/libs/asio/index.html" target="_top">Boost.Asio</a>
-      (e.g. you know what a <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/io_context.html" target="_top"><code class="literal">boost::asio::io_context</code></a>
+      This tutorial assumes you have a basic familiarity with <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+      (e.g. you know what a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/io_context.html" target="_top"><code class="literal">boost::asio::io_context</code></a>
       is).
     </p>
 <h4>
@@ -40,12 +40,25 @@
       object</a>
     </h4>
 <p>
-      The first step is to create a <a class="link" href="ref/boost__mysql__tcp_connection.html" title="tcp_connection"><code class="literal">tcp_connection</code></a>
-      object. This represents a single connection over TCP to the MySQL server. It
-      can be constructed from a <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/io_context__executor_type.html" target="_top"><code class="literal">boost::asio::io_context::executor_type</code></a>:
+      The first step is to create a connection object, which represents a single
+      connection over TCP to the MySQL server. We will be using <a class="link" href="ref/boost__mysql__tcp_ssl_connection.html" title="tcp_ssl_connection"><code class="literal">tcp_ssl_connection</code></a>,
+      which supports TLS. If you're using the latest MySQL version with its default
+      configuration, you will need to use TLS to successfully establish a connection.
     </p>
-<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
-<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_connection</span> <span class="identifier">conn</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
+<p>
+      A <a class="link" href="ref/boost__mysql__tcp_ssl_connection.html" title="tcp_ssl_connection"><code class="literal">tcp_ssl_connection</code></a>
+      is an I/O object. It can be constructed from a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/io_context/executor_type.html" target="_top"><code class="literal">boost::asio::io_context::executor_type</code></a>
+      and a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>:
+    </p>
+<pre class="programlisting"><span class="comment">// The execution context, required to run I/O operations</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
+
+<span class="comment">// The SSL context, required to establish TLS connections.</span>
+<span class="comment">// The default SSL options are good enough for us at this point.</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
+
+<span class="comment">// The object defining the connection to the MySQL server.</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
 </pre>
 <h4>
 <a name="mysql.tutorial.h1"></a>
@@ -53,12 +66,12 @@
       to the server</a>
     </h4>
 <p>
-      The next step is to connect to the server. We will use the function <a class="link" href="ref/boost__mysql__socket_connection/connect.html" title="socket_connection::connect"><code class="literal">tcp_connection::connect</code></a>,
+      The next step is to connect to the server. We will use the function <a class="link" href="ref/boost__mysql__connection/connect.html" title="connection::connect"><code class="literal">tcp_ssl_connection::connect</code></a>,
       which accepts two parameters:
     </p>
 <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
-          Physical connection parameters. As we are using TCP, this is a <a href="https://www.boost.org/doc/libs/1_75_0/doc/html/boost_asio/reference/ip__tcp/endpoint.html" target="_top"><code class="literal">boost::asio::ip::tcp::endpoint</code></a>,
+          Physical connection parameters. As we are using TCP, this is a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/ip__tcp/endpoint.html" target="_top"><code class="literal">boost::asio::ip::tcp::endpoint</code></a>,
           identifying the host and port to connect to.
         </li>
 <li class="listitem">
@@ -67,28 +80,19 @@
           the database name to connect to or whether to use SSL or not.
         </li>
 </ul></div>
-<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">endpoint</span> <span class="identifier">ep</span> <span class="special">(</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">address_v4</span><span class="special">::</span><span class="identifier">loopback</span><span class="special">(),</span> <span class="comment">// host</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">default_port</span>               <span class="comment">// port</span>
-<span class="special">);</span>
+<pre class="programlisting"><span class="comment">// Resolve the hostname to get a collection of endpoints    </span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
+<span class="keyword">auto</span> <span class="identifier">endpoints</span> <span class="special">=</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">resolve</span><span class="special">(</span><span class="identifier">argv</span><span class="special">[</span><span class="number">3</span><span class="special">],</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">default_port_string</span><span class="special">);</span>
 
+<span class="comment">// The username and password to use</span>
 <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection_params</span> <span class="identifier">params</span> <span class="special">(</span>
     <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span> <span class="comment">// username</span>
     <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]</span>  <span class="comment">// password</span>
 <span class="special">);</span>
 
-<span class="identifier">conn</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">ep</span><span class="special">,</span> <span class="identifier">params</span><span class="special">);</span>
+<span class="comment">// Connect to the server using the first endpoint returned by the resolver</span>
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(*</span><span class="identifier">endpoints</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">params</span><span class="special">);</span>
 </pre>
-<div class="note"><table border="0" summary="Note">
-<tr>
-<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
-<th align="left">Note</th>
-</tr>
-<tr><td align="left" valign="top"><p>
-        By default, Boost.Mysql will use SSL encrypted connections if the server
-        supports them.
-      </p></td></tr>
-</table></div>
 <div class="note"><table border="0" summary="Note">
 <tr>
 <td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
@@ -107,13 +111,13 @@
       the SQL query</a>
     </h4>
 <p>
-      The next step is to issue the query to the server. We will use <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">tcp_connection::query</code></a>,
+      The next step is to issue the query to the server. We will use <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">tcp_ssl_connection::query</code></a>,
       which accepts a string containing a single SQL query and instructs the server
       to run it. It returns a <a class="link" href="ref/boost__mysql__tcp_resultset.html" title="tcp_resultset"><code class="literal">tcp_resultset</code></a>
       object, containing the query results:
     </p>
 <pre class="programlisting"><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"SELECT \"Hello world!\""</span><span class="special">;</span>
-<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">);</span>
 </pre>
 <h4>
 <a name="mysql.tutorial.h3"></a>
@@ -125,7 +129,7 @@
       is an object that represents the result of a query, in tabular format. Resultsets
       are not containers, but I/O objects: they do not contain by themselves the
       entire result of the query, but allow the user to read it using several methods.
-      We will use <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">tcp_resultset::read_all</code></a>,
+      We will use <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">tcp_ssl_resultset::read_all</code></a>,
       which just reads all the rows in the resultset and places them in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code>
       of <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
       objects:
@@ -138,24 +142,28 @@
       is a union-like class of all types allowed in MySQL. You can access the row's
       contents using <a class="link" href="ref/boost__mysql__row/values.html" title="row::values"><code class="literal">row::values</code></a>.
     </p>
-<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">employees</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">values</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span><span class="special">&gt;();</span>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">first_row</span> <span class="special">=</span> <span class="identifier">employees</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">first_value</span> <span class="special">=</span> <span class="identifier">first_row</span><span class="special">.</span><span class="identifier">values</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">first_value</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
 </pre>
-<div class="note"><table border="0" summary="Note">
-<tr>
-<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
-<th align="left">Note</th>
-</tr>
-<tr><td align="left" valign="top"><p>
-        Values can be streamed without casting them to their specific types.
-      </p></td></tr>
-</table></div>
+<p>
+      Let's break this down: from our vector of rows, we're selecting the first one
+      using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">::</span><span class="identifier">at</span></code>. That row contains a single value, which
+      we retrieve using <a class="link" href="ref/boost__mysql__row/values.html" title="row::values"><code class="literal">row::values</code></a>
+      and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">::</span><span class="identifier">at</span></code>. We finally stream the value to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span></code>,
+      which prints the expected phrase to the console.
+    </p>
+<p>
+      To learn more about how to use the <a class="link" href="ref/boost__mysql__value.html" title="value"><code class="literal">value</code></a>
+      class, read <a class="link" href="values.html" title="MySQL values">this section</a>.
+    </p>
 <h4>
 <a name="mysql.tutorial.h4"></a>
       <span class="phrase"><a name="mysql.tutorial.closing_the_connection"></a></span><a class="link" href="tutorial.html#mysql.tutorial.closing_the_connection">Closing
       the connection</a>
     </h4>
 <p>
-      Once we are done with the connection, we close it by calling <a class="link" href="ref/boost__mysql__socket_connection/close.html" title="socket_connection::close"><code class="literal">tcp_connection::close</code></a>.
+      Once we are done with the connection, we close it by calling <a class="link" href="ref/boost__mysql__connection/close.html" title="connection::close"><code class="literal">tcp_ssl_connection::close</code></a>.
       Note that this will send a final quit packet to the MySQL server to notify
       we are closing the connection, and thus may fail.
     </p>
@@ -167,7 +175,7 @@
       notes</a>
     </h4>
 <p>
-      This concludes our <a href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      This concludes our <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
       tutorial! You can now read more about <a class="link" href="values.html" title="MySQL values">MySQL values</a>,
       <a class="link" href="queries.html" title="Text queries">text queries</a>, <a class="link" href="prepared_statements.html" title="Prepared statements">prepared
       statements</a> and <a class="link" href="resultsets.html" title="Resultsets">resultsets</a>. You
@@ -176,11 +184,7 @@
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
-        Distributed under the Boost Software License, Version 1.0. (See accompanying
-        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
-      </p>
-</div></td>
+<td align="right"><div class="copyright-footer"></div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

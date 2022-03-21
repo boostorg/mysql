@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Setup</title>
 <link rel="stylesheet" href="../../boostbook.css" type="text/css">
-<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../examples.html" title="Examples">
 <link rel="prev" href="../examples.html" title="Examples">
@@ -20,29 +20,30 @@
 <a name="mysql.examples.setup"></a><a class="link" href="setup.html" title="Setup">Setup</a>
 </h3></div></div></div>
 <p>
-        All examples assume you have a MySQL server running in localhost. Examples
+        To run the examples, you need a MySQL server you can connect to. Examples
         make use of a database named <code class="computeroutput"><span class="identifier">boost_mysql_examples</span></code>.
-        The username and password to used are passed using the command line.
+        The server hostname and credentials (username and password) are passed to
+        the examples via the command line.
       </p>
 <p>
-        You can set the required database up by running (this assumes the root password
-        is empty):
+        If you're using docker, you can use the <code class="computeroutput"><span class="identifier">anarthal</span><span class="special">/</span><span class="identifier">mysql8</span></code>
+        container, which already ships with all the required configuration:
       </p>
-<pre class="programlisting"><span class="special">&gt;</span> <span class="identifier">mysql</span> <span class="special">-</span><span class="identifier">u</span> <span class="identifier">root</span> <span class="special">&lt;</span> <span class="identifier">PATH</span><span class="special">/</span><span class="identifier">TO</span><span class="special">/</span><span class="identifier">BOOST</span><span class="special">/</span><span class="identifier">MYSQL</span><span class="special">/</span><span class="identifier">example</span><span class="special">/</span><span class="identifier">db_setup</span><span class="special">.</span><span class="identifier">sql</span>
+<pre class="programlisting"># If you're on a system supporting UNIX sockets. Note that /var/run/mysqld
+# should be empty for this to work; you can specify a different directory, if it's not
+&gt; docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d anarthal/mysql8
+
+# If you're on a system that does not support UNIX sockets
+&gt; docker run -p 3306:3306 -d anarthal/mysql8
 </pre>
 <p>
-        This will also create a user <code class="computeroutput"><span class="identifier">example_user</span></code>
-        with a password <code class="computeroutput"><span class="identifier">example_password</span></code>,
-        with the appropriate privileges on the database.
+        Please note that this container is just for demonstrative purposes, and is
+        not suitable for production.
       </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
 <td align="left"></td>
-<td align="right"><div class="copyright-footer">Copyright © 2019-2021 Ruben Perez<p>
-        Distributed under the Boost Software License, Version 1.0. (See accompanying
-        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
-      </p>
-</div></td>
+<td align="right"><div class="copyright-footer"></div></td>
 </tr></table>
 <hr>
 <div class="spirit-nav">

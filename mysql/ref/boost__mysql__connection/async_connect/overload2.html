@@ -1,0 +1,63 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>connection::async_connect (2 of 2 overloads)</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../async_connect.html" title="connection::async_connect">
+<link rel="prev" href="overload1.html" title="connection::async_connect (1 of 2 overloads)">
+<link rel="next" href="../handshake.html" title="connection::handshake">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload1.html"><img src="../../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_connect.html"><img src="../../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../images/home.png" alt="Home"></a><a accesskey="n" href="../handshake.html"><img src="../../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="mysql.ref.boost__mysql__connection.async_connect.overload2"></a><a class="link" href="overload2.html" title="connection::async_connect (2 of 2 overloads)">connection::async_connect
+          (2 of 2 overloads)</a>
+</h6></div></div></div>
+<p>
+            Performs a connection to the MySQL server (async with <a class="link" href="../../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
+            version).
+          </p>
+<h7><a name="mysql.ref.boost__mysql__connection.async_connect.overload2.h0"></a>
+            <span class="phrase"><a name="mysql.ref.boost__mysql__connection.async_connect.overload2.synopsis"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__connection.async_connect.overload2.synopsis">Synopsis</a>
+          </h7><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">typename</span> <span class="identifier">EndpointType</span><span class="special">,</span>
+    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
+<span class="keyword">auto</span>
+<span class="identifier">async_connect</span><span class="special">(</span>
+    <span class="keyword">const</span> <span class="identifier">EndpointType</span><span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">,</span>
+    <span class="keyword">const</span> <span class="identifier">connection_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">,</span>
+    <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">output_info</span><span class="special">,</span>
+    <span class="identifier">CompletionToken</span><span class="special">&amp;&amp;</span> <span class="identifier">token</span><span class="special">);</span>
+</pre>
+<h7><a name="mysql.ref.boost__mysql__connection.async_connect.overload2.h1"></a>
+            <span class="phrase"><a name="mysql.ref.boost__mysql__connection.async_connect.overload2.description"></a></span><a class="link" href="overload2.html#mysql.ref.boost__mysql__connection.async_connect.overload2.description">Description</a>
+          </h7><p>
+            This function is only available if <code class="computeroutput"><span class="identifier">Stream</span></code>
+            satisfies the <a class="link" href="../../boost__mysql__SocketStream.html" title="SocketStream concept"><code class="literal">SocketStream</code></a>
+            requirements. Connects the underlying stream and then performs the handshake
+            with the server. The underlying stream is closed in case of error. Prefer
+            this function to <a class="link" href="../async_handshake.html" title="connection::async_handshake"><code class="literal">connection::async_handshake</code></a>.
+            The strings pointed to by params should be kept alive by the caller until
+            the operation completes, as no copy is made by the library. If using
+            a SSL-capable stream, the SSL handshake will be performed by this function.
+            See <a class="link" href="../../../ssl.html#mysql.ssl.handshake" title="When is the SSL handshake performed?">this section</a> for more
+            info. The handler signature for this operation is <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)</span></code>.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload1.html"><img src="../../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_connect.html"><img src="../../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../images/home.png" alt="Home"></a><a accesskey="n" href="../handshake.html"><img src="../../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
