@@ -1,0 +1,16 @@
+{
+    "key": "mysql",
+    "name": "MySQL",
+    "authors": [
+        "Rubén Pérez"
+    ],
+    "description": "Async MySQL client",
+    "category": [
+        "Concurrent",
+        "IO"
+    ],
+    "maintainers": [
+        "Rubén Pérez <rubenperez038@gmail.com>"
+    ],
+    "cxxstd": "11"
+}

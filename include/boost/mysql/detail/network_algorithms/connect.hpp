@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,7 +18,7 @@ namespace detail {
 template <class Stream>
 void connect(
     channel<Stream>& chan,
-    const typename Stream::endpoint_type& endpoint,
+    const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const connection_params& params,
     error_code& err,
     error_info& info
@@ -28,7 +28,7 @@ template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_connect(
     channel<Stream>& chan,
-    const typename Stream::endpoint_type& endpoint,
+    const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const connection_params& params,
     CompletionToken&& token,
     error_info& info

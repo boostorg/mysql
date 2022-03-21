@@ -2,7 +2,7 @@
 <!DOCTYPE library PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "../../../../../tools/boostbook/dtd/boostbook.dtd">
 
 <!--
-    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,7 +16,6 @@
         <bridgehead renderas="sect3">Classes</bridgehead>
         <simplelist type="vert" columns="1">
 			<member><link linkend="mysql.ref.boost__mysql__connection">connection</link></member>
-			<member><link linkend="mysql.ref.boost__mysql__socket_connection">socket_connection</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__prepared_statement">prepared_statement</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__resultset">resultset</link></member>
 			<member><link linkend="mysql.ref.boost__mysql__value">value</link></member>
@@ -56,6 +55,7 @@
         <bridgehead renderas="sect3">Constants</bridgehead>
         <simplelist type="vert" columns="1">
             <member><link linkend="mysql.ref.boost__mysql__default_port">default_port</link></member>
+            <member><link linkend="mysql.ref.boost__mysql__default_port_string">default_port_string</link></member>
             <member><link linkend="mysql.ref.boost__mysql__no_statement_params">no_statement_params</link></member>
             <member><link linkend="mysql.ref.boost__mysql__min_date">min_date</link></member>
             <member><link linkend="mysql.ref.boost__mysql__max_date">max_date</link></member>

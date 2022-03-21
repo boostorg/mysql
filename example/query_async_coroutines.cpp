@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,8 @@
 
 //[example_query_async_coroutines
 
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -39,29 +41,32 @@ void check_error(
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
         exit(1);
     }
 
-    // Context and connections
-    boost::asio::io_context ctx;
-    boost::mysql::tcp_connection conn (ctx);
+    const char* hostname = argv[3];
 
-    boost::asio::ip::tcp::endpoint ep (
-        boost::asio::ip::address_v4::loopback(), // host
-        boost::mysql::default_port                 // port
-    );
+    // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
+    boost::asio::io_context ctx;
+    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+
+    // Connection params
     boost::mysql::connection_params params (
         argv[1],               // username
         argv[2],               // password
         "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
     );
 
+    // Resolver for hostname resolution
+    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+
+
     /**
-     * The entry point. We spawn a stackful coroutine using boost::asio::spawn
-     * (see https://www.boost.org/doc/libs/1_72_0/doc/html/boost_asio/reference/spawn.html).
+     * The entry point. We spawn a stackful coroutine using boost::asio::spawn.
      *
      * The coroutine will actually start running when we call io_context::run().
      * It will suspend every time we call one of the asynchronous functions, saving
@@ -74,19 +79,23 @@ void main_impl(int argc, char** argv)
      * type is resultset<Stream>.
      *
      */
-    boost::asio::spawn(ctx.get_executor(), [&conn, ep, params](boost::asio::yield_context yield) {
+    boost::asio::spawn(ctx.get_executor(), [&conn, &resolver, params, hostname](boost::asio::yield_context yield) {
         // This error_code and error_info will be filled if an
         // operation fails. We will check them for every operation we perform.
         boost::mysql::error_code ec;
         boost::mysql::error_info additional_info;
 
+        // Hostname resolution
+        auto endpoints = resolver.async_resolve(hostname, boost::mysql::default_port_string, yield[ec]);
+        check_error(ec);
+
         // Connect to server
-        conn.async_connect(ep, params, additional_info, yield[ec]);
+        conn.async_connect(*endpoints.begin(), params, additional_info, yield[ec]);
         check_error(ec);
 
         // Issue the query to the server
         const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        boost::mysql::tcp_resultset result = conn.async_query(sql, additional_info, yield[ec]);
+        boost::mysql::tcp_ssl_resultset result = conn.async_query(sql, additional_info, yield[ec]);
         check_error(ec, additional_info);
 
         /**

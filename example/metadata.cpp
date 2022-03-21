@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,8 @@
 
 //[example_metadata
 
+#include "boost/mysql/connection.hpp"
+#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -21,28 +23,36 @@
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
         exit(1);
     }
 
-    // Connection params (host, port, user, password, database)
-    boost::asio::ip::tcp::endpoint ep (boost::asio::ip::address_v4::loopback(), boost::mysql::default_port);
-    boost::mysql::connection_params params (argv[1], argv[2], "boost_mysql_examples");
+    // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
+    boost::asio::io_context ctx;
+    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+
+    // Hostname resolution
+    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+    auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
 
     // TCP and MySQL level connect
-    boost::asio::io_context ctx;
-    boost::mysql::tcp_connection conn (ctx);
-    conn.connect(ep, params);
-
+    boost::mysql::connection_params params (
+        argv[1],               // username
+        argv[2],               // password
+        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    );
+    conn.connect(*endpoints.begin(), params);
+    
     // Issue the query
     const char* sql = R"(
         SELECT comp.name AS company_name, emp.id AS employee_id
         FROM employee emp
         JOIN company comp ON (comp.id = emp.company_id)
     )";
-    boost::mysql::tcp_resultset result = conn.query(sql);
+    boost::mysql::tcp_ssl_resultset result = conn.query(sql);
 
     /**
      * Resultsets allow you to access metadata about the fields in the query

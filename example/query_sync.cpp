@@ -1,11 +1,12 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
 //[example_query_sync
+#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -19,12 +20,12 @@
     }
 
 /**
- * Prints an employee to std::cout. An employee here is a mysql::row,
+ * Prints an employee to std::cout. An employee here is a boost::mysql::row,
  * which represents a row returned by a SQL query. You can access the values in
- * the row using row::values(), which returns a vector of mysql::value.
+ * the row using row::values(), which returns a vector of boost::mysql::value.
  *
- * mysql::value represents a single value returned by MySQL, and is defined to be
- * a std::variant of all the types MySQL supports.
+ * boost::mysql::value is a variant-like type representing 
+ * a single value returned by MySQL.
  *
  * row::values() has the same number of elements as fields are in the SQL query,
  * and in the same order.
@@ -39,45 +40,52 @@ void print_employee(const boost::mysql::row& employee)
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
         exit(1);
     }
 
+    // The I/O context to perform all operations.
+    boost::asio::io_context ctx;
+
     /**
-     * Connection parameters that tell us where and how to connect to the MySQL server.
-     * There are two types of parameters:
-     *   - TCP-level connection parameters, identifying the host and port to connect to.
-     *   - MySQL level parameters: database credentials and schema to use.
+     * Connection parameters that tell us how to connect to the MySQL server:
+     * database credentials and schema to use.
      */
-    boost::asio::ip::tcp::endpoint ep (
-        boost::asio::ip::address_v4::loopback(), // host
-        boost::mysql::default_port                         // port
-    );
     boost::mysql::connection_params params (
         argv[1],               // username
         argv[2],               // password
         "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
     );
-    // Note: by default, SSL will be used if the server supports it.
-    // connection_params accepts an optional ssl_mode argument
-    // determining whether to use SSL or not.
 
-    boost::asio::io_context ctx;
+    /* We will use SSL in all our examples. To enable SSL, use boost::mysql::tcp_ssl_connection.
+     * MySQL 8+ default is to use an authentication method that requires SSL, so we encourage
+     * you to use SSL connections if you can.
+     */
+    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+
+    // Represents a single connection over TCP to a MySQL server.
+    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+
+    // To establish the connection, we need a TCP endpoint. We have a hostname,
+    // so we need to perform hostname resolution. We create a resolver for this.
+    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+
+    // Invoke the resolver's appropriate function to perform the resolution.
+    const char* hostname = argv[3];
+    auto endpoints = resolver.resolve(hostname, boost::mysql::default_port_string);
 
     /**
-     * Represents a single connection over TCP to a MySQL server.
-     * Before being able to use it, you have to connect to the server by:
+     * Before using the connection, we have to connect to the server by:
      *    - Establishing the TCP-level session.
-     *    - Authenticating to the MySQL server.
+     *    - Authenticating to the MySQL server. The SSL handshake is performed as part of this.
      * connection::connect takes care of both.
      */
-    boost::mysql::tcp_connection conn (ctx);
-    conn.connect(ep, params);
+    conn.connect(*endpoints.begin(), params);
 
     /**
-     * To issue a SQL query to the database server, use tcp_connection::query, which takes
+     * To issue a SQL query to the database server, use tcp_ssl_connection::query, which takes
      * the SQL to be executed as parameter and returns a resultset object.
      *
      * Resultset objects represent the result of a query, in tabular format.
@@ -88,7 +96,7 @@ void main_impl(int argc, char** argv)
      * We will get all employees working for 'High Growth Startup'.
      */
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::tcp_resultset result = conn.query(sql);
+    boost::mysql::tcp_ssl_resultset result = conn.query(sql);
 
     // Get all the rows in the resultset
     std::vector<boost::mysql::row> employees = result.read_all();

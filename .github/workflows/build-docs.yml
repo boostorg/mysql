@@ -1,23 +1,31 @@
+#
+# Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
 name: Build docs
 
 on:
   push:
     branches:
-      - value-relational-operators
       - master
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/anarthal/build-docs:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.3.1
+        uses: actions/checkout@v2
 
       - name: Build docs
         run: bash -e -x tools/build_docs.sh
 
       - name: Deploy to GitHub pages
-        uses: JamesIves/github-pages-deploy-action@4.0.0
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: build-docs
+          folder: /opt/boost/libs/mysql/doc/html

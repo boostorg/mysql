@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -72,8 +72,8 @@ const serialization_test_spec err_packet_spec {
     serialization_test_type::deserialization, {
         { "wrong_use_database", detail::err_packet{
             1049, // eror code
-            string_fixed<1>{0x23}, // sql state marker
-            string_fixed<5>{'4', '2', '0', '0', '0'}, // sql state
+            string_fixed<1>{{0x23}}, // sql state marker
+            string_fixed<5>{{'4', '2', '0', '0', '0'}}, // sql state
             string_eof("Unknown database 'a'") // err msg
         }, {
             0x19, 0x04, 0x23, 0x34, 0x32, 0x30, 0x30, 0x30, 0x55, 0x6e, 0x6b,
@@ -83,8 +83,8 @@ const serialization_test_spec err_packet_spec {
 
         { "unknown_table", detail::err_packet{
             1146, // eror code
-            string_fixed<1>{0x23}, // sql state marker
-            string_fixed<5>{'4', '2', 'S', '0', '2'}, // sql state
+            string_fixed<1>{{0x23}}, // sql state marker
+            string_fixed<5>{{'4', '2', 'S', '0', '2'}}, // sql state
             string_eof("Table 'awesome.unknown' doesn't exist") // err msg
         }, {
             0x7a, 0x04, 0x23, 0x34, 0x32, 0x53, 0x30, 0x32,
@@ -97,8 +97,8 @@ const serialization_test_spec err_packet_spec {
 
         { "failed_login", detail::err_packet{
             1045, // error code
-            string_fixed<1>{0x23}, // SQL state marker
-            string_fixed<5>{'2', '8', '0', '0', '0'}, // SQL state
+            string_fixed<1>{{0x23}}, // SQL state marker
+            string_fixed<5>{{'2', '8', '0', '0', '0'}}, // SQL state
             string_eof("Access denied for user 'root'@'localhost' (using password: YES)")
         }, {
           0x15, 0x04, 0x23, 0x32, 0x38, 0x30, 0x30, 0x30,

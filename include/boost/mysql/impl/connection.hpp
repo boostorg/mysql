@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,11 +8,68 @@
 #ifndef BOOST_MYSQL_IMPL_CONNECTION_HPP
 #define BOOST_MYSQL_IMPL_CONNECTION_HPP
 
+#pragma once
+
+#include <boost/mysql/connection.hpp>
+#include <boost/mysql/detail/network_algorithms/connect.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_query.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
+#include <boost/mysql/detail/network_algorithms/close_connection.hpp>
 #include <boost/asio/buffer.hpp>
+
+
+template <class Stream>
+template <class EndpointType>
+void boost::mysql::connection<Stream>::connect(
+    const EndpointType& endpoint,
+    const connection_params& params,
+    error_code& ec,
+    error_info& info
+)
+{
+    detail::clear_errors(ec, info);
+    detail::connect(this->get_channel(), endpoint, params, ec, info);
+}
+
+template <class Stream>
+template <class EndpointType>
+void boost::mysql::connection<Stream>::connect(
+    const EndpointType& endpoint,
+    const connection_params& params
+)
+{
+    detail::error_block blk;
+    detail::connect(this->get_channel(), endpoint, params, blk.err, blk.info);
+    blk.check();
+}
+
+template <class Stream>
+template <
+    class EndpointType,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
+>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code)
+)
+boost::mysql::connection<Stream>::async_connect(
+    const EndpointType& endpoint,
+    const connection_params& params,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    output_info.clear();
+    return detail::async_connect(
+        this->get_channel(),
+        endpoint,
+        params,
+        std::forward<CompletionToken>(token),
+        output_info
+    );
+}
 
 template <class Stream>
 void boost::mysql::connection<Stream>::handshake(
@@ -146,6 +203,44 @@ boost::mysql::connection<Stream>::async_prepare_statement(
     return detail::async_prepare_statement(
         get_channel(),
         statement,
+        std::forward<CompletionToken>(token),
+        output_info
+    );
+}
+
+
+template <class Stream>
+void boost::mysql::connection<Stream>::close(
+    error_code& err,
+    error_info& info
+)
+{
+    detail::clear_errors(err, info);
+    detail::close_connection(this->get_channel(), err, info);
+}
+
+template <class Stream>
+void boost::mysql::connection<Stream>::close()
+{
+    detail::error_block blk;
+    detail::close_connection(this->get_channel(), blk.err, blk.info);
+    blk.check();
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code)
+)
+boost::mysql::connection<Stream>::async_close(
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    output_info.clear();
+    return detail::async_close_connection(
+        this->get_channel(),
         std::forward<CompletionToken>(token),
         output_info
     );

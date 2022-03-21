@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,7 +10,9 @@
 
 #include <boost/asio/ssl/context.hpp>
 #include <type_traits>
+
 #ifndef BOOST_MYSQL_DOXYGEN // For some arcane reason, Doxygen fails to expand Asio macros without this
+
 #include <boost/mysql/detail/protocol/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
@@ -18,6 +20,7 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/connection_params.hpp>
+
 #endif
 
 /// The Boost libraries namespace.
@@ -34,7 +37,6 @@ namespace mysql {
  *
  * \details
  * Represents a connection to a MySQL server, allowing you to interact with it.
- * If using a socket (e.g. TCP or UNIX), consider using [reflink socket_connection].
  *
  * Because of how the MySQL protocol works, you must fully perform an operation before
  * starting the next one. More information [link mysql.async.sequencing here].
@@ -73,15 +75,10 @@ protected:
     error_info& shared_info() noexcept { return get_channel().shared_info(); }
 public:
     /**
-     * \brief Initializing constructor (no user-provided SSL context).
+     * \brief Initializing constructor.
      * \details
      * As part of the initialization, a Stream object is created
      * by forwarding any passed in arguments to its constructor.
-     * If SSL ends up being used for this connection, a
-     * [asioreflink ssl__context ssl::context] object will be created
-     * on-demmand, with the minimum configuration settings to make SSL work.
-     * In particular, no certificate validation will be performed. If you need
-     * more flexibility, have a look at the other constructor overloads.
      * 
      * The constructed connection will have [refmem connection valid]
      * return `true`.
@@ -91,33 +88,7 @@ public:
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type
     >
     connection(Args&&... args) :
-        channel_(new detail::channel<Stream>(nullptr, std::forward<Args>(args)...))
-    {
-    }
-
-    /**
-     * \brief Initializing constructor (user-provided SSL context).
-     * \details
-     * As part of the initialization, a Stream object is created
-     * by forwarding any passed in arguments to its constructor.
-     * If SSL ends up being used for this connection, `ctx` will be
-     * used to initialize a [asioreflink ssl__stream ssl::stream] object.
-     * By providing a SSL context you can specify extra SSL configuration options
-     * like certificate verification and hostname validation. You can use a single
-     * context in multiple connections.
-     *
-     * The provided context must be kept alive for the lifetime of the [reflink connection]
-     * object. Otherwise, the results are undefined.
-     * 
-     * The constructed connection will have [refmem connection valid]
-     * return `true`.
-     */
-    template<
-        class... Args,
-        class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type
-    >
-    connection(boost::asio::ssl::context& ctx, Args&&... args) :
-        channel_(new detail::channel<Stream>(&ctx, std::forward<Args>(args)...))
+        channel_(new detail::channel<Stream>(std::forward<Args>(args)...))
     {
     }
 
@@ -161,33 +132,144 @@ public:
 
     /**
      * \brief Returns whether the connection uses SSL or not.
-     * \details This function always returns `false` for connections that haven't been
+     * \details This function always returns `false` if the underlying
+     * stream does not support SSL. This function always returns `false` 
+     * for connections that haven't been
      * established yet (handshake not run yet). If the handshake fails,
      * the return value is undefined.
      *
      * This function can be used to determine
      * whether you are using a SSL connection or not when using
-     * optional SSL (see [reflink ssl_mode]).
+     * SSL negotiation (see [link mysql.ssl.negotiation this section]).
      */
     bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
+
+
+    /**
+     * \brief Performs a connection to the MySQL server (sync with error code version).
+     * \details This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Connects the underlying stream and then performs the handshake
+     * with the server. The underlying stream is closed in case of error. Prefer
+     * this function to [refmem connection handshake].
+     *
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
+     */
+    template <typename EndpointType>
+    void connect(
+        const EndpointType& endpoint,
+        const connection_params& params,
+        error_code& ec, 
+        error_info& info
+    );
+
+    /**
+     * \brief Performs a connection to the MySQL server (sync with exceptions version).
+     * \details This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Connects the underlying stream and then performs the handshake
+     * with the server. The underlying stream is closed in case of error. Prefer
+     * this function to [refmem connection handshake].
+     *
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
+     */
+    template <typename EndpointType>
+    void connect(
+        const EndpointType& endpoint,
+        const connection_params& params
+    );
+
+    /**
+     * \brief Performs a connection to the MySQL server
+     *        (async without [reflink error_info] version).
+     * \details
+     * This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Connects the underlying stream and then performs the handshake
+     * with the server. The underlying stream is closed in case of error. Prefer
+     * this function to [refmem connection async_handshake].
+     *
+     * The strings pointed to by params should be kept alive by the caller
+     * until the operation completes, as no copy is made by the library.
+     *
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        typename EndpointType,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_connect(
+        const EndpointType& endpoint,
+        const connection_params& params,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_connect(endpoint, params, this->shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Performs a connection to the MySQL server
+     *        (async with [reflink error_info] version).
+     * \details
+     * This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Connects the underlying stream and then performs the handshake
+     * with the server. The underlying stream is closed in case of error. Prefer
+     * this function to [refmem connection async_handshake].
+     *
+     * The strings pointed to by params should be kept alive by the caller
+     * until the operation completes, as no copy is made by the library.
+     *
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        typename EndpointType,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_connect(
+        const EndpointType& endpoint,
+        const connection_params& params,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
 
     /**
      * \brief Performs the MySQL-level handshake (sync with error code version).
      * \details Does not connect the underlying stream. 
-     * Prefer [refmem socket_connection connect] if possible.
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection connect] instead of this function.
      *
-     * If SSL certificate validation was configured (by providing a custom SSL context
-     * to this class' constructor) and fails, this function will fail.
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
      */
     void handshake(const connection_params& params, error_code& ec, error_info& info);
 
     /**
      * \brief Performs the MySQL-level handshake (sync with exceptions version).
      * \details Does not connect the underlying stream.
-     * Prefer [refmem socket_connection connect] if possible.
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection connect] instead of this function.
      *
-     * If SSL certificate validation was configured (by providing a custom SSL context
-     * to this class' constructor) and fails, this function will fail.
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
      */
     void handshake(const connection_params& params);
 
@@ -195,12 +277,13 @@ public:
      * \brief Performs the MySQL-level handshake
      *        (async without [reflink error_info] version).
      * \details Does not connect the underlying stream.
-     * Prefer [refmem socket_connection async_connect] if possible.
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection connect] instead of this function.
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
      *
-     * If SSL certificate validation was configured (by providing a custom SSL context
-     * to this class' constructor) and fails, this function will fail.
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
@@ -222,12 +305,13 @@ public:
      * \brief Performs the MySQL-level handshake
      *        (async with [reflink error_info] version).
      * \details Does not connect the underlying stream.
-     * Prefer [refmem socket_connection async_connect] if possible.
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection connect] instead of this function.
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
      *
-     * If SSL certificate validation was configured (by providing a custom SSL context
-     * to this class' constructor) and fails, this function will fail.
+     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
+     * See [link mysql.ssl.handshake this section] for more info.
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
@@ -371,15 +455,86 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
+
+    /**
+     * \brief Closes the connection (sync with error code version).
+     * \details 
+     * This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Sends a quit request, performs the TLS shutdown (if required)
+     * and closes the underlying stream. Prefer this function to [refmem connection quit].
+     */
+    void close(error_code&, error_info&);
+
+    /**
+     * \brief Closes the connection (sync with exceptions version).
+     * \details 
+     * This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Sends a quit request, performs the TLS shutdown (if required)
+     * and closes the underlying stream. Prefer this function to [refmem connection quit].
+     */
+    void close();
+
+    /**
+     * \brief Closes the connection (async without [reflink error_info] version).
+     * \details 
+     * This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Sends a quit request, performs the TLS shutdown (if required)
+     * and closes the underlying stream. Prefer this function to [refmem connection quit].
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    {
+        return async_close(this->shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Closes the connection (async with [reflink error_info] version).
+     * \details 
+     * This function is only available if `Stream` satisfies the
+     * [reflink SocketStream] requirements.
+     *
+     * Sends a quit request, performs the TLS shutdown (if required)
+     * and closes the underlying stream. Prefer this function to [refmem connection quit].
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_close(
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+
     /**
      * \brief Notifies the MySQL server that the client wants to end the session
      * (sync with error code version).
      *
-     * \details Sends a quit request to the MySQL server. Both server and client should
-     * close the underlying physical connection after this. This operation involves a network
-     * transfer and thus can fail. This is a low-level operation.
-     * See [link mysql.other_streams.connection this section] for more info.
-     * Prefer [refmem socket_connection close] instead.
+     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
+     * this function will also perform the SSL shutdown. You should 
+     * close the underlying physical connection after calling this function.
+     *
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection close] instead of this function,
+     * as it also takes care of closing the underlying stream.
+     *
      */
     void quit(error_code&, error_info&);
 
@@ -387,11 +542,13 @@ public:
      * \brief Notifies the MySQL server that the client wants to end the session
      * (sync with exceptions version).
      *
-     * \details Sends a quit request to the MySQL server. Both server and client should
-     * close the underlying physical connection after this. This operation involves a network
-     * transfer and thus can fail. This is a low-level operation.
-     * See [link mysql.other_streams.connection this section] for more info.
-     * Prefer [refmem socket_connection close] instead.
+     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
+     * this function will also perform the SSL shutdown. You should 
+     * close the underlying physical connection after calling this function.
+     *
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection close] instead of this function,
+     * as it also takes care of closing the underlying stream.
      */
     void quit();
 
@@ -399,11 +556,13 @@ public:
      * \brief Notifies the MySQL server that the client wants to end the session
      * (async without [reflink error_info] version).
      *
-     * \details Sends a quit request to the MySQL server. Both server and client should
-     * close the underlying physical connection after this. This operation involves a network
-     * transfer and thus can fail. This is a low-level operation.
-     * See [link mysql.other_streams.connection this section] for more info.
-     * Prefer [refmem socket_connection async_close] instead.
+     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
+     * this function will also perform the SSL shutdown. You should 
+     * close the underlying physical connection after calling this function.
+     *
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection close] instead of this function,
+     * as it also takes care of closing the underlying stream.
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
@@ -422,11 +581,13 @@ public:
      * \brief Notifies the MySQL server that the client wants to end the session
      * (async with [reflink error_info] version).
      *
-     * \details Sends a quit request to the MySQL server. Both server and client should
-     * close the underlying physical connection after this. This operation involves a network
-     * transfer and thus can fail. This is a low-level operation.
-     * See [link mysql.other_streams.connection this section] for more info.
-     * Prefer [refmem socket_connection async_close] instead.
+     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
+     * this function will also perform the SSL shutdown. You should 
+     * close the underlying physical connection after calling this function.
+     *
+     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * requirements, use [refmem connection close] instead of this function,
+     * as it also takes care of closing the underlying stream.
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
@@ -454,6 +615,9 @@ public:
 
 /// The default TCP port for the MySQL protocol.
 constexpr unsigned short default_port = 3306;
+
+/// The default TCP port for the MySQL protocol, as a string. Useful for hostname resolution.
+constexpr const char* default_port_string = "3306";
 
 } // mysql
 } // boost

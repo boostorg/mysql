@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -689,9 +689,9 @@ BOOST_AUTO_TEST_CASE(operator_gte)
 BOOST_AUTO_TEST_CASE(can_be_placed_in_set)
 {
     std::set<value> s { value(200), value("hola"), value(200) };
-    BOOST_TEST(s.size() == 2);
+    BOOST_TEST(s.size() == 2u);
     s.emplace("test");
-    BOOST_TEST(s.size() == 3);
+    BOOST_TEST(s.size() == 3u);
 }
 
 BOOST_AUTO_TEST_CASE(can_be_placed_in_map)
@@ -699,10 +699,10 @@ BOOST_AUTO_TEST_CASE(can_be_placed_in_map)
     std::map<value, const char*> m;
     m[value(200)] = "msg0";
     m[value("key")] = "msg1";
-    BOOST_TEST(m.size() == 2);
+    BOOST_TEST(m.size() == 2u);
     BOOST_TEST(m.at(value("key")) == "msg1");
     m[value("key")] = "msg2";
-    BOOST_TEST(m.size() == 2);
+    BOOST_TEST(m.size() == 2u);
     BOOST_TEST(m.at(value("key")) == "msg2");
 }
 

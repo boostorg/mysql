@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,7 @@
 
 //[example_unix_socket
 
+#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -27,10 +28,11 @@ void print_employee(const boost::mysql::row& employee)
         exit(1); \
     }
 
-// UNIX sockets are only available in, er, UNIX systems. Typedefs for
-// UNIX socket-based connections are only available in UNIX systems.
-// Check for BOOST_ASIO_HAS_LOCAL_SOCKETS to know if UNIX socket
-// typedefs are available in your system.
+/* UNIX sockets are only available in, er, UNIX systems. Typedefs for
+ * UNIX socket-based connections are only available in UNIX systems.
+ * Check for BOOST_ASIO_HAS_LOCAL_SOCKETS to know if UNIX socket
+ * typedefs are available in your system.
+ */
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 
 void main_impl(int argc, char** argv)
@@ -61,13 +63,14 @@ void main_impl(int argc, char** argv)
     );
 
     boost::asio::io_context ctx;
+    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
 
     // Connection to the MySQL server, over a UNIX socket
-    boost::mysql::unix_connection conn (ctx);
+    boost::mysql::unix_ssl_connection conn (ctx, ssl_ctx);
     conn.connect(ep, params); // UNIX socket connect and MySQL handshake
 
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::unix_resultset result = conn.query(sql);
+    boost::mysql::unix_ssl_resultset result = conn.query(sql);
 
     // Get all the rows in the resultset
     std::vector<boost::mysql::row> employees = result.read_all();

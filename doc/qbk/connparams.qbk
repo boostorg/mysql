@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -39,11 +39,12 @@ __Self__ implements the two most common authentication plugins:
 * [mysqllink caching-sha2-pluggable-authentication.html
   `caching_sha2_password`]. Unless otherwise configured, this is the default plugin for
   MySQL 8.0. It can only be used over TLS, which makes it less vulnerable.
+  This is also the reason why all examples use TLS.
   
 Note that the `sha256_password` plugin is [*not] supported.
 
 If you try to establish a connection (using [refmem connection handshake] or
-[refmem socket_connection connect]) and you specify a user with
+[refmem connection connect]) and you specify a user with
 an unsupported authentication plugin, the operation will fail.
 
 [note
@@ -87,26 +88,10 @@ You can change it at any time issuing a __SET_NAMES__ statement
 [section:ssl SSL/TLS]
 
 When establising a connection, you can specify a [reflink ssl_mode]
-value to configure whether to use SSL/TLS or not:
-
-* If set to `enable`, the connection will use TLS if
-  available, falling back to an unencrypted connection if the server
-  does not support it. This is the default.
-* If set to `require`, the connection will use TLS. If the
-  server does not support it, the connection will be refused.
-* If set to `disable`, the connection will never use TLS.
-
-You can fine-tune the SSL/TLS configuration by passing a [asioreflink ssl__context ssl::context]
-object to [reflink connection]'s constructor (using [reflink2 connection.connection.overload2 this overload]).
-See [link mysql.examples.ssl this section] for an example on how to do this.
-
-If you are using `enable` [reflink ssl_mode], you can use
-[refmem connection uses_ssl] to query whether the connection
-uses SSL or not. 
-
-You can find more information about how to configure SSL/TLS
-within a MySQL server [mysqllink using-encrypted-connections.html
-here].
+value to configure whether to use SSL/TLS or not. As explained in
+[link mysql.ssl.negotiation this section], this parameters can be
+employed to configure SSL negotiation. This value is ignored if the
+underlying stream does not support SSL.
 
 [endsect]
 

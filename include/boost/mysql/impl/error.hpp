@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,10 +8,13 @@
 #ifndef BOOST_MYSQL_IMPL_ERROR_HPP
 #define BOOST_MYSQL_IMPL_ERROR_HPP
 
+#pragma once
+
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/impl/error_descriptions.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/config.hpp>
 #include <algorithm>
-#include <boost/mysql/impl/error_descriptions.hpp>
 
 namespace boost {
 namespace system {

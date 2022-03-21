@@ -1,11 +1,21 @@
 #
-# Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-local EXAMPLES =
+import os ;
+
+# The hostname to use for examples
+local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
+if $(hostname) = ""
+{
+    hostname = "localhost" ;
+}
+
+# Regular examples
+local default_examples =
     tutorial
     value
     query_sync
@@ -13,15 +23,13 @@ local EXAMPLES =
     query_async_coroutines
     query_async_coroutinescpp20
     query_async_futures
-    prepared_statements
     metadata
+    prepared_statements
+    default_completion_tokens
+    ssl
 ;
 
-local EXPLICIT_EXAMPLES = 
-    unix_socket
-;
-
-for local example in $(EXAMPLES) $(EXPLICIT_EXAMPLES)
+for local example in $(default_examples)
 {
     unit-test "boost_mysql_example_$(example)" 
         :
@@ -29,11 +37,10 @@ for local example in $(EXAMPLES) $(EXPLICIT_EXAMPLES)
             /boost/mysql//boost_mysql
             /boost/coroutine//boost_coroutine
         :
-            <testing.arg>"example_user example_password"
+            <testing.arg>"example_user example_password $(hostname)"
         ;
 }
 
-for local example in $(EXPLICIT_EXAMPLES)
-{
-    explicit "boost_mysql_example_$(example)" ;
-}
+# UNIX sockets
+unit-test boost_mysql_example_unix_socket :  unix_socket.cpp /boost/mysql//boost_mysql : <testing.arg>"example_user example_password" ;
+explicit  boost_mysql_example_unix_socket ;

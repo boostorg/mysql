@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,6 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP
 #define BOOST_MYSQL_DETAIL_AUTH_IMPL_AUTH_CALCULATOR_IPP
 
+#pragma once
+
+#include <boost/mysql/detail/auth/auth_calculator.hpp>
 #include <boost/mysql/detail/auth/mysql_native_password.hpp>
 #include <boost/mysql/detail/auth/caching_sha2_password.hpp>
 #include <boost/mysql/detail/auxiliar/make_string_view.hpp>
@@ -26,10 +29,10 @@ constexpr authentication_plugin caching_sha2_password_plugin {
     &caching_sha2_password::compute_response
 };
 
-constexpr std::array<const authentication_plugin*, 2> all_authentication_plugins {
+constexpr std::array<const authentication_plugin*, 2> all_authentication_plugins {{
     &mysql_native_password_plugin,
     &caching_sha2_password_plugin
-};
+}};
 
 } // detail
 } // mysql

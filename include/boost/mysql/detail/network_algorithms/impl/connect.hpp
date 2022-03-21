@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,20 +8,23 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP
 
+#pragma once
+
+#include <boost/mysql/detail/network_algorithms/connect.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template<class Stream>
+template <class Stream>
 struct connect_op : boost::asio::coroutine
 {
-    using endpoint_type = typename Stream::endpoint_type;
+    using endpoint_type = typename Stream::lowest_layer_type::endpoint_type;
 
     channel<Stream>& chan_;
     error_info& output_info_;
-    const endpoint_type& ep_; // No need for a copy, as we will call it in the first operator() call
+    endpoint_type ep_;
     connection_params params_;
 
     connect_op(
@@ -46,7 +49,7 @@ struct connect_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Physical connect
-            BOOST_ASIO_CORO_YIELD chan_.next_layer().async_connect(ep_, std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.lowest_layer().async_connect(ep_, std::move(self));
             if (code)
             {
                 chan_.close();
@@ -78,13 +81,13 @@ struct connect_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::connect(
     channel<Stream>& chan,
-    const typename Stream::endpoint_type& endpoint,
+    const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const connection_params& params,
     error_code& err,
     error_info& info
 )
 {
-    chan.next_layer().connect(endpoint, err);
+    chan.lowest_layer().connect(endpoint, err);
     if (err)
     {
         chan.close();
@@ -105,7 +108,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_connect(
     channel<Stream>& chan,
-    const typename Stream::endpoint_type& endpoint,
+    const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const connection_params& params,
     CompletionToken&& token,
     error_info& info

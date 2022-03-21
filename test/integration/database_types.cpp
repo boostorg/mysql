@@ -1,13 +1,15 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "integration_test_common.hpp"
+#include "boost/mysql/tcp.hpp"
+#include "tcp_network_fixture.hpp"
 #include "metadata_validator.hpp"
 #include "test_common.hpp"
+#include <boost/asio/io_context.hpp>
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <cstdint>
@@ -54,15 +56,6 @@ std::ostream& operator<<(std::ostream& os, const database_types_sample& input)
 {
     return os << input.table << '.' << input.field << '.' << input.row_id;
 }
-
-// Fixture
-struct database_types_fixture : network_fixture<boost::asio::ip::tcp::socket>
-{
-    database_types_fixture()
-    {
-        connect(boost::mysql::ssl_mode::disable);
-    }
-};
 
 // Helpers
 using flagsvec = std::vector<meta_validator::flag_getter>;
@@ -607,8 +600,10 @@ std::vector<database_types_sample> make_all_samples()
 
 std::vector<database_types_sample> all_samples = make_all_samples();
 
-BOOST_DATA_TEST_CASE_F(database_types_fixture, query, data::make(all_samples))
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, query, data::make(all_samples))
 {
+    connect();
+
     // Compose the query
     auto query = stringize(
         "SELECT ", sample.field,
@@ -624,13 +619,15 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture, query, data::make(all_samples))
     validate_meta(result.fields(), {sample.mvalid});
 
     // Validate the returned value
-    BOOST_TEST_REQUIRE(rows.size() == 1);
-    BOOST_TEST_REQUIRE(rows[0].values().size() == 1);
+    BOOST_TEST_REQUIRE(rows.size() == 1u);
+    BOOST_TEST_REQUIRE(rows[0].values().size() == 1u);
     BOOST_TEST(rows[0].values()[0] == sample.expected_value);
 }
 
-BOOST_DATA_TEST_CASE_F(database_types_fixture, prepared_statement, data::make(all_samples))
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, prepared_statement, data::make(all_samples))
 {
+    connect();
+
     // Prepare the statement
     auto stmt_sql = stringize(
         "SELECT ", sample.field,
@@ -647,8 +644,8 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture, prepared_statement, data::make(al
     validate_meta(result.fields(), {sample.mvalid});
 
     // Validate the returned value
-    BOOST_TEST_REQUIRE(rows.size() == 1);
-    BOOST_TEST_REQUIRE(rows[0].values().size() == 1);
+    BOOST_TEST_REQUIRE(rows.size() == 1u);
+    BOOST_TEST_REQUIRE(rows[0].values().size() == 1u);
     BOOST_TEST(rows[0].values()[0] == sample.expected_value);
 }
 
@@ -672,10 +669,12 @@ make_prepared_stmt_param_samples()
     return res;
 }
 
-BOOST_DATA_TEST_CASE_F(database_types_fixture,
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture,
     prepared_statement_execute_param,
     data::make(make_prepared_stmt_param_samples()))
 {
+    connect();
+    
     // Prepare the statement
     auto stmt_sql = stringize(
         "SELECT ", sample.field,
@@ -689,14 +688,15 @@ BOOST_DATA_TEST_CASE_F(database_types_fixture,
     auto rows = result.read_all();
 
     // Validate the returned value
-    BOOST_TEST_REQUIRE(rows.size() == 1);
-    BOOST_TEST_REQUIRE(rows[0].values().size() == 1);
+    BOOST_TEST_REQUIRE(rows.size() == 1u);
+    BOOST_TEST_REQUIRE(rows[0].values().size() == 1u);
     BOOST_TEST(rows[0].values()[0] == sample.expected_value);
 }
 
 // Validate that the metadata we retrieve with certain queries is correct
-BOOST_FIXTURE_TEST_CASE(aliased_table_metadata, database_types_fixture)
+BOOST_FIXTURE_TEST_CASE(aliased_table_metadata, tcp_network_fixture)
 {
+    connect();
     auto result = conn.query(
         "SELECT field_varchar AS field_alias FROM empty_table table_alias");
     std::vector<meta_validator> validators {

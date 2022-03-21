@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -827,7 +827,7 @@ enum class errc : int
     aggregate_order_for_union = 3028, ///< Server error. Error number: 3028, symbol: [mysqllink server-error-reference.html\#error_er_aggregate_order_for_union ER_AGGREGATE_ORDER_FOR_UNION].
     aggregate_order_non_agg_query = 3029, ///< Server error. Error number: 3029, symbol: [mysqllink server-error-reference.html\#error_er_aggregate_order_non_agg_query ER_AGGREGATE_ORDER_NON_AGG_QUERY].
     slave_worker_stopped_previous_thd_error = 3030, ///< Server error. Error number: 3030, symbol: [mysqllink server-error-reference.html\#error_er_slave_worker_stopped_previous_thd_error ER_SLAVE_WORKER_STOPPED_PREVIOUS_THD_ERROR].
-    dont_support_slave_preserve_commit_order = 3031, ///< Server error. Error number: 3031, symbol: [mysqllink server-error-reference.html\#error_er_dont_support_slave_preserve_commit_order ER_DONT_SUPPORT_SLAVE_PRESERVE_COMMIT_ORDER].
+    dont_support_replica_preserve_commit_order = 3031, ///< Server error. Error number: 3031, symbol: [mysqllink server-error-reference.html\#error_er_dont_support_replica_preserve_commit_order ER_DONT_SUPPORT_REPLICA_PRESERVE_COMMIT_ORDER].
     server_offline_mode = 3032, ///< Server error. Error number: 3032, symbol: [mysqllink server-error-reference.html\#error_er_server_offline_mode ER_SERVER_OFFLINE_MODE].
     gis_different_srids = 3033, ///< Server error. Error number: 3033, symbol: [mysqllink server-error-reference.html\#error_er_gis_different_srids ER_GIS_DIFFERENT_SRIDS].
     gis_unsupported_argument = 3034, ///< Server error. Error number: 3034, symbol: [mysqllink server-error-reference.html\#error_er_gis_unsupported_argument ER_GIS_UNSUPPORTED_ARGUMENT].
@@ -1502,7 +1502,7 @@ enum class errc : int
     cant_use_anonymous_to_gtid_with_gtid_mode_not_on = 4013, ///< Server error. Error number: 4013, symbol: [mysqllink server-error-reference.html\#error_er_cant_use_anonymous_to_gtid_with_gtid_mode_not_on ER_CANT_USE_ANONYMOUS_TO_GTID_WITH_GTID_MODE_NOT_ON].
     cant_combine_anonymous_to_gtid_and_autoposition = 4014, ///< Server error. Error number: 4014, symbol: [mysqllink server-error-reference.html\#error_er_cant_combine_anonymous_to_gtid_and_autoposition ER_CANT_COMBINE_ANONYMOUS_TO_GTID_AND_AUTOPOSITION].
     assign_gtids_to_anonymous_transactions_requires_gtid_mode_on = 4015, ///< Server error. Error number: 4015, symbol: [mysqllink server-error-reference.html\#error_er_assign_gtids_to_anonymous_transactions_requires_gtid_mode_on ER_ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS_REQUIRES_GTID_MODE_ON].
-    sql_slave_skip_counter_used_with_gtid_mode_on = 4016, ///< Server error. Error number: 4016, symbol: [mysqllink server-error-reference.html\#error_er_sql_slave_skip_counter_used_with_gtid_mode_on ER_SQL_SLAVE_SKIP_COUNTER_USED_WITH_GTID_MODE_ON].
+    sql_replica_skip_counter_used_with_gtid_mode_on = 4016, ///< Server error. Error number: 4016, symbol: [mysqllink server-error-reference.html\#error_er_sql_replica_skip_counter_used_with_gtid_mode_on ER_SQL_REPLICA_SKIP_COUNTER_USED_WITH_GTID_MODE_ON].
     using_assign_gtids_to_anonymous_transactions_as_local_or_uuid = 4017, ///< Server error. Error number: 4017, symbol: [mysqllink server-error-reference.html\#error_er_using_assign_gtids_to_anonymous_transactions_as_local_or_uuid ER_USING_ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS_AS_LOCAL_OR_UUID].
     cant_set_anonymous_to_gtid_and_wait_until_sql_thd_after_gtids = 4018, ///< Server error. Error number: 4018, symbol: [mysqllink server-error-reference.html\#error_er_cant_set_anonymous_to_gtid_and_wait_until_sql_thd_after_gtids ER_CANT_SET_ANONYMOUS_TO_GTID_AND_WAIT_UNTIL_SQL_THD_AFTER_GTIDS].
     cant_set_sql_after_or_before_gtids_with_anonymous_to_gtid = 4019, ///< Server error. Error number: 4019, symbol: [mysqllink server-error-reference.html\#error_er_cant_set_sql_after_or_before_gtids_with_anonymous_to_gtid ER_CANT_SET_SQL_AFTER_OR_BEFORE_GTIDS_WITH_ANONYMOUS_TO_GTID].
@@ -1517,6 +1517,65 @@ enum class errc : int
     table_must_have_a_visible_column = 4028, ///< Server error. Error number: 4028, symbol: [mysqllink server-error-reference.html\#error_er_table_must_have_a_visible_column ER_TABLE_MUST_HAVE_A_VISIBLE_COLUMN].
     innodb_compression_failure = 4029, ///< Server error. Error number: 4029, symbol: [mysqllink server-error-reference.html\#error_er_innodb_compression_failure ER_INNODB_COMPRESSION_FAILURE].
     warn_async_conn_failover_network_namespace = 4030, ///< Server error. Error number: 4030, symbol: [mysqllink server-error-reference.html\#error_er_warn_async_conn_failover_network_namespace ER_WARN_ASYNC_CONN_FAILOVER_NETWORK_NAMESPACE].
+    client_interaction_timeout = 4031, ///< Server error. Error number: 4031, symbol: [mysqllink server-error-reference.html\#error_er_client_interaction_timeout ER_CLIENT_INTERACTION_TIMEOUT].
+    invalid_cast_to_geometry = 4032, ///< Server error. Error number: 4032, symbol: [mysqllink server-error-reference.html\#error_er_invalid_cast_to_geometry ER_INVALID_CAST_TO_GEOMETRY].
+    invalid_cast_polygon_ring_direction = 4033, ///< Server error. Error number: 4033, symbol: [mysqllink server-error-reference.html\#error_er_invalid_cast_polygon_ring_direction ER_INVALID_CAST_POLYGON_RING_DIRECTION].
+    gis_different_srids_aggregation = 4034, ///< Server error. Error number: 4034, symbol: [mysqllink server-error-reference.html\#error_er_gis_different_srids_aggregation ER_GIS_DIFFERENT_SRIDS_AGGREGATION].
+    reload_keyring_failure = 4035, ///< Server error. Error number: 4035, symbol: [mysqllink server-error-reference.html\#error_er_reload_keyring_failure ER_RELOAD_KEYRING_FAILURE].
+    sdi_get_keys_invalid_tablespace = 4036, ///< Server error. Error number: 4036, symbol: [mysqllink server-error-reference.html\#error_er_sdi_get_keys_invalid_tablespace ER_SDI_GET_KEYS_INVALID_TABLESPACE].
+    change_rpl_src_wrong_compression_algorithm_size = 4037, ///< Server error. Error number: 4037, symbol: [mysqllink server-error-reference.html\#error_er_change_rpl_src_wrong_compression_algorithm_size ER_CHANGE_RPL_SRC_WRONG_COMPRESSION_ALGORITHM_SIZE].
+    cant_use_same_uuid_as_view_change_uuid = 4039, ///< Server error. Error number: 4039, symbol: [mysqllink server-error-reference.html\#error_er_cant_use_same_uuid_as_view_change_uuid ER_CANT_USE_SAME_UUID_AS_VIEW_CHANGE_UUID].
+    anonymous_to_gtid_uuid_same_as_view_change_uuid = 4040, ///< Server error. Error number: 4040, symbol: [mysqllink server-error-reference.html\#error_er_anonymous_to_gtid_uuid_same_as_view_change_uuid ER_ANONYMOUS_TO_GTID_UUID_SAME_AS_VIEW_CHANGE_UUID].
+    grp_rpl_view_change_uuid_fail_get_variable = 4041, ///< Server error. Error number: 4041, symbol: [mysqllink server-error-reference.html\#error_er_grp_rpl_view_change_uuid_fail_get_variable ER_GRP_RPL_VIEW_CHANGE_UUID_FAIL_GET_VARIABLE].
+    warn_aduit_log_max_size_and_prune_seconds = 4042, ///< Server error. Error number: 4042, symbol: [mysqllink server-error-reference.html\#error_er_warn_aduit_log_max_size_and_prune_seconds ER_WARN_ADUIT_LOG_MAX_SIZE_AND_PRUNE_SECONDS].
+    warn_aduit_log_max_size_close_to_rotate_on_size = 4043, ///< Server error. Error number: 4043, symbol: [mysqllink server-error-reference.html\#error_er_warn_aduit_log_max_size_close_to_rotate_on_size ER_WARN_ADUIT_LOG_MAX_SIZE_CLOSE_TO_ROTATE_ON_SIZE].
+    kerberos_create_user = 4044, ///< Server error. Error number: 4044, symbol: [mysqllink server-error-reference.html\#error_er_kerberos_create_user ER_KERBEROS_CREATE_USER].
+    install_plugin_conflict_client = 4045, ///< Server error. Error number: 4045, symbol: [mysqllink server-error-reference.html\#error_er_install_plugin_conflict_client ER_INSTALL_PLUGIN_CONFLICT_CLIENT].
+    da_error_log_component_flush_failed = 4046, ///< Server error. Error number: 4046, symbol: [mysqllink server-error-reference.html\#error_er_da_error_log_component_flush_failed ER_DA_ERROR_LOG_COMPONENT_FLUSH_FAILED].
+    warn_sql_after_mts_gaps_gap_not_calculated = 4047, ///< Server error. Error number: 4047, symbol: [mysqllink server-error-reference.html\#error_er_warn_sql_after_mts_gaps_gap_not_calculated ER_WARN_SQL_AFTER_MTS_GAPS_GAP_NOT_CALCULATED].
+    invalid_assignment_target = 4048, ///< Server error. Error number: 4048, symbol: [mysqllink server-error-reference.html\#error_er_invalid_assignment_target ER_INVALID_ASSIGNMENT_TARGET].
+    operation_not_allowed_on_gr_secondary = 4049, ///< Server error. Error number: 4049, symbol: [mysqllink server-error-reference.html\#error_er_operation_not_allowed_on_gr_secondary ER_OPERATION_NOT_ALLOWED_ON_GR_SECONDARY].
+    grp_rpl_failover_channel_status_propagation = 4050, ///< Server error. Error number: 4050, symbol: [mysqllink server-error-reference.html\#error_er_grp_rpl_failover_channel_status_propagation ER_GRP_RPL_FAILOVER_CHANNEL_STATUS_PROPAGATION].
+    warn_audit_log_format_unix_timestamp_only_when_json = 4051, ///< Server error. Error number: 4051, symbol: [mysqllink server-error-reference.html\#error_er_warn_audit_log_format_unix_timestamp_only_when_json ER_WARN_AUDIT_LOG_FORMAT_UNIX_TIMESTAMP_ONLY_WHEN_JSON].
+    invalid_mfa_plugin_specified = 4052, ///< Server error. Error number: 4052, symbol: [mysqllink server-error-reference.html\#error_er_invalid_mfa_plugin_specified ER_INVALID_MFA_PLUGIN_SPECIFIED].
+    identified_by_unsupported = 4053, ///< Server error. Error number: 4053, symbol: [mysqllink server-error-reference.html\#error_er_identified_by_unsupported ER_IDENTIFIED_BY_UNSUPPORTED].
+    invalid_plugin_for_registration = 4054, ///< Server error. Error number: 4054, symbol: [mysqllink server-error-reference.html\#error_er_invalid_plugin_for_registration ER_INVALID_PLUGIN_FOR_REGISTRATION].
+    plugin_requires_registration = 4055, ///< Server error. Error number: 4055, symbol: [mysqllink server-error-reference.html\#error_er_plugin_requires_registration ER_PLUGIN_REQUIRES_REGISTRATION].
+    mfa_method_exists = 4056, ///< Server error. Error number: 4056, symbol: [mysqllink server-error-reference.html\#error_er_mfa_method_exists ER_MFA_METHOD_EXISTS].
+    mfa_method_not_exists = 4057, ///< Server error. Error number: 4057, symbol: [mysqllink server-error-reference.html\#error_er_mfa_method_not_exists ER_MFA_METHOD_NOT_EXISTS].
+    authentication_policy_mismatch = 4058, ///< Server error. Error number: 4058, symbol: [mysqllink server-error-reference.html\#error_er_authentication_policy_mismatch ER_AUTHENTICATION_POLICY_MISMATCH].
+    plugin_registration_done = 4059, ///< Server error. Error number: 4059, symbol: [mysqllink server-error-reference.html\#error_er_plugin_registration_done ER_PLUGIN_REGISTRATION_DONE].
+    invalid_user_for_registration = 4060, ///< Server error. Error number: 4060, symbol: [mysqllink server-error-reference.html\#error_er_invalid_user_for_registration ER_INVALID_USER_FOR_REGISTRATION].
+    user_registration_failed = 4061, ///< Server error. Error number: 4061, symbol: [mysqllink server-error-reference.html\#error_er_user_registration_failed ER_USER_REGISTRATION_FAILED].
+    mfa_methods_invalid_order = 4062, ///< Server error. Error number: 4062, symbol: [mysqllink server-error-reference.html\#error_er_mfa_methods_invalid_order ER_MFA_METHODS_INVALID_ORDER].
+    mfa_methods_identical = 4063, ///< Server error. Error number: 4063, symbol: [mysqllink server-error-reference.html\#error_er_mfa_methods_identical ER_MFA_METHODS_IDENTICAL].
+    invalid_mfa_operations_for_passwordless_user = 4064, ///< Server error. Error number: 4064, symbol: [mysqllink server-error-reference.html\#error_er_invalid_mfa_operations_for_passwordless_user ER_INVALID_MFA_OPERATIONS_FOR_PASSWORDLESS_USER].
+    change_replication_source_no_options_for_gtid_only = 4065, ///< Server error. Error number: 4065, symbol: [mysqllink server-error-reference.html\#error_er_change_replication_source_no_options_for_gtid_only ER_CHANGE_REPLICATION_SOURCE_NO_OPTIONS_FOR_GTID_ONLY].
+    change_rep_source_cant_disable_req_row_format_with_gtid_only = 4066, ///< Server error. Error number: 4066, symbol: [mysqllink server-error-reference.html\#error_er_change_rep_source_cant_disable_req_row_format_with_gtid_only ER_CHANGE_REP_SOURCE_CANT_DISABLE_REQ_ROW_FORMAT_WITH_GTID_ONLY].
+    change_rep_source_cant_disable_auto_position_with_gtid_only = 4067, ///< Server error. Error number: 4067, symbol: [mysqllink server-error-reference.html\#error_er_change_rep_source_cant_disable_auto_position_with_gtid_only ER_CHANGE_REP_SOURCE_CANT_DISABLE_AUTO_POSITION_WITH_GTID_ONLY].
+    change_rep_source_cant_disable_gtid_only_without_positions = 4068, ///< Server error. Error number: 4068, symbol: [mysqllink server-error-reference.html\#error_er_change_rep_source_cant_disable_gtid_only_without_positions ER_CHANGE_REP_SOURCE_CANT_DISABLE_GTID_ONLY_WITHOUT_POSITIONS].
+    change_rep_source_cant_disable_auto_pos_without_positions = 4069, ///< Server error. Error number: 4069, symbol: [mysqllink server-error-reference.html\#error_er_change_rep_source_cant_disable_auto_pos_without_positions ER_CHANGE_REP_SOURCE_CANT_DISABLE_AUTO_POS_WITHOUT_POSITIONS].
+    change_rep_source_gr_channel_with_gtid_mode_not_on = 4070, ///< Server error. Error number: 4070, symbol: [mysqllink server-error-reference.html\#error_er_change_rep_source_gr_channel_with_gtid_mode_not_on ER_CHANGE_REP_SOURCE_GR_CHANNEL_WITH_GTID_MODE_NOT_ON].
+    cant_use_gtid_only_with_gtid_mode_not_on = 4071, ///< Server error. Error number: 4071, symbol: [mysqllink server-error-reference.html\#error_er_cant_use_gtid_only_with_gtid_mode_not_on ER_CANT_USE_GTID_ONLY_WITH_GTID_MODE_NOT_ON].
+    warn_c_disable_gtid_only_with_source_auto_pos_invalid_pos = 4072, ///< Server error. Error number: 4072, symbol: [mysqllink server-error-reference.html\#error_er_warn_c_disable_gtid_only_with_source_auto_pos_invalid_pos ER_WARN_C_DISABLE_GTID_ONLY_WITH_SOURCE_AUTO_POS_INVALID_POS].
+    da_ssl_fips_mode_error = 4073, ///< Server error. Error number: 4073, symbol: [mysqllink server-error-reference.html\#error_er_da_ssl_fips_mode_error ER_DA_SSL_FIPS_MODE_ERROR].
+    value_out_of_range = 4074, ///< Server error. Error number: 4074, symbol: [mysqllink server-error-reference.html\#error_er_value_out_of_range ER_VALUE_OUT_OF_RANGE].
+    fulltext_with_rollup = 4075, ///< Server error. Error number: 4075, symbol: [mysqllink server-error-reference.html\#error_er_fulltext_with_rollup ER_FULLTEXT_WITH_ROLLUP].
+    regexp_missing_resource = 4076, ///< Server error. Error number: 4076, symbol: [mysqllink server-error-reference.html\#error_er_regexp_missing_resource ER_REGEXP_MISSING_RESOURCE].
+    warn_regexp_using_default = 4077, ///< Server error. Error number: 4077, symbol: [mysqllink server-error-reference.html\#error_er_warn_regexp_using_default ER_WARN_REGEXP_USING_DEFAULT].
+    regexp_missing_file = 4078, ///< Server error. Error number: 4078, symbol: [mysqllink server-error-reference.html\#error_er_regexp_missing_file ER_REGEXP_MISSING_FILE].
+    warn_deprecated_collation = 4079, ///< Server error. Error number: 4079, symbol: [mysqllink server-error-reference.html\#error_er_warn_deprecated_collation ER_WARN_DEPRECATED_COLLATION].
+    concurrent_procedure_usage = 4080, ///< Server error. Error number: 4080, symbol: [mysqllink server-error-reference.html\#error_er_concurrent_procedure_usage ER_CONCURRENT_PROCEDURE_USAGE].
+    da_global_conn_limit = 4081, ///< Server error. Error number: 4081, symbol: [mysqllink server-error-reference.html\#error_er_da_global_conn_limit ER_DA_GLOBAL_CONN_LIMIT].
+    da_conn_limit = 4082, ///< Server error. Error number: 4082, symbol: [mysqllink server-error-reference.html\#error_er_da_conn_limit ER_DA_CONN_LIMIT].
+    alter_operation_not_supported_reason_column_type_instant = 4083, ///< Server error. Error number: 4083, symbol: [mysqllink server-error-reference.html\#error_er_alter_operation_not_supported_reason_column_type_instant ER_ALTER_OPERATION_NOT_SUPPORTED_REASON_COLUMN_TYPE_INSTANT].
+    warn_sf_udf_name_collision = 4084, ///< Server error. Error number: 4084, symbol: [mysqllink server-error-reference.html\#error_er_warn_sf_udf_name_collision ER_WARN_SF_UDF_NAME_COLLISION].
+    cannot_purge_binlog_with_backup_lock = 4085, ///< Server error. Error number: 4085, symbol: [mysqllink server-error-reference.html\#error_er_cannot_purge_binlog_with_backup_lock ER_CANNOT_PURGE_BINLOG_WITH_BACKUP_LOCK].
+    too_many_windows = 4086, ///< Server error. Error number: 4086, symbol: [mysqllink server-error-reference.html\#error_er_too_many_windows ER_TOO_MANY_WINDOWS].
+    mysqlbackup_client_msg = 4087, ///< Server error. Error number: 4087, symbol: [mysqllink server-error-reference.html\#error_er_mysqlbackup_client_msg ER_MYSQLBACKUP_CLIENT_MSG].
+    comment_contains_invalid_string = 4088, ///< Server error. Error number: 4088, symbol: [mysqllink server-error-reference.html\#error_er_comment_contains_invalid_string ER_COMMENT_CONTAINS_INVALID_STRING].
+    definition_contains_invalid_string = 4089, ///< Server error. Error number: 4089, symbol: [mysqllink server-error-reference.html\#error_er_definition_contains_invalid_string ER_DEFINITION_CONTAINS_INVALID_STRING].
+    cant_execute_command_with_assigned_gtid_next = 4090, ///< Server error. Error number: 4090, symbol: [mysqllink server-error-reference.html\#error_er_cant_execute_command_with_assigned_gtid_next ER_CANT_EXECUTE_COMMAND_WITH_ASSIGNED_GTID_NEXT].
     incomplete_message = 65536, ///< Client error. An incomplete message was received from the server
     extra_bytes = 65537, ///< Client error. Unexpected extra bytes at the end of a message were received
     sequence_number_mismatch = 65538, ///< Client error. Mismatched sequence numbers

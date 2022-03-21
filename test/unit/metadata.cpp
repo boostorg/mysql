@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -37,10 +37,10 @@ BOOST_AUTO_TEST_CASE(field_metadata_int_primary_key)
     BOOST_TEST(meta.original_table() == "test_table");
     BOOST_TEST(meta.field_name() == "id");
     BOOST_TEST(meta.original_field_name() == "id");
-    BOOST_TEST(meta.column_length() == 11);
+    BOOST_TEST(meta.column_length() == 11u);
     BOOST_TEST(meta.type() == field_type::int_);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::long_);
-    BOOST_TEST(meta.decimals() == 0);
+    BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(meta.is_not_null());
     BOOST_TEST(meta.is_primary_key());
     BOOST_TEST(!meta.is_unique_key());
@@ -74,10 +74,10 @@ BOOST_AUTO_TEST_CASE(field_metadata_varchar_with_alias)
     BOOST_TEST(meta.original_table() == "child_table");
     BOOST_TEST(meta.field_name() == "field_alias");
     BOOST_TEST(meta.original_field_name() == "field_varchar");
-    BOOST_TEST(meta.column_length() == 765);
+    BOOST_TEST(meta.column_length() == 765u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
     BOOST_TEST(meta.type() == field_type::varchar);
-    BOOST_TEST(meta.decimals() == 0);
+    BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(!meta.is_not_null());
     BOOST_TEST(!meta.is_primary_key());
     BOOST_TEST(!meta.is_unique_key());
@@ -111,10 +111,10 @@ BOOST_AUTO_TEST_CASE(field_metadata_float_field)
     BOOST_TEST(meta.original_table() == "test_table");
     BOOST_TEST(meta.field_name() == "field_float");
     BOOST_TEST(meta.original_field_name() == "field_float");
-    BOOST_TEST(meta.column_length() == 12);
+    BOOST_TEST(meta.column_length() == 12u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::float_);
     BOOST_TEST(meta.type() == field_type::float_);
-    BOOST_TEST(meta.decimals() == 31);
+    BOOST_TEST(meta.decimals() == 31u);
     BOOST_TEST(!meta.is_not_null());
     BOOST_TEST(!meta.is_primary_key());
     BOOST_TEST(!meta.is_unique_key());

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,6 +8,9 @@
 #ifndef BOOST_MYSQL_IMPL_PREPARED_STATEMENT_HPP
 #define BOOST_MYSQL_IMPL_PREPARED_STATEMENT_HPP
 
+#pragma once
+
+#include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/close_statement.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>

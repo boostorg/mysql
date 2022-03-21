@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,14 +8,17 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_TEXT_DESERIALIZATION_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_TEXT_DESERIALIZATION_IPP
 
+#pragma once
+
+#include <boost/mysql/detail/protocol/text_deserialization.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/date.hpp>
+#include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 #include <cstdlib>
 #include <cmath>
 #include <type_traits>
 #include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/date.hpp>
-#include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 
 #ifdef BOOST_MSVC
 #pragma warning( push )

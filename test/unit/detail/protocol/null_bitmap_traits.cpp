@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -132,7 +132,7 @@ constexpr is_null_sample all_is_null_samples [] {
 
 BOOST_DATA_TEST_CASE(is_null, data::make(all_is_null_samples))
 {
-    std::array<std::uint8_t, 3> content { 0xb4, 0xff, 0x00 }; // 0b10110100, 0b11111111, 0b00000000
+    std::array<std::uint8_t, 3> content {{ 0xb4, 0xff, 0x00 }}; // 0b10110100, 0b11111111, 0b00000000
     null_bitmap_traits traits (sample.offset, 17); // 17 fields
     bool actual = traits.is_null(content.data(), sample.pos);
     BOOST_TEST(actual == sample.expected);
@@ -191,41 +191,41 @@ std::ostream& operator<<(std::ostream& os, const set_null_sample& value)
 }
 
 constexpr set_null_sample all_set_null_samples [] {
-    { stmt_execute_null_bitmap_offset, 0, {0x01, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 1, {0x02, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 2, {0x04, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 3, {0x08, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 4, {0x10, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 5, {0x20, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 6, {0x40, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 7, {0x80, 0, 0} },
-    { stmt_execute_null_bitmap_offset, 8, {0,  0x01, 0} },
-    { stmt_execute_null_bitmap_offset, 9, {0,  0x02, 0} },
-    { stmt_execute_null_bitmap_offset, 10, {0, 0x04, 0} },
-    { stmt_execute_null_bitmap_offset, 11, {0, 0x08, 0} },
-    { stmt_execute_null_bitmap_offset, 12, {0, 0x10, 0} },
-    { stmt_execute_null_bitmap_offset, 13, {0, 0x20, 0} },
-    { stmt_execute_null_bitmap_offset, 14, {0, 0x40, 0} },
-    { stmt_execute_null_bitmap_offset, 15, {0, 0x80, 0} },
-    { stmt_execute_null_bitmap_offset, 16, {0, 0, 0x01} },
+    { stmt_execute_null_bitmap_offset, 0, {{0x01, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 1, {{0x02, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 2, {{0x04, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 3, {{0x08, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 4, {{0x10, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 5, {{0x20, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 6, {{0x40, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 7, {{0x80, 0, 0}} },
+    { stmt_execute_null_bitmap_offset, 8, {{0,  0x01, 0}} },
+    { stmt_execute_null_bitmap_offset, 9, {{0,  0x02, 0}} },
+    { stmt_execute_null_bitmap_offset, 10, {{0, 0x04, 0}} },
+    { stmt_execute_null_bitmap_offset, 11, {{0, 0x08, 0}} },
+    { stmt_execute_null_bitmap_offset, 12, {{0, 0x10, 0}} },
+    { stmt_execute_null_bitmap_offset, 13, {{0, 0x20, 0}} },
+    { stmt_execute_null_bitmap_offset, 14, {{0, 0x40, 0}} },
+    { stmt_execute_null_bitmap_offset, 15, {{0, 0x80, 0}} },
+    { stmt_execute_null_bitmap_offset, 16, {{0, 0, 0x01}} },
 
-    { binary_row_null_bitmap_offset, 0, {0x04, 0, 0} },
-    { binary_row_null_bitmap_offset, 1, {0x08, 0, 0} },
-    { binary_row_null_bitmap_offset, 2, {0x10, 0, 0} },
-    { binary_row_null_bitmap_offset, 3, {0x20, 0, 0} },
-    { binary_row_null_bitmap_offset, 4, {0x40, 0, 0} },
-    { binary_row_null_bitmap_offset, 5, {0x80, 0, 0} },
-    { binary_row_null_bitmap_offset, 6,  {0,  0x01, 0} },
-    { binary_row_null_bitmap_offset, 7,  {0,  0x02, 0} },
-    { binary_row_null_bitmap_offset, 8,  {0,  0x04, 0} },
-    { binary_row_null_bitmap_offset, 9,  {0,  0x08, 0} },
-    { binary_row_null_bitmap_offset, 10, {0,  0x10, 0} },
-    { binary_row_null_bitmap_offset, 11, {0,  0x20, 0} },
-    { binary_row_null_bitmap_offset, 12, {0,  0x40, 0} },
-    { binary_row_null_bitmap_offset, 13, {0,  0x80, 0} },
-    { binary_row_null_bitmap_offset, 14, {0, 0, 0x01} },
-    { binary_row_null_bitmap_offset, 15, {0, 0, 0x02} },
-    { binary_row_null_bitmap_offset, 16, {0, 0, 0x04} },
+    { binary_row_null_bitmap_offset, 0, {{0x04, 0, 0}} },
+    { binary_row_null_bitmap_offset, 1, {{0x08, 0, 0}} },
+    { binary_row_null_bitmap_offset, 2, {{0x10, 0, 0}} },
+    { binary_row_null_bitmap_offset, 3, {{0x20, 0, 0}} },
+    { binary_row_null_bitmap_offset, 4, {{0x40, 0, 0}} },
+    { binary_row_null_bitmap_offset, 5, {{0x80, 0, 0}} },
+    { binary_row_null_bitmap_offset, 6,  {{0,  0x01, 0}} },
+    { binary_row_null_bitmap_offset, 7,  {{0,  0x02, 0}} },
+    { binary_row_null_bitmap_offset, 8,  {{0,  0x04, 0}} },
+    { binary_row_null_bitmap_offset, 9,  {{0,  0x08, 0}} },
+    { binary_row_null_bitmap_offset, 10, {{0,  0x10, 0}} },
+    { binary_row_null_bitmap_offset, 11, {{0,  0x20, 0}} },
+    { binary_row_null_bitmap_offset, 12, {{0,  0x40, 0}} },
+    { binary_row_null_bitmap_offset, 13, {{0,  0x80, 0}} },
+    { binary_row_null_bitmap_offset, 14, {{0, 0, 0x01}} },
+    { binary_row_null_bitmap_offset, 15, {{0, 0, 0x02}} },
+    { binary_row_null_bitmap_offset, 16, {{0, 0, 0x04}} },
 };
 
 BOOST_DATA_TEST_CASE(set_null, data::make(all_set_null_samples))
@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(set_null_one_field_binary_row)
 
 BOOST_AUTO_TEST_CASE(set_null_multified_stmt_execute)
 {
-    std::array<std::uint8_t, 4> expected_buffer { 0xb4, 0xff, 0x00, 0x00 };
+    std::array<std::uint8_t, 4> expected_buffer {{ 0xb4, 0xff, 0x00, 0x00 }};
     std::array<std::uint8_t, 4> actual_buffer {};
     null_bitmap_traits traits (stmt_execute_null_bitmap_offset, 17); // 17 fields
     for (std::size_t pos: {2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15})
@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE(set_null_multified_stmt_execute)
 
 BOOST_AUTO_TEST_CASE(set_null_multified_binary_row)
 {
-    std::array<std::uint8_t, 4> expected_buffer { 0xb4, 0xff, 0x00, 0x00 };
+    std::array<std::uint8_t, 4> expected_buffer {{ 0xb4, 0xff, 0x00, 0x00 }};
     std::array<std::uint8_t, 4> actual_buffer {};
     null_bitmap_traits traits (binary_row_null_bitmap_offset, 17); // 17 fields
     for (std::size_t pos: {0, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13})

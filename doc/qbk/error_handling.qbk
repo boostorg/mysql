@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -42,7 +42,7 @@ The associated handler signature of all asynchronous functions
 has one of the following two forms:
 
 * `void(error_code)`. Used in operations that do
-  not have a proper result, e.g. [refmem socket_connection async_connect].
+  not have a proper result, e.g. [refmem connection async_connect].
 * `void(error_code, T)`. Used in operations that
   have a result, e.g. [refmem connection async_query].
   

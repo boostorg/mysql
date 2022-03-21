@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,7 +23,6 @@ target_link_libraries(
     Boost::unit_test_framework
     Boost::mysql
     Boost::disable_autolinking
-    Boost::dynamic_linking
 )
 
 # Unit testing
@@ -50,7 +49,6 @@ add_executable(
     unit/prepared_statement.cpp
     unit/resultset.cpp
     unit/connection.cpp
-    unit/socket_connection.cpp
     unit/entry_point.cpp
 )
 target_link_libraries(
@@ -75,13 +73,22 @@ endif()
 # Integration testing
 add_executable(
     boost_mysql_integrationtests
-    integration/network_functions/network_functions_impl.cpp
-    integration/network_functions/sync.cpp
-    integration/network_functions/async_callback.cpp
-    integration/network_functions/async_coroutine.cpp
-    integration/network_functions/async_coroutinecpp20.cpp
-    integration/network_functions/async_future.cpp
-    integration/metadata_validator.cpp
+
+    # Utilities
+    integration/utils/src/get_endpoint.cpp
+    integration/utils/src/metadata_validator.cpp
+    integration/utils/src/network_result.cpp
+    integration/utils/src/er_network_variant.cpp
+    integration/utils/src/sync_errc.cpp
+    integration/utils/src/sync_exc.cpp
+    integration/utils/src/async_callback.cpp
+    integration/utils/src/async_callback_noerrinfo.cpp
+    integration/utils/src/async_future.cpp
+    integration/utils/src/async_coroutine.cpp
+    integration/utils/src/async_coroutinecpp20.cpp
+    integration/utils/src/default_completion_tokens.cpp
+
+    # Actual tests
     integration/connection.cpp
     integration/connect.cpp
     integration/handshake.cpp
@@ -96,6 +103,11 @@ add_executable(
     integration/reconnect.cpp
     integration/database_types.cpp
     integration/entry_point.cpp
+)
+target_include_directories(
+    boost_mysql_integrationtests
+    PRIVATE
+    integration/utils/include
 )
 target_link_libraries(
     boost_mysql_integrationtests
@@ -121,7 +133,12 @@ endif()
 # under valgrind. Coroutine tests don't work well under Valgrind, and
 # SSL tests are too slow. We do some other exclusions to reduce runtime
 if (BOOST_MYSQL_VALGRIND_TESTS)
-    set(TEST_FILTER "!@sha256:!@sslrequire:!@async_coroutine_errinfo:!@async_coroutine_noerrinfo:!@unix:!@tcp_default_token:!@unix")
+    set(MEMCHECK_BASE_TEST_FILTER "!@ssl:!@async_coroutine")
+    if ("$ENV{BOOST_MYSQL_TEST_FILTER}" STREQUAL "")
+        set(TEST_FILTER ${MEMCHECK_BASE_TEST_FILTER})
+    else()
+        set(TEST_FILTER "${MEMCHECK_BASE_TEST_FILTER}:$ENV{BOOST_MYSQL_TEST_FILTER}")
+    endif()
     add_memcheck_test(
         NAME boost_mysql_integrationtests_memcheck
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests "-t" ${TEST_FILTER}

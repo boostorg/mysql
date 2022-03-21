@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,8 +14,6 @@
 #include <boost/mysql/detail/protocol/channel.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/network_algorithms/common.hpp> // deserialize_row_fn
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
 #include <cassert>
 
 namespace boost {
@@ -321,16 +319,6 @@ class resultset
         >;
     };
 };
-
-/// A resultset associated with a [reflink tcp_connection].
-using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
-
-#if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
-
-/// A resultset associated with a [reflink unix_connection].
-using unix_resultset = resultset<boost::asio::local::stream_protocol::socket>;
-
-#endif
 
 } // mysql
 } // boost

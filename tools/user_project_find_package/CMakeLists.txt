@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,5 +19,5 @@ target_link_libraries(main PRIVATE Boost::mysql)
 enable_testing()
 add_test(
     NAME test 
-    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/main example_user example_password
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/main example_user example_password $ENV{BOOST_MYSQL_SERVER_HOST}
 )

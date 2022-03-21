@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,7 @@
 
 //[example_prepared_statements
 
+#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -21,28 +22,32 @@
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
         exit(1);
     }
 
-    // Connection parameters
-    boost::asio::ip::tcp::endpoint ep (
-        boost::asio::ip::address_v4::loopback(), // host
-        boost::mysql::default_port                         // port
-    );
+    // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
+    boost::asio::io_context ctx;
+    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+
+    // Resolver for hostname resolution
+    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+
+    // Connection params
     boost::mysql::connection_params params (
         argv[1],               // username
         argv[2],               // password
         "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
     );
 
-    boost::asio::io_context ctx;
+    // Hostname resolution
+    auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
 
-    // Declare the connection object and authenticate to the server
-    boost::mysql::tcp_connection conn (ctx);
-    conn.connect(ep, params);
+    // TCP and MySQL level connect
+    conn.connect(*endpoints.begin(), params);
 
     /**
      * We can tell MySQL to prepare a statement using connection::prepare_statement.
@@ -53,25 +58,25 @@ void main_impl(int argc, char** argv)
      * Prepared statements are stored in the server on a per-connection basis.
      * Once a connection is closed, all prepared statements for that connection are deallocated.
      *
-     * The result of prepare_statement is a mysql::prepared_statement object, which is
-     * templatized on the stream type of the connection (tcp_prepared_statement in our case).
+     * The result of prepare_statement is a boost::mysql::prepared_statement object, which is
+     * templatized on the stream type of the connection (tcp_ssl_prepared_statement in our case).
      *
      * We prepare two statements, a SELECT and an UPDATE.
      */
     //[prepared_statements_prepare
     const char* salary_getter_sql = "SELECT salary FROM employee WHERE first_name = ?";
-    boost::mysql::tcp_prepared_statement salary_getter = conn.prepare_statement(salary_getter_sql);
+    boost::mysql::tcp_ssl_prepared_statement salary_getter = conn.prepare_statement(salary_getter_sql);
     //]
     ASSERT(salary_getter.num_params() == 1); // num_params() returns the number of parameters (question marks)
 
     const char* salary_updater_sql = "UPDATE employee SET salary = ? WHERE first_name = ?";
-    boost::mysql::tcp_prepared_statement salary_updater = conn.prepare_statement(salary_updater_sql);
+    boost::mysql::tcp_ssl_prepared_statement salary_updater = conn.prepare_statement(salary_updater_sql);
     ASSERT(salary_updater.num_params() == 2);
 
     /*
      * Once a statement has been prepared, it can be executed as many times as
      * desired, by calling prepared_statement::execute(). execute takes as input a
-     * (possibly empty) collection of mysql::value's and returns a resultset.
+     * (possibly empty) collection of boost::mysql::value's and returns a resultset.
      * The returned resultset works the same as the one returned by connection::query().
      *
      * The parameters passed to execute() are replaced in order of declaration:
@@ -81,12 +86,12 @@ void main_impl(int argc, char** argv)
      * the prepared statement.
      *
      * Any collection providing member functions begin() and end() returning
-     * forward iterators to mysql::value's is acceptable. We use mysql::make_values(),
-     * which creates a std::array with the passed in values converted to mysql::value's.
+     * forward iterators to mysql::value's is acceptable. We use boost::mysql::make_values(),
+     * which creates a std::array with the passed in values converted to boost::mysql::value's.
      * An iterator version of execute() is also available.
      */
     //[prepared_statements_execute
-    boost::mysql::tcp_resultset result = salary_getter.execute(boost::mysql::make_values("Efficient"));
+    boost::mysql::tcp_ssl_resultset result = salary_getter.execute(boost::mysql::make_values("Efficient"));
     std::vector<boost::mysql::row> salaries = result.read_all(); // Get all the results
     //]
     ASSERT(salaries.size() == 1);
@@ -97,7 +102,7 @@ void main_impl(int argc, char** argv)
      * Run the update. In this case, we must pass in two parameters.
      * Note that MySQL is flexible in the types passed as parameters.
      * In this case, we are sending the value 35000, which gets converted
-     * into a mysql::value with type std::int32_t, while the 'salary'
+     * into a boost::mysql::value with type std::int32_t, while the 'salary'
      * column is declared as a DOUBLE. The MySQL server will do
      * the right thing for us.
      */

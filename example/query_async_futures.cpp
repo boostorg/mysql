@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,7 @@
 
 //[example_query_async_futures
 
+#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
@@ -54,40 +55,48 @@ public:
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
         exit(1);
     }
 
     // Context and connections
     application app; // boost::asio::io_context and a thread that calls run()
-    boost::mysql::tcp_connection conn (app.context());
+    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn (app.context(), ssl_ctx);
 
-    boost::asio::ip::tcp::endpoint ep (
-        boost::asio::ip::address_v4::loopback(), // host
-        boost::mysql::default_port                 // port
-    );
+    // Resolver for hostname resolution
+    boost::asio::ip::tcp::resolver resolver (app.context().get_executor());
+
+    // Connection params
     boost::mysql::connection_params params (
         argv[1],               // username
         argv[2],               // password
         "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
     );
 
-
-    /**
-     * Perform the TCP connect and MySQL handshake.
-     * Calling async_connect triggers the
+   /**
+     * Hostname resolution.
+     * Calling async_resolve triggers the
      * operation, and calling future::get() blocks the current thread until
      * it completes. get() will throw an exception if the operation fails.
      */
-    std::future<void> fut = conn.async_connect(ep, params, use_future);
+    auto endpoints = resolver.async_resolve(
+        argv[3],
+        boost::mysql::default_port_string,
+        boost::asio::use_future
+    ).get();
+
+
+    // Perform the TCP connect and MySQL handshake.
+    std::future<void> fut = conn.async_connect(*endpoints.begin(), params, use_future);
     fut.get();
 
     // Issue the query to the server
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    std::future<boost::mysql::tcp_resultset> resultset_fut = conn.async_query(sql, use_future);
-    boost::mysql::tcp_resultset result = resultset_fut.get();
+    std::future<boost::mysql::tcp_ssl_resultset> resultset_fut = conn.async_query(sql, use_future);
+    boost::mysql::tcp_ssl_resultset result = resultset_fut.get();
 
     /**
       * Get all rows in the resultset. We will employ resultset::async_read_one(),

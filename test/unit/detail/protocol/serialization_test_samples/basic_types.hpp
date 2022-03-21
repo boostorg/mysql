@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -88,10 +88,10 @@ const serialization_test_spec enum_spec {
 
 const serialization_test_spec string_fixed_spec {
     serialization_test_type::full, {
-        { "4c_regular_characters", string_fixed<4>{'a', 'b', 'd', 'e'}, {0x61, 0x62, 0x64, 0x65} },
-        { "3c_null_characters", string_fixed<3>{'\0', '\1', 'a'}, {0x00, 0x01, 0x61} },
-        { "3c_utf8_characters", string_fixed<3>{char(0xc3), char(0xb1), 'a'}, {0xc3, 0xb1, 0x61} },
-        { "1c_regular_characters", string_fixed<1>{'a'},{0x61} }
+        { "4c_regular_characters", string_fixed<4>{{'a', 'b', 'd', 'e'}}, {0x61, 0x62, 0x64, 0x65} },
+        { "3c_null_characters", string_fixed<3>{{'\0', '\1', 'a'}}, {0x00, 0x01, 0x61} },
+        { "3c_utf8_characters", string_fixed<3>{{char(0xc3), char(0xb1), 'a'}}, {0xc3, 0xb1, 0x61} },
+        { "1c_regular_characters", string_fixed<1>{{'a'}},{0x61} }
     }
 };
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,10 +8,14 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HANDSHAKE_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HANDSHAKE_HPP
 
-#include <boost/mysql/detail/network_algorithms/common.hpp>
+#pragma once
+
+#include <boost/mysql/detail/network_algorithms/handshake.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
 #include <boost/mysql/detail/auth/auth_calculator.hpp>
+#include <boost/asio/post.hpp>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -83,23 +87,23 @@ public:
     bool use_ssl() const noexcept { return negotiated_caps_.has(CLIENT_SSL); }
 
     // Initial greeting processing
-    error_code process_capabilities(const handshake_packet& handshake)
+    error_code process_capabilities(const handshake_packet& handshake, bool is_ssl_stream)
     {
         auto ssl = params_.ssl();
         capabilities server_caps (handshake.capability_falgs);
         capabilities required_caps = mandatory_capabilities |
                 conditional_capability(!params_.database().empty(), CLIENT_CONNECT_WITH_DB) |
-                conditional_capability(ssl == ssl_mode::require, CLIENT_SSL);
+                conditional_capability(ssl == ssl_mode::require && is_ssl_stream, CLIENT_SSL);
         if (!server_caps.has_all(required_caps))
         {
             return make_error_code(errc::server_unsupported);
         }
         negotiated_caps_ = server_caps & (required_caps | optional_capabilities |
-                conditional_capability(ssl == ssl_mode::enable, CLIENT_SSL));
+                conditional_capability(ssl == ssl_mode::enable && is_ssl_stream, CLIENT_SSL));
         return error_code();
     }
 
-    error_code process_handshake(bytestring& buffer, error_info& info)
+    error_code process_handshake(bytestring& buffer, error_info& info, bool is_ssl_stream)
     {
         // Deserialize server greeting
         handshake_packet handshake;
@@ -108,7 +112,7 @@ public:
             return err;
 
         // Check capabilities
-        err = process_capabilities(handshake);
+        err = process_capabilities(handshake, is_ssl_stream);
         if (err)
             return err;
 
@@ -243,6 +247,148 @@ public:
     }
 };
 
+// Helper operation to setup SSL
+template <class Stream>
+void setup_ssl_impl(
+    channel<Stream>& chan,
+    handshake_processor& processor,
+    error_code& err,
+    std::true_type
+)
+{
+    if (processor.use_ssl())
+    {
+        // Send SSL request
+        processor.compose_ssl_request(chan.shared_buffer());
+        chan.write(boost::asio::buffer(chan.shared_buffer()), err);
+        if (err)
+            return;
+
+        // SSL handshake
+        chan.next_layer().handshake(boost::asio::ssl::stream_base::client, err);
+        if (err)
+            return;
+        chan.set_ssl_active(true);
+    }
+}
+
+template <class Stream>
+void setup_ssl_impl(
+    channel<Stream>&,
+    handshake_processor&,
+    error_code&,
+    std::false_type
+) noexcept
+{
+}
+
+template <class Stream>
+void setup_ssl(
+    channel<Stream>& chan,
+    handshake_processor& processor,
+    error_code& err
+)
+{
+    return setup_ssl_impl(chan, processor, err, is_ssl_stream<Stream>());
+}
+
+template<class Stream, bool is_ssl_stream>
+struct setup_ssl_op;
+
+template <class Stream>
+struct setup_ssl_op<Stream, true> : boost::asio::coroutine
+{
+    channel<Stream>& chan_;
+    handshake_processor& processor_;
+
+    setup_ssl_op(
+        channel<Stream>& channel,
+        handshake_processor& processor
+    ) noexcept :
+        chan_(channel),
+        processor_(processor)
+    {
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code err = {}
+    )
+    {
+        // Error checking
+        if (err)
+        {
+            self.complete(err);
+            return;
+        }
+
+        // Non-error path
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            // Non-error path
+            if (processor_.use_ssl())
+            {
+                // Send SSL request
+                processor_.compose_ssl_request(chan_.shared_buffer());
+                BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+
+                // SSL handshake
+                BOOST_ASIO_CORO_YIELD chan_.next_layer().async_handshake(
+                    boost::asio::ssl::stream_base::client, 
+                    std::move(self)
+                );
+                chan_.set_ssl_active(true);
+            }
+
+            self.complete(error_code());
+        }
+    }
+};
+
+template <class Stream>
+struct setup_ssl_op<Stream, false>
+{
+    setup_ssl_op(
+        channel<Stream>&,
+        handshake_processor&
+    ) noexcept
+    {
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code err = {}
+    )
+    {
+        self.complete(err);
+    }
+};
+
+
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code)
+)
+async_setup_ssl(
+    channel<Stream>& chan,
+    handshake_processor& processor,
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<
+        CompletionToken,
+        void(error_code)
+    >(
+        setup_ssl_op<Stream, is_ssl_stream<Stream>::value>(chan, processor),
+        token,
+        chan
+    );
+}
+
+
 template<class Stream>
 struct handshake_op : boost::asio::coroutine
 {
@@ -282,7 +428,7 @@ struct handshake_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read(chan_.shared_buffer(), std::move(self));
 
             // Process server greeting
-            err = processor_.process_handshake(chan_.shared_buffer(), output_info_);
+            err = processor_.process_handshake(chan_.shared_buffer(), output_info_, is_ssl_stream<Stream>::value);
             if (err)
             {
                 self.complete(err);
@@ -291,15 +437,7 @@ struct handshake_op : boost::asio::coroutine
             chan_.set_current_capabilities(processor_.negotiated_capabilities());
 
             // SSL
-            if (processor_.use_ssl())
-            {
-                // Send SSL request
-                processor_.compose_ssl_request(chan_.shared_buffer());
-                BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
-
-                // SSL handshake
-                BOOST_ASIO_CORO_YIELD chan_.async_ssl_handshake(std::move(self));
-            }
+            BOOST_ASIO_CORO_YIELD async_setup_ssl(chan_, processor_, std::move(self));
 
             // Compose and send handshake response
             processor_.compose_handshake_response(chan_.shared_buffer());
@@ -357,24 +495,14 @@ void boost::mysql::detail::handshake(
         return;
 
     // Process server greeting (handshake)
-    err = processor.process_handshake(channel.shared_buffer(), info);
+    err = processor.process_handshake(channel.shared_buffer(), info, is_ssl_stream<Stream>::value);
     if (err)
         return;
 
-    // Setup SSL if required
-    if (processor.use_ssl())
-    {
-        // Send SSL request
-        processor.compose_ssl_request(channel.shared_buffer());
-        channel.write(boost::asio::buffer(channel.shared_buffer()), err);
-        if (err)
-            return;
-
-        // SSL handshake
-        channel.ssl_handshake(err);
-        if (err)
-            return;
-    }
+    // SSL
+    setup_ssl(channel, processor, err);
+    if (err)
+        return;
 
     // Handshake response
     processor.compose_handshake_response(channel.shared_buffer());

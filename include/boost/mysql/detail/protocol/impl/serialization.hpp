@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,41 +8,44 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_HPP
 
+#pragma once
+
+#include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <cmath>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 // Helpers for structs
-struct is_command_helper
+
+// is_command
+template <typename T, typename = void>
+struct is_command : std::false_type {};
+
+template <typename T>
+struct is_command<T, void_t<
+    decltype(T::command_id)
+>> : std::true_type {};
+
+
+// is_struct_with_fields
+struct is_struct_with_fields_test_op
 {
     template <class T>
-    static constexpr std::true_type get(decltype(T::command_id)*);
-
-    template <class T>
-    static constexpr std::false_type get(...);
+    void operator()(const T&) {}
 };
 
-template <class T>
-struct is_command : decltype(is_command_helper::get<T>(nullptr))
-{
-};
+template <typename T, typename = void>
+struct is_struct_with_fields_helper : std::false_type {};
 
-struct is_struct_with_fields_helper
-{
-    struct test_op
-    {
-        template <class T>
-        void operator()(const T&) {}
-    };
+template <typename T>
+struct is_struct_with_fields_helper<T, void_t<
+    decltype(T::apply(std::declval<T&>(), is_struct_with_fields_test_op()))
+>> : std::true_type {};
 
-    template <class T>
-    static constexpr std::true_type get(decltype(T::apply(std::declval<T&>(), test_op()))*);
-
-    template <class T>
-    static constexpr std::false_type get(...);
-};
 
 struct struct_deserialize_op
 {
@@ -222,7 +225,7 @@ void boost::mysql::detail::serialization_traits<
 template <class T>
 constexpr bool boost::mysql::detail::is_struct_with_fields()
 {
-    return decltype(is_struct_with_fields_helper::get<T>(nullptr))::value;
+    return is_struct_with_fields_helper<T>::value;
 }
 
 template <class T>

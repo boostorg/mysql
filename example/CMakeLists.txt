@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,56 +23,55 @@ function (build_example EXECUTABLE_NAME CPPFILE)
 endfunction()
 
 # Run it as a test
-function (test_example EXECUTABLE_NAME)
+function (test_example EXECUTABLE_NAME CONNECTION_ARG)
     set(EXECUTABLE_PATH ${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE_NAME})
     set(TEST_NAME ${EXECUTABLE_NAME})
     add_test(
         NAME ${TEST_NAME}
-        COMMAND ${EXECUTABLE_PATH} example_user example_password
+        COMMAND ${EXECUTABLE_PATH} example_user example_password ${CONNECTION_ARG}
     )
 endfunction()
 
 # Run it as a test using Valgrind
-function (memcheck_example EXECUTABLE_NAME)
+function (memcheck_example EXECUTABLE_NAME CONNECTION_ARG)
     set(EXECUTABLE_PATH ${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE_NAME})
     set(TEST_NAME "${EXECUTABLE_NAME}_memcheck")
     add_memcheck_test(
         NAME ${TEST_NAME}
-        COMMAND ${EXECUTABLE_PATH} example_user example_password
+        COMMAND ${EXECUTABLE_PATH} example_user example_password ${CONNECTION_ARG}
     )
 endfunction()
 
-# The list of all the examples we have
-set(BOOST_MYSQL_EXAMPLES
-    tutorial
-    value
-    query_sync
-    query_async_callbacks
-    query_async_coroutines
-    query_async_coroutinescpp20
-    query_async_futures
-    metadata
-    prepared_statements
-    default_completion_tokens
-    unix_socket
-    ssl
-)
-
-# The examples we do NOT want to ever memcheck
-set(BOOST_MYSQL_EXAMPLES_NOMEMCHECK
-    query_async_coroutines
-)
-
-# Build and run examples
-foreach(EXAMPLE_NAME ${BOOST_MYSQL_EXAMPLES})
+# Build and run it as either of them
+function (add_example EXAMPLE_NAME DO_MEMCHECK CONNECTION_ARG)
     set(EXECUTABLE_NAME "boost_mysql_example_${EXAMPLE_NAME}")
 
     build_example(${EXECUTABLE_NAME} "${EXAMPLE_NAME}.cpp")
-    
-    # Don't run examples twice. Some of them would require re-running setup
-    if (BOOST_MYSQL_VALGRIND_TESTS AND NOT ${EXAMPLE_NAME} IN_LIST BOOST_MYSQL_EXAMPLES_NOMEMCHECK)
-        memcheck_example(${EXECUTABLE_NAME})
+
+    if (BOOST_MYSQL_VALGRIND_TESTS AND DO_MEMCHECK)
+        memcheck_example(${EXECUTABLE_NAME} ${CONNECTION_ARG})
     else()
-        test_example(${EXECUTABLE_NAME})
+        test_example(${EXECUTABLE_NAME} ${CONNECTION_ARG})
     endif()
-endforeach()
+endfunction()
+
+# Get the MySQL hostname to use for examples
+if(DEFINED ENV{BOOST_MYSQL_SERVER_HOST})
+    set(SERVER_HOST $ENV{BOOST_MYSQL_SERVER_HOST})
+else()
+    set(SERVER_HOST "localhost")
+endif()
+
+# Build and run all the examples
+add_example(tutorial                    TRUE    ${SERVER_HOST})
+add_example(value                       TRUE    ${SERVER_HOST})
+add_example(query_sync                  TRUE    ${SERVER_HOST})
+add_example(query_async_callbacks       TRUE    ${SERVER_HOST})
+add_example(query_async_coroutines      FALSE   ${SERVER_HOST})
+add_example(query_async_coroutinescpp20 TRUE    ${SERVER_HOST})
+add_example(query_async_futures         TRUE    ${SERVER_HOST})
+add_example(metadata                    TRUE    ${SERVER_HOST})
+add_example(prepared_statements         TRUE    ${SERVER_HOST})
+add_example(default_completion_tokens   TRUE    ${SERVER_HOST})
+add_example(unix_socket                 TRUE    "/var/run/mysqld/mysqld.sock")
+add_example(ssl                         TRUE    ${SERVER_HOST})

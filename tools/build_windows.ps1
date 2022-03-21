@@ -1,11 +1,15 @@
 #
-# Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
 $ErrorActionPreference = "Stop"
+
+# Set encoding to UTF-8
+CHCP 65001 
+$OutputEncoding = New-Object -typename System.Text.UTF8Encoding
 
 # Runs a command and checks for a zero exit code
 function Check-Call($blk)
@@ -19,13 +23,24 @@ function Check-Call($blk)
 }
 
 $Env:Path += ";C:\Program Files\MySQL\MySQL Server 5.7\bin"
-$Env:Path += ";C:\Libraries\boost_1_73_0\lib64-msvc-14.2"
-$Env:Path += ";C:\Libraries\boost_1_73_0\lib32-msvc-14.2"
 $Env:Path = "C:\Python37-x64;" + $Env:Path # Override Python 2 setting
-$Env:BOOST_MYSQL_TEST_FILTER = "!@unix"
+$Env:BOOST_MYSQL_TEST_FILTER = "!@unix:!@sha256"
+$Env:BOOST_MYSQL_SERVER_HOST = "localhost"
 
-# DB setup
-Check-Call { docker run --name mysql -p 3306:3306 -d anarthal/mysql:8 }
+### DB setup
+# Copy config files
+cp .\tools\win-ci.cnf C:\my.cnf
+cp -Recurse .\tools\ssl C:\
+
+# Change root password
+Check-Call { mysql -u root -pPassword12! -e "ALTER USER 'root'@'localhost' IDENTIFIED BY ''; FLUSH PRIVILEGES;" }
+
+# Restart MySQL
+Restart-Service MySQL57
+
+# Load the data
+Get-Content -Encoding utf8 .\test\integration\db_setup.sql | mysql -u root
+Get-Content -Encoding utf8 .\example\db_setup.sql | mysql -u root
 
 # Actual build
 if ($Env:B2_TOOLSET) # Use Boost.Build
@@ -54,7 +69,6 @@ if ($Env:B2_TOOLSET) # Use Boost.Build
     Check-Call { git clone https://github.com/boostorg/boost-ci.git C:\boost-ci-cloned }
     Copy-Item -Path "C:\boost-ci-cloned\ci" -Destination ".\ci" -Recurse
     Remove-Item -Recurse -Force "C:\boost-ci-cloned"
-    Check-Call { python ".\tools\wait_for_db_container.py" }
     Check-Call { .\tools\build_windows_b2.bat `
         libs/mysql/example
     }
@@ -94,7 +108,6 @@ else # Use CMake
         ".."
     }
     Check-Call { cmake --build . -j --target install }
-    Check-Call { python ../tools/wait_for_db_container.py }
     Check-Call { ctest --verbose -E boost_mysql_example_unix_socket }
     Check-Call { python `
         ..\tools\user_project_find_package\build.py `

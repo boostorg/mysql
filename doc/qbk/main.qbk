@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -30,6 +30,7 @@
 [template reflink[id][reflink2 [id] [id]]]
 [template refmem[class mem][reflink2 [class].[mem] [class]::[mem]]]
 [template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^boost::asio::[term]]]]
+[template beastreflink[id term][@boost:/doc/html/boost_beast/reference/[id].html [^boost::beast::[term]]]]
 [template mysqllink[id text][@https://dev.mysql.com/doc/refman/8.0/en/[id] [text]]]
 
 [def __Stream__ [reflink2 Stream ['Stream]]]
@@ -89,6 +90,7 @@
 [include prepared_statements.qbk]
 [include resultsets.qbk]
 [include async.qbk]
+[include ssl.qbk]
 [include other_streams.qbk]
 [include error_handling.qbk]
 [include connparams.qbk]

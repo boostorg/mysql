@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,30 +22,36 @@ Here is a list of available examples:
 # [link mysql.examples.query_async_coroutines Text query, async with Boost.Coroutine coroutines]
 # [link mysql.examples.query_async_coroutinescpp20 Text query, async with C++20 coroutines]
 # [link mysql.examples.default_completion_tokens Default completion tokens]
-# [link mysql.examples.ssl Advanced SSL configuration]
+# [link mysql.examples.ssl Setting SSL options]
 
 [section:setup Setup]
 
-All examples assume you have a MySQL server running in localhost.
+To run the examples, you need a MySQL server you can connect to.
 Examples make use of a database named `boost_mysql_examples`.
-The username and password to used are passed using the command
-line.
+The server hostname and credentials (username and password) are passed 
+to the examples via the command line.
 
-You can set the required database up by running
-(this assumes the root password is empty):
+If you're using docker, you can use the `anarthal/mysql8` container,
+which already ships with all the required configuration:
 
-``
-> mysql -u root < PATH/TO/BOOST/MYSQL/example/db_setup.sql
-``
+[!teletype]
+```
+    # If you're on a system supporting UNIX sockets. Note that /var/run/mysqld
+    # should be empty for this to work; you can specify a different directory, if it's not
+    > docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d anarthal/mysql8
 
-This will also create a user `example_user` with a password
-`example_password`, with the appropriate privileges on the database.
+    # If you're on a system that does not support UNIX sockets
+    > docker run -p 3306:3306 -d anarthal/mysql8
+```
+
+Please note that this container is just for demonstrative purposes,
+and is not suitable for production.
 
 [endsect]
 
 [section:query_sync Text query, synchronous]
 
-This example demonstrates how to connect a [reflink socket_connection],
+This example demonstrates how to connect a [reflink connection],
 how to issue a [link mysql.queries text query], and how to
 [link mysql.resultsets read a resultset]. It employs synchronous
 functions with exceptions as error handling. __see_error_handling__
@@ -104,7 +110,7 @@ __assume_setup__
 
 [section:query_async_callbacks Text query, async with callbacks]
 
-This example demonstrates how to connect a [reflink socket_connection],
+This example demonstrates how to connect a [reflink connection],
 how to issue a [link mysql.queries text query], and how to
 [link mysql.resultsets read a resultset] using
 [link mysql.async asynchronous functions] with callbacks.
@@ -118,7 +124,7 @@ __assume_setup__
 
 [section:query_async_futures Text query, async with futures]
 
-This example demonstrates how to connect a [reflink socket_connection],
+This example demonstrates how to connect a [reflink connection],
 how to issue a [link mysql.queries text query], and how to
 [link mysql.resultsets read a resultset] using
 [link mysql.async asynchronous functions] with futures
@@ -133,7 +139,7 @@ __assume_setup__
 
 [section:query_async_coroutines Text query, async with Boost.Coroutine coroutines]
 
-This example demonstrates how to connect a [reflink socket_connection],
+This example demonstrates how to connect a [reflink connection],
 how to issue a [link mysql.queries text query], and how to
 [link mysql.resultsets read a resultset] using
 [link mysql.async asynchronous functions] with __Coroutine__ coroutines
@@ -149,7 +155,7 @@ __assume_setup__
 
 [section:query_async_coroutinescpp20 Text query, async with C++20 coroutines]
 
-This example demonstrates how to connect a [reflink socket_connection],
+This example demonstrates how to connect a [reflink connection],
 how to issue a [link mysql.queries text query], and how to
 [link mysql.resultsets read a resultset] using
 [link mysql.async asynchronous functions] with C++20 coroutines
@@ -179,11 +185,10 @@ __assume_setup__
 
 [endsect]
 
-[section:ssl Advanced SSL configuration]
+[section:ssl Setting SSL options]
 
-This example demonstrates how to configure advanced SSL
-options, like server certificate verification and hostname
-validation.
+This example demonstrates how to configure SSL options
+like server certificate verification and hostname validation.
 
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
@@ -191,6 +196,8 @@ exceptions as error handling. __see_error_handling__
 __assume_setup__ Additionally, you should run your MySQL server
 with some test certificates we created your you, just for this example.
 You can find them in this project's GitHub repository, under `BOOST_MYQL_ROOT/tools/ssl`.
+If you're using the docker container, the setup has already been done
+for you.
 
 [import ../../example/ssl.cpp]
 [example_ssl]

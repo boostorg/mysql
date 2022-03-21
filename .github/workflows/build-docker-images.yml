@@ -1,0 +1,55 @@
+name: Build Docker images
+
+on: workflow_dispatch
+
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - build-b2-clang3_6
+          - build-b2-clang7
+          - build-b2-clang11
+          - build-b2-clang12
+          - build-b2-gcc5
+          - build-b2-gcc6
+          - build-b2-gcc10
+          - build-b2-gcc11
+          - build-cmake-clang12
+          - build-cmake-gcc11
+          - build-docs
+          - mysql5
+          - mysql8
+          - mariadb
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/anarthal/${{ matrix.image }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: tools/docker/${{ matrix.image }}.dockerfile
+          push: true
+          tags: ghcr.io/anarthal/${{ matrix.image }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+

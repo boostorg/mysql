@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -20,7 +20,6 @@
 #include <forward_list>
 #include <list>
 #include <set>
-#include <unordered_set>
 #include <iterator>
 #include <array>
 
@@ -124,21 +123,13 @@ BOOST_AUTO_TEST_CASE(list_iterator)
     check_is_value_forward_iterator<const std::list<value>::const_iterator>(true);
 }
 
-// BOOST_AUTO_TEST_CASE(set_iterator)
-// {
-//     check_is_value_forward_iterator<std::set<value>::iterator>(true);
-//     check_is_value_forward_iterator<std::set<value>::const_iterator>(true);
-//     check_is_value_forward_iterator<const std::set<value>::iterator>(true);
-//     check_is_value_forward_iterator<const std::set<value>::const_iterator>(true);
-// }
-
-// BOOST_AUTO_TEST_CASE(unordered_set_iterator)
-// {
-//     check_is_value_forward_iterator<std::unordered_set<value>::iterator>(true);
-//     check_is_value_forward_iterator<std::unordered_set<value>::const_iterator>(true);
-//     check_is_value_forward_iterator<const std::unordered_set<value>::iterator>(true);
-//     check_is_value_forward_iterator<const std::unordered_set<value>::const_iterator>(true);
-// }
+BOOST_AUTO_TEST_CASE(set_iterator)
+{
+    check_is_value_forward_iterator<std::set<value>::iterator>(true);
+    check_is_value_forward_iterator<std::set<value>::const_iterator>(true);
+    check_is_value_forward_iterator<const std::set<value>::iterator>(true);
+    check_is_value_forward_iterator<const std::set<value>::const_iterator>(true);
+}
 
 BOOST_AUTO_TEST_CASE(custom_collection_iterator)
 {
@@ -217,17 +208,11 @@ BOOST_AUTO_TEST_CASE(list)
     check_is_value_collection<const std::list<value>>(true);
 }
 
-// BOOST_AUTO_TEST_CASE(set)
-// {
-//     check_is_value_collection<std::set<value>>(true);
-//     check_is_value_collection<const std::set<value>>(true);
-// }
-
-// BOOST_AUTO_TEST_CASE(unordered_set)
-// {
-//     check_is_value_collection<std::unordered_set<value>>(true);
-//     check_is_value_collection<const std::unordered_set<value>>(true);
-// }
+BOOST_AUTO_TEST_CASE(set)
+{
+    check_is_value_collection<std::set<value>>(true);
+    check_is_value_collection<const std::set<value>>(true);
+}
 
 BOOST_AUTO_TEST_CASE(custom_collection)
 {

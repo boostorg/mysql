@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -13,8 +13,6 @@
 #include <boost/mysql/detail/protocol/channel.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
 #include <type_traits>
 
 namespace boost {
@@ -372,16 +370,6 @@ public:
         >;
     };
 };
-
-/// A prepared statement associated to a [reflink tcp_connection].
-using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
-
-#if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
-
-/// A prepared statement associated to a [reflink unix_connection].
-using unix_prepared_statement = prepared_statement<boost::asio::local::stream_protocol::socket>;
-
-#endif
 
 } // mysql
 } // boost
