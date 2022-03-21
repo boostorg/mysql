@@ -2,7 +2,7 @@
 
  Linux/OSX | Windows | Coverage | Documentation
 -----------|---------|----------|--------------
-[![Build Status](https://github.com/anarthal/mysql/actions/workflows/build-code/badge.svg)](https://github.com/anarthal/mysql) | [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql/branch/master) | [![codecov](https://codecov.io/gh/anarthal/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/anarthal/mysql-asio/branch/master) | [![Build docs](https://github.com/anarthal/mysql/actions/workflows/build-docs.yml/badge.svg)](https://github.com/anarthal/mysql/actions/workflows/build-docs.yml)
+[![Build Status](https://github.com/anarthal/mysql/actions/workflows/build-code.yml/badge.svg)](https://github.com/anarthal/mysql) | [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql/branch/master) | [![codecov](https://codecov.io/gh/anarthal/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/anarthal/mysql-asio/branch/master) | [![Build docs](https://github.com/anarthal/mysql/actions/workflows/build-docs.yml/badge.svg)](https://github.com/anarthal/mysql/actions/workflows/build-docs.yml)
 
 Boost.Mysql is a C++11 client for the MySQL database server, based on Boost.Asio.
 This library is in the process of being proposed for Boost.
