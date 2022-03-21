@@ -21,11 +21,11 @@ BASE_FOLDERS = [
     'example',
     'include',
     'test',
-    'tools'
+    'tools',
+    '.github'
 ]
 BASE_FILES = [
     '.appveyor.yml',
-    '.travis.yml',
     'CMakeLists.txt',
     'Jamfile'
 ]
