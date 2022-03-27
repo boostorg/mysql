@@ -27,7 +27,7 @@ struct read_frame_part_result
     bool is_final;
 };
 
-class frame_parser
+class frame_part_parser
 {
 public:
     struct should_read_more {}; // placeholder telling the caller we need more bytes
@@ -50,7 +50,7 @@ private:
 
     inline result on_read_impl(std::size_t bytes_read) noexcept;
 public:
-    frame_parser(read_buffer& buffer, std::uint8_t& sequence_number) noexcept :
+    frame_part_parser(read_buffer& buffer, std::uint8_t& sequence_number) noexcept :
         buffer_(buffer),
         sequence_number_(sequence_number)
     {
@@ -87,19 +87,17 @@ public:
 };
 
 template <class Stream>
-void read_frame_part(
+read_frame_part_result read_frame_part(
     Stream& stream,
-    frame_parser& parser,
-    read_frame_part_result& result,
+    frame_part_parser& parser,
     error_code& code
 );
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, read_frame_part_result))
 async_read_frame_part(
     Stream& stream,
-    frame_parser& parser,
-    read_frame_part_result& result,
+    frame_part_parser& parser,
     CompletionToken&& token
 );
 

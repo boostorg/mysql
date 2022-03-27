@@ -26,18 +26,15 @@ template<class Stream>
 struct read_frame_part_op : boost::asio::coroutine
 {
     Stream& stream_;
-    frame_parser& parser_;
-    read_frame_part_result& result_;
+    frame_part_parser& parser_;
     bool has_done_io_ {false};
 
     read_frame_part_op(
         Stream& stream,
-        frame_parser& parser,
-        read_frame_part_result& result
+        frame_part_parser& parser
     ) :
         stream_(stream),
-        parser_(parser),
-        result_(result)
+        parser_(parser)
     {
     }
 
@@ -51,12 +48,12 @@ struct read_frame_part_op : boost::asio::coroutine
         // Error checking
         if (code)
         {
-            self.complete(code);
+            self.complete(code, read_frame_part_result{});
             return;
         }
 
         // Non-error path
-        frame_parser::result variant_result;
+        frame_part_parser::result variant_result;
         read_frame_part_result* ptr_result;
         error_code* parser_ec;
 
@@ -70,12 +67,11 @@ struct read_frame_part_op : boost::asio::coroutine
                 ptr_result = ::boost::variant2::get_if<read_frame_part_result>(&variant_result);
                 if (ptr_result)
                 {
-                    result_ = *ptr_result;
                     if (!has_done_io_) // ensure we dispatch the completion through the right executor
                     {
                         BOOST_ASIO_CORO_YIELD ::boost::asio::post(std::move(self));
                     }
-                    self.complete(error_code());
+                    self.complete(error_code(), *ptr_result);
                     BOOST_ASIO_CORO_YIELD break;
                 }
 
@@ -87,7 +83,7 @@ struct read_frame_part_op : boost::asio::coroutine
                     {
                         BOOST_ASIO_CORO_YIELD ::boost::asio::post(std::move(self));
                     }
-                    self.complete(*parser_ec);
+                    self.complete(*parser_ec, read_frame_part_result{});
                     BOOST_ASIO_CORO_YIELD break;
                 }
 
@@ -106,8 +102,8 @@ struct read_frame_part_op : boost::asio::coroutine
 } // mysql
 } // boost
 
-inline boost::mysql::detail::frame_parser::result
-boost::mysql::detail::frame_parser::on_read_impl(
+inline boost::mysql::detail::frame_part_parser::result
+boost::mysql::detail::frame_part_parser::on_read_impl(
     std::size_t bytes_read
 ) noexcept
 {
@@ -183,10 +179,9 @@ boost::mysql::detail::frame_parser::on_read_impl(
 }
 
 template <class Stream>
-void boost::mysql::detail::read_frame_part(
+boost::mysql::detail::read_frame_part_result boost::mysql::detail::read_frame_part(
     Stream& stream,
-    frame_parser& parser,
-    read_frame_part_result& result,
+    frame_part_parser& parser,
     error_code& code
 )
 {
@@ -199,9 +194,7 @@ void boost::mysql::detail::read_frame_part(
         auto ptr_result = boost::variant2::get_if<read_frame_part_result>(&variant_result);
         if (ptr_result)
         {
-            code.clear();
-            result = *ptr_result;
-            return;
+            return *ptr_result;
         }
 
         // Do we have an error?
@@ -209,7 +202,7 @@ void boost::mysql::detail::read_frame_part(
         if (ec_result)
         {
             code = *ec_result;
-            return;
+            return read_frame_part_result{};
         }
 
         // We need to read more
@@ -218,16 +211,15 @@ void boost::mysql::detail::read_frame_part(
 }
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, read_frame_part_result))
 boost::mysql::detail::async_read_frame_part(
     Stream& stream,
-    frame_parser& parser,
-    read_frame_part_result& result,
+    frame_part_parser& parser,
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        read_frame_part_op<Stream>(stream, parser, result),
+    return boost::asio::async_compose<CompletionToken, void(error_code, read_frame_part_result)>(
+        read_frame_part_op<Stream>(stream, parser),
         token,
         stream
     );
