@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_aaaaAUXILIAR_STATIC_STRING_HPP
-#define BOOST_MYSQL_DETAIL_aaaaAUXILIAR_STATIC_STRING_HPP
+#ifndef BOOST_MYSQL_DETAIL_CHANNEL_READ_BUFFER_HPP
+#define BOOST_MYSQL_DETAIL_CHANNEL_READ_BUFFER_HPP
 
 #include <boost/asio/buffer.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
@@ -45,12 +45,14 @@ public:
     }
 
     std::uint8_t* reserved_first() noexcept { return &buffer_[reserved_offset_]; }
+    std::uint8_t* processing_first() noexcept { return &buffer_[processing_offset_]; }
     std::uint8_t* free_first() noexcept { return &buffer_[free_offset_]; }
 
     std::size_t reserved_size() const noexcept { return processing_offset_ - reserved_offset_; }
     std::size_t processing_size() const noexcept { return free_offset_ - processing_offset_; }
     std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
 
+    boost::asio::mutable_buffer reserved_area() noexcept { return boost::asio::buffer(reserved_first(), reserved_size()); }
     boost::asio::mutable_buffer free_area() noexcept { return boost::asio::buffer(free_first(), free_size()); }
 
     // Removes n bytes from the reserved area

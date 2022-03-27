@@ -10,6 +10,7 @@
 
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/auxiliar/make_string_view.hpp>
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -47,6 +48,7 @@ enum class protocol_field_type : std::uint8_t
 
 
 constexpr std::size_t MAX_PACKET_SIZE = 0xffffff;
+constexpr std::size_t HEADER_SIZE = 4;
 
 // Server status flags
 constexpr std::uint32_t SERVER_STATUS_IN_TRANS = 1;
