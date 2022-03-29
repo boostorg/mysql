@@ -47,5 +47,5 @@ cp $BOOST_ROOT/libs/mysql/tools/user-config.jam ~/user-config.jam
     stdlib=$B2_STDLIB \
     -j4 \
     libs/mysql/test \
-    libs/mysql/example \
-    libs/mysql/example//boost_mysql_example_unix_socket
+    libs/mysql/test//boost_mysql_integrationtests \
+    libs/mysql/example//boost_mysql_all_examples

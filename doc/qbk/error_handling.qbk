@@ -14,7 +14,7 @@ available for each function involving network transfers.
 The different overloads differ in how they deal with errors.
 Most of them use a strategy based on [reflink error_code]'s
 (which is an alias for `boost::system::error_code`).
-Aditionally, some of them use the [reflink error_info]
+Additionally, some of them use the [reflink error_info]
 class. This is used as a container for additional
 information about the error, if available.
 For example, if you issue a query using [refmem connection query]

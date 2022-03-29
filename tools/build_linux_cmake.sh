@@ -13,7 +13,7 @@ BOOST_ROOT=/opt/boost
 export LD_LIBRARY_PATH=$BOOST_ROOT/lib:$LD_LIBRARY_PATH
 
 if [ "$BOOST_MYSQL_DATABASE" != "mysql8" ]; then
-    export BOOST_MYSQL_TEST_FILTER='!@sha256'
+    export BOOST_MYSQL_NO_SHA256_TESTS=1
 fi
 
 # Create the build directory
@@ -26,6 +26,7 @@ cmake \
     -DCMAKE_PREFIX_PATH=$BOOST_ROOT \
     -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
     -DCMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD \
+    -DBOOST_MYSQL_INTEGRATION_TESTS=ON \
     $(if [ "$USE_VALGRIND" == 1 ]; then echo -DBOOST_MYSQL_VALGRIND_TESTS=ON; fi) \
     $(if [ "$USE_COVERAGE" == 1 ]; then echo -DBOOST_MYSQL_COVERAGE=ON; fi) \
     -G Ninja \

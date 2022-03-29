@@ -28,12 +28,8 @@ IF DEFINED B2_VARIANT (SET B2_VARIANT=variant=%B2_VARIANT%)
 
 cd %BOOST_ROOT%
 
-IF DEFINED SCRIPT (
-    call libs\%SELF%\%SCRIPT%
-) ELSE (
-    set SELF_S=%SELF:\=/%
-    REM Echo the complete build command to the build log
-    ECHO b2 --abbreviate-paths libs/!SELF_S!/test %B2_TOOLCXX% %B2_CXXSTD% %B2_CXXFLAGS% %B2_DEFINES% %B2_THREADING% %B2_ADDRESS_MODEL% %B2_LINK% %B2_VARIANT% -j4 %*
-    REM Now go build...
-    b2 --abbreviate-paths libs/!SELF_S!/test %B2_TOOLCXX% %B2_CXXSTD% %B2_CXXFLAGS% %B2_DEFINES% %B2_THREADING% %B2_ADDRESS_MODEL% %B2_LINK% %B2_VARIANT% -j4 %*
-)
+b2 --abbreviate-paths ^
+    libs/mysql/test ^
+    libs/mysql/test//boost_mysql_integrationtests ^
+    libs/mysql/example//boost_mysql_all_examples ^
+    %B2_TOOLCXX% %B2_CXXSTD% %B2_CXXFLAGS% %B2_DEFINES% %B2_THREADING% %B2_ADDRESS_MODEL% %B2_LINK% %B2_VARIANT% -j4 %*
