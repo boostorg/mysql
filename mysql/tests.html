@@ -1,0 +1,118 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Building and running the tests</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="types.html" title="MySQL to C++ mapping reference">
+<link rel="next" href="quickref.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="types.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="quickref.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.tests"></a><a class="link" href="tests.html" title="Building and running the tests">Building and running the tests</a>
+</h2></div></div></div>
+<p>
+      This section explains how to build and run this library's tests. It is not
+      intended for the regular user.
+    </p>
+<p>
+      This library has both unit and integration tests. Considering the different
+      flavors the MySQL server has (v5.x, v8.x and MariaDB, with sutile differences)
+      and the complex nature of the client/server protocol, we have given certain
+      weight to the latter. Additionally, all examples are also built and run as
+      integration tests, too (as they require access to a real database server).
+    </p>
+<p>
+      By default, the build will only compile and run unit tests (i.e. if you run
+      <code class="computeroutput">b2 libs/mysql/test</code> or <code class="computeroutput">cmake</code> with no special args).
+      If you want to run the integration tests and the examples, you need a real
+      database server.
+    </p>
+<p>
+      If you are using <code class="computeroutput">docker</code>, you can use one of the following images:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput">ghcr.io/anarthal/mysql8</code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput">ghcr.io/anarthal/mysql5</code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput">ghcr.io/anarthal/mariadb</code>
+        </li>
+</ul></div>
+<p>
+      You can run the containers as follows:
+    </p>
+<pre class="programlisting"># If you're on a system supporting UNIX sockets. Note that /var/run/mysqld
+# should be empty for this to work; you can specify a different directory, if it's not
+&gt; docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d &lt;IMAGE_NAME&gt; # replace by the image you've chosen
+
+# If you're on a system that does not support UNIX sockets
+&gt; docker run -p 3306:3306 -d ghcr.io/anarthal/mysql8
+</pre>
+<p>
+      If you are using your own database server, you will need to perform the following
+      steps:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Run <code class="computeroutput">example/db_setup.sql</code> and <code class="computeroutput">test/integration/db_setup.sql</code>
+          as the root user. If you are running a MySQL 8.x server, run also <code class="computeroutput">test/integration/db_setup_sha256.sql</code>.
+        </li>
+<li class="listitem">
+          Install the SSL certificates in <code class="computeroutput">tools/ssl</code> in your MySQL server
+          and change your config file so that your server uses them. More information
+          <a class="ulink" href="https://dev.mysql.com/doc/refman/8.0/en/using-encrypted-connections.html" target="_top">here</a>.
+        </li>
+</ul></div>
+<p>
+      Next, define the following environment variables:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          If your database server is NOT running in <code class="computeroutput">localhost</code>, define
+          <code class="computeroutput">BOOST_MYSQL_SERVER_HOST</code> to the host where it is running. If
+          you are using the Docker image as provided in this document, you don't
+          need this.
+        </li>
+<li class="listitem">
+          If your system does not support UNIX sockets or your socket path is different
+          than MySQL's default (<code class="computeroutput">/var/run/mysqld/mysqld.sock</code>), define
+          <code class="computeroutput">BOOST_MYSQL_NO_UNIX_SOCKET_TESTS=1</code>.
+        </li>
+<li class="listitem">
+          If you are using MySQL 5.x or MariaDB, define <code class="computeroutput">BOOST_MYSQL_NO_SHA256_TESTS=1</code>.
+          These servers don't support part of the functionality we test.
+        </li>
+</ul></div>
+<p>
+      If you are using <code class="computeroutput">b2</code>, you can build the targets <code class="computeroutput">boost/mysql/example//boost_mysql_all_examples</code>,
+      <code class="computeroutput">boost/mysql/test//boost_mysql_integrationtests</code> and <code class="computeroutput">boost/mysql/test</code>
+      to build and run the tests.
+    </p>
+<p>
+      If you are using <code class="computeroutput">cmake</code>, add <code class="computeroutput">-DBOOST_MYSQL_INTEGRATION_TESTS=ON</code>
+      to enable building and running integration tests and examples, and then test
+      regularly with <code class="computeroutput">ctest</code>.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="types.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="quickref.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -26,15 +26,15 @@
         the examples via the command line.
       </p>
 <p>
-        If you're using docker, you can use the <code class="computeroutput"><span class="identifier">anarthal</span><span class="special">/</span><span class="identifier">mysql8</span></code>
-        container, which already ships with all the required configuration:
+        If you're using docker, you can use the <code class="computeroutput"><span class="identifier">ghcr</span><span class="special">.</span><span class="identifier">io</span><span class="special">/</span><span class="identifier">anarthal</span><span class="special">/</span><span class="identifier">mysql8</span></code> container, which already ships with
+        all the required configuration:
       </p>
 <pre class="programlisting"># If you're on a system supporting UNIX sockets. Note that /var/run/mysqld
 # should be empty for this to work; you can specify a different directory, if it's not
-&gt; docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d anarthal/mysql8
+&gt; docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d ghcr.io/anarthal/mysql8
 
 # If you're on a system that does not support UNIX sockets
-&gt; docker run -p 3306:3306 -d anarthal/mysql8
+&gt; docker run -p 3306:3306 -d ghcr.io/anarthal/mysql8
 </pre>
 <p>
         Please note that this container is just for demonstrative purposes, and is

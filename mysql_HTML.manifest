@@ -24,6 +24,7 @@ mysql/examples/query_async_coroutinescpp20.html
 mysql/examples/default_completion_tokens.html
 mysql/examples/ssl.html
 mysql/types.html
+mysql/tests.html
 mysql/quickref.html
 rn01.html
 mysql/ref.html
