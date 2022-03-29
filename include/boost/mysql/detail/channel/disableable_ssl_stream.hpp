@@ -1,0 +1,74 @@
+//
+// Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#ifndef BOOST_MYSQL_DETAIL_CHANNEL_DISABLEABLE_SSL_STREAM_HPP
+#define BOOST_MYSQL_DETAIL_CHANNEL_DISABLEABLE_SSL_STREAM_HPP
+
+#include "boost/mysql/error.hpp"
+#include <boost/asio/async_result.hpp>
+#include <cstddef>
+
+namespace boost {
+namespace mysql {
+namespace detail {
+
+// A wrapper for a Stream that makes it possible to disable SSL
+// at runtime. Satisfies the Stream concept. Required to implement SSL negotiation
+
+template <class Stream>
+class disableable_ssl_stream
+{
+    Stream& inner_stream_;
+    bool ssl_active_ {false};
+public:
+    disableable_ssl_stream(Stream& stream) noexcept :
+        inner_stream_(stream)
+    {
+    }
+
+    bool ssl_active() const noexcept { return ssl_active_; }
+    void set_ssl_active(bool value) noexcept { ssl_active_ = value; }
+
+    using executor_type = typename Stream::executor_type;
+    using lowest_layer_type = typename Stream::lowest_layer_type;
+    
+    lowest_layer_type& lowest_layer() noexcept { return inner_stream_.lowest_layer(); }
+    executor_type get_executor() noexcept { return inner_stream_.get_executor(); }
+
+    template <class MutableBufferSequence>
+    std::size_t read_some(const MutableBufferSequence&, error_code& ec);
+
+    template <class MutableBufferSequence, class CompletionToken>
+    BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+    async_read_some(
+        const MutableBufferSequence& buff,
+        CompletionToken&& token
+    );
+
+    template<class ConstBufferSequence>
+    std::size_t write_some(const ConstBufferSequence&, error_code& ec);
+
+    template <class ConstBufferSequence, class CompletionToken>
+    BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+    async_write_some(
+        const ConstBufferSequence& buff,
+        CompletionToken&& token
+    );
+};
+
+
+} // detail
+} // mysql
+} // boost
+
+#include <boost/mysql/detail/channel/impl/disableable_ssl_stream.hpp>
+
+#endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP_ */
+
+
+
+
