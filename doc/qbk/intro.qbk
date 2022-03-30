@@ -70,7 +70,7 @@ Boost.Mysql has been tested with the following versions of MySQL:
 
 I would like to specially acknowledge [@https://github.com/madmongo1 Richard Hodges] (hodges.r@gmail.com)
 for his invaluable technical guidance during development. Thanks also to
-[@https://github.com/LeonineKing1199 Christian Mazakas] for his ideas in early stages,
+Christian Mazakas for his ideas in early stages,
 and to [@https://github.com/vinniefalco Vinnie Falco] for writing
 __Beast__, my source of inspiration, and [@https://github.com/boostorg/docca
 docca], which is used to generate these pages.

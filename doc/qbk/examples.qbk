@@ -185,6 +185,23 @@ __assume_setup__
 
 [endsect]
 
+[section:timeouts Timeouts]
+
+This example demonstrates how to use Boost.Asio's
+cancellation features to add timeouts to your async operations,
+including the ones provided by __Self__. 
+For that purpose, it employs C++20 coroutines.
+If you are not familiar with them, look at
+[link mysql.examples.query_async_coroutinescpp20 this example]
+first.
+
+__assume_setup__
+
+[import ../../example/timeouts.cpp]
+[example_timeouts]
+
+[endsect]
+
 [section:ssl Setting SSL options]
 
 This example demonstrates how to configure SSL options

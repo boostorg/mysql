@@ -192,7 +192,7 @@ namespace mysql {{
  * \\details Some error codes are defined by the client library, and others
  * are returned from the server. For the latter, the numeric value and
  * string descriptions match the ones described in the MySQL documentation.
- * See [mysqllink server-error-reference.html the MySQL error reference]
+ * See [mysqlerrlink the MySQL error reference]
  * for more info on server errors.
  */
 enum class errc : int
@@ -242,7 +242,7 @@ constexpr error_entry all_errors [] = {{
 def generate_errc_entry(err):
     if err.is_server:
         doc = ('Server error. Error number: {}, symbol: ' + \
-              '[mysqllink server-error-reference.html\\#error_er_{} ER_{}].').format(
+              '[mysqlerrlink2 error_er_{} ER_{}].').format(
                   err.number, err.symbol, err.symbol.upper())
     else:
         if err.number == 0:

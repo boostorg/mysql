@@ -63,8 +63,7 @@ two different origins:
 
 * [*Server defined] error codes. These codes are defined by the MySQL
   server. They range between 1 and 0xffff. They are described
-  in detail [mysqllink server-error-reference.html
-  in the MySQL error reference].
+  in detail [mysqlerrlink in the MySQL error reference].
 * [*Client defined] error codes. These are defined by __Self__,
   and are always greater than 0xffff.
   

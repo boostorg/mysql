@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import os
 from os import path
 
-REPO_BASE = path.abspath(path.join(path.dirname(__file__), '..'))
+REPO_BASE = path.abspath(path.join(path.dirname(__file__), '..', '..'))
 DOC_PATH = path.join(REPO_BASE, 'doc', 'html')
 
 def list_doc_files():
