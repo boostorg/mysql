@@ -20,10 +20,10 @@
 <a name="mysql.async"></a><a class="link" href="async.html" title="Going async">Going async</a>
 </h2></div></div></div>
 <p>
-      Following <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/libs/asio/index.html" target="_top">Boost.Asio</a>'s convetion,
+      Following <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/asio/index.html" target="_top">Boost.Asio</a>'s convetion,
       all network operations have asynchronous versions with the same name prefixed
       by <code class="computeroutput"><span class="identifier">async_</span></code>. The last parameter
-      to async operations is a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a>,
+      to async operations is a <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a>,
       which dictates how the asynchronous operation will be managed and the function's
       return type. These <code class="computeroutput"><span class="identifier">async_</span></code> functions
       are called async initiating functions.
@@ -75,7 +75,7 @@
 <li class="listitem">
 <p class="simpara">
             <span class="bold"><strong>Futures</strong></span>. In this case, you pass in the
-            constant <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/use_future.html" target="_top"><code class="literal">boost::asio::use_future</code></a>
+            constant <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/use_future.html" target="_top"><code class="literal">boost::asio::use_future</code></a>
             as completion token. The initiating function will return one of the following:
             <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
@@ -101,9 +101,9 @@
 </li>
 <li class="listitem">
 <p class="simpara">
-            <span class="bold"><strong><a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
-            coroutines</strong></span>. In this case, you pass in a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/yield_context.html" target="_top"><code class="literal">boost::asio::yield_context</code></a>.
-            To obtain one of these, you should use <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="literal">boost::asio::spawn</code></a>
+            <span class="bold"><strong><a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
+            coroutines</strong></span>. In this case, you pass in a <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/yield_context.html" target="_top"><code class="literal">boost::asio::yield_context</code></a>.
+            To obtain one of these, you should use <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="literal">boost::asio::spawn</code></a>
             to create a new coroutine. The initiating function will return:
             <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
@@ -117,7 +117,7 @@
 </ul></div>
           </p>
 <p class="simpara">
-            If you use <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/basic_yield_context/operator_lb__rb_.html" target="_top"><code class="literal">boost::asio::yield_context::operator[]</code></a>,
+            If you use <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/basic_yield_context/operator_lb__rb_.html" target="_top"><code class="literal">boost::asio::yield_context::operator[]</code></a>,
             the operation will set the given <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>
             when it fails. Otherwise, the function will throw a exception. Note that
             this exception will not contain the extra information stored in the
@@ -125,22 +125,22 @@
           </p>
 <p class="simpara">
             <a class="link" href="examples/query_async_coroutines.html" title="Text query, async with Boost.Coroutine coroutines">This example</a>
-            uses <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
+            uses <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
             coroutines with async queries.
           </p>
 </li>
 <li class="listitem">
 <p class="simpara">
             <span class="bold"><strong>C++20 coroutines</strong></span>. In this case, you
-            pass in the constant <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/use_awaitable.html" target="_top"><code class="literal">boost::asio::use_awaitable</code></a>
+            pass in the constant <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/use_awaitable.html" target="_top"><code class="literal">boost::asio::use_awaitable</code></a>
             as completion token. The initiating function will return:
             <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
 <li class="listitem">
-                  <code class="literal"><a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/awaitable.html" target="_top"><code class="literal">boost::asio::awaitable&lt;void&gt;</code></a></code>,
+                  <code class="literal"><a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/awaitable.html" target="_top"><code class="literal">boost::asio::awaitable&lt;void&gt;</code></a></code>,
                   if the completion handler has the form given by 1).
                 </li>
 <li class="listitem">
-                  <code class="literal"><a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/awaitable.html" target="_top"><code class="literal">boost::asio::awaitable&lt;T&gt;</code></a></code>,
+                  <code class="literal"><a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/awaitable.html" target="_top"><code class="literal">boost::asio::awaitable&lt;T&gt;</code></a></code>,
                   if the completion handler has the form given by 2).
                 </li>
 </ul></div>
@@ -156,6 +156,11 @@
             demonstrates using C++20 coroutines to perform text queries.
           </p>
 </li>
+<li class="listitem">
+            Any other type that satisfies the <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a>
+            type requirements. We have listed the most common ones here, but you
+            can craft your own and use it with this library's async operations.
+          </li>
 </ul></div>
 </div>
 <div class="section">
@@ -166,12 +171,32 @@
 <p>
         <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
         also supports default completion tokens. Recall that some stream types may
-        have an associated <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/Executor1.html" target="_top"><span class="emphasis"><em>Executor</em></span></a>
-        that has an associated default completion token type (see [asiolinkref default_completion_token
+        have an associated <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/Executor1.html" target="_top"><span class="emphasis"><em>Executor</em></span></a>
+        that has an associated default completion token type (see [asiorelink default_completion_token
         default_completion_token]). If this is the case, you don't need to specify
-        the <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a>
+        the <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a>
         parameter in initiating functions, and the default will be used. <a class="link" href="examples/default_completion_tokens.html" title="Default completion tokens">This
         example</a> demonstrates using default completion tokens with <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.async.cancellations_and_timeouts"></a><a class="link" href="async.html#mysql.async.cancellations_and_timeouts" title="Cancellations and timeouts">Cancellations
+      and timeouts</a>
+</h3></div></div></div>
+<p>
+        All async operations in this library support <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/overview/core/cancellation.html" target="_top">per-operation
+        cancellation</a>. All operations support only the <code class="computeroutput"><span class="identifier">terminal</span></code>
+        <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/cancellation_type.html" target="_top"><code class="literal">boost::asio::cancellation_type</code></a>.
+        This means that, if an async operation is cancelled, the <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+        object is left in an unspecified state, after which you should close or destroy
+        the connection. In particular, it is <span class="bold"><strong>not</strong></span>
+        safe to retry the cancelled operation.
+      </p>
+<p>
+        Supporting cancellation allows you to implement timeouts without explicit
+        support from the library. <a class="link" href="examples/timeouts.html" title="Timeouts">This example</a>
+        demonstrates how to implement this pattern.
       </p>
 </div>
 <div class="section">

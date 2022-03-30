@@ -22,6 +22,7 @@ mysql/examples/query_async_futures.html
 mysql/examples/query_async_coroutines.html
 mysql/examples/query_async_coroutinescpp20.html
 mysql/examples/default_completion_tokens.html
+mysql/examples/timeouts.html
 mysql/examples/ssl.html
 mysql/types.html
 mysql/tests.html

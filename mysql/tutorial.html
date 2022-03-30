@@ -30,8 +30,8 @@
       MySQL user (username and password). No further setup is needed.
     </p>
 <p>
-      This tutorial assumes you have a basic familiarity with <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/libs/asio/index.html" target="_top">Boost.Asio</a>
-      (e.g. you know what a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/io_context.html" target="_top"><code class="literal">boost::asio::io_context</code></a>
+      This tutorial assumes you have a basic familiarity with <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+      (e.g. you know what a <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/io_context.html" target="_top"><code class="literal">boost::asio::io_context</code></a>
       is).
     </p>
 <h4>
@@ -47,8 +47,8 @@
     </p>
 <p>
       A <a class="link" href="ref/boost__mysql__tcp_ssl_connection.html" title="tcp_ssl_connection"><code class="literal">tcp_ssl_connection</code></a>
-      is an I/O object. It can be constructed from a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/io_context/executor_type.html" target="_top"><code class="literal">boost::asio::io_context::executor_type</code></a>
-      and a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>:
+      is an I/O object. It can be constructed from a <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/io_context/executor_type.html" target="_top"><code class="literal">boost::asio::io_context::executor_type</code></a>
+      and a <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>:
     </p>
 <pre class="programlisting"><span class="comment">// The execution context, required to run I/O operations</span>
 <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
@@ -71,7 +71,7 @@
     </p>
 <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
-          Physical connection parameters. As we are using TCP, this is a <a class="ulink" href="https://www.boost.org/doc/libs/1_76_0/doc/html/boost_asio/reference/ip__tcp/endpoint.html" target="_top"><code class="literal">boost::asio::ip::tcp::endpoint</code></a>,
+          Physical connection parameters. As we are using TCP, this is a <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ip__tcp/endpoint.html" target="_top"><code class="literal">boost::asio::ip::tcp::endpoint</code></a>,
           identifying the host and port to connect to.
         </li>
 <li class="listitem">
