@@ -58,7 +58,7 @@ If you are using CMake (finding the library using [*find_package] or
 fetching it using [*FetchContent]), you can link against the [*Boost::mysql*]
 CMake target, which will take care of the details for you.
 
-Boost.Mysql has been tested with the following versions of MySQL:
+Boost.Mysql has been tested with the following RDBMS systems:
 
 * [@https://dev.mysql.com/downloads/mysql/5.7.html MySQL v5.7.29].
 * [@https://dev.mysql.com/downloads/mysql/8.0.html MySQL v8.0.19].
