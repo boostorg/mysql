@@ -127,6 +127,13 @@ Supporting cancellation allows you to implement timeouts without explicit
 support from the library. [link mysql.examples.timeouts This example]
 demonstrates how to implement this pattern.
 
+Note that cancellation happens at the Boost.Asio level, and not at the
+MySQL operation level. This means that, when cancelling an operation, the
+current network read or write will be cancelled. The operation may have
+already reached the server and be executed. As stated above, after an
+operation is cancelled, the connection is left in an unspecified state, and
+you should close or destroy it.
+
 [endsect]
 
 [section:sequencing Sequencing of operations]
