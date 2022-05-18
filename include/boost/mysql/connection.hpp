@@ -124,6 +124,9 @@ public:
     /// Retrieves the executor associated to this object.
     executor_type get_executor() { return get_channel().get_executor(); }
 
+    /// The `Stream` type this connection is using.
+    using next_layer_type = Stream;
+
     /// Retrieves the underlying Stream object.
     Stream& next_layer() { return get_channel().next_layer(); }
 
