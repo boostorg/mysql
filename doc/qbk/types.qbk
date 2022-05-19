@@ -78,7 +78,7 @@ for each one.
     to the time zone indicated by __time_zone__. The retrieved value of a __TIMESTAMP__
     field is thus a time point in some local time zone, dictated by the current
     __time_zone__ variable. As this variable can be changed programmatically, without
-    the client knowing it, we represent __TIMESTAMP__s without their time zone,
+    the client knowing it, we represent __TIMESTAMP__ s without their time zone,
     using [reflink datetime]. __TIMESTAMP__'s range is narrower than __DATETIME__'s,
     but we do not enforce it in the client.
 
