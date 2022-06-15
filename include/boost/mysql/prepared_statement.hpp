@@ -153,7 +153,9 @@ public:
      */
     template <
         class ValueCollection,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(
+                void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
+            )
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
             class EnableIf = detail::enable_if_value_collection<ValueCollection>
@@ -187,7 +189,9 @@ public:
      */
     template <
         class ValueCollection,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(
+                void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
+            )
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
             class EnableIf = detail::enable_if_value_collection<ValueCollection>
@@ -257,7 +261,9 @@ public:
      */
     template <
         class ValueForwardIterator,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(
+                void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
+            )
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -291,7 +297,9 @@ public:
      */
     template <
         class ValueForwardIterator,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, resultset<Stream>))
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(
+                void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
+            )
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -330,7 +338,7 @@ public:
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -350,7 +358,7 @@ public:
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >

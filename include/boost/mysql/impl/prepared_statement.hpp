@@ -134,7 +134,8 @@ struct boost::mysql::prepared_statement<Stream>::async_execute_initiation
 
 template <class Stream>
 template <class ValueForwardIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)) CompletionToken>
+    void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
+) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
@@ -184,7 +185,7 @@ void boost::mysql::prepared_statement<Stream>::close()
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
