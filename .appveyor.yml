@@ -34,17 +34,28 @@ environment:
     #   B2_TOOLSET: msvc-14.1
     #   B2_CXXSTD: 17
     #   VS_YEAR: 2017
-    # Boost.Build
+    # Boost.Build. C++17 is already tested in CMake, and
+    # having all cxxstd's in a single job causes timeouts
     - FLAVOR: Visual Studio 2019
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       PLATFORM: x64
       B2_TOOLSET: msvc-14.2
-      B2_CXXSTD: 11,14,20 # C++17 is already tested with CMake
+      B2_CXXSTD: 11,14
     - FLAVOR: Visual Studio 2019
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       PLATFORM: x86
       B2_TOOLSET: msvc-14.2
-      B2_CXXSTD: 11,14,20 # C++17 is already tested with CMake
+      B2_CXXSTD: 11,14
+    - FLAVOR: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PLATFORM: x64
+      B2_TOOLSET: msvc-14.2
+      B2_CXXSTD: 20
+    - FLAVOR: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      PLATFORM: x86
+      B2_TOOLSET: msvc-14.2
+      B2_CXXSTD: 20
     # CMake
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_BUILD_TYPE: Debug
