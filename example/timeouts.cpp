@@ -114,13 +114,14 @@ boost::asio::awaitable<void> start_query(
         // Read all rows
         boost::mysql::row row;
         bool more_rows = true;
-        while (more_rows)
+        while (true)
         {
             timer.expires_after(TIMEOUT);
             more_rows = check_timeout(co_await (
                 timer.async_wait(use_awaitable) ||
                 result.async_read_one(row, use_awaitable)
             ));
+            if (!more_rows) break;
             print_employee(row);
         }
 
