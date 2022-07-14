@@ -31,17 +31,17 @@ Examples make use of a database named `boost_mysql_examples`.
 The server hostname and credentials (username and password) are passed 
 to the examples via the command line.
 
-If you're using docker, you can use the `anarthal/mysql8` container,
+If you're using docker, you can use the `ghcr.io/anarthal/mysql8` container,
 which already ships with all the required configuration:
 
 [!teletype]
 ```
     # If you're on a system supporting UNIX sockets. Note that /var/run/mysqld
     # should be empty for this to work; you can specify a different directory, if it's not
-    > docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d anarthal/mysql8
+    > docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d ghcr.io/anarthal/mysql8
 
     # If you're on a system that does not support UNIX sockets
-    > docker run -p 3306:3306 -d anarthal/mysql8
+    > docker run -p 3306:3306 -d ghcr.io/anarthal/mysql8
 ```
 
 Please note that this container is just for demonstrative purposes,
@@ -185,6 +185,23 @@ __assume_setup__
 
 [endsect]
 
+[section:timeouts Timeouts]
+
+This example demonstrates how to use Boost.Asio's
+cancellation features to add timeouts to your async operations,
+including the ones provided by __Self__. 
+For that purpose, it employs C++20 coroutines.
+If you are not familiar with them, look at
+[link mysql.examples.query_async_coroutinescpp20 this example]
+first.
+
+__assume_setup__
+
+[import ../../example/timeouts.cpp]
+[example_timeouts]
+
+[endsect]
+
 [section:ssl Setting SSL options]
 
 This example demonstrates how to configure SSL options
@@ -194,7 +211,7 @@ The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
 __assume_setup__ Additionally, you should run your MySQL server
-with some test certificates we created your you, just for this example.
+with some test certificates we created for you, just for this example.
 You can find them in this project's GitHub repository, under `BOOST_MYQL_ROOT/tools/ssl`.
 If you're using the docker container, the setup has already been done
 for you.

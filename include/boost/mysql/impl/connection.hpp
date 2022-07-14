@@ -48,7 +48,7 @@ void boost::mysql::connection<Stream>::connect(
 template <class Stream>
 template <
     class EndpointType,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken
 >
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
@@ -93,7 +93,7 @@ void boost::mysql::connection<Stream>::handshake(
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
@@ -141,7 +141,8 @@ boost::mysql::resultset<Stream> boost::mysql::connection<Stream>::query(
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)) CompletionToken>
+    void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
+) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
@@ -188,7 +189,8 @@ boost::mysql::prepared_statement<Stream> boost::mysql::connection<Stream>::prepa
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, boost::mysql::prepared_statement<Stream>)) CompletionToken>
+    void(::boost::mysql::error_code, ::boost::mysql::prepared_statement<Stream>)
+) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::prepared_statement<Stream>)
@@ -228,7 +230,7 @@ void boost::mysql::connection<Stream>::close()
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
@@ -265,7 +267,7 @@ void boost::mysql::connection<Stream>::quit()
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)

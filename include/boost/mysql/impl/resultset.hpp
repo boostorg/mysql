@@ -172,7 +172,7 @@ struct boost::mysql::resultset<Stream>::read_one_op
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, bool)) CompletionToken>
+    void(::boost::mysql::error_code, bool)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, bool)
@@ -303,7 +303,7 @@ struct boost::mysql::resultset<Stream>::read_many_op
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, std::vector<boost::mysql::row>)) CompletionToken>
+    void(::boost::mysql::error_code, std::vector<::boost::mysql::row>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, std::vector<boost::mysql::row>)
@@ -328,7 +328,7 @@ boost::mysql::resultset<Stream>::async_read_many(
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(boost::mysql::error_code, std::vector<boost::mysql::row>)) CompletionToken>
+    void(::boost::mysql::error_code, std::vector<::boost::mysql::row>)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, std::vector<boost::mysql::row>)

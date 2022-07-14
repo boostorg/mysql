@@ -137,7 +137,7 @@ class resultset
      * `void(boost::mysql::error_code, bool)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, bool))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -163,7 +163,7 @@ class resultset
      * `void(boost::mysql::error_code, bool)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, bool))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -188,7 +188,9 @@ class resultset
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(
+            void(::boost::mysql::error_code, std::vector<::boost::mysql::row>)
+        )
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -209,7 +211,9 @@ class resultset
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(
+            void(::boost::mysql::error_code, std::vector<::boost::mysql::row>)
+        )
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -233,7 +237,9 @@ class resultset
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(
+            void(::boost::mysql::error_code, std::vector<::boost::mysql::row>)
+        )
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
@@ -250,7 +256,9 @@ class resultset
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::vector<row>))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(
+            void(::boost::mysql::error_code, std::vector<::boost::mysql::row>)
+        )
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >

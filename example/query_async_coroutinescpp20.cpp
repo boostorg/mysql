@@ -9,7 +9,6 @@
 
 #include <boost/mysql.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/asio/co_spawn.hpp>

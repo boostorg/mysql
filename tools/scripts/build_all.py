@@ -10,11 +10,12 @@ from sys import argv
 from subprocess import check_call
 from os import chdir, path
 
-REPO_BASE = path.abspath(path.join(path.dirname(__file__), '..'))
+REPO_BASE = path.abspath(path.join(path.dirname(__file__), '..', '..'))
 
 BASE_CONFIG = {
     'CMAKE_PREFIX_PATH': '/opt/boost-latest',
-    'CMAKE_INSTALL_PREFIX': '/tmp/boost_mysql'
+    'CMAKE_INSTALL_PREFIX': '/tmp/boost_mysql',
+    'BOOST_MYSQL_INTEGRATION_TESTS': 'ON'
 }
 
 CLANG_CONFIG = {
@@ -23,6 +24,10 @@ CLANG_CONFIG = {
 }
 
 ALL_CONFIGS = {
+    'nounix': {
+        **BASE_CONFIG,
+        **CLANG_CONFIG,
+    },
     'gcc-9': {
         **BASE_CONFIG,
         'CMAKE_C_COMPILER': 'gcc-9',

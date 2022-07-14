@@ -6,15 +6,9 @@
 #
 
 import os ;
+import sequence ;
 
-# Command line args for integration tests
-local TEST_FILTER = [ os.environ BOOST_MYSQL_TEST_FILTER ] ;
-local TEST_COMMAND = "" ;
-if $(TEST_FILTER)
-{
-    TEST_COMMAND = "-t $(TEST_FILTER)" ;
-}
-
+# Stuff shared between unit and integration tests
 alias boost_mysql_test
     :
         /boost/mysql//boost_mysql
@@ -26,6 +20,7 @@ alias boost_mysql_test
         <link>shared
     ;
 
+# Unit tests
 unit-test boost_mysql_unittests 
     : 
         boost_mysql_test
@@ -52,7 +47,25 @@ unit-test boost_mysql_unittests
         unit/connection.cpp
         unit/entry_point.cpp
     ;
-    
+
+
+# Integration test filtering
+local test_exclusions = "" ;
+if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] != "" {
+    test_exclusions += "!@unix" ;
+}
+if [ os.environ BOOST_MYSQL_NO_SHA256_TESTS ] != "" {
+    test_exclusions += "!@sha256" ;
+}
+
+local test_filter = [ sequence.join $(test_exclusions) : ":" ] ;
+
+local test_command = "" ;
+if $(test_filter) != "" {
+    test_command = "-t $(test_filter)" ;
+}
+
+# Integration tests
 unit-test boost_mysql_integrationtests 
     :
         boost_mysql_test
@@ -84,6 +97,8 @@ unit-test boost_mysql_integrationtests
         integration/database_types.cpp
         integration/entry_point.cpp
     :
-        <testing.arg>$(TEST_COMMAND)
+        <testing.arg>$(test_command)
         <include>integration/utils/include
     ;
+
+explicit boost_mysql_integrationtests ;

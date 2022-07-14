@@ -7,7 +7,7 @@
 
 [library Boost.Mysql
     [quickbook 1.7]
-    [copyright 2019 - 2021 Ruben Perez]
+    [copyright 2019 - 2022 Ruben Perez]
     [id mysql]
     [purpose MySQL client library]
     [license
@@ -22,7 +22,7 @@
 
 [template nochunk[] [block '''<?dbhtml stop-chunking?>''']]
 [template mdash[] '''&mdash; ''']
-[template include_file[path][^<'''<ulink url="https://github.com/anarthal/mysql-asio/blob/master/include/'''[path]'''">'''[path]'''</ulink>'''>]]
+[template include_file[path][^<'''<ulink url="https://github.com/anarthal/mysql/blob/master/include/'''[path]'''">'''[path]'''</ulink>'''>]]
 [template indexterm1[term1] '''<indexterm><primary>'''[term1]'''</primary></indexterm>''']
 [template indexterm2[term1 term2] '''<indexterm><primary>'''[term1]'''</primary><secondary>'''[term2]'''</secondary></indexterm>''']
 
@@ -32,6 +32,8 @@
 [template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^boost::asio::[term]]]]
 [template beastreflink[id term][@boost:/doc/html/boost_beast/reference/[id].html [^boost::beast::[term]]]]
 [template mysqllink[id text][@https://dev.mysql.com/doc/refman/8.0/en/[id] [text]]]
+[template mysqlerrlink[text][@https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html [text]]]
+[template mysqlerrlink2[id text][@https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#[id] [text]]]
 
 [def __Stream__ [reflink2 Stream ['Stream]]]
 [def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]
@@ -44,7 +46,7 @@
 [def __Asio__ [@boost:/libs/asio/index.html Boost.Asio]]
 [def __Beast__ [@boost:/libs/beast/index.html Boost.Beast]]
 [def __Coroutine__ [@boost:/libs/coroutine/index.html Boost.Coroutine]]
-[def __Self__ [@https://anarthal.github.io/boost-mysql/index.html Boost.Mysql]]
+[def __Self__ [@https://anarthal.github.io/boost/index.html Boost.Mysql]]
 [def __boost_optional__ [@boost:/libs/optional/index.html `boost::optional`]]
 [def __see_error_handling__ See [link mysql.error_handling this section] for more info on error handling.]
 [def __assume_setup__ This example assumes you have gone through the [link mysql.examples.setup setup].]
@@ -97,6 +99,7 @@
 [include reconnecting.qbk]
 [include examples.qbk]
 [include types.qbk]
+[include tests.qbk]
 
 [section:quickref Reference]
 [xinclude helpers/quickref.xml]

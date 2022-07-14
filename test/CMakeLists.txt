@@ -71,76 +71,82 @@ else()
 endif()
 
 # Integration testing
-add_executable(
-    boost_mysql_integrationtests
+if(BOOST_MYSQL_INTEGRATION_TESTS)
+    add_executable(
+        boost_mysql_integrationtests
 
-    # Utilities
-    integration/utils/src/get_endpoint.cpp
-    integration/utils/src/metadata_validator.cpp
-    integration/utils/src/network_result.cpp
-    integration/utils/src/er_network_variant.cpp
-    integration/utils/src/sync_errc.cpp
-    integration/utils/src/sync_exc.cpp
-    integration/utils/src/async_callback.cpp
-    integration/utils/src/async_callback_noerrinfo.cpp
-    integration/utils/src/async_future.cpp
-    integration/utils/src/async_coroutine.cpp
-    integration/utils/src/async_coroutinecpp20.cpp
-    integration/utils/src/default_completion_tokens.cpp
+        # Utilities
+        integration/utils/src/get_endpoint.cpp
+        integration/utils/src/metadata_validator.cpp
+        integration/utils/src/network_result.cpp
+        integration/utils/src/er_network_variant.cpp
+        integration/utils/src/sync_errc.cpp
+        integration/utils/src/sync_exc.cpp
+        integration/utils/src/async_callback.cpp
+        integration/utils/src/async_callback_noerrinfo.cpp
+        integration/utils/src/async_future.cpp
+        integration/utils/src/async_coroutine.cpp
+        integration/utils/src/async_coroutinecpp20.cpp
+        integration/utils/src/default_completion_tokens.cpp
 
-    # Actual tests
-    integration/connection.cpp
-    integration/connect.cpp
-    integration/handshake.cpp
-    integration/query.cpp
-    integration/prepare_statement.cpp
-    integration/execute_statement.cpp
-    integration/close_statement.cpp
-    integration/resultset.cpp
-    integration/prepared_statement_lifecycle.cpp
-    integration/quit_connection.cpp
-    integration/close_connection.cpp
-    integration/reconnect.cpp
-    integration/database_types.cpp
-    integration/entry_point.cpp
-)
-target_include_directories(
-    boost_mysql_integrationtests
-    PRIVATE
-    integration/utils/include
-)
-target_link_libraries(
-    boost_mysql_integrationtests
-    PRIVATE
-    boost_mysql_testing
-    Boost::coroutine
-)
-common_target_settings(boost_mysql_integrationtests)
-
-if ("$ENV{BOOST_MYSQL_TEST_FILTER}" STREQUAL "")
-    add_test(
-        NAME boost_mysql_integrationtests
-        COMMAND boost_mysql_integrationtests
+        # Actual tests
+        integration/connection.cpp
+        integration/connect.cpp
+        integration/handshake.cpp
+        integration/query.cpp
+        integration/prepare_statement.cpp
+        integration/execute_statement.cpp
+        integration/close_statement.cpp
+        integration/resultset.cpp
+        integration/prepared_statement_lifecycle.cpp
+        integration/quit_connection.cpp
+        integration/close_connection.cpp
+        integration/reconnect.cpp
+        integration/database_types.cpp
+        integration/entry_point.cpp
     )
-else()
-    add_test(
-        NAME boost_mysql_integrationtests
-        COMMAND boost_mysql_integrationtests "-t" $ENV{BOOST_MYSQL_TEST_FILTER}
+    target_include_directories(
+        boost_mysql_integrationtests
+        PRIVATE
+        integration/utils/include
     )
-endif()
+    target_link_libraries(
+        boost_mysql_integrationtests
+        PRIVATE
+        boost_mysql_testing
+        Boost::coroutine
+    )
+    common_target_settings(boost_mysql_integrationtests)
 
-# If we are using memcheck, then run a subset of the integration tests
-# under valgrind. Coroutine tests don't work well under Valgrind, and
-# SSL tests are too slow. We do some other exclusions to reduce runtime
-if (BOOST_MYSQL_VALGRIND_TESTS)
-    set(MEMCHECK_BASE_TEST_FILTER "!@ssl:!@async_coroutine")
-    if ("$ENV{BOOST_MYSQL_TEST_FILTER}" STREQUAL "")
-        set(TEST_FILTER ${MEMCHECK_BASE_TEST_FILTER})
-    else()
-        set(TEST_FILTER "${MEMCHECK_BASE_TEST_FILTER}:$ENV{BOOST_MYSQL_TEST_FILTER}")
+    # Compose the test filter
+    if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
+        list(APPEND TEST_EXCLUSIONS "!@unix")
     endif()
-    add_memcheck_test(
-        NAME boost_mysql_integrationtests_memcheck
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests "-t" ${TEST_FILTER}
-    )
+    if (NOT "$ENV{BOOST_MYSQL_NO_SHA256_TESTS}" STREQUAL "")
+        list(APPEND TEST_EXCLUSIONS "!@sha256")
+    endif()
+    string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS})
+
+    if ("${TEST_FILTER}" STREQUAL "")
+        add_test(
+            NAME boost_mysql_integrationtests
+            COMMAND boost_mysql_integrationtests
+        )
+    else()
+        add_test(
+            NAME boost_mysql_integrationtests
+            COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
+        )
+    endif()
+
+    # If we are using memcheck, then run a subset of the integration tests
+    # under valgrind. Coroutine tests don't work well under Valgrind, and
+    # SSL tests are too slow. We do some other exclusions to reduce runtime
+    if (BOOST_MYSQL_VALGRIND_TESTS)
+        string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS} "!@ssl" "!@async_coroutine")
+        add_memcheck_test(
+            NAME boost_mysql_integrationtests_memcheck
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests "-t" ${TEST_FILTER}
+        )
+    endif()
 endif()

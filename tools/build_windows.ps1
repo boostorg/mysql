@@ -24,7 +24,8 @@ function Check-Call($blk)
 
 $Env:Path += ";C:\Program Files\MySQL\MySQL Server 5.7\bin"
 $Env:Path = "C:\Python37-x64;" + $Env:Path # Override Python 2 setting
-$Env:BOOST_MYSQL_TEST_FILTER = "!@unix:!@sha256"
+$Env:BOOST_MYSQL_NO_UNIX_SOCKET_TESTS = "1"
+$Env:BOOST_MYSQL_NO_SHA256_TESTS = "1"
 $Env:BOOST_MYSQL_SERVER_HOST = "localhost"
 
 ### DB setup
@@ -69,9 +70,7 @@ if ($Env:B2_TOOLSET) # Use Boost.Build
     Check-Call { git clone https://github.com/boostorg/boost-ci.git C:\boost-ci-cloned }
     Copy-Item -Path "C:\boost-ci-cloned\ci" -Destination ".\ci" -Recurse
     Remove-Item -Recurse -Force "C:\boost-ci-cloned"
-    Check-Call { .\tools\build_windows_b2.bat `
-        libs/mysql/example
-    }
+    Check-Call { .\tools\build_windows_b2.bat }
 }
 else # Use CMake
 {
@@ -105,10 +104,12 @@ else # Use CMake
         "-DCMAKE_CXX_STANDARD=17" `
         "-DCMAKE_C_COMPILER=cl" `
         "-DCMAKE_CXX_COMPILER=cl" `
+        "-DBOOST_MYSQL_INTEGRATION_TESTS=ON" `
+        "-DBOOST_MYSQL_UNIX_SOCKET_EXAMPLE=OFF" `
         ".."
     }
     Check-Call { cmake --build . -j --target install }
-    Check-Call { ctest --verbose -E boost_mysql_example_unix_socket }
+    Check-Call { ctest --verbose }
     Check-Call { python `
         ..\tools\user_project_find_package\build.py `
         "-DCMAKE_PREFIX_PATH=$InstallPrefix;$BoostLocation"
