@@ -51,11 +51,13 @@ environment:
       PLATFORM: x64
       B2_TOOLSET: msvc-14.2
       B2_CXXSTD: 20
+      B2_VARIANT: release
     - FLAVOR: Visual Studio 2019
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       PLATFORM: x86
       B2_TOOLSET: msvc-14.2
       B2_CXXSTD: 20
+      B2_VARIANT: debug
     # CMake
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       CMAKE_BUILD_TYPE: Debug
