@@ -17,6 +17,7 @@
 #include <boost/mysql/error.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
+#include <boost/mysql/detail/auxiliar/valgrind.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -59,6 +60,7 @@ public:
         {
             std::size_t bytes_read = stream.read_some(buffer_.free_area(), ec);
             if (ec) break;
+            valgrind_make_mem_defined(buffer_.free_first(), bytes_read);
             ec = on_read_bytes(bytes_read);
             if (ec) break;
         }
@@ -112,10 +114,11 @@ private:
                 assert(reader_.num_cached_messages() < num_messages_);
                 while (reader_.num_cached_messages() < num_messages_)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.read_some(
+                    BOOST_ASIO_CORO_YIELD stream_.async_read_some(
                         reader_.buffer_.free_area(),
                         std::move(*this)    
                     );
+                    valgrind_make_mem_defined(reader_.buffer_.free_first(), bytes_read);
                     ec = reader_.on_read_bytes(bytes_read);
                     if (ec) self.complete(ec);
                 }

@@ -8,56 +8,33 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
 
-#include <boost/mysql/error.hpp>
+#include "boost/mysql/error.hpp"
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/async_result.hpp>
-#include <boost/asio/coroutine.hpp>
-#include <boost/asio/ssl/stream_base.hpp>
+#include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
+#include <boost/mysql/detail/channel/message_reader.hpp>
 #include <array>
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
-using is_ssl_stream = std::is_base_of<boost::asio::ssl::stream_base, Stream>;
 
 // Implements the message layer of the MySQL protocol
 template <class Stream>
 class channel
 {
-    // TODO: static asserts for Stream concept
-    Stream stream_;
-    std::uint8_t sequence_number_ {0};
-    std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
-    bytestring shared_buff_; // for async ops
+    disableable_ssl_stream<Stream> stream_;
     capabilities current_caps_;
+    message_reader reader_;
+    std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
+    std::uint8_t shared_sequence_number_ {}; // for async ops
+    bytestring shared_buff_; // for async ops
     error_info shared_info_; // for async ops
-    bool ssl_active_ {false};
 
-    bool process_sequence_number(std::uint8_t got);
-    std::uint8_t next_sequence_number() { return sequence_number_++; }
+    void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum); // writes to header_buffer_
 
-    error_code process_header_read(std::uint32_t& size_to_read); // reads from header_buffer_
-    void process_header_write(std::uint32_t size_to_write); // writes to header_buffer_
-
-    template <class BufferSeq>
-    std::size_t read_impl(BufferSeq&& buff, error_code& ec);
-
-    template <class BufferSeq>
-    std::size_t write_impl(BufferSeq&& buff, error_code& ec);
-
-    template <class BufferSeq, class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
-    async_read_impl(BufferSeq&& buff, CompletionToken&& token);
-
-    template <class BufferSeq, class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
-    async_write_impl(BufferSeq&& buff, CompletionToken&& token);
-
-    struct read_op;
     struct write_op;
 public:
     channel() = default; // Simplify life if stream is default constructible, mainly for tests
@@ -70,8 +47,7 @@ public:
 
     void reset()
     {
-        reset_sequence_number();
-        ssl_active_ = false;
+        stream_.set_ssl_active(false);
     }
 
     // Executor
@@ -79,22 +55,31 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // Reading
-    void read(bytestring& buffer, error_code& code);
+    std::size_t num_read_messages() const noexcept { return reader_.num_cached_messages(); }
+    error_code next_read_message(std::uint8_t& seqnum, boost::asio::const_buffer& output) noexcept
+    {
+        return reader_.get_next_message(seqnum, output);
+    }
+
+    void read(std::size_t num_messages, error_code& code) { return reader_.read(stream_, num_messages, code); }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read(bytestring& buffer, CompletionToken&& token);
+    async_read(std::size_t num_messages, CompletionToken&& token)
+    {
+        return reader_.async_read(stream_, num_messages, std::forward<CompletionToken>(token));
+    }
 
     // Writing
-    void write(boost::asio::const_buffer buffer, error_code& code);
-    void write(const bytestring& buffer, error_code& code)
+    void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code);
+    void write(const bytestring& buffer, std::uint8_t& seqnum, error_code& code)
     {
-        write(boost::asio::buffer(buffer), code);
+        write(boost::asio::buffer(buffer), seqnum, code);
     }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_write(boost::asio::const_buffer buffer, CompletionToken&& token);
+    async_write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, CompletionToken&& token);
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -104,20 +89,16 @@ public:
     }
 
     // SSL
-    bool ssl_active() const noexcept { return ssl_active_; }
-    void set_ssl_active(bool v) noexcept { ssl_active_ = v; }
+    bool ssl_active() const noexcept { return stream_.ssl_active(); }
+    void set_ssl_active(bool v) noexcept { stream_.set_ssl_active(v); }
 
     // Closing (only available for sockets)
     error_code close();
 
-    // Sequence numbers
-    void reset_sequence_number(std::uint8_t value = 0) noexcept { sequence_number_ = value; }
-    std::uint8_t sequence_number() const noexcept { return sequence_number_; }
-
     // Getting the underlying stream
     using stream_type = Stream;
-    stream_type& next_layer() noexcept { return stream_; }
-    const stream_type& next_layer() const noexcept { return stream_; }
+    stream_type& next_layer() noexcept { return stream_.next_layer(); }
+    const stream_type& next_layer() const noexcept { return stream_.next_layer(); }
 
     using lowest_layer_type = typename stream_type::lowest_layer_type;
     lowest_layer_type& lowest_layer() noexcept { return stream_.lowest_layer(); }
@@ -126,10 +107,11 @@ public:
     capabilities current_capabilities() const noexcept { return current_caps_; }
     void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 
-    // Internal buffer & error_info to help async ops
+    // Internal buffer, error_info and sequence_number to help async ops
     const bytestring& shared_buffer() const noexcept { return shared_buff_; }
     bytestring& shared_buffer() noexcept { return shared_buff_; }
     error_info& shared_info() noexcept { return shared_info_; }
+    std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
 };
 
 // Helper class to get move semantics right for some I/O object types
@@ -146,6 +128,6 @@ using channel_observer_ptr = std::unique_ptr<channel<Stream>, null_channel_delet
 } // mysql
 } // boost
 
-#include <boost/mysql/detail/protocol/impl/channel.hpp>
+#include <boost/mysql/detail/channel/impl/channel.hpp>
 
 #endif

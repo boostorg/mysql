@@ -34,10 +34,13 @@ public:
     void set_ssl_active(bool value) noexcept { ssl_active_ = value; }
 
     using executor_type = typename Stream::executor_type;
+    using next_layer_type = Stream;
     using lowest_layer_type = typename Stream::lowest_layer_type;
     
-    lowest_layer_type& lowest_layer() noexcept { return inner_stream_.lowest_layer(); }
     executor_type get_executor() noexcept { return inner_stream_.get_executor(); }
+    next_layer_type& next_layer() noexcept { return inner_stream_; }
+    const next_layer_type& next_layer() const noexcept { return inner_stream_; }
+    lowest_layer_type& lowest_layer() noexcept { return inner_stream_.lowest_layer(); }
 
     template <class MutableBufferSequence>
     std::size_t read_some(const MutableBufferSequence&, error_code& ec);

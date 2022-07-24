@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_VALGRIND_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_VALGRIND_HPP
 
-#include <boost/asio/buffer.hpp>
+#include <cstddef>
 
 #ifdef BOOST_MYSQL_VALGRIND_TESTS
 #include <valgrind/memcheck.h>
@@ -21,15 +21,16 @@ namespace detail {
 #ifdef BOOST_MYSQL_VALGRIND_TESTS
 
 inline void valgrind_make_mem_defined(
-    boost::asio::const_buffer buff
+    const void* data,
+    std::size_t size
 )
 {
-    VALGRIND_MAKE_MEM_DEFINED(buff.data(), buff.size());
+    VALGRIND_MAKE_MEM_DEFINED(data, size);
 }
 
 #else
 
-inline void valgrind_make_mem_defined(boost::asio::const_buffer) {}
+inline void valgrind_make_mem_defined(const void* data, std::size_t size) noexcept {}
 
 #endif
 
