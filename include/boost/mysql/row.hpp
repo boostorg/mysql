@@ -13,6 +13,9 @@
 #include <boost/mysql/value.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <algorithm>
+#include <cstddef>
+#include <initializer_list>
+#include <iterator>
 
 namespace boost {
 namespace mysql {
@@ -47,18 +50,43 @@ class row
 public:
     row() = default;
     row(std::vector<value>&& values, detail::bytestring&& buffer) noexcept :
-            values_(std::move(values)), buffer_(std::move(buffer)) {};
-    row(const row&) = delete;
+            values_(std::move(values)), buffer_(std::move(buffer)) {}; // TODO: hide this
+    row(const row&) = delete; // TODO
     row(row&&) = default;
-    row& operator=(const row&) = delete;
+    row& operator=(const row&) = delete; // TODO
     row& operator=(row&&) = default;
     ~row() = default;
 
-    /// Accessor for the sequence of values.
-    const std::vector<value>& values() const noexcept { return values_; }
+    using iterator = const value*;
+    using const_iterator = iterator;
+    // TODO: add other standard container members when we add field and field_view
 
-    /// Accessor for the sequence of values.
-    std::vector<value>& values() noexcept { return values_; }
+    iterator begin() const noexcept { return values_.data(); }
+    iterator end() const noexcept { return values_.data() + values_.size(); }
+    value at(std::size_t i) const { return values_.at(i); }
+    value operator[](std::size_t i) const noexcept { return values_[i]; }
+    value front() const noexcept { return values_.front(); }
+    value back() const noexcept { return values_.back(); }
+    bool empty() const noexcept { return values_.empty(); }
+    std::size_t size() const noexcept { return values_.size(); }
+
+    iterator insert(iterator before, value v);
+    iterator insert(iterator before, std::initializer_list<value> v);
+    template <class FwdIt>
+    iterator insert(iterator before, FwdIt first, FwdIt last);
+
+    iterator replace(iterator pos, value v);
+    iterator replace(iterator first, iterator last, std::initializer_list<value> v);
+    template <class FwdIt>
+    iterator replace(iterator first, iterator last, FwdIt other_first, FwdIt other_last);
+
+    iterator erase(iterator pos);
+    iterator erase(iterator first, iterator last);
+
+    void push_back(value v);
+    void pop_back();
+
+
 
     /**
      * \brief Clears the row object.
@@ -73,10 +101,102 @@ public:
         buffer_.clear();
     }
 
-    // Private, do not use
+    // TODO: hide these
+    const std::vector<value>& values() const noexcept { return values_; }
+    std::vector<value>& values() noexcept { return values_; }
     const detail::bytestring& buffer() const noexcept { return buffer_; }
     detail::bytestring& buffer() noexcept { return buffer_; }
 };
+
+
+class row_view
+{
+    const value* values_ {};
+    std::size_t size_ {};
+public:
+    row_view() = default;
+    row_view(const value* v, std::size_t size) noexcept : values_ {v}, size_{size} {}
+    row_view(const row& r) noexcept :
+        values_(r.begin()),
+        size_(r.size())
+    {
+    }
+
+    using iterator = const value*;
+    using const_iterator = iterator;
+
+    iterator begin() const noexcept { return values_; }
+    iterator end() const noexcept { return values_ + size_; }
+    value at(std::size_t i) const;
+    value operator[](std::size_t i) const noexcept { return values_[i]; }
+    value front() const noexcept { return values_[0]; }
+    value back() const noexcept { return values_[size_ - 1]; }
+    bool empty() const noexcept { return size_ != 0; }
+    std::size_t size() const noexcept { return size_; }
+};
+
+
+
+class rows
+{
+    std::vector<value> values_;
+    detail::bytestring buffer_;
+    std::size_t num_columns_ {};
+public:
+    rows() = default;
+    rows(std::size_t num_columns) noexcept : num_columns_(num_columns) {}
+    rows(const rows&) = delete; // TODO
+    rows(rows&&) = default;
+    const rows& operator=(const rows&) = delete; // TODO
+    rows& operator=(rows&&) = default;
+
+    class iterator;
+    using const_iterator = iterator;
+    // TODO: add other standard container members
+
+    iterator begin() const noexcept { return iterator(this, 0); }
+    iterator end() const noexcept { return iterator(this, size()); }
+    row_view at(std::size_t i) const { /* TODO: check idx */ return (*this)[i]; }
+    row_view operator[](std::size_t i) const noexcept
+    {
+        std::size_t offset = num_columns_ * i;
+        return row_view(values_.data() + offset, num_columns_);
+    }
+    row_view front() const noexcept { return (*this)[0]; }
+    row_view back() const noexcept { return (*this)[size() - 1]; }
+    bool empty() const noexcept { return values_.empty(); }
+    std::size_t size() const noexcept { return values_.size() / num_columns_; }
+
+    // TODO: hide these
+    std::vector<value>& values() noexcept { return values_; }
+    detail::bytestring& buffer() noexcept { return buffer_; }
+
+
+
+    class iterator
+    {
+        const rows* obj_;
+        std::size_t row_num_;
+    public:
+        using value_type = row_view; // TODO: should this be row?
+        using reference = row_view;
+        using pointer = void const*;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::bidirectional_iterator_tag;
+        // TODO: this can be made random access
+
+        iterator(const rows* obj, std::size_t rownum) noexcept : obj_(obj), row_num_(rownum) {}
+
+        iterator& operator++() noexcept { ++row_num_; return *this; }
+        iterator operator++(int) noexcept { return iterator(obj_, row_num_ + 1); }
+        iterator& operator--() noexcept { --row_num_; return *this; }
+        iterator operator--(int) noexcept { return iterator(obj_, row_num_ - 1); }
+        reference operator*() const noexcept { return (*obj_)[row_num_]; }
+        bool operator==(const iterator& rhs) const noexcept { return obj_ == rhs.obj_&& row_num_ == rhs.row_num_; }
+        bool operator!=(const iterator& rhs) const noexcept { return !(*this == rhs); }
+    };
+};
+
 
 /**
  * \relates row
