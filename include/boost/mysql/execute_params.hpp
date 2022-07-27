@@ -9,12 +9,14 @@
 #define BOOST_MYSQL_EXECUTE_PARAMS_HPP
 
 #include <boost/mysql/value.hpp>
+#include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <iterator>
 #include <type_traits>
 
 namespace boost {
 namespace mysql {
+
 
 /**
   * \brief Represents the parameters required to execute a [reflink prepared_statement].
@@ -32,14 +34,27 @@ namespace mysql {
 template <class ValueForwardIterator>
 class execute_params
 {
+    std::uint32_t statement_id_;
     ValueForwardIterator first_;
     ValueForwardIterator last_;
     static_assert(detail::is_value_forward_iterator<ValueForwardIterator>::value, 
         "ValueForwardIterator requirements not met");
 public:
     /// Constructor.
-    constexpr execute_params(ValueForwardIterator first, ValueForwardIterator last) :
-        first_(first), last_(last) {}
+    constexpr execute_params(
+        std::uint32_t statement_id,
+        ValueForwardIterator first,
+        ValueForwardIterator last
+    ) :
+        statement_id_(statement_id),
+        first_(first),
+        last_(last)
+    {
+    }
+
+    constexpr std::uint32_t statement_id() const noexcept { return statement_id_; }
+
+    void set_statement_id(std::uint32_t v) noexcept { statement_id_ = v; }
 
     /// Retrieves the parameter value range's begin. 
     constexpr ValueForwardIterator first() const { return first_; }
@@ -65,11 +80,26 @@ template <
 >
 constexpr execute_params<ValueForwardIterator>
 make_execute_params(
+    std::uint32_t statement_id,
     ValueForwardIterator first, 
     ValueForwardIterator last
 )
 {
-    return execute_params<ValueForwardIterator>(first, last);
+    return execute_params<ValueForwardIterator>(statement_id, first, last);
+}
+
+template <
+    class ValueForwardIterator,
+    class EnableIf = detail::enable_if_value_forward_iterator<ValueForwardIterator>
+>
+constexpr execute_params<ValueForwardIterator>
+make_execute_params(
+    const prepared_statement& stmt,
+    ValueForwardIterator first, 
+    ValueForwardIterator last
+)
+{
+    return execute_params<ValueForwardIterator>(stmt.id(), first, last);
 }
 
 /**
@@ -88,8 +118,20 @@ constexpr auto make_execute_params(
     return make_execute_params(std::begin(col), std::end(col));
 }
 
+template <
+    class ValueCollection,
+    class EnableIf = detail::enable_if_value_collection<ValueCollection>
+>
+constexpr auto make_execute_params(
+    const prepared_statement& stmt,
+    const ValueCollection& col
+) -> execute_params<decltype(std::begin(col))>
+{
+    return make_execute_params(stmt.id(), std::begin(col), std::end(col));
 }
-}
+
+} // mysql
+} // boost
 
 
 #endif

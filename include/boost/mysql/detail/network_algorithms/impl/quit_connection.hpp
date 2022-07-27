@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/asio/coroutine.hpp>
-#include <boost/mysql/detail/protocol/channel.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/error.hpp>
 
 namespace boost {

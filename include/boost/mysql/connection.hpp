@@ -9,17 +9,20 @@
 #define BOOST_MYSQL_CONNECTION_HPP
 
 #include <boost/asio/ssl/context.hpp>
-#include <type_traits>
 
 #ifndef BOOST_MYSQL_DOXYGEN // For some arcane reason, Doxygen fails to expand Asio macros without this
 
-#include <boost/mysql/detail/protocol/channel.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
+#include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/row.hpp>
+#include <type_traits>
 
 #endif
 
@@ -61,7 +64,7 @@ template <
 class connection
 {
     std::unique_ptr<detail::channel<Stream>> channel_;
-protected:
+
     detail::channel<Stream>& get_channel() noexcept
     {
         assert(valid());
@@ -338,7 +341,7 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    resultset<Stream> query(boost::string_view query_string, error_code&, error_info&);
+    void query(boost::string_view query_string, resultset& result, error_code&, error_info&);
 
     /**
      * \brief Executes a SQL text query (sync with exceptions version).
@@ -348,7 +351,7 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    resultset<Stream> query(boost::string_view query_string);
+    void query(boost::string_view query_string, resultset& result);
 
     /**
      * \brief Executes a SQL text query (async without [reflink error_info] version).
@@ -362,19 +365,18 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(
-            void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
-        )
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         boost::string_view query_string,
+        resultset& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_query(query_string, shared_info(), std::forward<CompletionToken>(token));
+        return async_query(query_string, result, shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -389,15 +391,14 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(
-            void(::boost::mysql::error_code, ::boost::mysql::resultset<Stream>)
-        )
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         boost::string_view query_string,
+        resultset& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
@@ -408,7 +409,7 @@ public:
      * Prepared statements are only valid while the connection object on which
      * this function was called is alive and open.
      */
-    prepared_statement<Stream> prepare_statement(boost::string_view statement, error_code&, error_info&);
+    void prepare_statement(boost::string_view statement, prepared_statement& result, error_code&, error_info&);
 
     /**
      * \brief Prepares a statement (sync with exceptions version).
@@ -416,7 +417,7 @@ public:
      * Prepared statements are only valid while the connection object on which
      * this function was called is alive and open.
      */
-    prepared_statement<Stream> prepare_statement(boost::string_view statement);
+    void prepare_statement(boost::string_view statement, prepared_statement& result);
 
     /**
      * \brief Prepares a statement (async without [reflink error_info] version).
@@ -428,19 +429,18 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::prepared_statement<Stream>)`
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(
-            void(::boost::mysql::error_code, ::boost::mysql::prepared_statement<Stream>)
-        )
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, prepared_statement<Stream>))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_prepare_statement(
         boost::string_view statement,
+        prepared_statement& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_prepare_statement(statement, shared_info(), std::forward<CompletionToken>(token));
+        return async_prepare_statement(statement, result, shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -453,15 +453,477 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::prepared_statement<Stream>)`
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(
-            void(::boost::mysql::error_code, ::boost::mysql::prepared_statement<Stream>)
-        )
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, prepared_statement<Stream>))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_prepare_statement(
         boost::string_view statement,
+        prepared_statement& result,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+
+    /**
+     * \brief Executes a statement (collection, sync with error code version).
+     * \details
+     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     *
+     * After this function has returned, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     */
+    template <class ValueCollection, class EnableIf = detail::enable_if_value_collection<ValueCollection>>
+    void execute_statement(
+        const prepared_statement& statement,
+        const ValueCollection& params,
+        resultset& result,
+        error_code& err,
+        error_info& info
+    )
+    {
+        return execute_statement(make_execute_params(statement, params), result, err, info);
+    }
+
+    /**
+     * \brief Executes a statement (collection, sync with exceptions version).
+     * \details
+     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     *
+     * After this function has returned, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     */
+    template <class ValueCollection, class EnableIf = detail::enable_if_value_collection<ValueCollection>>
+    void execute_statement(
+        const prepared_statement& statement,
+        const ValueCollection& params,
+        resultset& result
+    )
+    {
+        return execute_statement(make_execute_params(statement, params), result);
+    }
+
+    /**
+     * \brief Executes a statement (collection,
+     *        async without [reflink error_info] version).
+     * \details
+     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     *
+     * After this operation completes, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     * It is __not__ necessary to keep the collection of parameters or the
+     * values they may point to alive after the initiating function returns.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
+     */
+    template <
+        class ValueCollection,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+            class EnableIf = detail::enable_if_value_collection<ValueCollection>
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute_statement(
+        const prepared_statement& statement,
+        const ValueCollection& params,
+        resultset& result,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute_statement(
+            make_execute_params(statement, params),
+            result,
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /**
+     * \brief Executes a statement (collection,
+     *        async with [reflink error_info] version).
+     * \details
+     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     *
+     * After this operation completes, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     * It is __not__ necessary to keep the collection of parameters or the
+     * values they may point to alive after the initiating function returns.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
+     */
+    template <
+        class ValueCollection,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+            class EnableIf = detail::enable_if_value_collection<ValueCollection>
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute_statement(
+        const prepared_statement& statement,
+        const ValueCollection& params,
+        resultset& result,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute_statement(
+            make_execute_params(statement, params),
+            result,
+            output_info,
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+
+    /**
+     * \brief Executes a statement (`execute_params`, sync with error code version).
+     * \details
+     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
+     *
+     * After this function has returned, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     */
+    template <class ValueForwardIterator>
+    void execute_statement(
+        const execute_params<ValueForwardIterator>& params,
+        resultset& result,
+        error_code& ec,
+        error_info& info
+    );
+
+    /**
+     * \brief Executes a statement (`execute_params`, sync with exceptions version).
+     * \details
+     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
+     *
+     * After this function has returned, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     */
+    template <class ValueForwardIterator>
+    void execute_statement(
+        const execute_params<ValueForwardIterator>& params,
+        resultset& result
+    );
+
+    /**
+     * \brief Executes a statement (`execute_params`,
+     *        async without [reflink error_info] version).
+     * \details
+     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
+     *
+     * After this operation completes, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     *
+     * It is __not__ necessary to keep the objects in
+     * \\[`params.first()`, `params.last()`) or the
+     * values they may point to alive after the initiating function returns.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
+     */
+    template <
+        class ValueForwardIterator,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute_statement(
+        const execute_params<ValueForwardIterator>& params,
+        resultset& result,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute(params, result, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Executes a statement (`execute_params`,
+     *        async with [reflink error_info] version).
+     * \details
+     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
+     * statement execution. They should be a valid iterator range.
+     *
+     * After this operation completes, you should read the entire resultset
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     *
+     * It is __not__ necessary to keep the objects in
+     * \\[`params.first()`, `params.last()`) or the
+     * values they may point to alive after the initiating function returns.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
+     */
+    template <
+        class ValueForwardIterator,
+            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken
+            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute_statement(
+        const execute_params<ValueForwardIterator>& params,
+        resultset& result,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+
+    /**
+     * \brief Closes a prepared statement, deallocating it from the server
+              (sync with error code version).
+     * \details
+     * After calling this function, no further functions may be called on this prepared
+     * statement, other than assignment. Failing to do so results in undefined behavior.
+     */
+    void close_statement(const prepared_statement&, error_code&, error_info&);
+
+    /**
+     * \brief Closes a prepared statement, deallocating it from the server
+              (sync with exceptions version).
+     * \details
+     * After calling this function, no further functions may be called on this prepared
+     * statement, other than assignment. Failing to do so results in undefined behavior.
+     */
+    void close_statement(const prepared_statement&);
+
+    /**
+     * \brief Closes a prepared statement, deallocating it from the server
+              (async without [reflink error_info] version).
+     * \details
+     * After the operation completes, no further functions may be called on this prepared
+     * statement, other than assignment. Failing to do so results in undefined behavior.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_close_statement(
+        const prepared_statement& stmt,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_close_statement(stmt, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Closes a prepared statement, deallocating it from the server
+              (async with [reflink error_info] version).
+     * \details
+     * After the operation completes, no further functions may be called on this prepared
+     * statement, other than assignment. Failing to do so results in undefined behavior.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_close_statement(
+        const prepared_statement& stmt,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+
+    /**
+     * \brief Reads a single row (sync with error code version).
+     * \details Returns `true` if a row was read successfully, `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and returns `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but returns `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
+     */
+    bool read_one_row(resultset& resultset, row& output, error_code& err, error_info& info);
+
+    /**
+     * \brief Reads a single row (sync with exceptions version).
+     * \details Returns `true` if a row was read successfully, `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and returns `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but returns `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
+     */
+    bool read_one_row(resultset& resultset, row& output);
+
+    /**
+     * \brief Reads a single row (async without [reflink error_info] version).
+     * \details Completes with `true` if a row was read successfully, and with `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and completes with `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but completes with `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, bool)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    async_read_one_row(
+        resultset& resultset,
+        row& output,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_read_one_row(resultset, output, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Reads a single row (async with [reflink error_info] version).
+     * \details Completes with `true` if a row was read successfully, and with `false` if
+     * there was an error or there were no more rows to read. Calling
+     * this function on a complete resultset always returns `false`.
+     * 
+     * If the operation succeeds and completes with `true`, the new row will be
+     * read against `output`, possibly reusing its memory. If the operation
+     * succeeds but completes with `false`, `output` will be set to the empty row
+     * (as if [refmem row clear] was called). If the operation fails,
+     * `output` is left in a valid but undetrmined state.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, bool)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    async_read_one_row(
+        resultset& resultset,
+    	row& output,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    bool read_some_rows(resultset& resultset, rows_view& output, error_code& err, error_info& info);
+    bool read_some_rows(resultset& resultset, rows_view& output);
+
+    /**
+     * \brief Reads several rows, up to a maximum
+     *        (async without [reflink error_info] version).
+     * \details
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    async_read_some_rows(
+        resultset& resultset,
+        rows_view& output,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_read_some_rows(resultset, output, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Reads several rows, up to a maximum
+     *        (async with [reflink error_info] version).
+     * \details
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    async_read_some_rows(
+        resultset& resultset,
+        rows_view& output,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /// Reads all available rows (sync with error code version).
+    void read_all_rows(resultset& resultset, rows& output, error_code& err, error_info& info);
+
+    /// Reads all available rows (sync with exceptions version).
+    void read_all_rows(resultset& resultset, rows& output);
+
+    /**
+     * \brief Reads all available rows (async without [reflink error_info] version).
+     * \details
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_read_all_rows(
+        resultset& resultset,
+        rows& output,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_read_all_rows(resultset, output, shared_info(), std::forward<CompletionToken>(token));
+    }
+
+    /**
+     * \brief Reads all available rows (async with [reflink error_info] version).
+     * \details
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        CompletionToken
+        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_read_all_rows(
+        resultset& resultset,
+        rows& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

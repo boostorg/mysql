@@ -114,16 +114,6 @@ public:
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
 };
 
-// Helper class to get move semantics right for some I/O object types
-template <class Stream>
-struct null_channel_deleter
-{
-    void operator()(channel<Stream>*) const noexcept {}
-};
-
-template <class Stream>
-using channel_observer_ptr = std::unique_ptr<channel<Stream>, null_channel_deleter<Stream>>;
-
 } // detail
 } // mysql
 } // boost
