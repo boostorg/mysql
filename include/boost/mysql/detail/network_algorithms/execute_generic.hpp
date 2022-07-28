@@ -21,19 +21,20 @@ void execute_generic(
     deserialize_row_fn deserializer,
     channel<Stream>& channel,
     const Serializable& request,
-    resultset<Stream>& output,
+    resultset& output,
     error_code& err,
     error_info& info
 );
 
 template <class Stream, class Serializable, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_generic(
     deserialize_row_fn deserializer,
     channel<Stream>& chan,
     const Serializable& request,
-    CompletionToken&& token,
-    error_info& info
+    resultset& output,
+    error_info& info,
+    CompletionToken&& token
 );
 
 } // detail

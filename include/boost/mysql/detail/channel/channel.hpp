@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
 
 #include "boost/mysql/error.hpp"
+#include <boost/asio/buffer.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
@@ -35,6 +36,7 @@ class channel
 
     void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum); // writes to header_buffer_
 
+    struct read_one_op;
     struct write_op;
 public:
     channel() = default; // Simplify life if stream is default constructible, mainly for tests
@@ -56,9 +58,9 @@ public:
 
     // Reading
     std::size_t num_read_messages() const noexcept { return reader_.num_cached_messages(); }
-    error_code next_read_message(std::uint8_t& seqnum, boost::asio::const_buffer& output) noexcept
+    boost::asio::const_buffer next_read_message(std::uint8_t& seqnum, error_code& err) noexcept
     {
-        return reader_.get_next_message(seqnum, output);
+        return reader_.get_next_message(seqnum, err);
     }
 
     void read(std::size_t num_messages, error_code& code) { return reader_.read(stream_, num_messages, code); }
@@ -69,6 +71,19 @@ public:
     {
         return reader_.async_read(stream_, num_messages, std::forward<CompletionToken>(token));
     }
+
+    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec)
+    {
+        ec = reader_.read(stream_, 1, ec);
+        if (ec)
+            return {};
+        return next_read_message(seqnum, ec);
+    }
+
+    // TODO: implement this
+    template <class CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
+    async_read_one(std::uint8_t& seqnum, CompletionToken&& token);
 
     // Writing
     void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code);

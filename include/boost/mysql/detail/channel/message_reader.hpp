@@ -37,18 +37,18 @@ public:
 
     std::size_t num_cached_messages() const noexcept { return cached_messages_.size(); }
 
-    error_code get_next_message(std::uint8_t& seqnum, boost::asio::const_buffer& output) noexcept
+    boost::asio::const_buffer get_next_message(std::uint8_t& seqnum, error_code& ec) noexcept
     {
         assert(message_cursor_ < cached_messages_.size());
         const auto& msg = cached_messages_[message_cursor_];
         if (seqnum != msg.seqnum_first)
         {
-            return make_error_code(errc::sequence_number_mismatch);
+            ec = make_error_code(errc::sequence_number_mismatch);
+            return {};
         }
         seqnum = msg.seqnum_last + 1;
-        output = boost::asio::buffer(buffer_.processing_first() + msg.first, msg.length);
         ++message_cursor_;
-        return error_code();
+        return boost::asio::buffer(buffer_.processing_first() + msg.first, msg.length);
     }
 
     // Reads at least num_messages from Stream
@@ -122,6 +122,8 @@ private:
                     ec = reader_.on_read_bytes(bytes_read);
                     if (ec) self.complete(ec);
                 }
+
+                // TODO: post if messages are cached
 
                 self.complete(error_code());
             }

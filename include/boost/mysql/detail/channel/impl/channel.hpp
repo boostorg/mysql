@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_CHANNEL_HPP
 
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/coroutine.hpp>
 #pragma once
 
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -34,6 +36,47 @@ inline std::uint32_t compute_size_to_write(
         buffer_size - transferred_size
     ));
 }
+
+
+template<class Stream>
+struct boost::mysql::detail::channel<Stream>::read_one_op
+    : boost::asio::coroutine
+{
+    channel<Stream>& chan_;
+    std::uint8_t& seqnum_;
+
+    read_one_op(
+        channel<Stream>& chan,
+        std::uint8_t& seqnum
+    ) :
+        chan_(chan),
+        seqnum_(seqnum)
+    {
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code code = {}
+    )
+    {
+        // Error handling
+        if (code)
+        {
+            self.complete(code);
+            return;
+        }
+
+        // Non-error path
+        boost::asio::const_buffer b;
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            BOOST_ASIO_CORO_YIELD chan_.async_read(1, std::move(self));
+            b = chan_.next_read_message(seqnum_, code);
+            self.complete(code, b);
+        }
+    }
+};
 
 
 } // detail
@@ -162,6 +205,24 @@ boost::mysql::detail::channel<Stream>::async_write(
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         write_op(*this, buffer, seqnum),
+        token,
+        *this
+    );
+}
+
+template <class Stream>
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code, ::boost::asio::const_buffer)
+)
+boost::mysql::detail::channel<Stream>::async_read_one(
+    std::uint8_t& seqnum,
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
+        read_one_op(*this, seqnum),
         token,
         *this
     );

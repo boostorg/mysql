@@ -16,6 +16,7 @@
 #include <boost/mysql/detail/network_algorithms/common.hpp> // deserialize_row_fn
 #include <boost/utility/string_view_fwd.hpp>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -70,6 +71,7 @@ class resultset
     };
 
     bool valid_ {false};
+    std::uint8_t seqnum_ {};
     detail::deserialize_row_fn deserializer_ {};
     std::vector<field_metadata> meta_;
     ok_packet_data ok_packet_;
@@ -92,6 +94,37 @@ public:
         ok_packet_(ok_pack)
     {
     };
+
+    void reset(
+        detail::deserialize_row_fn deserializer
+    )
+    {
+        valid_ = true;
+        seqnum_ = 0;
+        deserializer_ = deserializer;
+        meta_.clear();
+        ok_packet_.reset();
+    }
+
+    void complete(const detail::ok_packet& ok_pack)
+    {
+        assert(valid_);
+        ok_packet_.assign(ok_pack);
+    }
+
+    void prepare_meta(std::size_t num_fields)
+    {
+        meta_.resize(num_fields);
+    }
+
+    void add_meta(const detail::column_definition_packet& pack)
+    {
+        meta_.emplace_back(pack, true);
+    }
+
+    std::uint8_t& sequence_number() noexcept { return seqnum_; }
+
+    std::vector<field_metadata>& meta() noexcept { return meta_; }
 #endif
 
     /**

@@ -28,8 +28,7 @@ void boost::mysql::detail::close_statement(
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
 
     // Send it. No response is sent back
-    chan.reset_sequence_number();
-    chan.write(boost::asio::buffer(chan.shared_buffer()), code);
+    chan.write(boost::asio::buffer(chan.shared_buffer()), chan.shared_sequence_number(), code);
 }
 
 template <class Stream, class CompletionToken>
@@ -51,9 +50,9 @@ boost::mysql::detail::async_close_statement(
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
 
     // Send it. No response is sent back
-    chan.reset_sequence_number();
     return chan.async_write(
         boost::asio::buffer(chan.shared_buffer()),
+        chan.shared_sequence_number(),
         std::forward<CompletionToken>(token)
     );
 }
