@@ -22,20 +22,21 @@ void execute_statement(
     std::uint32_t statement_id,
     ValueForwardIterator params_begin,
     ValueForwardIterator params_end,
-    resultset<Stream>& output,
+    resultset& output,
     error_code& err,
     error_info& info
 );
 
 template <class Stream, class ValueForwardIterator, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_statement(
     channel<Stream>& chan,
     std::uint32_t statement_id,
     ValueForwardIterator params_begin,
     ValueForwardIterator params_end,
-    CompletionToken&& token,
-    error_info& info
+    resultset& output,
+    error_info& info,
+    CompletionToken&& token
 );
 
 } // detail

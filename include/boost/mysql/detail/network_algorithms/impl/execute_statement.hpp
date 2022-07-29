@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/protocol/binary_deserialization.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
@@ -46,7 +47,7 @@ void boost::mysql::detail::execute_statement(
     std::uint32_t statement_id,
     ValueForwardIterator params_begin,
     ValueForwardIterator params_end,
-    resultset<Stream>& output,
+    resultset& output,
     error_code& err,
     error_info& info
 )
@@ -64,23 +65,25 @@ void boost::mysql::detail::execute_statement(
 template <class Stream, class ValueForwardIterator, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
     std::uint32_t statement_id,
     ValueForwardIterator params_begin,
     ValueForwardIterator params_end,
-    CompletionToken&& token,
-    error_info& info
+    resultset& output,
+    error_info& info,
+    CompletionToken&& token
 )
 {
     return async_execute_generic(
         &deserialize_binary_row,
         chan,
         make_stmt_execute_packet(statement_id, params_begin, params_end),
-        std::forward<CompletionToken>(token),
-        info
+        output,
+        info,
+        std::forward<CompletionToken>(token)
     );
 }
 

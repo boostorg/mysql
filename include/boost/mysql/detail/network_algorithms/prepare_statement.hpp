@@ -19,18 +19,19 @@ template <class Stream>
 void prepare_statement(
     channel<Stream>& chan,
     boost::string_view statement,
+    prepared_statement& output,
     error_code& err,
-    error_info& info,
-    prepared_statement<Stream>& output
+    error_info& info
 );
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, prepared_statement<Stream>))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_prepare_statement(
     channel<Stream>& chan,
     boost::string_view statement,
-    CompletionToken&& token,
-    error_info& info
+    prepared_statement& output,
+    error_info& info,
+    CompletionToken&& token
 );
 
 } // detail

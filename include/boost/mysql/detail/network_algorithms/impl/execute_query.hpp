@@ -19,7 +19,7 @@ template <class Stream>
 void boost::mysql::detail::execute_query(
     channel<Stream>& channel,
     boost::string_view query,
-    resultset<Stream>& output,
+    resultset& output,
     error_code& err,
     error_info& info
 )
@@ -39,13 +39,14 @@ void boost::mysql::detail::execute_query(
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::resultset<Stream>)
+    void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_execute_query(
     channel<Stream>& chan,
     boost::string_view query,
-    CompletionToken&& token,
-    error_info& info
+    resultset& output,
+    error_info& info,
+    CompletionToken&& token
 )
 {
     com_query_packet request { string_eof(query) };
@@ -53,8 +54,9 @@ boost::mysql::detail::async_execute_query(
         &deserialize_text_row,
         chan,
         request,
-        std::forward<CompletionToken>(token),
-        info
+        output,
+        info,
+        std::forward<CompletionToken>(token)
     );
 }
 

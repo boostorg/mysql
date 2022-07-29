@@ -29,7 +29,6 @@ void compose_quit(
         chan.current_capabilities(),
         chan.shared_buffer()
     );
-    chan.reset_sequence_number();
 }
 
 template <typename Stream>
@@ -106,7 +105,7 @@ struct quit_connection_op<Stream, false> : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Quit message
-            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), chan_.shared_sequence_number(), std::move(self));
             self.complete(err);
         }
     }
@@ -124,7 +123,7 @@ void boost::mysql::detail::quit_connection(
 )
 {
     compose_quit(chan);
-    chan.write(chan.shared_buffer(), code);
+    chan.write(chan.shared_buffer(), chan.shared_sequence_number(), code);
     if (!code)
     {
         // SSL shutdown. Result ignored as MySQL does not always perform

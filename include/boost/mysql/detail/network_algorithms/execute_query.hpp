@@ -20,18 +20,19 @@ template <class Stream>
 void execute_query(
     channel<Stream>& channel,
     boost::string_view query,
-    resultset<Stream>& output,
+    resultset& output,
     error_code& err,
     error_info& info
 );
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, resultset<Stream>))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_query(
     channel<Stream>& chan,
     boost::string_view query,
-    CompletionToken&& token,
-    error_info& info
+    resultset& output,
+    error_info& info,
+    CompletionToken&& token
 );
 
 }
