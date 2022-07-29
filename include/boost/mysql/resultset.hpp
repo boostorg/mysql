@@ -8,8 +8,10 @@
 #ifndef BOOST_MYSQL_RESULTSET_HPP
 #define BOOST_MYSQL_RESULTSET_HPP
 
+#include <boost/mysql/error.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
@@ -120,6 +122,11 @@ public:
     void add_meta(const detail::column_definition_packet& pack)
     {
         meta_.emplace_back(pack, true);
+    }
+
+    error_code deserialize_row(detail::deserialization_context& ctx, std::vector<value>& output)
+    {
+        return deserializer_(ctx, meta_, output);
     }
 
     std::uint8_t& sequence_number() noexcept { return seqnum_; }

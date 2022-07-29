@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ROW_HPP
 
 #include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/utility/string_view.hpp>
@@ -18,36 +19,23 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-enum class read_row_result
-{
-    error,
-    row,
-    eof
-};
-
 template <class Stream>
-read_row_result read_row(
-    deserialize_row_fn deserializer,
+bool read_one_row(
     channel<Stream>& channel,
-    const std::vector<field_metadata>& meta,
+    resultset& resultset,
 	row& output,
-	bytestring& ok_packet_buffer,
-    ok_packet& output_ok_packet,
     error_code& err,
     error_info& info
 );
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, read_row_result))
-async_read_row(
-    deserialize_row_fn deserializer,
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+async_read_one_row(
     channel<Stream>& channel,
-    const std::vector<field_metadata>& meta,
+    resultset& resultset,
 	row& output,
-    bytestring& ok_packet_buffer,
-	ok_packet& output_ok_packet,
-    CompletionToken&& token,
-    error_info& output_info
+    error_info& output_info,
+    CompletionToken&& token
 );
 
 
@@ -55,7 +43,7 @@ async_read_row(
 } // mysql
 } // boost
 
-#include <boost/mysql/detail/network_algorithms/impl/read_row.hpp>
+#include <boost/mysql/detail/network_algorithms/impl/read_one_row.hpp>
 
 
 

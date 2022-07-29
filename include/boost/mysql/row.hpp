@@ -14,8 +14,10 @@
 #include <boost/mysql/metadata.hpp>
 #include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <initializer_list>
 #include <iterator>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -46,11 +48,9 @@ namespace mysql {
 class row
 {
     std::vector<value> values_;
-    detail::bytestring buffer_;
+    std::vector<char> buffer_;
 public:
     row() = default;
-    row(std::vector<value>&& values, detail::bytestring&& buffer) noexcept :
-            values_(std::move(values)), buffer_(std::move(buffer)) {}; // TODO: hide this
     row(const row&) = delete; // TODO
     row(row&&) = default;
     row& operator=(const row&) = delete; // TODO
@@ -104,8 +104,35 @@ public:
     // TODO: hide these
     const std::vector<value>& values() const noexcept { return values_; }
     std::vector<value>& values() noexcept { return values_; }
-    const detail::bytestring& buffer() const noexcept { return buffer_; }
-    detail::bytestring& buffer() noexcept { return buffer_; }
+    void copy_strings()
+    {
+        // Calculate size
+        std::size_t size = 0;
+        for (const auto& v: values_)
+        {
+            auto typed_value = v.get_optional<boost::string_view>();
+            if (typed_value.has_value())
+            {
+                size += typed_value->size();
+            }
+        }
+
+        // Make space
+        buffer_.resize(size);
+
+        // Copy the strings
+        std::size_t offset = 0;
+        for (auto& v: values_)
+        {
+            auto typed_value = v.get_optional<boost::string_view>();
+            if (typed_value.has_value())
+            {
+                std::memcpy(buffer_.data() + offset, typed_value->data(), typed_value->size());
+                v = value(boost::string_view(buffer_.data() + offset, typed_value->size()));
+                offset += typed_value->size();
+            }
+        }
+    }
 };
 
 
