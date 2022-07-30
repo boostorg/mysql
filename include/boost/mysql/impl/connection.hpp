@@ -332,6 +332,57 @@ boost::mysql::connection<Stream>::async_close_statement(
     );
 }
 
+// Read one row
+template <class Stream>
+bool boost::mysql::connection<Stream>::read_one_row(
+    resultset& resultset,
+	row& output,
+    error_code& err,
+    error_info& info
+)
+{
+    detail::clear_errors(err, info);
+    detail::read_one_row(get_channel(), resultset, output, err, info);
+}
+
+
+template <class Stream>
+bool boost::mysql::connection<Stream>::read_one_row(
+    resultset& resultset,
+	row& output
+)
+{
+    detail::error_block blk;
+    bool res = detail::read_one_row(get_channel(), resultset, output, blk.err, blk.info);
+    blk.check();
+    return res;
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
+    void(::boost::mysql::error_code, bool)
+) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code, bool)
+)
+boost::mysql::connection<Stream>::async_read_one_row(
+    resultset& resultset,
+	row& output,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    output_info.clear();
+    return detail::async_read_one_row(
+        get_channel(),
+        resultset,
+        output,
+        output_info,
+        std::forward<CompletionToken>(token)
+    );
+}
+
 
 // Close
 template <class Stream>

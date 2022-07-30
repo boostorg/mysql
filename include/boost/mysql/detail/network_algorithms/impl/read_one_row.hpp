@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/asio/post.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
@@ -106,6 +107,15 @@ struct read_one_row_op : boost::asio::coroutine
         bool result;
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            // If the resultset is already complete, we don't need to read anything
+            if (resultset_.complete())
+            {
+                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                output_.clear();
+                self.complete(error_code(), false);
+                BOOST_ASIO_CORO_YIELD break;
+            }
+
             // Read the message
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(resultset_.sequence_number(), std::move(self));
 
@@ -137,6 +147,13 @@ bool boost::mysql::detail::read_one_row(
     error_info& info
 )
 {
+    // If the resultset is already complete, we don't need to read anything
+    if (resultset.complete())
+    {
+        output.clear();
+        return false;
+    }
+
     // Read a packet
     auto read_message = channel.read_one(resultset.sequence_number(), err);
     if (err)

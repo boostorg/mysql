@@ -20,47 +20,6 @@
 #include <memory>
 
 template <class Stream>
-bool boost::mysql::resultset<Stream>::read_one(
-	row& output,
-    error_code& err,
-    error_info& info
-)
-{
-    assert(valid());
-
-    detail::clear_errors(err, info);
-
-    if (complete())
-    {
-        output.clear();
-        return false;
-    }
-    auto result = detail::read_row(
-        deserializer_,
-        *channel_,
-        meta_.fields(),
-        output,
-		ok_packet_buffer_,
-        ok_packet_,
-        err,
-        info
-    );
-    eof_received_ = result == detail::read_row_result::eof;
-    return result == detail::read_row_result::row;
-}
-
-template <class Stream>
-bool boost::mysql::resultset<Stream>::read_one(
-	row& output
-)
-{
-    detail::error_block blk;
-    bool res = read_one(output, blk.err, blk.info);
-    blk.check();
-    return res;
-}
-
-template <class Stream>
 std::vector<boost::mysql::row> boost::mysql::resultset<Stream>::read_many(
     std::size_t count,
     error_code& err,
@@ -114,84 +73,6 @@ std::vector<boost::mysql::row> boost::mysql::resultset<Stream>::read_all()
 {
     return read_many(std::numeric_limits<std::size_t>::max());
 }
-
-template<class Stream>
-struct boost::mysql::resultset<Stream>::read_one_op
-    : boost::asio::coroutine
-{
-    resultset<Stream>& resultset_;
-    row& output_;
-    error_info& output_info_;
-
-    read_one_op(
-        resultset<Stream>& obj,
-		row& output,
-        error_info& output_info
-    ) :
-        resultset_(obj),
-		output_(output),
-        output_info_(output_info)
-    {
-    }
-
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {},
-        detail::read_row_result result=detail::read_row_result::error
-    )
-    {
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            if (resultset_.complete())
-            {
-                // ensure return as if by post
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-                output_.clear();
-                self.complete(error_code(), false);
-                BOOST_ASIO_CORO_YIELD break;
-            }
-            BOOST_ASIO_CORO_YIELD detail::async_read_row(
-                resultset_.deserializer_,
-                *resultset_.channel_,
-                resultset_.meta_.fields(),
-				output_,
-                resultset_.ok_packet_buffer_,
-                resultset_.ok_packet_,
-                std::move(self),
-                output_info_
-            );
-            resultset_.eof_received_ = result == detail::read_row_result::eof;
-            self.complete(
-                err,
-                result == detail::read_row_result::row
-            );
-        }
-    }
-};
-
-template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(::boost::mysql::error_code, bool)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code, bool)
-)
-boost::mysql::resultset<Stream>::async_read_one(
-	row& output,
-    error_info& output_info,
-    CompletionToken&& token
-)
-{
-    assert(valid());
-    output_info.clear();
-    return boost::asio::async_compose<CompletionToken, void(error_code, bool)>(
-        read_one_op(*this, output, output_info),
-        token,
-        *this
-    );
-}
-
 
 
 template<class Stream>
