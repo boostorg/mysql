@@ -43,10 +43,6 @@ class prepared_statement
 {
     bool valid_ {false};
     detail::com_stmt_prepare_ok_packet stmt_msg_;
-
-    template <class ValueForwardIterator>
-    void check_num_params(ValueForwardIterator first, ValueForwardIterator last, error_code& err, error_info& info) const;
-
 public:
     /**
       * \brief Default constructor. 

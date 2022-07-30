@@ -30,8 +30,8 @@ async_connect(
     channel<Stream>& chan,
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const connection_params& params,
-    CompletionToken&& token,
-    error_info& info
+    error_info& info,
+    CompletionToken&& token
 );
 
 } // detail

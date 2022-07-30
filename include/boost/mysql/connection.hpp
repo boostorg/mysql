@@ -521,7 +521,7 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
-    template <
+    template<
         class ValueCollection,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken

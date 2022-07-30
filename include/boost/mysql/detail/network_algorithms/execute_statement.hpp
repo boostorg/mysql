@@ -11,6 +11,8 @@
 #include <boost/mysql/detail/network_algorithms/common.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/value.hpp>
+#include <boost/mysql/prepared_statement.hpp>
+#include <boost/mysql/execute_params.hpp>
 
 namespace boost {
 namespace mysql {
@@ -19,9 +21,7 @@ namespace detail {
 template <class Stream, class ValueForwardIterator>
 void execute_statement(
     channel<Stream>& channel,
-    std::uint32_t statement_id,
-    ValueForwardIterator params_begin,
-    ValueForwardIterator params_end,
+    const execute_params<ValueForwardIterator>& params,
     resultset& output,
     error_code& err,
     error_info& info
@@ -31,9 +31,7 @@ template <class Stream, class ValueForwardIterator, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_statement(
     channel<Stream>& chan,
-    std::uint32_t statement_id,
-    ValueForwardIterator params_begin,
-    ValueForwardIterator params_end,
+    const execute_params<ValueForwardIterator>& params,
     resultset& output,
     error_info& info,
     CompletionToken&& token

@@ -11,6 +11,7 @@
 #pragma once
 
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/protocol/binary_deserialization.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
@@ -22,20 +23,19 @@ namespace detail {
 
 template <class ValueForwardIterator>
 com_stmt_execute_packet<ValueForwardIterator> make_stmt_execute_packet(
-    std::uint32_t statement_id,
-    ValueForwardIterator params_begin,
-    ValueForwardIterator params_end
+    const execute_params<ValueForwardIterator>& params
 )
 {
     return com_stmt_execute_packet<ValueForwardIterator> {
-        statement_id,
+        params.statement_id(),
         std::uint8_t(0),  // flags
         std::uint32_t(1), // iteration count
         std::uint8_t(1),  // new params flag: set
-        params_begin,
-        params_end
+        params.first(),
+        params.last()
     };
 }
+
 
 } // detail
 } // mysql
@@ -44,9 +44,7 @@ com_stmt_execute_packet<ValueForwardIterator> make_stmt_execute_packet(
 template <class Stream, class ValueForwardIterator>
 void boost::mysql::detail::execute_statement(
     channel<Stream>& chan,
-    std::uint32_t statement_id,
-    ValueForwardIterator params_begin,
-    ValueForwardIterator params_end,
+    const execute_params<ValueForwardIterator>& params,
     resultset& output,
     error_code& err,
     error_info& info
@@ -55,7 +53,7 @@ void boost::mysql::detail::execute_statement(
     execute_generic(
         &deserialize_binary_row,
         chan,
-        make_stmt_execute_packet(statement_id, params_begin, params_end),
+        make_stmt_execute_packet(params),
         output,
         err,
         info
@@ -69,9 +67,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
-    std::uint32_t statement_id,
-    ValueForwardIterator params_begin,
-    ValueForwardIterator params_end,
+    const execute_params<ValueForwardIterator>& params,
     resultset& output,
     error_info& info,
     CompletionToken&& token
@@ -80,7 +76,7 @@ boost::mysql::detail::async_execute_statement(
     return async_execute_generic(
         &deserialize_binary_row,
         chan,
-        make_stmt_execute_packet(statement_id, params_begin, params_end),
+        make_stmt_execute_packet(params),
         output,
         info,
         std::forward<CompletionToken>(token)

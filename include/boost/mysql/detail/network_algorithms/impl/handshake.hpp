@@ -551,8 +551,8 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 boost::mysql::detail::async_handshake(
     channel<Stream>& chan,
     const connection_params& params,
-    CompletionToken&& token,
-    error_info& info
+    error_info& info,
+    CompletionToken&& token
 )
 {
     chan.reset();
