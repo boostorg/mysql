@@ -16,6 +16,7 @@
 #include <boost/mysql/detail/channel/message_reader.hpp>
 #include <array>
 #include <cstddef>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -33,6 +34,7 @@ class channel
     std::uint8_t shared_sequence_number_ {}; // for async ops
     bytestring shared_buff_; // for async ops
     error_info shared_info_; // for async ops
+    std::vector<value> shared_values_; // for read_some ops
 
     void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum); // writes to header_buffer_
 
@@ -127,6 +129,8 @@ public:
     bytestring& shared_buffer() noexcept { return shared_buff_; }
     error_info& shared_info() noexcept { return shared_info_; }
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
+    std::vector<value>& shared_values() noexcept { return shared_values_; }
+    const std::vector<value>& shared_values() const noexcept { return shared_values_; }
 };
 
 } // detail

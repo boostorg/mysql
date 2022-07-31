@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/mysql/row.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/resultset.hpp>
@@ -20,6 +21,7 @@
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/close_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
+#include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/close_connection.hpp>
 #include <boost/asio/buffer.hpp>
@@ -37,7 +39,7 @@ void boost::mysql::connection<Stream>::connect(
 )
 {
     detail::clear_errors(ec, info);
-    detail::connect(this->get_channel(), endpoint, params, ec, info);
+    detail::connect(get_channel(), endpoint, params, ec, info);
 }
 
 template <class Stream>
@@ -48,7 +50,7 @@ void boost::mysql::connection<Stream>::connect(
 )
 {
     detail::error_block blk;
-    detail::connect(this->get_channel(), endpoint, params, blk.err, blk.info);
+    detail::connect(get_channel(), endpoint, params, blk.err, blk.info);
     blk.check();
 }
 
@@ -70,7 +72,7 @@ boost::mysql::connection<Stream>::async_connect(
 {
     output_info.clear();
     return detail::async_connect(
-        this->get_channel(),
+        get_channel(),
         endpoint,
         params,
         output_info,
@@ -383,6 +385,56 @@ boost::mysql::connection<Stream>::async_read_one_row(
     );
 }
 
+// Read some rows
+template <class Stream>
+void boost::mysql::connection<Stream>::read_some_rows(
+    resultset& resultset,
+	rows_view& output,
+    error_code& err,
+    error_info& info
+)
+{
+    detail::clear_errors(err, info);
+    detail::read_some_rows(get_channel(), resultset, output, err, info);
+}
+
+
+template <class Stream>
+void boost::mysql::connection<Stream>::read_some_rows(
+    resultset& resultset,
+	rows_view& output
+)
+{
+    detail::error_block blk;
+    detail::read_some_rows(get_channel(), resultset, output, blk.err, blk.info);
+    blk.check();
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
+    void(::boost::mysql::error_code)
+) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code)
+)
+boost::mysql::connection<Stream>::async_read_some_rows(
+    resultset& resultset,
+	rows_view& output,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    output_info.clear();
+    return detail::async_read_some_rows(
+        get_channel(),
+        resultset,
+        output,
+        output_info,
+        std::forward<CompletionToken>(token)
+    );
+}
+
 
 // Close
 template <class Stream>
@@ -392,14 +444,14 @@ void boost::mysql::connection<Stream>::close(
 )
 {
     detail::clear_errors(err, info);
-    detail::close_connection(this->get_channel(), err, info);
+    detail::close_connection(get_channel(), err, info);
 }
 
 template <class Stream>
 void boost::mysql::connection<Stream>::close()
 {
     detail::error_block blk;
-    detail::close_connection(this->get_channel(), blk.err, blk.info);
+    detail::close_connection(get_channel(), blk.err, blk.info);
     blk.check();
 }
 
@@ -416,7 +468,7 @@ boost::mysql::connection<Stream>::async_close(
 {
     output_info.clear();
     return detail::async_close_connection(
-        this->get_channel(),
+        get_channel(),
         std::forward<CompletionToken>(token),
         output_info
     );
