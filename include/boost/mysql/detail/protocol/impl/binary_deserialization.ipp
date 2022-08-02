@@ -16,6 +16,7 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -371,6 +372,8 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
     std::vector<value>& output
 )
 {
+    std::size_t old_size = output.size();
+
     // Skip packet header (it is not part of the message in the binary
     // protocol but it is in the text protocol, so we include it for homogeneity)
     // The caller will have checked we have this byte already for us
@@ -379,7 +382,7 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
 
     // Number of fields
     auto num_fields = meta.size();
-    output.resize(num_fields);
+    output.resize(old_size + num_fields);
 
     // Null bitmap
     null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
@@ -393,11 +396,11 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
     {
         if (null_bitmap.is_null(null_bitmap_begin, i))
         {
-            output[i] = value(nullptr);
+            output[old_size + i] = value(nullptr);
         }
         else
         {
-            auto err = deserialize_binary_value(ctx, meta[i], output[i]);
+            auto err = deserialize_binary_value(ctx, meta[i], output[old_size + i]);
             if (err != errc::ok)
                 return make_error_code(err);
         }

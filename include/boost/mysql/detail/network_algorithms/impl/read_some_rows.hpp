@@ -81,6 +81,7 @@ inline void process_rows(
     // Process all read messages until they run out, an error happens
     // or an EOF is received
     std::size_t num_rows = 0;
+    channel.shared_values().clear();
     while (channel.num_read_messages())
     {
         // Get the row message

@@ -14,11 +14,12 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
-#include <cstdlib>
-#include <cmath>
-#include <type_traits>
 #include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
+#include <cstdlib>
+#include <cstddef>
+#include <cmath>
+#include <type_traits>
 
 #ifdef BOOST_MSVC
 #pragma warning( push )
@@ -360,13 +361,14 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
     std::vector<value>& output
 )
 {
-    output.resize(fields.size());
+    std::size_t old_size = output.size();
+    output.resize(old_size + fields.size());
     for (std::vector<value>::size_type i = 0; i < fields.size(); ++i)
     {
         if (is_next_field_null(ctx))
         {
             ctx.advance(1);
-            output[i] = value(nullptr);
+            output[old_size + i] = value(nullptr);
         }
         else
         {
@@ -374,7 +376,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
             errc err = deserialize(ctx, value_str);
             if (err != errc::ok)
                 return make_error_code(err);
-            err = deserialize_text_value(value_str.value, fields[i], output[i]);
+            err = deserialize_text_value(value_str.value, fields[i], output[old_size + i]);
             if (err != errc::ok)
                 return make_error_code(err);
         }
