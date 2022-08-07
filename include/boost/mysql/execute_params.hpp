@@ -8,37 +8,13 @@
 #ifndef BOOST_MYSQL_EXECUTE_PARAMS_HPP
 #define BOOST_MYSQL_EXECUTE_PARAMS_HPP
 
-#include <boost/mysql/value.hpp>
 #include <boost/mysql/prepared_statement.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <iterator>
-#include <stdexcept>
 #include <type_traits>
 
 namespace boost {
 namespace mysql {
-
-// TODO: move this to impl file
-namespace detail {
-
-template <class ValueForwardIterator>
-void check_num_params(
-    ValueForwardIterator first,
-    ValueForwardIterator last,
-    const prepared_statement& stmt
-)
-{
-    auto param_count = std::distance(first, last);
-    if (param_count != stmt.num_params())
-    {
-        throw std::domain_error(detail::stringize(
-                "prepared_statement::execute: expected ", stmt.num_params(), " params, but got ", param_count));
-    }
-}
-
-} // detail
-
 
 /**
   * \brief Represents the parameters required to execute a [reflink prepared_statement].
@@ -67,13 +43,7 @@ public:
         const prepared_statement& stmt,
         ValueForwardIterator first,
         ValueForwardIterator last
-    ) :
-        statement_id_(stmt.id()),
-        first_(first),
-        last_(last)
-    {
-        detail::check_num_params(first, last, stmt);
-    }
+    );
 
     constexpr std::uint32_t statement_id() const noexcept { return statement_id_; }
 
@@ -113,5 +83,6 @@ constexpr auto make_execute_params(
 } // mysql
 } // boost
 
+#include <boost/mysql/impl/execute_params.hpp>
 
 #endif
