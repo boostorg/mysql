@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_some_ROW_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_some_ROW_HPP
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 
 #include <boost/mysql/detail/network_algorithms/common.hpp>
 #include <boost/mysql/resultset.hpp>

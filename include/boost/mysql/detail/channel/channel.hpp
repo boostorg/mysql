@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_CHANNEL_HPP
+#ifndef BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
+#define BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 
 #include "boost/mysql/error.hpp"
 #include <boost/asio/buffer.hpp>

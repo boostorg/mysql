@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CHANNEL_DISABLEABLE_SSL_STREAM_HPPa
-#define BOOST_MYSQL_DETAIL_CHANNEL_DISABLEABLE_SSL_STREAM_HPPa
+#ifndef BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_READER_HPP
+#define BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_READER_HPP
 
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
