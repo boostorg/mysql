@@ -10,7 +10,7 @@
 
 #include "network_result.hpp"
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/field_metadata.hpp>
 #include <memory>
 
 namespace boost {

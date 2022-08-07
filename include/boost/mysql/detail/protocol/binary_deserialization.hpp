@@ -11,7 +11,7 @@
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/value.hpp>
-#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/field_metadata.hpp>
 #include <vector>
 
 namespace boost {

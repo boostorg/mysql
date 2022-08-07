@@ -11,7 +11,6 @@
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/auxiliar/container_equals.hpp>
 #include <boost/mysql/value.hpp>
-#include <boost/mysql/metadata.hpp>
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>

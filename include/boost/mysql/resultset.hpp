@@ -10,7 +10,8 @@
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -127,6 +128,7 @@ public:
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
 
     std::vector<field_metadata>& meta() noexcept { return meta_; }
+    const std::vector<field_metadata>& fields() const noexcept { return meta_; }
 #endif
 
     /**
@@ -141,16 +143,12 @@ public:
     /// \details See [link mysql.resultsets.complete this section] for more info.
     bool complete() const noexcept { return ok_packet_.has_value(); }
 
-    // TODO: hide this
     /**
      * \brief Returns [link mysql.resultsets.metadata metadata] about the fields in the query.
      * \details There will be as many [reflink field_metadata] objects as fields
      * in the SQL query, and in the same order.
      */
-    const std::vector<field_metadata>& fields() const noexcept { return meta_; }
-
-    // TODO: hide this
-    std::vector<field_metadata>& fields() noexcept { return meta_; }
+    metadata_collection_view metadata() const noexcept { return metadata_collection_view(meta_.data(), meta_.size()); }
 
     /**
      * \brief The number of rows affected by the SQL that generated this resultset.

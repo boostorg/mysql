@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_METADATA_HPP
-#define BOOST_MYSQL_METADATA_HPP
+#ifndef BOOST_MYSQL_FIELD_METADATA_HPP
+#define BOOST_MYSQL_FIELD_METADATA_HPP
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
@@ -142,28 +142,9 @@ public:
     bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
 };
 
-namespace detail {
-
-class resultset_metadata
-{
-    std::vector<bytestring> buffers_;
-    std::vector<field_metadata> fields_;
-public:
-    resultset_metadata() = default;
-    resultset_metadata(std::vector<bytestring>&& buffers, std::vector<field_metadata>&& fields):
-        buffers_(std::move(buffers)), fields_(std::move(fields)) {};
-    resultset_metadata(const resultset_metadata&) = delete;
-    resultset_metadata(resultset_metadata&&) = default;
-    resultset_metadata& operator=(const resultset_metadata&) = delete;
-    resultset_metadata& operator=(resultset_metadata&&) = default;
-    ~resultset_metadata() = default;
-    const std::vector<field_metadata>& fields() const noexcept { return fields_; }
-};
-
-} // detail
 } // mysql
 } // boost
 
-#include <boost/mysql/impl/metadata.ipp>
+#include <boost/mysql/impl/field_metadata.ipp>
 
 #endif

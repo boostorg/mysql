@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_BIT_DESERIALIZATION_HPP
 
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/metadata.hpp>
 #include <boost/endian/conversion.hpp>
 #include <boost/utility/string_view.hpp>
 

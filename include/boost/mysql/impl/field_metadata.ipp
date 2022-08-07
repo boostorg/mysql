@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_METADATA_IPP
-#define BOOST_MYSQL_IMPL_METADATA_IPP
+#ifndef BOOST_MYSQL_IMPL_FIELD_METADATA_IPP
+#define BOOST_MYSQL_IMPL_FIELD_METADATA_IPP
 
 #pragma once
 
-#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/field_metadata.hpp>
 
 namespace boost {
 namespace mysql {

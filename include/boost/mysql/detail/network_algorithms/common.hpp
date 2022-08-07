@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_COMMON_HPP
 
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/field_metadata.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 

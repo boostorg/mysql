@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_METADATA_VALIDATOR_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_METADATA_VALIDATOR_HPP
 
-#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/field_metadata.hpp>
 #include <vector>
 
 namespace boost {

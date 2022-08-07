@@ -10,7 +10,6 @@
 
 #include <boost/mysql/detail/network_algorithms/common.hpp>
 #include <boost/mysql/resultset.hpp>
-#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/utility/string_view.hpp>
 #include <vector>
