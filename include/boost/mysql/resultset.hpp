@@ -13,10 +13,8 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
-#include <boost/mysql/detail/network_algorithms/common.hpp> // deserialize_row_fn
-#include <boost/utility/string_view_fwd.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/utility/string_view.hpp>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -74,7 +72,7 @@ class resultset
 
     bool valid_ {false};
     std::uint8_t seqnum_ {};
-    detail::deserialize_row_fn deserializer_ {};
+    detail::resultset_encoding encoding_ { detail::resultset_encoding::text };
     std::vector<field_metadata> meta_;
     ok_packet_data ok_packet_;
 
@@ -85,9 +83,9 @@ public:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use. TODO: hide these
-    resultset(std::vector<field_metadata>&& meta, detail::deserialize_row_fn deserializer) noexcept:
+    resultset(std::vector<field_metadata>&& meta, detail::resultset_encoding encoding) noexcept:
         valid_(true),
-        deserializer_(deserializer),
+        encoding_(encoding),
         meta_(std::move(meta))
     {
     };
@@ -98,12 +96,12 @@ public:
     };
 
     void reset(
-        detail::deserialize_row_fn deserializer
+        detail::resultset_encoding encoding
     )
     {
         valid_ = true;
         seqnum_ = 0;
-        deserializer_ = deserializer;
+        encoding_ = encoding;
         meta_.clear();
         ok_packet_.reset();
     }
@@ -124,10 +122,7 @@ public:
         meta_.emplace_back(pack, true);
     }
 
-    error_code deserialize_row(detail::deserialization_context& ctx, std::vector<value>& output)
-    {
-        return deserializer_(ctx, meta_, output);
-    }
+    detail::resultset_encoding encoding() const noexcept { return encoding_; }
 
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
 

@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_some_ROW_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_some_ROW_HPP
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_someaaaa_ROW_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_someaaaa_ROW_HPP
 
 #include <boost/mysql/detail/network_algorithms/common.hpp>
 #include <boost/mysql/resultset.hpp>
@@ -20,20 +20,20 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-void read_some_rows(
+void read_all_rows(
     channel<Stream>& channel,
     resultset& resultset,
-	rows_view& output,
+	rows& output,
     error_code& err,
     error_info& info
 );
 
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_read_some_rows(
+async_read_all_rows(
     channel<Stream>& channel,
     resultset& resultset,
-	rows_view& output,
+	rows& output,
     error_info& output_info,
     CompletionToken&& token
 );
@@ -43,7 +43,7 @@ async_read_some_rows(
 } // mysql
 } // boost
 
-#include <boost/mysql/detail/network_algorithms/impl/read_some_rows.hpp>
+#include <boost/mysql/detail/network_algorithms/impl/read_all_rows.hpp>
 
 
 

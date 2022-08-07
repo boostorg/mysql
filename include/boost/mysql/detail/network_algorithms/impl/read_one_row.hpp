@@ -10,12 +10,11 @@
 
 #pragma once
 
+#include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
+#include <boost/mysql/detail/protocol/deserialize_row.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/buffer.hpp>
-#include <boost/mysql/resultset.hpp>
-#include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
-#include <boost/mysql/detail/protocol/text_deserialization.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
 
 namespace boost {
 namespace mysql {
@@ -30,42 +29,24 @@ inline bool process_read_message(
     error_info& info
 )
 {
-    assert(resultset.valid());
+    // Clear whatever was in the row before
+    output.clear();
 
-    // Message type: row, error or eof?
-    std::uint8_t msg_type = 0;
-    deserialization_context ctx (read_message, current_capabilities);
-    err = make_error_code(deserialize(ctx, msg_type));
-    if (err)
-        return false;
-    if (msg_type == eof_packet_header)
-    {
-        // end of resultset => this is a ok_packet, not a row
-        ok_packet ok_pack;
-        err = deserialize_message(ctx, ok_pack);
-        if (err)
-            return false;
-        resultset.complete(ok_pack);
-        output.clear();
-        return false;
-    }
-    else if (msg_type == error_packet_header)
-    {
-        // An error occurred during the generation of the rows
-        err = process_error_packet(ctx, info);
-        return false;
-    }
-    else
-    {
-        // An actual row
-        output.clear();
-        ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
-        err = resultset.deserialize_row(ctx, output.values());
-        if (err)
-            return false;
+    // Deserialize the row
+    bool row_read = deserialize_row(
+        read_message,
+        current_capabilities,
+        resultset,
+        output.values(),
+        err,
+        info
+    );
+
+    // Copy the strings into the row's buffer
+    if (row_read)
         output.copy_strings();
-        return true;
-    }
+
+    return row_read;
 }
 
 template<class Stream>

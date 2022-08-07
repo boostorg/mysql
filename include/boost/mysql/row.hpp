@@ -14,6 +14,7 @@
 #include <boost/mysql/metadata.hpp>
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <initializer_list>
 #include <iterator>
@@ -167,8 +168,29 @@ public:
 class rows
 {
     std::vector<value> values_;
-    detail::bytestring buffer_;
+    std::vector<char> buffer_;
     std::size_t num_columns_ {};
+
+    void rebase_strings(const char* old_buffer_base)
+    {
+        const char* new_buffer_base = buffer_.data();
+        auto diff = new_buffer_base - old_buffer_base;
+        if (diff)
+        {
+            for (auto& v: values_)
+            {
+                auto typed_value = v.get_optional<boost::string_view>();
+                if (typed_value.has_value())
+                {
+                    v = value(boost::string_view(
+                        typed_value->data() + diff,
+                        typed_value->size()
+                    ));
+                }
+            }
+        }
+    }
+
 public:
     rows() = default;
     rows(std::size_t num_columns) noexcept : num_columns_(num_columns) {}
@@ -196,7 +218,43 @@ public:
 
     // TODO: hide these
     std::vector<value>& values() noexcept { return values_; }
-    detail::bytestring& buffer() noexcept { return buffer_; }
+    void copy_strings(std::size_t value_offset)
+    {
+        // Calculate the extra size required for the new strings
+        std::size_t size = 0;
+        for (const auto* v = values_.data() + value_offset; v != values_.data() + values_.size(); ++v)
+        {
+            auto typed_value = v->get_optional<boost::string_view>();
+            if (typed_value.has_value())
+            {
+                size += typed_value->size();
+            }
+        }
+
+        // Make space and rebase the old strings
+        const char* old_buffer_base = buffer_.data();
+        std::size_t old_buffer_size = buffer_.size();
+        buffer_.resize(size);
+        rebase_strings(old_buffer_base);
+        
+        // Copy the strings
+        std::size_t offset = old_buffer_size;
+        for (auto& v: values_)
+        {
+            auto typed_value = v.get_optional<boost::string_view>();
+            if (typed_value.has_value())
+            {
+                std::memcpy(buffer_.data() + offset, typed_value->data(), typed_value->size());
+                v = value(boost::string_view(buffer_.data() + offset, typed_value->size()));
+                offset += typed_value->size();
+            }
+        }
+    }
+    void clear() noexcept
+    {
+        values_.clear();
+        buffer_.clear();
+    }
 
 
 

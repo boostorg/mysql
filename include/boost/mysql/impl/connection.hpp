@@ -22,6 +22,7 @@
 #include <boost/mysql/detail/network_algorithms/close_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
+#include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/close_connection.hpp>
 #include <boost/asio/buffer.hpp>
@@ -435,6 +436,55 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     );
 }
 
+// Read all rows
+template <class Stream>
+void boost::mysql::connection<Stream>::read_all_rows(
+    resultset& resultset,
+	rows& output,
+    error_code& err,
+    error_info& info
+)
+{
+    detail::clear_errors(err, info);
+    detail::read_all_rows(get_channel(), resultset, output, err, info);
+}
+
+
+template <class Stream>
+void boost::mysql::connection<Stream>::read_all_rows(
+    resultset& resultset,
+	rows& output
+)
+{
+    detail::error_block blk;
+    detail::read_all_rows(get_channel(), resultset, output, blk.err, blk.info);
+    blk.check();
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
+    void(::boost::mysql::error_code)
+) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code)
+)
+boost::mysql::connection<Stream>::async_read_all_rows(
+    resultset& resultset,
+	rows& output,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    output_info.clear();
+    return detail::async_read_all_rows(
+        get_channel(),
+        resultset,
+        output,
+        output_info,
+        std::forward<CompletionToken>(token)
+    );
+}
 
 // Close
 template <class Stream>
