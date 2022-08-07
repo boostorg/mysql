@@ -22,12 +22,6 @@ namespace mysql {
 /// A connection to MySQL over a UNIX domain socket over TLS.
 using unix_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
 
-/// A prepared statement associated to a [reflink unix_ssl_connection].
-using unix_ssl_prepared_statement = prepared_statement<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
-
-/// A resultset associated with a [reflink unix_ssl_connection].
-using unix_ssl_resultset = resultset<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
-
 #endif
 
 } // mysql

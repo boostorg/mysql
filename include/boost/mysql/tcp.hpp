@@ -19,12 +19,6 @@ namespace mysql {
 /// A connection to MySQL over a TCP socket.
 using tcp_connection = connection<boost::asio::ip::tcp::socket>;
 
-/// A prepared statement associated to a [reflink tcp_connection].
-using tcp_prepared_statement = prepared_statement<boost::asio::ip::tcp::socket>;
-
-/// A resultset associated with a [reflink tcp_connection].
-using tcp_resultset = resultset<boost::asio::ip::tcp::socket>;
-
 } // mysql
 } // boost
 

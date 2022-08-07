@@ -21,12 +21,6 @@ namespace mysql {
 /// A connection to MySQL over a UNIX domain socket.
 using unix_connection = connection<boost::asio::local::stream_protocol::socket>;
 
-/// A prepared statement associated to a [reflink unix_connection].
-using unix_prepared_statement = prepared_statement<boost::asio::local::stream_protocol::socket>;
-
-/// A resultset associated with a [reflink unix_connection].
-using unix_resultset = resultset<boost::asio::local::stream_protocol::socket>;
-
 #endif
 
 } // mysql

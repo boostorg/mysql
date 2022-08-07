@@ -20,12 +20,6 @@ namespace mysql {
 /// A connection to MySQL over a TCP socket using TLS.
 using tcp_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
 
-/// A prepared statement associated to a [reflink tcp_ssl_connection].
-using tcp_ssl_prepared_statement = prepared_statement<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
-
-/// A resultset associated with a [reflink tcp_ssl_connection].
-using tcp_ssl_resultset = resultset<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
-
 } // mysql
 } // boost
 
