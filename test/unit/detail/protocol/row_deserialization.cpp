@@ -9,7 +9,6 @@
 
 #include <boost/mysql/detail/protocol/text_deserialization.hpp>
 #include <boost/mysql/detail/protocol/binary_deserialization.hpp>
-#include <boost/mysql/detail/network_algorithms/common.hpp> // for deserialize_row_fn
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>

@@ -8,8 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 
-#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/error.hpp>
 #include <boost/mysql/prepared_statement.hpp>
+#include <boost/utility/string_view.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
+
 
 namespace boost {
 namespace mysql {

@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 
-#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
-#include <boost/utility/string_view.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+
 
 namespace boost {
 namespace mysql {
@@ -18,7 +20,7 @@ namespace detail {
 
 template <class Stream, class Serializable>
 void execute_generic(
-    deserialize_row_fn deserializer,
+    resultset_encoding encoding,
     channel<Stream>& channel,
     const Serializable& request,
     resultset& output,
@@ -29,7 +31,7 @@ void execute_generic(
 template <class Stream, class Serializable, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_generic(
-    deserialize_row_fn deserializer,
+    resultset_encoding encoding,
     channel<Stream>& chan,
     const Serializable& request,
     resultset& output,

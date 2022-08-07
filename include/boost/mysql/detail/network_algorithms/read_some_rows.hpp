@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 
-#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row.hpp>
-#include <vector>
+
 
 namespace boost {
 namespace mysql {

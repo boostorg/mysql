@@ -10,11 +10,11 @@
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/common.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/asio/buffer.hpp>
@@ -51,10 +51,10 @@ public:
     template <class Serializable>
     void process_request(
         const Serializable& request,
-        deserialize_row_fn deserialize_fn
+        resultset_encoding encoding
     )
     {
-        output_.reset(deserialize_fn);
+        output_.reset(encoding);
         serialize_message(request, caps_, write_buffer_);
     }
 
@@ -221,7 +221,7 @@ struct execute_generic_op : boost::asio::coroutine
 
 template <class Stream, class Serializable>
 void boost::mysql::detail::execute_generic(
-    deserialize_row_fn deserializer,
+    resultset_encoding encoding,
     channel<Stream>& channel,
     const Serializable& request,
     resultset& output,
@@ -236,7 +236,7 @@ void boost::mysql::detail::execute_generic(
         channel.shared_buffer(),
         channel.current_capabilities()
     );
-    processor.process_request(request, deserializer);
+    processor.process_request(request, encoding);
 
     // Send it
     channel.write(channel.shared_buffer(), processor.sequence_number(), err);
@@ -282,7 +282,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_execute_generic(
-    deserialize_row_fn deserializer,
+    resultset_encoding encoding,
     channel<Stream>& channel,
     const Serializable& request,
     resultset& output,
@@ -296,7 +296,7 @@ boost::mysql::detail::async_execute_generic(
         channel.shared_buffer(),
         channel.current_capabilities()
     );
-    processor.process_request(request, deserializer);
+    processor.process_request(request, encoding);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         execute_generic_op<Stream>(channel, processor),
         token,

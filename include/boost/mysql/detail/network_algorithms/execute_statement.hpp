@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 
-#include <boost/mysql/detail/network_algorithms/common.hpp>
+#include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
-#include <boost/mysql/value.hpp>
-#include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 
 namespace boost {
 namespace mysql {

@@ -11,8 +11,8 @@
 #pragma once
 
 #include <boost/mysql/detail/network_algorithms/execute_query.hpp>
-#include <boost/mysql/detail/protocol/text_deserialization.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 
 template <class Stream>
@@ -26,7 +26,7 @@ void boost::mysql::detail::execute_query(
 {
     com_query_packet request { string_eof(query) };
     execute_generic(
-        &deserialize_text_row,
+        resultset_encoding::text,
         channel,
         request,
         output,
@@ -51,7 +51,7 @@ boost::mysql::detail::async_execute_query(
 {
     com_query_packet request { string_eof(query) };
     return async_execute_generic(
-        &deserialize_text_row,
+        resultset_encoding::text,
         chan,
         request,
         output,

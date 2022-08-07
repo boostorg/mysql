@@ -13,8 +13,8 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
-#include <boost/mysql/detail/protocol/binary_deserialization.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 
 namespace boost {
@@ -51,7 +51,7 @@ void boost::mysql::detail::execute_statement(
 )
 {
     execute_generic(
-        &deserialize_binary_row,
+        resultset_encoding::binary,
         chan,
         make_stmt_execute_packet(params),
         output,
@@ -74,7 +74,7 @@ boost::mysql::detail::async_execute_statement(
 )
 {
     return async_execute_generic(
-        &deserialize_binary_row,
+        resultset_encoding::binary,
         chan,
         make_stmt_execute_packet(params),
         output,
