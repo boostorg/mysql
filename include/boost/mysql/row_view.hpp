@@ -58,6 +58,6 @@ inline std::ostream& operator<<(std::ostream& os, const row_view& value);
 } // mysql
 } // boost
 
-#include <boost/mysql/impl/row_view.hpp>
+#include <boost/mysql/impl/row_view.ipp>
 
 #endif
