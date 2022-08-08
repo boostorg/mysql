@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_VALUE_HPP
-#define BOOST_MYSQL_IMPL_VALUE_HPP
+#ifndef BOOST_MYSQL_IMPL_FIELD_VIEW_HPP
+#define BOOST_MYSQL_IMPL_FIELD_VIEW_HPP
 
 #pragma once
 

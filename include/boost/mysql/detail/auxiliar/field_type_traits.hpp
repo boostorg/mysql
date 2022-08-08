@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_VALUE_TYPE_TRAITS_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_VALUE_TYPE_TRAITS_HPP
+#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
+#define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
 
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
