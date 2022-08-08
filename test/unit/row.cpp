@@ -8,7 +8,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include "test_common.hpp"
 #include <boost/test/unit_test_suite.hpp>
 #include <boost/utility/string_view_fwd.hpp>
@@ -16,7 +16,7 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::row;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::detail::bytestring;
 
 BOOST_AUTO_TEST_SUITE(test_row)
@@ -24,7 +24,7 @@ BOOST_AUTO_TEST_SUITE(test_row)
 // Constructors
 BOOST_AUTO_TEST_SUITE(constructors)
 
-static std::vector<value> string_value_from_buffer(const bytestring& buffer)
+static std::vector<field_view> string_value_from_buffer(const bytestring& buffer)
 {
     return make_value_vector(boost::string_view(reinterpret_cast<const char*>(buffer.data()), buffer.size()));
 }
@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(init_ctor)
     auto values = string_value_from_buffer(buffer);
     row r (std::move(values), std::move(buffer));
     buffer = {'e', 'f'};
-    BOOST_TEST(r.values()[0] == value("abcd"));
+    BOOST_TEST(r.values()[0] == field_view("abcd"));
 }
 
 BOOST_AUTO_TEST_CASE(move_ctor)
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(move_ctor)
     row r (std::move(values), std::move(buffer));
     row r2 (std::move(r));
     r = row({}, {'e', 'f'});
-    BOOST_TEST(r2.values()[0] == value("abcd"));
+    BOOST_TEST(r2.values()[0] == field_view("abcd"));
 }
 
 BOOST_AUTO_TEST_CASE(move_assignment)
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(move_assignment)
     row r2;
     r2 = std::move(r);
     r = row({}, {'e', 'f'});
-    BOOST_TEST(r2.values()[0] == value("abcd"));
+    BOOST_TEST(r2.values()[0] == field_view("abcd"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

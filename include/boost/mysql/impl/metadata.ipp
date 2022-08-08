@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata.hpp>
 
 namespace boost {
 namespace mysql {
@@ -85,7 +85,7 @@ inline field_type compute_field_type(
 } // mysql
 } // boost
 
-inline boost::mysql::field_type boost::mysql::field_metadata::type() const noexcept
+inline boost::mysql::field_type boost::mysql::metadata::type() const noexcept
 {
     if (field_type_ == field_type::_not_computed)
     {

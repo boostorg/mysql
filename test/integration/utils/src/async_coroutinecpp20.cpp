@@ -31,7 +31,7 @@ using namespace boost::mysql::test;
 using boost::mysql::row;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::connection_params;
 
 

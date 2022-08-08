@@ -28,7 +28,7 @@ using boost::mysql::row;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::connection_params;
 
 namespace {
@@ -89,7 +89,7 @@ public:
         });
     }
     network_result<er_resultset_ptr> execute_container(
-        const std::vector<value>& values
+        const std::vector<field_view>& values
     ) override
     {
         return impl([&](error_code& err, error_info& info) {

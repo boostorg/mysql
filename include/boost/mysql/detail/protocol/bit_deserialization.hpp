@@ -9,8 +9,10 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_BIT_DESERIALIZATION_HPP
 
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/endian/conversion.hpp>
 #include <boost/utility/string_view.hpp>
+#include <cstring>
 
 namespace boost {
 namespace mysql {
@@ -23,7 +25,7 @@ namespace detail {
 // a 2 byte value; BIT(54) will send a 7 byte one). Values are sent as big-endian.
 inline errc deserialize_bit(
     boost::string_view from,
-    value& to
+    field_view& to
 ) noexcept
 {
     std::size_t num_bytes = from.size();
@@ -34,7 +36,7 @@ inline errc deserialize_bit(
     unsigned char temp [8] {};
     unsigned char* dest = temp + sizeof(temp) - num_bytes;
     std::memcpy(dest, from.data(), num_bytes);
-    to = value(boost::endian::load_big_u64(temp));
+    to = field_view(boost::endian::load_big_u64(temp));
     return errc::ok;
 }
 

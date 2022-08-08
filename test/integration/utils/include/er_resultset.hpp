@@ -10,7 +10,7 @@
 
 #include "network_result.hpp"
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <memory>
 
 namespace boost {
@@ -26,7 +26,7 @@ public:
     virtual network_result<std::vector<row>> read_all() = 0;
     virtual bool valid() const = 0;
     virtual bool complete() const = 0;
-    virtual const std::vector<field_metadata>& fields() const = 0;
+    virtual const std::vector<metadata>& fields() const = 0;
     virtual std::uint64_t affected_rows() const = 0;
     virtual std::uint64_t last_insert_id() const = 0;
     virtual unsigned warning_count() const = 0;

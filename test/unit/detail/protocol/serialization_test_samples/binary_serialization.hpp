@@ -23,7 +23,7 @@ serialization_sample make_binary_serialization_sample(
     detail::bytestring&& buffer
 )
 {
-    return serialization_sample(std::move(name), value(expected), std::move(buffer));
+    return serialization_sample(std::move(name), field_view(expected), std::move(buffer));
 }
 
 const serialization_test_spec binary_serialization_spec {

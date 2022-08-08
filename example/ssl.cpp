@@ -48,9 +48,9 @@ OzBrmpfHEhF6NDU=
 void print_employee(const boost::mysql::row& employee)
 {
     std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type boost::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
+              << employee.fields()[0] << " "                   // first_name (type boost::string_view)
+              << employee.fields()[1] << "' earns "            // last_name  (type boost::string_view)
+              << employee.fields()[2] << " dollars yearly\n";  // salary     (type double)
 }
 
 void main_impl(int argc, char** argv)

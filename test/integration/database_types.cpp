@@ -18,8 +18,8 @@
 
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::value;
-using boost::mysql::field_metadata;
+using boost::mysql::field_view;
+using boost::mysql::metadata;
 using boost::mysql::field_type;
 using boost::mysql::datetime;
 using boost::mysql::make_values;
@@ -37,7 +37,7 @@ struct database_types_sample
     std::string table;
     std::string field;
     std::string row_id;
-    value expected_value;
+    field_view expected_value;
     meta_validator mvalid;
 
     template <class ValueType, class... Args>
@@ -309,7 +309,7 @@ std::pair<std::string, datetime> datetime_from_id(std::bitset<4> id, int decimal
 database_types_sample create_datetime_sample(
     int decimals,
     std::string id,
-    value expected,
+    field_view expected,
     field_type type
 )
 {
@@ -388,14 +388,14 @@ void add_common_datetime_samples(
             if (bitset_id[3] && decimals == 0)
                 continue; // cases with micros don't make sense for fields with no decimals
             auto dt = datetime_from_id(int_id, decimals);
-            output.push_back(create_datetime_sample(decimals, move(dt.first), value(dt.second), type));
+            output.push_back(create_datetime_sample(decimals, move(dt.first), field_view(dt.second), type));
         }
 
         // Tests for leap years (valid dates)
         output.push_back(create_datetime_sample(
-            decimals, "date_leap4", value(makedt(2004, 2, 29)), type));
+            decimals, "date_leap4", field_view(makedt(2004, 2, 29)), type));
         output.push_back(create_datetime_sample(
-            decimals, "date_leap400", value(makedt(2000, 2, 29)), type));
+            decimals, "date_leap400", field_view(makedt(2000, 2, 29)), type));
     }
 }
 
@@ -407,9 +407,9 @@ void add_datetime_samples(std::vector<database_types_sample>& output)
     {
         // min and max
         output.push_back(create_datetime_sample(decimals, "min",
-                value(makedt(0, 1, 1)), field_type::datetime));
+                field_view(makedt(0, 1, 1)), field_type::datetime));
         output.push_back(create_datetime_sample(decimals, "max",
-                value(makedt(9999, 12, 31, 23, 59, 59,
+                field_view(makedt(9999, 12, 31, 23, 59, 59,
                     round_micros(999999, decimals))), field_type::datetime));
 
         // invalid dates
@@ -423,7 +423,7 @@ void add_datetime_samples(std::vector<database_types_sample>& output)
                 output.push_back(create_datetime_sample(
                     decimals,
                     stringize(length, '_', invalid_date_case),
-                    value(),
+                    field_view(),
                     field_type::datetime
                 ));
             }
@@ -440,7 +440,7 @@ void add_timestamp_samples(std::vector<database_types_sample>& output)
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
         output.push_back(create_datetime_sample(decimals,
-            "zero", value(), field_type::timestamp));
+            "zero", field_view(), field_type::timestamp));
     }
 }
 
@@ -457,15 +457,15 @@ void add_time_samples(std::vector<database_types_sample>& output)
             if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
             auto t = time_from_id(int_id, decimals);
             output.push_back(create_datetime_sample(
-                decimals, move(t.first), value(t.second), field_type::time));
+                decimals, move(t.first), field_view(t.second), field_type::time));
         }
 
         // min and max
         auto max_value = decimals == 0 ? maket(838, 59, 59) : maket(838, 59, 58, round_micros(999999, decimals));
         output.push_back(create_datetime_sample(
-            decimals, "min", value(-max_value), field_type::time));
+            decimals, "min", field_view(-max_value), field_type::time));
         output.push_back(create_datetime_sample(
-            decimals, "max",  value(max_value), field_type::time));
+            decimals, "max",  field_view(max_value), field_type::time));
     }
 }
 

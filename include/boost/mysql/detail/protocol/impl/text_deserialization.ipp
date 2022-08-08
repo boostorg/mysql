@@ -34,21 +34,21 @@ namespace detail {
 template <class T>
 errc deserialize_text_value_int_impl(
     boost::string_view from,
-    value& to
+    field_view& to
 ) noexcept
 {
     T v;
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), v);
     if (!ok)
         return errc::protocol_value_error;
-    to = value(v);
+    to = field_view(v);
     return errc::ok;
 }
 
 inline errc deserialize_text_value_int(
     boost::string_view from,
-    value& to,
-    const field_metadata& meta
+    field_view& to,
+    const metadata& meta
 ) noexcept
 {
     return meta.is_unsigned() ?
@@ -60,24 +60,24 @@ inline errc deserialize_text_value_int(
 template <class T>
 errc deserialize_text_value_float(
     boost::string_view from,
-    value& to
+    field_view& to
 ) noexcept
 {
     T val;
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), val);
     if (!ok || std::isnan(val) || std::isinf(val)) // SQL std forbids these values
         return errc::protocol_value_error;
-    to = value(val);
+    to = field_view(val);
     return errc::ok;
 }
 
 // Strings
 inline errc deserialize_text_value_string(
     boost::string_view from,
-    value& to
+    field_view& to
 ) noexcept
 {
-    to = value(from);
+    to = field_view(from);
     return errc::ok;
 }
 
@@ -126,7 +126,7 @@ inline errc deserialize_text_ymd(
 
 inline errc deserialize_text_value_date(
     boost::string_view from,
-    value& to
+    field_view& to
 ) noexcept
 {
     // Deserialize ymd
@@ -139,19 +139,19 @@ inline errc deserialize_text_value_date(
     // we represent in C++ as NULL
     if (!is_valid(ymd))
     {
-        to = value(nullptr);
+        to = field_view(nullptr);
         return errc::ok;
     }
 
     // Done
-    to = value(date(days(ymd_to_days(ymd))));
+    to = field_view(date(days(ymd_to_days(ymd))));
     return errc::ok;
 }
 
 inline errc deserialize_text_value_datetime(
     boost::string_view from,
-    value& to,
-    const field_metadata& meta
+    field_view& to,
+    const metadata& meta
 ) noexcept
 {
     using namespace textc;
@@ -210,7 +210,7 @@ inline errc deserialize_text_value_datetime(
     // we represent here as NULL
     if (!is_valid(ymd))
     {
-        to = value(nullptr);
+        to = field_view(nullptr);
         return errc::ok;
     }
 
@@ -221,14 +221,14 @@ inline errc deserialize_text_value_datetime(
         std::chrono::minutes(minutes) +
         std::chrono::seconds(seconds) +
         std::chrono::microseconds(micros);
-    to = value(d + time_of_day);
+    to = field_view(d + time_of_day);
     return errc::ok;
 }
 
 inline errc deserialize_text_value_time(
     boost::string_view from,
-    value& to,
-    const field_metadata& meta
+    field_view& to,
+    const metadata& meta
 ) noexcept
 {
     using namespace textc;
@@ -290,7 +290,7 @@ inline errc deserialize_text_value_time(
     }
 
     // Done
-    to = value(res);
+    to = field_view(res);
     return errc::ok;
 }
 
@@ -309,8 +309,8 @@ inline bool is_next_field_null(
 
 inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     boost::string_view from,
-    const field_metadata& meta,
-    value& output
+    const metadata& meta,
+    field_view& output
 )
 {
     switch (meta.protocol_type())
@@ -358,17 +358,17 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
 boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
     deserialization_context& ctx,
     const std::vector<field_metadata>& fields,
-    std::vector<value>& output
+    std::vector<field_view>& output
 )
 {
     std::size_t old_size = output.size();
     output.resize(old_size + fields.size());
-    for (std::vector<value>::size_type i = 0; i < fields.size(); ++i)
+    for (std::vector<field_view>::size_type i = 0; i < fields.size(); ++i)
     {
         if (is_next_field_null(ctx))
         {
             ctx.advance(1);
-            output[old_size + i] = value(nullptr);
+            output[old_size + i] = field_view(nullptr);
         }
         else
         {

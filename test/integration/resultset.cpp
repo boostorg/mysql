@@ -34,7 +34,7 @@ std::vector<row> makerows(std::size_t row_size, Types&&... args)
     std::vector<row> res;
     for (std::size_t i = 0; i < values.size(); i += row_size)
     {
-        std::vector<boost::mysql::value> row_values (
+        std::vector<boost::mysql::field_view> row_values (
             values.begin() + i, values.begin() + i + row_size);
         res.push_back(row(std::move(row_values), {}));
     }

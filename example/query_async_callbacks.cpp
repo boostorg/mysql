@@ -32,9 +32,9 @@ using boost::mysql::row;
 void print_employee(const boost::mysql::row& employee)
 {
     std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type boost::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
+              << employee.fields()[0] << " "                   // first_name (type boost::string_view)
+              << employee.fields()[1] << "' earns "            // last_name  (type boost::string_view)
+              << employee.fields()[2] << " dollars yearly\n";  // salary     (type double)
 }
 
 void die_on_error(
@@ -131,7 +131,7 @@ public:
             resultset.async_read_all(additional_info, [this](error_code err, const std::vector<row>& rows) {
                 die_on_error(err, additional_info);
                 ASSERT(rows.size() == 1);
-                auto salary = rows[0].values()[0].get<double>();
+                auto salary = rows[0].fields()[0].get<double>();
                 ASSERT(salary == 15000);
                 close();
             });

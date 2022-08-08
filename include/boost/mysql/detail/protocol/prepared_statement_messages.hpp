@@ -10,7 +10,7 @@
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -64,7 +64,7 @@ struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struc
 };
 
 // execute
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 struct com_stmt_execute_packet
 {
     std::uint32_t statement_id;
@@ -72,8 +72,8 @@ struct com_stmt_execute_packet
     std::uint32_t iteration_count;
     // if num_params > 0: NULL bitmap
     std::uint8_t new_params_bind_flag;
-    ValueForwardIterator params_begin;
-    ValueForwardIterator params_end;
+    FieldViewFwdIterator params_begin;
+    FieldViewFwdIterator params_end;
 
     static constexpr std::uint8_t command_id = 0x17;
 
@@ -89,16 +89,16 @@ struct com_stmt_execute_packet
     }
 };
 
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 struct serialization_traits<
-    com_stmt_execute_packet<ValueForwardIterator>,
+    com_stmt_execute_packet<FieldViewFwdIterator>,
     serialization_tag::struct_with_fields
-> : noop_deserialize<com_stmt_execute_packet<ValueForwardIterator>>
+> : noop_deserialize<com_stmt_execute_packet<FieldViewFwdIterator>>
 {
     static inline std::size_t get_size_(const serialization_context& ctx,
-            const com_stmt_execute_packet<ValueForwardIterator>& value) noexcept;
+            const com_stmt_execute_packet<FieldViewFwdIterator>& value) noexcept;
     static inline void serialize_(serialization_context& ctx,
-            const com_stmt_execute_packet<ValueForwardIterator>& input) noexcept;
+            const com_stmt_execute_packet<FieldViewFwdIterator>& input) noexcept;
 };
 
 struct com_stmt_execute_param_meta_packet

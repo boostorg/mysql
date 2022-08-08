@@ -13,14 +13,14 @@
 #include "er_resultset.hpp"
 #include <forward_list>
 #include <vector>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/execute_params.hpp>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-using value_list_it = std::forward_list<value>::const_iterator;
+using value_list_it = std::forward_list<field_view>::const_iterator;
 
 class er_statement
 {
@@ -29,7 +29,7 @@ public:
     virtual bool valid() const = 0;
     virtual unsigned id() const = 0;
     virtual unsigned num_params() const = 0;
-    virtual network_result<er_resultset_ptr> execute_container(const std::vector<value>&) = 0;
+    virtual network_result<er_resultset_ptr> execute_container(const std::vector<field_view>&) = 0;
     virtual network_result<er_resultset_ptr> execute_params(const execute_params<value_list_it>& params) = 0;
     virtual network_result<no_result> close() = 0;
 };

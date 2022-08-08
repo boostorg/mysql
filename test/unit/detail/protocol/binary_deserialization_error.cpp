@@ -16,7 +16,7 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::error_code;
 using boost::mysql::errc;
 
@@ -267,8 +267,8 @@ BOOST_DATA_TEST_CASE(test_deserialize_binary_value_error, data::make(make_all_sa
     column_definition_packet coldef {};
     coldef.type = sample.type;
     coldef.flags = sample.flags;
-    boost::mysql::field_metadata meta (coldef);
-    value actual_value;
+    boost::mysql::metadata meta (coldef);
+    field_view actual_value;
     const auto& buff = sample.from;
     deserialization_context ctx (buff.data(), buff.data() + buff.size(), capabilities());
     auto err = deserialize_binary_value(ctx, meta, actual_value);

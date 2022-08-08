@@ -95,7 +95,7 @@ struct network_fixture : network_fixture_base
     }
 
     void validate_2fields_meta(
-        const std::vector<field_metadata>& fields,
+        const std::vector<metadata>& fields,
         const std::string& table
     ) const
     {

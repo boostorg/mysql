@@ -41,7 +41,7 @@ static bool contains(
 }
 
 void meta_validator::validate(
-    const field_metadata& value
+    const metadata& value
 ) const
 {
     // Fixed fields
@@ -80,7 +80,7 @@ void meta_validator::validate(
 }
 
 void boost::mysql::test::validate_meta(
-    const std::vector<field_metadata>& actual,
+    const std::vector<metadata>& actual,
     const std::vector<meta_validator>& expected
 )
 {

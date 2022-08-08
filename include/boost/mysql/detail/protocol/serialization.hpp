@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
-#include <boost/mysql/value.hpp>
 #include <boost/mysql/error.hpp>
 
 namespace boost {

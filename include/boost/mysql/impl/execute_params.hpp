@@ -18,10 +18,10 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 void check_num_params(
-    ValueForwardIterator first,
-    ValueForwardIterator last,
+    FieldViewFwdIterator first,
+    FieldViewFwdIterator last,
     const prepared_statement& stmt
 )
 {
@@ -37,11 +37,11 @@ void check_num_params(
 } // mysql
 } // boost
 
-template <class ValueForwardIterator>
-boost::mysql::execute_params<ValueForwardIterator>::execute_params(
+template <class FieldViewFwdIterator>
+boost::mysql::execute_params<FieldViewFwdIterator>::execute_params(
     const prepared_statement& stmt,
-    ValueForwardIterator first,
-    ValueForwardIterator last
+    FieldViewFwdIterator first,
+    FieldViewFwdIterator last
 ) :
     statement_id_(stmt.id()),
     first_(first),

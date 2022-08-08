@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata.hpp>
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
 using boost::mysql::collation;
-using boost::mysql::field_metadata;
+using boost::mysql::metadata;
 using boost::mysql::field_type;
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(field_metadata_int_primary_key)
         column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
         0
     };
-    field_metadata meta (msg);
+    metadata meta (msg);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(field_metadata_varchar_with_alias)
         0,
         0
     };
-    field_metadata meta (msg);
+    metadata meta (msg);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "child");
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(field_metadata_float_field)
         0,
         31
     };
-    field_metadata meta (msg);
+    metadata meta (msg);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");

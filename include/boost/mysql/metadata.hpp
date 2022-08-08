@@ -23,7 +23,7 @@ namespace mysql {
  * will be valid while the parent object is alive
  * (typically, a [reflink resultset] object).
  */
-class field_metadata
+class metadata
 {
     std::string schema_;
     std::string table_; // virtual table
@@ -44,12 +44,12 @@ public:
      * \details The constructed metadata object will have undefined
      * values for all of its members.
      */
-    field_metadata() = default;
+    metadata() = default;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use.
     // TODO: hide this
-    field_metadata(const detail::column_definition_packet& msg, bool copy_strings) :
+    metadata(const detail::column_definition_packet& msg, bool copy_strings) :
         schema_(copy_strings ? msg.schema.value : boost::string_view()),
         table_(copy_strings ? msg.table.value : boost::string_view()),
         org_table_(copy_strings ? msg.org_table.value : boost::string_view()),
@@ -145,6 +145,6 @@ public:
 } // mysql
 } // boost
 
-#include <boost/mysql/impl/field_metadata.ipp>
+#include <boost/mysql/impl/metadata.ipp>
 
 #endif

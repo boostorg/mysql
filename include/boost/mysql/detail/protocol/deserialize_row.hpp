@@ -15,7 +15,7 @@
 #include <boost/mysql/detail/protocol/binary_deserialization.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <vector>
 
 
@@ -28,7 +28,7 @@ inline bool deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     resultset& resultset,
-	std::vector<value>& output,
+	std::vector<field_view>& output,
     error_code& err,
     error_info& info
 )

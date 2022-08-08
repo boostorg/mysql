@@ -63,7 +63,7 @@ void main_impl(int argc, char** argv)
      */
     ASSERT(result.fields().size() == 2);
 
-    const boost::mysql::field_metadata& company_name = result.fields()[0];
+    const boost::mysql::metadata& company_name = result.fields()[0];
     ASSERT(company_name.database() == "boost_mysql_examples"); // database name
     ASSERT(company_name.table() == "comp");                    // the alias we assigned to the table in the query
     ASSERT(company_name.original_table() == "company");        // the original table name
@@ -74,7 +74,7 @@ void main_impl(int argc, char** argv)
     ASSERT(!company_name.is_auto_increment());                 // field is not AUTO_INCREMENT
     ASSERT(company_name.is_not_null());                        // field may not be NULL
 
-    const boost::mysql::field_metadata& employee_id = result.fields()[1];
+    const boost::mysql::metadata& employee_id = result.fields()[1];
     ASSERT(employee_id.database() == "boost_mysql_examples"); // database name
     ASSERT(employee_id.table() == "emp");                   // the alias we assigned to the table in the query
     ASSERT(employee_id.original_table() == "employee");     // the original table name

@@ -13,7 +13,7 @@
 #include <forward_list>
 
 using namespace boost::mysql::test;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::error_code;
 using boost::mysql::make_execute_params;
 using boost::mysql::errc;
@@ -29,7 +29,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_ok_no_params, network_fixture)
     auto stmt = conn->prepare_statement("SELECT * FROM empty_table").get();
 
     // Execute
-    std::forward_list<value> params;
+    std::forward_list<field_view> params;
     auto result = stmt->execute_params(make_execute_params(params)).get();
     BOOST_TEST(result->valid());
 }
@@ -42,7 +42,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_ok_with_params, network_fixture)
     auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
 
     // Execute
-    std::forward_list<value> params { value("item"), value(42) };
+    std::forward_list<field_view> params { field_view("item"), field_view(42) };
     auto result = stmt->execute_params(make_execute_params(params)).get();
     BOOST_TEST(result->valid());
 }
@@ -55,7 +55,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_mismatched_num_params, network_fixture)
     auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
     
     // Execute
-    std::forward_list<value> params { value("item") };
+    std::forward_list<field_view> params { field_view("item") };
     auto result = stmt->execute_params(make_execute_params(params));
     result.validate_error(errc::wrong_num_params,
         {"param", "2", "1", "statement", "execute"});
@@ -70,7 +70,7 @@ BOOST_MYSQL_NETWORK_TEST(iterator_server_error, network_fixture)
     auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)").get();
 
     // Execute
-    std::forward_list<value> params { value("f0"), value("bad_date") };
+    std::forward_list<field_view> params { field_view("f0"), field_view("bad_date") };
     auto result = stmt->execute_params(make_execute_params(params));
     result.validate_error(errc::truncated_wrong_value,
         {"field_date", "bad_date", "incorrect date value"});
@@ -85,7 +85,7 @@ BOOST_MYSQL_NETWORK_TEST(container_ok_no_params, network_fixture)
     auto stmt = conn->prepare_statement("SELECT * FROM empty_table").get();
 
     // Execute
-    auto result = stmt->execute_container(std::vector<value>()).get();
+    auto result = stmt->execute_container(std::vector<field_view>()).get();
     BOOST_TEST(result->valid());
 }
 
@@ -139,7 +139,7 @@ BOOST_FIXTURE_TEST_CASE(c_array, tcp_network_fixture)
 {
     connect();
     auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
-    value arr [] = { value("hola"), value(10) };
+    field_view arr [] = { field_view("hola"), field_view(10) };
     auto result = stmt.execute(arr);
     BOOST_TEST(result.valid());
 }

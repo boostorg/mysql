@@ -17,20 +17,20 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream, class ValueForwardIterator>
+template <class Stream, class FieldViewFwdIterator>
 void execute_statement(
     channel<Stream>& channel,
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& output,
     error_code& err,
     error_info& info
 );
 
-template <class Stream, class ValueForwardIterator, class CompletionToken>
+template <class Stream, class FieldViewFwdIterator, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_statement(
     channel<Stream>& chan,
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& output,
     error_info& info,
     CompletionToken&& token

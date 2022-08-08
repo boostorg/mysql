@@ -7,7 +7,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/type_index.hpp>
 #include <boost/type_index/stl_type_index.hpp>
 #include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
@@ -23,9 +23,9 @@
 #include <iterator>
 #include <array>
 
-using boost::mysql::detail::is_value_forward_iterator;
-using boost::mysql::detail::is_value_collection;
-using boost::mysql::value;
+using boost::mysql::detail::is_field_view_forward_iterator;
+using boost::mysql::detail::is_field_view_collection;
+using boost::mysql::field_view;
 
 BOOST_AUTO_TEST_SUITE(test_value_type_traits)
 
@@ -37,11 +37,11 @@ class custom_iterator_collection
 public:
     class iterator
     {
-        value v_;
+        field_view v_;
     public:
-        using value_type = value;
-        using pointer = value*;
-        using reference = value&;
+        using value_type = field_view;
+        using pointer = field_view*;
+        using reference = field_view&;
         using difference_type = std::ptrdiff_t;
         using iterator_category = IteratorTag;
 
@@ -68,67 +68,67 @@ void check_is_value_forward_iterator(bool expected)
 {
     // Check whether T is accepted or not
     BOOST_TEST(
-        is_value_forward_iterator<T>::value == expected, 
+        is_field_view_forward_iterator<T>::value == expected, 
         boost::typeindex::type_id<T>().pretty_name() + 
             (expected ? " expected true, got false" : " expected false, got true")
     );
 
     // References to T not accepted
-    BOOST_TEST(!is_value_forward_iterator<T&>::value,         boost::typeindex::type_id<T&>().pretty_name());
-    BOOST_TEST(!is_value_forward_iterator<T const&>::value,   boost::typeindex::type_id<T const&>().pretty_name());
-    BOOST_TEST(!is_value_forward_iterator<T &&>::value,       boost::typeindex::type_id<T &&>().pretty_name());
-    BOOST_TEST(!is_value_forward_iterator<T const &&>::value, boost::typeindex::type_id<T const &&>().pretty_name());
+    BOOST_TEST(!is_field_view_forward_iterator<T&>::value,         boost::typeindex::type_id<T&>().pretty_name());
+    BOOST_TEST(!is_field_view_forward_iterator<T const&>::value,   boost::typeindex::type_id<T const&>().pretty_name());
+    BOOST_TEST(!is_field_view_forward_iterator<T &&>::value,       boost::typeindex::type_id<T &&>().pretty_name());
+    BOOST_TEST(!is_field_view_forward_iterator<T const &&>::value, boost::typeindex::type_id<T const &&>().pretty_name());
 }
 
 BOOST_AUTO_TEST_CASE(pointers)
 {
-    check_is_value_forward_iterator<value*>(true);
-    check_is_value_forward_iterator<const value*>(true);
+    check_is_value_forward_iterator<field_view*>(true);
+    check_is_value_forward_iterator<const field_view*>(true);
     // value* const is not considered an iterator
 }
 
 BOOST_AUTO_TEST_CASE(array_iterators)
 {
-    check_is_value_forward_iterator<std::array<value, 10>::iterator>(true);
-    check_is_value_forward_iterator<std::array<value, 10>::const_iterator>(true);
-    check_is_value_forward_iterator<std::array<const value, 10>::iterator>(true);
-    check_is_value_forward_iterator<std::array<const value, 10>::const_iterator>(true);
+    check_is_value_forward_iterator<std::array<field_view, 10>::iterator>(true);
+    check_is_value_forward_iterator<std::array<field_view, 10>::const_iterator>(true);
+    check_is_value_forward_iterator<std::array<const field_view, 10>::iterator>(true);
+    check_is_value_forward_iterator<std::array<const field_view, 10>::const_iterator>(true);
     // const std::array<value>::iterator (aka value* const) is not considered an iterator
 }
 
 BOOST_AUTO_TEST_CASE(vector_iterator)
 {
-    check_is_value_forward_iterator<std::vector<value>::iterator>(true);
-    check_is_value_forward_iterator<std::vector<value>::const_iterator>(true);
-    check_is_value_forward_iterator<const std::vector<value>::iterator>(true);
-    check_is_value_forward_iterator<const std::vector<value>::const_iterator>(true);
-    check_is_value_forward_iterator<std::vector<value>::reverse_iterator>(true);
-    check_is_value_forward_iterator<std::vector<value>::const_reverse_iterator>(true);
-    check_is_value_forward_iterator<std::back_insert_iterator<std::vector<value>>>(false);
+    check_is_value_forward_iterator<std::vector<field_view>::iterator>(true);
+    check_is_value_forward_iterator<std::vector<field_view>::const_iterator>(true);
+    check_is_value_forward_iterator<const std::vector<field_view>::iterator>(true);
+    check_is_value_forward_iterator<const std::vector<field_view>::const_iterator>(true);
+    check_is_value_forward_iterator<std::vector<field_view>::reverse_iterator>(true);
+    check_is_value_forward_iterator<std::vector<field_view>::const_reverse_iterator>(true);
+    check_is_value_forward_iterator<std::back_insert_iterator<std::vector<field_view>>>(false);
 }
 
 BOOST_AUTO_TEST_CASE(forward_list_iterator)
 {
-    check_is_value_forward_iterator<std::forward_list<value>::iterator>(true);
-    check_is_value_forward_iterator<std::forward_list<value>::const_iterator>(true);
-    check_is_value_forward_iterator<const std::forward_list<value>::iterator>(true);
-    check_is_value_forward_iterator<const std::forward_list<value>::const_iterator>(true);
+    check_is_value_forward_iterator<std::forward_list<field_view>::iterator>(true);
+    check_is_value_forward_iterator<std::forward_list<field_view>::const_iterator>(true);
+    check_is_value_forward_iterator<const std::forward_list<field_view>::iterator>(true);
+    check_is_value_forward_iterator<const std::forward_list<field_view>::const_iterator>(true);
 }
 
 BOOST_AUTO_TEST_CASE(list_iterator)
 {
-    check_is_value_forward_iterator<std::list<value>::iterator>(true);
-    check_is_value_forward_iterator<std::list<value>::const_iterator>(true);
-    check_is_value_forward_iterator<const std::list<value>::iterator>(true);
-    check_is_value_forward_iterator<const std::list<value>::const_iterator>(true);
+    check_is_value_forward_iterator<std::list<field_view>::iterator>(true);
+    check_is_value_forward_iterator<std::list<field_view>::const_iterator>(true);
+    check_is_value_forward_iterator<const std::list<field_view>::iterator>(true);
+    check_is_value_forward_iterator<const std::list<field_view>::const_iterator>(true);
 }
 
 BOOST_AUTO_TEST_CASE(set_iterator)
 {
-    check_is_value_forward_iterator<std::set<value>::iterator>(true);
-    check_is_value_forward_iterator<std::set<value>::const_iterator>(true);
-    check_is_value_forward_iterator<const std::set<value>::iterator>(true);
-    check_is_value_forward_iterator<const std::set<value>::const_iterator>(true);
+    check_is_value_forward_iterator<std::set<field_view>::iterator>(true);
+    check_is_value_forward_iterator<std::set<field_view>::const_iterator>(true);
+    check_is_value_forward_iterator<const std::set<field_view>::iterator>(true);
+    check_is_value_forward_iterator<const std::set<field_view>::const_iterator>(true);
 }
 
 BOOST_AUTO_TEST_CASE(custom_collection_iterator)
@@ -141,17 +141,17 @@ BOOST_AUTO_TEST_CASE(custom_collection_iterator)
 
 BOOST_AUTO_TEST_CASE(iterator_wrong_value_type)
 {
-    check_is_value_forward_iterator<std::vector<const value*>::iterator>(false);
-    check_is_value_forward_iterator<std::vector<value*>::iterator>(false);
-    check_is_value_forward_iterator<std::vector<std::reference_wrapper<value>>::iterator>(false);
-    check_is_value_forward_iterator<std::vector<std::reference_wrapper<const value>>::iterator>(false);
+    check_is_value_forward_iterator<std::vector<const field_view*>::iterator>(false);
+    check_is_value_forward_iterator<std::vector<field_view*>::iterator>(false);
+    check_is_value_forward_iterator<std::vector<std::reference_wrapper<field_view>>::iterator>(false);
+    check_is_value_forward_iterator<std::vector<std::reference_wrapper<const field_view>>::iterator>(false);
     check_is_value_forward_iterator<std::vector<int>::iterator>(false);
     check_is_value_forward_iterator<std::string::iterator>(false);
 }
 
 BOOST_AUTO_TEST_CASE(not_an_iterator)
 {
-    check_is_value_forward_iterator<value>(false);
+    check_is_value_forward_iterator<field_view>(false);
     check_is_value_forward_iterator<int>(false);
     check_is_value_forward_iterator<std::string>(false);
     check_is_value_forward_iterator<std::vector<int>>(false);
@@ -169,49 +169,49 @@ void check_is_value_collection(bool expected)
             (expected ? " expected true, got false" : " expected false, got true");
 
     // Check whether T is accepted or not
-    BOOST_TEST(is_value_collection<T>::value == expected, err_msg);
+    BOOST_TEST(is_field_view_collection<T>::value == expected, err_msg);
 
     // References to T accepted if T is accepted
-    BOOST_TEST(is_value_collection<T&>::value == expected,         err_msg);
-    BOOST_TEST(is_value_collection<T const&>::value == expected,   err_msg);
-    BOOST_TEST(is_value_collection<T &&>::value == expected,       err_msg);
-    BOOST_TEST(is_value_collection<T const &&>::value == expected, err_msg);
+    BOOST_TEST(is_field_view_collection<T&>::value == expected,         err_msg);
+    BOOST_TEST(is_field_view_collection<T const&>::value == expected,   err_msg);
+    BOOST_TEST(is_field_view_collection<T &&>::value == expected,       err_msg);
+    BOOST_TEST(is_field_view_collection<T const &&>::value == expected, err_msg);
 }
 
 BOOST_AUTO_TEST_CASE(c_arrays)
 {
-    check_is_value_collection<value [10]>(true);
-    check_is_value_collection<const value[10]>(true);
+    check_is_value_collection<field_view [10]>(true);
+    check_is_value_collection<const field_view[10]>(true);
 }
 
 BOOST_AUTO_TEST_CASE(arrays)
 {
-    check_is_value_collection<std::array<value, 10>>(true);
-    check_is_value_collection<const std::array<value, 10>>(true);
+    check_is_value_collection<std::array<field_view, 10>>(true);
+    check_is_value_collection<const std::array<field_view, 10>>(true);
 }
 
 BOOST_AUTO_TEST_CASE(vector)
 {
-    check_is_value_collection<std::vector<value>>(true);
-    check_is_value_collection<const std::vector<value>>(true);
+    check_is_value_collection<std::vector<field_view>>(true);
+    check_is_value_collection<const std::vector<field_view>>(true);
 }
 
 BOOST_AUTO_TEST_CASE(forward_list)
 {
-    check_is_value_collection<std::forward_list<value>>(true);
-    check_is_value_collection<const std::forward_list<value>>(true);
+    check_is_value_collection<std::forward_list<field_view>>(true);
+    check_is_value_collection<const std::forward_list<field_view>>(true);
 }
 
 BOOST_AUTO_TEST_CASE(list)
 {
-    check_is_value_collection<std::list<value>>(true);
-    check_is_value_collection<const std::list<value>>(true);
+    check_is_value_collection<std::list<field_view>>(true);
+    check_is_value_collection<const std::list<field_view>>(true);
 }
 
 BOOST_AUTO_TEST_CASE(set)
 {
-    check_is_value_collection<std::set<value>>(true);
-    check_is_value_collection<const std::set<value>>(true);
+    check_is_value_collection<std::set<field_view>>(true);
+    check_is_value_collection<const std::set<field_view>>(true);
 }
 
 BOOST_AUTO_TEST_CASE(custom_collection)
@@ -222,20 +222,20 @@ BOOST_AUTO_TEST_CASE(custom_collection)
 
 BOOST_AUTO_TEST_CASE(wrong_collection_type)
 {
-    check_is_value_collection<std::vector<const value*>>(false);
-    check_is_value_collection<std::vector<value*>>(false);
-    check_is_value_collection<std::vector<std::reference_wrapper<value>>>(false);
-    check_is_value_collection<std::vector<std::reference_wrapper<const value>>>(false);
+    check_is_value_collection<std::vector<const field_view*>>(false);
+    check_is_value_collection<std::vector<field_view*>>(false);
+    check_is_value_collection<std::vector<std::reference_wrapper<field_view>>>(false);
+    check_is_value_collection<std::vector<std::reference_wrapper<const field_view>>>(false);
     check_is_value_collection<std::vector<int>>(false);
     check_is_value_collection<std::string>(false);
 }
 
 BOOST_AUTO_TEST_CASE(not_a_collection)
 {
-    check_is_value_collection<value>(false);
-    check_is_value_collection<const value>(false);
-    check_is_value_collection<const value*>(false);
-    check_is_value_collection<std::vector<value>::iterator>(false);
+    check_is_value_collection<field_view>(false);
+    check_is_value_collection<const field_view>(false);
+    check_is_value_collection<const field_view*>(false);
+    check_is_value_collection<std::vector<field_view>::iterator>(false);
     check_is_value_collection<int>(false);
 }
 

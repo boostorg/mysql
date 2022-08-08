@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_METADATA_COLLECTION_VIEW_HPP
 #define BOOST_MYSQL_METADATA_COLLECTION_VIEW_HPP
 
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <cstddef>
 #include <stdexcept>
 
@@ -17,17 +17,17 @@ namespace mysql {
 
 class metadata_collection_view
 {
-    const field_metadata* data_ {};
+    const metadata* data_ {};
     std::size_t size_ {};
 public:
     metadata_collection_view() = default;
-    metadata_collection_view(const field_metadata* data, std::size_t size) noexcept :
+    metadata_collection_view(const metadata* data, std::size_t size) noexcept :
         data_(data), size_(size) {}
     
-    using iterator = const field_metadata*;
+    using iterator = const metadata*;
     using const_iterator = iterator;
-    using value_type = field_metadata;
-    using reference = const field_metadata&;
+    using value_type = metadata;
+    using reference = const metadata&;
     using const_reference = reference;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -35,13 +35,13 @@ public:
     iterator begin() const noexcept { return data_; }
     iterator end() const noexcept { return data_ + size_; }
 
-    const field_metadata& at(std::size_t i) const
+    const metadata& at(std::size_t i) const
     {
         if (i >= size_)
             throw std::out_of_range("metadata_collection_view::at");
         return data_[i];
     }
-    const field_metadata& operator[](std::size_t i) const noexcept { return data_[i]; }
+    const metadata& operator[](std::size_t i) const noexcept { return data_[i]; }
     bool empty() const noexcept { return size_ == 0; }
     std::size_t size() const noexcept { return size_; }
 };

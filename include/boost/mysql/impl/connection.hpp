@@ -227,9 +227,9 @@ boost::mysql::connection<Stream>::async_prepare_statement(
 
 // Execute statement
 template <class Stream>
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 void boost::mysql::connection<Stream>::execute_statement(
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& result,
     error_code& err,
     error_info& info
@@ -246,9 +246,9 @@ void boost::mysql::connection<Stream>::execute_statement(
 }
 
 template <class Stream>
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 void boost::mysql::connection<Stream>::execute_statement(
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& result
 )
 {
@@ -265,7 +265,7 @@ void boost::mysql::connection<Stream>::execute_statement(
 
 
 template <class Stream>
-template <class ValueForwardIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(
+template <class FieldViewFwdIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(
     void(::boost::mysql::error_code)
 ) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
@@ -273,7 +273,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code)
 )
 boost::mysql::connection<Stream>::async_execute_statement(
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& result,
     error_info& output_info,
     CompletionToken&& token

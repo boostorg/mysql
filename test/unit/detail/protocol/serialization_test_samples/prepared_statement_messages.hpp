@@ -48,13 +48,13 @@ const serialization_test_spec com_stmt_prepare_ok_packet_spec {
 };
 
 // Helper for composing ComStmtExecute tests
-template <std::size_t N, class Collection = std::vector<value>>
+template <std::size_t N, class Collection = std::vector<field_view>>
 serialization_sample make_stmt_execute_sample(
     std::uint32_t stmt_id,
     std::uint8_t flags,
     std::uint32_t itercount,
     std::uint8_t new_params_flag,
-    const std::array<value, N>& params,
+    const std::array<field_view, N>& params,
     std::vector<std::uint8_t>&& buffer,
     std::string&& test_name
 )
@@ -177,7 +177,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             },
             "several_params"
         ),
-        make_stmt_execute_sample<1, std::forward_list<value>>(1, 0x80, 1, 1,
+        make_stmt_execute_sample<1, std::forward_list<field_view>>(1, 0x80, 1, 1,
             make_values(std::uint64_t(0xabffff)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x08, 0x80, 0xff, 0xff,

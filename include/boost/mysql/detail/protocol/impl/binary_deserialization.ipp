@@ -23,31 +23,31 @@ namespace mysql {
 namespace detail {
 
 // strings
-inline errc deserialize_binary_value_string(
+inline errc deserialize_binary_field_string(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     string_lenenc deser;
     auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
-    output = value(deser.value);
+    output = field_view(deser.value);
     return errc::ok;
 }
 
 // ints
 template <class TargetType, class DeserializableType>
-errc deserialize_binary_value_int_impl(
+errc deserialize_binary_field_int_impl(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     DeserializableType deser;
     auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
-    output = value(static_cast<TargetType>(deser));
+    output = field_view(static_cast<TargetType>(deser));
     return errc::ok;
 }
 
@@ -55,24 +55,24 @@ template <
     class DeserializableTypeUnsigned,
     class DeserializableTypeSigned
 >
-errc deserialize_binary_value_int(
-    const field_metadata& meta,
+errc deserialize_binary_field_int(
+    const metadata& meta,
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     return meta.is_unsigned() ?
-        deserialize_binary_value_int_impl<
+        deserialize_binary_field_int_impl<
             std::uint64_t, DeserializableTypeUnsigned>(ctx, output) :
-        deserialize_binary_value_int_impl<
+        deserialize_binary_field_int_impl<
             std::int64_t, DeserializableTypeSigned>(ctx, output);
 }
 
 // Bits. These come as a binary value between 1 and 8 bytes,
 // packed in a string
-inline errc deserialize_binary_value_bit(
+inline errc deserialize_binary_field_bit(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     string_lenenc buffer;
@@ -83,9 +83,9 @@ inline errc deserialize_binary_value_bit(
 
 // Floats
 template <class T>
-errc deserialize_binary_value_float(
+errc deserialize_binary_field_float(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     // Size check
@@ -102,7 +102,7 @@ errc deserialize_binary_value_float(
 
     // Done
     ctx.advance(sizeof(T));
-    output = value(v);
+    output = field_view(v);
     return errc::ok;
 }
 
@@ -134,9 +134,9 @@ inline errc deserialize_binary_ymd(
     return errc::ok;
 }
 
-inline errc deserialize_binary_value_date(
+inline errc deserialize_binary_field_date(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     // Deserialize length
@@ -148,7 +148,7 @@ inline errc deserialize_binary_value_date(
     // Check for zero dates, represented in C++ as a NULL
     if (length < binc::date_sz)
     {
-        output = value(nullptr);
+        output = field_view(nullptr);
         return errc::ok;
     }
 
@@ -161,18 +161,18 @@ inline errc deserialize_binary_value_date(
     // Check for invalid dates, represented as NULL in C++
     if (!is_valid(ymd))
     {
-        output = value(nullptr);
+        output = field_view(nullptr);
         return errc::ok;
     }
 
     // Convert to value
-    output = value(date(days(ymd_to_days(ymd))));
+    output = field_view(date(days(ymd_to_days(ymd))));
     return errc::ok;
 }
 
-inline errc deserialize_binary_value_datetime(
+inline errc deserialize_binary_field_datetime(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     using namespace binc;
@@ -231,7 +231,7 @@ inline errc deserialize_binary_value_datetime(
     // associated to this datetime
     if (!is_valid(ymd))
     {
-        output = value(nullptr);
+        output = field_view(nullptr);
         return errc::ok;
     }
 
@@ -242,13 +242,13 @@ inline errc deserialize_binary_value_datetime(
         std::chrono::minutes(minutes) +
         std::chrono::seconds(seconds) +
         std::chrono::microseconds(micros);
-    output = value(d + time_of_day);
+    output = field_view(d + time_of_day);
     return errc::ok;
 }
 
-inline errc deserialize_binary_value_time(
+inline errc deserialize_binary_field_time(
     deserialization_context& ctx,
-    value& output
+    field_view& output
 ) noexcept
 {
     using namespace binc;
@@ -301,7 +301,7 @@ inline errc deserialize_binary_value_time(
     }
 
     // Compose the final time
-    output = value(time((is_negative ? -1 : 1) * (
+    output = field_view(time((is_negative ? -1 : 1) * (
          days(num_days) +
          std::chrono::hours(hours) +
          std::chrono::minutes(minutes) +
@@ -316,37 +316,37 @@ inline errc deserialize_binary_value_time(
 } // mysql
 } // boost
 
-inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
+inline boost::mysql::errc boost::mysql::detail::deserialize_binary_field(
     deserialization_context& ctx,
-    const field_metadata& meta,
-    value& output
+    const metadata& meta,
+    field_view& output
 )
 {
     switch (meta.protocol_type())
     {
     case protocol_field_type::tiny:
-        return deserialize_binary_value_int<std::uint8_t, std::int8_t>(meta, ctx, output);
+        return deserialize_binary_field_int<std::uint8_t, std::int8_t>(meta, ctx, output);
     case protocol_field_type::short_:
     case protocol_field_type::year:
-        return deserialize_binary_value_int<std::uint16_t, std::int16_t>(meta, ctx, output);
+        return deserialize_binary_field_int<std::uint16_t, std::int16_t>(meta, ctx, output);
     case protocol_field_type::int24:
     case protocol_field_type::long_:
-        return deserialize_binary_value_int<std::uint32_t, std::int32_t>(meta, ctx, output);
+        return deserialize_binary_field_int<std::uint32_t, std::int32_t>(meta, ctx, output);
     case protocol_field_type::longlong:
-        return deserialize_binary_value_int<std::uint64_t, std::int64_t>(meta, ctx, output);
+        return deserialize_binary_field_int<std::uint64_t, std::int64_t>(meta, ctx, output);
     case protocol_field_type::bit:
-        return deserialize_binary_value_bit(ctx, output);
+        return deserialize_binary_field_bit(ctx, output);
     case protocol_field_type::float_:
-        return deserialize_binary_value_float<float>(ctx, output);
+        return deserialize_binary_field_float<float>(ctx, output);
     case protocol_field_type::double_:
-        return deserialize_binary_value_float<double>(ctx, output);
+        return deserialize_binary_field_float<double>(ctx, output);
     case protocol_field_type::timestamp:
     case protocol_field_type::datetime:
-        return deserialize_binary_value_datetime(ctx, output);
+        return deserialize_binary_field_datetime(ctx, output);
     case protocol_field_type::date:
-        return deserialize_binary_value_date(ctx, output);
+        return deserialize_binary_field_date(ctx, output);
     case protocol_field_type::time:
-        return deserialize_binary_value_time(ctx, output);
+        return deserialize_binary_field_time(ctx, output);
     // True string types
     case protocol_field_type::varchar:
     case protocol_field_type::var_string:
@@ -362,14 +362,14 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_value(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return deserialize_binary_value_string(ctx, output);
+        return deserialize_binary_field_string(ctx, output);
     }
 }
 
 inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
     deserialization_context& ctx,
-    const std::vector<field_metadata>& meta,
-    std::vector<value>& output
+    const std::vector<metadata>& meta,
+    std::vector<field_view>& output
 )
 {
     std::size_t old_size = output.size();
@@ -392,15 +392,15 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
     ctx.advance(null_bitmap.byte_count());
 
     // Actual values
-    for (std::vector<value>::size_type i = 0; i < output.size(); ++i)
+    for (std::vector<field_view>::size_type i = 0; i < output.size(); ++i)
     {
         if (null_bitmap.is_null(null_bitmap_begin, i))
         {
-            output[old_size + i] = value(nullptr);
+            output[old_size + i] = field_view(nullptr);
         }
         else
         {
-            auto err = deserialize_binary_value(ctx, meta[i], output[old_size + i]);
+            auto err = deserialize_binary_field(ctx, meta[i], output[old_size + i]);
             if (err != errc::ok)
                 return make_error_code(err);
         }

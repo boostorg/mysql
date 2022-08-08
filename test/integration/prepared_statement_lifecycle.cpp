@@ -9,11 +9,11 @@
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::value;
+using boost::mysql::field_view;
 
 BOOST_AUTO_TEST_SUITE(test_prepared_statement_lifecycle)
 
-value get_updates_table_value(
+field_view get_updates_table_value(
     er_connection& conn,
     const std::string& field_varchar="f0"
 )
@@ -99,7 +99,7 @@ BOOST_MYSQL_NETWORK_TEST(update_with_parameters_multiple_executions, network_fix
     BOOST_TEST(result->fields().empty());
 
     // Verify that took effect
-    BOOST_TEST(get_updates_table_value(*conn) == value(std::int32_t(200)));
+    BOOST_TEST(get_updates_table_value(*conn) == field_view(std::int32_t(200)));
 
     // Set field_int to something different
     result = stmt->execute_container(make_value_vector(250, "f0")).get();
@@ -108,7 +108,7 @@ BOOST_MYSQL_NETWORK_TEST(update_with_parameters_multiple_executions, network_fix
     BOOST_TEST(result->fields().empty());
 
     // Verify that took effect
-    BOOST_TEST(get_updates_table_value(*conn) == value(std::int32_t(250)));
+    BOOST_TEST(get_updates_table_value(*conn) == field_view(std::int32_t(250)));
 
     // Close the statement
     stmt->close().validate_no_error();
@@ -165,13 +165,13 @@ BOOST_MYSQL_NETWORK_TEST(insert_with_null_values, network_fixture)
     auto result = stmt->execute_container(make_value_vector(42)).get();
 
     // Verify it took effect
-    BOOST_TEST_REQUIRE((get_updates_table_value(*conn, "fnull") == value(std::int32_t(42))));
+    BOOST_TEST_REQUIRE((get_updates_table_value(*conn, "fnull") == field_view(std::int32_t(42))));
 
     // Update the value to NULL
     result = stmt->execute_container(make_value_vector(nullptr)).get();
 
     // Verify it took effect
-    BOOST_TEST_REQUIRE((get_updates_table_value(*conn, "fnull") == value(nullptr)));
+    BOOST_TEST_REQUIRE((get_updates_table_value(*conn, "fnull") == field_view(nullptr)));
 
     // Close statement
     stmt->close().validate_no_error();

@@ -20,31 +20,30 @@ namespace detail {
 
 // Maps from an actual value to a protocol_field_type. Only value's type is used
 inline protocol_field_type get_protocol_field_type(
-    const value& input
+    const field_view& input
 ) noexcept
 {
-    struct visitor
+    switch (input.kind())
     {
-        protocol_field_type operator()(std::int64_t) const noexcept { return protocol_field_type::longlong; }
-        protocol_field_type operator()(std::uint64_t) const noexcept { return protocol_field_type::longlong; }
-        protocol_field_type operator()(boost::string_view) const noexcept { return protocol_field_type::varchar; }
-        protocol_field_type operator()(float) const noexcept { return protocol_field_type::float_; }
-        protocol_field_type operator()(double) const noexcept { return protocol_field_type::double_; }
-        protocol_field_type operator()(date) const noexcept { return protocol_field_type::date; }
-        protocol_field_type operator()(datetime) const noexcept { return protocol_field_type::datetime; }
-        protocol_field_type operator()(time) const noexcept { return protocol_field_type::time; }
-        protocol_field_type operator()(null_t) const noexcept { return protocol_field_type::null; }
-    };
-    return boost::variant2::visit(visitor(), input.to_variant());
+        case field_kind::null: return protocol_field_type::null;
+        case field_kind::int64: return protocol_field_type::longlong;
+        case field_kind::uint64: return protocol_field_type::longlong;
+        case field_kind::string: return protocol_field_type::varchar;
+        case field_kind::float_: return protocol_field_type::float_;
+        case field_kind::double_: return protocol_field_type::double_;
+        case field_kind::date: return protocol_field_type::date;
+        case field_kind::datetime: return protocol_field_type::datetime;
+        case field_kind::time: return protocol_field_type::time;
+    }
 }
 
 // Whether to include the unsigned flag in the statement execute message
 // for a given value or not. Only value's type is used
 inline bool is_unsigned(
-    const value& input
+    const field_view& input
 ) noexcept
 {
-    return input.is<std::uint64_t>();
+    return input.is_uint64();
 }
 
 } // detail
@@ -71,14 +70,14 @@ boost::mysql::detail::serialization_traits<
     );
 }
 
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 inline std::size_t
 boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::com_stmt_execute_packet<ValueForwardIterator>,
+    boost::mysql::detail::com_stmt_execute_packet<FieldViewFwdIterator>,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::get_size_(
     const serialization_context& ctx,
-    const com_stmt_execute_packet<ValueForwardIterator>& value
+    const com_stmt_execute_packet<FieldViewFwdIterator>& value
 ) noexcept
 {
     std::size_t res = 1 + // command ID
@@ -95,17 +94,17 @@ boost::mysql::detail::serialization_traits<
     return res;
 }
 
-template <class ValueForwardIterator>
+template <class FieldViewFwdIterator>
 inline void
 boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::com_stmt_execute_packet<ValueForwardIterator>,
+    boost::mysql::detail::com_stmt_execute_packet<FieldViewFwdIterator>,
     boost::mysql::detail::serialization_tag::struct_with_fields
 >::serialize_(
     serialization_context& ctx,
-    const com_stmt_execute_packet<ValueForwardIterator>& input
+    const com_stmt_execute_packet<FieldViewFwdIterator>& input
 ) noexcept
 {
-    constexpr std::uint8_t command_id = com_stmt_execute_packet<ValueForwardIterator>::command_id;
+    constexpr std::uint8_t command_id = com_stmt_execute_packet<FieldViewFwdIterator>::command_id;
     serialize(
         ctx,
         command_id,

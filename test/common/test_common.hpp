@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/connection_params.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
@@ -25,9 +25,9 @@ namespace test {
 using detail::stringize;
 
 template <class... Types>
-std::vector<value> make_value_vector(Types&&... args)
+std::vector<field_view> make_value_vector(Types&&... args)
 {
-    return std::vector<value>{mysql::value(std::forward<Types>(args))...};
+    return std::vector<field_view>{mysql::field_view(std::forward<Types>(args))...};
 }
 
 template <class... Types>

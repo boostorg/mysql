@@ -10,8 +10,9 @@
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/auxiliar/container_equals.hpp>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <algorithm>
+#include <boost/utility/string_view_fwd.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -47,8 +48,8 @@ namespace mysql {
  */
 class row
 {
-    std::vector<value> values_;
-    std::vector<char> buffer_;
+    std::vector<field_view> fields_;
+    std::vector<char> string_buffer_;
 public:
     row() = default;
     row(const row&) = delete; // TODO
@@ -57,33 +58,33 @@ public:
     row& operator=(row&&) = default;
     ~row() = default;
 
-    using iterator = const value*;
+    using iterator = const field_view*;
     using const_iterator = iterator;
     // TODO: add other standard container members when we add field and field_view
 
-    iterator begin() const noexcept { return values_.data(); }
-    iterator end() const noexcept { return values_.data() + values_.size(); }
-    value at(std::size_t i) const { return values_.at(i); }
-    value operator[](std::size_t i) const noexcept { return values_[i]; }
-    value front() const noexcept { return values_.front(); }
-    value back() const noexcept { return values_.back(); }
-    bool empty() const noexcept { return values_.empty(); }
-    std::size_t size() const noexcept { return values_.size(); }
+    iterator begin() const noexcept { return fields_.data(); }
+    iterator end() const noexcept { return fields_.data() + fields_.size(); }
+    field_view at(std::size_t i) const { return fields_.at(i); }
+    field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
+    field_view front() const noexcept { return fields_.front(); }
+    field_view back() const noexcept { return fields_.back(); }
+    bool empty() const noexcept { return fields_.empty(); }
+    std::size_t size() const noexcept { return fields_.size(); }
 
-    iterator insert(iterator before, value v);
-    iterator insert(iterator before, std::initializer_list<value> v);
+    iterator insert(iterator before, field_view v);
+    iterator insert(iterator before, std::initializer_list<field_view> v);
     template <class FwdIt>
     iterator insert(iterator before, FwdIt first, FwdIt last);
 
-    iterator replace(iterator pos, value v);
-    iterator replace(iterator first, iterator last, std::initializer_list<value> v);
+    iterator replace(iterator pos, field_view v);
+    iterator replace(iterator first, iterator last, std::initializer_list<field_view> v);
     template <class FwdIt>
     iterator replace(iterator first, iterator last, FwdIt other_first, FwdIt other_last);
 
     iterator erase(iterator pos);
     iterator erase(iterator first, iterator last);
 
-    void push_back(value v);
+    void push_back(field_view v);
     void pop_back();
 
 
@@ -97,39 +98,39 @@ public:
      */
     void clear() noexcept
     {
-        values_.clear();
-        buffer_.clear();
+        fields_.clear();
+        string_buffer_.clear();
     }
 
     // TODO: hide these
-    const std::vector<value>& values() const noexcept { return values_; }
-    std::vector<value>& values() noexcept { return values_; }
+    const std::vector<field_view>& fields() const noexcept { return fields_; }
+    std::vector<field_view>& values() noexcept { return fields_; }
     void copy_strings()
     {
         // Calculate size
         std::size_t size = 0;
-        for (const auto& v: values_)
+        for (const auto& f: fields_)
         {
-            auto typed_value = v.get_optional<boost::string_view>();
-            if (typed_value.has_value())
+            const boost::string_view* str = f.if_string();
+            if (str)
             {
-                size += typed_value->size();
+                size += str->size();
             }
         }
 
         // Make space
-        buffer_.resize(size);
+        string_buffer_.resize(size);
 
         // Copy the strings
         std::size_t offset = 0;
-        for (auto& v: values_)
+        for (auto& f: fields_)
         {
-            auto typed_value = v.get_optional<boost::string_view>();
-            if (typed_value.has_value())
+            const boost::string_view* str = f.if_string();
+            if (str)
             {
-                std::memcpy(buffer_.data() + offset, typed_value->data(), typed_value->size());
-                v = value(boost::string_view(buffer_.data() + offset, typed_value->size()));
-                offset += typed_value->size();
+                std::memcpy(string_buffer_.data() + offset, str->data(), str->size());
+                f = field_view(boost::string_view(string_buffer_.data() + offset, str->size()));
+                offset += str->size();
             }
         }
     }
@@ -138,26 +139,26 @@ public:
 
 class row_view
 {
-    const value* values_ {};
+    const field_view* fields_ {};
     std::size_t size_ {};
 public:
     row_view() = default;
-    row_view(const value* v, std::size_t size) noexcept : values_ {v}, size_{size} {}
+    row_view(const field_view* f, std::size_t size) noexcept : fields_ {f}, size_{size} {}
     row_view(const row& r) noexcept :
-        values_(r.begin()),
+        fields_(r.begin()),
         size_(r.size())
     {
     }
 
-    using iterator = const value*;
+    using iterator = const field_view*;
     using const_iterator = iterator;
 
-    iterator begin() const noexcept { return values_; }
-    iterator end() const noexcept { return values_ + size_; }
-    value at(std::size_t i) const;
-    value operator[](std::size_t i) const noexcept { return values_[i]; }
-    value front() const noexcept { return values_[0]; }
-    value back() const noexcept { return values_[size_ - 1]; }
+    iterator begin() const noexcept { return fields_; }
+    iterator end() const noexcept { return fields_ + size_; }
+    field_view at(std::size_t i) const;
+    field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
+    field_view front() const noexcept { return fields_[0]; }
+    field_view back() const noexcept { return fields_[size_ - 1]; }
     bool empty() const noexcept { return size_ == 0; }
     std::size_t size() const noexcept { return size_; }
 };
@@ -166,24 +167,24 @@ public:
 
 class rows
 {
-    std::vector<value> values_;
-    std::vector<char> buffer_;
+    std::vector<field_view> fields_;
+    std::vector<char> string_buffer_;
     std::size_t num_columns_ {};
 
     void rebase_strings(const char* old_buffer_base)
     {
-        const char* new_buffer_base = buffer_.data();
+        const char* new_buffer_base = string_buffer_.data();
         auto diff = new_buffer_base - old_buffer_base;
         if (diff)
         {
-            for (auto& v: values_)
+            for (auto& f: fields_)
             {
-                auto typed_value = v.get_optional<boost::string_view>();
-                if (typed_value.has_value())
+                const boost::string_view* str = f.if_string();
+                if (str)
                 {
-                    v = value(boost::string_view(
-                        typed_value->data() + diff,
-                        typed_value->size()
+                    f = field_view(boost::string_view(
+                        str->data() + diff,
+                        str->size()
                     ));
                 }
             }
@@ -208,51 +209,51 @@ public:
     row_view operator[](std::size_t i) const noexcept
     {
         std::size_t offset = num_columns_ * i;
-        return row_view(values_.data() + offset, num_columns_);
+        return row_view(fields_.data() + offset, num_columns_);
     }
     row_view front() const noexcept { return (*this)[0]; }
     row_view back() const noexcept { return (*this)[size() - 1]; }
-    bool empty() const noexcept { return values_.empty(); }
-    std::size_t size() const noexcept { return values_.size() / num_columns_; }
+    bool empty() const noexcept { return fields_.empty(); }
+    std::size_t size() const noexcept { return fields_.size() / num_columns_; }
 
     // TODO: hide these
-    std::vector<value>& values() noexcept { return values_; }
-    void copy_strings(std::size_t value_offset)
+    std::vector<field_view>& fields() noexcept { return fields_; }
+    void copy_strings(std::size_t field_offset)
     {
         // Calculate the extra size required for the new strings
         std::size_t size = 0;
-        for (const auto* v = values_.data() + value_offset; v != values_.data() + values_.size(); ++v)
+        for (const auto* f = fields_.data() + field_offset; f != fields_.data() + fields_.size(); ++f)
         {
-            auto typed_value = v->get_optional<boost::string_view>();
-            if (typed_value.has_value())
+            const boost::string_view* str = f->if_string();
+            if (str)
             {
-                size += typed_value->size();
+                size += str->size();
             }
         }
 
         // Make space and rebase the old strings
-        const char* old_buffer_base = buffer_.data();
-        std::size_t old_buffer_size = buffer_.size();
-        buffer_.resize(size);
+        const char* old_buffer_base = string_buffer_.data();
+        std::size_t old_buffer_size = string_buffer_.size();
+        string_buffer_.resize(size);
         rebase_strings(old_buffer_base);
         
         // Copy the strings
         std::size_t offset = old_buffer_size;
-        for (auto& v: values_)
+        for (auto& f: fields_)
         {
-            auto typed_value = v.get_optional<boost::string_view>();
-            if (typed_value.has_value())
+            const boost::string_view* str = f.if_string();
+            if (str)
             {
-                std::memcpy(buffer_.data() + offset, typed_value->data(), typed_value->size());
-                v = value(boost::string_view(buffer_.data() + offset, typed_value->size()));
-                offset += typed_value->size();
+                std::memcpy(string_buffer_.data() + offset, str->data(), str->size());
+                f = field_view(boost::string_view(string_buffer_.data() + offset, str->size()));
+                offset += str->size();
             }
         }
     }
     void clear() noexcept
     {
-        values_.clear();
-        buffer_.clear();
+        fields_.clear();
+        string_buffer_.clear();
     }
 
 
@@ -284,13 +285,13 @@ public:
 
 class rows_view
 {
-    const value* values_ {};
+    const field_view* fields_ {};
     std::size_t num_values_ {};
     std::size_t num_columns_ {};
 public:
     rows_view() = default;
-    rows_view(const value* values, std::size_t num_values, std::size_t num_columns) noexcept :
-        values_(values),
+    rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept :
+        fields_(fields),
         num_values_(num_values),
         num_columns_(num_columns)
     {
@@ -306,7 +307,7 @@ public:
     row_view operator[](std::size_t i) const noexcept
     {
         std::size_t offset = num_columns_ * i;
-        return row_view(values_ + offset, num_columns_);
+        return row_view(fields_ + offset, num_columns_);
     }
     row_view front() const noexcept { return (*this)[0]; }
     row_view back() const noexcept { return (*this)[size() - 1]; }
@@ -344,7 +345,7 @@ public:
  */
 inline bool operator==(const row& lhs, const row& rhs)
 {
-    return detail::container_equals(lhs.values(), rhs.values());
+    return detail::container_equals(lhs.fields(), rhs.fields());
 }
 
 /**
@@ -360,7 +361,7 @@ inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 inline std::ostream& operator<<(std::ostream& os, const row& value)
 {
     os << '{';
-    const auto& arr = value.values();
+    const auto& arr = value.fields();
     if (!arr.empty())
     {
         os << arr[0];

@@ -20,8 +20,7 @@ namespace detail {
 
 // Floating point types
 template <class T>
-typename std::enable_if<std::is_floating_point<T>::value>::type
-serialize_binary_value_impl(
+void serialize_binary_float(
     serialization_context& ctx,
     T input
 )
@@ -48,7 +47,7 @@ inline void serialize_binary_ymd(
     );
 }
 
-inline void serialize_binary_value_impl(
+inline void serialize_binary_date(
     serialization_context& ctx,
     const date& input
 )
@@ -60,7 +59,7 @@ inline void serialize_binary_value_impl(
     serialize_binary_ymd(ctx, ymd);
 }
 
-inline void serialize_binary_value_impl(
+inline void serialize_binary_datetime(
     serialization_context& ctx,
     const datetime& input
 )
@@ -88,7 +87,7 @@ inline void serialize_binary_value_impl(
     );
 }
 
-inline void serialize_binary_value_impl(
+inline void serialize_binary_time(
     serialization_context& ctx,
     const time& input
 )
@@ -116,66 +115,54 @@ inline void serialize_binary_value_impl(
 }
 
 
-struct size_visitor
-{
-    const serialization_context& ctx;
-
-    size_visitor(const serialization_context& ctx) noexcept: ctx(ctx) {}
-
-    // ints and floats
-    template <class T>
-    std::size_t operator()(T) noexcept { return sizeof(T); }
-
-    std::size_t operator()(boost::string_view v) noexcept { return get_size(ctx, string_lenenc(v)); }
-    std::size_t operator()(const date&) noexcept { return binc::date_sz + binc::length_sz; }
-    std::size_t operator()(const datetime&) noexcept { return binc::datetime_dhmsu_sz + binc::length_sz; }
-    std::size_t operator()(const time&) noexcept { return binc::time_dhmsu_sz + binc::length_sz; }
-    std::size_t operator()(null_t) noexcept { return 0; }
-};
-
-struct serialize_visitor
-{
-    serialization_context& ctx;
-
-    serialize_visitor(serialization_context& ctx) noexcept: ctx(ctx) {}
-
-    template <class T>
-    void operator()(const T& v) noexcept { serialize_binary_value_impl(ctx, v); }
-
-    void operator()(std::int64_t v) noexcept { serialize(ctx, v); }
-    void operator()(std::uint64_t v) noexcept { serialize(ctx, v); }
-    void operator()(boost::string_view v) noexcept { serialize(ctx, string_lenenc(v)); }
-    void operator()(null_t) noexcept {}
-};
-
 } // detail
 } // mysql
 } // boost
 
 inline std::size_t
 boost::mysql::detail::serialization_traits<
-    boost::mysql::value,
+    boost::mysql::field_view,
     boost::mysql::detail::serialization_tag::none
 >::get_size_(
     const serialization_context& ctx,
-    const value& input
+    const field_view& input
 ) noexcept
 {
-    return boost::variant2::visit(size_visitor(ctx), input.to_variant());
+    switch (input.kind())
+    {
+        case field_kind::null: return 0;
+        case field_kind::int64: return 8;
+        case field_kind::uint64: return 8;
+        case field_kind::string: return get_size(ctx, string_lenenc(input.get_string()));
+        case field_kind::float_: return 4;
+        case field_kind::double_: return 8;
+        case field_kind::date: return binc::date_sz + binc::length_sz;
+        case field_kind::datetime: return binc::datetime_dhmsu_sz + binc::length_sz;
+        case field_kind::time: return binc::time_dhmsu_sz + binc::length_sz;
+    }
 }
 
 inline void
 boost::mysql::detail::serialization_traits<
-    boost::mysql::value,
+    boost::mysql::field_view,
     boost::mysql::detail::serialization_tag::none
 >::serialize_(
     serialization_context& ctx,
-    const value& input
+    const field_view& input
 ) noexcept
 {
-    boost::variant2::visit(serialize_visitor(ctx), input.to_variant());
+    switch (input.kind())
+    {
+        case field_kind::null: break;
+        case field_kind::int64: serialize(ctx, input.get_int64()); break;
+        case field_kind::uint64: serialize(ctx, input.get_uint64()); break;
+        case field_kind::string: serialize(ctx, string_lenenc(input.get_string())); break;
+        case field_kind::float_: serialize_binary_float(ctx, input.get_float()); break;
+        case field_kind::double_: serialize_binary_float(ctx, input.get_double()); break;
+        case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
+        case field_kind::datetime: serialize_binary_datetime(ctx, input.get_datetime()); break;
+        case field_kind::time: serialize_binary_time(ctx, input.get_time()); break;
+    }
 }
-
-
 
 #endif

@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_METADATA_VALIDATOR_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_METADATA_VALIDATOR_HPP
 
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <vector>
 
 namespace boost {
@@ -18,7 +18,7 @@ namespace test {
 class meta_validator
 {
 public:
-    using flag_getter = bool (field_metadata::*)() const;
+    using flag_getter = bool (metadata::*)() const;
     meta_validator(std::string table, std::string field, field_type type,
             std::vector<flag_getter> flags={}, unsigned decimals=0,
             std::vector<flag_getter> ignore_flags={}):
@@ -37,7 +37,7 @@ public:
         ignore_flags_(std::move(ignore_flags))
     {
     }
-    void validate(const field_metadata& value) const;
+    void validate(const metadata& value) const;
     field_type type() const noexcept { return type_; }
 private:
     std::string table_;
@@ -50,7 +50,7 @@ private:
     std::vector<flag_getter> ignore_flags_;
 };
 
-void validate_meta(const std::vector<field_metadata>& actual, const std::vector<meta_validator>& expected);
+void validate_meta(const std::vector<metadata>& actual, const std::vector<meta_validator>& expected);
 
 } // test
 } // mysql

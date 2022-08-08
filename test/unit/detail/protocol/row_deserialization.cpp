@@ -16,11 +16,11 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::collation;
 using boost::mysql::error_code;
 using boost::mysql::errc;
-using boost::mysql::field_metadata;
+using boost::mysql::metadata;
 
 BOOST_AUTO_TEST_SUITE(test_row_deserialization)
 
@@ -48,14 +48,14 @@ struct row_sample
     std::string name;
     deserialize_row_fn deserializer;
     std::vector<std::uint8_t> from;
-    std::vector<value> expected;
+    std::vector<field_view> expected;
     std::vector<field_metadata> meta;
 
     row_sample(
         deserialize_row_fn deserializer,
         std::string name,
         std::vector<std::uint8_t>&& from,
-        std::vector<value> expected,
+        std::vector<field_view> expected,
         const std::vector<protocol_field_type>& types
     ) :
         name(std::move(name)),
@@ -131,10 +131,10 @@ std::vector<row_sample> make_ok_samples()
                 make_value_vector(nullptr, nullptr),
                 {protocol_field_type::tiny, protocol_field_type::tiny}),
         row_sample(bin, "six_nulls", {0x00, 0xfc},
-                std::vector<value>(6, value()),
+                std::vector<field_view>(6, field_view()),
                 std::vector<protocol_field_type>(6, protocol_field_type::tiny)),
         row_sample(bin, "seven_nulls", {0x00, 0xfc, 0x01},
-                std::vector<value>(7, value()),
+                std::vector<field_view>(7, field_view()),
                 std::vector<protocol_field_type>(7, protocol_field_type::tiny)),
         row_sample(bin, "several_values", {
                 0x00, 0x90, 0x00, 0xfd, 0x14, 0x00, 0xc3, 0xf5, 0x48,
@@ -169,7 +169,7 @@ BOOST_DATA_TEST_CASE(deserialize_row_ok, data::make(make_ok_samples()))
     const auto& buffer = sample.from;
     deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
 
-    std::vector<value> actual;
+    std::vector<field_view> actual;
     auto err = sample.deserializer(ctx, sample.meta, actual);
     BOOST_TEST(err == error_code());
     BOOST_TEST(actual == sample.expected);

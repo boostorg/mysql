@@ -79,7 +79,7 @@ public:
     er_resultset_base(resultset<Stream>&& r): r_(std::move(r)) {}
     bool valid() const override { return r_.valid(); } 
     bool complete() const override { return r_.complete(); }
-    const std::vector<field_metadata>& fields() const override { return r_.fields(); }
+    const std::vector<metadata>& fields() const override { return r_.fields(); }
     std::uint64_t affected_rows() const override { return r_.affected_rows(); }
     std::uint64_t last_insert_id() const override { return r_.last_insert_id(); }
     unsigned warning_count() const override { return r_.warning_count(); }

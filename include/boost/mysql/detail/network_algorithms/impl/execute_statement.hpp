@@ -21,12 +21,12 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class ValueForwardIterator>
-com_stmt_execute_packet<ValueForwardIterator> make_stmt_execute_packet(
-    const execute_params<ValueForwardIterator>& params
+template <class FieldViewFwdIterator>
+com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
+    const execute_params<FieldViewFwdIterator>& params
 )
 {
-    return com_stmt_execute_packet<ValueForwardIterator> {
+    return com_stmt_execute_packet<FieldViewFwdIterator> {
         params.statement_id(),
         std::uint8_t(0),  // flags
         std::uint32_t(1), // iteration count
@@ -41,10 +41,10 @@ com_stmt_execute_packet<ValueForwardIterator> make_stmt_execute_packet(
 } // mysql
 } // boost
 
-template <class Stream, class ValueForwardIterator>
+template <class Stream, class FieldViewFwdIterator>
 void boost::mysql::detail::execute_statement(
     channel<Stream>& chan,
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& output,
     error_code& err,
     error_info& info
@@ -60,14 +60,14 @@ void boost::mysql::detail::execute_statement(
     );
 }
 
-template <class Stream, class ValueForwardIterator, class CompletionToken>
+template <class Stream, class FieldViewFwdIterator, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code)
 )
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
-    const execute_params<ValueForwardIterator>& params,
+    const execute_params<FieldViewFwdIterator>& params,
     resultset& output,
     error_info& info,
     CompletionToken&& token

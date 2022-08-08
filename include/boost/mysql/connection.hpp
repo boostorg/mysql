@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
-#include <boost/mysql/detail/auxiliar/value_type_traits.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/prepared_statement.hpp>
@@ -469,16 +468,16 @@ public:
     /**
      * \brief Executes a statement (collection, sync with error code version).
      * \details
-     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
      *
      * After this function has returned, you should read the entire resultset
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class ValueCollection, class EnableIf = detail::enable_if_value_collection<ValueCollection>>
+    template <class FieldViewCollection, class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     void execute_statement(
         const prepared_statement& statement,
-        const ValueCollection& params,
+        const FieldViewCollection& params,
         resultset& result,
         error_code& err,
         error_info& info
@@ -490,16 +489,16 @@ public:
     /**
      * \brief Executes a statement (collection, sync with exceptions version).
      * \details
-     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
      *
      * After this function has returned, you should read the entire resultset
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class ValueCollection, class EnableIf = detail::enable_if_value_collection<ValueCollection>>
+    template <class FieldViewCollection, class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     void execute_statement(
         const prepared_statement& statement,
-        const ValueCollection& params,
+        const FieldViewCollection& params,
         resultset& result
     )
     {
@@ -510,7 +509,7 @@ public:
      * \brief Executes a statement (collection,
      *        async without [reflink error_info] version).
      * \details
-     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
      *
      * After this operation completes, you should read the entire resultset
      * before calling any function that involves communication with the server over this
@@ -522,16 +521,16 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
     template<
-        class ValueCollection,
+        class FieldViewCollection,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-            class EnableIf = detail::enable_if_value_collection<ValueCollection>
+            class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute_statement(
         const prepared_statement& statement,
-        const ValueCollection& params,
+        const FieldViewCollection& params,
         resultset& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
@@ -547,7 +546,7 @@ public:
      * \brief Executes a statement (collection,
      *        async with [reflink error_info] version).
      * \details
-     * ValueCollection should meet the [reflink ValueCollection] requirements.
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
      *
      * After this operation completes, you should read the entire resultset
      * before calling any function that involves communication with the server over this
@@ -559,16 +558,16 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
     template <
-        class ValueCollection,
+        class FieldViewCollection,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-            class EnableIf = detail::enable_if_value_collection<ValueCollection>
+            class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute_statement(
         const prepared_statement& statement,
-        const ValueCollection& params,
+        const FieldViewCollection& params,
         resultset& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -586,7 +585,7 @@ public:
     /**
      * \brief Executes a statement (`execute_params`, sync with error code version).
      * \details
-     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
      * The range \\[`params.first()`, `params.last()`) will be used as parameters for
      * statement execution. They should be a valid iterator range.
      *
@@ -594,9 +593,9 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class ValueForwardIterator>
+    template <class FieldViewFwdIterator>
     void execute_statement(
-        const execute_params<ValueForwardIterator>& params,
+        const execute_params<FieldViewFwdIterator>& params,
         resultset& result,
         error_code& ec,
         error_info& info
@@ -605,7 +604,7 @@ public:
     /**
      * \brief Executes a statement (`execute_params`, sync with exceptions version).
      * \details
-     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
      * The range \\[`params.first()`, `params.last()`) will be used as parameters for
      * statement execution. They should be a valid iterator range.
      *
@@ -613,9 +612,9 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class ValueForwardIterator>
+    template <class FieldViewFwdIterator>
     void execute_statement(
-        const execute_params<ValueForwardIterator>& params,
+        const execute_params<FieldViewFwdIterator>& params,
         resultset& result
     );
 
@@ -623,7 +622,7 @@ public:
      * \brief Executes a statement (`execute_params`,
      *        async without [reflink error_info] version).
      * \details
-     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
      * The range \\[`params.first()`, `params.last()`) will be used as parameters for
      * statement execution. They should be a valid iterator range.
      *
@@ -639,14 +638,14 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
     template <
-        class ValueForwardIterator,
+        class FieldViewFwdIterator,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute_statement(
-        const execute_params<ValueForwardIterator>& params,
+        const execute_params<FieldViewFwdIterator>& params,
         resultset& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
@@ -658,7 +657,7 @@ public:
      * \brief Executes a statement (`execute_params`,
      *        async with [reflink error_info] version).
      * \details
-     * ValueForwardIterator should meet the [reflink ValueForwardIterator] requirements.
+     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
      * The range \\[`params.first()`, `params.last()`) will be used as parameters for
      * statement execution. They should be a valid iterator range.
      *
@@ -674,14 +673,14 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset<Stream>)`.
      */
     template <
-        class ValueForwardIterator,
+        class FieldViewFwdIterator,
             BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken
             BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute_statement(
-        const execute_params<ValueForwardIterator>& params,
+        const execute_params<FieldViewFwdIterator>& params,
         resultset& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)

@@ -10,8 +10,8 @@
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/value.hpp>
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <vector>
 
 namespace boost {
@@ -20,14 +20,14 @@ namespace detail {
 
 inline errc deserialize_text_value(
     boost::string_view from,
-    const field_metadata& meta,
-    value& output
+    const metadata& meta,
+    field_view& output
 );
 
 inline error_code deserialize_text_row(
     deserialization_context& ctx,
-    const std::vector<field_metadata>& meta,
-    std::vector<value>& output
+    const std::vector<metadata>& meta,
+    std::vector<field_view>& output
 );
 
 } // detail

@@ -69,7 +69,7 @@ void main_impl(int argc, char** argv)
 
     //[tutorial_values
     const boost::mysql::row& first_row = employees.at(0);
-    boost::mysql::value first_value = first_row.values().at(0);
+    boost::mysql::field_view first_value = first_row.values().at(0);
     std::cout << first_value << std::endl;
     //]
 

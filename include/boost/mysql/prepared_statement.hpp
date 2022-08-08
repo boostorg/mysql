@@ -10,7 +10,7 @@
 
 
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <array>
 #include <cstdint>
 
@@ -18,7 +18,7 @@ namespace boost {
 namespace mysql {
 
 /// Convenience constant to use when executing a statement without parameters.
-constexpr std::array<value, 0> no_statement_params {};
+constexpr std::array<field_view, 0> no_statement_params {};
 
 /**
  * \brief Represents a prepared statement. See [link mysql.prepared_statements] for more info.

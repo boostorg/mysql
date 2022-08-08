@@ -33,8 +33,8 @@ inline void process_rows(
     error_info& info
 )
 {
-    // The number of values we already have, required to copy strings
-    std::size_t old_value_size = output.values().size();
+    // The number of fields we already have, required to copy strings
+    std::size_t old_field_size = output.fields().size();
     
     // Process all read messages until they run out, an error happens
     // or an EOF is received
@@ -51,7 +51,7 @@ inline void process_rows(
             message,
             channel.current_capabilities(),
             resultset,
-            output.values(),
+            output.fields(),
             err,
             info
         );
@@ -65,7 +65,7 @@ inline void process_rows(
     }
 
     // Copy strings
-    output.copy_strings(old_value_size);
+    output.copy_strings(old_field_size);
 }
 
 

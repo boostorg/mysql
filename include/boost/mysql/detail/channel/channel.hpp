@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 
-#include "boost/mysql/error.hpp"
 #include <boost/asio/buffer.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
@@ -34,7 +35,7 @@ class channel
     std::uint8_t shared_sequence_number_ {}; // for async ops
     bytestring shared_buff_; // for async ops
     error_info shared_info_; // for async ops
-    std::vector<value> shared_values_; // for read_some ops
+    std::vector<field_view> shared_fields_; // for read_some ops
 
     void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum); // writes to header_buffer_
 
@@ -129,8 +130,8 @@ public:
     bytestring& shared_buffer() noexcept { return shared_buff_; }
     error_info& shared_info() noexcept { return shared_info_; }
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
-    std::vector<value>& shared_values() noexcept { return shared_values_; }
-    const std::vector<value>& shared_values() const noexcept { return shared_values_; }
+    std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }
+    const std::vector<field_view>& shared_fields() const noexcept { return shared_fields_; }
 };
 
 } // detail

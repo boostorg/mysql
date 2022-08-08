@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/value.hpp>
+#include <boost/mysql/field_view.hpp>
 #include "test_common.hpp"
 #include <boost/test/unit_test_suite.hpp>
 #include <boost/type_index.hpp>
@@ -16,7 +16,7 @@
 #include <map>
 #include <tuple>
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::value::variant_type)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::field_view::variant_type)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
@@ -24,13 +24,13 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::null_t)
 
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::typeindex::type_index;
 using boost::typeindex::type_id;
 
 BOOST_AUTO_TEST_SUITE(test_value)
 
-using vt = value::variant_type;
+using vt = field_view::variant_type;
 
 template <class T>
 std::string type_name() { return type_id<T>().pretty_name(); }
@@ -39,10 +39,10 @@ std::string type_name() { return type_id<T>().pretty_name(); }
 struct value_constructor_sample
 {
     const char* name;
-    value v;
+    field_view v;
     vt expected;
 
-    value_constructor_sample(const char* name, value v, vt expected) :
+    value_constructor_sample(const char* name, field_view v, vt expected) :
         name(name), v(v), expected(expected) {}
 };
 
@@ -68,49 +68,49 @@ const T& const_int()
 }
 
 const value_constructor_sample all_value_constructor_samples [] {
-    value_constructor_sample("default_constructor", value(), vt(boost::variant2::monostate())),
-    value_constructor_sample("from_null_t", value(boost::mysql::null_t()), vt(boost::variant2::monostate())),
-    value_constructor_sample("from_nullptr", value(nullptr), vt(boost::variant2::monostate())),
-    value_constructor_sample("from_u8", value(std::uint8_t(0xff)), vt(std::uint64_t(0xff))),
-    value_constructor_sample("from_u8_const_lvalue", value(const_int<std::uint8_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u8_lvalue", value(non_const_int<std::uint8_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u16", value(std::uint16_t(0xffff)), vt(std::uint64_t(0xffff))),
-    value_constructor_sample("from_u16_const_lvalue", value(const_int<std::uint16_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u16_lvalue", value(non_const_int<std::uint16_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_ushort", value((unsigned short)(0xffff)), vt(std::uint64_t(0xffff))),
-    value_constructor_sample("from_u32", value(std::uint32_t(42)), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u32_const_lvalue", value(const_int<std::uint32_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u32_lvalue", value(non_const_int<std::uint32_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_uint", value(42u), vt(std::uint64_t(42))),
-    value_constructor_sample("from_ulong", value(42uL), vt(std::uint64_t(42))),
-    value_constructor_sample("from_ulonglong", value(42uLL), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u64", value(std::uint64_t(42)), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u64_const_lvalue", value(const_int<std::uint64_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_u64_lvalue", value(non_const_int<std::uint64_t>()), vt(std::uint64_t(42))),
-    value_constructor_sample("from_s8", value(std::int8_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_sample("from_s8_const_lvalue", value(const_int<std::int8_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_s8_lvalue", value(non_const_int<std::int8_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_s16", value(std::int16_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_sample("from_s16_const_lvalue", value(const_int<std::int16_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_s16_lvalue", value(non_const_int<std::int16_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_sshort", value(short(-42)), vt(std::int64_t(-42))),
-    value_constructor_sample("from_s32", value(std::int32_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_sample("from_s32_const_lvalue", value(const_int<std::int32_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_s32_lvalue", value(non_const_int<std::int32_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_sint", value(-42), vt(std::int64_t(-42))),
-    value_constructor_sample("from_slong", value(-42L), vt(std::int64_t(-42))),
-    value_constructor_sample("from_slonglong", value(-42LL), vt(std::int64_t(-42))),
-    value_constructor_sample("from_s64", value(std::int64_t(-42)), vt(std::int64_t(-42))),
-    value_constructor_sample("from_s64_const_lvalue", value(const_int<std::int64_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_s64_lvalue", value(non_const_int<std::int64_t>()), vt(std::int64_t(42))),
-    value_constructor_sample("from_string_view", value(boost::string_view("test")), vt("test")),
-    value_constructor_sample("from_string", value(test_string), vt("test")),
-    value_constructor_sample("from_const_char", value("test"), vt("test")),
-    value_constructor_sample("from_float", value(4.2f), vt(4.2f)),
-    value_constructor_sample("from_double", value(4.2), vt(4.2)),
-    value_constructor_sample("from_date", value(makedate(2020, 1, 10)), vt(makedate(2020, 1, 10))),
-    value_constructor_sample("from_datetime", value(makedt(2020, 1, 10, 5)), vt(makedt(2020, 1, 10, 5))),
-    value_constructor_sample("from_time", value(maket(1, 2, 3)), vt(maket(1, 2, 3)))
+    value_constructor_sample("default_constructor", field_view(), vt(boost::variant2::monostate())),
+    value_constructor_sample("from_null_t", field_view(boost::mysql::null_t()), vt(boost::variant2::monostate())),
+    value_constructor_sample("from_nullptr", field_view(nullptr), vt(boost::variant2::monostate())),
+    value_constructor_sample("from_u8", field_view(std::uint8_t(0xff)), vt(std::uint64_t(0xff))),
+    value_constructor_sample("from_u8_const_lvalue", field_view(const_int<std::uint8_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u8_lvalue", field_view(non_const_int<std::uint8_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u16", field_view(std::uint16_t(0xffff)), vt(std::uint64_t(0xffff))),
+    value_constructor_sample("from_u16_const_lvalue", field_view(const_int<std::uint16_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u16_lvalue", field_view(non_const_int<std::uint16_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_ushort", field_view((unsigned short)(0xffff)), vt(std::uint64_t(0xffff))),
+    value_constructor_sample("from_u32", field_view(std::uint32_t(42)), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u32_const_lvalue", field_view(const_int<std::uint32_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u32_lvalue", field_view(non_const_int<std::uint32_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_uint", field_view(42u), vt(std::uint64_t(42))),
+    value_constructor_sample("from_ulong", field_view(42uL), vt(std::uint64_t(42))),
+    value_constructor_sample("from_ulonglong", field_view(42uLL), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u64", field_view(std::uint64_t(42)), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u64_const_lvalue", field_view(const_int<std::uint64_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_u64_lvalue", field_view(non_const_int<std::uint64_t>()), vt(std::uint64_t(42))),
+    value_constructor_sample("from_s8", field_view(std::int8_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s8_const_lvalue", field_view(const_int<std::int8_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s8_lvalue", field_view(non_const_int<std::int8_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s16", field_view(std::int16_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s16_const_lvalue", field_view(const_int<std::int16_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s16_lvalue", field_view(non_const_int<std::int16_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_sshort", field_view(short(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s32", field_view(std::int32_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s32_const_lvalue", field_view(const_int<std::int32_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s32_lvalue", field_view(non_const_int<std::int32_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_sint", field_view(-42), vt(std::int64_t(-42))),
+    value_constructor_sample("from_slong", field_view(-42L), vt(std::int64_t(-42))),
+    value_constructor_sample("from_slonglong", field_view(-42LL), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s64", field_view(std::int64_t(-42)), vt(std::int64_t(-42))),
+    value_constructor_sample("from_s64_const_lvalue", field_view(const_int<std::int64_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_s64_lvalue", field_view(non_const_int<std::int64_t>()), vt(std::int64_t(42))),
+    value_constructor_sample("from_string_view", field_view(boost::string_view("test")), vt("test")),
+    value_constructor_sample("from_string", field_view(test_string), vt("test")),
+    value_constructor_sample("from_const_char", field_view("test"), vt("test")),
+    value_constructor_sample("from_float", field_view(4.2f), vt(4.2f)),
+    value_constructor_sample("from_double", field_view(4.2), vt(4.2)),
+    value_constructor_sample("from_date", field_view(makedate(2020, 1, 10)), vt(makedate(2020, 1, 10))),
+    value_constructor_sample("from_datetime", field_view(makedt(2020, 1, 10, 5)), vt(makedt(2020, 1, 10, 5))),
+    value_constructor_sample("from_time", field_view(maket(1, 2, 3)), vt(maket(1, 2, 3)))
 };
 
 BOOST_DATA_TEST_CASE(constructor, data::make(all_value_constructor_samples))
@@ -121,45 +121,45 @@ BOOST_DATA_TEST_CASE(constructor, data::make(all_value_constructor_samples))
 // Copy and move
 BOOST_AUTO_TEST_CASE(copy_constructor_from_non_const_lvalue)
 {
-    value v (10);
-    value v2 (v);
+    field_view v (10);
+    field_view v2 (v);
     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
 BOOST_AUTO_TEST_CASE(copy_constructor_from_const_lvalue)
 {
-    const value v (10);
-    value v2 (v);
+    const field_view v (10);
+    field_view v2 (v);
     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    value v (10);
-    value v2 (std::move(v));
+    field_view v (10);
+    field_view v2 (std::move(v));
     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
 BOOST_AUTO_TEST_CASE(copy_assignment_from_non_const_lvalue)
 {
-    value v (10);
-    value v2;
+    field_view v (10);
+    field_view v2;
     v2 = v;
     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
 BOOST_AUTO_TEST_CASE(copy_assignament_from_const_lvalue)
 {
-    const value v (10);
-    value v2;
+    const field_view v (10);
+    field_view v2;
     v2 = v;
     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
 
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
-    value v (10);
-    value v2;
+    field_view v (10);
+    field_view v2;
     v2 = std::move(v);
     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
 }
@@ -180,12 +180,12 @@ using all_types = std::tuple<
 struct accessors_sample
 {
     const char* name;
-    value v;
+    field_view v;
     type_index is_type; // the type for which is() should return true
     std::map<type_index, vt> conversions;
     bool is_null;
 
-    accessors_sample(const char* name, value v, type_index is, std::map<type_index, vt>&& convs, bool is_null = false) :
+    accessors_sample(const char* name, field_view v, type_index is, std::map<type_index, vt>&& convs, bool is_null = false) :
         name(name),
         v(v),
         is_type(is),
@@ -213,25 +213,25 @@ accessors_sample make_default_accessors_sample(
     bool is_null = false
 )
 {
-    return accessors_sample(name, value(v), type_id<T>(), make_conversions(v), is_null);
+    return accessors_sample(name, field_view(v), type_id<T>(), make_conversions(v), is_null);
 }
 
 const accessors_sample all_accessors_samples [] {
     make_default_accessors_sample("null", boost::mysql::null_t(), true),
-    accessors_sample("i64_positive", value(std::int64_t(42)), type_id<std::int64_t>(),
+    accessors_sample("i64_positive", field_view(std::int64_t(42)), type_id<std::int64_t>(),
             make_conversions(std::int64_t(42), std::uint64_t(42))),
-    accessors_sample("i64_negative", value(std::int64_t(-42)), type_id<std::int64_t>(),
+    accessors_sample("i64_negative", field_view(std::int64_t(-42)), type_id<std::int64_t>(),
             make_conversions(std::int64_t(-42))),
-    accessors_sample("i64_zero", value(std::int64_t(0)), type_id<std::int64_t>(),
+    accessors_sample("i64_zero", field_view(std::int64_t(0)), type_id<std::int64_t>(),
             make_conversions(std::int64_t(0), std::uint64_t(0))),
-    accessors_sample("u64_small", value(std::uint64_t(42)), type_id<std::uint64_t>(),
+    accessors_sample("u64_small", field_view(std::uint64_t(42)), type_id<std::uint64_t>(),
             make_conversions(std::int64_t(42), std::uint64_t(42))),
-    accessors_sample("u64_big", value(std::uint64_t(0xfffffffffffffffe)), type_id<std::uint64_t>(),
+    accessors_sample("u64_big", field_view(std::uint64_t(0xfffffffffffffffe)), type_id<std::uint64_t>(),
             make_conversions(std::uint64_t(0xfffffffffffffffe))),
-    accessors_sample("u64_zero", value(std::uint64_t(0)), type_id<std::uint64_t>(),
+    accessors_sample("u64_zero", field_view(std::uint64_t(0)), type_id<std::uint64_t>(),
             make_conversions(std::int64_t(0), std::uint64_t(0))),
             make_default_accessors_sample("string_view", makesv("test")),
-    accessors_sample("float", value(4.2f), type_id<float>(),
+    accessors_sample("float", field_view(4.2f), type_id<float>(),
             make_conversions(4.2f, double(4.2f))),
     make_default_accessors_sample("double", 4.2),
     make_default_accessors_sample("date", makedate(2020, 10, 5)),
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(get, T, all_types)
         }
         else
         {
-            BOOST_CHECK_THROW(sample.v.get<T>(), boost::mysql::bad_value_access);
+            BOOST_CHECK_THROW(sample.v.get<T>(), boost::mysql::bad_field_access);
         }
     });
 }
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(get_std_optional, T, all_types)
 // operator== and operator!=
 struct value_equality_fixture
 {
-    std::vector<value> values = make_value_vector(
+    std::vector<field_view> values = make_value_vector(
         std::int64_t(-1),
         std::uint64_t(0x100000000),
         "string",
@@ -383,7 +383,7 @@ BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_different_value, value_equalit
 
 BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_same_value, value_equality_fixture)
 {
-    std::vector<value> values_copy = values;
+    std::vector<field_view> values_copy = values;
     for (std::size_t i = 0; i < values.size(); ++i)
     {
         BOOST_TEST(values.at(i) == values_copy.at(i));
@@ -404,7 +404,7 @@ BOOST_FIXTURE_TEST_CASE(operators_eq_ne_self_comparison, value_equality_fixture)
 struct stream_sample
 {
     std::string name;
-    value input;
+    field_view input;
     std::string expected;
 
     template <class T>
@@ -464,7 +464,7 @@ void add_date_samples(std::vector<stream_sample>& output)
                     "_day", day.name
                 );
                 std::string str_val = stringize(year.repr, '-', month.repr, '-', day.repr);
-                value val (makedate(year.v, static_cast<unsigned>(month.v), static_cast<unsigned>(day.v)));
+                field_view val (makedate(year.v, static_cast<unsigned>(month.v), static_cast<unsigned>(day.v)));
                 output.emplace_back(std::move(name), val, std::move(str_val));
             }
         }
@@ -552,7 +552,7 @@ void add_datetime_samples(std::vector<stream_sample>& output)
                                     secs.v,
                                     micros.v
                                 );
-                                output.emplace_back(std::move(name), value(val), std::move(str_val));
+                                output.emplace_back(std::move(name), field_view(val), std::move(str_val));
                             }
                         }
                     }
@@ -617,7 +617,7 @@ void add_time_samples(std::vector<stream_sample>& output)
                                 mins.v, secs.v, micros.v);
                         if (sign.v == -1 && val == maket(0, 0, 0))
                             continue; // This case makes no sense, as negative zero is represented as zero
-                        output.emplace_back(std::move(name), value(val), std::move(str_val));
+                        output.emplace_back(std::move(name), field_view(val), std::move(str_val));
                     }
                 }
             }
@@ -654,41 +654,41 @@ BOOST_DATA_TEST_CASE(operator_stream, data::make(make_stream_samples()))
 // Operators <, <=, >, >= (variant behavior)
 BOOST_AUTO_TEST_CASE(operator_lt)
 {
-    BOOST_TEST(value(100) < value(200)); // same type
-    BOOST_TEST(value(-2) < value("hola")); // different type
-    BOOST_TEST(!(value(200) < value(200))); // same type
-    BOOST_TEST(!(value("hola") < value(2))); // different type
+    BOOST_TEST(field_view(100) < field_view(200)); // same type
+    BOOST_TEST(field_view(-2) < field_view("hola")); // different type
+    BOOST_TEST(!(field_view(200) < field_view(200))); // same type
+    BOOST_TEST(!(field_view("hola") < field_view(2))); // different type
 }
 
 BOOST_AUTO_TEST_CASE(operator_lte)
 {
-    BOOST_TEST(value(200) <= value(200)); // same type
-    BOOST_TEST(value(-2) <= value("hola")); // different type
-    BOOST_TEST(!(value(300) <= value(200))); // same type
-    BOOST_TEST(!(value("hola") <= value(2))); // different type
+    BOOST_TEST(field_view(200) <= field_view(200)); // same type
+    BOOST_TEST(field_view(-2) <= field_view("hola")); // different type
+    BOOST_TEST(!(field_view(300) <= field_view(200))); // same type
+    BOOST_TEST(!(field_view("hola") <= field_view(2))); // different type
 }
 
 BOOST_AUTO_TEST_CASE(operator_gt)
 {
-    BOOST_TEST(value(200) > value(100)); // same type
-    BOOST_TEST(value("hola") > value(2)); // different type
-    BOOST_TEST(!(value(200) > value(200))); // same type
-    BOOST_TEST(!(value(-2) > value("hola"))); // different type
-    BOOST_TEST(value(std::uint64_t(10)) > value(std::int64_t(20))); // example
+    BOOST_TEST(field_view(200) > field_view(100)); // same type
+    BOOST_TEST(field_view("hola") > field_view(2)); // different type
+    BOOST_TEST(!(field_view(200) > field_view(200))); // same type
+    BOOST_TEST(!(field_view(-2) > field_view("hola"))); // different type
+    BOOST_TEST(field_view(std::uint64_t(10)) > field_view(std::int64_t(20))); // example
 }
 
 BOOST_AUTO_TEST_CASE(operator_gte)
 {
-    BOOST_TEST(value(200) >= value(200)); // same type
-    BOOST_TEST(value("hola") >= value(-2)); // different type
-    BOOST_TEST(!(value(200) >= value(300))); // same type
-    BOOST_TEST(!(value(2) >= value("hola"))); // different type
+    BOOST_TEST(field_view(200) >= field_view(200)); // same type
+    BOOST_TEST(field_view("hola") >= field_view(-2)); // different type
+    BOOST_TEST(!(field_view(200) >= field_view(300))); // same type
+    BOOST_TEST(!(field_view(2) >= field_view("hola"))); // different type
 }
 
 // Can be placed in containers
 BOOST_AUTO_TEST_CASE(can_be_placed_in_set)
 {
-    std::set<value> s { value(200), value("hola"), value(200) };
+    std::set<field_view> s { field_view(200), field_view("hola"), field_view(200) };
     BOOST_TEST(s.size() == 2u);
     s.emplace("test");
     BOOST_TEST(s.size() == 3u);
@@ -696,14 +696,14 @@ BOOST_AUTO_TEST_CASE(can_be_placed_in_set)
 
 BOOST_AUTO_TEST_CASE(can_be_placed_in_map)
 {
-    std::map<value, const char*> m;
-    m[value(200)] = "msg0";
-    m[value("key")] = "msg1";
+    std::map<field_view, const char*> m;
+    m[field_view(200)] = "msg0";
+    m[field_view("key")] = "msg1";
     BOOST_TEST(m.size() == 2u);
-    BOOST_TEST(m.at(value("key")) == "msg1");
-    m[value("key")] = "msg2";
+    BOOST_TEST(m.at(field_view("key")) == "msg1");
+    m[field_view("key")] = "msg2";
     BOOST_TEST(m.size() == 2u);
-    BOOST_TEST(m.at(value("key")) == "msg2");
+    BOOST_TEST(m.at(field_view("key")) == "msg2");
 }
 
 BOOST_AUTO_TEST_SUITE_END() // test_value

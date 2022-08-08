@@ -15,7 +15,7 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::value;
+using boost::mysql::field_view;
 using boost::mysql::error_code;
 using boost::mysql::errc;
 
@@ -261,8 +261,8 @@ BOOST_DATA_TEST_CASE(test_deserialize_text_value_error, data::make(make_all_samp
     coldef.type = sample.type;
     coldef.decimals = static_cast<std::uint8_t>(sample.decimals);
     coldef.flags = sample.flags;
-    boost::mysql::field_metadata meta (coldef);
-    value actual_value;
+    boost::mysql::metadata meta (coldef);
+    field_view actual_value;
     auto err = deserialize_text_value(sample.from, meta, actual_value);
     auto expected = sample.expected_err;
     BOOST_TEST(expected == err);

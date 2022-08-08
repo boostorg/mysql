@@ -10,7 +10,7 @@
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/field_metadata.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -74,7 +74,7 @@ class resultset
     bool valid_ {false};
     std::uint8_t seqnum_ {};
     detail::resultset_encoding encoding_ { detail::resultset_encoding::text };
-    std::vector<field_metadata> meta_;
+    std::vector<metadata> meta_;
     ok_packet_data ok_packet_;
 
 public:
@@ -84,7 +84,7 @@ public:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use. TODO: hide these
-    resultset(std::vector<field_metadata>&& meta, detail::resultset_encoding encoding) noexcept:
+    resultset(std::vector<metadata>&& meta, detail::resultset_encoding encoding) noexcept:
         valid_(true),
         encoding_(encoding),
         meta_(std::move(meta))
@@ -127,8 +127,8 @@ public:
 
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
 
-    std::vector<field_metadata>& meta() noexcept { return meta_; }
-    const std::vector<field_metadata>& fields() const noexcept { return meta_; }
+    std::vector<metadata>& meta() noexcept { return meta_; }
+    const std::vector<metadata>& fields() const noexcept { return meta_; }
 #endif
 
     /**
@@ -148,7 +148,7 @@ public:
      * \details There will be as many [reflink field_metadata] objects as fields
      * in the SQL query, and in the same order.
      */
-    metadata_collection_view metadata() const noexcept { return metadata_collection_view(meta_.data(), meta_.size()); }
+    metadata_collection_view meta() const noexcept { return metadata_collection_view(meta_.data(), meta_.size()); }
 
     /**
      * \brief The number of rows affected by the SQL that generated this resultset.

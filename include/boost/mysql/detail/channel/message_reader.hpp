@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_READER_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_READER_HPP
 
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
 #include <algorithm>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
@@ -18,6 +16,8 @@
 #include <boost/asio/async_result.hpp>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
 #include <boost/mysql/detail/auxiliar/valgrind.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
