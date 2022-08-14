@@ -60,33 +60,35 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // Reading
-    std::size_t num_read_messages() const noexcept { return reader_.num_cached_messages(); }
+    bool has_read_message() const noexcept { return reader_.has_message(); }
     boost::asio::const_buffer next_read_message(std::uint8_t& seqnum, error_code& err) noexcept
     {
         return reader_.get_next_message(seqnum, err);
     }
 
-    void read(std::size_t num_messages, error_code& code) { return reader_.read(stream_, num_messages, code); }
+    void read_some(error_code& code) { return reader_.read_some(stream_, code); }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read(std::size_t num_messages, CompletionToken&& token)
+    async_read_some(CompletionToken&& token)
     {
-        return reader_.async_read(stream_, num_messages, std::forward<CompletionToken>(token));
+        return reader_.async_read_some(stream_, std::forward<CompletionToken>(token));
     }
 
     boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec)
     {
-        ec = reader_.read(stream_, 1, ec);
+        ec = reader_.read_some(stream_, ec);
         if (ec)
             return {};
         return next_read_message(seqnum, ec);
     }
 
-    // TODO: implement this
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
     async_read_one(std::uint8_t& seqnum, CompletionToken&& token);
+
+    bool keep_messages() const noexcept { return reader_.keep_messages(); }
+    void set_keep_messages(bool v) noexcept { reader_.set_keep_messages(v); }
 
     // Writing
     void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code);

@@ -11,7 +11,7 @@
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/resultset.hpp>
-#include <boost/mysql/row.hpp>
+#include <boost/mysql/rows.hpp>
 
 
 namespace boost {

@@ -187,9 +187,9 @@ struct execute_generic_op : boost::asio::coroutine
             while (processor_.has_remaining_fields())
             {
                 // Read from the stream if we need it
-                if (!chan_.num_read_messages())
+                if (!chan_.has_read_message())
                 {
-                    BOOST_ASIO_CORO_YIELD chan_.async_read(1, std::move(self));
+                    BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
                 }
 
                 // Read the field definition packet
@@ -257,9 +257,9 @@ void boost::mysql::detail::execute_generic(
     while (processor.has_remaining_fields())
     {
         // Read from the stream if required
-        if (!channel.num_read_messages())
+        if (!channel.has_read_message())
         {
-            channel.read(1, err);
+            channel.read_some(err);
             if (err)
                 return;
         }

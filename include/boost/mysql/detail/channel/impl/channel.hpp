@@ -8,16 +8,16 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_IMPL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_IMPL_CHANNEL_HPP
 
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/coroutine.hpp>
 #pragma once
 
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/coroutine.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/compose.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
 #include <utility>
 #include <cstdint>
 
@@ -71,7 +71,7 @@ struct boost::mysql::detail::channel<Stream>::read_one_op
         boost::asio::const_buffer b;
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            BOOST_ASIO_CORO_YIELD chan_.async_read(1, std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
             b = chan_.next_read_message(seqnum_, code);
             self.complete(code, b);
         }

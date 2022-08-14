@@ -12,6 +12,7 @@
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <cstddef>
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 
 
@@ -21,82 +22,101 @@ namespace detail {
 
 
 // Custom buffer type optimized for read operations performed in the MySQL protocol.
-// The buffer is a single, fixed-size chunk of memory with four areas:
-//   - Dead area: these bytes have already been consumed, but won't disappear until a call to relocate().
-//     Optimized the case where we read several entire messages in a single read_some() call, preventing
-//     several memcpy()'s.
-//   - Processing area: we have read these bytes and the client hasn't consumed them yet.
+// The buffer is a single, resizable chunk of memory with four areas:
+//   - Reserved area: messages that have already been read but are kept alive,
+//     either because we need them or because we haven't cleaned them yet.
+//   - Current message area: delimits the message we are currently parsing.
+//   - Pending bytes area: bytes we've read but haven't been parsed into a message yet.
 //   - Free area: free space for more bytes to be read.
 class read_buffer
 {
     bytestring buffer_;
-    std::size_t processing_offset_;
-    std::size_t free_offset_;
+    std::size_t current_message_offset_ {0};
+    std::size_t pending_offset_ {0};
+    std::size_t free_offset_ {0};
 public:
     read_buffer(std::size_t size):
-        buffer_(size, std::uint8_t(0)),
-        processing_offset_(0),
-        free_offset_(0)
+        buffer_(size, std::uint8_t(0))
     {
         buffer_.resize(buffer_.capacity());
     }
 
-    std::uint8_t* processing_first() noexcept { return &buffer_[processing_offset_]; }
-    std::uint8_t* free_first() noexcept { return &buffer_[free_offset_]; }
+    // Area accessors
+    std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
+    const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
+    std::uint8_t* current_message_first() noexcept { return buffer_.data() + current_message_offset_; }
+    const std::uint8_t* current_message_first() const noexcept { return buffer_.data() + current_message_offset_; }
+    std::uint8_t* pending_first() noexcept { return buffer_.data() + pending_offset_; }
+    const std::uint8_t* pending_first() const noexcept { return buffer_.data() + pending_offset_; }
+    std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
+    const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
 
-    std::size_t dead_size() const noexcept { return processing_offset_; }
-    std::size_t processing_size() const noexcept { return free_offset_ - processing_offset_; }
+    std::size_t reserved_size() const noexcept { return pending_offset_; }
+    std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
+    std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
     std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
 
+    boost::asio::const_buffer current_message() const noexcept { return boost::asio::buffer(current_message_first(), current_message_size()); }
     boost::asio::mutable_buffer free_area() noexcept { return boost::asio::buffer(free_first(), free_size()); }
 
-    // Removes length bytes from the processing area, at a certain offset
-    void remove_from_processing(std::size_t offset, std::size_t length) noexcept
+    // Moves length bytes from the current message area to the reserved area
+    // Used to move entire parsed messages or message headers
+    void move_to_reserved(std::size_t length) noexcept
     {
-        assert(offset >= processing_offset_);
-        assert(length <= processing_size());
-        if (offset == 0) // remove from front, just extend the dead area
-        {
-            processing_offset_ += length;
-        }
-        else
-        {
-            // Move remaining bytes backwards
-            std::memmove(
-                &buffer_[processing_offset_ + offset],
-                &buffer_[processing_offset_ + offset + length],
-                processing_size() - length
-            );
-            free_offset_ -= length;
-        }
+        assert(length <= current_message_size());
+        current_message_offset_ += length;
+    }
 
+    // Removes the last length bytes from the current message area,
+    // effectively memmove'ing all subsequent bytes backwards.
+    // Used to remove intermediate headers.
+    void remove_current_message_last(std::size_t length) noexcept
+    {
+        assert(length <= current_message_size());
+        std::memmove(
+            pending_first() - length,
+            pending_first(),
+            pending_size()
+        );
+        pending_offset_ -= length;
+        free_offset_ -= length;
+    }
+
+    // Moves n bytes from the processing to the current message area
+    void move_to_current_message(std::size_t n) noexcept
+    {
+        assert(n <= pending_size());
+        pending_offset_ += n;
     }
 
     // Moves n bytes from the free to the processing area (e.g. they've been read)
-    void move_to_processing(std::size_t n) noexcept
+    void move_to_pending(std::size_t n) noexcept
     {
         assert(n <= free_size());
         free_offset_ += n;
     }
 
-    // Removes the dead area, to make space
-    void relocate() noexcept
+    // Removes the reserved area, effectively memmove'ing evth backwards
+    void remove_reserved() noexcept
     {
-        if (dead_size() > 0)
+        if (reserved_size() > 0)
         {
-            std::memmove(&buffer_[0], processing_first(), processing_size());
-            free_offset_ -= dead_size();
-            processing_offset_ = 0;
+            std::size_t currmsg_size = current_message_size();
+            std::size_t pend_size = pending_size();
+            std::memmove(
+                buffer_.data(),
+                current_message_first(),
+                currmsg_size + pend_size
+            );
+            current_message_offset_ = 0;
+            pending_offset_ = currmsg_size;
+            free_offset_ = currmsg_size + pend_size;
         }
     }
 
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
     void grow_to_fit(std::size_t n)
     {
-        if (free_size() < n)
-        {
-            relocate();
-        }
         if (free_size() < n)
         {
             buffer_.resize(free_size() - n);

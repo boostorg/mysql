@@ -357,7 +357,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
 
 boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
     deserialization_context& ctx,
-    const std::vector<field_metadata>& fields,
+    const std::vector<metadata>& fields,
     std::vector<field_view>& output
 )
 {

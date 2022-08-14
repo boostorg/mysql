@@ -37,7 +37,7 @@ inline void process_rows(
     // or an EOF is received
     std::size_t num_rows = 0;
     channel.shared_fields().clear();
-    while (channel.num_read_messages())
+    while (channel.has_read_message())
     {
         // Get the row message
         auto message = channel.next_read_message(resultset.sequence_number(), err);
@@ -120,7 +120,7 @@ struct read_some_rows_op : boost::asio::coroutine
             }
 
             // Read at least one message
-            BOOST_ASIO_CORO_YIELD chan_.async_read(1, std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
             process_rows(chan_, resultset_, output_, err, output_info_);
@@ -152,7 +152,7 @@ void boost::mysql::detail::read_some_rows(
     }
 
     // Read from the stream until there is at least one message
-    channel.read(1, err);
+    channel.read_some(err);
     if (err)
         return;
 
