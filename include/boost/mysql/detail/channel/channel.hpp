@@ -60,7 +60,8 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // Reading
-    bool has_read_message() const noexcept { return reader_.has_message(); }
+    const std::uint8_t* buffer_first() const noexcept { return reader_.buffer_first(); }
+    bool has_read_messages() const noexcept { return reader_.has_message(); }
     boost::asio::const_buffer next_read_message(std::uint8_t& seqnum, error_code& err) noexcept
     {
         return reader_.get_next_message(seqnum, err);

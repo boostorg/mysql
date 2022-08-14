@@ -131,7 +131,7 @@ struct prepare_statement_op : boost::asio::coroutine
             while (processor_.has_remaining_meta())
             {
                 // Read from the stream if necessary
-                if (!chan_.has_read_message())
+                if (!chan_.has_read_messages())
                 {
                     BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
                 }
@@ -190,7 +190,7 @@ void boost::mysql::detail::prepare_statement(
     // We ignore these for now.
     while (processor.has_remaining_meta())
     {
-        if (!channel.has_read_message())
+        if (!channel.has_read_messages())
         {
             channel.read_some(err);
             if (err)

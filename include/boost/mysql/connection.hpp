@@ -20,7 +20,8 @@
 #include <boost/mysql/prepared_statement.hpp>
 #include <boost/mysql/connection_params.hpp>
 #include <boost/mysql/execute_params.hpp>
-#include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows_view.hpp>
 #include <type_traits>
 
 #endif
@@ -882,10 +883,10 @@ public:
     );
 
     /// Reads all available rows (sync with error code version).
-    void read_all_rows(resultset& resultset, rows& output, error_code& err, error_info& info);
+    void read_all_rows(resultset& resultset, rows_view& output, error_code& err, error_info& info);
 
     /// Reads all available rows (sync with exceptions version).
-    void read_all_rows(resultset& resultset, rows& output);
+    void read_all_rows(resultset& resultset, rows_view& output);
 
     /**
      * \brief Reads all available rows (async without [reflink error_info] version).
@@ -901,7 +902,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_all_rows(
         resultset& resultset,
-        rows& output,
+        rows_view& output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -922,7 +923,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_all_rows(
         resultset& resultset,
-        rows& output,
+        rows_view& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

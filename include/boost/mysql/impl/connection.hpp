@@ -440,7 +440,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
 template <class Stream>
 void boost::mysql::connection<Stream>::read_all_rows(
     resultset& resultset,
-	rows& output,
+	rows_view& output,
     error_code& err,
     error_info& info
 )
@@ -453,7 +453,7 @@ void boost::mysql::connection<Stream>::read_all_rows(
 template <class Stream>
 void boost::mysql::connection<Stream>::read_all_rows(
     resultset& resultset,
-	rows& output
+	rows_view& output
 )
 {
     detail::error_block blk;
@@ -471,7 +471,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_read_all_rows(
     resultset& resultset,
-	rows& output,
+	rows_view& output,
     error_info& output_info,
     CompletionToken&& token
 )

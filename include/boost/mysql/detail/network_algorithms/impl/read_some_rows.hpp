@@ -37,7 +37,7 @@ inline void process_rows(
     // or an EOF is received
     std::size_t num_rows = 0;
     channel.shared_fields().clear();
-    while (channel.has_read_message())
+    while (channel.has_read_messages())
     {
         // Get the row message
         auto message = channel.next_read_message(resultset.sequence_number(), err);
