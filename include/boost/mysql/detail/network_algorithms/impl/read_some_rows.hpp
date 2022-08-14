@@ -25,7 +25,7 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-inline void process_rows(
+inline void process_some_rows(
     channel<Stream>& channel,
     resultset& resultset,
     rows_view& output,
@@ -123,7 +123,7 @@ struct read_some_rows_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            process_rows(chan_, resultset_, output_, err, output_info_);
+            process_some_rows(chan_, resultset_, output_, err, output_info_);
             
             self.complete(err);
         }
@@ -157,7 +157,7 @@ void boost::mysql::detail::read_some_rows(
         return;
 
     // Process read messages
-    process_rows(channel, resultset, output, err, info);
+    process_some_rows(channel, resultset, output, err, info);
 }
 
 template <class Stream, class CompletionToken>

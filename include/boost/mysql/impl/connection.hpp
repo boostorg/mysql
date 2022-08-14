@@ -339,7 +339,7 @@ boost::mysql::connection<Stream>::async_close_statement(
 template <class Stream>
 bool boost::mysql::connection<Stream>::read_one_row(
     resultset& resultset,
-	row& output,
+	row_view& output,
     error_code& err,
     error_info& info
 )
@@ -352,7 +352,7 @@ bool boost::mysql::connection<Stream>::read_one_row(
 template <class Stream>
 bool boost::mysql::connection<Stream>::read_one_row(
     resultset& resultset,
-	row& output
+	row_view& output
 )
 {
     detail::error_block blk;
@@ -371,7 +371,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_read_one_row(
     resultset& resultset,
-	row& output,
+	row_view& output,
     error_info& output_info,
     CompletionToken&& token
 )

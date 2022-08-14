@@ -763,7 +763,7 @@ public:
      * (as if [refmem row clear] was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
-    bool read_one_row(resultset& resultset, row& output, error_code& err, error_info& info);
+    bool read_one_row(resultset& resultset, row_view& output, error_code& err, error_info& info);
 
     /**
      * \brief Reads a single row (sync with exceptions version).
@@ -777,7 +777,7 @@ public:
      * (as if [refmem row clear] was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
-    bool read_one_row(resultset& resultset, row& output);
+    bool read_one_row(resultset& resultset, row_view& output);
 
     /**
      * \brief Reads a single row (async without [reflink error_info] version).
@@ -802,7 +802,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
     async_read_one_row(
         resultset& resultset,
-        row& output,
+        row_view& output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -832,7 +832,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
     async_read_one_row(
         resultset& resultset,
-    	row& output,
+    	row_view& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

@@ -13,38 +13,47 @@
 #include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/buffer.hpp>
+#include <vector>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline bool process_read_message(
+template <class Stream>
+inline bool process_one_row(
     boost::asio::const_buffer read_message,
-    capabilities current_capabilities,
+    channel<Stream>& channel,
     resultset& resultset,
-	row& output,
+	row_view& output,
     error_code& err,
     error_info& info
 )
 {
-    // Clear whatever was in the row before
-    output.clear();
+    // Clear any previous field in the channel
+    channel.shared_fields().clear();
 
     // Deserialize the row
     bool row_read = deserialize_row(
         read_message,
-        current_capabilities,
+        channel.current_capabilities(),
         resultset,
-        output.values(),
+        channel.shared_fields(),
         err,
         info
     );
 
-    // Copy the strings into the row's buffer
+    // Set the output variable
     if (row_read)
-        output.copy_strings();
+    {
+        output = row_view(channel.shared_fields().data(), channel.shared_fields().size());
+    }
+    else
+    {
+        output = row_view();
+    }
 
     return row_read;
 }
@@ -101,7 +110,7 @@ struct read_one_row_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(resultset_.sequence_number(), std::move(self));
 
             // Process it
-            result = process_read_message(
+            result = process_one_row(
                 read_message,
                 chan_.current_capabilities(),
                 resultset_,
@@ -123,7 +132,7 @@ template <class Stream>
 bool boost::mysql::detail::read_one_row(
     channel<Stream>& channel,
     resultset& resultset,
-	row& output,
+	row_view& output,
     error_code& err,
     error_info& info
 )
@@ -131,7 +140,7 @@ bool boost::mysql::detail::read_one_row(
     // If the resultset is already complete, we don't need to read anything
     if (resultset.complete())
     {
-        output.clear();
+        output = row_view();
         return false;
     }
 
@@ -140,7 +149,7 @@ bool boost::mysql::detail::read_one_row(
     if (err)
         return false;
 
-    return process_read_message(
+    return process_one_row(
         read_message,
         channel.current_capabilities(),
         resultset,
@@ -158,7 +167,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 boost::mysql::detail::async_read_one_row(
     channel<Stream>& channel,
     resultset& resultset,
-	row& output,
+	row_view& output,
     error_info& output_info,
     CompletionToken&& token
 )

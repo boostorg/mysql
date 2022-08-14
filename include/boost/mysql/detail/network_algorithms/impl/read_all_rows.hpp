@@ -48,7 +48,7 @@ inline void rebase_strings(
 }
 
 template <class Stream>
-inline void process_rows(
+inline void process_all_rows(
     channel<Stream>& channel,
     resultset& resultset,
     rows_view& output,
@@ -153,7 +153,7 @@ struct read_all_rows_op : boost::asio::coroutine
                 rebase_strings(old_buffer_first_, chan_.buffer_first(), chan_.shared_fields());
 
                 // Process messages
-                process_rows(chan_, resultset_, output_, err, output_info_);
+                process_all_rows(chan_, resultset_, output_, err, output_info_);
                 if (err)
                 {
                     self.complete(err);
@@ -205,7 +205,7 @@ void boost::mysql::detail::read_all_rows(
         rebase_strings(old_buffer_first, channel.buffer_first(), channel.shared_fields());
 
         // Process read messages
-        process_rows(channel, resultset, output, err, info);
+        process_all_rows(channel, resultset, output, err, info);
         if (err)
             return;
     }
