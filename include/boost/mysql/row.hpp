@@ -10,7 +10,7 @@
 
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/detail/auxiliar/field_ptr.hpp.hpp>
+#include <boost/mysql/detail/auxiliar/field_ptr.hpp>
 #include <cstddef>
 #include <vector>
 
@@ -123,7 +123,7 @@ inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 } // mysql
 } // boost
 
-#include <boost/mysql/impl/row.ipp>
+#include <boost/mysql/impl/row.hpp>
 
 
 #endif

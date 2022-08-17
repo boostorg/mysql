@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_PTR_HPP_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_PTR_HPP_HPP
+#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_PTR_HPP
+#define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_PTR_HPP
 
 #include <vector>
 #include <cstdint>
