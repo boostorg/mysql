@@ -11,134 +11,64 @@
 #pragma once
 
 #include <boost/mysql/row.hpp>
+#include <cstddef>
+#include <iterator>
 
 
-inline void boost::mysql::row::rebase_strings(
-    const char* old_buffer_base
+std::vector<boost::mysql::field>::iterator boost::mysql::row::from_ptr(
+    detail::field_ptr ptr
 ) noexcept
 {
-    auto diff = string_buffer_.data() - old_buffer_base;
-    for (auto& f: fields_)
-    {
-        const boost::string_view* str = f.if_string();
-        if (str)
-        {
-            f = field_view(boost::string_view(
-                str->data() + diff,
-                str->size()
-            ));
-        }
-    }
+    assert(ptr >= begin() && ptr <= end());
+    return fields_.begin() + (begin() - ptr);
 }
 
-inline void boost::mysql::row::copy_strings()
-{
-    // Calculate size
-    std::size_t size = 0;
-    for (const auto& f: fields_)
-    {
-        const boost::string_view* str = f.if_string();
-        if (str)
-        {
-            size += str->size();
-        }
-    }
-
-    // Make space
-    string_buffer_.resize(size);
-
-    // Copy the strings
-    std::size_t offset = 0;
-    for (auto& f: fields_)
-    {
-        const boost::string_view* str = f.if_string();
-        if (str)
-        {
-            std::memcpy(string_buffer_.data() + offset, str->data(), str->size());
-            f = field_view(boost::string_view(string_buffer_.data() + offset, str->size()));
-            offset += str->size();
-        }
-    }
-}
-
-inline boost::mysql::row::iterator boost::mysql::row::to_row_it(
-    std::vector<field_view>::iterator it
+boost::mysql::detail::field_ptr boost::mysql::row::to_ptr(
+    std::vector<field>::iterator it
 ) noexcept
 {
-    return it == fields_.end() ? nullptr : fields_.data() + (it - fields_.begin());
-}
-
-inline std::vector<boost::mysql::field_view>::iterator boost::mysql::row::to_vector_it(
-    iterator it
-) noexcept
-{
-    return it == nullptr ? fields_.end() : fields_.begin() + (it - fields_.data());
-}
-
-boost::mysql::row::row(
-    const row& other
-) :
-    fields_(other.fields_),
-    string_buffer_(other.string_buffer_)
-{
-    rebase_strings(other.string_buffer_.data());
+    return begin() + (fields_.begin() - it);
 }
 
 
-const boost::mysql::row& boost::mysql::row::operator=(
-    const row& rhs
-)
-{
-    fields_ = rhs.fields_;
-    string_buffer_ = rhs.string_buffer_;
-    rebase_strings(rhs.string_buffer_.data());
-    return *this;
-}
-
-inline boost::string_view boost::mysql::row::copy_string(
-    boost::string_view v
-)
-{
-    const char* old_buffer_base = string_buffer_.data();
-    std::size_t old_buffer_size = string_buffer_.size();
-    string_buffer_.insert(string_buffer_.end(), v.data(), v.data() + v.size());
-    if (string_buffer_.data() != old_buffer_base)
-        rebase_strings(old_buffer_base);
-    return boost::string_view(string_buffer_.data() + old_buffer_size, v.size());
-}
-
-inline boost::mysql::row::iterator boost::mysql::row::insert(
-    iterator before,
+boost::mysql::row::iterator boost::mysql::row::replace(
+    iterator pos,
     field_view v
 )
 {
-    const auto* str = v.if_string();
-    if (str)
-    {
-        v = field_view(copy_string(*str));
-    }
-    auto res = fields_.insert(to_vector_it(before), v);
-    return to_row_it(res);
+    assert(pos >= begin() && pos < end());
+    *const_cast<field*>(pos.as_field()) = v;
+    return pos;
 }
 
-// inline boost::mysql::row::iterator boost::mysql::row::insert(
-//     iterator before,
-//     std::initializer_list<field_view> v
-// )
-// {
-//     // Calculate the extra size required for the strings
-//     std::size_t new_string_size = 0;
-//     for (const auto& f: v)
-//     {
-//         const auto* str = f.if_string();
-//         if (str)
-//         {
-//             new_string_size += str->size();
-//         }
-//     }
 
+boost::mysql::row::iterator boost::mysql::row::replace(
+    iterator first,
+    iterator last,
+    std::initializer_list<field_view> v
+)
+{
+    return replace(first, last, v.begin(), v.end());
+}
 
-// }
+template <class FwdIt>
+boost::mysql::row::iterator boost::mysql::row::replace(
+    iterator first,
+    iterator last,
+    FwdIt other_first,
+    FwdIt other_last
+)
+{
+    assert(last >= first);
+    assert((last - first) == std::distance(other_first, other_last));
+    auto itfrom = other_first;
+    auto itto = first;
+    for (; itto != last; ++itto, ++itfrom)
+    {
+        *const_cast<field*>(itto.as_field()) = *itfrom;
+    }
+    return first; // TODO: first or last?
+}
 
 
 #endif

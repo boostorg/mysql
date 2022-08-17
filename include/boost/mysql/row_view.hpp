@@ -8,32 +8,41 @@
 #ifndef BOOST_MYSQL_ROW_VIEW_HPP
 #define BOOST_MYSQL_ROW_VIEW_HPP
 
-#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/detail/auxiliar/field_ptr.hpp.hpp>
 #include <cstddef>
 #include <iosfwd>
+#include <iterator>
 
 namespace boost {
 namespace mysql {
 
+
 class row_view
 {
-    const field_view* fields_ {};
-    std::size_t size_ {};
 public:
     row_view() = default;
-    row_view(const field_view* f, std::size_t size) noexcept : fields_ {f}, size_{size} {}
+    row_view(const field_view* f, std::size_t size) noexcept : fields_ (f), size_(size) {}
+    row_view(const field* f, std::size_t size) noexcept : fields_(f), size_(size) {}
 
-    using iterator = const field_view*;
+    using iterator = detail::field_ptr;
     using const_iterator = iterator;
+    using value_type = field;
+    using reference = field_view;
+    using const_reference = field_view;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
 
     iterator begin() const noexcept { return fields_; }
     iterator end() const noexcept { return fields_ + size_; }
     field_view at(std::size_t i) const;
     field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
-    field_view front() const noexcept { return fields_[0]; }
+    field_view front() const noexcept { return *fields_; }
     field_view back() const noexcept { return fields_[size_ - 1]; }
     bool empty() const noexcept { return size_ == 0; }
     std::size_t size() const noexcept { return size_; }
+private:
+    detail::field_ptr fields_ {};
+    std::size_t size_ {};
 };
 
 

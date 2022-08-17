@@ -10,7 +10,8 @@
 
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/utility/string_view_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/field_ptr.hpp.hpp>
+#include <cstddef>
 #include <vector>
 
 
@@ -44,18 +45,23 @@ class row
 {
 public:
     row() = default;
-    inline row(const row&);
+    row(row_view r) : fields_(r.begin(), r.end()) {}
+    row(const row&) = default;
     row(row&&) = default;
-    inline const row& operator=(const row&);
+    row& operator=(const row&) = default;
     row& operator=(row&&) = default;
     ~row() = default;
 
-    using iterator = const field_view*;
+    using iterator = detail::field_ptr;
     using const_iterator = iterator;
-    // TODO: add other standard container members when we add field and field_view
+    using value_type = field;
+    using reference = field_view;
+    using const_reference = reference;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
 
-    iterator begin() const noexcept { return fields_.data(); }
-    iterator end() const noexcept { return fields_.data() + fields_.size(); }
+    iterator begin() const noexcept { return iterator(fields_.data()); }
+    iterator end() const noexcept { return iterator(fields_.data() + fields_.size()); }
     field_view at(std::size_t i) const { return fields_.at(i); }
     field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
     field_view front() const noexcept { return fields_.front(); }
@@ -63,21 +69,21 @@ public:
     bool empty() const noexcept { return fields_.empty(); }
     std::size_t size() const noexcept { return fields_.size(); }
 
-    inline iterator insert(iterator before, field_view v);
-    inline iterator insert(iterator before, std::initializer_list<field_view> v);
+    inline iterator insert(iterator before, field_view v) { return to_ptr(fields_.insert(from_ptr(before), v)); }
+    inline iterator insert(iterator before, std::initializer_list<field_view> v) { return to_ptr(fields_.insert(from_ptr(before), v.begin(), v.end())); }
     template <class FwdIt>
-    iterator insert(iterator before, FwdIt first, FwdIt last);
+    iterator insert(iterator before, FwdIt first, FwdIt last) { return to_ptr(fields_.insert(from_ptr(before), first, last));}
 
     inline iterator replace(iterator pos, field_view v);
     inline iterator replace(iterator first, iterator last, std::initializer_list<field_view> v);
     template <class FwdIt>
     inline iterator replace(iterator first, iterator last, FwdIt other_first, FwdIt other_last);
 
-    inline iterator erase(iterator pos);
-    inline iterator erase(iterator first, iterator last);
+    inline iterator erase(iterator pos) { return to_ptr(fields_.erase(from_ptr(pos))); }
+    inline iterator erase(iterator first, iterator last) { return to_ptr(fields_.erase(from_ptr(first), from_ptr(last))); }
 
-    inline void push_back(field_view v);
-    inline void pop_back();
+    inline void push_back(field_view v) { fields_.emplace_back(v); }
+    inline void pop_back() { fields_.pop_back(); }
 
     operator row_view() const noexcept
     {
@@ -93,24 +99,12 @@ public:
      * pointers, references and iterators to elements in [refmem row values] will be invalidated.
      * Any string values using the memory held by this row will also become invalid. 
      */
-    void clear() noexcept
-    {
-        fields_.clear();
-        string_buffer_.clear();
-    }
-
-    // TODO: hide these
-    const std::vector<field_view>& fields() const noexcept { return fields_; }
-    std::vector<field_view>& values() noexcept { return fields_; }
-    inline void copy_strings();
+    void clear() noexcept { fields_.clear(); }
 private:
-    std::vector<field_view> fields_;
-    std::vector<char> string_buffer_;
+    inline std::vector<field>::iterator from_ptr(detail::field_ptr) noexcept;
+    inline detail::field_ptr to_ptr(std::vector<field>::iterator) noexcept;
 
-    inline iterator to_row_it(std::vector<field_view>::iterator it) noexcept;
-    inline std::vector<field_view>::iterator to_vector_it(iterator it) noexcept;
-    inline boost::string_view copy_string(boost::string_view v);
-    inline void rebase_strings(const char* old_buffer_base) noexcept;
+    std::vector<field> fields_;
 };
 
 
