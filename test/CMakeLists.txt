@@ -28,27 +28,29 @@ target_link_libraries(
 # Unit testing
 add_executable(
     boost_mysql_unittests
-    unit/detail/auth/auth_calculator.cpp
-    unit/detail/auxiliar/static_string.cpp
-    unit/detail/auxiliar/value_type_traits.cpp
-    unit/detail/protocol/capabilities.cpp
-    unit/detail/protocol/date.cpp
-    unit/detail/protocol/null_bitmap_traits.cpp
-    unit/detail/protocol/serialization_test.cpp
-    unit/detail/protocol/text_deserialization_value.cpp
-    unit/detail/protocol/text_deserialization_error.cpp
-    unit/detail/protocol/binary_deserialization_value.cpp
-    unit/detail/protocol/binary_deserialization_error.cpp
-    unit/detail/protocol/row_deserialization.cpp
-    unit/metadata.cpp
-    unit/value.cpp
-    unit/value_constexpr.cpp
-    unit/row.cpp
-    unit/error.cpp
-    unit/execute_params.cpp
-    unit/prepared_statement.cpp
-    unit/resultset.cpp
-    unit/connection.cpp
+    unit/detail/channel/read_buffer.cpp
+
+    # unit/detail/auth/auth_calculator.cpp
+    # unit/detail/auxiliar/static_string.cpp
+    # unit/detail/auxiliar/value_type_traits.cpp
+    # unit/detail/protocol/capabilities.cpp
+    # unit/detail/protocol/date.cpp
+    # unit/detail/protocol/null_bitmap_traits.cpp
+    # unit/detail/protocol/serialization_test.cpp
+    # unit/detail/protocol/text_deserialization_value.cpp
+    # unit/detail/protocol/text_deserialization_error.cpp
+    # unit/detail/protocol/binary_deserialization_value.cpp
+    # unit/detail/protocol/binary_deserialization_error.cpp
+    # unit/detail/protocol/row_deserialization.cpp
+    # unit/metadata.cpp
+    # unit/value.cpp
+    # unit/value_constexpr.cpp
+    # unit/row.cpp
+    # unit/error.cpp
+    # unit/execute_params.cpp
+    # unit/prepared_statement.cpp
+    # unit/resultset.cpp
+    # unit/connection.cpp
     unit/entry_point.cpp
 )
 target_link_libraries(
