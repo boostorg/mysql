@@ -50,6 +50,7 @@ public:
     row(row&&) = default;
     row& operator=(const row&) = default;
     row& operator=(row&&) = default;
+    row& operator=(row_view r) { fields_.assign(r.begin(), r.end()); return *this; }
     ~row() = default;
 
     using iterator = detail::field_ptr;

@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_ROWS_VIEW_HPP
 #define BOOST_MYSQL_ROWS_VIEW_HPP
 
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
@@ -18,13 +19,10 @@ namespace mysql {
 
 class rows_view
 {
-    const field_view* fields_ {};
-    std::size_t num_values_ {};
-    std::size_t num_columns_ {};
 public:
     rows_view() = default;
 
-    class iterator;
+    using iterator = detail::rows_iterator<rows_view>;
     using const_iterator = iterator;
     using value_type = row;
     using reference = row_view;
@@ -32,8 +30,8 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    inline iterator begin() const noexcept;
-    inline iterator end() const noexcept;
+    iterator begin() const noexcept { return iterator(this, 0); }
+    iterator end() const noexcept { return iterator(this, size()); }
     inline row_view at(std::size_t i) const;
     inline row_view operator[](std::size_t i) const noexcept;
     row_view front() const noexcept { return (*this)[0]; }
@@ -49,6 +47,12 @@ public:
     {
         assert(num_values % num_columns == 0);
     }
+private:
+    const field_view* fields_ {};
+    std::size_t num_values_ {};
+    std::size_t num_columns_ {};
+    
+    friend class rows;
 };
 
 
@@ -56,7 +60,7 @@ public:
 } // boost
 
 
-#include <boost/mysql/impl/rows_view.hpp>
+#include <boost/mysql/impl/rows_view.ipp>
 
 
 #endif

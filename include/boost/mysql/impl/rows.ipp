@@ -8,33 +8,59 @@
 #ifndef BOOST_MYSQL_IMPL_ROWS_IPP
 #define BOOST_MYSQL_IMPL_ROWS_IPP
 
+#include "boost/mysql/rows_view.hpp"
+#include <cstddef>
 #pragma once
 
 #include <boost/mysql/rows.hpp>
 #include <stdexcept>
 
-
-inline void boost::mysql::rows::rebase_strings(const char* old_buffer_base)
+boost::mysql::rows::rows(
+    const rows_view& view
+) :
+    fields_(view.begin(), view.end())
 {
-    const char* new_buffer_base = string_buffer_.data();
-    auto diff = new_buffer_base - old_buffer_base;
-    if (diff)
-    {
-        for (auto& f: fields_)
-        {
-            const boost::string_view* str = f.if_string();
-            if (str)
-            {
-                f = field_view(boost::string_view(
-                    str->data() + diff,
-                    str->size()
-                ));
-            }
-        }
-    }
+    copy_strings();
 }
 
-inline boost::mysql::row_view boost::mysql::rows::at(
+
+boost::mysql::rows::rows(
+    const rows& rhs
+) :
+    fields_(rhs.fields_),
+    string_buffer_(rhs.string_buffer_)
+{
+    rebase_strings(rhs.string_buffer_.data());
+}
+
+
+boost::mysql::rows& boost::mysql::rows::operator=(
+    const rows& rhs
+)
+{
+    fields_ = rhs.fields_;
+    string_buffer_ = rhs.string_buffer_;
+    rebase_strings(rhs.string_buffer_.data());
+    return *this;
+}
+
+boost::mysql::rows& boost::mysql::rows::operator=(
+    const rows_view& rhs
+)
+{
+    fields_.assign(rhs.begin(), rhs.end());
+    copy_strings();
+    return *this;
+}
+
+boost::mysql::row_view boost::mysql::rows::operator[](
+    std::size_t i
+) const noexcept
+{
+    return row_view(fields_.data() + num_columns_ * i, num_columns_);
+}
+
+boost::mysql::row_view boost::mysql::rows::at(
     std::size_t i
 ) const
 {
@@ -45,31 +71,48 @@ inline boost::mysql::row_view boost::mysql::rows::at(
     return (*this)[i];
 }
 
-inline void boost::mysql::rows::copy_strings(std::size_t field_offset)
+inline void boost::mysql::rows::rebase_strings(const char* old_buffer_base)
 {
-    // Calculate the extra size required for the new strings
-    std::size_t size = 0;
-    for (const auto* f = fields_.data() + field_offset; f != fields_.data() + fields_.size(); ++f)
+    const char* new_buffer_base = string_buffer_.data();
+    auto diff = new_buffer_base - old_buffer_base;
+    if (diff)
     {
-        const boost::string_view* str = f->if_string();
+        for (auto& f: fields_)
+        {
+            const boost::string_view* str = f.if_string();
+            if (str && !str->empty())
+            {
+                f = field_view(boost::string_view(
+                    str->data() + diff,
+                    str->size()
+                ));
+            }
+        }
+    }
+}
+
+inline void boost::mysql::rows::copy_strings()
+{
+    // Calculate the required size for the new strings
+    std::size_t size = 0;
+    for (const auto& f : fields_)
+    {
+        const boost::string_view* str = f.if_string();
         if (str)
         {
             size += str->size();
         }
     }
 
-    // Make space and rebase the old strings
-    const char* old_buffer_base = string_buffer_.data();
-    std::size_t old_buffer_size = string_buffer_.size();
+    // Make space
     string_buffer_.resize(size);
-    rebase_strings(old_buffer_base);
     
     // Copy the strings
-    std::size_t offset = old_buffer_size;
+    std::size_t offset = 0;
     for (auto& f: fields_)
     {
         const boost::string_view* str = f.if_string();
-        if (str)
+        if (str && !str->empty())
         {
             std::memcpy(string_buffer_.data() + offset, str->data(), str->size());
             f = field_view(boost::string_view(string_buffer_.data() + offset, str->size()));
