@@ -45,7 +45,7 @@ public:
     std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
     const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
 
-    std::size_t reserved_size() const noexcept { return pending_offset_; }
+    std::size_t reserved_size() const noexcept { return current_message_offset_; }
     std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
     std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
     std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
