@@ -13,12 +13,38 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <ostream>
 #include <vector>
 
 using boost::mysql::detail::read_buffer;
 using boost::asio::const_buffer;
 using boost::asio::mutable_buffer;
 using boost::asio::buffer;
+
+namespace
+{
+
+struct buffer_printer
+{
+    const_buffer buff;
+};
+
+std::ostream& operator<<(std::ostream& os, buffer_printer buff)
+{
+    os << "{ ";
+    for (std::size_t i = 0; i < buff.buff.size(); ++i)
+    {
+        os << static_cast<int>(static_cast<const std::uint8_t*>(buff.buff.data())[i]) << ", ";
+    }
+    return os << "}";
+}
+
+} // anon namespace
+
+#define BOOST_MYSQL_BUFF_TEST(b1, b2) \
+    BOOST_TEST( \
+        std::memcmp(b1.data(), b2.data(), b1.size()) == 0, \
+        #b1 " != " #b2 ": " << buffer_printer{b1} << " != " << buffer_printer{b2})
 
 static void check_equal(const_buffer lhs, const_buffer rhs, const char* msg = "")
 {
@@ -57,9 +83,9 @@ static void check_buffer(
     BOOST_TEST(buff.pending_area().size() == pending.size());
     BOOST_TEST(buff.free_area().size() == buff.total_size() - free_offset);
     
-    BOOST_TEST(std::memcmp(buff.reserved_area().data(), reserved.data(), reserved.size()) == 0);
-    BOOST_TEST(std::memcmp(buff.current_message().data(), current_message.data(), reserved.size()) == 0);
-    BOOST_TEST(std::memcmp(buff.pending_area().data(), pending.data(), reserved.size()) == 0);
+    BOOST_MYSQL_BUFF_TEST(buff.reserved_area(), buffer(reserved));
+    BOOST_MYSQL_BUFF_TEST(buff.current_message(), buffer(current_message));
+    BOOST_MYSQL_BUFF_TEST(buff.pending_area(), buffer(pending));
 }
 
 
@@ -68,16 +94,7 @@ static void copy_to_free_area(read_buffer& buff, const std::vector<std::uint8_t>
     std::copy(bytes.begin(), bytes.end(), buff.free_first());
 }
 
-// remove current message last 0 bytes
-// remove current message partial
-// remove current message total
-// remove current message with pending
-// remove current message without pending
-// remove current message with free (?)
-// remove current message without free (?)
-// move to reserved 0 bytes
-// move to reserved partial
-// move to reserved total
+
 // remove reserved without reserved, without other areas
 // remove reserved without reserved, with other areas
 // remove reserved with reserved, without other areas
@@ -85,6 +102,7 @@ static void copy_to_free_area(read_buffer& buff, const std::vector<std::uint8_t>
 // grow to fit with 0 request
 // grow to fit but there is enough space
 // grow to fit with other areas
+// all fns on zero size buffer
 
 BOOST_AUTO_TEST_SUITE(test_read_buffer)
 
@@ -202,6 +220,123 @@ BOOST_AUTO_TEST_CASE(several_calls)
     buff.move_to_current_message(3);
 
     check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05 }, { 0x06 });
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(move_to_reserved)
+
+BOOST_AUTO_TEST_CASE(some_bytes)
+{
+    read_buffer buff (8);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    buff.move_to_pending(6);
+    buff.move_to_current_message(5);
+    buff.move_to_reserved(3);
+
+    check_buffer(buff, { 0x01, 0x02, 0x03 }, { 0x04, 0x05 }, { 0x06 });
+}
+
+BOOST_AUTO_TEST_CASE(all_bytes)
+{
+    read_buffer buff (8);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    buff.move_to_pending(6);
+    buff.move_to_current_message(5);
+    buff.move_to_reserved(5);
+
+    check_buffer(buff, { 0x01, 0x02, 0x03, 0x04, 0x05 }, {}, { 0x06 });
+}
+
+BOOST_AUTO_TEST_CASE(zero_bytes)
+{
+    read_buffer buff (8);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    buff.move_to_pending(6);
+    buff.move_to_current_message(5);
+    buff.move_to_reserved(0);
+
+    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05 }, { 0x06 });
+}
+
+BOOST_AUTO_TEST_CASE(several_calls)
+{
+    read_buffer buff (8);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    buff.move_to_pending(6);
+    buff.move_to_current_message(5);
+    buff.move_to_reserved(1);
+    buff.move_to_reserved(2);
+
+    check_buffer(buff, { 0x01, 0x02, 0x03 }, { 0x04, 0x05 }, { 0x06 });
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+BOOST_AUTO_TEST_SUITE(remove_current_message_last)
+
+BOOST_AUTO_TEST_CASE(some_bytes)
+{
+    read_buffer buff (16);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+    buff.move_to_reserved(1);
+    buff.remove_current_message_last(2);
+
+    check_buffer(buff, { 0x01 }, { 0x02, 0x03, 0x04 }, { 0x07, 0x08 });
+}
+
+BOOST_AUTO_TEST_CASE(all_bytes)
+{
+    read_buffer buff (16);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+    buff.move_to_reserved(1);
+    buff.remove_current_message_last(5);
+
+    check_buffer(buff, { 0x01 }, {}, { 0x07, 0x08 });
+}
+
+BOOST_AUTO_TEST_CASE(zero_bytes)
+{
+    read_buffer buff (16);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+    buff.move_to_reserved(1);
+    buff.remove_current_message_last(0);
+
+    check_buffer(buff, { 0x01 }, { 0x02, 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+}
+
+BOOST_AUTO_TEST_CASE(without_pending)
+{
+    read_buffer buff (16);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    buff.move_to_pending(8);
+    buff.move_to_current_message(8);
+    buff.move_to_reserved(1);
+    buff.remove_current_message_last(4);
+
+    check_buffer(buff, { 0x01 }, { 0x02, 0x03, 0x04 }, {});
+}
+
+BOOST_AUTO_TEST_CASE(without_reserved)
+{
+    read_buffer buff (16);
+    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+    buff.remove_current_message_last(4);
+
+    check_buffer(buff, {}, { 0x01, 0x02 }, { 0x07, 0x08 });
 }
 
 BOOST_AUTO_TEST_SUITE_END()
