@@ -36,6 +36,7 @@ void boost::mysql::detail::read_buffer::remove_current_message_last(
 ) noexcept
 {
     assert(length <= current_message_size());
+    assert(length > 0);
     std::memmove(
         pending_first() - length,
         pending_first(),
@@ -82,7 +83,7 @@ void boost::mysql::detail::read_buffer::grow_to_fit(std::size_t n)
 {
     if (free_size() < n)
     {
-        buffer_.resize(free_size() - n);
+        buffer_.resize(buffer_.size() + n - free_size());
         buffer_.resize(buffer_.capacity());
     }
 }

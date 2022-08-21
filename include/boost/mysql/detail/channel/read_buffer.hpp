@@ -35,6 +35,10 @@ class read_buffer
 public:
     inline read_buffer(std::size_t size);
 
+    // Whole buffer accessors
+    const std::uint8_t* first() const noexcept { return buffer_.data(); }
+    std::size_t size() const noexcept { return buffer_.size(); }
+
     // Area accessors
     std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
     const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
@@ -63,7 +67,7 @@ public:
 
     // Removes the last length bytes from the current message area,
     // effectively memmove'ing all subsequent bytes backwards.
-    // Used to remove intermediate headers.
+    // Used to remove intermediate headers. length must be > 0
     inline void remove_current_message_last(std::size_t length) noexcept;
 
     // Moves length bytes from the current message area to the reserved area
@@ -75,9 +79,6 @@ public:
 
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
     inline void grow_to_fit(std::size_t n);
-
-    // Exposed for the sake of testing
-    std::size_t total_size() const noexcept { return buffer_.size(); }
 };
 
 
