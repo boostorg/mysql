@@ -138,8 +138,6 @@ struct read_all_rows_op : boost::asio::coroutine
                 BOOST_ASIO_CORO_YIELD break;
             }
 
-            chan_.set_keep_messages(true);
-
             // Read at least one message
             while (!resultset_.complete())
             {
@@ -147,7 +145,7 @@ struct read_all_rows_op : boost::asio::coroutine
                 old_buffer_first_ = chan_.buffer_first();
 
                 // Actually read
-                BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
+                BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self), true);
 
                 // Rebase strings if required
                 rebase_strings(old_buffer_first_, chan_.buffer_first(), chan_.shared_fields());
@@ -162,7 +160,6 @@ struct read_all_rows_op : boost::asio::coroutine
             }
 
             // Done
-            chan_.set_keep_messages(false);
             self.complete(error_code());
         }
     }
@@ -189,15 +186,12 @@ void boost::mysql::detail::read_all_rows(
         return;
     }
 
-    // TODO: should we use RAII here?
-    channel.set_keep_messages(true);
-
     while (!resultset.complete())
     {
         const std::uint8_t* old_buffer_first = channel.buffer_first();
 
         // Read from the stream until there is at least one message
-        channel.read_some(err);
+        channel.read_some(err, true);
         if (err)
             return;
         
@@ -209,8 +203,6 @@ void boost::mysql::detail::read_all_rows(
         if (err)
             return;
     }
-
-    channel.set_keep_messages(false);
 }
 
 template <class Stream, class CompletionToken>
