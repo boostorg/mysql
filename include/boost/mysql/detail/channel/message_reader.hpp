@@ -32,6 +32,11 @@ public:
     inline boost::asio::const_buffer get_next_message(std::uint8_t& seqnum, error_code& ec) noexcept;
 
     // Reads some messages from stream, until there is at least one
+    // or an error happens. On success, has_message() returns true
+    // and get_next_message() returns the parsed message.
+    // May relocate the buffer, modifying buffer_first(). If !keep_messages,
+    // the reserved area bytes will be removed before the actual read; otherwise,
+    // they won't be touched (but may be reallocated).
     template <class Stream>
     void read_some(Stream& stream, error_code& ec, bool keep_messages = false);
 

@@ -40,7 +40,7 @@ inline void boost::mysql::detail::message_parser::parse_message(
             // Deserialize the header
             packet_header header;
             deserialization_context ctx (
-                boost::asio::buffer(buff.pending_first(), HEADER_SIZE),
+                boost::asio::buffer(buff.pending_first() - HEADER_SIZE, HEADER_SIZE),
                 capabilities(0) // unaffected by capabilities
             );
             errc err = deserialize(ctx, header);
@@ -50,7 +50,6 @@ inline void boost::mysql::detail::message_parser::parse_message(
             // Process the sequence number
             if (state_.is_first_frame)
             {
-                state_.is_first_frame = false;
                 state_.seqnum_first = header.sequence_number;
                 state_.seqnum_last = header.sequence_number;
             }
@@ -79,6 +78,7 @@ inline void boost::mysql::detail::message_parser::parse_message(
             {
                 buff.remove_current_message_last(HEADER_SIZE);
             }
+            state_.is_first_frame = false;
             state_.reading_header = false;
         }
 

@@ -15,28 +15,14 @@
 #include <cstring>
 #include <ostream>
 #include <vector>
+#include "assert_buffer_equals.hpp"
 
 using boost::mysql::detail::read_buffer;
-using boost::asio::const_buffer;
 using boost::asio::buffer;
 
 namespace
 {
 
-struct buffer_printer
-{
-    const_buffer buff;
-};
-
-std::ostream& operator<<(std::ostream& os, buffer_printer buff)
-{
-    os << "{ ";
-    for (std::size_t i = 0; i < buff.buff.size(); ++i)
-    {
-        os << static_cast<int>(static_cast<const std::uint8_t*>(buff.buff.data())[i]) << ", ";
-    }
-    return os << "}";
-}
 
 // Records the buffer first pointer and size to verify the buffer
 // didn't do any re-allocation
@@ -60,11 +46,6 @@ public:
 };
 
 } // anon namespace
-
-#define BOOST_MYSQL_BUFF_TEST(b1, b2) \
-    BOOST_TEST( \
-        std::memcmp(b1.data(), b2.data(), b1.size()) == 0, \
-        #b1 " != " #b2 ": " << buffer_printer{b1} << " != " << buffer_printer{b2})
 
 
 static void check_buffer(
@@ -125,9 +106,9 @@ static void check_buffer(
         buff.size() - free_offset
     );
 
-    BOOST_MYSQL_BUFF_TEST(buff.reserved_area(), buffer(reserved));
-    BOOST_MYSQL_BUFF_TEST(buff.current_message(), buffer(current_message));
-    BOOST_MYSQL_BUFF_TEST(buff.pending_area(), buffer(pending));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.reserved_area(), buffer(reserved));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.current_message(), buffer(current_message));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), buffer(pending));
 }
 
 static void check_empty_buffer(read_buffer& buff)

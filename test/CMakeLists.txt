@@ -29,6 +29,7 @@ target_link_libraries(
 add_executable(
     boost_mysql_unittests
     unit/detail/channel/read_buffer.cpp
+    unit/detail/channel/message_parser.cpp
 
     # unit/detail/auth/auth_calculator.cpp
     # unit/detail/auxiliar/static_string.cpp

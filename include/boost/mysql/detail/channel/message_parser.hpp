@@ -24,7 +24,7 @@ class message_parser
         bool is_first_frame {true};
         std::uint8_t seqnum_first {};
         std::uint8_t seqnum_last {};
-        bool reading_header {false};
+        bool reading_header {true};
         std::size_t remaining_bytes {0};
         bool more_frames_follow {false};
         bool has_seqnum_mismatch {false};
@@ -62,7 +62,9 @@ public:
     // Attempts to process a message from buff and puts it into msg.
     // If a message is read, returns true, and msg.message_first and msg.message_last
     // will contain offsets into buff's reserved area. Otherwise, required_size will contain
-    // the number of bytes needed to complete the message part we're parsing. 
+    // the number of bytes needed to complete the message part we're parsing.
+    // Doesn't cause buffer reallocations, and doesn't change the contents
+    // of buff's reserved area.
     inline void parse_message(read_buffer& buff, result& res) noexcept;
 };
 

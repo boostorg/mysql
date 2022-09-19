@@ -14,7 +14,7 @@ from collections import namedtuple
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
 
-REPO_BASE = path.abspath(path.join(path.dirname(__file__), '..', '..'))
+REPO_BASE = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..', '..'))
 BASE_FOLDERS = [
     'cmake',
     'doc',
