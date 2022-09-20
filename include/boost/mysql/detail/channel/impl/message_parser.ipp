@@ -65,7 +65,7 @@ inline void boost::mysql::detail::message_parser::parse_message(
 
             // Process the packet size
             state_.remaining_bytes = header.packet_size.value;
-            state_.more_frames_follow = (state_.remaining_bytes == MAX_PACKET_SIZE);
+            state_.more_frames_follow = (state_.remaining_bytes == max_frame_size_);
 
             // We are done with the header
             if (state_.is_first_frame)

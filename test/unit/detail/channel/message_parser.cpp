@@ -33,7 +33,7 @@ namespace
 
 class parser_fixture
 {
-    message_parser parser_;
+    message_parser parser_ {64}; // max frame size is 64
     read_buffer buff_;
     std::vector<std::uint8_t> contents_;
     std::size_t bytes_written_ {0};
@@ -315,20 +315,20 @@ BOOST_AUTO_TEST_CASE(two_frame_message)
     // message to be parsed
     parser_fixture fixture (
         concat_copy(
-            create_message(0, std::vector<std::uint8_t>(0xffffff, 0x04)),
+            create_message(0, std::vector<std::uint8_t>(64, 0x04)),
             create_message(1, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff + 16
+        64 + 16
     );
-    auto expected_message = concat_copy(std::vector<std::uint8_t>(0xffffff, 0x04), { 0x05, 0x06, 0x07 });
+    auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), { 0x05, 0x06, 0x07 });
 
     // header 1 + body part
     auto res = fixture.parse_bytes(6);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 0xffffff - 2);
+    BOOST_TEST(res.required_size == 64 - 2);
 
     // body part
-    res = fixture.parse_bytes(0xffffff - 10);
+    res = fixture.parse_bytes(64 - 10);
     BOOST_TEST(!res.has_message);
     BOOST_TEST(res.required_size == 8);
 
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE(two_frame_message)
     res = fixture.parse_bytes(2);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff + 3);
+    BOOST_TEST(res.message.size == 64 + 3);
     BOOST_TEST(res.message.seqnum_first == 0);
     BOOST_TEST(res.message.seqnum_last == 1);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
@@ -357,12 +357,12 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     parser_fixture fixture (
         concat_copy(
             create_message(0, first_msg_body),
-            create_message(4, std::vector<std::uint8_t>(0xffffff, 0x04)),
+            create_message(4, std::vector<std::uint8_t>(64, 0x04)),
             create_message(5, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff + 64
+        64 + 64
     );
-    auto second_msg_body = concat_copy(std::vector<std::uint8_t>(0xffffff, 0x04), { 0x05, 0x06, 0x07 });
+    auto second_msg_body = concat_copy(std::vector<std::uint8_t>(64, 0x04), { 0x05, 0x06, 0x07 });
 
     // msg 1
     auto res = fixture.parse_bytes(7);
@@ -374,10 +374,10 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // msg 2 (multiframe)
-    res = fixture.parse_bytes(0xffffff + 4*2 + 3);
+    res = fixture.parse_bytes(64 + 4*2 + 3);
     fixture.check_message(second_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff + 3);
+    BOOST_TEST(res.message.size == 64 + 3);
     BOOST_TEST(res.message.seqnum_first == 4);
     BOOST_TEST(res.message.seqnum_last == 5);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
@@ -394,12 +394,12 @@ BOOST_AUTO_TEST_CASE(two_frame_message_fragmented)
     // message to be parsed
     parser_fixture fixture (
         concat_copy(
-            create_message(0, std::vector<std::uint8_t>(0xffffff, 0x04)),
+            create_message(0, std::vector<std::uint8_t>(64, 0x04)),
             create_message(1, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff + 16
+        64 + 16
     );
-    auto expected_message = concat_copy(std::vector<std::uint8_t>(0xffffff, 0x04), { 0x05, 0x06, 0x07 });
+    auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), { 0x05, 0x06, 0x07 });
 
     // part of header 1
     auto res = fixture.parse_bytes(3);
@@ -409,10 +409,10 @@ BOOST_AUTO_TEST_CASE(two_frame_message_fragmented)
     // header 1 full
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 0xffffff);
+    BOOST_TEST(res.required_size == 64);
 
     // part of body 1
-    res = fixture.parse_bytes(0xffffff - 8);
+    res = fixture.parse_bytes(64 - 8);
     BOOST_TEST(!res.has_message);
     BOOST_TEST(res.required_size == 8);
 
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(two_frame_message_fragmented)
     res = fixture.parse_bytes(1);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff + 3);
+    BOOST_TEST(res.message.size == 64 + 3);
     BOOST_TEST(res.message.seqnum_first == 0);
     BOOST_TEST(res.message.seqnum_last == 1);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
@@ -464,30 +464,30 @@ BOOST_AUTO_TEST_CASE(three_frame_message)
     // message to be parsed
     parser_fixture fixture (
         concat_copy(
-            create_message(2, std::vector<std::uint8_t>(0xffffff, 0x04)),
-            create_message(3, std::vector<std::uint8_t>(0xffffff, 0x05)),
+            create_message(2, std::vector<std::uint8_t>(64, 0x04)),
+            create_message(3, std::vector<std::uint8_t>(64, 0x05)),
             create_message(4, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff * 2 + 64
+        64 * 2 + 64
     );
     auto expected_message = concat_copy(
-        std::vector<std::uint8_t>(0xffffff, 0x04),
-        std::vector<std::uint8_t>(0xffffff, 0x05),
+        std::vector<std::uint8_t>(64, 0x04),
+        std::vector<std::uint8_t>(64, 0x05),
         { 0x05, 0x06, 0x07 }
     );
 
     // header 1 + body 1 part
     auto res = fixture.parse_bytes(6);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 0xffffff - 2);
+    BOOST_TEST(res.required_size == 64 - 2);
 
     // body 1 part + header 2 + body 2 part
-    res = fixture.parse_bytes(0xffffff - 2 + 4 + 3);
+    res = fixture.parse_bytes(64 - 2 + 4 + 3);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 0xffffff - 3);
+    BOOST_TEST(res.required_size == 64 - 3);
 
     // body 2 part + header 3 + body 3 part
-    res = fixture.parse_bytes(0xffffff - 3 + 4 + 1);
+    res = fixture.parse_bytes(64 - 3 + 4 + 1);
     BOOST_TEST(!res.has_message);
     BOOST_TEST(res.required_size == 2);
 
@@ -495,7 +495,7 @@ BOOST_AUTO_TEST_CASE(three_frame_message)
     res = fixture.parse_bytes(2);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff * 2 + 3);
+    BOOST_TEST(res.message.size == 64 * 2 + 3);
     BOOST_TEST(res.message.seqnum_first == 2);
     BOOST_TEST(res.message.seqnum_last == 4);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
@@ -509,18 +509,18 @@ BOOST_AUTO_TEST_CASE(two_frame_message_mismatched_seqnums)
     // message to be parsed
     parser_fixture fixture (
         concat_copy(
-            create_message(1, std::vector<std::uint8_t>(0xffffff, 0x04)),
+            create_message(1, std::vector<std::uint8_t>(64, 0x04)),
             create_message(3, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff + 16
+        64 + 16
     );
-    auto expected_message = concat_copy(std::vector<std::uint8_t>(0xffffff, 0x04), { 0x05, 0x06, 0x07 });
+    auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), { 0x05, 0x06, 0x07 });
 
     // all in one
-    auto res = fixture.parse_bytes(0xffffff + 4*2 + 3);
+    auto res = fixture.parse_bytes(64 + 4*2 + 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff + 3);
+    BOOST_TEST(res.message.size == 64 + 3);
     BOOST_TEST(res.message.seqnum_first == 1);
     BOOST_TEST(res.message.has_seqnum_mismatch);
 
@@ -533,23 +533,23 @@ BOOST_AUTO_TEST_CASE(three_frame_message_mismatched_seqnums)
     // message to be parsed
     parser_fixture fixture (
         concat_copy(
-            create_message(1, std::vector<std::uint8_t>(0xffffff, 0x04)),
-            create_message(2, std::vector<std::uint8_t>(0xffffff, 0x05)),
+            create_message(1, std::vector<std::uint8_t>(64, 0x04)),
+            create_message(2, std::vector<std::uint8_t>(64, 0x05)),
             create_message(0, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff * 2 + 64
+        64 * 2 + 64
     );
     auto expected_message = concat_copy(
-        std::vector<std::uint8_t>(0xffffff, 0x04),
-        std::vector<std::uint8_t>(0xffffff, 0x05),
+        std::vector<std::uint8_t>(64, 0x04),
+        std::vector<std::uint8_t>(64, 0x05),
         { 0x05, 0x06, 0x07 }
     );
 
     // all in one
-    auto res = fixture.parse_bytes(0xffffff * 2 + 4*3 + 3);
+    auto res = fixture.parse_bytes(64 * 2 + 4*3 + 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff * 2 + 3);
+    BOOST_TEST(res.message.size == 64 * 2 + 3);
     BOOST_TEST(res.message.seqnum_first == 1);
     BOOST_TEST(res.message.has_seqnum_mismatch);
 
@@ -562,18 +562,18 @@ BOOST_AUTO_TEST_CASE(two_frame_seqnum_overflow)
     // message to be parsed
     parser_fixture fixture (
         concat_copy(
-            create_message(255, std::vector<std::uint8_t>(0xffffff, 0x04)),
+            create_message(255, std::vector<std::uint8_t>(64, 0x04)),
             create_message(0, { 0x05, 0x06, 0x07 })
         ),
-        0xffffff + 16
+        64 + 16
     );
-    auto expected_message = concat_copy(std::vector<std::uint8_t>(0xffffff, 0x04), { 0x05, 0x06, 0x07 });
+    auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), { 0x05, 0x06, 0x07 });
 
     // all in one
-    auto res = fixture.parse_bytes(0xffffff + 4*2 + 3);
+    auto res = fixture.parse_bytes(64 + 4*2 + 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0xffffff + 3);
+    BOOST_TEST(res.message.size == 64 + 3);
     BOOST_TEST(res.message.seqnum_first == 255);
     BOOST_TEST(res.message.seqnum_last == 0);
     BOOST_TEST(!res.message.has_seqnum_mismatch);

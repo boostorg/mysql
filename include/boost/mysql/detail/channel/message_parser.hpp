@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 
 namespace boost {
 namespace mysql {
@@ -30,6 +31,7 @@ class message_parser
         bool has_seqnum_mismatch {false};
     };
 
+    std::size_t max_frame_size_;
     state_t state_;
 public:
     struct result
@@ -57,7 +59,8 @@ public:
         }
     };
 
-    message_parser() = default;
+    // max_frame_size is configurable so tests run faster
+    message_parser(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept : max_frame_size_(max_frame_size) {};
 
     // Attempts to process a message from buff and puts it into msg.
     // If a message is read, returns true, and msg.message_first and msg.message_last
