@@ -24,7 +24,7 @@ boost::asio::const_buffer boost::mysql::detail::message_reader::get_next_message
 ) noexcept
 {
     assert(has_message());
-    if (seqnum != result_.message.seqnum_first || result_.message.has_seqnum_mismatch)
+    if (result_.message.has_seqnum_mismatch || seqnum != result_.message.seqnum_first)
     {
         ec = make_error_code(errc::sequence_number_mismatch);
         return {};

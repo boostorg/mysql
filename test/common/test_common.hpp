@@ -108,6 +108,17 @@ inline std::vector<std::uint8_t> concat_copy(
     return std::move(lhs);
 }
 
+inline std::vector<std::uint8_t> concat_copy(
+    std::vector<uint8_t>&& lhs,
+    const std::vector<uint8_t>& rhs,
+    const std::vector<uint8_t>& rhs2
+)
+{
+    concat(lhs, rhs);
+    concat(lhs, rhs2);
+    return std::move(lhs);
+}
+
 inline const char* to_string(ssl_mode m)
 {
     switch (m)
