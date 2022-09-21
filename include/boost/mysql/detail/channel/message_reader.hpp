@@ -49,12 +49,33 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(Stream& stream, CompletionToken&& token, bool keep_messages = false);
 
+    // Equivalent to read_some + get_next_message
+    template <class Stream>
+    boost::asio::const_buffer read_one(
+        Stream& stream,
+        std::uint8_t& seqnum,
+        error_code& ec,
+        bool keep_messages = false
+    );
+
+    template<
+        class Stream,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, boost::asio::const_buffer)) CompletionToken
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_read_one(
+        Stream& stream,
+        std::uint8_t& seqnum,
+        CompletionToken&& token,
+        bool keep_messages = false
+    );
+
     // Exposed for the sake of testing
     read_buffer& buffer() noexcept { return buffer_; }
 private:
 
-    template <class Stream>
-    struct read_op;
+    template <class Stream> struct read_some_op;
+    template <class Stream> struct read_one_op;
 
     read_buffer buffer_;
     message_parser parser_;

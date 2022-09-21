@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 
+#include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -67,26 +68,33 @@ public:
         return reader_.get_next_message(seqnum, err);
     }
 
-    void read_some(error_code& code, bool keep_messages = false) { return reader_.read_some(stream_, code, keep_messages); }
+    void read_some(error_code& code, bool keep_messages = false)
+    {
+        return reader_.read_some(stream_, code, keep_messages);
+    }
 
-    template <class CompletionToken>
+    template<
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
+    >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(CompletionToken&& token, bool keep_messages = false)
     {
         return reader_.async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
     }
 
-    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec)
+    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec, bool keep_messages = false)
     {
-        ec = reader_.read_some(stream_, ec);
-        if (ec)
-            return {};
-        return next_read_message(seqnum, ec);
+        return reader_.read_one(stream_, seqnum, ec, keep_messages);
     }
 
-    template <class CompletionToken>
+    template<
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer)) CompletionToken
+    >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
-    async_read_one(std::uint8_t& seqnum, CompletionToken&& token);
+    async_read_one(std::uint8_t& seqnum, CompletionToken&& token, bool keep_messages = false)
+    {
+        return reader_.async_read_one(stream_, seqnum, std::forward<CompletionToken>(token), keep_messages);
+    }
 
     // Writing
     void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code);
