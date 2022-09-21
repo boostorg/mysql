@@ -36,15 +36,15 @@ class message_parser
 public:
     struct result
     {
-        bool has_message; // whether it has a message or not
-        std::size_t required_size; // if !has_message, number of bytes required to parse the current message
+        bool has_message {false}; // whether it has a message or not
+        std::size_t required_size {0}; // if !has_message, number of bytes required to parse the current message
         struct message_t
         {
             std::uint8_t seqnum_first;
             std::uint8_t seqnum_last;
             std::size_t size;
             bool has_seqnum_mismatch; // for multi-frame messages, set to true if an error mismatch happened
-        } message; // if has_message, the actual parsed message
+        } message {}; // if has_message, the actual parsed message
 
         void set_required_size(std::size_t size) noexcept
         {

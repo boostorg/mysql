@@ -11,6 +11,7 @@
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
 #include <boost/mysql/detail/channel/message_parser.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/asio/async_result.hpp>
 #include <cassert>
 #include <cstddef>
@@ -24,7 +25,8 @@ namespace detail {
 class message_reader
 {
 public:
-    message_reader(std::size_t initial_buffer_size) : buffer_(initial_buffer_size) {}
+    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = MAX_PACKET_SIZE) 
+        : buffer_(initial_buffer_size), parser_(max_frame_size) {}
 
     bool has_message() const noexcept { return result_.has_message; }
     const std::uint8_t* buffer_first() const noexcept { return buffer_.first(); }

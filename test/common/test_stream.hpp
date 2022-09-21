@@ -93,10 +93,10 @@ public:
 
     // Stream operations
     template <class MutableBufferSequence>
-    std::size_t read_some(const MutableBufferSequence& buffers, error_code& ec);
+    std::size_t read_some(const MutableBufferSequence& buffers, error_code& ec) { return do_read(buffers, ec); }
 
     template <class ConstBufferSequence>
-    std::size_t write_some(const ConstBufferSequence& buffers, error_code& ec);
+    std::size_t write_some(const ConstBufferSequence& buffers, error_code& ec) { return do_write(buffers, ec); }
 
     template<
         class MutableBufferSequence,
@@ -134,10 +134,10 @@ private:
     inline std::size_t get_size_to_read(std::size_t buffer_size) const;
 
     template <class MutableBufferSequence>
-    std::size_t do_read(const MutableBufferSequence& buffers);
+    std::size_t do_read(const MutableBufferSequence& buffers, error_code& ec);
 
     template <class ConstBufferSequence>
-    std::size_t do_write(const ConstBufferSequence& buffers);
+    std::size_t do_write(const ConstBufferSequence& buffers, error_code& ec);
 };
 
 } // test

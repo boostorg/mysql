@@ -18,6 +18,7 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/error.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -90,19 +91,13 @@ struct boost::mysql::test::test_stream::read_op : boost::asio::coroutine
     )
     {
         error_code err;
+        std::size_t bytes_read;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
 
-            err = stream_.fail_count_.maybe_fail();
-            if (err)
-            {
-                self.complete(err, 0);
-            }
-            else
-            {
-                self.complete(error_code(), stream_.do_read(buffers_));
-            }
+            bytes_read = stream_.do_read(buffers_, err);
+            self.complete(err, bytes_read);
         }
     }
 };
@@ -121,19 +116,13 @@ struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
     )
     {
         error_code err;
+        std::size_t bytes_written;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
 
-            err = stream_.fail_count_.maybe_fail();
-            if (err)
-            {
-                self.complete(err, 0);
-            }
-            else
-            {
-                self.complete(error_code(), stream_.do_write(buffers_));
-            }
+            bytes_written = stream_.do_write(buffers_, err);
+            self.complete(err, bytes_written);
         }
     }
 };
@@ -155,44 +144,6 @@ boost::mysql::test::test_stream::async_read_some(
     );
 }
 
-template <class MutableBufferSequence>
-std::size_t boost::mysql::test::test_stream::read_some(
-    const MutableBufferSequence& buffers,
-    error_code& ec
-)
-{
-    error_code err = fail_count_.maybe_fail();
-    if (err)
-    {
-        ec = err;
-        return 0;
-    }
-    else
-    {
-        ec = error_code();
-        return do_read(buffers);
-    }
-}
-
-template <class ConstBufferSequence>
-std::size_t boost::mysql::test::test_stream::write_some(
-    const ConstBufferSequence& buffers,
-    error_code& ec
-)
-{
-    error_code err = fail_count_.maybe_fail();
-    if (err)
-    {
-        ec = err;
-        return 0;
-    }
-    else
-    {
-        ec = error_code();
-        return do_write(buffers);
-    }
-}
-
 std::size_t boost::mysql::test::test_stream::get_size_to_read(
     std::size_t buffer_size
 ) const
@@ -208,13 +159,38 @@ std::size_t boost::mysql::test::test_stream::get_size_to_read(
 
 template <class MutableBufferSequence>
 std::size_t boost::mysql::test::test_stream::do_read(
-    const MutableBufferSequence& buffers
+    const MutableBufferSequence& buffers,
+    error_code& ec
 )
 {
-    std::size_t bytes_read = 0;
+    // Fail count
+    error_code err = fail_count_.maybe_fail();
+    if (err)
+    {
+        ec = err;
+        return 0;
+    }
+
+    // If the user requested some bytes but we don't have any,
+    // fail. In the real world, the stream would block until more
+    // bytes are received, but this is a test, and this condition
+    // indicates an error.
     auto first = boost::asio::buffer_sequence_begin(buffers);
     auto last = boost::asio::buffer_sequence_end(buffers);
+    if (num_unread_bytes() == 0)
+    {
+        for (auto it = first; it != last; ++it)
+        {
+            if (it->size() != 0)
+            {
+                ec = boost::asio::error::eof;
+                return 0;
+            }
+        }
+    }
 
+    // Actually read
+    std::size_t bytes_read = 0;
     for (auto it = first; it != last && num_unread_bytes() > 0; ++it)
     {
         boost::asio::mutable_buffer buff = *it;
@@ -223,19 +199,29 @@ std::size_t boost::mysql::test::test_stream::do_read(
         bytes_read += bytes_to_transfer;
         num_bytes_read_ += bytes_to_transfer;
     }
+    ec = error_code();
 
     return bytes_read;
 }
 
 template <class ConstBufferSequence>
 std::size_t boost::mysql::test::test_stream::do_write(
-    const ConstBufferSequence& buffers
+    const ConstBufferSequence& buffers,
+    error_code& ec
 )
 {
+    // Fail count
+    error_code err = fail_count_.maybe_fail();
+    if (err)
+    {
+        ec = err;
+        return 0;
+    }
+
+    // Actually write
     std::size_t num_bytes_written = 0;
     auto first = boost::asio::buffer_sequence_begin(buffers);
     auto last = boost::asio::buffer_sequence_end(buffers);
-
     for (auto it = first; it != last && num_bytes_written < write_break_size_; ++it)
     {
         boost::asio::const_buffer buff = *it;
@@ -243,6 +229,8 @@ std::size_t boost::mysql::test::test_stream::do_write(
         concat(bytes_written_, buff.data(), num_bytes_to_transfer);
         num_bytes_written += num_bytes_to_transfer;
     }
+
+    ec = error_code();
 
     return num_bytes_written;
 }

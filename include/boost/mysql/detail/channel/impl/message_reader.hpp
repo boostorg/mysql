@@ -152,7 +152,7 @@ boost::mysql::detail::message_reader::async_read_some(
 
 void boost::mysql::detail::message_reader::maybe_resize_buffer()
 {
-    if (result_.has_message)
+    if (!result_.has_message)
     {
         buffer_.grow_to_fit(result_.required_size);
     }

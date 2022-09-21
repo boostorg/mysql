@@ -582,6 +582,36 @@ BOOST_AUTO_TEST_CASE(two_frame_seqnum_overflow)
     fixture.check_buffer_stability();
 }
 
+BOOST_AUTO_TEST_CASE(two_frame_max_size)
+{
+    // message to be parsed. The two frames have size == max_frame_size,
+    // so a third, empty header is received
+    parser_fixture fixture (
+        concat_copy(
+            create_message(1, std::vector<std::uint8_t>(64, 0x04)),
+            create_message(2, std::vector<std::uint8_t>(64, 0x05)),
+            create_message(3, {})
+        ),
+        64*3
+    );
+    auto expected_message = concat_copy(
+        std::vector<std::uint8_t>(64, 0x04),
+        std::vector<std::uint8_t>(64, 0x05)
+    );
+
+    // all in one
+    auto res = fixture.parse_bytes(64*2 + 4*3);
+    fixture.check_message(expected_message);
+    BOOST_TEST(res.has_message);
+    BOOST_TEST(res.message.size == 64*2);
+    BOOST_TEST(res.message.seqnum_first == 1);
+    BOOST_TEST(res.message.seqnum_last == 3);
+    BOOST_TEST(!res.message.has_seqnum_mismatch);
+
+    // buffer did not reallocate
+    fixture.check_buffer_stability();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }
