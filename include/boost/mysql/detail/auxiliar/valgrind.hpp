@@ -30,7 +30,7 @@ inline void valgrind_make_mem_defined(
 
 #else
 
-inline void valgrind_make_mem_defined(const void* data, std::size_t size) noexcept {}
+inline void valgrind_make_mem_defined(const void*, std::size_t) noexcept {}
 
 #endif
 

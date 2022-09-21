@@ -68,6 +68,12 @@ public:
     );
 
     inline test_stream(
+        std::vector<std::uint8_t> bytes_to_read,
+        fail_count fc = fail_count(),
+        executor_type ex = boost::asio::system_executor()
+    );
+
+    inline test_stream(
         read_behavior b,
         fail_count fc = fail_count(),
         executor_type ex = boost::asio::system_executor()
@@ -84,7 +90,6 @@ public:
     std::size_t num_bytes_read() const noexcept { return num_bytes_read_; }
     std::size_t num_unread_bytes() const noexcept { return bytes_to_read_.size() - num_bytes_read_; }
     const std::vector<std::uint8_t>& bytes_written() const noexcept { return bytes_written_; }
-    const std::vector<executor_type>& used_executors() const noexcept { return used_executors_; }
 
     // Stream operations
     template <class MutableBufferSequence>
@@ -93,14 +98,20 @@ public:
     template <class ConstBufferSequence>
     std::size_t write_some(const ConstBufferSequence& buffers, error_code& ec);
 
-    template <class MutableBufferSequence,class CompletionToken>
+    template<
+        class MutableBufferSequence,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken
+    >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some(
         const MutableBufferSequence& buffers,
         CompletionToken&& token
     );
 
-    template <class ConstBufferSequence, class CompletionToken>
+    template <
+        class ConstBufferSequence,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken
+    >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_write_some(
         ConstBufferSequence const& buffers,
@@ -115,7 +126,6 @@ private:
     fail_count fail_count_;
     std::size_t write_break_size_ {1024}; // max number of bytes to be written in each write_some
     executor_type executor_;
-    std::vector<executor_type> used_executors_;
 
 
     template <class MutableBufferSequence> struct read_op;

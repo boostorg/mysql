@@ -107,7 +107,7 @@ struct boost::mysql::detail::message_reader::read_op : boost::asio::coroutine
             }
 
             // Remove processed messages if we can
-            if (keep_messages_)
+            if (!keep_messages_)
                 reader_.buffer_.remove_reserved();
 
             while (!reader_.has_message())
@@ -119,7 +119,7 @@ struct boost::mysql::detail::message_reader::read_op : boost::asio::coroutine
                 // Actually read bytes
                 BOOST_ASIO_CORO_YIELD stream_.async_read_some(
                     reader_.buffer_.free_area(),
-                    std::move(*this)    
+                    std::move(self)    
                 );
                 valgrind_make_mem_defined(reader_.buffer_.free_first(), bytes_read);
 
@@ -132,7 +132,10 @@ struct boost::mysql::detail::message_reader::read_op : boost::asio::coroutine
     }
 };
 
-template <class Stream, class CompletionToken>
+template<
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
+>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(::boost::mysql::error_code))
 boost::mysql::detail::message_reader::async_read_some(
     Stream& stream,
