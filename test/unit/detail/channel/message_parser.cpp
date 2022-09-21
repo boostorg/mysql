@@ -19,7 +19,7 @@
 #include <cstring>
 #include <vector>
 #include "assert_buffer_equals.hpp"
-#include "test_common.hpp"
+#include "buffer_concat.hpp"
 
 using boost::mysql::detail::message_parser;
 using boost::mysql::detail::read_buffer;

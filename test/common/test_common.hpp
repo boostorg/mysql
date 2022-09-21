@@ -87,38 +87,6 @@ inline void validate_string_contains(
     }
 }
 
-inline void concat(std::vector<std::uint8_t>& lhs, const void* buff, std::size_t size)
-{
-    auto current_size = lhs.size();
-    lhs.resize(current_size + size);
-    memcpy(lhs.data() + current_size, buff, size);
-}
-
-inline void concat(std::vector<std::uint8_t>& lhs, const std::vector<uint8_t>& rhs)
-{
-    concat(lhs, rhs.data(), rhs.size());
-}
-
-inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t>&& lhs,
-    const std::vector<uint8_t>& rhs
-)
-{
-    concat(lhs, rhs);
-    return std::move(lhs);
-}
-
-inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t>&& lhs,
-    const std::vector<uint8_t>& rhs,
-    const std::vector<uint8_t>& rhs2
-)
-{
-    concat(lhs, rhs);
-    concat(lhs, rhs2);
-    return std::move(lhs);
-}
-
 inline const char* to_string(ssl_mode m)
 {
     switch (m)

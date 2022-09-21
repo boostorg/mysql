@@ -10,6 +10,7 @@
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include "../serialization_test.hpp"
+#include "buffer_concat.hpp"
 
 
 namespace boost {
