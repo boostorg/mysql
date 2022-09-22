@@ -167,6 +167,24 @@ BOOST_AUTO_TEST_CASE(full_message)
     fixture.check_buffer_stability();
 }
 
+BOOST_AUTO_TEST_CASE(empty_message)
+{
+    // message to be parsed
+    parser_fixture fixture (create_message(1, {}));
+
+    // Full header and body part received
+    auto res = fixture.parse_bytes(4);
+    fixture.check_message({});
+    BOOST_TEST(res.has_message);
+    BOOST_TEST(res.message.size == 0);
+    BOOST_TEST(res.message.seqnum_first == 1);
+    BOOST_TEST(res.message.seqnum_last == 1);
+    BOOST_TEST(!res.message.has_seqnum_mismatch);
+
+    // Buffer did not reallocate
+    fixture.check_buffer_stability();
+}
+
 BOOST_AUTO_TEST_CASE(two_messages_one_after_another)
 {
     // message to be parsed
