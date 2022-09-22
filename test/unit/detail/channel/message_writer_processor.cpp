@@ -6,16 +6,16 @@
 //
 
 #include <boost/asio/buffer.hpp>
-#include <boost/mysql/detail/channel/message_writer_processor.hpp>
 #include <boost/test/unit_test.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 #include "assert_buffer_equals.hpp"
-#include "boost/mysql/detail/protocol/capabilities.hpp"
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/deserialization_context.hpp"
-#include "boost/mysql/detail/protocol/serialization.hpp"
+#include <boost/mysql/detail/channel/message_writer_processor.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 #include "buffer_concat.hpp"
 #include "create_message.hpp"
 
