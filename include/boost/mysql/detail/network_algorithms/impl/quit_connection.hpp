@@ -31,33 +31,8 @@ void compose_quit(
     );
 }
 
-template <typename Stream>
-void shutdown_ssl_impl(
-    Stream& s,
-    std::true_type // supports ssl
-)
-{
-    error_code ignored;
-    s.shutdown(ignored);
-}
-
-template <typename Stream>
-void shutdown_ssl_impl(
-    Stream&,
-    std::false_type // supports ssl
-)
-{
-}
-
-template <typename Stream>
-void shutdown_ssl(Stream& s) { shutdown_ssl_impl(s, is_ssl_stream<Stream>()); }
-
-template<class Stream, bool is_ssl_stream>
-struct quit_connection_op;
-
-// For SSL connections
 template<class Stream>
-struct quit_connection_op<Stream, true> : boost::asio::coroutine
+struct quit_connection_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
 
@@ -73,6 +48,7 @@ struct quit_connection_op<Stream, true> : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Quit message
+            compose_quit(chan_);
             BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
             if (err)
             {
@@ -80,33 +56,12 @@ struct quit_connection_op<Stream, true> : boost::asio::coroutine
             }
 
             // SSL shutdown error ignored, as MySQL doesn't always gracefully
-            // close SSL connections
-            BOOST_ASIO_CORO_YIELD chan_.next_layer().async_shutdown(std::move(self));
-            self.complete(error_code());
-        }
-    }
-};
-
-// For non-SSL connections
-template<class Stream>
-struct quit_connection_op<Stream, false> : boost::asio::coroutine
-{
-    channel<Stream>& chan_;
-
-    quit_connection_op(channel<Stream>& chan) noexcept :
-        chan_(chan) {}
-
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
-    {
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            // Quit message
-            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), chan_.shared_sequence_number(), std::move(self));
-            self.complete(err);
+            // close SSL connections. TODO: was this because of a missing if?
+            if (chan_.next_layer().ssl_active())
+            {
+                BOOST_ASIO_CORO_YIELD chan_.next_layer().async_shutdown(std::move(self));
+                self.complete(error_code());
+            }
         }
     }
 };
@@ -118,17 +73,20 @@ struct quit_connection_op<Stream, false> : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::quit_connection(
     channel<Stream>& chan,
-    error_code& code,
+    error_code& err,
     error_info&
 )
 {
     compose_quit(chan);
-    chan.write(chan.shared_buffer(), chan.shared_sequence_number(), code);
-    if (!code)
+    chan.write(chan.shared_buffer(), chan.shared_sequence_number(), err);
+    if (err)
+        return;
+    if (chan.next_layer().ssl_active())
     {
         // SSL shutdown. Result ignored as MySQL does not always perform
         // graceful SSL shutdowns
-        shutdown_ssl(chan.next_layer());
+        error_code ignored;
+        chan.next_layer().shutdown(ignored);
     }
 }
 
@@ -143,11 +101,11 @@ boost::mysql::detail::async_quit_connection(
     error_info&
 )
 {
-    compose_quit(chan);
-    return boost::asio::async_compose<
-        CompletionToken,
-        void(boost::mysql::error_code)
-    >(quit_connection_op<Stream, is_ssl_stream<Stream>::value>{chan}, token, chan);
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
+        quit_connection_op<Stream>(chan),
+        token,
+        chan
+    );
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_QUIT_CONNECTION_HPP_ */

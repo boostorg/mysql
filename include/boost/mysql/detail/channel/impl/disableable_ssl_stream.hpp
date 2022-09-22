@@ -10,11 +10,14 @@
 
 #pragma once
 
-#include <boost/asio/ssl/stream_base.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/asio/compose.hpp>
+#include <boost/asio/coroutine.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/ssl/stream_base.hpp>
 #include <cstddef>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -56,9 +59,185 @@ auto get_non_ssl_stream(Stream& s) -> decltype(get_non_ssl_stream_t<is_ssl_strea
     return get_non_ssl_stream_t<is_ssl_stream<Stream>::value>::call(s);
 }
 
+// A no-op operation that can be passed to async_compose
+struct async_compose_noop
+{
+    async_compose_noop(...) noexcept {}
+
+    template<class... Args>
+    void operator()(Args&&...)
+    {
+        assert(false);
+    }
+};
+
+// Helpers to implement handshake
+template <class Stream, bool supports_ssl>
+struct ssl_handshake_helper;
+
+template <class Stream>
+struct ssl_handshake_helper<Stream, true>
+{
+    static void call(disableable_ssl_stream<Stream>& stream, error_code& ec)
+    {
+        stream.next_layer().handshake(boost::asio::ssl::stream_base::client, ec);
+        if (!ec)
+            stream.set_ssl_active(true);
+    }
+};
+
+template <class Stream>
+struct ssl_handshake_helper<Stream, false>
+{
+    static void call(disableable_ssl_stream<Stream>&, error_code&)
+    {
+        assert(false); // should never be called
+    }
+};
+
+template <class Stream, bool supports_ssl>
+struct ssl_handshake_op;
+
+template <class Stream>
+struct ssl_handshake_op<Stream, true> : boost::asio::coroutine
+{
+    disableable_ssl_stream<Stream>& stream_;
+
+    ssl_handshake_op(disableable_ssl_stream<Stream>& stream) noexcept :
+        stream_(stream)
+    {
+    }
+
+    template<class Self>
+    void operator()(
+        Self& self,
+        error_code err = {}
+    )
+    {
+        // Error checking
+        if (err)
+        {
+            self.complete(err);
+            return;
+        }
+
+        // Non-error path
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            BOOST_ASIO_CORO_YIELD stream_.next_layer().async_handshake(
+                boost::asio::ssl::stream_base::client, 
+                std::move(self)
+            );
+            stream_.set_ssl_active(true);
+            self.complete(error_code());
+        }
+    }
+};
+
+template <class Stream>
+struct ssl_handshake_op<Stream, false> : async_compose_noop {};
+
+
+// Helpers to implement shutdown
+template <class Stream, bool supports_ssl>
+struct ssl_shutdown_helper;
+
+template <class Stream>
+struct ssl_shutdown_helper<Stream, true>
+{
+    static void call_sync(disableable_ssl_stream<Stream>& stream, error_code& ec)
+    {
+        stream.next_layer().shutdown(ec);
+    }
+
+    template<
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
+    >
+    static BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+    call_async(disableable_ssl_stream<Stream>& stream, CompletionToken&& token)
+    {
+        return stream.next_layer().async_shutdown(std::forward<CompletionToken>(token));
+    }
+};
+
+template <class Stream>
+struct ssl_shutdown_helper<Stream, false>
+{
+    static void call_sync(disableable_ssl_stream<Stream>&, error_code&)
+    {
+        assert(false); // should never be called
+    }
+
+    template<
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
+    >
+    static BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
+    call_async(disableable_ssl_stream<Stream>& stream, CompletionToken&& token)
+    {
+        return boost::asio::async_compose<CompletionToken, void(error_code)>(
+            async_compose_noop(),
+            token,
+            stream
+        );
+    }
+};
+
 } // detail
 } // mysql
 } // boost
+
+
+
+template <class Stream>
+void boost::mysql::detail::disableable_ssl_stream<Stream>::handshake(
+    error_code& ec
+)
+{
+    ssl_handshake_helper<Stream, is_ssl_stream<Stream>::value>::call(*this, ec);
+}
+
+template<class Stream>
+template<
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
+>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::disableable_ssl_stream<Stream>::async_handshake(
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<
+        CompletionToken,
+        void(error_code)
+    >(
+        ssl_handshake_op<Stream, is_ssl_stream<Stream>::value>(*this),
+        token,
+        *this
+    );
+}
+
+template <class Stream>
+void boost::mysql::detail::disableable_ssl_stream<Stream>::shutdown(
+    error_code& ec
+)
+{
+    ssl_shutdown_helper<Stream, is_ssl_stream<Stream>::value>::call_sync(*this, ec);
+}
+
+template<class Stream>
+template<
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
+>
+BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::disableable_ssl_stream<Stream>::async_shutdown(
+    CompletionToken&& token
+)
+{
+    return ssl_shutdown_helper<Stream, is_ssl_stream<Stream>::value>::call_async(
+        *this,
+        std::forward<CompletionToken>(token)
+    );
+}
+
 
 template <class Stream>
 template <class MutableBufferSequence>
@@ -78,8 +257,11 @@ std::size_t boost::mysql::detail::disableable_ssl_stream<Stream>::read_some(
 }
 
 
-template <class Stream>
-template <class MutableBufferSequence, class CompletionToken>
+template<class Stream>
+template<
+    class MutableBufferSequence,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, std::size_t)) CompletionToken
+>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::disableable_ssl_stream<Stream>::async_read_some(
     const MutableBufferSequence& buff,
@@ -115,8 +297,11 @@ std::size_t boost::mysql::detail::disableable_ssl_stream<Stream>::write_some(
 }
 
 
-template <class Stream>
-template <class ConstBufferSequence, class CompletionToken>
+template<class Stream>
+template<
+    class ConstBufferSequence,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, std::size_t)) CompletionToken
+>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::disableable_ssl_stream<Stream>::async_write_some(
     const ConstBufferSequence& buff,

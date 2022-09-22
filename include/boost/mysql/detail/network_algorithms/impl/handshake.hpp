@@ -249,152 +249,6 @@ public:
     }
 };
 
-// Helper operation to setup SSL
-template <class Stream>
-void setup_ssl_impl(
-    channel<Stream>& chan,
-    handshake_processor& processor,
-    error_code& err,
-    std::true_type
-)
-{
-    if (processor.use_ssl())
-    {
-        // Send SSL request
-        processor.compose_ssl_request(chan.shared_buffer());
-        chan.write(boost::asio::buffer(chan.shared_buffer()), chan.shared_sequence_number(), err);
-        if (err)
-            return;
-
-        // SSL handshake
-        chan.next_layer().handshake(boost::asio::ssl::stream_base::client, err);
-        if (err)
-            return;
-        chan.set_ssl_active(true);
-    }
-}
-
-template <class Stream>
-void setup_ssl_impl(
-    channel<Stream>&,
-    handshake_processor&,
-    error_code&,
-    std::false_type
-) noexcept
-{
-}
-
-template <class Stream>
-void setup_ssl(
-    channel<Stream>& chan,
-    handshake_processor& processor,
-    error_code& err
-)
-{
-    return setup_ssl_impl(chan, processor, err, is_ssl_stream<Stream>());
-}
-
-template<class Stream, bool is_ssl_stream>
-struct setup_ssl_op;
-
-template <class Stream>
-struct setup_ssl_op<Stream, true> : boost::asio::coroutine
-{
-    channel<Stream>& chan_;
-    handshake_processor& processor_;
-
-    setup_ssl_op(
-        channel<Stream>& channel,
-        handshake_processor& processor
-    ) noexcept :
-        chan_(channel),
-        processor_(processor)
-    {
-    }
-
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
-    {
-        // Error checking
-        if (err)
-        {
-            self.complete(err);
-            return;
-        }
-
-        // Non-error path
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            // Non-error path
-            if (processor_.use_ssl())
-            {
-                // Send SSL request
-                processor_.compose_ssl_request(chan_.shared_buffer());
-                BOOST_ASIO_CORO_YIELD chan_.async_write(
-                    chan_.shared_buffer(),
-                    chan_.shared_sequence_number(),
-                    std::move(self)
-                );
-
-                // SSL handshake
-                BOOST_ASIO_CORO_YIELD chan_.next_layer().async_handshake(
-                    boost::asio::ssl::stream_base::client, 
-                    std::move(self)
-                );
-                chan_.set_ssl_active(true);
-            }
-
-            self.complete(error_code());
-        }
-    }
-};
-
-template <class Stream>
-struct setup_ssl_op<Stream, false>
-{
-    setup_ssl_op(
-        channel<Stream>&,
-        handshake_processor&
-    ) noexcept
-    {
-    }
-
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
-    {
-        self.complete(err);
-    }
-};
-
-
-template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
-async_setup_ssl(
-    channel<Stream>& chan,
-    handshake_processor& processor,
-    CompletionToken&& token
-)
-{
-    return boost::asio::async_compose<
-        CompletionToken,
-        void(error_code)
-    >(
-        setup_ssl_op<Stream, is_ssl_stream<Stream>::value>(chan, processor),
-        token,
-        chan
-    );
-}
-
-
 template<class Stream>
 struct handshake_op : boost::asio::coroutine
 {
@@ -444,6 +298,19 @@ struct handshake_op : boost::asio::coroutine
             chan_.set_current_capabilities(processor_.negotiated_capabilities());
 
             // SSL
+            if (processor_.use_ssl())
+            {
+                // Send SSL request
+                processor_.compose_ssl_request(chan_.shared_buffer());
+                BOOST_ASIO_CORO_YIELD chan_.async_write(
+                    chan_.shared_buffer(),
+                    chan_.shared_sequence_number(),
+                    std::move(self)
+                );
+
+                // SSL handshake
+                BOOST_ASIO_CORO_YIELD chan_.next_layer().async_handshake(std::move(self));
+            }
             BOOST_ASIO_CORO_YIELD async_setup_ssl(chan_, processor_, std::move(self));
 
             // Compose and send handshake response
@@ -492,7 +359,7 @@ void boost::mysql::detail::handshake(
     error_info& info
 )
 {
-    channel.reset();
+    channel.next_layer().reset();
 
     // Set up processor
     handshake_processor processor (params);
@@ -508,9 +375,19 @@ void boost::mysql::detail::handshake(
         return;
 
     // SSL
-    setup_ssl(channel, processor, err);
-    if (err)
-        return;
+    if (processor.use_ssl())
+    {
+        // Send SSL request
+        processor.compose_ssl_request(channel.shared_buffer());
+        channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
+        if (err)
+            return;
+
+        // SSL handshake
+        channel.next_layer().handshake(err);
+        if (err)
+            return;
+    }
 
     // Handshake response
     processor.compose_handshake_response(channel.shared_buffer());

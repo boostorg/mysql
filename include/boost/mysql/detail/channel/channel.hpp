@@ -48,11 +48,6 @@ public:
     {
     }
 
-    void reset()
-    {
-        stream_.set_ssl_active(false);
-    }
-
     // Executor
     using executor_type = typename Stream::executor_type;
     executor_type get_executor() { return stream_.get_executor(); }
@@ -137,9 +132,9 @@ public:
     }
 
     // Getting the underlying stream
-    using stream_type = Stream;
-    stream_type& next_layer() noexcept { return stream_.next_layer(); }
-    const stream_type& next_layer() const noexcept { return stream_.next_layer(); }
+    using stream_type = disableable_ssl_stream<Stream>;
+    stream_type& next_layer() noexcept { return stream_; }
+    const stream_type& next_layer() const noexcept { return stream_; }
 
     using lowest_layer_type = typename stream_type::lowest_layer_type;
     lowest_layer_type& lowest_layer() noexcept { return stream_.lowest_layer(); }
