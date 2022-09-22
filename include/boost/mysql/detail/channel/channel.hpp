@@ -16,8 +16,9 @@
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
-#include <array>
+#include <boost/mysql/detail/channel/message_writer.hpp>
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace boost {
@@ -32,16 +33,12 @@ class channel
     disableable_ssl_stream<Stream> stream_;
     capabilities current_caps_;
     message_reader reader_;
-    std::array<std::uint8_t, 4> header_buffer_ {}; // for async ops
+    message_writer writer_;
+
     std::uint8_t shared_sequence_number_ {}; // for async ops
     bytestring shared_buff_; // for async ops
     error_info shared_info_; // for async ops
     std::vector<field_view> shared_fields_; // for read_some ops
-
-    void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum); // writes to header_buffer_
-
-    struct read_one_op;
-    struct write_op;
 public:
     channel() = default; // Simplify life if stream is default constructible, mainly for tests
 
@@ -97,17 +94,29 @@ public:
     }
 
     // Writing
-    void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code);
+    void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code)
+    {
+        writer_.write(stream_, buffer, seqnum, code);
+    }
+
+    template<
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
+    >
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, CompletionToken&& token)
+    {
+        return writer_.async_write(stream_, buffer, seqnum, std::forward<CompletionToken>(token));
+    }
+
+
     void write(const bytestring& buffer, std::uint8_t& seqnum, error_code& code)
     {
         write(boost::asio::buffer(buffer), seqnum, code);
     }
 
-    template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, CompletionToken&& token);
-
-    template <class CompletionToken>
+    template<
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
+    >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(const bytestring& buffer, CompletionToken&& token)
     {
@@ -119,7 +128,13 @@ public:
     void set_ssl_active(bool v) noexcept { stream_.set_ssl_active(v); }
 
     // Closing (only available for sockets)
-    error_code close();
+    error_code close()
+    {
+        error_code err;
+        lowest_layer().shutdown(lowest_layer_type::shutdown_both, err);
+        lowest_layer().close(err);
+        return err;
+    }
 
     // Getting the underlying stream
     using stream_type = Stream;
@@ -145,7 +160,5 @@ public:
 } // detail
 } // mysql
 } // boost
-
-#include <boost/mysql/detail/channel/impl/channel.hpp>
 
 #endif

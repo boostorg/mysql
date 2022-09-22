@@ -22,11 +22,12 @@ namespace detail {
 template <class Stream>
 class disableable_ssl_stream
 {
-    Stream& inner_stream_;
+    Stream inner_stream_;
     bool ssl_active_ {false};
 public:
-    disableable_ssl_stream(Stream& stream) noexcept :
-        inner_stream_(stream)
+    template <class... Args>
+    disableable_ssl_stream(Args&&... args) noexcept :
+        inner_stream_(std::forward<Args>(args)...)
     {
     }
 
