@@ -18,30 +18,20 @@
 #include "boost/mysql/error.hpp"
 #include "assert_buffer_equals.hpp"
 #include "test_stream.hpp"
+#include "create_message.hpp"
 #include "buffer_concat.hpp"
 
 using boost::mysql::detail::message_reader;
 using boost::mysql::test::test_stream;
 using boost::mysql::test::fail_count;
 using boost::mysql::test::concat_copy;
+using boost::mysql::test::create_message;
 using boost::mysql::error_code;
 using boost::mysql::errc;
 using boost::asio::buffer;
 
 namespace
 {
-
-// TODO: duplicated
-std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, std::vector<std::uint8_t> body)
-{
-    std::uint32_t body_size = body.size();
-    boost::mysql::detail::packet_header header { boost::mysql::detail::int3{body_size}, seqnum };
-    body.resize(body_size + 4);
-    std::memmove(body.data() + 4, body.data(), body_size);
-    boost::mysql::detail::serialization_context ctx (boost::mysql::detail::capabilities(), body.data());
-    boost::mysql::detail::serialize(ctx, header);
-    return body;
-}
 
 // Machinery to be able to cover the sync and async
 // functions with the same test code
@@ -154,7 +144,7 @@ BOOST_AUTO_TEST_CASE(message_fits_in_buffer)
             message_reader reader (512);
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
-            test_stream stream (create_frame(seqnum, msg_body));
+            test_stream stream (create_message(seqnum, msg_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Doesn't have a message initially
@@ -188,7 +178,7 @@ BOOST_AUTO_TEST_CASE(fragmented_message_fits_in_buffer)
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
             test_stream stream (test_stream::read_behavior(
-                create_frame(seqnum, msg_body),
+                create_message(seqnum, msg_body),
                 { 3, 5 } // break the message at bytes 3 and 5
             ));
             error_code err = boost::mysql::make_error_code(errc::no);
@@ -223,7 +213,7 @@ BOOST_AUTO_TEST_CASE(message_doesnt_fit_in_buffer)
             message_reader reader (0);
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-            test_stream stream (create_frame(seqnum, msg_body));
+            test_stream stream (create_message(seqnum, msg_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Doesn't have a message initially
@@ -259,12 +249,7 @@ BOOST_AUTO_TEST_CASE(two_messages)
             std::uint8_t seqnum2 = 5;
             std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07, 0x08};
-            test_stream stream (
-                concat_copy(
-                    create_frame(seqnum1, msg1_body),
-                    create_frame(seqnum2, msg2_body)
-                )
-            );
+            test_stream stream (create_message(seqnum1, msg1_body, seqnum2, msg2_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Doesn't have a message initially
@@ -310,8 +295,8 @@ BOOST_AUTO_TEST_CASE(previous_message_keep_messages_false)
             std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07};
             test_stream stream;
-            stream.add_message(create_frame(seqnum1, msg1_body));
-            stream.add_message(create_frame(seqnum2, msg2_body));
+            stream.add_message(create_message(seqnum1, msg1_body));
+            stream.add_message(create_message(seqnum2, msg2_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Read and get 1st message
@@ -350,8 +335,8 @@ BOOST_AUTO_TEST_CASE(previous_message_keep_messages_true)
             std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07};
             test_stream stream;
-            stream.add_message(create_frame(seqnum1, msg1_body));
-            stream.add_message(create_frame(seqnum2, msg2_body));
+            stream.add_message(create_message(seqnum1, msg1_body));
+            stream.add_message(create_message(seqnum2, msg2_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Read and get 1st message
@@ -406,9 +391,9 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     message_reader reader (512, 8);
     std::uint8_t seqnum = 2;
     test_stream stream (
-        concat_copy(
-            create_frame(seqnum, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 }),
-            create_frame(3,      { 0x09, 0x0a })
+        create_message(
+            seqnum, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 },
+            3,      { 0x09, 0x0a }
         )
     );
     std::vector<std::uint8_t> expected_msg { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a };
@@ -435,7 +420,7 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
     message_reader reader (512);
     std::uint8_t seqnum = 0xff;
     std::vector<std::uint8_t> msg_body { 0x01, 0x02, 0x03 };
-    test_stream stream (create_frame(seqnum, msg_body));
+    test_stream stream (create_message(seqnum, msg_body));
     error_code err = boost::mysql::make_error_code(errc::no);
 
     // Read succesfully
@@ -454,7 +439,7 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
 BOOST_AUTO_TEST_CASE(error_passed_seqnum_mismatch)
 {
     message_reader reader (512);
-    test_stream stream (create_frame(2, {0x01, 0x02, 0x03}));
+    test_stream stream (create_message(2, {0x01, 0x02, 0x03}));
     error_code err = boost::mysql::make_error_code(errc::no);
 
     // Read succesfully
@@ -476,9 +461,9 @@ BOOST_AUTO_TEST_CASE(error_intermediate_frame_seqnum_mismatch)
     std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
     std::uint8_t seqnum = 2;
     test_stream stream (
-        concat_copy(
-            create_frame(seqnum, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 }),
-            create_frame(4,      { 0x11, 0x12, 0x13, 0x14 }) // the right seqnum would be 3
+        create_message(
+            seqnum, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 },
+            4,      { 0x11, 0x12, 0x13, 0x14 } // the right seqnum would be 3
         )
     );
     error_code err = boost::mysql::make_error_code(errc::no);
@@ -508,7 +493,7 @@ BOOST_AUTO_TEST_CASE(success)
             message_reader reader (512);
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
-            test_stream stream (create_frame(seqnum, msg_body));
+            test_stream stream (create_message(seqnum, msg_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Read succesfully
@@ -534,12 +519,7 @@ BOOST_AUTO_TEST_CASE(cached_message)
             std::uint8_t seqnum2 = 8;
             std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body {0x04, 0x05};
-            test_stream stream (
-                concat_copy(
-                    create_frame(seqnum1, msg1_body),
-                    create_frame(seqnum2, msg2_body)
-                )
-            );
+            test_stream stream (create_message(seqnum1, msg1_body, seqnum2, msg2_body));
             error_code err = boost::mysql::make_error_code(errc::no);
 
             // Read succesfully
@@ -569,7 +549,7 @@ BOOST_AUTO_TEST_CASE(error_in_read)
             message_reader reader (512);
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
-            test_stream stream (create_frame(seqnum, msg_body), fail_count(0, error_code(errc::base64_decode_error)));
+            test_stream stream (create_message(seqnum, msg_body), fail_count(0, error_code(errc::base64_decode_error)));
             error_code err (errc::no);
 
             fns->read_one(reader, stream, seqnum, err);
@@ -586,7 +566,7 @@ BOOST_AUTO_TEST_CASE(seqnum_mismatch)
         BOOST_TEST_CONTEXT(fns->name())
         {
             message_reader reader (512);
-            test_stream stream (create_frame(2, {0x01, 0x02, 0x03}));
+            test_stream stream (create_message(2, {0x01, 0x02, 0x03}));
             error_code err (errc::no);
 
             std::uint8_t bad_seqnum = 42;
