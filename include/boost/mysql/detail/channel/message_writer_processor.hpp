@@ -12,6 +12,7 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/asio/buffer.hpp>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace boost {
@@ -25,7 +26,7 @@ class message_writer_processor
     std::uint8_t* seqnum_ {nullptr};
     std::size_t bytes_written_ {0};
     std::array<std::uint8_t, HEADER_SIZE> header_buffer_ {};
-    bool something_written_ {false}; // Even if the packet is empty, we should write a header indicating so
+    bool send_empty_frame_ {false}; // Should we send a last, empty frame? (for empty messages or messages of max_frame_size_)
     std::size_t max_frame_size_;
 
     inline std::uint32_t compute_size_to_write() const
@@ -58,6 +59,8 @@ public:
     {
         buffer_to_write_ = buffer;
         seqnum_ = &seqnum;
+        bytes_written_ = 0;
+        send_empty_frame_ = (buffer.size() == 0); // If the packet is empty, we should just send the header
     }
     
     buffers_type prepare_next_chunk() noexcept
@@ -73,11 +76,14 @@ public:
 
     void on_bytes_written() noexcept
     {
-        bytes_written_ += compute_size_to_write();
-        something_written_ = true;
+        std::size_t new_bytes = compute_size_to_write();
+        bytes_written_ += new_bytes;
+        // If we sent all the bytes, but the last frame was just max_frame_size_ bytes, the protocol
+        // requires us to send a last, empty frame
+        send_empty_frame_ = (new_bytes == max_frame_size_ && bytes_written_ == buffer_to_write_.size());
     }
 
-    bool is_complete() const noexcept { return something_written_ && bytes_written_ >= buffer_to_write_.size(); }
+    bool is_complete() const noexcept { return !send_empty_frame_ && bytes_written_ >= buffer_to_write_.size(); }
 };
 
 } // detail

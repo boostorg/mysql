@@ -29,23 +29,23 @@ inline void concat(std::vector<std::uint8_t>& lhs, const std::vector<uint8_t>& r
 }
 
 inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t>&& lhs,
+    std::vector<uint8_t> lhs,
     const std::vector<uint8_t>& rhs
 )
 {
     concat(lhs, rhs);
-    return std::move(lhs);
+    return lhs;
 }
 
 inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t>&& lhs,
+    std::vector<uint8_t> lhs,
     const std::vector<uint8_t>& rhs,
     const std::vector<uint8_t>& rhs2
 )
 {
     concat(lhs, rhs);
     concat(lhs, rhs2);
-    return std::move(lhs);
+    return lhs;
 }
 
 } // test
