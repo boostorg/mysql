@@ -6,13 +6,13 @@
 //
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/system_executor.hpp>
+#include <boost/test/data/monomorphic/fwd.hpp>
 #include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
-#include <boost/test/data/monomorphic/collection.hpp>
-#include <boost/test/data/test_case.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
 #include "boost/mysql/errc.hpp"
 #include "boost/mysql/error.hpp"
@@ -43,6 +43,103 @@ std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, std::vector<std::uin
     return body;
 }
 
+// Machinery to be able to cover the sync and async
+// functions with the same test code
+class reader_fns
+{
+public:
+    virtual ~reader_fns() {}
+    virtual void read_some(
+        message_reader&,
+        test_stream&,
+        error_code&,
+        bool keep_messages = false
+    ) = 0;
+    virtual boost::asio::const_buffer read_one(
+        message_reader&,
+        test_stream&, 
+        std::uint8_t& seqnum,
+        error_code& ec,
+        bool keep_messages = false
+    ) = 0;
+    virtual const char* name() const noexcept = 0;
+};
+
+class sync_reader_fns : public reader_fns
+{
+public:
+    void read_some(
+        message_reader& reader,
+        test_stream& stream,
+        error_code& err,
+        bool keep_messages = false
+    ) final override
+    {
+        reader.read_some(stream, err, keep_messages);
+    }
+    boost::asio::const_buffer read_one(
+        message_reader& reader,
+        test_stream& stream, 
+        std::uint8_t& seqnum,
+        error_code& ec,
+        bool keep_messages = false
+    ) final override
+    {
+        return reader.read_one(stream, seqnum, ec, keep_messages);
+    }
+    const char* name() const noexcept final override { return "sync"; };
+};
+
+class async_reader_fns : public reader_fns
+{
+public:
+    void read_some(
+        message_reader& reader,
+        test_stream& stream,
+        error_code& err,
+        bool keep_messages = false
+    ) final override
+    {
+        boost::asio::io_context ctx_;
+        reader.async_read_some(
+            stream,
+            boost::asio::bind_executor(ctx_.get_executor(), [&](error_code ec) {
+                err = ec;
+            }),
+            keep_messages
+        );
+        ctx_.run();
+    }
+    boost::asio::const_buffer read_one(
+        message_reader& reader,
+        test_stream& stream, 
+        std::uint8_t& seqnum,
+        error_code& err,
+        bool keep_messages = false
+    ) final override
+    {
+        boost::asio::io_context ctx_;
+        boost::asio::const_buffer res;
+        reader.async_read_one(
+            stream,
+            seqnum,
+            boost::asio::bind_executor(
+                ctx_.get_executor(),
+                [&](error_code ec, boost::asio::const_buffer b) { err = ec; res = b; }
+            ),
+            keep_messages
+        );
+        ctx_.run();
+        return res;
+    }
+    const char* name() const noexcept final override { return "async"; };
+};
+
+
+sync_reader_fns sync;
+async_reader_fns async;
+reader_fns* all_reader_fns [] = { &sync, &async };
+
 
 BOOST_AUTO_TEST_SUITE(test_message_reader)
 
@@ -50,216 +147,256 @@ BOOST_AUTO_TEST_SUITE(read_some)
 
 BOOST_AUTO_TEST_CASE(message_fits_in_buffer)
 {
-    message_reader reader (512);
-    std::uint8_t seqnum = 2;
-    std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
-    test_stream stream (create_frame(seqnum, msg_body));
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum = 2;
+            std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
+            test_stream stream (create_frame(seqnum, msg_body));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Doesn't have a message initially
-    BOOST_TEST(!reader.has_message());
+            // Doesn't have a message initially
+            BOOST_TEST(!reader.has_message());
 
-    // Read succesfully
-    reader.read_some(stream, err);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+            // Read succesfully
+            fns->read_some(reader, stream, err);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
 
-    // Get next message and validate it
-    auto msg = reader.get_next_message(seqnum, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum == 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
+            // Get next message and validate it
+            auto msg = reader.get_next_message(seqnum, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(seqnum == 3);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
-    // There isn't another message
-    BOOST_TEST(!reader.has_message());
+            // There isn't another message
+            BOOST_TEST(!reader.has_message());
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(fragmented_message_fits_in_buffer)
 {
-    message_reader reader (512);
-    std::uint8_t seqnum = 2;
-    std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
-    test_stream stream (test_stream::read_behavior(
-        create_frame(seqnum, msg_body),
-        { 3, 5 } // break the message at bytes 3 and 5
-    ));
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum = 2;
+            std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
+            test_stream stream (test_stream::read_behavior(
+                create_frame(seqnum, msg_body),
+                { 3, 5 } // break the message at bytes 3 and 5
+            ));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Doesn't have a message initially
-    BOOST_TEST(!reader.has_message());
+            // Doesn't have a message initially
+            BOOST_TEST(!reader.has_message());
 
-    // Read succesfully
-    reader.read_some(stream, err);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+            // Read succesfully
+            fns->read_some(reader, stream, err);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
 
-    // Get next message and validate it
-    auto msg = reader.get_next_message(seqnum, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum == 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
+            // Get next message and validate it
+            auto msg = reader.get_next_message(seqnum, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(seqnum == 3);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
-    // There isn't another message
-    BOOST_TEST(!reader.has_message());
+            // There isn't another message
+            BOOST_TEST(!reader.has_message());
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(message_doesnt_fit_in_buffer)
 {
-    message_reader reader (0);
-    std::uint8_t seqnum = 2;
-    std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-    test_stream stream (create_frame(seqnum, msg_body));
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (0);
+            std::uint8_t seqnum = 2;
+            std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+            test_stream stream (create_frame(seqnum, msg_body));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Doesn't have a message initially
-    BOOST_TEST(!reader.has_message());
+            // Doesn't have a message initially
+            BOOST_TEST(!reader.has_message());
 
-    // Read succesfully
-    reader.read_some(stream, err);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(reader.buffer().size() >= msg_body.size());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+            // Read succesfully
+            fns->read_some(reader, stream, err);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            BOOST_TEST(reader.buffer().size() >= msg_body.size());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
 
-    // Get next message and validate it
-    auto msg = reader.get_next_message(seqnum, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum == 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
+            // Get next message and validate it
+            auto msg = reader.get_next_message(seqnum, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(seqnum == 3);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
-    // There isn't another message
-    BOOST_TEST(!reader.has_message());
+            // There isn't another message
+            BOOST_TEST(!reader.has_message());
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(two_messages)
 {
-    message_reader reader (512);
-    std::uint8_t seqnum1 = 2;
-    std::uint8_t seqnum2 = 5;
-    std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
-    std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07, 0x08};
-    test_stream stream (
-        concat_copy(
-            create_frame(seqnum1, msg1_body),
-            create_frame(seqnum2, msg2_body)
-        )
-    );
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum1 = 2;
+            std::uint8_t seqnum2 = 5;
+            std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
+            std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07, 0x08};
+            test_stream stream (
+                concat_copy(
+                    create_frame(seqnum1, msg1_body),
+                    create_frame(seqnum2, msg2_body)
+                )
+            );
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Doesn't have a message initially
-    BOOST_TEST(!reader.has_message());
+            // Doesn't have a message initially
+            BOOST_TEST(!reader.has_message());
 
-    // Read succesfully
-    reader.read_some(stream, err);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+            // Read succesfully
+            fns->read_some(reader, stream, err);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
 
-    // Get next message and validate it
-    auto msg = reader.get_next_message(seqnum1, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum1 == 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg1_body));
+            // Get next message and validate it
+            auto msg = reader.get_next_message(seqnum1, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(seqnum1 == 3);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg1_body));
 
-    // Reading again does nothing
-    reader.read_some(stream, err);
-    BOOST_TEST(err == error_code());
+            // Reading again does nothing
+            fns->read_some(reader, stream, err);
+            BOOST_TEST(err == error_code());
 
-    // Get the 2nd message and validate it
-    msg = reader.get_next_message(seqnum2, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum2 == 6);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg2_body));
+            // Get the 2nd message and validate it
+            msg = reader.get_next_message(seqnum2, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(seqnum2 == 6);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg2_body));
 
-    // There isn't another message
-    BOOST_TEST(!reader.has_message());
+            // There isn't another message
+            BOOST_TEST(!reader.has_message());
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(previous_message_keep_messages_false)
 {
-    message_reader reader (512);
-    std::uint8_t seqnum1 = 2;
-    std::uint8_t seqnum2 = 5;
-    std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
-    std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07};
-    test_stream stream;
-    stream.add_message(create_frame(seqnum1, msg1_body));
-    stream.add_message(create_frame(seqnum2, msg2_body));
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum1 = 2;
+            std::uint8_t seqnum2 = 5;
+            std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
+            std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07};
+            test_stream stream;
+            stream.add_message(create_frame(seqnum1, msg1_body));
+            stream.add_message(create_frame(seqnum2, msg2_body));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Read and get 1st message
-    reader.read_some(stream, err, false);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    auto msg1 = reader.get_next_message(seqnum1, err);
-    BOOST_REQUIRE(err == error_code());
+            // Read and get 1st message
+            fns->read_some(reader, stream, err, false);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            auto msg1 = reader.get_next_message(seqnum1, err);
+            BOOST_REQUIRE(err == error_code());
 
-    // Read and get 2nd message
-    reader.read_some(stream, err, false);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    auto msg2 = reader.get_next_message(seqnum2, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
-    BOOST_TEST(seqnum2 == 6);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, buffer(msg2_body));
-    BOOST_TEST(!reader.has_message());
+            // Read and get 2nd message
+            fns->read_some(reader, stream, err, false);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            auto msg2 = reader.get_next_message(seqnum2, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(seqnum2 == 6);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, buffer(msg2_body));
+            BOOST_TEST(!reader.has_message());
 
-    // The 2nd message is located where the 1st message was
-    BOOST_TEST(msg1.data() == msg2.data());
+            // The 2nd message is located where the 1st message was
+            BOOST_TEST(msg1.data() == msg2.data());
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(previous_message_keep_messages_true)
 {
-    message_reader reader (512);
-    std::uint8_t seqnum1 = 2;
-    std::uint8_t seqnum2 = 5;
-    std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
-    std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07};
-    test_stream stream;
-    stream.add_message(create_frame(seqnum1, msg1_body));
-    stream.add_message(create_frame(seqnum2, msg2_body));
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum1 = 2;
+            std::uint8_t seqnum2 = 5;
+            std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
+            std::vector<std::uint8_t> msg2_body {0x05, 0x06, 0x07};
+            test_stream stream;
+            stream.add_message(create_frame(seqnum1, msg1_body));
+            stream.add_message(create_frame(seqnum2, msg2_body));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Read and get 1st message
-    reader.read_some(stream, err, true);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    auto msg1 = reader.get_next_message(seqnum1, err);
-    BOOST_REQUIRE(err == error_code());
+            // Read and get 1st message
+            fns->read_some(reader, stream, err, true);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            auto msg1 = reader.get_next_message(seqnum1, err);
+            BOOST_REQUIRE(err == error_code());
 
-    // Read and get 2nd message
-    reader.read_some(stream, err, true);
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    auto msg2 = reader.get_next_message(seqnum2, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
-    BOOST_TEST(seqnum2 == 6);
-    BOOST_TEST(!reader.has_message());
+            // Read and get 2nd message
+            fns->read_some(reader, stream, err, true);
+            BOOST_TEST(err == error_code());
+            BOOST_REQUIRE(reader.has_message());
+            auto msg2 = reader.get_next_message(seqnum2, err);
+            BOOST_REQUIRE(err == error_code());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(seqnum2 == 6);
+            BOOST_TEST(!reader.has_message());
 
-    // Both messages are valid
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg1, buffer(msg1_body));
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, buffer(msg2_body));
+            // Both messages are valid
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg1, buffer(msg1_body));
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, buffer(msg2_body));
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(error)
 {
-    message_reader reader (512);
-    test_stream stream (fail_count(0, error_code(errc::base64_decode_error)));
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            test_stream stream (fail_count(0, error_code(errc::base64_decode_error)));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Read with error
-    reader.read_some(stream, err);
-    BOOST_TEST(!reader.has_message());
-    BOOST_TEST(err == error_code(errc::base64_decode_error));
+            // Read with error
+            fns->read_some(reader, stream, err);
+            BOOST_TEST(!reader.has_message());
+            BOOST_TEST(err == error_code(errc::base64_decode_error));
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-
 
 // Cases specific to get_next_message
 BOOST_AUTO_TEST_SUITE(get_next_message)
@@ -360,65 +497,108 @@ BOOST_AUTO_TEST_CASE(error_intermediate_frame_seqnum_mismatch)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
-// Most code is shared with the sync version,
-// so we only test a success and an error case here
-BOOST_AUTO_TEST_SUITE(async_read_some)
+BOOST_AUTO_TEST_SUITE(read_one)
 
 BOOST_AUTO_TEST_CASE(success)
 {
-    message_reader reader (512);
-    std::uint8_t seqnum = 2;
-    std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
-    boost::asio::io_context ctx;
-    test_stream stream (test_stream::read_behavior{create_frame(seqnum, msg_body)}, fail_count(), ctx.get_executor());
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum = 2;
+            std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
+            test_stream stream (create_frame(seqnum, msg_body));
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Doesn't have a message initially
-    BOOST_TEST(!reader.has_message());
+            // Read succesfully
+            auto msg = fns->read_one(reader, stream, seqnum, err);
+            BOOST_TEST(err == error_code());
+            BOOST_TEST(seqnum == 3);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
-    // Read succesfully
-    reader.async_read_some(stream, [&](error_code e) { err = e; });
-    ctx.run();
-    BOOST_TEST(err == error_code());
-    BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
-
-    // Reading again does nothing
-    reader.async_read_some(stream, [&](error_code e) { err = e; });
-    ctx.run();
-    BOOST_TEST(err == error_code());
-
-    // Get next message and validate it
-    auto msg = reader.get_next_message(seqnum, err);
-    BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum == 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
-
-    // There isn't another message
-    BOOST_TEST(!reader.has_message());
+            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(!reader.has_message());
+        }
+    }
 }
 
-BOOST_AUTO_TEST_CASE(error)
+BOOST_AUTO_TEST_CASE(cached_message)
 {
-    message_reader reader (512);
-    boost::asio::io_context ctx;
-    test_stream stream (
-        fail_count(0, error_code(errc::base64_decode_error)),
-        ctx.get_executor()
-    );
-    error_code err = boost::mysql::make_error_code(errc::no);
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum1 = 2;
+            std::uint8_t seqnum2 = 8;
+            std::vector<std::uint8_t> msg1_body {0x01, 0x02, 0x03};
+            std::vector<std::uint8_t> msg2_body {0x04, 0x05};
+            test_stream stream (
+                concat_copy(
+                    create_frame(seqnum1, msg1_body),
+                    create_frame(seqnum2, msg2_body)
+                )
+            );
+            error_code err = boost::mysql::make_error_code(errc::no);
 
-    // Read with error
-    reader.async_read_some(stream, [&](error_code ec) { err = ec; });
-    ctx.run();
-    BOOST_TEST(!reader.has_message());
-    BOOST_TEST(err == error_code(errc::base64_decode_error));
+            // Read succesfully
+            auto msg = fns->read_one(reader, stream, seqnum1, err);
+            BOOST_TEST(err == error_code());
+            BOOST_TEST(seqnum1 == 3);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg1_body));
+            BOOST_TEST(reader.has_message());
+
+            // Read again
+            msg = fns->read_one(reader, stream, seqnum2, err);
+            BOOST_TEST(err == error_code());
+            BOOST_TEST(seqnum2 == 9);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg2_body));
+            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(!reader.has_message());
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(error_in_read)
+{
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            std::uint8_t seqnum = 2;
+            std::vector<std::uint8_t> msg_body {0x01, 0x02, 0x03};
+            test_stream stream (create_frame(seqnum, msg_body), fail_count(0, error_code(errc::base64_decode_error)));
+            error_code err (errc::no);
+
+            fns->read_one(reader, stream, seqnum, err);
+            BOOST_TEST(err == error_code(errc::base64_decode_error));
+            BOOST_TEST(seqnum == 2);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(seqnum_mismatch)
+{
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            message_reader reader (512);
+            test_stream stream (create_frame(2, {0x01, 0x02, 0x03}));
+            error_code err (errc::no);
+
+            std::uint8_t bad_seqnum = 42;
+            fns->read_one(reader, stream, bad_seqnum, err);
+            BOOST_TEST(err == error_code(errc::sequence_number_mismatch));
+            BOOST_TEST(bad_seqnum == 42);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
 
 }

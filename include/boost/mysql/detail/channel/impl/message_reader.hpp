@@ -154,7 +154,7 @@ boost::asio::const_buffer boost::mysql::detail::message_reader::read_one(
     bool keep_messages
 )
 {
-    ec = read_some(stream, ec, keep_messages);
+    read_some(stream, ec, keep_messages);
     if (ec)
         return {};
     else
@@ -193,7 +193,7 @@ struct boost::mysql::detail::message_reader::read_one_op
         // Error handling
         if (code)
         {
-            self.complete(code);
+            self.complete(code, boost::asio::const_buffer());
             return;
         }
 
