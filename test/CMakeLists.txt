@@ -32,6 +32,7 @@ add_executable(
     unit/detail/channel/message_parser.cpp
     unit/detail/channel/message_reader.cpp
     unit/detail/channel/message_writer_processor.cpp
+    unit/detail/channel/message_writer.cpp
 
     # unit/detail/auth/auth_calculator.cpp
     # unit/detail/auxiliar/static_string.cpp

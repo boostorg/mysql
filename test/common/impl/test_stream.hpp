@@ -102,11 +102,28 @@ struct boost::mysql::test::test_stream::read_op : boost::asio::coroutine
     }
 };
 
+template<
+    class MutableBufferSequence,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, std::size_t)) CompletionToken
+>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
+boost::mysql::test::test_stream::async_read_some(
+    const MutableBufferSequence& buffers,
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
+        read_op<MutableBufferSequence>(*this, buffers),
+        token,
+        get_executor()
+    );
+}
+
 template <class ConstBufferSequence>
 struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
 {
-    ConstBufferSequence buffers_;
     test_stream& stream_;
+    ConstBufferSequence buffers_;
 
     write_op(test_stream& stream, const ConstBufferSequence& buffers) : stream_(stream), buffers_(buffers) {};
 
@@ -128,21 +145,22 @@ struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
 };
 
 template<
-    class MutableBufferSequence,
+    class ConstBufferSequence,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, std::size_t)) CompletionToken
 >
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
-boost::mysql::test::test_stream::async_read_some(
-    const MutableBufferSequence& buffers,
+boost::mysql::test::test_stream::async_write_some(
+    const ConstBufferSequence& buffers,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
-        read_op<MutableBufferSequence>(*this, buffers),
+        write_op<ConstBufferSequence>(*this, buffers),
         token,
         get_executor()
     );
 }
+
 
 std::size_t boost::mysql::test::test_stream::get_size_to_read(
     std::size_t buffer_size

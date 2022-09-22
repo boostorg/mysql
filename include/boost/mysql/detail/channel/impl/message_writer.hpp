@@ -24,13 +24,13 @@ void boost::mysql::detail::message_writer::write(
 {
     processor_.reset(buffer, seqnum);
 
-    while (!processor_.is_complete())
+    do
     {
         boost::asio::write(stream, processor_.prepare_next_chunk(), ec);
         if (ec)
             break;
         processor_.on_bytes_written();
-    }
+    } while (!processor_.is_complete());
 }
 
 
@@ -64,7 +64,9 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            while (!processor_.is_complete())
+            // is_complete never returns false after a call to
+            // reset(), so no post() needed
+            do
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::async_write(
                     stream_,
@@ -72,7 +74,7 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
                     std::move(self)
                 );
                 processor_.on_bytes_written();
-            }
+            } while (!processor_.is_complete());
 
             self.complete(error_code());
         }
@@ -93,7 +95,7 @@ boost::mysql::detail::message_writer::async_write(
 {
     processor_.reset(buffer, seqnum);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        write_op<Stream>(processor_),
+        write_op<Stream>(stream, processor_),
         token,
         stream
     );

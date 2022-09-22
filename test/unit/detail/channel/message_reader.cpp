@@ -9,8 +9,6 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/system_executor.hpp>
-#include <boost/test/data/monomorphic/fwd.hpp>
-#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
@@ -24,7 +22,6 @@
 using boost::mysql::detail::message_reader;
 using boost::mysql::test::test_stream;
 using boost::mysql::test::fail_count;
-using boost::mysql::test::concat_copy;
 using boost::mysql::test::create_message;
 using boost::mysql::error_code;
 using boost::mysql::errc;
