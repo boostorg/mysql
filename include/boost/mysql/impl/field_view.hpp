@@ -15,11 +15,27 @@
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <limits>
 
-namespace boost {
-namespace mysql {
-namespace detail {
+inline std::ostream& boost::mysql::operator<<(
+    std::ostream& os,
+    boost::mysql::field_kind v
+)
+{
+    switch (v)
+    {
+    case field_kind::null: return os << "null";
+    case field_kind::int64: return os << "int64";
+    case field_kind::uint64: return os << "uint64";
+    case field_kind::string: return os << "string";
+    case field_kind::float_: return os << "float_";
+    case field_kind::double_: return os << "double_";
+    case field_kind::date: return os << "date";
+    case field_kind::datetime: return os << "datetime";
+    case field_kind::time: return os << "time";
+    default: return os << "<invalid>";
+    }
+}
 
-struct print_visitor
+struct boost::mysql::field_view::print_visitor
 {
     std::ostream& os;
 
@@ -31,7 +47,7 @@ struct print_visitor
     void operator()(const date& value) const
     {
         assert(value >= min_date && value <= max_date);
-        auto ymd = days_to_ymd(value.time_since_epoch().count());
+        auto ymd = detail::days_to_ymd(value.time_since_epoch().count());
         char buffer [32] {};
         snprintf(buffer, sizeof(buffer), "%04d-%02u-%02u", ymd.years, ymd.month, ymd.day);
         os << buffer;
@@ -72,10 +88,6 @@ struct print_visitor
     void operator()(detail::string_view_offset) const { os << "<invalid>"; }
 };
 
-
-} // detail
-} // mysql
-} // boost
 
 BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::kind() const noexcept
 {
@@ -132,7 +144,7 @@ inline std::ostream& boost::mysql::operator<<(
     const field_view& value
 )
 {
-    boost::variant2::visit(detail::print_visitor(os), value.repr_);
+    boost::variant2::visit(field_view::print_visitor(os), value.repr_);
     return os;
 }
 

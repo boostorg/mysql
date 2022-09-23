@@ -32,7 +32,7 @@ public:
 
     iterator begin() const noexcept { return fields_; }
     iterator end() const noexcept { return fields_ + size_; }
-    field_view at(std::size_t i) const;
+    inline field_view at(std::size_t i) const;
     field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
     field_view front() const noexcept { return *fields_; }
     field_view back() const noexcept { return fields_[size_ - 1]; }

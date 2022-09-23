@@ -8,23 +8,14 @@
 #ifndef BOOST_MYSQL_IMPL_FIELD_HPP
 #define BOOST_MYSQL_IMPL_FIELD_HPP
 
-#include <cstdint>
-#include <string>
 #pragma once
 
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
 #include <limits>
-
-namespace boost {
-namespace mysql {
-namespace detail {
-
-
-} // detail
-} // mysql
-} // boost
+#include <cstdint>
+#include <string>
 
 void boost::mysql::field::from_view(
     const field_view& fv

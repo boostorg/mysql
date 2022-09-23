@@ -38,9 +38,6 @@ using datetime = std::chrono::time_point<std::chrono::system_clock, std::chrono:
 /// Type representing MySQL `__TIME__` data type.
 using time = std::chrono::microseconds;
 
-/// Monostate type representing a NULL value.
-using null_t = boost::variant2::monostate;
-
 /// Exception type thrown when trying to access a [reflink value] with an incorrect type.
 class bad_field_access : public std::exception
 {
@@ -61,6 +58,8 @@ enum class field_kind
     datetime,
     time
 };
+
+inline std::ostream& operator<<(std::ostream& os, field_kind v);
 
 /**
  * \brief Represents a value in the database of any of the allowed types.
@@ -169,6 +168,10 @@ public:
         }
     }
 private:
+    struct print_visitor;
+    
+    using null_t = boost::variant2::monostate;
+
     using variant_type = boost::variant2::variant<
         null_t,            // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT

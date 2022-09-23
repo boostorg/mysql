@@ -33,9 +33,8 @@ add_executable(
     unit/detail/channel/message_reader.cpp
     unit/detail/channel/message_writer_processor.cpp
     unit/detail/channel/message_writer.cpp
-
-    # unit/detail/auth/auth_calculator.cpp
-    # unit/detail/auxiliar/static_string.cpp
+    unit/detail/auth/auth_calculator.cpp
+    unit/detail/auxiliar/static_string.cpp
     # unit/detail/auxiliar/value_type_traits.cpp
     # unit/detail/protocol/capabilities.cpp
     # unit/detail/protocol/date.cpp
@@ -46,8 +45,10 @@ add_executable(
     # unit/detail/protocol/binary_deserialization_value.cpp
     # unit/detail/protocol/binary_deserialization_error.cpp
     # unit/detail/protocol/row_deserialization.cpp
+
+    unit/field_view.cpp
+
     # unit/metadata.cpp
-    # unit/value.cpp
     # unit/value_constexpr.cpp
     # unit/row.cpp
     # unit/error.cpp

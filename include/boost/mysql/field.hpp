@@ -31,7 +31,6 @@ public:
     ~field() = default;
 
     field(std::nullptr_t) noexcept : repr_(null_t()) {}
-    field(null_t) noexcept : repr_(null_t()) {}
     field(signed char v) noexcept : repr_(std::int64_t(v)) {}
     field(short v) noexcept : repr_(std::int64_t(v)) {}
     field(int v) noexcept : repr_(std::int64_t(v)) {}
@@ -51,7 +50,6 @@ public:
     field(const field_view& v) { from_view(v); }
 
     field& operator=(std::nullptr_t) noexcept { repr_.emplace<null_t>(null_t()); return *this; }
-    field& operator=(null_t) noexcept { return (*this = nullptr); }
     field& operator=(signed char v) noexcept { repr_.emplace<std::int64_t>(v); return *this; }
     field& operator=(short v) noexcept { repr_.emplace<std::int64_t>(v); return *this; }
     field& operator=(int v) noexcept { repr_.emplace<std::int64_t>(v); return *this; }
@@ -137,7 +135,7 @@ public:
     datetime& get_datetime() noexcept { return internal_get<datetime>(); }
     time& get_time() noexcept { return internal_get<time>(); }
 
-    void emplace_null() noexcept { *this = null_t(); }
+    void emplace_null() noexcept { *this = nullptr; }
     std::int64_t& emplace_int64(std::int64_t v) noexcept { return (*this = v).get_int64(); }
     std::uint64_t& emplace_uint64(std::uint64_t v) noexcept { return (*this = v).get_uint64(); }
     std::string& emplace_string(std::string&& v) noexcept { return (*this = std::move(v)).get_string(); }
@@ -152,6 +150,8 @@ public:
     bool operator==(const field& rhs) const noexcept { return field_view(*this) == field_view(rhs); }
     bool operator!=(const field& rhs) const noexcept { return !(*this == rhs); }
 private:
+    using null_t = boost::variant2::monostate;
+    
     using variant_type = boost::variant2::variant<
         null_t,            // Any of the below when the value is NULL
         std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
