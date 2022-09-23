@@ -11,6 +11,7 @@
 #pragma once
 
 #include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
+#include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
@@ -23,29 +24,6 @@
 namespace boost {
 namespace mysql {
 namespace detail {
-
-inline void rebase_strings(
-    const std::uint8_t* old_buffer_first,
-    const std::uint8_t* new_buffer_first,
-    std::vector<field_view>& fields
-) noexcept
-{
-    auto diff = new_buffer_first - old_buffer_first;
-    if (diff)
-    {
-        for (auto& f: fields)
-        {
-            const boost::string_view* str = f.if_string();
-            if (str && !str->empty())
-            {
-                f = field_view(boost::string_view(
-                    str->data() + diff,
-                    str->size()
-                ));
-            }
-        }
-    }
-}
 
 template <class Stream>
 inline void process_all_rows(
@@ -69,6 +47,7 @@ inline void process_all_rows(
         bool row_read = deserialize_row(
             message,
             channel.current_capabilities(),
+            channel.buffer_first(),
             resultset,
             channel.shared_fields(),
             err,
@@ -85,6 +64,7 @@ inline void process_all_rows(
                 channel.shared_fields().size(),
                 resultset.meta().size()
             );
+            offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
             break;
         }
     }
@@ -98,7 +78,6 @@ struct read_all_rows_op : boost::asio::coroutine
     error_info& output_info_;
     resultset& resultset_;
     rows_view& output_;
-    std::uint8_t* old_buffer_first_ {};
 
     read_all_rows_op(
         channel<Stream>& chan,
@@ -141,14 +120,8 @@ struct read_all_rows_op : boost::asio::coroutine
             // Read at least one message
             while (!resultset_.complete())
             {
-                // Keep track of the old buffer base
-                old_buffer_first_ = chan_.buffer_first();
-
                 // Actually read
                 BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self), true);
-
-                // Rebase strings if required
-                rebase_strings(old_buffer_first_, chan_.buffer_first(), chan_.shared_fields());
 
                 // Process messages
                 process_all_rows(chan_, resultset_, output_, err, output_info_);
@@ -188,16 +161,11 @@ void boost::mysql::detail::read_all_rows(
 
     while (!resultset.complete())
     {
-        const std::uint8_t* old_buffer_first = channel.buffer_first();
-
         // Read from the stream until there is at least one message
         channel.read_some(err, true);
         if (err)
             return;
         
-        // Rebase strings if required
-        rebase_strings(old_buffer_first, channel.buffer_first(), channel.shared_fields());
-
         // Process read messages
         process_all_rows(channel, resultset, output, err, info);
         if (err)

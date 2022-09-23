@@ -12,6 +12,7 @@
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <cstdint>
 #include <vector>
 
 namespace boost {
@@ -21,12 +22,14 @@ namespace detail {
 inline errc deserialize_text_value(
     boost::string_view from,
     const metadata& meta,
+    const std::uint8_t* buffer_first,
     field_view& output
 );
 
 inline error_code deserialize_text_row(
     deserialization_context& ctx,
     const std::vector<metadata>& meta,
+    const std::uint8_t* buffer_first,
     std::vector<field_view>& output
 );
 

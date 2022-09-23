@@ -27,6 +27,7 @@ namespace detail {
 inline bool deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
+    const std::uint8_t* buffer_first, // to store strings as offsets and allow buffer reallocation
     resultset& resultset,
 	std::vector<field_view>& output,
     error_code& err,
@@ -63,12 +64,21 @@ inline bool deserialize_row(
         // An actual row
         ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
         err = resultset.encoding() == detail::resultset_encoding::text ?
-                deserialize_text_row(ctx, resultset.meta(), output) :
-                deserialize_binary_row(ctx, resultset.meta(), output);
+                deserialize_text_row(ctx, resultset.meta(), buffer_first, output) :
+                deserialize_binary_row(ctx, resultset.meta(), buffer_first, output);
         if (err)
             return false;
         return true;
     }
+}
+
+inline void offsets_to_string_views(
+    std::vector<field_view>& fields,
+    const std::uint8_t* buffer_first
+) noexcept
+{
+    for (auto& f: fields)
+        f.offset_to_string_view(buffer_first);
 }
 
 

@@ -48,6 +48,7 @@ inline void process_some_rows(
         bool row_read = deserialize_row(
             message,
             channel.current_capabilities(),
+            channel.buffer_first(),
             resultset,
             channel.shared_fields(),
             err,
@@ -64,6 +65,7 @@ inline void process_some_rows(
             break;
         ++num_rows;
     }
+    offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
 
     output = rows_view(
         channel.shared_fields().data(),

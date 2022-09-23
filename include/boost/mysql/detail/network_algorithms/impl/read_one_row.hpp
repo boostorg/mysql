@@ -39,6 +39,7 @@ inline bool process_one_row(
     bool row_read = deserialize_row(
         read_message,
         channel.current_capabilities(),
+        channel.buffer_first(),
         resultset,
         channel.shared_fields(),
         err,
@@ -48,6 +49,7 @@ inline bool process_one_row(
     // Set the output variable
     if (row_read)
     {
+        offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
         output = row_view(channel.shared_fields().data(), channel.shared_fields().size());
     }
     else

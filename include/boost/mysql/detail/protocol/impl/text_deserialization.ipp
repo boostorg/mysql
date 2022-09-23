@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <cstdlib>
@@ -74,10 +75,11 @@ errc deserialize_text_value_float(
 // Strings
 inline errc deserialize_text_value_string(
     boost::string_view from,
-    field_view& to
+    field_view& to,
+    const std::uint8_t* buffer_first
 ) noexcept
 {
-    to = field_view(from);
+    to = field_view(string_view_offset::from_sv(from, buffer_first));
     return errc::ok;
 }
 
@@ -310,6 +312,7 @@ inline bool is_next_field_null(
 inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     boost::string_view from,
     const metadata& meta,
+    const std::uint8_t* buffer_first,
     field_view& output
 )
 {
@@ -350,7 +353,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return deserialize_text_value_string(from, output);
+        return deserialize_text_value_string(from, output, buffer_first);
     }
 }
 
@@ -358,6 +361,7 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
 boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
     deserialization_context& ctx,
     const std::vector<metadata>& fields,
+    const std::uint8_t* buffer_first,
     std::vector<field_view>& output
 )
 {
@@ -376,7 +380,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
             errc err = deserialize(ctx, value_str);
             if (err != errc::ok)
                 return make_error_code(err);
-            err = deserialize_text_value(value_str.value, fields[i], output[old_size + i]);
+            err = deserialize_text_value(value_str.value, fields[i], buffer_first, output[old_size + i]);
             if (err != errc::ok)
                 return make_error_code(err);
         }

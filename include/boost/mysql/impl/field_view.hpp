@@ -12,6 +12,7 @@
 
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <limits>
 
 namespace boost {
@@ -68,12 +69,21 @@ struct print_visitor
         os << buffer;
     }
     void operator()(null_t) const { os << "<NULL>"; }
+    void operator()(detail::string_view_offset) const { os << "<invalid>"; }
 };
 
 
 } // detail
 } // mysql
 } // boost
+
+BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::kind() const noexcept
+{
+    // Indices below time are user-facing; indices above that are used
+    // by the library during parsing, but never reach the user
+    assert(repr_.index() <= static_cast<int>(field_kind::time));
+    return static_cast<field_kind>(repr_.index());
+}
 
 template <typename T>
 const T& boost::mysql::field_view::internal_as() const

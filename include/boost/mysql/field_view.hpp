@@ -10,6 +10,7 @@
 
 #include <boost/utility/string_view.hpp>
 #include <boost/variant2/variant.hpp>
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <cstdint>
 #include <chrono>
 #include <limits>
@@ -110,7 +111,10 @@ public:
     BOOST_CXX14_CONSTEXPR field_view(const datetime& v) noexcept : repr_(v) {}
     BOOST_CXX14_CONSTEXPR field_view(const time& v) noexcept : repr_(v) {}
 
-    BOOST_CXX14_CONSTEXPR field_kind kind() const noexcept { return static_cast<field_kind>(repr_.index()); }
+    // TODO: hide this
+    BOOST_CXX14_CONSTEXPR field_view(detail::string_view_offset v) noexcept : repr_(v) {}
+
+    BOOST_CXX14_CONSTEXPR inline field_kind kind() const noexcept;
 
     BOOST_CXX14_CONSTEXPR bool is_null() const noexcept { return kind() == field_kind::null; }
     BOOST_CXX14_CONSTEXPR bool is_int64() const noexcept { return kind() == field_kind::int64; }
@@ -154,6 +158,16 @@ public:
 
     /// Tests for inequality (type and value); see [link mysql.values.relational this section] for more info.
     BOOST_CXX14_CONSTEXPR bool operator!=(const field_view& rhs) const noexcept { return !(*this==rhs); }
+
+    // TODO: hide this
+    void offset_to_string_view(const std::uint8_t* buffer_first) noexcept
+    {
+        auto* sv_index = boost::variant2::get_if<detail::string_view_offset>(&repr_);
+        if (sv_index)
+        {
+            repr_ = sv_index->to_string_view(reinterpret_cast<const char*>(buffer_first));
+        }
+    }
 private:
     using variant_type = boost::variant2::variant<
         null_t,            // Any of the below when the value is NULL
@@ -164,7 +178,8 @@ private:
         double,            // DOUBLE
         date,              // DATE
         datetime,          // DATETIME, TIMESTAMP
-        time               // TIME
+        time,              // TIME
+        detail::string_view_offset // Used during parsing, not exposed to the user
     >;
 
     variant_type repr_;

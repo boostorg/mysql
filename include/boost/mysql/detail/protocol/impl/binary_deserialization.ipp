@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/binary_deserialization.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
@@ -25,14 +26,15 @@ namespace detail {
 // strings
 inline errc deserialize_binary_field_string(
     deserialization_context& ctx,
-    field_view& output
+    field_view& output,
+    const std::uint8_t* buffer_first
 ) noexcept
 {
     string_lenenc deser;
     auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
-    output = field_view(deser.value);
+    output = field_view(detail::string_view_offset::from_sv(deser.value, buffer_first));
     return errc::ok;
 }
 
@@ -319,6 +321,7 @@ inline errc deserialize_binary_field_time(
 inline boost::mysql::errc boost::mysql::detail::deserialize_binary_field(
     deserialization_context& ctx,
     const metadata& meta,
+    const std::uint8_t* buffer_first,
     field_view& output
 )
 {
@@ -362,13 +365,14 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_field(
     case protocol_field_type::newdecimal:
     case protocol_field_type::geometry:
     default:
-        return deserialize_binary_field_string(ctx, output);
+        return deserialize_binary_field_string(ctx, output, buffer_first);
     }
 }
 
 inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
     deserialization_context& ctx,
     const std::vector<metadata>& meta,
+    const std::uint8_t* buffer_first,
     std::vector<field_view>& output
 )
 {
@@ -400,7 +404,7 @@ inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
         }
         else
         {
-            auto err = deserialize_binary_field(ctx, meta[i], output[old_size + i]);
+            auto err = deserialize_binary_field(ctx, meta[i], buffer_first, output[old_size + i]);
             if (err != errc::ok)
                 return make_error_code(err);
         }
