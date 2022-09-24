@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/field_view.hpp>
+#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test_suite.hpp>
 #include <boost/type_index.hpp>
 #include <boost/test/data/monomorphic/collection.hpp>
@@ -27,7 +28,10 @@ using boost::mysql::field_view;
 using boost::mysql::field_kind;
 using boost::typeindex::type_index;
 
-BOOST_AUTO_TEST_SUITE(test_field_value)
+namespace
+{
+
+BOOST_AUTO_TEST_SUITE(test_field_view)
 
 BOOST_AUTO_TEST_SUITE(constructors)
 
@@ -159,30 +163,154 @@ BOOST_AUTO_TEST_CASE(from_time)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(accesors)
+
+// For parametrized tests
+struct
+{
+    const char* name;
+    field_view field;
+    field_kind expected_kind;
+    bool is_null, is_int64, is_uint64, is_string, is_float, is_double, is_date, is_datetime, is_time;
+} test_cases [] = {
+    // name       field                             kind                  null,  i64    u64    str    float  double date   dt    time 
+    { "null",     field_view(),                     field_kind::null,     true,  false, false, false, false, false, false, false, false },
+    { "int64",    field_view(42),                   field_kind::int64,    false, true,  false, false, false, false, false, false, false },
+    { "uint64",   field_view(42u),                  field_kind::uint64,   false, false, true,  false, false, false, false, false, false },
+    { "string",   field_view("test"),               field_kind::string,   false, false, false, true,  false, false, false, false, false },
+    { "float",    field_view(4.2f),                 field_kind::float_,   false, false, false, false, true,  false, false, false, false },
+    { "double",   field_view(4.2),                  field_kind::double_,  false, false, false, false, false, true,  false, false, false },
+    { "date",     field_view(makedate(2020, 1, 1)), field_kind::date,     false, false, false, false, false, false, true,  false, false },
+    { "datetime", field_view(makedt(2020, 1, 1)),   field_kind::datetime, false, false, false, false, false, false, false, true,  false },
+    { "time",     field_view(maket(20, 1, 1)),      field_kind::time,     false, false, false, false, false, false, false, false, true },
+};
+
 BOOST_AUTO_TEST_CASE(kind)
 {
-    struct
-    {
-        const char* name;
-        field_view field;
-        field_kind expected;
-    } test_cases [] = {
-        { "null",     field_view(nullptr), field_kind::null },
-        { "int64",    field_view(32), field_kind::int64 },
-        { "uint64",   field_view(42u), field_kind::uint64 },
-        { "string",   field_view("test"), field_kind::string },
-        { "float",    field_view(3.1f), field_kind::float_ },
-        { "double",   field_view(3.1), field_kind::double_ },
-        { "date",     field_view(makedate(2020, 2, 1)), field_kind::date },
-        { "datetime", field_view(makedt(2020, 2, 1)), field_kind::datetime },
-        { "time",     field_view(maket(20, 1, 2)), field_kind::time },
-    };
-
     for (const auto& tc : test_cases)
     {
-        BOOST_TEST(tc.field.kind() == tc.expected, tc.name);
+        BOOST_TEST(tc.field.kind() == tc.expected_kind, tc.name);
     }
 }
+
+BOOST_AUTO_TEST_CASE(is)
+{
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(tc.field.is_null() == tc.is_null);
+            BOOST_TEST(tc.field.is_int64() == tc.is_int64);
+            BOOST_TEST(tc.field.is_uint64() == tc.is_uint64);
+            BOOST_TEST(tc.field.is_string() == tc.is_string);
+            BOOST_TEST(tc.field.is_float() == tc.is_float);
+            BOOST_TEST(tc.field.is_double() == tc.is_double);
+            BOOST_TEST(tc.field.is_date() == tc.is_date);
+            BOOST_TEST(tc.field.is_datetime() == tc.is_datetime);
+            BOOST_TEST(tc.field.is_time() == tc.is_time);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(if_pointer_validity)
+{
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            if (tc.is_int64)
+                BOOST_TEST(tc.field.if_int64() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_int64() == nullptr);
+
+            if (tc.is_uint64)
+                BOOST_TEST(tc.field.if_uint64() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_uint64() == nullptr);
+
+            if (tc.is_string)
+                BOOST_TEST(tc.field.if_string() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_string() == nullptr);
+
+            if (tc.is_float)
+                BOOST_TEST(tc.field.if_float() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_float() == nullptr);
+
+            if (tc.is_double)
+                BOOST_TEST(tc.field.if_double() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_double() == nullptr);
+
+            if (tc.is_date)
+                BOOST_TEST(tc.field.if_date() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_date() == nullptr);
+
+            if (tc.is_datetime)
+                BOOST_TEST(tc.field.if_datetime() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_datetime() == nullptr);
+
+            if (tc.is_time)
+                BOOST_TEST(tc.field.if_time() != nullptr);
+            else
+                BOOST_TEST(tc.field.if_time() == nullptr);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(as_exceptions)
+{
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            if (tc.is_int64)
+                BOOST_CHECK_NO_THROW(tc.field.as_int64());
+            else
+                BOOST_CHECK_THROW(tc.field.as_int64(), boost::mysql::bad_field_access);
+
+            if (tc.is_uint64)
+                BOOST_CHECK_NO_THROW(tc.field.as_uint64());
+            else
+                BOOST_CHECK_THROW(tc.field.as_uint64(), boost::mysql::bad_field_access);
+
+            if (tc.is_string)
+                BOOST_CHECK_NO_THROW(tc.field.as_string());
+            else
+                BOOST_CHECK_THROW(tc.field.as_string(), boost::mysql::bad_field_access);
+
+            if (tc.is_float)
+                BOOST_CHECK_NO_THROW(tc.field.as_float());
+            else
+                BOOST_CHECK_THROW(tc.field.as_float(), boost::mysql::bad_field_access);
+
+            if (tc.is_double)
+                BOOST_CHECK_NO_THROW(tc.field.as_double());
+            else
+                BOOST_CHECK_THROW(tc.field.as_double(), boost::mysql::bad_field_access);
+
+            if (tc.is_date)
+                BOOST_CHECK_NO_THROW(tc.field.as_date());
+            else
+                BOOST_CHECK_THROW(tc.field.as_date(), boost::mysql::bad_field_access);
+
+            if (tc.is_datetime)
+                BOOST_CHECK_NO_THROW(tc.field.as_datetime());
+            else
+                BOOST_CHECK_THROW(tc.field.as_datetime(), boost::mysql::bad_field_access);
+
+            if (tc.is_time)
+                BOOST_CHECK_NO_THROW(tc.field.as_time());
+            else
+                BOOST_CHECK_THROW(tc.field.as_time(), boost::mysql::bad_field_access);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 
 // BOOST_AUTO_TEST_CASE(copy_assignment_from_non_const_lvalue)
@@ -752,3 +880,5 @@ BOOST_AUTO_TEST_CASE(kind)
 // }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}
