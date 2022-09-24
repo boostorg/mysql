@@ -118,14 +118,14 @@ BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(
     const field_view& rhs
 ) const noexcept
 {
-    if (kind() == field_kind::int64 && rhs.kind() == field_kind::uint64)
+    if (is_int64() && rhs.is_uint64())
     {
         std::int64_t this_val = get_int64();
         if (this_val < 0)
             return false;
         return static_cast<std::uint64_t>(this_val) == rhs.get_uint64();
     }
-    else if (kind() == field_kind::uint64 && rhs.kind() == field_kind::int64)
+    else if (is_uint64() && rhs.is_int64())
     {
         std::int64_t rhs_val = rhs.get_int64();
         if (rhs_val < 0)

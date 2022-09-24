@@ -12,6 +12,7 @@
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/utility/string_view_fwd.hpp>
+#include <cstddef>
 #include <cstdint>
 #include <set>
 #include <sstream>
@@ -389,265 +390,107 @@ BOOST_AUTO_TEST_CASE(time)
 BOOST_AUTO_TEST_SUITE_END()
 
 
-// BOOST_AUTO_TEST_CASE(copy_assignment_from_non_const_lvalue)
-// {
-//     field_view v (10);
-//     field_view v2;
-//     v2 = v;
-//     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
-// }
+BOOST_AUTO_TEST_CASE(operator_equals)
+{
+    struct
+    {
+        const char* name;
+        field_view f1;
+        field_view f2;
+        bool is_equal;
+    } test_cases [] = {
+        { "null_null", field_view(), field_view(), true, },
+        { "null_int64", field_view(), field_view(-1), false },
+        { "null_uint64", field_view(), field_view(42), false },
+        { "null_string", field_view(), field_view("<NULL>"), false },
+        { "null_float", field_view(), field_view(4.2f), false },
+        { "null_double", field_view(), field_view(4.3), false },
+        { "null_date", field_view(), field_view(makedate(2020, 1, 2)), false },
+        { "null_datetime", field_view(), field_view(makedt(2020, 1, 1)), false },
+        { "null_time", field_view(), field_view(maket(23, 1, 1)), false },
 
-// BOOST_AUTO_TEST_CASE(copy_assignament_from_const_lvalue)
-// {
-//     const field_view v (10);
-//     field_view v2;
-//     v2 = v;
-//     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
-// }
+        { "int64_int64_same", field_view(42), field_view(42), true },
+        { "int64_int64_different", field_view(42), field_view(-1), false },
+        { "int64_uint64_same", field_view(42), field_view(42u), true },
+        { "int64_uint64_different", field_view(42), field_view(43u), false },
+        { "int64_uint64_zero", field_view(0), field_view(0u), true },
+        { "int64_uint64_lt0", field_view(-1), field_view(42u), false },
+        { "int64_uint64_gtmax", field_view(42), field_view(0xffffffffffffffffu), false },
+        { "int64_uint64_lt0gtmax", field_view(-1), field_view(0xffffffffffffffffu), false },
+        { "int64_string", field_view(42), field_view("42"), false },
+        { "int64_float", field_view(42), field_view(42.0f), false },
+        { "int64_double", field_view(42), field_view(42.0), false },
+        { "int64_date", field_view(42), field_view(makedate(2020, 1, 1)), false },
+        { "int64_datetime", field_view(42), field_view(makedt(2020, 1, 1)), false },
+        { "int64_time", field_view(42), field_view(maket(20, 1, 1)), false },
 
-// BOOST_AUTO_TEST_CASE(move_assignment)
-// {
-//     field_view v (10);
-//     field_view v2;
-//     v2 = std::move(v);
-//     BOOST_TEST(v2.to_variant() == vt(std::int64_t(10)));
-// }
+        { "uint64_uint64_same", field_view(0xffffffffffffffffu), field_view(0xffffffffffffffffu), true },
+        { "uint64_uint64_different", field_view(42u), field_view(31u), false },
+        { "uint64_string", field_view(42u), field_view("42"), false },
+        { "uint64_float", field_view(42u), field_view(42.0f), false },
+        { "uint64_double", field_view(42u), field_view(42.0), false },
+        { "uint64_date", field_view(42u), field_view(makedate(2020, 1, 1)), false },
+        { "uint64_datetime", field_view(42u), field_view(makedt(2020, 1, 1)), false },
+        { "uint64_time", field_view(42u), field_view(maket(20, 1, 1)), false },
 
-// // accessors: is, is_convertible_to, is_null, get, get_optional
-// using all_types = std::tuple<
-//     boost::mysql::null_t,
-//     std::uint64_t,
-//     std::int64_t,
-//     boost::string_view,
-//     float,
-//     double,
-//     boost::mysql::date,
-//     boost::mysql::datetime,
-//     boost::mysql::time
-// >;
+        { "string_string_same", field_view("test"), field_view("test"), true },
+        { "string_string_different", field_view("test"), field_view("test2"), false },
+        { "string_float", field_view("4.2"), field_view(4.2f), false },
+        { "string_double", field_view("4.2"), field_view(4.2), false },
+        { "string_date", field_view("2020-01-01"), field_view(makedate(2020, 1, 1)), false },
+        { "string_datetime", field_view("test"), field_view(makedt(2020, 1, 1)), false },
+        { "string_time", field_view("test"), field_view(maket(8, 1, 1)), false },
 
-// struct accessors_sample
-// {
-//     const char* name;
-//     field_view v;
-//     type_index is_type; // the type for which is() should return true
-//     std::map<type_index, vt> conversions;
-//     bool is_null;
+        { "float_float_same", field_view(4.2f), field_view(4.2f), true },
+        { "float_float_different", field_view(4.2f), field_view(0.0f), false },
+        { "float_double", field_view(4.2f), field_view(4.2), false },
+        { "float_date", field_view(4.2f), field_view(makedate(2020, 1, 2)), false },
+        { "float_datetime", field_view(4.2f), field_view(makedt(2020, 1, 2)), false },
+        { "float_time", field_view(4.2f), field_view(maket(20, 1, 2)), false },
 
-//     accessors_sample(const char* name, field_view v, type_index is, std::map<type_index, vt>&& convs, bool is_null = false) :
-//         name(name),
-//         v(v),
-//         is_type(is),
-//         conversions(std::move(convs)),
-//         is_null(is_null)
-//     {
-//     }
-// };
+        { "double_double_same", field_view(4.2), field_view(4.2), true },
+        { "double_double_different", field_view(4.2), field_view(-1.0), false },
+        { "double_date", field_view(4.2), field_view(makedate(2020, 1, 1)), false },
+        { "double_datetime", field_view(4.2), field_view(makedt(2020, 1, 1)), false },
+        { "double_time", field_view(4.2), field_view(maket(9, 1, 1)), false },
 
-// std::ostream& operator<<(std::ostream& os, const accessors_sample& input)
-// {
-//     return os << input.name;
-// }
+        { "date_date_same", field_view(makedate(2020, 1, 1)), field_view(makedate(2020, 1, 1)), true },
+        { "date_date_different", field_view(makedate(2020, 1, 1)), field_view(makedate(2019, 1, 1)), false },
+        { "date_datetime", field_view(makedate(2020, 1, 1)), field_view(makedt(2020, 1, 1)), false },
+        { "date_time", field_view(makedate(2020, 1, 1)), field_view(maket(9, 1, 1)), false },
 
-// template <class... Types>
-// std::map<type_index, vt> make_conversions(const Types&... types)
-// {
-//     return { { type_id<Types>(), types }... };
-// }
+        { "datetime_datetime_same", field_view(makedt(2020, 1, 1, 10)), field_view(makedt(2020, 1, 1, 10)), true },
+        { "datetime_datetime_different", field_view(makedt(2020, 1, 1, 10)), field_view(makedt(2020, 1, 1, 9)), false },
+        { "datetime_time", field_view(makedt(2020, 1, 1)), field_view(maket(20, 1, 1)), false },
 
-// template <class T>
-// accessors_sample make_default_accessors_sample(
-//     const char* name,
-//     const T& v,
-//     bool is_null = false
-// )
-// {
-//     return accessors_sample(name, field_view(v), type_id<T>(), make_conversions(v), is_null);
-// }
+        { "time_time_same", field_view(maket(20, 1, 1)), field_view(maket(20, 1, 1)), true },
+        { "time_time_different", field_view(maket(20, 1, 1)), field_view(maket(20, 1, 1, 10)), false },
+    };
 
-// const accessors_sample all_accessors_samples [] {
-//     make_default_accessors_sample("null", boost::mysql::null_t(), true),
-//     accessors_sample("i64_positive", field_view(std::int64_t(42)), type_id<std::int64_t>(),
-//             make_conversions(std::int64_t(42), std::uint64_t(42))),
-//     accessors_sample("i64_negative", field_view(std::int64_t(-42)), type_id<std::int64_t>(),
-//             make_conversions(std::int64_t(-42))),
-//     accessors_sample("i64_zero", field_view(std::int64_t(0)), type_id<std::int64_t>(),
-//             make_conversions(std::int64_t(0), std::uint64_t(0))),
-//     accessors_sample("u64_small", field_view(std::uint64_t(42)), type_id<std::uint64_t>(),
-//             make_conversions(std::int64_t(42), std::uint64_t(42))),
-//     accessors_sample("u64_big", field_view(std::uint64_t(0xfffffffffffffffe)), type_id<std::uint64_t>(),
-//             make_conversions(std::uint64_t(0xfffffffffffffffe))),
-//     accessors_sample("u64_zero", field_view(std::uint64_t(0)), type_id<std::uint64_t>(),
-//             make_conversions(std::int64_t(0), std::uint64_t(0))),
-//             make_default_accessors_sample("string_view", makesv("test")),
-//     accessors_sample("float", field_view(4.2f), type_id<float>(),
-//             make_conversions(4.2f, double(4.2f))),
-//     make_default_accessors_sample("double", 4.2),
-//     make_default_accessors_sample("date", makedate(2020, 10, 5)),
-//     make_default_accessors_sample("datetime", makedt(2020, 10, 5, 10, 20, 30)),
-//     make_default_accessors_sample("time", maket(10, 20, 30))
-// };
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            if (tc.is_equal)
+            {
+                BOOST_TEST(tc.f1 == tc.f2);
+                BOOST_TEST(tc.f2 == tc.f1);
 
-// // Template + data tests not supported. We use template
-// // test cases and use this function to emulate data test cases
-// template <class Callable>
-// void for_each_accessors_sample(Callable&& cb)
-// {
-//     for (const auto& sample: all_accessors_samples)
-//     {
-//         BOOST_TEST_CHECKPOINT(sample);
-//         cb(sample);
-//     }
-// }
+                BOOST_TEST(!(tc.f1 != tc.f2));
+                BOOST_TEST(!(tc.f2 != tc.f1));
+            }
+            else
+            {
+                BOOST_TEST(!(tc.f1 == tc.f2));
+                BOOST_TEST(!(tc.f2 == tc.f1));
 
-// BOOST_DATA_TEST_CASE(is_null, data::make(all_accessors_samples))
-// {
-//     BOOST_TEST(sample.v.is_null() == sample.is_null);
-// }
+                BOOST_TEST(tc.f1 != tc.f2);
+                BOOST_TEST(tc.f2 != tc.f1);
+            }
+        }
+    }
+}
 
-// BOOST_AUTO_TEST_CASE_TEMPLATE(is, T, all_types)
-// {
-//     for_each_accessors_sample([](const accessors_sample& sample) {
-//         bool expected = sample.is_type == type_id<T>();
-//         BOOST_TEST(sample.v.is<T>() == expected, sample);
-//     });
-// }
-
-// BOOST_AUTO_TEST_CASE_TEMPLATE(is_convertible_to, T, all_types)
-// {
-//     for_each_accessors_sample([](const accessors_sample& sample) {
-//         auto it = sample.conversions.find(type_id<T>());
-//         bool expected = it != sample.conversions.end();
-//         BOOST_TEST(sample.v.is_convertible_to<T>() == expected, sample);
-//     });
-// }
-
-// BOOST_AUTO_TEST_CASE_TEMPLATE(get, T, all_types)
-// {
-//     for_each_accessors_sample([](const accessors_sample& sample) {
-//         auto it = sample.conversions.find(type_id<T>());
-//         if (it != sample.conversions.end())
-//         {
-//             T expected = boost::variant2::get<T>(it->second);
-//             BOOST_TEST(sample.v.get<T>() == expected, sample);
-//         }
-//         else
-//         {
-//             BOOST_CHECK_THROW(sample.v.get<T>(), boost::mysql::bad_field_access);
-//         }
-//     });
-// }
-
-// BOOST_AUTO_TEST_CASE_TEMPLATE(get_optional, T, all_types)
-// {
-//     for_each_accessors_sample([](const accessors_sample& sample) {
-//         auto it = sample.conversions.find(type_id<T>());
-//         if (it != sample.conversions.end())
-//         {
-//             auto expected = boost::variant2::get<T>(it->second);
-//             auto opt = sample.v.get_optional<T>();
-//             BOOST_TEST_REQUIRE(opt.has_value(), sample);
-//             BOOST_TEST(*opt == expected, sample);
-//         }
-//         else
-//         {
-//             BOOST_TEST(!sample.v.get_optional<T>().has_value(), sample);
-//         }
-//     });
-// }
-
-// #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-
-// BOOST_AUTO_TEST_CASE_TEMPLATE(get_std_optional, T, all_types)
-// {
-//     for_each_accessors_sample([](const accessors_sample& sample) {
-//         auto it = sample.conversions.find(type_id<T>());
-//         if (it != sample.conversions.end())
-//         {
-//             auto expected = boost::variant2::get<T>(it->second);
-//             auto opt = sample.v.get_std_optional<T>();
-//             BOOST_TEST_REQUIRE(opt.has_value(), sample);
-//             BOOST_TEST(*opt == expected, sample);
-//         }
-//         else
-//         {
-//             BOOST_TEST(!sample.v.get_std_optional<T>().has_value(), sample);
-//         }
-//     });
-// }
-
-// #endif // BOOST_NO_CXX17_HDR_OPTIONAL
-
-
-// // operator== and operator!=
-// struct value_equality_fixture
-// {
-//     std::vector<field_view> values = make_value_vector(
-//         std::int64_t(-1),
-//         std::uint64_t(0x100000000),
-//         "string",
-//         3.14f,
-//         8.89,
-//         makedate(2019, 10, 1),
-//         makedt(2019, 10, 1, 10),
-//         maket(0, 0, -10),
-//         boost::mysql::null_t()
-//     );
-// };
-
-// BOOST_FIXTURE_TEST_CASE(operators_eq_ne_different_type, value_equality_fixture)
-// {
-//     for (std::size_t i = 0; i < values.size(); ++i)
-//     {
-//         for (std::size_t j = 0; j < i; ++j)
-//         {
-//             BOOST_TEST(!(values.at(i) == values.at(j)));
-//             BOOST_TEST(values.at(i) != values.at(j));
-//         }
-//     }
-// }
-
-// BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_different_value, value_equality_fixture)
-// {
-//     auto other_values = make_value_vector(
-//         std::int64_t(-22),
-//         std::uint64_t(222),
-//         "other_string",
-//         -3.0f,
-//         8e24,
-//         makedate(2019, 9, 1),
-//         makedt(2019, 9, 1, 10),
-//         maket(0, 0, 10),
-//         boost::mysql::null_t()
-//     );
-
-//     // Note: null_t (the last value) can't have other value than null_t()
-//     // so it is excluded from this test
-//     for (std::size_t i = 0; i < values.size() - 1; ++i)
-//     {
-//         BOOST_TEST(!(values.at(i) == other_values.at(i)));
-//         BOOST_TEST(values.at(i) != other_values.at(i));
-//     }
-// }
-
-// BOOST_FIXTURE_TEST_CASE(operators_eq_ne_same_type_same_value, value_equality_fixture)
-// {
-//     std::vector<field_view> values_copy = values;
-//     for (std::size_t i = 0; i < values.size(); ++i)
-//     {
-//         BOOST_TEST(values.at(i) == values_copy.at(i));
-//         BOOST_TEST(!(values.at(i) != values_copy.at(i)));
-//     }
-// }
-
-// BOOST_FIXTURE_TEST_CASE(operators_eq_ne_self_comparison, value_equality_fixture)
-// {
-//     for (std::size_t i = 0; i < values.size(); ++i)
-//     {
-//         BOOST_TEST(values.at(i) == values.at(i));
-//         BOOST_TEST(!(values.at(i) != values.at(i)));
-//     }
-// }
 
 // // operator<<
 // struct stream_sample

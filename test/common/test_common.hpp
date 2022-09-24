@@ -25,7 +25,7 @@ namespace test {
 using detail::stringize;
 
 template <class... Types>
-std::vector<field_view> make_value_vector(Types&&... args)
+std::vector<field_view> make_field_view_vector(Types&&... args)
 {
     return std::vector<field_view>{mysql::field_view(std::forward<Types>(args))...};
 }
@@ -33,7 +33,7 @@ std::vector<field_view> make_value_vector(Types&&... args)
 template <class... Types>
 row makerow(Types&&... args)
 {
-    return row(make_value_vector(std::forward<Types>(args)...), {});
+    return row(make_field_view_vector(std::forward<Types>(args)...), {});
 }
 
 inline date makedate(int num_years, unsigned num_months, unsigned num_days)
