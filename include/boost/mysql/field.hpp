@@ -30,7 +30,7 @@ public:
     field& operator=(field&&) = default;
     ~field() = default;
 
-    field(std::nullptr_t) noexcept : repr_(null_t()) {}
+    explicit field(std::nullptr_t) noexcept : repr_(null_t()) {}
     field(signed char v) noexcept : repr_(std::int64_t(v)) {}
     field(short v) noexcept : repr_(std::int64_t(v)) {}
     field(int v) noexcept : repr_(std::int64_t(v)) {}
@@ -41,7 +41,7 @@ public:
     field(unsigned int v) noexcept : repr_(std::uint64_t(v)) {}
     field(unsigned long v) noexcept : repr_(std::uint64_t(v)) {}
     field(unsigned long long v) noexcept : repr_(std::uint64_t(v)) {}
-    field(std::string&& v) noexcept : repr_(std::move(v)) {}
+    field(std::string v) noexcept : repr_(std::move(v)) {}
     field(float v) noexcept : repr_(v) {}
     field(double v) noexcept : repr_(v) {}
     field(const date& v) noexcept : repr_(v) {}
@@ -60,7 +60,7 @@ public:
     field& operator=(unsigned int v) noexcept { repr_.emplace<std::uint64_t>(v); return *this; }
     field& operator=(unsigned long v) noexcept { repr_.emplace<std::uint64_t>(v); return *this; }
     field& operator=(unsigned long long v) noexcept { repr_.emplace<std::uint64_t>(v); return *this; }
-    field& operator=(std::string&& v) { repr_.emplace<std::string>(std::move(v)); return *this; }
+    field& operator=(std::string v) { repr_.emplace<std::string>(std::move(v)); return *this; }
     field& operator=(float v) noexcept { repr_.emplace<float>(v); return *this; }
     field& operator=(double v) noexcept { repr_.emplace<double>(v); return *this; }
     field& operator=(const date& v) noexcept { repr_.emplace<date>(v); return *this; }
@@ -97,7 +97,6 @@ public:
     date* if_date() noexcept { return boost::variant2::get_if<date>(&repr_); }
     datetime* if_datetime() noexcept { return boost::variant2::get_if<datetime>(&repr_); }
     time* if_time() noexcept { return boost::variant2::get_if<time>(&repr_); }
-
 
     const std::int64_t& as_int64() const { return internal_as<std::int64_t>(); }
     const std::uint64_t& as_uint64() const { return internal_as<std::uint64_t>(); }

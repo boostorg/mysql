@@ -8,16 +8,9 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test_suite.hpp>
-#include <boost/type_index.hpp>
-#include <boost/test/data/monomorphic/collection.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/utility/string_view_fwd.hpp>
 #include <cstddef>
 #include <cstdint>
-#include <set>
 #include <sstream>
-#include <map>
-#include <tuple>
 #include "test_common.hpp"
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
@@ -27,7 +20,6 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 using namespace boost::mysql::test;
 using boost::mysql::field_view;
 using boost::mysql::field_kind;
-using boost::typeindex::type_index;
 
 namespace
 {

@@ -47,6 +47,7 @@ add_executable(
     # unit/detail/protocol/row_deserialization.cpp
 
     unit/field_view.cpp
+    unit/field.cpp
 
     # unit/metadata.cpp
     # unit/value_constexpr.cpp

@@ -89,7 +89,7 @@ public:
       * Caution: `value(NULL)` will __NOT__ match this overload. It will try to construct
       * a `boost::string_view` from a NULL C string, causing undefined behavior.
       */
-    BOOST_CXX14_CONSTEXPR field_view(std::nullptr_t) noexcept : repr_(null_t()) {}
+    BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept : repr_(null_t()) {}
 
     BOOST_CXX14_CONSTEXPR field_view(signed char v) noexcept : repr_(std::int64_t(v)) {}
     BOOST_CXX14_CONSTEXPR field_view(short v) noexcept : repr_(std::int64_t(v)) {}
@@ -111,7 +111,7 @@ public:
     BOOST_CXX14_CONSTEXPR field_view(const time& v) noexcept : repr_(v) {}
 
     // TODO: hide this
-    BOOST_CXX14_CONSTEXPR field_view(detail::string_view_offset v) noexcept : repr_(v) {}
+    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v) noexcept : repr_(v) {}
 
     BOOST_CXX14_CONSTEXPR inline field_kind kind() const noexcept;
 
