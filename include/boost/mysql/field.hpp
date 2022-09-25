@@ -135,14 +135,14 @@ public:
     time& get_time() noexcept { return internal_get<time>(); }
 
     void emplace_null() noexcept { *this = nullptr; }
-    std::int64_t& emplace_int64(std::int64_t v) noexcept { return (*this = v).get_int64(); }
-    std::uint64_t& emplace_uint64(std::uint64_t v) noexcept { return (*this = v).get_uint64(); }
-    std::string& emplace_string(std::string&& v) noexcept { return (*this = std::move(v)).get_string(); }
-    float& emplace_float(float v) noexcept { return (*this = v).get_float(); }
-    double& emplace_double(double v) noexcept { return (*this = v).get_double(); }
-    date& emplace_date(const date& v) noexcept { return (*this = v).get_date(); }
-    datetime& emplace_datetime(const datetime& v) noexcept { return (*this = v).get_datetime(); }
-    time& emplace_time(const time& v) noexcept { return (*this = v).get_time(); }
+    void emplace_int64(std::int64_t v) noexcept { *this = v; }
+    void emplace_uint64(std::uint64_t v) noexcept { *this = v; }
+    void emplace_string(std::string v) noexcept { *this = std::move(v); }
+    void emplace_float(float v) noexcept { *this = v; }
+    void emplace_double(double v) noexcept { *this = v; }
+    void emplace_date(const date& v) noexcept { *this = v; }
+    void emplace_datetime(const datetime& v) noexcept { *this = v; }
+    void emplace_time(const time& v) noexcept { *this = v; }
 
     inline operator field_view() const noexcept;
 
