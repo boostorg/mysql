@@ -80,6 +80,8 @@ constexpr auto make_execute_params(
     return make_execute_params(stmt, std::begin(col), std::end(col));
 }
 
+// TODO: add something to create these from T...
+
 } // mysql
 } // boost
 

@@ -11,55 +11,14 @@
 #include <boost/utility/string_view.hpp>
 #include <boost/variant2/variant.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/datetime_types.hpp>
+#include <boost/mysql/field_kind.hpp>
 #include <cstdint>
-#include <chrono>
-#include <limits>
-#include <ostream>
+#include <iosfwd>
 #include <array>
-#include <exception>
-
 
 namespace boost {
 namespace mysql {
-
-/**
- * \brief Duration representing a day (24 hours).
- * \details Suitable to represent the range of dates MySQL offers.
- * May differ in representation from `std::chrono::days` in C++20.
- */
-using days = std::chrono::duration<int, std::ratio<3600 * 24>>;
-
-/// Type representing MySQL `__DATE__` data type.
-using date = std::chrono::time_point<std::chrono::system_clock, days>;
-
-/// Type representing MySQL `__DATETIME__` and `__TIMESTAMP__` data types.
-using datetime = std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds>;
-
-/// Type representing MySQL `__TIME__` data type.
-using time = std::chrono::microseconds;
-
-/// Exception type thrown when trying to access a [reflink value] with an incorrect type.
-class bad_field_access : public std::exception
-{
-public:
-    const char* what() const noexcept override { return "bad_value_access"; }
-};
-
-enum class field_kind
-{
-    // Order here is important
-    null = 0,
-    int64,
-    uint64,
-    string,
-    float_,
-    double_,
-    date,
-    datetime,
-    time
-};
-
-inline std::ostream& operator<<(std::ostream& os, field_kind v);
 
 /**
  * \brief Represents a value in the database of any of the allowed types.
@@ -125,32 +84,23 @@ public:
     BOOST_CXX14_CONSTEXPR bool is_datetime() const noexcept { return kind() == field_kind::datetime; }
     BOOST_CXX14_CONSTEXPR bool is_time() const noexcept { return kind() == field_kind::time; }
 
-    BOOST_CXX14_CONSTEXPR const std::int64_t* if_int64() const noexcept { return boost::variant2::get_if<std::int64_t>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const std::uint64_t* if_uint64() const noexcept { return boost::variant2::get_if<std::uint64_t>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const boost::string_view* if_string() const noexcept { return boost::variant2::get_if<boost::string_view>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const float* if_float() const noexcept { return boost::variant2::get_if<float>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const double* if_double() const noexcept { return boost::variant2::get_if<double>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const date* if_date() const noexcept { return boost::variant2::get_if<date>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const datetime* if_datetime() const noexcept { return boost::variant2::get_if<datetime>(&repr_); }
-    BOOST_CXX14_CONSTEXPR const time* if_time() const noexcept { return boost::variant2::get_if<time>(&repr_); }
+    BOOST_CXX14_CONSTEXPR std::int64_t as_int64() const { return internal_as<std::int64_t>(); }
+    BOOST_CXX14_CONSTEXPR std::uint64_t as_uint64() const { return internal_as<std::uint64_t>(); }
+    BOOST_CXX14_CONSTEXPR boost::string_view as_string() const { return internal_as<boost::string_view>(); }
+    BOOST_CXX14_CONSTEXPR float as_float() const { return internal_as<float>(); }
+    BOOST_CXX14_CONSTEXPR double as_double() const { return internal_as<double>(); }
+    BOOST_CXX14_CONSTEXPR date as_date() const { return internal_as<date>(); }
+    BOOST_CXX14_CONSTEXPR datetime as_datetime() const { return internal_as<datetime>(); }
+    BOOST_CXX14_CONSTEXPR time as_time() const { return internal_as<time>(); }
 
-    BOOST_CXX14_CONSTEXPR const std::int64_t& as_int64() const { return internal_as<std::int64_t>(); }
-    BOOST_CXX14_CONSTEXPR const std::uint64_t& as_uint64() const { return internal_as<std::uint64_t>(); }
-    BOOST_CXX14_CONSTEXPR const boost::string_view& as_string() const { return internal_as<boost::string_view>(); }
-    BOOST_CXX14_CONSTEXPR const float& as_float() const { return internal_as<float>(); }
-    BOOST_CXX14_CONSTEXPR const double& as_double() const { return internal_as<double>(); }
-    BOOST_CXX14_CONSTEXPR const date& as_date() const { return internal_as<date>(); }
-    BOOST_CXX14_CONSTEXPR const datetime& as_datetime() const { return internal_as<datetime>(); }
-    BOOST_CXX14_CONSTEXPR const time& as_time() const { return internal_as<time>(); }
-
-    BOOST_CXX14_CONSTEXPR const std::int64_t& get_int64() const noexcept { return internal_get<std::int64_t>(); }
-    BOOST_CXX14_CONSTEXPR const std::uint64_t& get_uint64() const noexcept { return internal_get<std::uint64_t>(); }
-    BOOST_CXX14_CONSTEXPR const boost::string_view& get_string() const noexcept { return internal_get<boost::string_view>(); }
-    BOOST_CXX14_CONSTEXPR const float& get_float() const noexcept { return internal_get<float>(); }
-    BOOST_CXX14_CONSTEXPR const double& get_double() const noexcept { return internal_get<double>(); }
-    BOOST_CXX14_CONSTEXPR const date& get_date() const noexcept { return internal_get<date>(); }
-    BOOST_CXX14_CONSTEXPR const datetime& get_datetime() const noexcept { return internal_get<datetime>(); }
-    BOOST_CXX14_CONSTEXPR const time& get_time() const noexcept { return internal_get<time>(); }
+    BOOST_CXX14_CONSTEXPR std::int64_t get_int64() const noexcept { return internal_get<std::int64_t>(); }
+    BOOST_CXX14_CONSTEXPR std::uint64_t get_uint64() const noexcept { return internal_get<std::uint64_t>(); }
+    BOOST_CXX14_CONSTEXPR boost::string_view get_string() const noexcept { return internal_get<boost::string_view>(); }
+    BOOST_CXX14_CONSTEXPR float get_float() const noexcept { return internal_get<float>(); }
+    BOOST_CXX14_CONSTEXPR double get_double() const noexcept { return internal_get<double>(); }
+    BOOST_CXX14_CONSTEXPR date get_date() const noexcept { return internal_get<date>(); }
+    BOOST_CXX14_CONSTEXPR datetime get_datetime() const noexcept { return internal_get<datetime>(); }
+    BOOST_CXX14_CONSTEXPR time get_time() const noexcept { return internal_get<time>(); }
 
     /// Tests for equality (type and value); see [link mysql.values.relational this section] for more info.
     BOOST_CXX14_CONSTEXPR bool operator==(const field_view& rhs) const noexcept;
@@ -218,24 +168,6 @@ inline std::ostream& operator<<(std::ostream& os, const field_view& v);
  */
 template <class... Types>
 BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_field_views(Types&&... args);
-
-/// The minimum allowed value for [reflink date] (0000-01-01).
-BOOST_CXX14_CONSTEXPR const date min_date { days(-719528) };
-
-/// The maximum allowed value for [reflink date] (9999-12-31).
-BOOST_CXX14_CONSTEXPR const date max_date { days(2932896) };
-
-/// The minimum allowed value for [reflink datetime].
-BOOST_CXX14_CONSTEXPR const datetime min_datetime = min_date;
-
-/// The maximum allowed value for [reflink datetime].
-BOOST_CXX14_CONSTEXPR const datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
-
-/// The minimum allowed value for [reflink time].
-constexpr time min_time = -std::chrono::hours(839);
-
-/// The maximum allowed value for [reflink time].
-constexpr time max_time = std::chrono::hours(839);
 
 } // mysql
 } // boost

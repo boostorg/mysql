@@ -204,55 +204,6 @@ BOOST_AUTO_TEST_CASE(is)
     }
 }
 
-BOOST_AUTO_TEST_CASE(if_pointer_validity)
-{
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            if (tc.is_int64)
-                BOOST_TEST(tc.field.if_int64() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_int64() == nullptr);
-
-            if (tc.is_uint64)
-                BOOST_TEST(tc.field.if_uint64() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_uint64() == nullptr);
-
-            if (tc.is_string)
-                BOOST_TEST(tc.field.if_string() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_string() == nullptr);
-
-            if (tc.is_float)
-                BOOST_TEST(tc.field.if_float() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_float() == nullptr);
-
-            if (tc.is_double)
-                BOOST_TEST(tc.field.if_double() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_double() == nullptr);
-
-            if (tc.is_date)
-                BOOST_TEST(tc.field.if_date() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_date() == nullptr);
-
-            if (tc.is_datetime)
-                BOOST_TEST(tc.field.if_datetime() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_datetime() == nullptr);
-
-            if (tc.is_time)
-                BOOST_TEST(tc.field.if_time() != nullptr);
-            else
-                BOOST_TEST(tc.field.if_time() == nullptr);
-        }
-    }
-}
-
 BOOST_AUTO_TEST_CASE(as_exceptions)
 {
     for (const auto& tc : test_cases)
@@ -306,8 +257,6 @@ BOOST_AUTO_TEST_CASE(as_exceptions)
 BOOST_AUTO_TEST_CASE(int64)
 {
     field_view f (-1);
-    BOOST_TEST_REQUIRE(f.if_int64() != nullptr);
-    BOOST_TEST(*f.if_int64() == -1);
     BOOST_TEST(f.as_int64() == -1);
     BOOST_TEST(f.get_int64() == -1);
 }
@@ -315,8 +264,6 @@ BOOST_AUTO_TEST_CASE(int64)
 BOOST_AUTO_TEST_CASE(uint64)
 {
     field_view f (42u);
-    BOOST_TEST_REQUIRE(f.if_uint64() != nullptr);
-    BOOST_TEST(*f.if_uint64() == 42u);
     BOOST_TEST(f.as_uint64() == 42u);
     BOOST_TEST(f.get_uint64() == 42u);
 }
@@ -324,8 +271,6 @@ BOOST_AUTO_TEST_CASE(uint64)
 BOOST_AUTO_TEST_CASE(string)
 {
     field_view f ("test");
-    BOOST_TEST_REQUIRE(f.if_string() != nullptr);
-    BOOST_TEST(*f.if_string() == "test");
     BOOST_TEST(f.as_string() == "test");
     BOOST_TEST(f.get_string() == "test");
 }
@@ -333,8 +278,6 @@ BOOST_AUTO_TEST_CASE(string)
 BOOST_AUTO_TEST_CASE(float_)
 {
     field_view f (4.2f);
-    BOOST_TEST_REQUIRE(f.if_float() != nullptr);
-    BOOST_TEST(*f.if_float() == 4.2f);
     BOOST_TEST(f.as_float() == 4.2f);
     BOOST_TEST(f.get_float() == 4.2f);
 }
@@ -342,8 +285,6 @@ BOOST_AUTO_TEST_CASE(float_)
 BOOST_AUTO_TEST_CASE(double_)
 {
     field_view f (4.2);
-    BOOST_TEST_REQUIRE(f.if_double() != nullptr);
-    BOOST_TEST(*f.if_double() == 4.2);
     BOOST_TEST(f.as_double() == 4.2);
     BOOST_TEST(f.get_double() == 4.2);
 }
@@ -352,8 +293,6 @@ BOOST_AUTO_TEST_CASE(date)
 {
     auto d = makedate(2020, 1, 2);
     field_view f (d);
-    BOOST_TEST_REQUIRE(f.if_date() != nullptr);
-    BOOST_TEST(*f.if_date() == d);
     BOOST_TEST(f.as_date() == d);
     BOOST_TEST(f.get_date() == d);
 }
@@ -362,8 +301,6 @@ BOOST_AUTO_TEST_CASE(datetime)
 {
     auto dt = makedt(2020, 1, 2);
     field_view f (dt);
-    BOOST_TEST_REQUIRE(f.if_datetime() != nullptr);
-    BOOST_TEST(*f.if_datetime() == dt);
     BOOST_TEST(f.as_datetime() == dt);
     BOOST_TEST(f.get_datetime() == dt);
 }
@@ -372,8 +309,6 @@ BOOST_AUTO_TEST_CASE(time)
 {
     auto t = maket(2020, 1, 2);
     field_view f (t);
-    BOOST_TEST_REQUIRE(f.if_time() != nullptr);
-    BOOST_TEST(*f.if_time() == t);
     BOOST_TEST(f.as_time() == t);
     BOOST_TEST(f.get_time() == t);
 }

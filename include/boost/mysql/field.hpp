@@ -11,6 +11,8 @@
 #include <boost/utility/string_view.hpp>
 #include <boost/variant2/variant.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/datetime_types.hpp>
+#include <boost/mysql/field_kind.hpp>
 #include <cstddef>
 #include <ostream>
 #include <string>
@@ -79,24 +81,6 @@ public:
     bool is_date() const noexcept { return kind() == field_kind::date; }
     bool is_datetime() const noexcept { return kind() == field_kind::datetime; }
     bool is_time() const noexcept { return kind() == field_kind::time; }
-
-    const std::int64_t* if_int64() const noexcept { return boost::variant2::get_if<std::int64_t>(&repr_); }
-    const std::uint64_t* if_uint64() const noexcept { return boost::variant2::get_if<std::uint64_t>(&repr_); }
-    const std::string* if_string() const noexcept { return boost::variant2::get_if<std::string>(&repr_); }
-    const float* if_float() const noexcept { return boost::variant2::get_if<float>(&repr_); }
-    const double* if_double() const noexcept { return boost::variant2::get_if<double>(&repr_); }
-    const date* if_date() const noexcept { return boost::variant2::get_if<date>(&repr_); }
-    const datetime* if_datetime() const noexcept { return boost::variant2::get_if<datetime>(&repr_); }
-    const time* if_time() const noexcept { return boost::variant2::get_if<time>(&repr_); }
-
-    std::int64_t* if_int64() noexcept { return boost::variant2::get_if<std::int64_t>(&repr_); }
-    std::uint64_t* if_uint64() noexcept { return boost::variant2::get_if<std::uint64_t>(&repr_); }
-    std::string* if_string() noexcept { return boost::variant2::get_if<std::string>(&repr_); }
-    float* if_float() noexcept { return boost::variant2::get_if<float>(&repr_); }
-    double* if_double() noexcept { return boost::variant2::get_if<double>(&repr_); }
-    date* if_date() noexcept { return boost::variant2::get_if<date>(&repr_); }
-    datetime* if_datetime() noexcept { return boost::variant2::get_if<datetime>(&repr_); }
-    time* if_time() noexcept { return boost::variant2::get_if<time>(&repr_); }
 
     const std::int64_t& as_int64() const { return internal_as<std::int64_t>(); }
     const std::uint64_t& as_uint64() const { return internal_as<std::uint64_t>(); }
