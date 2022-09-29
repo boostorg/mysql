@@ -11,7 +11,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/connection_params.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
 #include <vector>
 #include <algorithm>
@@ -21,8 +21,6 @@
 namespace boost {
 namespace mysql {
 namespace test {
-
-using detail::stringize;
 
 template <class... Types>
 std::vector<field_view> make_field_view_vector(Types&&... args)
@@ -36,13 +34,13 @@ row makerow(Types&&... args)
     return row(make_field_view_vector(std::forward<Types>(args)...), {});
 }
 
-inline date makedate(int num_years, unsigned num_months, unsigned num_days)
+BOOST_CXX14_CONSTEXPR inline date makedate(int num_years, unsigned num_months, unsigned num_days)
 {
     return date(days(detail::ymd_to_days(
         detail::year_month_day{num_years, num_months, num_days})));
 }
 
-inline datetime makedt(int years, unsigned months, unsigned days,
+BOOST_CXX14_CONSTEXPR inline datetime makedt(int years, unsigned months, unsigned days,
     int hours=0, int mins=0, int secs=0, int micros=0)
 {
     return datetime(makedate(years, months, days)) +
@@ -50,7 +48,7 @@ inline datetime makedt(int years, unsigned months, unsigned days,
            std::chrono::seconds(secs) + std::chrono::microseconds(micros);
 }
 
-inline time maket(int hours, int mins, int secs, int micros=0)
+BOOST_CXX14_CONSTEXPR inline time maket(int hours, int mins, int secs, int micros=0)
 {
     return std::chrono::hours(hours) + std::chrono::minutes(mins)
          + std::chrono::seconds(secs) + std::chrono::microseconds(micros);

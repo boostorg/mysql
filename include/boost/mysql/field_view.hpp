@@ -166,10 +166,22 @@ private:
         } sv_offset;
         const detail::field_impl* field_ptr;
 
-        boost::string_view get_string() const noexcept { return boost::string_view(string.ptr, string.size); }
-        date get_date() const noexcept { return date(date::duration(date_));}
-        datetime get_datetime() const noexcept { return datetime(datetime::duration(datetime_)); }
-        time get_time() const noexcept { return time(time_); }
+        BOOST_CXX14_CONSTEXPR repr_t() noexcept : int64{} {}
+        BOOST_CXX14_CONSTEXPR repr_t(std::int64_t v) noexcept : int64(v) {}
+        BOOST_CXX14_CONSTEXPR repr_t(std::uint64_t v) noexcept : uint64(v) {}
+        BOOST_CXX14_CONSTEXPR repr_t(boost::string_view v) noexcept : string{v.data(), v.size()} {}
+        BOOST_CXX14_CONSTEXPR repr_t(float v) noexcept : float_(v) {}
+        BOOST_CXX14_CONSTEXPR repr_t(double v) noexcept : double_(v) {}
+        BOOST_CXX14_CONSTEXPR repr_t(date v) noexcept : date_(v.time_since_epoch().count()) {}
+        BOOST_CXX14_CONSTEXPR repr_t(datetime v) noexcept : datetime_(v.time_since_epoch().count()) {}
+        BOOST_CXX14_CONSTEXPR repr_t(time v) noexcept : time_(v.count()) {}
+        BOOST_CXX14_CONSTEXPR repr_t(detail::string_view_offset v) noexcept : sv_offset{v.offset(), v.size()} {}
+        BOOST_CXX14_CONSTEXPR repr_t(const detail::field_impl* v) noexcept : field_ptr(v) {}
+
+        BOOST_CXX14_CONSTEXPR boost::string_view get_string() const noexcept { return boost::string_view(string.ptr, string.size); }
+        BOOST_CXX14_CONSTEXPR date get_date() const noexcept { return date(date::duration(date_));}
+        BOOST_CXX14_CONSTEXPR datetime get_datetime() const noexcept { return datetime(datetime::duration(datetime_)); }
+        BOOST_CXX14_CONSTEXPR time get_time() const noexcept { return time(time_); }
     };
 
     internal_kind ikind_ { internal_kind::null };
@@ -177,8 +189,8 @@ private:
     
     friend std::ostream& operator<<(std::ostream& os, const field_view& v);
 
-    bool is_field_ptr() const noexcept { return ikind_ == internal_kind::field_ptr; }
-    inline void check_kind(internal_kind expected) const;
+    BOOST_CXX14_CONSTEXPR bool is_field_ptr() const noexcept { return ikind_ == internal_kind::field_ptr; }
+    BOOST_CXX14_CONSTEXPR inline void check_kind(internal_kind expected) const;
 };
 
 /**

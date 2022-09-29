@@ -7,6 +7,7 @@
 
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/field.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test_suite.hpp>
 #include <cstddef>
@@ -23,6 +24,7 @@ using namespace boost::mysql::test;
 using boost::mysql::field_view;
 using boost::mysql::field;
 using boost::mysql::field_kind;
+using boost::mysql::detail::stringize;
 
 namespace
 {
@@ -837,6 +839,98 @@ BOOST_AUTO_TEST_CASE(operator_stream)
         }
     }
 }
+
+// Make sure constxpr can actually be used in a constexpr context
+// C++14+ only
+#ifndef BOOST_NO_CXX14_CONSTEXPR
+
+BOOST_AUTO_TEST_SUITE(constexpr_fns)
+
+BOOST_AUTO_TEST_CASE(null)
+{
+    constexpr field_view v {};
+    constexpr field_view v2 (nullptr);
+    static_assert(v.is_null(), "");
+    static_assert(v == v2, "");
+    static_assert(!(v != v2), "");
+}
+
+BOOST_AUTO_TEST_CASE(int64)
+{
+    constexpr field_view v (60);
+    static_assert(v.is_int64(), "");
+    static_assert(v.as_int64() == 60, "");
+    static_assert(v.get_int64() == 60, "");
+    static_assert(v == field_view(60), "");
+}
+
+BOOST_AUTO_TEST_CASE(uint64)
+{
+    constexpr field_view v (60u);
+    static_assert(v.is_uint64(), "");
+    static_assert(v.as_uint64() == 60u, "");
+    static_assert(v.get_uint64() == 60u, "");
+    static_assert(v == field_view(60u), "");
+}
+
+BOOST_AUTO_TEST_CASE(string)
+{
+    constexpr field_view v ("test");
+    static_assert(v.is_string(), "");
+    // Comparisons are not constexpr
+}
+
+BOOST_AUTO_TEST_CASE(float_)
+{
+    constexpr field_view v (4.2f);
+    static_assert(v.is_float(), "");
+    static_assert(v.as_float() == 4.2f, "");
+    static_assert(v.get_float() == 4.2f, "");
+    static_assert(v == field_view(4.2f), "");
+}
+
+BOOST_AUTO_TEST_CASE(double_)
+{
+    constexpr field_view v (4.2);
+    static_assert(v.is_double(), "");
+    static_assert(v.as_double() == 4.2, "");
+    static_assert(v.get_double() == 4.2, "");
+    static_assert(v == field_view(4.2), "");
+}
+
+BOOST_AUTO_TEST_CASE(date)
+{
+    constexpr auto d = makedate(2020, 1, 1);
+    constexpr field_view v (d);
+    static_assert(v.is_date(), "");
+    static_assert(v.as_date() == d, "");
+    static_assert(v.get_date() == d, "");
+    static_assert(v == field_view(d), "");
+}
+
+BOOST_AUTO_TEST_CASE(datetime)
+{
+    constexpr auto d = makedt(2020, 1, 1);
+    constexpr field_view v (d);
+    static_assert(v.is_datetime(), "");
+    static_assert(v.as_datetime() == d, "");
+    static_assert(v.get_datetime() == d, "");
+    static_assert(v == field_view(d), "");
+}
+
+BOOST_AUTO_TEST_CASE(time)
+{
+    constexpr auto t = maket(8, 1, 1);
+    constexpr field_view v (t);
+    static_assert(v.is_time(), "");
+    static_assert(v.as_time() == t, "");
+    static_assert(v.get_time() == t, "");
+    static_assert(v == field_view(t), "");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+#endif // BOOST_NO_CXX14_CONSTEXPR
 
 BOOST_AUTO_TEST_SUITE_END()
 

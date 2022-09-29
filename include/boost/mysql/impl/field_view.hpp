@@ -74,129 +74,129 @@ inline std::ostream& print_datetime(std::ostream& os, const datetime& value)
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     signed char v
 ) noexcept :
-    ikind_(internal_kind::int64)
+    ikind_(internal_kind::int64),
+    repr_(std::int64_t(v))
 {
-    repr_.int64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     short v
 ) noexcept :
-    ikind_(internal_kind::int64)
+    ikind_(internal_kind::int64),
+    repr_(std::int64_t(v))
 {
-    repr_.int64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     int v
 ) noexcept :
-    ikind_(internal_kind::int64)
+    ikind_(internal_kind::int64),
+    repr_(std::int64_t(v))
 {
-    repr_.int64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     long v
 ) noexcept :
-    ikind_(internal_kind::int64)
+    ikind_(internal_kind::int64),
+    repr_(std::int64_t(v))
 {
-    repr_.int64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     long long v
 ) noexcept :
-    ikind_(internal_kind::int64)
+    ikind_(internal_kind::int64),
+    repr_(std::int64_t(v))
 {
-    repr_.int64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     unsigned char v
 ) noexcept : 
-    ikind_(internal_kind::uint64)
+    ikind_(internal_kind::uint64),
+    repr_(std::uint64_t(v))
 {
-    repr_.uint64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     unsigned short v
 ) noexcept : 
-    ikind_(internal_kind::uint64)
+    ikind_(internal_kind::uint64),
+    repr_(std::uint64_t(v))
 {
-    repr_.uint64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     unsigned int v
 ) noexcept :
-    ikind_(internal_kind::uint64)
+    ikind_(internal_kind::uint64),
+    repr_(std::uint64_t(v))
 {
-    repr_.uint64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     unsigned long v
 ) noexcept :
-    ikind_(internal_kind::uint64)
+    ikind_(internal_kind::uint64),
+    repr_(std::uint64_t(v))
 {
-    repr_.uint64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     unsigned long long v
 ) noexcept : 
-    ikind_(internal_kind::uint64)
+    ikind_(internal_kind::uint64),
+    repr_(std::uint64_t(v))
 {
-    repr_.uint64 = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     boost::string_view v
 ) noexcept :
-    ikind_(internal_kind::string)
+    ikind_(internal_kind::string),
+    repr_(v)
 {
-    repr_.string = { v.data(), v.size()};
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     float v
 ) noexcept :
-    ikind_(internal_kind::float_)
+    ikind_(internal_kind::float_),
+    repr_(v)
 {
-    repr_.float_ = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     double v
 ) noexcept :
-    ikind_(internal_kind::double_)
+    ikind_(internal_kind::double_),
+    repr_(v)
 {
-    repr_.double_ = v;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     const date& v
 ) noexcept :
-    ikind_(internal_kind::date)
+    ikind_(internal_kind::date),
+    repr_(v)
 {
-    repr_.date_ = v.time_since_epoch().count();
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     const datetime& v
 ) noexcept :
-    ikind_(internal_kind::datetime)
+    ikind_(internal_kind::datetime),
+    repr_(v)
 {
-    repr_.datetime_ = v.time_since_epoch().count();
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
     const time& v
 ) noexcept :
-    ikind_(internal_kind::time)
+    ikind_(internal_kind::time),
+    repr_(v)
 {
-    repr_.time_ = v.count();
 }
 
 BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::kind() const noexcept
@@ -338,7 +338,7 @@ boost::mysql::field_view::get_time() const noexcept
     return is_field_ptr() ? repr_.field_ptr->get<time>() : repr_.get_time();
 }
 
-void boost::mysql::field_view::check_kind(
+BOOST_CXX14_CONSTEXPR void boost::mysql::field_view::check_kind(
     internal_kind expected
 ) const
 {
