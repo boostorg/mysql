@@ -8,7 +8,8 @@
 #ifndef BOOST_MYSQL_ROW_VIEW_HPP
 #define BOOST_MYSQL_ROW_VIEW_HPP
 
-#include <boost/mysql/detail/auxiliar/field_ptr.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/field.hpp>
 #include <cstddef>
 #include <iosfwd>
 #include <iterator>
@@ -22,7 +23,7 @@ class row_view
 public:
     row_view() = default;
 
-    using iterator = detail::field_ptr;
+    using iterator = const field_view*;
     using const_iterator = iterator;
     using value_type = field;
     using reference = field_view;
@@ -41,9 +42,8 @@ public:
 
     // TODO: hide these
     row_view(const field_view* f, std::size_t size) noexcept : fields_ (f), size_(size) {}
-    row_view(const field* f, std::size_t size) noexcept : fields_(f), size_(size) {}
 private:
-    detail::field_ptr fields_ {};
+    const field_view* fields_ {};
     std::size_t size_ {};
 };
 

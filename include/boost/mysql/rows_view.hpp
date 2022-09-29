@@ -30,8 +30,8 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
 
-    iterator begin() const noexcept { return iterator(this, 0); }
-    iterator end() const noexcept { return iterator(this, size()); }
+    const_iterator begin() const noexcept { return iterator(this, 0); }
+    const_iterator end() const noexcept { return iterator(this, size()); }
     inline row_view at(std::size_t i) const;
     inline row_view operator[](std::size_t i) const noexcept;
     row_view front() const noexcept { return (*this)[0]; }
