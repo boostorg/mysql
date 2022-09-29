@@ -8,11 +8,12 @@
 #ifndef BOOST_MYSQL_FIELD_VIEW_HPP
 #define BOOST_MYSQL_FIELD_VIEW_HPP
 
-#include <boost/utility/string_view.hpp>
-#include <boost/variant2/variant.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/datetime_types.hpp>
 #include <boost/mysql/field_kind.hpp>
+#include <boost/utility/string_view.hpp>
+#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
 #include <array>
@@ -48,29 +49,37 @@ public:
       * Caution: `value(NULL)` will __NOT__ match this overload. It will try to construct
       * a `boost::string_view` from a NULL C string, causing undefined behavior.
       */
-    BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept : repr_(null_t()) {}
+    BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}
 
-    BOOST_CXX14_CONSTEXPR field_view(signed char v) noexcept : repr_(std::int64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(short v) noexcept : repr_(std::int64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(int v) noexcept : repr_(std::int64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(long v) noexcept : repr_(std::int64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(long long v) noexcept : repr_(std::int64_t(v)) {}
+    BOOST_CXX14_CONSTEXPR inline field_view(signed char v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(short v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(int v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(long v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(long long v) noexcept;
 
-    BOOST_CXX14_CONSTEXPR field_view(unsigned char v) noexcept : repr_(std::uint64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(unsigned short v) noexcept : repr_(std::uint64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(unsigned int v) noexcept : repr_(std::uint64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(unsigned long v) noexcept : repr_(std::uint64_t(v)) {}
-    BOOST_CXX14_CONSTEXPR field_view(unsigned long long v) noexcept : repr_(std::uint64_t(v)) {}
+    BOOST_CXX14_CONSTEXPR inline field_view(unsigned char v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(unsigned short v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(unsigned int v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(unsigned long v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(unsigned long long v) noexcept;
 
-    BOOST_CXX14_CONSTEXPR field_view(boost::string_view v) noexcept : repr_(v) {}
-    BOOST_CXX14_CONSTEXPR field_view(float v) noexcept : repr_(v) {}
-    BOOST_CXX14_CONSTEXPR field_view(double v) noexcept : repr_(v) {}
-    BOOST_CXX14_CONSTEXPR field_view(const date& v) noexcept : repr_(v) {}
-    BOOST_CXX14_CONSTEXPR field_view(const datetime& v) noexcept : repr_(v) {}
-    BOOST_CXX14_CONSTEXPR field_view(const time& v) noexcept : repr_(v) {}
+    BOOST_CXX14_CONSTEXPR inline field_view(boost::string_view v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(float v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(double v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(const date& v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(const datetime& v) noexcept;
+    BOOST_CXX14_CONSTEXPR inline field_view(const time& v) noexcept;
 
     // TODO: hide this
-    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v) noexcept : repr_(v) {}
+    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v) noexcept : ikind_(internal_kind::sv_offset)
+    {
+        repr_.sv_offset = { v.offset(), v.size() };
+    }
+    BOOST_CXX14_CONSTEXPR explicit field_view(const detail::field_impl* v) noexcept : ikind_(internal_kind::field_ptr)
+    {
+        repr_.field_ptr = v;
+    }
+
 
     BOOST_CXX14_CONSTEXPR inline field_kind kind() const noexcept;
 
@@ -84,23 +93,23 @@ public:
     BOOST_CXX14_CONSTEXPR bool is_datetime() const noexcept { return kind() == field_kind::datetime; }
     BOOST_CXX14_CONSTEXPR bool is_time() const noexcept { return kind() == field_kind::time; }
 
-    BOOST_CXX14_CONSTEXPR std::int64_t as_int64() const { return internal_as<std::int64_t>(); }
-    BOOST_CXX14_CONSTEXPR std::uint64_t as_uint64() const { return internal_as<std::uint64_t>(); }
-    BOOST_CXX14_CONSTEXPR boost::string_view as_string() const { return internal_as<boost::string_view>(); }
-    BOOST_CXX14_CONSTEXPR float as_float() const { return internal_as<float>(); }
-    BOOST_CXX14_CONSTEXPR double as_double() const { return internal_as<double>(); }
-    BOOST_CXX14_CONSTEXPR date as_date() const { return internal_as<date>(); }
-    BOOST_CXX14_CONSTEXPR datetime as_datetime() const { return internal_as<datetime>(); }
-    BOOST_CXX14_CONSTEXPR time as_time() const { return internal_as<time>(); }
+    BOOST_CXX14_CONSTEXPR inline std::int64_t as_int64() const;
+    BOOST_CXX14_CONSTEXPR inline std::uint64_t as_uint64() const;
+    BOOST_CXX14_CONSTEXPR inline boost::string_view as_string() const;
+    BOOST_CXX14_CONSTEXPR inline float as_float() const;
+    BOOST_CXX14_CONSTEXPR inline double as_double() const;
+    BOOST_CXX14_CONSTEXPR inline date as_date() const;
+    BOOST_CXX14_CONSTEXPR inline datetime as_datetime() const;
+    BOOST_CXX14_CONSTEXPR inline time as_time() const;
 
-    BOOST_CXX14_CONSTEXPR std::int64_t get_int64() const noexcept { return internal_get<std::int64_t>(); }
-    BOOST_CXX14_CONSTEXPR std::uint64_t get_uint64() const noexcept { return internal_get<std::uint64_t>(); }
-    BOOST_CXX14_CONSTEXPR boost::string_view get_string() const noexcept { return internal_get<boost::string_view>(); }
-    BOOST_CXX14_CONSTEXPR float get_float() const noexcept { return internal_get<float>(); }
-    BOOST_CXX14_CONSTEXPR double get_double() const noexcept { return internal_get<double>(); }
-    BOOST_CXX14_CONSTEXPR date get_date() const noexcept { return internal_get<date>(); }
-    BOOST_CXX14_CONSTEXPR datetime get_datetime() const noexcept { return internal_get<datetime>(); }
-    BOOST_CXX14_CONSTEXPR time get_time() const noexcept { return internal_get<time>(); }
+    BOOST_CXX14_CONSTEXPR inline std::int64_t get_int64() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline std::uint64_t get_uint64() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline boost::string_view get_string() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline float get_float() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline double get_double() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline date get_date() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline datetime get_datetime() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline time get_time() const noexcept;
 
     /// Tests for equality (type and value); see [link mysql.values.relational this section] for more info.
     BOOST_CXX14_CONSTEXPR bool operator==(const field_view& rhs) const noexcept;
@@ -111,39 +120,65 @@ public:
     // TODO: hide this
     void offset_to_string_view(const std::uint8_t* buffer_first) noexcept
     {
-        auto* sv_index = boost::variant2::get_if<detail::string_view_offset>(&repr_);
-        if (sv_index)
+        if (ikind_ == internal_kind::sv_offset)
         {
-            repr_ = sv_index->to_string_view(reinterpret_cast<const char*>(buffer_first));
+            ikind_ = internal_kind::string;
+            repr_.string = {
+                reinterpret_cast<const char*>(buffer_first) + repr_.sv_offset.offset,
+                repr_.sv_offset.size
+            };
         }
     }
 private:
-    struct print_visitor;
+    enum class internal_kind
+    {
+        null = 0,
+        int64,
+        uint64,
+        string,
+        float_,
+        double_,
+        date,
+        datetime,
+        time,
+        sv_offset,
+        field_ptr
+    };
+
+    union repr_t
+    {
+        std::int64_t int64;
+        std::uint64_t uint64;
+        struct
+        {
+            const char* ptr;
+            std::size_t size;
+        } string;
+        float float_;
+        double double_;
+        date::rep date_;
+        datetime::rep datetime_;
+        time::rep time_;
+        struct
+        {
+            std::size_t offset;
+            std::size_t size;
+        } sv_offset;
+        const detail::field_impl* field_ptr;
+
+        boost::string_view get_string() const noexcept { return boost::string_view(string.ptr, string.size); }
+        date get_date() const noexcept { return date(date::duration(date_));}
+        datetime get_datetime() const noexcept { return datetime(datetime::duration(datetime_)); }
+        time get_time() const noexcept { return time(time_); }
+    };
+
+    internal_kind ikind_ { internal_kind::null };
+    repr_t repr_;
     
-    using null_t = boost::variant2::monostate;
-
-    using variant_type = boost::variant2::variant<
-        null_t,            // Any of the below when the value is NULL
-        std::int64_t,      // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
-        std::uint64_t,     // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR, BIT
-        boost::string_view,// CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM, SET, DECIMAL, GEOMTRY
-        float,             // FLOAT
-        double,            // DOUBLE
-        date,              // DATE
-        datetime,          // DATETIME, TIMESTAMP
-        time,              // TIME
-        detail::string_view_offset // Used during parsing, not exposed to the user
-    >;
-
-    variant_type repr_;
-
-    template <typename T>
-    const T& internal_as() const;
-
-    template <typename T>
-    const T& internal_get() const noexcept;
-
     friend std::ostream& operator<<(std::ostream& os, const field_view& v);
+
+    bool is_field_ptr() const noexcept { return ikind_ == internal_kind::field_ptr; }
+    inline void check_kind(internal_kind expected) const;
 };
 
 /**

@@ -29,10 +29,6 @@ public:
         offset_(offset), size_(size) {}
     constexpr std::size_t offset() const noexcept { return offset_; }
     constexpr std::size_t size() const noexcept { return size_; }
-    constexpr boost::string_view to_string_view(const char* base) const noexcept
-    {
-        return boost::string_view(base + offset_, size_);
-    }
     constexpr bool operator==(string_view_offset rhs) const noexcept
     {
         return offset_ == rhs.offset_ && size_ == rhs.size_;
