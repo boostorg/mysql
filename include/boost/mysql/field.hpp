@@ -130,14 +130,20 @@ public:
     void emplace_time(const time& v) noexcept { *this = v; }
 
     inline operator field_view() const noexcept { return field_view(&repr_); }
-
-    bool operator==(const field& rhs) const noexcept { return field_view(*this) == field_view(rhs); }
-    bool operator!=(const field& rhs) const noexcept { return !(*this == rhs); }
 private:
     detail::field_impl repr_;
 
     inline void from_view(const field_view& v);
 };
+
+inline bool operator==(const field& lhs, const field& rhs) noexcept { return field_view(lhs) == field_view(rhs); }
+inline bool operator!=(const field& lhs, const field& rhs) noexcept { return !(lhs == rhs); }
+
+inline bool operator==(const field_view& lhs, const field& rhs) noexcept { return lhs == field_view(rhs); }
+inline bool operator!=(const field_view& lhs, const field& rhs) noexcept { return !(lhs == rhs); }
+
+inline bool operator==(const field& lhs, const field_view& rhs) noexcept { return field_view(lhs) == rhs; }
+inline bool operator!=(const field& lhs, const field_view& rhs) noexcept { return !(lhs == rhs); }
 
 inline std::ostream& operator<<(std::ostream& os, const field& v);
 

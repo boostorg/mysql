@@ -6,7 +6,10 @@
 //
 
 #include <boost/mysql/field.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/test/tools/context.hpp>
+#include <boost/test/tools/interface.hpp>
 #include <boost/test/unit_test_suite.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -19,7 +22,9 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 using namespace boost::mysql::test;
 using boost::mysql::field;
+using boost::mysql::field_view;
 using boost::mysql::field_kind;
+using boost::mysql::detail::stringize;
 
 namespace
 {
@@ -179,6 +184,74 @@ BOOST_AUTO_TEST_CASE(from_time)
     BOOST_TEST(v.as_time() == t);
 }
 
+BOOST_AUTO_TEST_CASE(from_field_view_null)
+{
+    field_view fv;
+    field f (fv);
+    BOOST_TEST(f.is_null());
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_int64)
+{
+    field_view fv (-1);
+    field f (fv);
+    BOOST_TEST(f.as_int64() == -1);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_uint64)
+{
+    field_view fv (42u);
+    field f (fv);
+    BOOST_TEST(f.as_uint64() == 42);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_string)
+{
+    std::string s ("test");
+    field_view fv (s);
+    field f (fv);
+    s = "other"; // changing the source string shouldn't modify the value
+    BOOST_TEST(f.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_float)
+{
+    field_view fv (4.2f);
+    field f (fv);
+    BOOST_TEST(f.as_float() == 4.2f);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_double)
+{
+    field_view fv (4.2);
+    field f (fv);
+    BOOST_TEST(f.as_double() == 4.2);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_date)
+{
+    auto d = makedate(2020, 1, 2);
+    field_view fv (d);
+    field f (fv);
+    BOOST_TEST(f.as_date() == d);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_datetime)
+{
+    auto d = makedt(2020, 1, 2);
+    field_view fv (d);
+    field f (fv);
+    BOOST_TEST(f.as_datetime() == d);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_time)
+{
+    auto t = maket(9, 1, 2);
+    field_view fv (t);
+    field f (fv);
+    BOOST_TEST(f.as_time() == t);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 
@@ -205,11 +278,27 @@ BOOST_AUTO_TEST_CASE(copy_string)
     BOOST_TEST(v.as_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(self_copy)
+{
+    field v ("test");
+    const auto& ref = v;
+    v = ref;
+    BOOST_TEST(v.as_string() == "test");
+}
+
 BOOST_AUTO_TEST_CASE(move)
 {
     field v (42);
     field v2 ("test");
     v = std::move(v2);
+    BOOST_TEST(v.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(self_move)
+{
+    field v ("test");
+    auto&& ref = v;
+    v = std::move(ref);
     BOOST_TEST(v.as_string() == "test");
 }
 
@@ -351,6 +440,82 @@ BOOST_AUTO_TEST_CASE(from_time)
     v = t;
     BOOST_TEST(v.as_time() == t);
 }
+
+BOOST_AUTO_TEST_CASE(from_field_view_null)
+{
+    field_view fv;
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.is_null());
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_int64)
+{
+    field_view fv (-1);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_int64() == -1);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_uint64)
+{
+    field_view fv (42u);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_uint64() == 42);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_string)
+{
+    field_view fv ("test");
+    field f (1);
+    f = fv;
+    BOOST_TEST(f.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_float)
+{
+    field_view fv (4.2f);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_float() == 4.2f);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_double)
+{
+    field_view fv (4.2);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_double() == 4.2);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_date)
+{
+    auto d = makedate(2020, 1, 2);
+    field_view fv (d);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_date() == d);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_datetime)
+{
+    auto d = makedt(2020, 1, 2);
+    field_view fv (d);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_datetime() == d);
+}
+
+BOOST_AUTO_TEST_CASE(from_field_view_time)
+{
+    auto t = maket(9, 1, 2);
+    field_view fv (t);
+    field f ("test");
+    f = fv;
+    BOOST_TEST(f.as_time() == t);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -723,10 +888,48 @@ BOOST_AUTO_TEST_CASE(time)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-// TODO: self assignment
-// TODO: operator field_view (do lifetime rules for field_view make sense?)
-// TODO: operator ==
-// TODO: operator <<
+
+// operator== relies on field_view's operator==, so only
+// a small subset of tests here
+BOOST_AUTO_TEST_SUITE(operator_equals)
+
+BOOST_AUTO_TEST_CASE(field_field)
+{
+    BOOST_TEST(field(42) == field(42));
+    BOOST_TEST(!(field(42) != field(42)));
+    
+    BOOST_TEST(!(field(42) == field("test")));
+    BOOST_TEST(field(42) != field("test"));
+}
+
+BOOST_AUTO_TEST_CASE(fieldview_field)
+{
+    BOOST_TEST(field_view(42) == field(42));
+    BOOST_TEST(!(field_view(42) != field(42)));
+    
+    BOOST_TEST(!(field_view(42) == field("test")));
+    BOOST_TEST(field_view(42) != field("test"));
+}
+
+BOOST_AUTO_TEST_CASE(field_fieldview)
+{
+    BOOST_TEST(field(42) == field_view(42));
+    BOOST_TEST(!(field(42) != field_view(42)));
+    
+    BOOST_TEST(!(field(42) == field_view("test")));
+    BOOST_TEST(field(42) != field_view("test"));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// operator<< relies on field_view's operator<<, so only
+// a small subset of tests here
+BOOST_AUTO_TEST_CASE(operator_stream)
+{
+    BOOST_TEST(stringize(field()) == "<NULL>");
+    BOOST_TEST(stringize(field(-1)) == "-1");
+    BOOST_TEST(stringize(field(42)) == "42");
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
