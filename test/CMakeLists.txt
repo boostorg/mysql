@@ -48,6 +48,7 @@ add_executable(
 
     unit/field_view.cpp
     unit/field.cpp
+    unit/row_view.cpp
 
     # unit/metadata.cpp
     # unit/value_constexpr.cpp
