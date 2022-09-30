@@ -889,6 +889,29 @@ BOOST_AUTO_TEST_CASE(time)
 BOOST_AUTO_TEST_SUITE_END()
 
 
+// The returned field_view changes accordingly
+// when we change the field
+BOOST_AUTO_TEST_CASE(operator_field_view)
+{
+    // Initial construction
+    field f ("test");
+    field_view fv (f);
+    BOOST_TEST(fv.as_string() == "test");
+
+    // Mutating the underlying value is reflected in the view
+    f.as_string().append("abcd");
+    BOOST_TEST(fv.as_string() == "testabcd");
+
+    // Changing the type is also reflected
+    f = 42;
+    BOOST_TEST(fv.as_int64() == 42);
+
+    // Same for scalars
+    f.as_int64() = -1;
+    BOOST_TEST(fv.as_int64() == -1);
+}
+
+
 // operator== relies on field_view's operator==, so only
 // a small subset of tests here
 BOOST_AUTO_TEST_SUITE(operator_equals)
