@@ -9,6 +9,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/test/unit_test.hpp>
+#include <string>
 #include <vector>
 #include "test_common.hpp"
 
@@ -18,25 +19,7 @@ using boost::mysql::field_view;
 using boost::mysql::make_field_views;
 using boost::mysql::test::makerow;
 
-// Move
-//    empty
-//    with strings
-// assignment from view
-//    empty
-//    non-empty, non-strings
-//    non-empty, with strings (check lifecycle)
-//    non-empty, with empty strings
-//    to empty
-//    to non-empty, with strings
-// copy assignment
-//    empty
-//    non-empty, non-strings
-//    non-empty, with strings (check lifecycle)
-//    non-empty, with empty strings
-//    to empty
-//    to non-empty, with strings
-//    self assignment, empty
-//    self assignment, with strings
+
 // move assignment
 //    empty
 //    non-empty, non-strings
@@ -132,6 +115,105 @@ BOOST_AUTO_TEST_CASE(strings)
 }
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(move_ctor)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    row r1;
+    row r2 (std::move(r1));
+    r1 = makerow(42, "test"); // r2 should be independent of r1
+
+    BOOST_TEST(r2.empty());
+}
+
+BOOST_AUTO_TEST_CASE(non_strings)
+{
+    row r1 = makerow(42, 5.0f);
+    const field_view* begin_before = r1.begin(); // iterators are not invalidated by move
+    row r2 (std::move(r1));
+    r1 = makerow(42, "test"); // r2 should be independent of r1
+
+    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2[0] == field_view(42));
+    BOOST_TEST(r2[1] == field_view(5.0f));
+    BOOST_TEST(r2.begin() == begin_before);
+}
+
+BOOST_AUTO_TEST_CASE(strings)
+{
+    row r1 = makerow("", 42, "test");
+    const char* str_begin_before = r1[2].as_string().data(); // pointers to strings are not invalidated by move
+    row r2 (std::move(r1));
+    r1 = makerow("another_string", 4.2f, ""); // r2 should be independent of r1
+
+    BOOST_TEST(r2.size() == 3);
+    BOOST_TEST(r2[0] == field_view(""));
+    BOOST_TEST(r2[1] == field_view(42));
+    BOOST_TEST(r2[2] == field_view("test"));
+    BOOST_TEST(r2[2].as_string().data() == str_begin_before);
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_AUTO_TEST_SUITE(assignment_from_view)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    row r = makerow(42, "abcdef");
+    r = row();
+    BOOST_TEST(r.empty());
+}
+
+BOOST_AUTO_TEST_CASE(non_strings)
+{
+    row r = makerow(42, "abcdef");
+    auto fields = make_field_views(90, nullptr);
+    r = row_view(fields.data(), fields.size());
+    fields = make_field_views("abc", 42u); // r should be independent of the original fields
+
+    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r[0] == field_view(90));
+    BOOST_TEST(r[1] == field_view());
+}
+
+BOOST_AUTO_TEST_CASE(strings)
+{
+    std::string s1 ("a_very_long_string"), s2("");
+    row r = makerow(42, "abcdef");
+    auto fields = make_field_views(s1, nullptr, s2);
+    r = row_view(fields.data(), fields.size());
+    fields = make_field_views("abc", 42u, 9); // r should be independent of the original fields
+    s1 = "another_string"; // r should be independent of the original strings
+    s2 = "yet_another";
+
+    BOOST_TEST(r.size() == 3);
+    BOOST_TEST(r[0] == field_view("a_very_long_string"));
+    BOOST_TEST(r[1] == field_view());
+    BOOST_TEST(r[2] == field_view(""));
+}
+
+BOOST_AUTO_TEST_CASE(strings_empty_to)
+{
+    row r;
+    auto fields = make_field_views("abc", nullptr, "bcd");
+    r = row_view(fields.data(), fields.size());
+
+    BOOST_TEST(r.size() == 3);
+    BOOST_TEST(r[0] == field_view("abc"));
+    BOOST_TEST(r[1] == field_view());
+    BOOST_TEST(r[2] == field_view("bcd"));
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+
+// copy assignment
+//    empty
+//    non-empty, non-strings
+//    non-empty, with strings (check lifecycle)
+//    non-empty, with empty strings
+//    to empty
+//    to non-empty, with strings
+//    self assignment, empty
+//    self assignment, with strings
 
 // // Constructors
 // BOOST_AUTO_TEST_SUITE(constructors)

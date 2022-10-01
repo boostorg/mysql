@@ -61,7 +61,7 @@ public:
     ~row() = default;
 
     row(row_view r) : detail::row_base(r.begin(), r.size()) {}
-    
+
     row& operator=(row_view r) { assign(r.begin(), r.size()); return *this; }
     
     const_iterator begin() const noexcept { return fields_.data(); }
@@ -77,6 +77,9 @@ public:
     {
         return row_view(fields_.data(), fields_.size());
     }
+
+    // TODO: hide this
+    using detail::row_base::clear;
 };
 
 

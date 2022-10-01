@@ -33,6 +33,7 @@ public:
     inline void assign(const field_view* fields, std::size_t size);
     inline void rebase_strings(const char* old_buffer_base);
     inline void copy_strings();
+    inline void clear() noexcept { fields_.clear(); string_buffer_.clear(); }
 protected:
     std::vector<field_view> fields_;
 private:
