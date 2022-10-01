@@ -49,10 +49,9 @@ add_executable(
     unit/field_view.cpp
     unit/field.cpp
     unit/row_view.cpp
+    unit/row.cpp
 
     # unit/metadata.cpp
-    # unit/value_constexpr.cpp
-    # unit/row.cpp
     # unit/error.cpp
     # unit/execute_params.cpp
     # unit/prepared_statement.cpp

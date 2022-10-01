@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/connection_params.hpp>
 #include <boost/config.hpp>
@@ -31,7 +32,8 @@ std::vector<field_view> make_fv_vector(Types&&... args)
 template <class... Types>
 row makerow(Types&&... args)
 {
-    return row(make_fv_vector(std::forward<Types>(args)...), {});
+    auto fields = make_field_views(std::forward<Types>(args)...);
+    return row(row_view(fields.data(), fields.size()));
 }
 
 BOOST_CXX14_CONSTEXPR inline date makedate(int num_years, unsigned num_months, unsigned num_days)

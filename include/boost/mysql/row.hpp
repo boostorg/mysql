@@ -54,13 +54,14 @@ public:
     using difference_type = std::ptrdiff_t;
 
     row() = default;
-    row(row_view r) : detail::row_base(r.begin(), r.size()) {}
     row(const row&) = default;
     row(row&&) = default;
     row& operator=(const row&) = default;
     row& operator=(row&&) = default;
     ~row() = default;
 
+    row(row_view r) : detail::row_base(r.begin(), r.size()) {}
+    
     row& operator=(row_view r) { assign(r.begin(), r.size()); return *this; }
     
     const_iterator begin() const noexcept { return fields_.data(); }
