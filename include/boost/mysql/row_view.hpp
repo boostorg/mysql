@@ -40,6 +40,9 @@ public:
     bool empty() const noexcept { return size_ == 0; }
     std::size_t size() const noexcept { return size_; }
 
+    // Required by iterators
+    const row_view* operator->() const noexcept { return this; }
+
     // TODO: hide these
     row_view(const field_view* f, std::size_t size) noexcept : fields_ (f), size_(size) {}
 private:

@@ -204,6 +204,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(plus_equals, RowType, rows_types)
     BOOST_TEST(*it == makerow(90u, "fff"));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(plus_equals_empty, RowType, rows_types)
+{
+    RowType r;
+    auto it = r.begin();
+    it += 0;
+    BOOST_TEST(it == r.begin());
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(minus_equals, RowType, rows_types)
 {
     RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
@@ -224,6 +232,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(minus_equals, RowType, rows_types)
     // Decrement by zero (noop)
     it -= 0;
     BOOST_TEST(*it == makerow(72u, "cde"));
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(minus_equals_empty, RowType, rows_types)
+{
+    RowType r;
+    auto it = r.begin();
+    it -= 0;
+    BOOST_TEST(it == r.begin());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_plus_ptrdiff, RowType, rows_types)
@@ -252,6 +268,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_plus_ptrdiff, RowType, rows_types)
     BOOST_TEST(*it5 == makerow(90u, "fff"));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_plus_ptrdiff_empty, RowType, rows_types)
+{
+    RowType r;
+    BOOST_TEST(r.begin() + 0 == r.begin());
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(ptrdiff_plus_iterator, RowType, rows_types)
 {
     RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
@@ -278,6 +300,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ptrdiff_plus_iterator, RowType, rows_types)
     BOOST_TEST(*it5 == makerow(90u, "fff"));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(ptrdiff_plus_iterator_empty, RowType, rows_types)
+{
+    RowType r;
+    BOOST_TEST(0 + r.begin() == r.begin());
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_ptrdiff, RowType, rows_types)
 {
     RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
@@ -302,6 +330,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_ptrdiff, RowType, rows_types)
     auto it5 = it4 - 0;
     BOOST_TEST(*it4 == makerow(90u, "fff"));
     BOOST_TEST(*it5 == makerow(90u, "fff"));
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_ptrdiff_empty, RowType, rows_types)
+{
+    RowType r;
+    BOOST_TEST(r.begin() - 0 == r.begin());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator, RowType, rows_types)
@@ -342,6 +376,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator, RowType, rows_types)
     BOOST_TEST(itend - itend == 0);
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator_empty, RowType, rows_types)
+{
+    RowType r;
+    BOOST_TEST(r.begin() - r.begin() == 0);
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(square_brackets, RowType, rows_types)
 {
     RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
@@ -352,22 +392,60 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(square_brackets, RowType, rows_types)
     BOOST_TEST(it[1] == makerow(90u, "fff"));
     BOOST_TEST(it[2] == makerow(0u, nullptr));
 }
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(operator_equals, RowType, rows_types)
+{
+    using It = typename RowType::iterator;
+    RowType empty;
+    RowType nonempty (2, 80u, "abc", 72u, "cde");
+
+    struct
+    {
+        const char* name;
+        It it1;
+        It it2;
+        bool is_equal;
+    } test_cases [] = {
+        { "value_initialized",               It(),                 It(),                 true },
+        { "empty_begin_empty_begin",         empty.begin(),        empty.begin(),        true },
+        { "empty_begin_empty_end",           empty.begin(),        empty.end(),          true },
+        { "empty_end_empty_end",             empty.end(),          empty.end(),          true },
+        { "nonempty_begin_nonempty_begin",   nonempty.begin(),     nonempty.begin(),     true },
+        { "nonempty_begin_nonempty_middle",  nonempty.begin(),     nonempty.begin() + 1, false },
+        { "nonempty_middle_nonempty_middle", nonempty.begin() + 1, nonempty.begin() + 1, true },
+        { "nonempty_begin_nonempty_end",     nonempty.begin(),     nonempty.end(),       false },
+        { "nonempty_end_nonempty_end",       nonempty.end(),       nonempty.end(),       true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            if (tc.is_equal)
+            {
+                BOOST_TEST(tc.it1 == tc.it2);
+                BOOST_TEST(tc.it2 == tc.it1);
+                BOOST_TEST(!(tc.it1 != tc.it2));
+                BOOST_TEST(!(tc.it2 != tc.it1));
+            }
+            else
+            {
+                BOOST_TEST(!(tc.it1 == tc.it2));
+                BOOST_TEST(!(tc.it2 == tc.it1));
+                BOOST_TEST(tc.it1 != tc.it2);
+                BOOST_TEST(tc.it2 != tc.it1);
+            }
+        }
+    }
+}
+
+
 /**
-operator==, !=
-    different empty objects
-    different empty/nonempty objects
-    different nonempty objects
-    same objects, empty
-    same objects, nonempty, different
-    same objects, nonempty, normal/end
-    same objects, same normal
-    same objects, same end
 operator>, <, >=, <=
     empty
-    different, normal
-    different, normal, end
     same, normal
     same, end
+operator->
  * 
  */
 
