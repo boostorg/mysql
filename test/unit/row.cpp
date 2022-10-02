@@ -8,6 +8,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/test/unit_test.hpp>
 #include <string>
 #include <vector>
@@ -18,13 +19,7 @@ using boost::mysql::row_view;
 using boost::mysql::field_view;
 using boost::mysql::make_field_views;
 using boost::mysql::test::makerow;
-
-
-// at, operator[], size, empty, begin, end: same as row_view
-// operator row_view
-//    empty
-//    non-empty
-// operator==, !=: row-rv, rv-row, row-row
+using boost::mysql::detail::stringize;
 
 
 BOOST_AUTO_TEST_SUITE(test_row)
@@ -341,132 +336,151 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(at)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    row r;
+    BOOST_CHECK_THROW(r.at(0), std::out_of_range);
+}
 
-// // Constructors
-// BOOST_AUTO_TEST_SUITE(constructors)
+BOOST_AUTO_TEST_CASE(in_range)
+{
+    row r = makerow(42, 50u, "test");
+    BOOST_TEST(r.at(0) == field_view(42));
+    BOOST_TEST(r.at(1) == field_view(50u));
+    BOOST_TEST(r.at(2) == field_view("test"));
+}
 
-// static std::vector<field_view> string_value_from_buffer(const bytestring& buffer)
-// {
-//     return make_value_vector(boost::string_view(reinterpret_cast<const char*>(buffer.data()), buffer.size()));
-// }
-
-
-// BOOST_AUTO_TEST_CASE(move_ctor)
-// {
-//     // Given a row with strings, after a move construction,
-//     // the string still points to valid memory
-//     bytestring buffer {'a', 'b', 'c', 'd'};
-//     auto values = string_value_from_buffer(buffer);
-//     row r (std::move(values), std::move(buffer));
-//     row r2 (std::move(r));
-//     r = row({}, {'e', 'f'});
-//     BOOST_TEST(r2.values()[0] == field_view("abcd"));
-// }
-
-// BOOST_AUTO_TEST_CASE(move_assignment)
-// {
-//     // Given a row with strings, after a move assignment,
-//     // the string still points to valid memory
-//     bytestring buffer {'a', 'b', 'c', 'd'};
-//     auto values = string_value_from_buffer(buffer);
-//     row r (std::move(values), std::move(buffer));
-//     row r2;
-//     r2 = std::move(r);
-//     r = row({}, {'e', 'f'});
-//     BOOST_TEST(r2.values()[0] == field_view("abcd"));
-// }
-
-// BOOST_AUTO_TEST_SUITE_END()
-
-// // Clear
-// BOOST_AUTO_TEST_SUITE(clear)
-
-// BOOST_AUTO_TEST_CASE(empty_row)
-// {
-//     row r;
-//     r.clear();
-//     BOOST_TEST(r.values().empty());
-// }
-
-// BOOST_AUTO_TEST_CASE(non_empty_row)
-// {
-//     row r = makerow("abc");
-//     r.clear();
-//     BOOST_TEST(r.values().empty());
-// }
-
-// BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_CASE(out_of_range)
+{
+    row r = makerow(42, 50u, "test");
+    BOOST_CHECK_THROW(r.at(3), std::out_of_range);
+}
+BOOST_AUTO_TEST_SUITE_END()
 
 
-// // Equality operators
-// BOOST_AUTO_TEST_SUITE(operators_eq_ne)
+BOOST_AUTO_TEST_CASE(front)
+{
+    auto r = makerow(42, 50u, "test");
+    BOOST_TEST(r.front() == field_view(42));
+}
 
-// BOOST_AUTO_TEST_CASE(both_empty)
-// {
-//     BOOST_TEST(row() == row());
-//     BOOST_TEST(!(row() != row()));
-// }
+BOOST_AUTO_TEST_CASE(back)
+{
+    BOOST_TEST(makerow(42, 50u, "test").front() == field_view(42));
+    BOOST_TEST(makerow(42).back() == field_view(42));
+}
 
-// BOOST_AUTO_TEST_CASE(one_empty_other_not_empty)
-// {
-//     row empty_row;
-//     row non_empty_row = makerow("a_value");
-//     BOOST_TEST(!(empty_row == non_empty_row));
-//     BOOST_TEST(empty_row != non_empty_row);
-// }
+BOOST_AUTO_TEST_CASE(empty)
+{
+    BOOST_TEST(row().empty());
+    BOOST_TEST(!makerow(42).empty());
+    BOOST_TEST(!makerow(42, 50u).empty());
+}
 
-// BOOST_AUTO_TEST_CASE(subset)
-// {
-//     row lhs = makerow("a_value", 42);
-//     row rhs = makerow("a_value");
-//     BOOST_TEST(!(lhs == rhs));
-//     BOOST_TEST(lhs != rhs);
-// }
+BOOST_AUTO_TEST_CASE(size)
+{
+    BOOST_TEST(row().size() == 0);
+    BOOST_TEST(makerow(42).size() == 1);
+    BOOST_TEST(makerow(50, nullptr).size() == 2);
+}
 
-// BOOST_AUTO_TEST_CASE(same_size_different_values)
-// {
-//     row lhs = makerow("a_value", 42);
-//     row rhs = makerow("another_value", 42);
-//     BOOST_TEST(!(lhs == rhs));
-//     BOOST_TEST(lhs != rhs);
-// }
 
-// BOOST_AUTO_TEST_CASE(same_size_and_values)
-// {
-//     row lhs = makerow("a_value", 42);
-//     row rhs = makerow("a_value", 42);
-//     BOOST_TEST(lhs == rhs);
-//     BOOST_TEST(!(lhs != rhs));
-// }
+// As iterators are regular pointers, we don't perform
+// exhaustive testing on iteration
+BOOST_AUTO_TEST_SUITE(iterators)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    const row r; // can be called on const objects
+    BOOST_TEST(r.begin() == nullptr);
+    BOOST_TEST(r.end() == nullptr);
+    std::vector<field_view> vec { r.begin(), r.end() };
+    BOOST_TEST(vec.empty());
+}
 
-// BOOST_AUTO_TEST_SUITE_END() // operators_eq_ne
+BOOST_AUTO_TEST_CASE(multiple_elms)
+{
+    const row r = makerow(42, 50u, "test"); // can be called on const objects
+    BOOST_TEST(r.begin() != nullptr);
+    BOOST_TEST(r.end() != nullptr);
+    BOOST_TEST(std::distance(r.begin(), r.end()) == 3);
 
-// // Stream operators
-// BOOST_AUTO_TEST_SUITE(operator_stream)
+    std::vector<field_view> vec { r.begin(), r.end() };
+    BOOST_TEST(vec.size() == 3);
+    BOOST_TEST(vec[0] == field_view(42));
+    BOOST_TEST(vec[1] == field_view(50u));
+    BOOST_TEST(vec[2] == field_view("test"));
+}
+BOOST_AUTO_TEST_SUITE_END()
 
-// BOOST_AUTO_TEST_CASE(empty_row)
-// {
-//     BOOST_TEST(stringize(row()) == "{}");
-// }
 
-// BOOST_AUTO_TEST_CASE(one_element)
-// {
-//     BOOST_TEST(stringize(makerow(42)) == "{42}");
-// }
+BOOST_AUTO_TEST_SUITE(operator_row_view)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    row r;
+    row_view rv (r);
+    
+    BOOST_TEST(rv.empty());
+    BOOST_TEST(rv.size() == 0);
+    BOOST_TEST(rv.begin() == nullptr);
+    BOOST_TEST(rv.end() == nullptr);
+}
 
-// BOOST_AUTO_TEST_CASE(two_elements)
-// {
-//     auto actual = stringize(makerow("value", nullptr));
-//     BOOST_TEST(actual == "{value, <NULL>}");
-// }
+BOOST_AUTO_TEST_CASE(non_empty)
+{
+    row r = makerow("abc", 24, "def");
+    row_view rv (r);
+    
+    BOOST_TEST(rv.size() == 3);
+    BOOST_TEST(rv[0] == field_view("abc"));
+    BOOST_TEST(rv[1] == field_view(24));
+    BOOST_TEST(rv[2] == field_view("def"));
+}
+BOOST_AUTO_TEST_SUITE_END()
 
-// BOOST_AUTO_TEST_CASE(three_elements)
-// {
-//     auto actual = stringize(makerow("value", std::uint32_t(2019), 3.14f));
-//     BOOST_TEST(actual == "{value, 2019, 3.14}");
-// }
 
-// BOOST_AUTO_TEST_SUITE_END() // operator_stream
+// operator== relies on row_view's operator==, so only
+// a small subset of tests here
+BOOST_AUTO_TEST_SUITE(operator_equals)
+BOOST_AUTO_TEST_CASE(row_row)
+{
+    row r1 = makerow("abc", 4);
+    row r2 = r1;
+    row r3 = makerow(nullptr, 4);
+
+    BOOST_TEST(r1 == r2);
+    BOOST_TEST(!(r1 != r2));
+
+    BOOST_TEST(!(r1 == r3));
+    BOOST_TEST(r1 != r3);
+}
+
+BOOST_AUTO_TEST_CASE(row_rowview)
+{
+    row r1 = makerow("abc", 4);
+    row r2 = makerow(nullptr, 4);
+    auto fields = make_field_views("abc", 4);
+    row_view rv (fields.data(), fields.size());
+
+    BOOST_TEST(r1 == rv);
+    BOOST_TEST(!(r1 != rv));
+    BOOST_TEST(rv == r1);
+    BOOST_TEST(!(rv != r1));
+
+    BOOST_TEST(!(r2 == rv));
+    BOOST_TEST(r2 != rv);
+    BOOST_TEST(!(rv == r2));
+    BOOST_TEST(rv != r2);
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+// operator<< relies on row_view's operator<<, so only
+// a small subset of tests here
+BOOST_AUTO_TEST_CASE(operator_stream)
+{
+    row r = makerow("abc", nullptr);
+    BOOST_TEST(stringize(r) == "{abc, <NULL>}");
+}
 
 BOOST_AUTO_TEST_SUITE_END() // test_row
-

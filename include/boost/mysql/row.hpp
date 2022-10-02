@@ -13,6 +13,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
 #include <cstddef>
+#include <iosfwd>
 #include <vector>
 
 
@@ -83,16 +84,16 @@ public:
 };
 
 
-inline bool operator==(const row& lhs, const row& rhs)
-{
-    return row_view(lhs) == row_view(rhs);
-}
-
-/**
- * \relates row
- * \brief Compares two rows.
- */
+inline bool operator==(const row& lhs, const row& rhs) noexcept { return row_view(lhs) == row_view(rhs); }
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
+
+inline bool operator==(const row& lhs, const row_view& rhs) noexcept { return row_view(lhs) == rhs; }
+inline bool operator!=(const row& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
+
+inline bool operator==(const row_view& lhs, const row& rhs) noexcept { return lhs == row_view(rhs); }
+inline bool operator!=(const row_view& lhs, const row& rhs) noexcept { return !(lhs == rhs); }
+
+inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
 
 
 } // mysql

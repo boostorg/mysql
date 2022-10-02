@@ -11,9 +11,9 @@
 #pragma once
 
 #include <boost/mysql/row_view.hpp>
-#include <algorithm>
 #include <ostream>
 #include <stdexcept>
+#include <cstddef>
 
 
 boost::mysql::field_view boost::mysql::row_view::at(
@@ -30,8 +30,14 @@ inline bool boost::mysql::operator==(
     const row_view& rhs
 ) noexcept
 {
-    return lhs.size() == rhs.size() &&
-        std::equal(lhs.begin(), lhs.end(), rhs.begin());
+    if (lhs.size() != rhs.size())
+        return false;
+    for (std::size_t i = 0; i < lhs.size(); ++i)
+    {
+        if (lhs[i] != rhs[i])
+            return false;
+    }
+    return true;
 }
 
 inline std::ostream& boost::mysql::operator<<(
