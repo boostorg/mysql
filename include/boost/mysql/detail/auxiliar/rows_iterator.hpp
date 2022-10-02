@@ -47,7 +47,7 @@ public:
     reference operator*() const noexcept { return (*obj_)[row_num_]; }
     reference operator[](std::ptrdiff_t i) const noexcept { return (*obj_)[row_num_ + i]; }
 
-    bool operator==(rows_iterator rhs) const noexcept { return obj_ == rhs.obj_&& row_num_ == rhs.row_num_; }
+    bool operator==(rows_iterator rhs) const noexcept { return row_num_ == rhs.row_num_; }
     bool operator!=(rows_iterator rhs) const noexcept { return !(*this == rhs); }
     bool operator<(rows_iterator rhs) const noexcept { return row_num_ < rhs.row_num_; }
     bool operator<=(rows_iterator rhs) const noexcept { return row_num_ <= rhs.row_num_; }

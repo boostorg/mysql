@@ -393,6 +393,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(square_brackets, RowType, rows_types)
     BOOST_TEST(it[2] == makerow(0u, nullptr));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(arrow, RowType, rows_types)
+{
+    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    auto it = r.begin() + 1;
+
+    BOOST_TEST(it->size() == 2);
+    BOOST_TEST(it->front() == field_view(72u));
+    BOOST_TEST(it->back() == field_view("cde"));
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(operator_equals, RowType, rows_types)
 {
     using It = typename RowType::iterator;
@@ -440,15 +450,59 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(operator_equals, RowType, rows_types)
 }
 
 
-/**
-operator>, <, >=, <=
-    empty
-    same, normal
-    same, end
-operator->
- * 
- */
+BOOST_AUTO_TEST_CASE_TEMPLATE(operator_lt_lte_gt_gte, RowType, rows_types)
+{
+    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    auto it1 = r.begin();
+    auto it2 = r.begin() + 1;
+    auto it2copy = it2;
+    auto it3 = r.begin() + 2;
+    auto it4 = r.begin() + 3;
+    auto itend = r.end();
+    auto itendcopy = itend;
 
+    // it1-it2
+    BOOST_TEST(it1 < it2);
+    BOOST_TEST(it1 <= it2);
+    BOOST_TEST(!(it1 > it2));
+    BOOST_TEST(!(it1 >= it2));
+
+    // it2 with itself
+    BOOST_TEST(!(it2 < it2copy));
+    BOOST_TEST(it2 <= it2copy);
+    BOOST_TEST(!(it2 > it2copy));
+    BOOST_TEST(it2 >= it2copy);
+
+    // it3-it1
+    BOOST_TEST(!(it3 < it1));
+    BOOST_TEST(!(it3 <= it1));
+    BOOST_TEST(it3 > it1);
+    BOOST_TEST(it3 >= it1);
+
+    // it4-itend
+    BOOST_TEST(it4 < itend);
+    BOOST_TEST(it4 <= itend);
+    BOOST_TEST(!(it4 > itend));
+    BOOST_TEST(!(it4 >= itend));
+
+    // itend with itself
+    BOOST_TEST(!(itend < itendcopy));
+    BOOST_TEST(itend <= itendcopy);
+    BOOST_TEST(!(itend > itendcopy));
+    BOOST_TEST(itend >= itendcopy);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(operator_lt_lte_gt_gte_empty, RowType, rows_types)
+{
+    RowType r;
+    auto it1 = r.begin();
+    auto it2 = r.end();
+
+    BOOST_TEST(!(it1 < it2));
+    BOOST_TEST(it1 <= it2);
+    BOOST_TEST(!(it1 > it2));
+    BOOST_TEST(it1 >= it2);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
