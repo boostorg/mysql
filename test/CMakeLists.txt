@@ -50,6 +50,7 @@ add_executable(
     unit/field.cpp
     unit/row_view.cpp
     unit/row.cpp
+    unit/rows_view.cpp
 
     # unit/metadata.cpp
     # unit/error.cpp
@@ -64,6 +65,13 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
+# TODO: review this
+target_precompile_headers(
+    boost_mysql_unittests
+    PRIVATE
+    <boost/test/unit_test.hpp>
+)
+set_source_files_properties(unit/entry_point.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 common_target_settings(boost_mysql_unittests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)

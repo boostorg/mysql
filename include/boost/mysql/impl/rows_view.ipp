@@ -19,7 +19,7 @@ boost::mysql::row_view boost::mysql::rows_view::operator[](
     std::size_t i
 ) const noexcept
 {
-    assert(i >= size());
+    assert(i < size());
     return row_view(fields_ + num_columns_ * i, num_columns_);
 }
 

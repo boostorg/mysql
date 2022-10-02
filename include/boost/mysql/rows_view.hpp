@@ -12,6 +12,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <cstddef>
 
 
 namespace boost {
@@ -37,7 +38,8 @@ public:
     row_view front() const noexcept { return (*this)[0]; }
     row_view back() const noexcept { return (*this)[size() - 1]; }
     bool empty() const noexcept { return num_values_ == 0; }
-    std::size_t size() const noexcept { return num_values_ / num_columns_; }
+    std::size_t size() const noexcept { return (num_columns_ == 0) ? 0 : (num_values_ / num_columns_); }
+    std::size_t num_columns() const noexcept { return num_columns_; }
 
     // TODO: hide this
     rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept :
