@@ -46,7 +46,7 @@ public:
     row_view front() const noexcept { return (*this)[0]; }
     row_view back() const noexcept { return (*this)[size() - 1]; }
     bool empty() const noexcept { return fields_.empty(); }
-    std::size_t size() const noexcept { return fields_.size() / num_columns_; }
+    std::size_t size() const noexcept { return num_columns_ == 0 ? 0 : fields_.size() / num_columns_; }
     operator rows_view() const noexcept { return rows_view(fields_.data(), fields_.size(), num_columns_); }
 private:
     std::size_t num_columns_ {};

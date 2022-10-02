@@ -35,6 +35,7 @@ add_executable(
     unit/detail/channel/message_writer.cpp
     unit/detail/auth/auth_calculator.cpp
     unit/detail/auxiliar/static_string.cpp
+    unit/detail/auxiliar/rows_iterator.cpp
     # unit/detail/auxiliar/value_type_traits.cpp
     # unit/detail/protocol/capabilities.cpp
     # unit/detail/protocol/date.cpp

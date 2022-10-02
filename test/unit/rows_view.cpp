@@ -15,29 +15,6 @@ using boost::mysql::rows_view;
 using boost::mysql::make_field_views;
 using boost::mysql::test::makerow;
 
-/**
-iteration
-    empty
-    range iteration
-    backwards iteration (?)
-    prefix increment
-    postfix increment
-    prefix decrement
-    postfix decrement
-    += ptrdiff_t
-    -= ptrdiff_t
-    it + ptrdiff_t
-    ptrdiff_t + it
-    it - ptrdiff_t
-    it2 - it1
-    operator[]
-    operator>
-    operator<
-    operator>=
-    operator<=
- * 
- */
-
 namespace
 {
 

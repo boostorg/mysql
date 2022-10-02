@@ -33,9 +33,9 @@ public:
     rows_iterator(const RowsType* obj, std::size_t rownum) noexcept : obj_(obj), row_num_(rownum) {}
 
     rows_iterator& operator++() noexcept { ++row_num_; return *this; }
-    rows_iterator operator++(int) noexcept { return rows_iterator(obj_, row_num_ + 1); }
+    rows_iterator operator++(int) noexcept { auto res = *this; ++(*this); return res; }
     rows_iterator& operator--() noexcept { --row_num_; return *this; }
-    rows_iterator operator--(int) noexcept { return rows_iterator(obj_, row_num_ - 1); }
+    rows_iterator operator--(int) noexcept { auto res = *this; --(*this); return res; }
     rows_iterator& operator+=(std::ptrdiff_t n) noexcept { row_num_ += n; return *this; }
     rows_iterator& operator-=(std::ptrdiff_t n) noexcept { row_num_ -= n; return *this; }
     rows_iterator operator+(std::ptrdiff_t n) const noexcept { return rows_iterator(obj_, row_num_ + n); }
