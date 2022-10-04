@@ -51,24 +51,24 @@ public:
       */
     BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}
 
-    BOOST_CXX14_CONSTEXPR inline field_view(signed char v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(short v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(int v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(long v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(long long v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(signed char v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(short v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(int v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(long v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(long long v) noexcept;
 
-    BOOST_CXX14_CONSTEXPR inline field_view(unsigned char v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(unsigned short v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(unsigned int v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(unsigned long v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(unsigned long long v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned char v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned short v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned int v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned long v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned long long v) noexcept;
 
-    BOOST_CXX14_CONSTEXPR inline field_view(boost::string_view v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(float v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(double v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(const date& v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(const datetime& v) noexcept;
-    BOOST_CXX14_CONSTEXPR inline field_view(const time& v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(boost::string_view v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(float v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(double v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(const date& v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(const datetime& v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(const time& v) noexcept;
 
     // TODO: hide this
     BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v) noexcept : ikind_(internal_kind::sv_offset)

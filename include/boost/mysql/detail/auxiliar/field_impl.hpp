@@ -41,8 +41,9 @@ struct field_impl
 
     field_impl() = default;
 
-    template <typename Arg>
-    field_impl(Arg&& arg) noexcept(std::is_nothrow_constructible<variant_type, Arg>::value) : data (std::forward<Arg>(arg)) {}
+    template <typename... Args>
+    field_impl(Args&&... args) noexcept(std::is_nothrow_constructible<variant_type, Args...>::value) :
+        data (std::forward<Args>(args)...) {}
 
     field_kind kind() const noexcept { return static_cast<field_kind>(data.index()); }
 

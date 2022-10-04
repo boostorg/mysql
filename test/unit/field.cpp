@@ -131,12 +131,21 @@ BOOST_AUTO_TEST_CASE(from_c_str)
     BOOST_TEST(v.as_string() == "test");
 }
 
-BOOST_AUTO_TEST_CASE(from_string_view)
+BOOST_AUTO_TEST_CASE(from_boost_string_view)
 {
     boost::string_view sv ("test123", 4);
     field v(sv);
     BOOST_TEST(v.as_string() == "test");
 }
+
+#ifdef __cpp_lib_string_view
+BOOST_AUTO_TEST_CASE(from_std_string_view)
+{
+    std::string_view sv ("test123", 4);
+    field v(sv);
+    BOOST_TEST(v.as_string() == "test");
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(from_string_rvalue)
 {
@@ -380,13 +389,23 @@ BOOST_AUTO_TEST_CASE(from_c_str)
     BOOST_TEST(v.as_string() == "test");
 }
 
-BOOST_AUTO_TEST_CASE(from_string_view)
+BOOST_AUTO_TEST_CASE(from_boost_string_view)
 {
     boost::string_view sv ("test123", 4);
     field v (9.2f);
     v = sv;
     BOOST_TEST(v.as_string() == "test");
 }
+
+#ifdef __cpp_lib_string_view
+BOOST_AUTO_TEST_CASE(from_std_string_view)
+{
+    std::string_view sv ("test123", 4);
+    field v (9.2f);
+    v = sv;
+    BOOST_TEST(v.as_string() == "test");
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(from_string_rvalue)
 {
@@ -841,12 +860,51 @@ BOOST_AUTO_TEST_CASE(uint64)
     BOOST_TEST(f.as_uint64() == 42u);
 }
 
-BOOST_AUTO_TEST_CASE(string)
+BOOST_AUTO_TEST_CASE(string_char_array)
 {
     field f;
     f.emplace_string("test");
     BOOST_TEST(f.as_string() == "test");
 }
+
+BOOST_AUTO_TEST_CASE(string_c_str)
+{
+    const char* s = "test";
+    field f;
+    f.emplace_string(s);
+    BOOST_TEST(f.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(string_std_string_rvalue)
+{
+    field f;
+    f.emplace_string(std::string("test"));
+    BOOST_TEST(f.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(string_std_string_lvalue)
+{
+    std::string s ("test");
+    field f;
+    f.emplace_string(s);
+    BOOST_TEST(f.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(string_boost_string_view)
+{
+    field f;
+    f.emplace_string(boost::string_view("test"));
+    BOOST_TEST(f.as_string() == "test");
+}
+
+#ifdef __cpp_lib_string_view
+BOOST_AUTO_TEST_CASE(string_std_string_view)
+{
+    field f;
+    f.emplace_string(std::string_view("test"));
+    BOOST_TEST(f.as_string() == "test");
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(float_)
 {

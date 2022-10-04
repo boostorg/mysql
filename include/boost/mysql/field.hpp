@@ -17,7 +17,9 @@
 #include <cstddef>
 #include <ostream>
 #include <string>
-
+#ifdef __cpp_lib_string_view
+#include <string_view>
+#endif
 
 namespace boost {
 namespace mysql {
@@ -34,41 +36,53 @@ public:
     ~field() = default;
 
     explicit field(std::nullptr_t) noexcept {}
-    field(signed char v) noexcept : repr_(std::int64_t(v)) {}
-    field(short v) noexcept : repr_(std::int64_t(v)) {}
-    field(int v) noexcept : repr_(std::int64_t(v)) {}
-    field(long v) noexcept : repr_(std::int64_t(v)) {}
-    field(long long v) noexcept : repr_(std::int64_t(v)) {}
-    field(unsigned char v) noexcept : repr_(std::uint64_t(v)) {}
-    field(unsigned short v) noexcept : repr_(std::uint64_t(v)) {}
-    field(unsigned int v) noexcept : repr_(std::uint64_t(v)) {}
-    field(unsigned long v) noexcept : repr_(std::uint64_t(v)) {}
-    field(unsigned long long v) noexcept : repr_(std::uint64_t(v)) {}
-    field(std::string v) noexcept : repr_(std::move(v)) {}
-    field(float v) noexcept : repr_(v) {}
-    field(double v) noexcept : repr_(v) {}
-    field(const date& v) noexcept : repr_(v) {}
-    field(const datetime& v) noexcept : repr_(v) {}
-    field(const time& v) noexcept : repr_(v) {}
+    explicit field(signed char v) noexcept : repr_(std::int64_t(v)) {}
+    explicit field(short v) noexcept : repr_(std::int64_t(v)) {}
+    explicit field(int v) noexcept : repr_(std::int64_t(v)) {}
+    explicit field(long v) noexcept : repr_(std::int64_t(v)) {}
+    explicit field(long long v) noexcept : repr_(std::int64_t(v)) {}
+    explicit field(unsigned char v) noexcept : repr_(std::uint64_t(v)) {}
+    explicit field(unsigned short v) noexcept : repr_(std::uint64_t(v)) {}
+    explicit field(unsigned int v) noexcept : repr_(std::uint64_t(v)) {}
+    explicit field(unsigned long v) noexcept : repr_(std::uint64_t(v)) {}
+    explicit field(unsigned long long v) noexcept : repr_(std::uint64_t(v)) {}
+    explicit field(const std::string& v) : repr_(v) {}
+    explicit field(std::string&& v) noexcept : repr_(std::move(v)) {}
+    explicit field(const char* v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
+    explicit field(boost::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
+    #ifdef __cpp_lib_string_view
+    explicit field(std::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
+    #endif
+    explicit field(float v) noexcept : repr_(v) {}
+    explicit field(double v) noexcept : repr_(v) {}
+    explicit field(const date& v) noexcept : repr_(v) {}
+    explicit field(const datetime& v) noexcept : repr_(v) {}
+    explicit field(const time& v) noexcept : repr_(v) {}
     field(const field_view& v) { from_view(v); }
 
-    field& operator=(std::nullptr_t) noexcept { repr_.data.emplace<detail::field_impl::null_t>(); return *this; }
-    field& operator=(signed char v) noexcept { repr_.data.emplace<std::int64_t>(v); return *this; }
-    field& operator=(short v) noexcept { repr_.data.emplace<std::int64_t>(v); return *this; }
-    field& operator=(int v) noexcept { repr_.data.emplace<std::int64_t>(v); return *this; }
-    field& operator=(long v) noexcept { repr_.data.emplace<std::int64_t>(v); return *this; }
-    field& operator=(long long v) noexcept { repr_.data.emplace<std::int64_t>(v); return *this; }
-    field& operator=(unsigned char v) noexcept { repr_.data.emplace<std::uint64_t>(v); return *this; }
-    field& operator=(unsigned short v) noexcept { repr_.data.emplace<std::uint64_t>(v); return *this; }
-    field& operator=(unsigned int v) noexcept { repr_.data.emplace<std::uint64_t>(v); return *this; }
-    field& operator=(unsigned long v) noexcept { repr_.data.emplace<std::uint64_t>(v); return *this; }
-    field& operator=(unsigned long long v) noexcept { repr_.data.emplace<std::uint64_t>(v); return *this; }
-    field& operator=(std::string v) { repr_.data.emplace<std::string>(std::move(v)); return *this; }
-    field& operator=(float v) noexcept { repr_.data.emplace<float>(v); return *this; }
-    field& operator=(double v) noexcept { repr_.data.emplace<double>(v); return *this; }
-    field& operator=(const date& v) noexcept { repr_.data.emplace<date>(v); return *this; }
-    field& operator=(const datetime& v) noexcept { repr_.data.emplace<datetime>(v); return *this; }
-    field& operator=(const time& v) noexcept { repr_.data.emplace<time>(v); return *this; }
+    field& operator=(std::nullptr_t) noexcept { emplace_null(); return *this; }
+    field& operator=(signed char v) noexcept { emplace_int64(v); return *this; }
+    field& operator=(short v) noexcept { emplace_int64(v); return *this; }
+    field& operator=(int v) noexcept { emplace_int64(v); return *this; }
+    field& operator=(long v) noexcept { emplace_int64(v); return *this; }
+    field& operator=(long long v) noexcept { emplace_int64(v); return *this; }
+    field& operator=(unsigned char v) noexcept { emplace_uint64(v); return *this; }
+    field& operator=(unsigned short v) noexcept { emplace_uint64(v); return *this; }
+    field& operator=(unsigned int v) noexcept { emplace_uint64(v); return *this; }
+    field& operator=(unsigned long v) noexcept { emplace_uint64(v); return *this; }
+    field& operator=(unsigned long long v) noexcept { emplace_uint64(v); return *this; }
+    field& operator=(const std::string& v) { emplace_string(v); return *this; }
+    field& operator=(std::string&& v) { emplace_string(std::move(v)); return *this; }
+    field& operator=(const char* v) { emplace_string(v); return *this; }
+    field& operator=(boost::string_view v) { emplace_string(v); return *this; }
+    #ifdef __cpp_lib_string_view
+    field& operator=(std::string_view v) { emplace_string(v); return *this; }
+    #endif
+    field& operator=(float v) noexcept { emplace_float(v); return *this; }
+    field& operator=(double v) noexcept { emplace_double(v); return *this; }
+    field& operator=(const date& v) noexcept { emplace_date(v); return *this; }
+    field& operator=(const datetime& v) noexcept { emplace_datetime(v); return *this; }
+    field& operator=(const time& v) noexcept { emplace_time(v); return *this; }
     field& operator=(const field_view& v) { from_view(v); return *this; }
 
     field_kind kind() const noexcept { return repr_.kind(); }
@@ -119,15 +133,21 @@ public:
     datetime& get_datetime() noexcept { return repr_.get<datetime>(); }
     time& get_time() noexcept { return repr_.get<time>(); }
 
-    void emplace_null() noexcept { *this = nullptr; }
-    void emplace_int64(std::int64_t v) noexcept { *this = v; }
-    void emplace_uint64(std::uint64_t v) noexcept { *this = v; }
-    void emplace_string(std::string v) noexcept { *this = std::move(v); }
-    void emplace_float(float v) noexcept { *this = v; }
-    void emplace_double(double v) noexcept { *this = v; }
-    void emplace_date(const date& v) noexcept { *this = v; }
-    void emplace_datetime(const datetime& v) noexcept { *this = v; }
-    void emplace_time(const time& v) noexcept { *this = v; }
+    void emplace_null() noexcept { repr_.data.emplace<detail::field_impl::null_t>(); }
+    void emplace_int64(std::int64_t v) noexcept { repr_.data.emplace<std::int64_t>(v); }
+    void emplace_uint64(std::uint64_t v) noexcept { repr_.data.emplace<std::uint64_t>(v); }
+    void emplace_string(const std::string& v) noexcept { repr_.data.emplace<std::string>(v); }
+    void emplace_string(std::string&& v) noexcept { repr_.data.emplace<std::string>(std::move(v)); }
+    void emplace_string(const char* v) noexcept { repr_.data.emplace<std::string>(v); }
+    void emplace_string(boost::string_view v) noexcept { repr_.data.emplace<std::string>(v); }
+    #ifdef __cpp_lib_string_view
+    void emplace_string(std::string_view v) noexcept { repr_.data.emplace<std::string>(v); }
+    #endif
+    void emplace_float(float v) noexcept { repr_.data.emplace<float>(v); }
+    void emplace_double(double v) noexcept { repr_.data.emplace<double>(v); }
+    void emplace_date(const date& v) noexcept { repr_.data.emplace<date>(v); }
+    void emplace_datetime(const datetime& v) noexcept { repr_.data.emplace<datetime>(v); }
+    void emplace_time(const time& v) noexcept { repr_.data.emplace<time>(v); }
 
     inline operator field_view() const noexcept { return field_view(&repr_); }
 private:
