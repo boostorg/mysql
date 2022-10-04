@@ -54,7 +54,7 @@ add_executable(
     unit/rows_view.cpp
     unit/rows.cpp
     unit/metadata.cpp
-    # unit/error.cpp
+    unit/error.cpp
     # unit/execute_params.cpp
     # unit/prepared_statement.cpp
     # unit/resultset.cpp

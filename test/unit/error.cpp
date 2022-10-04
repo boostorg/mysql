@@ -6,12 +6,13 @@
 //
 
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include "test_common.hpp"
 
 using boost::mysql::errc;
 using boost::mysql::detail::error_to_string;
+using boost::mysql::detail::stringize;
 using boost::mysql::error_info;
-using boost::mysql::test::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_error)
 
