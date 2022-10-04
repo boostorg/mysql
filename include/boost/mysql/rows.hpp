@@ -37,7 +37,8 @@ public:
     rows& operator=(rows&&) = default;
     ~rows() = default;
 
-    inline rows& operator=(const rows_view&);
+    // UB if rv comes from this: this_rows = rows_view(this_rows);
+    inline rows& operator=(const rows_view& rv);
 
     iterator begin() const noexcept { return iterator(this, 0); }
     iterator end() const noexcept { return iterator(this, size()); }

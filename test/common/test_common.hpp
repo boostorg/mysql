@@ -8,12 +8,15 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
+#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/row.hpp>
+#include <boost/mysql/rows.hpp>
 #include <boost/mysql/connection_params.hpp>
 #include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
+#include <cstddef>
 #include <vector>
 #include <algorithm>
 #include <ostream>
@@ -34,6 +37,13 @@ row makerow(Types&&... args)
 {
     auto fields = make_field_views(std::forward<Types>(args)...);
     return row(row_view(fields.data(), fields.size()));
+}
+
+template <class... Types>
+rows makerows(std::size_t num_columns, Types&&... args)
+{
+    auto fields = make_field_views(std::forward<Types>(args)...);
+    return rows(rows_view(fields.data(), fields.size(), num_columns));
 }
 
 BOOST_CXX14_CONSTEXPR inline date makedate(int num_years, unsigned num_months, unsigned num_days)

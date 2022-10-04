@@ -52,6 +52,7 @@ add_executable(
     unit/row_view.cpp
     unit/row.cpp
     unit/rows_view.cpp
+    unit/rows.cpp
 
     # unit/metadata.cpp
     # unit/error.cpp

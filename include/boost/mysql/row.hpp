@@ -63,6 +63,7 @@ public:
 
     row(row_view r) : detail::row_base(r.begin(), r.size()) {}
 
+    // UB if r comes from this: this_row = row_view(this_row));
     row& operator=(row_view r) { assign(r.begin(), r.size()); return *this; }
     
     const_iterator begin() const noexcept { return fields_.data(); }

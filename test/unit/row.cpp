@@ -258,7 +258,6 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
     BOOST_TEST(r[1] == field_view(50u));
     BOOST_TEST(r[2] == field_view("fgh"));
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 
@@ -333,7 +332,6 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
     BOOST_TEST(r.size() == 1);
     BOOST_TEST(r[0] == field_view("abcdef"));
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(at)
