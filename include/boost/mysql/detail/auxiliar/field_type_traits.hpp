@@ -24,12 +24,8 @@ struct is_field_view_forward_iterator : std::false_type { };
 template <typename T>
 struct is_field_view_forward_iterator<T, void_t<
     typename std::enable_if<
-        std::is_same<
-            typename std::remove_reference<
-                typename std::remove_cv<
-                    typename std::iterator_traits<T>::value_type
-                >::type
-            >::type,
+        std::is_convertible<
+            typename std::iterator_traits<T>::reference,
             ::boost::mysql::field_view
         >::value
     >::type,

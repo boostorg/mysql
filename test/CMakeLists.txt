@@ -36,7 +36,7 @@ add_executable(
     unit/detail/auth/auth_calculator.cpp
     unit/detail/auxiliar/static_string.cpp
     unit/detail/auxiliar/rows_iterator.cpp
-    # unit/detail/auxiliar/value_type_traits.cpp
+    unit/detail/auxiliar/field_type_traits.cpp
     # unit/detail/protocol/capabilities.cpp
     # unit/detail/protocol/date.cpp
     # unit/detail/protocol/null_bitmap_traits.cpp
