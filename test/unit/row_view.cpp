@@ -7,6 +7,7 @@
 
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/field.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
@@ -17,6 +18,7 @@
 
 using boost::mysql::row_view;
 using boost::mysql::field_view;
+using boost::mysql::field;
 using boost::mysql::detail::stringize;
 using boost::mysql::make_field_views;
 using boost::mysql::test::make_fv_vector;
@@ -163,6 +165,36 @@ BOOST_AUTO_TEST_CASE(multiple_elms)
 }
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(as_vector)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    std::vector<field> vec { field_view("abc") };
+    row_view v;
+    v.as_vector(vec);
+    BOOST_TEST(vec.empty());
+}
+
+BOOST_AUTO_TEST_CASE(non_empty)
+{
+    std::vector<field> vec { field_view("abc") };
+    auto fields = make_field_views(42u, "abc");
+    row_view v (fields.data(), fields.size());
+    v.as_vector(vec);
+    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec[0].as_uint64() == 42u);
+    BOOST_TEST(vec[1].as_string() == "abc");
+}
+
+BOOST_AUTO_TEST_CASE(return_value)
+{
+    auto fields = make_field_views(42u, "abc");
+    row_view v (fields.data(), fields.size());
+    auto vec = v.as_vector();
+    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec[0].as_uint64() == 42u);
+    BOOST_TEST(vec[1].as_string() == "abc");
+}
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_CASE(operator_equals)
 {

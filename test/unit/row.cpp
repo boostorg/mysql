@@ -17,6 +17,7 @@
 using boost::mysql::row;
 using boost::mysql::row_view;
 using boost::mysql::field_view;
+using boost::mysql::field;
 using boost::mysql::make_field_views;
 using boost::mysql::test::makerow;
 using boost::mysql::detail::stringize;
@@ -433,6 +434,35 @@ BOOST_AUTO_TEST_CASE(non_empty)
     BOOST_TEST(rv[0] == field_view("abc"));
     BOOST_TEST(rv[1] == field_view(24));
     BOOST_TEST(rv[2] == field_view("def"));
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_AUTO_TEST_SUITE(as_vector)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    std::vector<field> vec { field_view("abc") };
+    row r;
+    r.as_vector(vec);
+    BOOST_TEST(vec.empty());
+}
+
+BOOST_AUTO_TEST_CASE(non_empty)
+{
+    std::vector<field> vec { field_view("abc") };
+    row r = makerow(42u, "abc");
+    r.as_vector(vec);
+    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec[0].as_uint64() == 42u);
+    BOOST_TEST(vec[1].as_string() == "abc");
+}
+
+BOOST_AUTO_TEST_CASE(return_value)
+{
+    auto vec = makerow(42u, "abc").as_vector();
+    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec[0].as_uint64() == 42u);
+    BOOST_TEST(vec[1].as_string() == "abc");
 }
 BOOST_AUTO_TEST_SUITE_END()
 

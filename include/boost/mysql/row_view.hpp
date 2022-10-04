@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <iosfwd>
 #include <iterator>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -39,6 +40,11 @@ public:
     field_view back() const noexcept { return fields_[size_ - 1]; }
     bool empty() const noexcept { return size_ == 0; }
     std::size_t size() const noexcept { return size_; }
+
+    template <class Allocator>
+    void as_vector(std::vector<field, Allocator>& out) const { out.assign(begin(), end()); }
+
+    std::vector<field> as_vector() const { return std::vector<field>(begin(), end()); }
 
     // Required by iterators
     const row_view* operator->() const noexcept { return this; }

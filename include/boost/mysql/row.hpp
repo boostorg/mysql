@@ -80,6 +80,11 @@ public:
         return row_view(fields_.data(), fields_.size());
     }
 
+    template <class Allocator>
+    void as_vector(std::vector<field, Allocator>& out) const { out.assign(begin(), end()); }
+
+    std::vector<field> as_vector() const { return std::vector<field>(begin(), end()); }
+
     // TODO: hide this
     using detail::row_base::clear;
 };
