@@ -21,6 +21,7 @@ class metadata_collection_view
     std::size_t size_ {};
 public:
     metadata_collection_view() = default;
+    // TODO: hide this
     metadata_collection_view(const metadata* data, std::size_t size) noexcept :
         data_(data), size_(size) {}
     
