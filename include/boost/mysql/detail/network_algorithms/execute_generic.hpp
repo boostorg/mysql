@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -23,7 +23,7 @@ void execute_generic(
     resultset_encoding encoding,
     channel<Stream>& channel,
     const Serializable& request,
-    resultset& output,
+    resultset_base& output,
     error_code& err,
     error_info& info
 );
@@ -34,7 +34,7 @@ async_execute_generic(
     resultset_encoding encoding,
     channel<Stream>& chan,
     const Serializable& request,
-    resultset& output,
+    resultset_base& output,
     error_info& info,
     CompletionToken&& token
 );

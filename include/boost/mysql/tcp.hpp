@@ -9,8 +9,6 @@
 #define BOOST_MYSQL_TCP_HPP
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/resultset.hpp>
-#include <boost/mysql/prepared_statement.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
 namespace boost {

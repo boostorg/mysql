@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
@@ -45,7 +45,7 @@ template <class Stream, class FieldViewFwdIterator>
 void boost::mysql::detail::execute_statement(
     channel<Stream>& chan,
     const execute_params<FieldViewFwdIterator>& params,
-    resultset& output,
+    resultset_base& output,
     error_code& err,
     error_info& info
 )
@@ -68,7 +68,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
     const execute_params<FieldViewFwdIterator>& params,
-    resultset& output,
+    resultset_base& output,
     error_info& info,
     CompletionToken&& token
 )

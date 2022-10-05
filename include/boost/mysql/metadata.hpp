@@ -21,7 +21,7 @@ namespace mysql {
  * \brief Holds [link mysql.resultsets.metadata metadata] about a field in a SQL query.
  * \details All strings point into externally owned memory. The object
  * will be valid while the parent object is alive
- * (typically, a [reflink resultset] object).
+ * (typically, a [reflink resultset_base] object).
  */
 class metadata
 {

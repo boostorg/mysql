@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/tcp.hpp>
 #include <boost/mysql/detail/protocol/channel.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -13,7 +13,7 @@
 #include <boost/test/unit_test.hpp>
 #include "test_stream.hpp"
 
-using resultset_t = boost::mysql::resultset<boost::mysql::test::test_stream>;
+using resultset_t = boost::mysql::resultset_base<boost::mysql::test::test_stream>;
 using chan_t = boost::mysql::detail::channel<boost::mysql::test::test_stream>; 
 
 BOOST_AUTO_TEST_SUITE(test_resultset)
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(rebind_executor)
 {
     using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
     using rebound_type = boost::mysql::tcp_resultset::rebind_executor<other_executor>::other;
-    using expected_type = boost::mysql::resultset<
+    using expected_type = boost::mysql::resultset_base<
         boost::asio::basic_stream_socket<
             boost::asio::ip::tcp,
             other_executor

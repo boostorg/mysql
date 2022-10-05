@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_PREPARED_STATEMENT_HPP
-#define BOOST_MYSQL_PREPARED_STATEMENT_HPP
+#ifndef BOOST_MYSQL_STATEMENT_BASE_HPP
+#define BOOST_MYSQL_STATEMENT_BASE_HPP
 
 
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
@@ -25,34 +25,34 @@ constexpr std::array<field_view, 0> no_statement_params {};
  * \details This class is a handle to a server-side prepared statement.
  *
  * The main use of a prepared statement is executing it
- * using [refmem prepared_statement execute], which yields a [reflink resultset].
+ * using [refmem statement_base execute], which yields a [reflink resultset_base].
  *
  * Prepared statements are default-constructible and movable, but not copyable. 
- * [refmem prepared_statement valid] returns `false` for default-constructed 
+ * [refmem statement_base valid] returns `false` for default-constructed 
  * and moved-from prepared statements. Calling any member function on an invalid
  * prepared statements, other than assignment, results in undefined behavior.
  *
  * Prepared statements are managed by the server in a per-connection basis:
  * once created, a prepared statement may be used as long as the parent
- * [reflink connection] object (i.e. the connection that originated the resultset)
- * is alive and open. Calling any function on a prepared_statement
+ * [reflink connection] object (i.e. the connection that originated the resultset_base)
+ * is alive and open. Calling any function on a statement_base
  * whose parent connection has been closed or destroyed results
  * in undefined behavior.
  */
-class prepared_statement
+class statement_base
 {
     bool valid_ {false};
     detail::com_stmt_prepare_ok_packet stmt_msg_;
 public:
     /**
       * \brief Default constructor. 
-      * \details Default constructed statements have [refmem prepared_statement valid] return `false`.
+      * \details Default constructed statements have [refmem statement_base valid] return `false`.
       */
-    prepared_statement() = default;
+    statement_base() = default;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private. Do not use. TODO: hide this
-    prepared_statement(const detail::com_stmt_prepare_ok_packet& msg) noexcept:
+    statement_base(const detail::com_stmt_prepare_ok_packet& msg) noexcept:
         valid_(true), stmt_msg_(msg) {}
 #endif
 

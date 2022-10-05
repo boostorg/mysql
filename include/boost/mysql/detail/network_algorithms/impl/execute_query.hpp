@@ -19,7 +19,7 @@ template <class Stream>
 void boost::mysql::detail::execute_query(
     channel<Stream>& channel,
     boost::string_view query,
-    resultset& output,
+    resultset_base& output,
     error_code& err,
     error_info& info
 )
@@ -44,7 +44,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 boost::mysql::detail::async_execute_query(
     channel<Stream>& chan,
     boost::string_view query,
-    resultset& output,
+    resultset_base& output,
     error_info& info,
     CompletionToken&& token
 )

@@ -24,7 +24,7 @@ BOOST_MYSQL_NETWORK_TEST(insert_ok, network_fixture)
     auto result = conn->query(
         "INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')").get();
 
-    // Verify resultset
+    // Verify resultset_base
     BOOST_TEST(result->fields().empty());
     BOOST_TEST(result->valid());
     BOOST_TEST(result->complete());
@@ -54,7 +54,7 @@ BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture)
     // Issue the query
     auto result = conn->query("UPDATE updates_table SET field_int = field_int+10").get();
 
-    // Validate resultset
+    // Validate resultset_base
     BOOST_TEST(result->fields().empty());
     BOOST_TEST(result->valid());
     BOOST_TEST(result->complete());

@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_EXECUTE_PARAMS_HPP
 #define BOOST_MYSQL_EXECUTE_PARAMS_HPP
 
-#include <boost/mysql/prepared_statement.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <iterator>
 #include <type_traits>
@@ -17,10 +17,10 @@ namespace boost {
 namespace mysql {
 
 /**
-  * \brief Represents the parameters required to execute a [reflink prepared_statement].
+  * \brief Represents the parameters required to execute a [reflink statement_base].
   * \details In essence, this class contains an iterator range \\[first, last), pointing
   * to a sequence of [reflink value]s that will be used as parameters to execute a
-  * [reflink prepared_statement]. FieldViewFwdIterator must meet the [reflink FieldViewFwdIterator]
+  * [reflink statement_base]. FieldViewFwdIterator must meet the [reflink FieldViewFwdIterator]
   * type requirements.
   *
   * In the future, this class may define extra members providing finer control
@@ -40,7 +40,7 @@ class execute_params
 public:
     /// Constructor.
     execute_params(
-        const prepared_statement& stmt,
+        const statement_base& stmt,
         FieldViewFwdIterator first,
         FieldViewFwdIterator last
     );
@@ -60,7 +60,7 @@ template <
 >
 constexpr execute_params<FieldViewFwdIterator>
 make_execute_params(
-    const prepared_statement& stmt,
+    const statement_base& stmt,
     FieldViewFwdIterator first, 
     FieldViewFwdIterator last
 )
@@ -73,7 +73,7 @@ template <
     class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>
 >
 constexpr auto make_execute_params(
-    const prepared_statement& stmt,
+    const statement_base& stmt,
     const FieldViewCollection& col
 ) -> execute_params<decltype(std::begin(col))>
 {

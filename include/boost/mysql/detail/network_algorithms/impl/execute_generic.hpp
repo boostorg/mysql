@@ -16,7 +16,7 @@
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/asio/buffer.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -28,7 +28,7 @@ namespace detail {
 
 class execute_processor
 {
-    resultset& output_;
+    resultset_base& output_;
     error_info& output_info_;
     bytestring& write_buffer_;
     capabilities caps_;
@@ -36,7 +36,7 @@ class execute_processor
     std::size_t remaining_fields_ {};
 public:
     execute_processor(
-        resultset& output,
+        resultset_base& output,
         error_info& output_info,
         bytestring& write_buffer,
         capabilities caps
@@ -224,7 +224,7 @@ void boost::mysql::detail::execute_generic(
     resultset_encoding encoding,
     channel<Stream>& channel,
     const Serializable& request,
-    resultset& output,
+    resultset_base& output,
     error_code& err,
     error_info& info
 )
@@ -285,7 +285,7 @@ boost::mysql::detail::async_execute_generic(
     resultset_encoding encoding,
     channel<Stream>& channel,
     const Serializable& request,
-    resultset& output,
+    resultset_base& output,
     error_info& info,
     CompletionToken&& token
 )

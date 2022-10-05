@@ -14,7 +14,7 @@
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
@@ -28,7 +28,7 @@ namespace detail {
 template <class Stream>
 inline void process_all_rows(
     channel<Stream>& channel,
-    resultset& resultset,
+    resultset_base& result,
     rows_view& output,
     error_code& err,
     error_info& info
@@ -39,7 +39,7 @@ inline void process_all_rows(
     while (channel.has_read_messages())
     {
         // Get the row message
-        auto message = channel.next_read_message(resultset.sequence_number(), err);
+        auto message = channel.next_read_message(result.sequence_number(), err);
         if (err)
             return;
 
@@ -48,7 +48,7 @@ inline void process_all_rows(
             message,
             channel.current_capabilities(),
             channel.buffer_first(),
-            resultset,
+            result,
             channel.shared_fields(),
             err,
             info
@@ -62,7 +62,7 @@ inline void process_all_rows(
             output = rows_view(
                 channel.shared_fields().data(),
                 channel.shared_fields().size(),
-                resultset.meta().size()
+                result.meta().size()
             );
             offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
             break;
@@ -76,18 +76,18 @@ struct read_all_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     error_info& output_info_;
-    resultset& resultset_;
+    resultset_base& resultset_;
     rows_view& output_;
 
     read_all_rows_op(
         channel<Stream>& chan,
         error_info& output_info,
-        resultset& resultset,
+        resultset_base& result,
 		rows_view& output
     ) noexcept :
         chan_(chan),
         output_info_(output_info),
-        resultset_(resultset),
+        resultset_(result),
 		output_(output)
     {
     }
@@ -108,7 +108,7 @@ struct read_all_rows_op : boost::asio::coroutine
         // Normal path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            // If the resultset is already complete, we don't need to read anything
+            // If the resultset_base is already complete, we don't need to read anything
             if (resultset_.complete())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
@@ -146,20 +146,20 @@ struct read_all_rows_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::read_all_rows(
     channel<Stream>& channel,
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_code& err,
     error_info& info
 )
 {
-    // If the resultset is already complete, we don't need to read anything
-    if (resultset.complete())
+    // If the resultset_base is already complete, we don't need to read anything
+    if (result.complete())
     {
         output = rows_view();
         return;
     }
 
-    while (!resultset.complete())
+    while (!result.complete())
     {
         // Read from the stream until there is at least one message
         channel.read_some(err, true);
@@ -167,7 +167,7 @@ void boost::mysql::detail::read_all_rows(
             return;
         
         // Process read messages
-        process_all_rows(channel, resultset, output, err, info);
+        process_all_rows(channel, result, output, err, info);
         if (err)
             return;
     }
@@ -180,7 +180,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_read_all_rows(
     channel<Stream>& channel,
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_info& output_info,
     CompletionToken&& token
@@ -190,7 +190,7 @@ boost::mysql::detail::async_read_all_rows(
         read_all_rows_op<Stream>(
             channel,
             output_info,
-            resultset,
+            result,
 			output
         ),
         token,

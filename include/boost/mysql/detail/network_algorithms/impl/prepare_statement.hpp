@@ -15,7 +15,7 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/prepared_statement.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include <boost/asio/buffer.hpp>
 #include <cstdint>
 
@@ -28,14 +28,14 @@ class prepare_statement_processor
 {
     capabilities caps_;
     bytestring& write_buffer_;
-    prepared_statement& output_;
+    statement_base& output_;
     error_info& output_info_;
     unsigned remaining_meta_ {};
 public:
     template <class Stream>
     prepare_statement_processor(
         channel<Stream>& chan,
-        prepared_statement& output,
+        statement_base& output,
         error_info& output_info
     ) noexcept :
         caps_(chan.current_capabilities()),
@@ -71,7 +71,7 @@ public:
         {
             com_stmt_prepare_ok_packet response;
             err = deserialize_message(ctx, response);
-            output_ = prepared_statement(response);
+            output_ = statement_base(response);
             remaining_meta_ = response.num_columns + response.num_params;
         }
     }
@@ -162,7 +162,7 @@ template <class Stream>
 void boost::mysql::detail::prepare_statement(
     channel<Stream>& channel,
     boost::string_view statement,
-    prepared_statement& output,
+    statement_base& output,
     error_code& err,
     error_info& info
 )
@@ -210,7 +210,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,
     boost::string_view statement,
-    prepared_statement& output,
+    statement_base& output,
     error_info& info,
     CompletionToken&& token
 )

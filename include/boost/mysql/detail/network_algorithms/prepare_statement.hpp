@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/prepared_statement.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include <boost/utility/string_view.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 
@@ -22,7 +22,7 @@ template <class Stream>
 void prepare_statement(
     channel<Stream>& chan,
     boost::string_view statement,
-    prepared_statement& output,
+    statement_base& output,
     error_code& err,
     error_info& info
 );
@@ -32,7 +32,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_prepare_statement(
     channel<Stream>& chan,
     boost::string_view statement,
-    prepared_statement& output,
+    statement_base& output,
     error_info& info,
     CompletionToken&& token
 );

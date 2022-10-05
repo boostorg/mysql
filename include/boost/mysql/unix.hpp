@@ -9,8 +9,6 @@
 #define BOOST_MYSQL_UNIX_HPP
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/resultset.hpp>
-#include <boost/mysql/prepared_statement.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 
 namespace boost {

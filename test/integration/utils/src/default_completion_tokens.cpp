@@ -18,9 +18,9 @@
 #include "boost/mysql/errc.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/execute_params.hpp"
-#include "boost/mysql/prepared_statement.hpp"
+#include "boost/mysql/statement_base.hpp"
 #include "boost/mysql/row.hpp"
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/connection.hpp>
 #include <memory>
 
@@ -97,7 +97,7 @@ public:
 
 template <class Stream>
 network_result<er_resultset_ptr> erase_network_result(
-    network_result<boost::mysql::resultset<Stream>>&& r
+    network_result<boost::mysql::resultset_base<Stream>>&& r
 )
 {
     return network_result<er_resultset_ptr> (
@@ -111,7 +111,7 @@ class default_completion_tokens_statement : public er_statement_base<Stream>
 {
 public:
     using er_statement_base<Stream>::er_statement_base;
-    using resultset_type = boost::mysql::resultset<Stream>;
+    using resultset_type = boost::mysql::resultset_base<Stream>;
 
     network_result<er_resultset_ptr> execute_params(
         const boost::mysql::execute_params<value_list_it>& params
@@ -139,7 +139,7 @@ public:
 
 template <class Stream>
 network_result<er_statement_ptr> erase_network_result(
-    network_result<boost::mysql::prepared_statement<Stream>>&& r
+    network_result<boost::mysql::statement_base<Stream>>&& r
 )
 {
     return network_result<er_statement_ptr> (
@@ -153,8 +153,8 @@ class default_completion_tokens_connection : public er_connection_base<Stream>
 {
 public:
     using er_connection_base<Stream>::er_connection_base;
-    using statement_type = boost::mysql::prepared_statement<Stream>;
-    using resultset_type = boost::mysql::resultset<Stream>;
+    using statement_type = boost::mysql::statement_base<Stream>;
+    using resultset_type = boost::mysql::resultset_base<Stream>;
 
     network_result<no_result> physical_connect(er_endpoint kind) override
     {

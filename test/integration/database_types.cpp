@@ -624,7 +624,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, query, data::make(all_samples))
     BOOST_TEST(rows[0].values()[0] == sample.expected_value);
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, prepared_statement, data::make(all_samples))
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, statement_base, data::make(all_samples))
 {
     connect();
 

@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_RESULTSET_HPP
-#define BOOST_MYSQL_RESULTSET_HPP
+#ifndef BOOST_MYSQL_RESULTSET_BASE_HPP
+#define BOOST_MYSQL_RESULTSET_BASE_HPP
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/row.hpp>
@@ -34,11 +34,11 @@ namespace mysql {
  * provides an in-depth explanation of the mechanics of this class.
  *
  * Resultsets are default-constructible and movable, but not copyable. 
- * [refmem resultset valid] returns `false` for default-constructed 
+ * [refmem resultset_base valid] returns `false` for default-constructed 
  * and moved-from resultsets. Calling any member function on an invalid
- * resultset, other than assignment, results in undefined behavior.
+ * resultset_base, other than assignment, results in undefined behavior.
  */
-class resultset
+class resultset_base
 {
     class ok_packet_data
     {
@@ -79,18 +79,18 @@ class resultset
 
 public:
     /// \brief Default constructor.
-    /// \details Default constructed resultsets have [refmem resultset valid] return `false`.
-    resultset() = default;
+    /// \details Default constructed resultsets have [refmem resultset_base valid] return `false`.
+    resultset_base() = default;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use. TODO: hide these
-    resultset(std::vector<metadata>&& meta, detail::resultset_encoding encoding) noexcept:
+    resultset_base(std::vector<metadata>&& meta, detail::resultset_encoding encoding) noexcept:
         valid_(true),
         encoding_(encoding),
         meta_(std::move(meta))
     {
     };
-    resultset(const detail::ok_packet& ok_pack):
+    resultset_base(const detail::ok_packet& ok_pack):
         valid_(true),
         ok_packet_(ok_pack)
     {
@@ -132,14 +132,14 @@ public:
 #endif
 
     /**
-     * \brief Returns whether this object represents a valid resultset.
+     * \brief Returns whether this object represents a valid resultset_base.
      * \details Returns `false` for default-constructed and moved-from resultsets.
-     * Calling any member function on an invalid resultset,
+     * Calling any member function on an invalid resultset_base,
      * other than assignment, results in undefined behavior.
      */
     bool valid() const noexcept { return valid_; }
 
-    /// \brief Returns whether the resultset has been completely read or not.
+    /// \brief Returns whether the resultset_base has been completely read or not.
     /// \details See [link mysql.resultsets.complete this section] for more info.
     bool complete() const noexcept { return ok_packet_.has_value(); }
 
@@ -151,32 +151,32 @@ public:
     metadata_collection_view meta() const noexcept { return metadata_collection_view(meta_.data(), meta_.size()); }
 
     /**
-     * \brief The number of rows affected by the SQL that generated this resultset.
-     * \details The resultset __must be [link mysql.resultsets.complete complete]__
+     * \brief The number of rows affected by the SQL that generated this resultset_base.
+     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
      * before calling this function.
      */
     std::uint64_t affected_rows() const noexcept { return ok_packet_.affected_rows(); }
 
     /**
-     * \brief The last insert ID produced by the SQL that generated this resultset.
-     * \details The resultset __must be [link mysql.resultsets.complete complete]__
+     * \brief The last insert ID produced by the SQL that generated this resultset_base.
+     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
      * before calling this function.
      */
     std::uint64_t last_insert_id() const noexcept { return ok_packet_.last_insert_id(); }
 
     /**
-     * \brief The number of warnings produced by the SQL that generated this resultset.
-     * \details The resultset __must be [link mysql.resultsets.complete complete]__
+     * \brief The number of warnings produced by the SQL that generated this resultset_base.
+     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
      *  before calling this function.
      */
     unsigned warning_count() const noexcept { return ok_packet_.warning_count(); }
 
     /**
      * \brief Additionat text information about the execution of
-     *        the SQL that generated this resultset.
-     * \details The resultset __must be [link mysql.resultsets.complete complete]__
+     *        the SQL that generated this resultset_base.
+     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
      * before calling this function. The returned string is guaranteed to be valid
-     * until the resultset object is destroyed.
+     * until the resultset_base object is destroyed.
      */
     boost::string_view info() const noexcept { return ok_packet_.info(); }
 };

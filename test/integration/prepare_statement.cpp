@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/prepared_statement.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include "integration_test_common.hpp"
 #include "tcp_network_fixture.hpp"
 #include "streams.hpp"
@@ -69,7 +69,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_invalid, tcp_network_fixture)
 {
     connect();
 
-    // Get a valid resultset and perform a move assignment
+    // Get a valid resultset_base and perform a move assignment
     tcp_prepared_statement s1 = conn.prepare_statement("SELECT * FROM empty_table");
     tcp_prepared_statement s2;
     s2 = std::move(s1);
@@ -87,7 +87,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, tcp_network_fixture)
 {
     connect();
     
-    // Get a valid resultset and perform a move assignment
+    // Get a valid resultset_base and perform a move assignment
     tcp_prepared_statement s1 = conn.prepare_statement("SELECT * FROM empty_table");
     tcp_prepared_statement s2 = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
     s2 = std::move(s1);
@@ -96,7 +96,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, tcp_network_fixture)
     BOOST_TEST(!s1.valid());
     BOOST_TEST(s2.valid());
 
-    // We can use the 2nd resultset
+    // We can use the 2nd resultset_base
     auto rows = s2.execute(no_statement_params).read_all();
     BOOST_TEST(rows.empty());
 }

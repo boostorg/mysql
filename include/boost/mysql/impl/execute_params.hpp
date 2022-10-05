@@ -22,7 +22,7 @@ template <class FieldViewFwdIterator>
 void check_num_params(
     FieldViewFwdIterator first,
     FieldViewFwdIterator last,
-    const prepared_statement& stmt
+    const statement_base& stmt
 )
 {
     auto param_count = std::distance(first, last);
@@ -39,7 +39,7 @@ void check_num_params(
 
 template <class FieldViewFwdIterator>
 boost::mysql::execute_params<FieldViewFwdIterator>::execute_params(
-    const prepared_statement& stmt,
+    const statement_base& stmt,
     FieldViewFwdIterator first,
     FieldViewFwdIterator last
 ) :

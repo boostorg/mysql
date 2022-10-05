@@ -9,16 +9,16 @@
 #include <boost/mysql/tcp.hpp>
 #include "test_common.hpp"
 #include "test_stream.hpp"
-#include <boost/mysql/prepared_statement.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
 using namespace boost::mysql::detail;
-using boost::mysql::prepared_statement;
+using boost::mysql::statement_base;
 
 using chan_t = boost::mysql::detail::channel<boost::mysql::test::test_stream>;
-using stmt_t = prepared_statement<boost::mysql::test::test_stream>;
+using stmt_t = statement_base<boost::mysql::test::test_stream>;
 
 BOOST_AUTO_TEST_SUITE(test_prepared_statement)
 
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(rebind_executor)
 {
     using other_executor = boost::asio::strand<boost::asio::io_context::executor_type>;
     using rebound_type = boost::mysql::tcp_prepared_statement::rebind_executor<other_executor>::other;
-    using expected_type = boost::mysql::prepared_statement<
+    using expected_type = boost::mysql::statement_base<
         boost::asio::basic_stream_socket<
             boost::asio::ip::tcp,
             other_executor

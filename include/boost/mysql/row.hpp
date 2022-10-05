@@ -30,7 +30,7 @@ namespace mysql {
  *
  * There will be the same number of values and in the same order as fields
  * in the SQL query that produced the row. You can get more information
- * about these fields using [refmem resultset fields].
+ * about these fields using [refmem resultset_base fields].
  *
  * If any of the values is a string, it will be represented as a `string_view`
  * pointing into the row's buffer. These string values will be valid as long as

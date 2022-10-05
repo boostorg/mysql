@@ -12,8 +12,8 @@
 
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/prepared_statement.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/detail/network_algorithms/connect.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_query.hpp>
@@ -129,7 +129,7 @@ boost::mysql::connection<Stream>::async_handshake(
 template <class Stream>
 void boost::mysql::connection<Stream>::query(
     boost::string_view query_string,
-    resultset& result,
+    resultset_base& result,
     error_code& err,
     error_info& info
 )
@@ -141,7 +141,7 @@ void boost::mysql::connection<Stream>::query(
 template <class Stream>
 void boost::mysql::connection<Stream>::query(
     boost::string_view query_string,
-    resultset& result
+    resultset_base& result
 )
 {
     detail::error_block blk;
@@ -159,7 +159,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_query(
     boost::string_view query_string,
-    resultset& result,
+    resultset_base& result,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -179,7 +179,7 @@ boost::mysql::connection<Stream>::async_query(
 template <class Stream>
 void boost::mysql::connection<Stream>::prepare_statement(
     boost::string_view statement,
-    prepared_statement& output,
+    statement_base& output,
     error_code& err,
     error_info& info
 )
@@ -191,7 +191,7 @@ void boost::mysql::connection<Stream>::prepare_statement(
 template <class Stream>
 void boost::mysql::connection<Stream>::prepare_statement(
     boost::string_view statement,
-    prepared_statement& output
+    statement_base& output
 )
 {
     detail::error_block blk;
@@ -209,7 +209,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_prepare_statement(
     boost::string_view statement,
-    prepared_statement& output,
+    statement_base& output,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -230,7 +230,7 @@ template <class Stream>
 template <class FieldViewFwdIterator>
 void boost::mysql::connection<Stream>::execute_statement(
     const execute_params<FieldViewFwdIterator>& params,
-    resultset& result,
+    resultset_base& result,
     error_code& err,
     error_info& info
 )
@@ -249,7 +249,7 @@ template <class Stream>
 template <class FieldViewFwdIterator>
 void boost::mysql::connection<Stream>::execute_statement(
     const execute_params<FieldViewFwdIterator>& params,
-    resultset& result
+    resultset_base& result
 )
 {
     detail::error_block blk;
@@ -274,7 +274,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_execute_statement(
     const execute_params<FieldViewFwdIterator>& params,
-    resultset& result,
+    resultset_base& result,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -292,7 +292,7 @@ boost::mysql::connection<Stream>::async_execute_statement(
 // Close statement
 template <class Stream>
 void boost::mysql::connection<Stream>::close_statement(
-    const prepared_statement& stmt,
+    const statement_base& stmt,
     error_code& code,
     error_info& info
 )
@@ -303,7 +303,7 @@ void boost::mysql::connection<Stream>::close_statement(
 
 template <class Stream>
 void boost::mysql::connection<Stream>::close_statement(
-    const prepared_statement& stmt
+    const statement_base& stmt
 )
 {
     detail::error_block blk;
@@ -321,7 +321,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code)
 )
 boost::mysql::connection<Stream>::async_close_statement(
-    const prepared_statement& stmt,
+    const statement_base& stmt,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -338,25 +338,25 @@ boost::mysql::connection<Stream>::async_close_statement(
 // Read one row
 template <class Stream>
 bool boost::mysql::connection<Stream>::read_one_row(
-    resultset& resultset,
+    resultset_base& result,
 	row_view& output,
     error_code& err,
     error_info& info
 )
 {
     detail::clear_errors(err, info);
-    detail::read_one_row(get_channel(), resultset, output, err, info);
+    detail::read_one_row(get_channel(), result, output, err, info);
 }
 
 
 template <class Stream>
 bool boost::mysql::connection<Stream>::read_one_row(
-    resultset& resultset,
+    resultset_base& result,
 	row_view& output
 )
 {
     detail::error_block blk;
-    bool res = detail::read_one_row(get_channel(), resultset, output, blk.err, blk.info);
+    bool res = detail::read_one_row(get_channel(), result, output, blk.err, blk.info);
     blk.check();
     return res;
 }
@@ -370,7 +370,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code, bool)
 )
 boost::mysql::connection<Stream>::async_read_one_row(
-    resultset& resultset,
+    resultset_base& result,
 	row_view& output,
     error_info& output_info,
     CompletionToken&& token
@@ -379,7 +379,7 @@ boost::mysql::connection<Stream>::async_read_one_row(
     output_info.clear();
     return detail::async_read_one_row(
         get_channel(),
-        resultset,
+        result,
         output,
         output_info,
         std::forward<CompletionToken>(token)
@@ -389,25 +389,25 @@ boost::mysql::connection<Stream>::async_read_one_row(
 // Read some rows
 template <class Stream>
 void boost::mysql::connection<Stream>::read_some_rows(
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_code& err,
     error_info& info
 )
 {
     detail::clear_errors(err, info);
-    detail::read_some_rows(get_channel(), resultset, output, err, info);
+    detail::read_some_rows(get_channel(), result, output, err, info);
 }
 
 
 template <class Stream>
 void boost::mysql::connection<Stream>::read_some_rows(
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output
 )
 {
     detail::error_block blk;
-    detail::read_some_rows(get_channel(), resultset, output, blk.err, blk.info);
+    detail::read_some_rows(get_channel(), result, output, blk.err, blk.info);
     blk.check();
 }
 
@@ -420,7 +420,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code)
 )
 boost::mysql::connection<Stream>::async_read_some_rows(
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_info& output_info,
     CompletionToken&& token
@@ -429,7 +429,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     output_info.clear();
     return detail::async_read_some_rows(
         get_channel(),
-        resultset,
+        result,
         output,
         output_info,
         std::forward<CompletionToken>(token)
@@ -439,25 +439,25 @@ boost::mysql::connection<Stream>::async_read_some_rows(
 // Read all rows
 template <class Stream>
 void boost::mysql::connection<Stream>::read_all_rows(
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_code& err,
     error_info& info
 )
 {
     detail::clear_errors(err, info);
-    detail::read_all_rows(get_channel(), resultset, output, err, info);
+    detail::read_all_rows(get_channel(), result, output, err, info);
 }
 
 
 template <class Stream>
 void boost::mysql::connection<Stream>::read_all_rows(
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output
 )
 {
     detail::error_block blk;
-    detail::read_all_rows(get_channel(), resultset, output, blk.err, blk.info);
+    detail::read_all_rows(get_channel(), result, output, blk.err, blk.info);
     blk.check();
 }
 
@@ -470,7 +470,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code)
 )
 boost::mysql::connection<Stream>::async_read_all_rows(
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_info& output_info,
     CompletionToken&& token
@@ -479,7 +479,7 @@ boost::mysql::connection<Stream>::async_read_all_rows(
     output_info.clear();
     return detail::async_read_all_rows(
         get_channel(),
-        resultset,
+        result,
         output,
         output_info,
         std::forward<CompletionToken>(token)

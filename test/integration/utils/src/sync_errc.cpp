@@ -17,9 +17,9 @@
 #include "boost/mysql/errc.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/execute_params.hpp"
-#include "boost/mysql/prepared_statement.hpp"
+#include "boost/mysql/statement_base.hpp"
 #include "boost/mysql/row.hpp"
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/connection.hpp>
 #include <memory>
 

@@ -9,8 +9,6 @@
 #define BOOST_MYSQL_UNIX_SSL_HPP
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/resultset.hpp>
-#include <boost/mysql/prepared_statement.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/ssl/stream.hpp>
 

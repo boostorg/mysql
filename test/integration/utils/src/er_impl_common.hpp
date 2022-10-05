@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_SRC_ER_IMPL_COMMON_HPP
 
 #include "boost/mysql/error.hpp"
-#include "boost/mysql/prepared_statement.hpp"
+#include "boost/mysql/statement_base.hpp"
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
 #include "er_resultset.hpp"
@@ -74,9 +74,9 @@ template <class Stream>
 class er_resultset_base : public er_resultset
 {
 protected:
-    resultset<Stream> r_;
+    resultset_base<Stream> r_;
 public:
-    er_resultset_base(resultset<Stream>&& r): r_(std::move(r)) {}
+    er_resultset_base(resultset_base<Stream>&& r): r_(std::move(r)) {}
     bool valid() const override { return r_.valid(); } 
     bool complete() const override { return r_.complete(); }
     const std::vector<metadata>& fields() const override { return r_.fields(); }
@@ -90,9 +90,9 @@ template <class Stream>
 class er_statement_base : public er_statement
 {
 protected:
-    prepared_statement<Stream> stmt_;
+    statement_base<Stream> stmt_;
 public:
-    er_statement_base(prepared_statement<Stream>&& stmt): stmt_(std::move(stmt)) {}
+    er_statement_base(statement_base<Stream>&& stmt): stmt_(std::move(stmt)) {}
     bool valid() const override { return stmt_.valid(); }
     unsigned id() const override { return stmt_.id(); }
     unsigned num_params() const override { return stmt_.num_params(); }
@@ -140,13 +140,13 @@ public:
 
 // Helpers to erase type
 template <template <typename> class ErPreparedStatement, class Stream>
-er_statement_ptr erase_statement(prepared_statement<Stream>&& stmt)
+er_statement_ptr erase_statement(statement_base<Stream>&& stmt)
 {
     return er_statement_ptr(new ErPreparedStatement<Stream>(std::move(stmt)));
 }
 
 template <template <typename> class ErResultset, class Stream>
-er_resultset_ptr erase_resultset(resultset<Stream>&& r)
+er_resultset_ptr erase_resultset(resultset_base<Stream>&& r)
 {
     return er_resultset_ptr(new ErResultset<Stream>(std::move(r)));
 }

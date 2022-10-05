@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_QUERY_HPP
 
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/utility/string_view.hpp>
 
@@ -22,7 +22,7 @@ template <class Stream>
 void execute_query(
     channel<Stream>& channel,
     boost::string_view query,
-    resultset& output,
+    resultset_base& output,
     error_code& err,
     error_info& info
 );
@@ -32,7 +32,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_query(
     channel<Stream>& chan,
     boost::string_view query,
-    resultset& output,
+    resultset_base& output,
     error_info& info,
     CompletionToken&& token
 );

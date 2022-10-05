@@ -10,7 +10,7 @@
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/rows_view.hpp>
 
 
@@ -21,7 +21,7 @@ namespace detail {
 template <class Stream>
 void read_all_rows(
     channel<Stream>& channel,
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_code& err,
     error_info& info
@@ -31,7 +31,7 @@ template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_read_all_rows(
     channel<Stream>& channel,
-    resultset& resultset,
+    resultset_base& result,
 	rows_view& output,
     error_info& output_info,
     CompletionToken&& token

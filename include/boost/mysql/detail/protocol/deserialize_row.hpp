@@ -13,7 +13,7 @@
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/text_deserialization.hpp>
 #include <boost/mysql/detail/protocol/binary_deserialization.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <vector>
@@ -28,13 +28,13 @@ inline bool deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     const std::uint8_t* buffer_first, // to store strings as offsets and allow buffer reallocation
-    resultset& resultset,
+    resultset_base& result,
 	std::vector<field_view>& output,
     error_code& err,
     error_info& info
 )
 {
-    assert(resultset.valid());
+    assert(result.valid());
 
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
@@ -49,7 +49,7 @@ inline bool deserialize_row(
         err = deserialize_message(ctx, ok_pack);
         if (err)
             return false;
-        resultset.complete(ok_pack);
+        result.complete(ok_pack);
         output.clear();
         return false;
     }
@@ -63,9 +63,9 @@ inline bool deserialize_row(
     {
         // An actual row
         ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
-        err = resultset.encoding() == detail::resultset_encoding::text ?
-                deserialize_text_row(ctx, resultset.meta(), buffer_first, output) :
-                deserialize_binary_row(ctx, resultset.meta(), buffer_first, output);
+        err = result.encoding() == detail::resultset_encoding::text ?
+                deserialize_text_row(ctx, result.meta(), buffer_first, output) :
+                deserialize_binary_row(ctx, result.meta(), buffer_first, output);
         if (err)
             return false;
         return true;

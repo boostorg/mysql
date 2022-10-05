@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/row.hpp>
 #include "er_connection.hpp"
 #include "er_resultset.hpp"
@@ -62,7 +62,7 @@ void validate_eof(
     BOOST_TEST(result.info() == info);
 }
 
-// Interface to generate a resultset
+// Interface to generate a resultset_base
 class resultset_generator
 {
 public:
@@ -163,7 +163,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
     BOOST_TEST(!result->complete());
     BOOST_TEST(result->fields().size() == 2u);
 
-    // Already in the end of the resultset, we receive the EOF
+    // Already in the end of the resultset_base, we receive the EOF
     row r = make_initial_row();
     bool has_row = result->read_one(r).get();
     BOOST_TEST(!has_row);
@@ -194,7 +194,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
     BOOST_TEST((r == makerow(1, "f0")));
     BOOST_TEST(!result->complete());
 
-    // Read next: end of resultset
+    // Read next: end of resultset_base
     r = make_initial_row();
     has_row = result->read_one(r).get();
     BOOST_TEST(!has_row);
@@ -226,7 +226,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(two_rows, resultset_fixture, sample_gen())
     BOOST_TEST((r == makerow(2, "f1")));
     BOOST_TEST(!result->complete());
 
-    // Read next: end of resultset
+    // Read next: end of resultset_base
     r = make_initial_row();
     has_row = result->read_one(r).get();
     BOOST_TEST(!has_row);
@@ -266,7 +266,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(more_rows_than_count, resultset_fixture, sample_gen(
     BOOST_TEST(!result->complete());
     BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
 
-    // Read another two (completes the resultset)
+    // Read another two (completes the resultset_base)
     rows = result->read_many(2).get();
     validate_eof(*result);
     BOOST_TEST((rows == makerows(2, 3, "f2")));
@@ -277,7 +277,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(less_rows_than_count, resultset_fixture, sample_gen(
     setup_and_connect(sample);
     auto result = generate("SELECT * FROM two_rows_table");
 
-    // Read 3, resultset exhausted
+    // Read 3, resultset_base exhausted
     auto rows = result->read_many(3).get();
     BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
     validate_eof(*result);
@@ -288,12 +288,12 @@ BOOST_MYSQL_NETWORK_TEST_EX(same_rows_as_count, resultset_fixture, sample_gen())
     setup_and_connect(sample);
     auto result = generate("SELECT * FROM two_rows_table");
 
-    // Read 2, 0 remaining but resultset not exhausted
+    // Read 2, 0 remaining but resultset_base not exhausted
     auto rows = result->read_many(2).get();
     BOOST_TEST(!result->complete());
     BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
 
-    // Read again, exhausts the resultset
+    // Read again, exhausts the resultset_base
     rows = result->read_many(2).get();
     BOOST_TEST(rows.empty());
     validate_eof(*result);
@@ -361,7 +361,7 @@ BOOST_FIXTURE_TEST_CASE(move_ctor, tcp_network_fixture)
 {
     connect();
 
-    // Get a valid resultset and perform a move construction
+    // Get a valid resultset_base and perform a move construction
     tcp_resultset r = conn.query("SELECT * FROM one_row_table");
     tcp_resultset r2 (std::move(r));
 
@@ -369,7 +369,7 @@ BOOST_FIXTURE_TEST_CASE(move_ctor, tcp_network_fixture)
     BOOST_TEST(!r.valid());
     BOOST_TEST(r2.valid());
 
-    // We can use the 2nd resultset
+    // We can use the 2nd resultset_base
     auto rows = r2.read_all();
     BOOST_TEST((rows == makerows(2, 1, "f0")));
     BOOST_TEST(r2.complete());
@@ -379,7 +379,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_invalid, tcp_network_fixture)
 {
     connect();
 
-    // Get a valid resultset and perform a move assignment
+    // Get a valid resultset_base and perform a move assignment
     tcp_resultset r = conn.query("SELECT * FROM one_row_table");
     tcp_resultset r2;
     r2 = std::move(r);
@@ -388,7 +388,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_invalid, tcp_network_fixture)
     BOOST_TEST(!r.valid());
     BOOST_TEST(r2.valid());
 
-    // We can use the 2nd resultset
+    // We can use the 2nd resultset_base
     auto rows = r2.read_all();
     BOOST_TEST((rows == makerows(2, 1, "f0")));
     BOOST_TEST(r2.complete());
@@ -398,7 +398,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, tcp_network_fixture)
 {
     connect();
 
-    // Get a valid resultset and perform a move assignment
+    // Get a valid resultset_base and perform a move assignment
     tcp_resultset r2 = conn.query("SELECT * FROM empty_table");
     r2.read_all(); // clean any remaining packets
     tcp_resultset r = conn.query("SELECT * FROM one_row_table");
@@ -408,7 +408,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, tcp_network_fixture)
     BOOST_TEST(!r.valid());
     BOOST_TEST(r2.valid());
 
-    // We can use the 2nd resultset
+    // We can use the 2nd resultset_base
     auto rows = r2.read_all();
     BOOST_TEST((rows == makerows(2, 1, "f0")));
     BOOST_TEST(r2.complete());
