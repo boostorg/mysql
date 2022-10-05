@@ -7,84 +7,45 @@
 
 #include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/field_view.hpp>
-#include "test_common.hpp"
-#include "assert_type_equals.hpp"
+#include <boost/mysql/field.hpp>
 #include <boost/test/unit_test.hpp>
 #include <forward_list>
 #include <type_traits>
 
 using boost::mysql::make_execute_params;
 using boost::mysql::field_view;
-using boost::mysql::test::assert_type_equals;
-
-// Make execute_args printable by Boost.Test
-namespace boost {
-namespace mysql {
-
-template <typename FieldViewFwdIterator>
-std::ostream& boost_test_print_type(std::ostream& os, const execute_params<FieldViewFwdIterator>& v)
-{
-    return os 
-        << "execute_params<"
-        << boost::typeindex::type_id<FieldViewFwdIterator>().pretty_name()
-        << ">("
-        << v.first()
-        << ", "
-        << v.last()
-        << ")";
-}
-
-} // mysql
-} // boost
+using boost::mysql::field;
 
 // Make Boost.Test ignore list iterators when printing
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::forward_list<field_view>::iterator)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::forward_list<field_view>::const_iterator)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(std::forward_list<field>::iterator)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(std::forward_list<field>::const_iterator)
 
 BOOST_AUTO_TEST_SUITE(test_execute_params)
-
-// setters
-BOOST_AUTO_TEST_SUITE(test_setters)
-
-BOOST_AUTO_TEST_CASE(set_first)
-{
-    field_view arr [10];
-    auto params = make_execute_params(arr);
-    params.set_first(&arr[1]);
-    BOOST_TEST(params.first() == &arr[1]);
-    BOOST_TEST(params.last() == std::end(arr));
-}
-
-BOOST_AUTO_TEST_CASE(set_last)
-{
-    field_view arr [10];
-    auto params = make_execute_params(arr);
-    params.set_last(&arr[1]);
-    BOOST_TEST(params.first() == std::begin(arr));
-    BOOST_TEST(params.last() == &arr[1]);
-}
-
-BOOST_AUTO_TEST_SUITE_END()
 
 // collection
 BOOST_AUTO_TEST_SUITE(test_make_execute_params_collection)
 
-BOOST_AUTO_TEST_CASE(c_array)
+BOOST_AUTO_TEST_CASE(c_array_field_view)
 {
     field_view arr [10];
     auto params = make_execute_params(arr);
     BOOST_TEST(params.first() == std::begin(arr));
     BOOST_TEST(params.last() == std::end(arr));
-    assert_type_equals<decltype(params.first()), const field_view*>();
+    static_assert(std::is_same<decltype(params.first()), const field_view*>::value, "");
 }
 
-BOOST_AUTO_TEST_CASE(forward_list)
+BOOST_AUTO_TEST_CASE(forward_list_field)
 {
-    std::forward_list<field_view> l { field_view("a"), field_view("b") };
+    std::forward_list<field> l { field_view("a"), field_view("b") };
     auto params = make_execute_params(l);
     BOOST_TEST(params.first() == std::begin(l));
     BOOST_TEST(params.last() == std::end(l));
-    assert_type_equals<decltype(params.first()), std::forward_list<field_view>::const_iterator>();
+    static_assert(std::is_same<
+        decltype(params.first()),
+        std::forward_list<field>::const_iterator
+    >::value, "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -98,7 +59,7 @@ BOOST_AUTO_TEST_CASE(c_array)
     auto params = make_execute_params(&arr[0], &arr[2]);
     BOOST_TEST(params.first() == &arr[0]);
     BOOST_TEST(params.last() == &arr[2]);
-    assert_type_equals<decltype(params.first()), field_view*>();
+    static_assert(std::is_same<decltype(params.first()), field_view*>::value, "");
 }
 
 BOOST_AUTO_TEST_CASE(forward_list)
@@ -107,7 +68,10 @@ BOOST_AUTO_TEST_CASE(forward_list)
     auto params = make_execute_params(l.begin(), std::next(l.begin()));
     BOOST_TEST(params.first() == l.begin());
     BOOST_TEST(params.last() == std::next(l.begin()));
-    assert_type_equals<decltype(params.first()), std::forward_list<field_view>::iterator>();
+    static_assert(std::is_same<
+        decltype(params.first()),
+        std::forward_list<field_view>::iterator
+    >::value, "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
