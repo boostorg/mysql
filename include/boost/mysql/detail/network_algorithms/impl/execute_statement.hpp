@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/mysql/statement_base.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
@@ -23,11 +24,12 @@ namespace detail {
 
 template <class FieldViewFwdIterator>
 com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
-    const execute_params<FieldViewFwdIterator>& params
+    const execute_params<FieldViewFwdIterator>& params,
+    const statement_base& stmt
 )
 {
     return com_stmt_execute_packet<FieldViewFwdIterator> {
-        params.statement_id(),
+        stmt.id(),
         std::uint8_t(0),  // flags
         std::uint32_t(1), // iteration count
         std::uint8_t(1),  // new params flag: set
@@ -44,6 +46,7 @@ com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
 template <class Stream, class FieldViewFwdIterator>
 void boost::mysql::detail::execute_statement(
     channel<Stream>& chan,
+    const statement_base& stmt,
     const execute_params<FieldViewFwdIterator>& params,
     resultset_base& output,
     error_code& err,
@@ -53,7 +56,7 @@ void boost::mysql::detail::execute_statement(
     execute_generic(
         resultset_encoding::binary,
         chan,
-        make_stmt_execute_packet(params),
+        make_stmt_execute_packet(params, stmt),
         output,
         err,
         info
@@ -67,6 +70,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
+    const statement_base& stmt,
     const execute_params<FieldViewFwdIterator>& params,
     resultset_base& output,
     error_info& info,
@@ -76,7 +80,7 @@ boost::mysql::detail::async_execute_statement(
     return async_execute_generic(
         resultset_encoding::binary,
         chan,
-        make_stmt_execute_packet(params),
+        make_stmt_execute_packet(params, stmt),
         output,
         info,
         std::forward<CompletionToken>(token)

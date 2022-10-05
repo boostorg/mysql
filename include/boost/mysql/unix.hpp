@@ -18,6 +18,8 @@ namespace mysql {
 
 /// A connection to MySQL over a UNIX domain socket.
 using unix_connection = connection<boost::asio::local::stream_protocol::socket>;
+using unix_statement = typename unix_connection::statement_type;
+using unix_resultset = typename unix_connection::resultset_type;
 
 #endif
 

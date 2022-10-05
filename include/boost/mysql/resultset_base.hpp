@@ -71,7 +71,7 @@ class resultset_base
         boost::string_view info() const noexcept { assert(has_data_); return info_; }
     };
 
-    bool valid_ {false};
+    void* channel_ {nullptr};
     std::uint8_t seqnum_ {};
     detail::resultset_encoding encoding_ { detail::resultset_encoding::text };
     std::vector<metadata> meta_;
@@ -84,23 +84,12 @@ public:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use. TODO: hide these
-    resultset_base(std::vector<metadata>&& meta, detail::resultset_encoding encoding) noexcept:
-        valid_(true),
-        encoding_(encoding),
-        meta_(std::move(meta))
-    {
-    };
-    resultset_base(const detail::ok_packet& ok_pack):
-        valid_(true),
-        ok_packet_(ok_pack)
-    {
-    };
-
     void reset(
+        void* channel,
         detail::resultset_encoding encoding
-    )
+    ) noexcept
     {
-        valid_ = true;
+        channel_ = channel;
         seqnum_ = 0;
         encoding_ = encoding;
         meta_.clear();
@@ -109,7 +98,7 @@ public:
 
     void complete(const detail::ok_packet& ok_pack)
     {
-        assert(valid_);
+        assert(valid());
         ok_packet_.assign(ok_pack);
     }
 
@@ -137,7 +126,7 @@ public:
      * Calling any member function on an invalid resultset_base,
      * other than assignment, results in undefined behavior.
      */
-    bool valid() const noexcept { return valid_; }
+    bool valid() const noexcept { return channel_ != nullptr; }
 
     /// \brief Returns whether the resultset_base has been completely read or not.
     /// \details See [link mysql.resultsets.complete this section] for more info.
@@ -179,6 +168,10 @@ public:
      * until the resultset_base object is destroyed.
      */
     boost::string_view info() const noexcept { return ok_packet_.info(); }
+protected:
+    void* channel_ptr() noexcept { return channel_; }
+    void reset() noexcept { reset(nullptr, detail::resultset_encoding::text); }
+    void swap(resultset_base& other) noexcept { std::swap(*this, other); }
 };
 
 } // mysql

@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -20,6 +21,7 @@ namespace detail {
 template <class Stream, class FieldViewFwdIterator>
 void execute_statement(
     channel<Stream>& channel,
+    const statement_base& stmt,
     const execute_params<FieldViewFwdIterator>& params,
     resultset_base& output,
     error_code& err,
@@ -30,6 +32,7 @@ template <class Stream, class FieldViewFwdIterator, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_statement(
     channel<Stream>& chan,
+    const statement_base& stmt,
     const execute_params<FieldViewFwdIterator>& params,
     resultset_base& output,
     error_info& info,

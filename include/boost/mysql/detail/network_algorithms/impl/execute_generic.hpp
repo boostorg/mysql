@@ -48,13 +48,14 @@ public:
     {
     };
 
-    template <class Serializable>
+    template <class Serializable, class Stream>
     void process_request(
         const Serializable& request,
+        channel<Stream>& chan,
         resultset_encoding encoding
     )
     {
-        output_.reset(encoding);
+        output_.reset(encoding, &chan);
         serialize_message(request, caps_, write_buffer_);
     }
 
@@ -236,7 +237,7 @@ void boost::mysql::detail::execute_generic(
         channel.shared_buffer(),
         channel.current_capabilities()
     );
-    processor.process_request(request, encoding);
+    processor.process_request(request, encoding, channel);
 
     // Send it
     channel.write(channel.shared_buffer(), processor.sequence_number(), err);
@@ -296,7 +297,7 @@ boost::mysql::detail::async_execute_generic(
         channel.shared_buffer(),
         channel.current_capabilities()
     );
-    processor.process_request(request, encoding);
+    processor.process_request(request, encoding, channel);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         execute_generic_op<Stream>(channel, processor),
         token,

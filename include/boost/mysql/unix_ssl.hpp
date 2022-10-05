@@ -19,6 +19,8 @@ namespace mysql {
 
 /// A connection to MySQL over a UNIX domain socket over TLS.
 using unix_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
+using unix_ssl_statement = typename unix_ssl_connection::statement_type;
+using unix_ssl_resultset = typename unix_ssl_connection::resultset_type;
 
 #endif
 

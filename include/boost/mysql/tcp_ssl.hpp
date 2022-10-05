@@ -17,6 +17,8 @@ namespace mysql {
 
 /// A connection to MySQL over a TCP socket using TLS.
 using tcp_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
+using tcp_ssl_statement = typename tcp_ssl_connection::statement_type;
+using tcp_ssl_resultset = typename tcp_ssl_connection::resultset_type;
 
 } // mysql
 } // boost

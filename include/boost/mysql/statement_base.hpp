@@ -41,8 +41,6 @@ constexpr std::array<field_view, 0> no_statement_params {};
  */
 class statement_base
 {
-    bool valid_ {false};
-    detail::com_stmt_prepare_ok_packet stmt_msg_;
 public:
     /**
       * \brief Default constructor. 
@@ -52,8 +50,16 @@ public:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private. Do not use. TODO: hide this
-    statement_base(const detail::com_stmt_prepare_ok_packet& msg) noexcept:
-        valid_(true), stmt_msg_(msg) {}
+    void reset(
+        void* channel,
+        const detail::com_stmt_prepare_ok_packet& msg
+    ) noexcept
+    {
+        channel_ = channel;
+        stmt_msg_ = msg;
+    }
+    
+    void reset() noexcept { channel_ = nullptr; }
 #endif
 
     /**
@@ -61,7 +67,7 @@ public:
      * \details Calling any function other than assignment on an statement for which
      * this function returns `false` results in undefined behavior.
      */
-    bool valid() const noexcept { return valid_; }
+    bool valid() const noexcept { return channel_ != nullptr; }
 
     /// Returns a server-side identifier for the statement (unique in a per-connection basis).
     std::uint32_t id() const noexcept { assert(valid()); return stmt_msg_.statement_id; }
@@ -69,6 +75,12 @@ public:
     /// Returns the number of parameters that should be provided when executing the statement.
     unsigned num_params() const noexcept { assert(valid()); return stmt_msg_.num_params; }
 
+protected:
+    void* channel_ptr() noexcept { return channel_; }
+    void swap(statement_base& other) noexcept { std::swap(*this, other); }
+private:
+    void* channel_ {nullptr};
+    detail::com_stmt_prepare_ok_packet stmt_msg_;
 };
 
 } // mysql

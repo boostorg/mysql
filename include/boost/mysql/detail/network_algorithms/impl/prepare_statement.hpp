@@ -51,7 +51,7 @@ public:
         serialize_message(packet, caps_, write_buffer_);
     }
 
-    void process_response(boost::asio::const_buffer message, error_code& err)
+    void process_response(boost::asio::const_buffer message, void* channel, error_code& err)
     {
         deserialization_context ctx (message, caps_);
         std::uint8_t msg_type = 0;
@@ -71,7 +71,7 @@ public:
         {
             com_stmt_prepare_ok_packet response;
             err = deserialize_message(ctx, response);
-            output_ = statement_base(response);
+            output_.reset(channel, response);
             remaining_meta_ = response.num_columns + response.num_params;
         }
     }
@@ -83,7 +83,7 @@ public:
 template<class Stream>
 struct prepare_statement_op : boost::asio::coroutine
 {
-    channel<Stream> chan_;
+    channel<Stream>& chan_;
     prepare_statement_processor processor_;
 
     prepare_statement_op(
@@ -119,7 +119,7 @@ struct prepare_statement_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
 
             // Process response
-            processor_.process_response(read_message, err);
+            processor_.process_response(read_message, &chan_, err);
             if (err)
             {
                 self.complete(err);
@@ -182,7 +182,7 @@ void boost::mysql::detail::prepare_statement(
         return;
 
     // Process response
-    processor.process_response(read_buffer, err);
+    processor.process_response(read_buffer, &channel, err);
     if (err)
         return;
 
