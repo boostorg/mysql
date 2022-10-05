@@ -37,11 +37,11 @@ add_executable(
     unit/detail/auxiliar/static_string.cpp
     unit/detail/auxiliar/rows_iterator.cpp
     unit/detail/auxiliar/field_type_traits.cpp
-    # unit/detail/protocol/capabilities.cpp
+    unit/detail/protocol/capabilities.cpp
     # unit/detail/protocol/date.cpp
-    # unit/detail/protocol/null_bitmap_traits.cpp
-    # unit/detail/protocol/serialization_test.cpp
-    # unit/detail/protocol/text_deserialization_value.cpp
+    unit/detail/protocol/null_bitmap_traits.cpp
+    unit/detail/protocol/serialization_test.cpp
+    unit/detail/protocol/deserialize_text_field.cpp
     # unit/detail/protocol/text_deserialization_error.cpp
     # unit/detail/protocol/binary_deserialization_value.cpp
     # unit/detail/protocol/binary_deserialization_error.cpp

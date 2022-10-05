@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_ROW_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_ROW_HPP
 
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/serialization.hpp>
-#include <boost/mysql/detail/protocol/text_deserialization.hpp>
-#include <boost/mysql/detail/protocol/binary_deserialization.hpp>
+#include <boost/mysql/detail/protocol/serialization_context.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -23,6 +22,16 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Exposed here for the sake of testing
+inline void deserialize_row(
+    resultset_encoding encoding,
+    deserialization_context& ctx,
+    const std::vector<metadata>& meta,
+    const std::uint8_t* buffer_first,
+    std::vector<field_view>& output,
+    error_code& err
+);
+
 
 inline bool deserialize_row(
     boost::asio::const_buffer read_message,
@@ -32,45 +41,7 @@ inline bool deserialize_row(
 	std::vector<field_view>& output,
     error_code& err,
     error_info& info
-)
-{
-    assert(result.valid());
-
-    // Message type: row, error or eof?
-    std::uint8_t msg_type = 0;
-    deserialization_context ctx (read_message, current_capabilities);
-    err = make_error_code(deserialize(ctx, msg_type));
-    if (err)
-        return false;
-    if (msg_type == eof_packet_header)
-    {
-        // end of resultset => this is a ok_packet, not a row
-        ok_packet ok_pack;
-        err = deserialize_message(ctx, ok_pack);
-        if (err)
-            return false;
-        result.complete(ok_pack);
-        output.clear();
-        return false;
-    }
-    else if (msg_type == error_packet_header)
-    {
-        // An error occurred during the generation of the rows
-        err = process_error_packet(ctx, info);
-        return false;
-    }
-    else
-    {
-        // An actual row
-        ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
-        err = result.encoding() == detail::resultset_encoding::text ?
-                deserialize_text_row(ctx, result.meta(), buffer_first, output) :
-                deserialize_binary_row(ctx, result.meta(), buffer_first, output);
-        if (err)
-            return false;
-        return true;
-    }
-}
+);
 
 inline void offsets_to_string_views(
     std::vector<field_view>& fields,
@@ -85,6 +56,8 @@ inline void offsets_to_string_views(
 } // detail
 } // mysql
 } // boost
+
+#include <boost/mysql/detail/protocol/impl/deserialize_row.ipp>
 
 
 #endif

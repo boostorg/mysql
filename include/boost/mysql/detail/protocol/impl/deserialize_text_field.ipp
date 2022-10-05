@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_TEXT_DESERIALIZATION_IPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_TEXT_DESERIALIZATION_IPP
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_TEXT_FIELD_IPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_TEXT_FIELD_IPP
 
 #pragma once
 
-#include <boost/mysql/detail/protocol/text_deserialization.hpp>
+#include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
@@ -296,20 +296,11 @@ inline errc deserialize_text_value_time(
     return errc::ok;
 }
 
-inline bool is_next_field_null(
-    const deserialization_context& ctx
-)
-{
-    if (!ctx.enough_size(1))
-        return false;
-    return *ctx.first() == 0xfb;
-}
-
 } // detail
 } // mysql
 } // boost
 
-inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
+inline boost::mysql::errc boost::mysql::detail::deserialize_text_field(
     boost::string_view from,
     const metadata& meta,
     const std::uint8_t* buffer_first,
@@ -357,38 +348,6 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_value(
     }
 }
 
-
-boost::mysql::error_code boost::mysql::detail::deserialize_text_row(
-    deserialization_context& ctx,
-    const std::vector<metadata>& fields,
-    const std::uint8_t* buffer_first,
-    std::vector<field_view>& output
-)
-{
-    std::size_t old_size = output.size();
-    output.resize(old_size + fields.size());
-    for (std::vector<field_view>::size_type i = 0; i < fields.size(); ++i)
-    {
-        if (is_next_field_null(ctx))
-        {
-            ctx.advance(1);
-            output[old_size + i] = field_view(nullptr);
-        }
-        else
-        {
-            string_lenenc value_str;
-            errc err = deserialize(ctx, value_str);
-            if (err != errc::ok)
-                return make_error_code(err);
-            err = deserialize_text_value(value_str.value, fields[i], buffer_first, output[old_size + i]);
-            if (err != errc::ok)
-                return make_error_code(err);
-        }
-    }
-    if (!ctx.empty())
-        return make_error_code(errc::extra_bytes);
-    return error_code();
-}
 
 #ifdef BOOST_MSVC
 #pragma warning( pop )

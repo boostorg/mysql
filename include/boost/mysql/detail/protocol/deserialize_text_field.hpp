@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_TEXT_DESERIALIZATION_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_TEXT_DESERIALIZATION_HPP
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_TEXT_FIELD_HPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_TEXT_FIELD_HPP
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/error.hpp>
@@ -19,24 +19,17 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline errc deserialize_text_value(
+inline errc deserialize_text_field(
     boost::string_view from,
     const metadata& meta,
     const std::uint8_t* buffer_first,
     field_view& output
 );
 
-inline error_code deserialize_text_row(
-    deserialization_context& ctx,
-    const std::vector<metadata>& meta,
-    const std::uint8_t* buffer_first,
-    std::vector<field_view>& output
-);
-
 } // detail
 } // mysql
 } // boost
 
-#include <boost/mysql/detail/protocol/impl/text_deserialization.ipp>
+#include <boost/mysql/detail/protocol/impl/deserialize_text_field.ipp>
 
 #endif

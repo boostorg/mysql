@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_FIELD_VIEW_HPP
 #define BOOST_MYSQL_FIELD_VIEW_HPP
 
+#include <boost/config/detail/suffix.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/datetime_types.hpp>
@@ -182,6 +183,10 @@ private:
         BOOST_CXX14_CONSTEXPR date get_date() const noexcept { return date(date::duration(date_));}
         BOOST_CXX14_CONSTEXPR datetime get_datetime() const noexcept { return datetime(datetime::duration(datetime_)); }
         BOOST_CXX14_CONSTEXPR time get_time() const noexcept { return time(time_); }
+        BOOST_CXX14_CONSTEXPR detail::string_view_offset get_sv_offset() const noexcept
+        {
+            return detail::string_view_offset(sv_offset.offset, sv_offset.size);
+        }
     };
 
     internal_kind ikind_ { internal_kind::null };

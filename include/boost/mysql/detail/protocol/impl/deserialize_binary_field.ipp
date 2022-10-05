@@ -5,15 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_BINARY_FIELD_IPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_BINARY_FIELD_IPP
 
 #pragma once
 
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
-#include <boost/mysql/detail/protocol/binary_deserialization.hpp>
+#include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
-#include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
@@ -368,54 +367,5 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_field(
         return deserialize_binary_field_string(ctx, output, buffer_first);
     }
 }
-
-inline boost::mysql::error_code boost::mysql::detail::deserialize_binary_row(
-    deserialization_context& ctx,
-    const std::vector<metadata>& meta,
-    const std::uint8_t* buffer_first,
-    std::vector<field_view>& output
-)
-{
-    std::size_t old_size = output.size();
-
-    // Skip packet header (it is not part of the message in the binary
-    // protocol but it is in the text protocol, so we include it for homogeneity)
-    // The caller will have checked we have this byte already for us
-    assert(ctx.enough_size(1));
-    ctx.advance(1);
-
-    // Number of fields
-    auto num_fields = meta.size();
-    output.resize(old_size + num_fields);
-
-    // Null bitmap
-    null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
-    const std::uint8_t* null_bitmap_begin = ctx.first();
-    if (!ctx.enough_size(null_bitmap.byte_count()))
-        return make_error_code(errc::incomplete_message);
-    ctx.advance(null_bitmap.byte_count());
-
-    // Actual values
-    for (std::vector<field_view>::size_type i = 0; i < output.size(); ++i)
-    {
-        if (null_bitmap.is_null(null_bitmap_begin, i))
-        {
-            output[old_size + i] = field_view(nullptr);
-        }
-        else
-        {
-            auto err = deserialize_binary_field(ctx, meta[i], buffer_first, output[old_size + i]);
-            if (err != errc::ok)
-                return make_error_code(err);
-        }
-    }
-
-    // Check for remaining bytes
-    if (!ctx.empty())
-        return make_error_code(errc::extra_bytes);
-
-    return error_code();
-}
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_BINARY_DESERIALIZATION_IPP_ */

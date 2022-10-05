@@ -214,7 +214,7 @@ BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::
     case internal_kind::time: return field_kind::time;
     case internal_kind::field_ptr: return repr_.field_ptr->kind();
     // sv_offset values must be converted via offset_to_string_view before calling any other fn
-    default: assert(false); return field_kind::null; 
+    default: return field_kind::null; 
     }
 }
 
@@ -350,6 +350,13 @@ BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(
     const field_view& rhs
 ) const noexcept
 {
+    // Make operator== work for types not representable by field_kind
+    if (ikind_ == internal_kind::sv_offset)
+    {
+        return rhs.ikind_ == internal_kind::sv_offset &&
+            repr_.get_sv_offset() == rhs.repr_.get_sv_offset();
+    }
+
     auto k = kind(), rhs_k = rhs.kind();
     switch (k)
     {
@@ -401,6 +408,10 @@ inline std::ostream& boost::mysql::operator<<(
     const field_view& value
 )
 {
+    // Make operator<< work for detail::string_view_offset types
+    if (value.ikind_ == field_view::internal_kind::sv_offset)
+        return os << "<sv_offset>";
+    
     switch (value.kind())
     {
     case field_kind::null: return os << "<NULL>";

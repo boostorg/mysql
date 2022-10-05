@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_DESERIALIZATION_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_DESERIALIZATION_HPP
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_BINARY_FIELD_HPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_BINARY_FIELD_HPP
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/error.hpp>
@@ -26,17 +26,10 @@ inline errc deserialize_binary_field(
     field_view& output
 );
 
-inline error_code deserialize_binary_row(
-    deserialization_context& ctx,
-    const std::vector<metadata>& meta,
-    const std::uint8_t* buffer_first,
-    std::vector<field_view>& output
-);
-
 } // detail
 } // mysql
 } // boost
 
-#include <boost/mysql/detail/protocol/impl/binary_deserialization.ipp>
+#include <boost/mysql/detail/protocol/impl/deserialize_binary_field.ipp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_DESERIALIZATION_HPP_ */
