@@ -27,7 +27,9 @@ using boost::mysql::resultset_base;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::row_view;
+using boost::mysql::errc;
 using boost::mysql::detail::resultset_encoding;
+using boost::mysql::detail::protocol_field_type;
 using namespace boost::mysql::test;
 
 
@@ -99,10 +101,6 @@ read_one_row_fns* all_reader_fns [] = { &sync, &async };
 
 BOOST_AUTO_TEST_SUITE(test_read_one_row)
 
-// Resultset is already complete
-// Error reading row
-// Error deserializing row
-
 BOOST_AUTO_TEST_CASE(success)
 {
     for (auto* fns : all_reader_fns)
@@ -114,7 +112,7 @@ BOOST_AUTO_TEST_CASE(success)
             auto ok_packet = create_message(6, { 0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62 });
             auto result = create_resultset(
                 resultset_encoding::binary, 
-                { boost::mysql::detail::protocol_field_type::var_string, boost::mysql::detail::protocol_field_type::short_ },
+                { protocol_field_type::var_string, protocol_field_type::short_ },
                 4 // seqnum
             );
             test_channel chan;
@@ -145,6 +143,81 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_TEST(result.warning_count() == 9);
             BOOST_TEST(result.info() == "ab");
             BOOST_TEST(rv.empty());
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(resultset_already_complete)
+{
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            auto result = create_resultset(resultset_encoding::text, {});
+            result.complete(boost::mysql::detail::ok_packet{});
+            test_channel chan;
+            error_code err;
+            error_info info;
+
+            row_view rv = fns->read_one_row(chan, result, err, info);
+            BOOST_TEST(err == error_code());
+            BOOST_TEST(info.message() == "");
+            BOOST_TEST(rv.empty());
+            BOOST_TEST(result.complete());
+
+            // Doing it again works, too
+            rv = fns->read_one_row(chan, result, err, info);
+            BOOST_TEST(err == error_code());
+            BOOST_TEST(info.message() == "");
+            BOOST_TEST(rv.empty());
+            BOOST_TEST(result.complete());
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(error_reading_row)
+{
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            auto result = create_resultset(resultset_encoding::text, {});
+            test_channel chan;
+            error_code err;
+            error_info info;
+            chan.lowest_layer().set_fail_count(fail_count(0, errc::no));
+
+            row_view rv = fns->read_one_row(chan, result, err, info);
+            BOOST_TEST(err == error_code(errc::no));
+            BOOST_TEST(info.message() == "");
+            BOOST_TEST(rv.empty());
+            BOOST_TEST(!result.complete());
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(error_deserializing_row)
+{
+    for (auto* fns : all_reader_fns)
+    {
+        BOOST_TEST_CONTEXT(fns->name())
+        {
+            auto r = create_message(0, { 0x00 }); // invalid row
+            auto result = create_resultset(
+                resultset_encoding::binary, 
+                { protocol_field_type::var_string }
+            );
+            test_channel chan;
+            error_code err;
+            error_info info;
+            chan.lowest_layer().add_message(r);
+
+            // deserialize row error
+            row_view rv = fns->read_one_row(chan, result, err, info);
+            BOOST_TEST(err == error_code(errc::incomplete_message));
+            BOOST_TEST(info.message() == "");
+            BOOST_TEST(rv.empty());
+            BOOST_TEST(!result.complete());
         }
     }
 }

@@ -45,8 +45,7 @@ inline row_view process_one_row(
         info
     );
 
-    // Set the output variable
-    if (!channel.shared_fields().empty())
+    if (!err && !result.complete())
     {
         offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
         return row_view(channel.shared_fields().data(), channel.shared_fields().size());
