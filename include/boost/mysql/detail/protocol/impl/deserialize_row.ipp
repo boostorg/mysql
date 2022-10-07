@@ -36,9 +36,12 @@ inline error_code deserialize_text_row(
     std::vector<field_view>& output
 )
 {
+    // Make space
     std::size_t old_size = output.size();
-    output.resize(old_size + fields.size());
-    for (std::vector<field_view>::size_type i = 0; i < fields.size(); ++i)
+    auto num_fields = fields.size();
+    output.resize(old_size + num_fields);
+
+    for (std::vector<field_view>::size_type i = 0; i < num_fields; ++i)
     {
         if (is_next_field_null(ctx))
         {
@@ -69,8 +72,6 @@ inline error_code deserialize_binary_row(
     std::vector<field_view>& output
 )
 {
-    std::size_t old_size = output.size();
-
     // Skip packet header (it is not part of the message in the binary
     // protocol but it is in the text protocol, so we include it for homogeneity)
     // The caller will have checked we have this byte already for us
@@ -78,6 +79,7 @@ inline error_code deserialize_binary_row(
     ctx.advance(1);
 
     // Number of fields
+    std::size_t old_size = output.size();
     auto num_fields = meta.size();
     output.resize(old_size + num_fields);
 
@@ -89,7 +91,7 @@ inline error_code deserialize_binary_row(
     ctx.advance(null_bitmap.byte_count());
 
     // Actual values
-    for (std::vector<field_view>::size_type i = 0; i < output.size(); ++i)
+    for (std::vector<field_view>::size_type i = 0; i < num_fields; ++i)
     {
         if (null_bitmap.is_null(null_bitmap_begin, i))
         {

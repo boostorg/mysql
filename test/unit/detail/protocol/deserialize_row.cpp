@@ -8,31 +8,37 @@
 // Tests for both deserialize_binary_row() and deserialize_text_row()
 
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/test/tools/context.hpp>
-#include <boost/test/unit_test.hpp>
-#include <boost/test/data/monomorphic/collection.hpp>
-#include <boost/test/data/test_case.hpp>
 #include "boost/mysql/detail/auxiliar/string_view_offset.hpp"
 #include "boost/mysql/detail/protocol/capabilities.hpp"
 #include "boost/mysql/detail/protocol/common_messages.hpp"
 #include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/detail/protocol/resultset_encoding.hpp"
+#include "boost/mysql/error.hpp"
 #include "boost/mysql/field_view.hpp"
 #include "boost/mysql/metadata.hpp"
+#include "boost/mysql/resultset_base.hpp"
+#include <boost/test/tools/context.hpp>
+#include <boost/test/unit_test.hpp>
+#include <boost/asio/buffer.hpp>
+#include "buffer_concat.hpp"
 #include "test_common.hpp"
+#include <cstdint>
 
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 using boost::mysql::field_view;
-using boost::mysql::collation;
 using boost::mysql::error_code;
+using boost::mysql::error_info;
 using boost::mysql::errc;
 using boost::mysql::metadata;
+using boost::mysql::resultset_base;
 
 namespace
 {
 
 BOOST_AUTO_TEST_SUITE(test_deserialize_row)
+
+BOOST_AUTO_TEST_SUITE(without_resultset)
 
 std::vector<metadata> make_meta(
     const std::vector<protocol_field_type>& types
@@ -341,6 +347,141 @@ BOOST_AUTO_TEST_CASE(no_resultset_error)
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(with_resultset)
+
+resultset_base make_resultset(resultset_encoding enc, const std::vector<protocol_field_type>& types)
+{
+    resultset_base res;
+    res.reset(&res, enc); // channel should just be != nullptr
+    column_definition_packet coldef;
+    for (auto type : types)
+    {
+        coldef.type = type;
+        coldef.flags = 0;
+        coldef.decimals = 0;
+        res.add_meta(coldef);
+    }
+    return res;
+}
+
+BOOST_AUTO_TEST_CASE(text_rows)
+{
+    std::vector<std::uint8_t> row1 { 0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30 };
+    std::vector<std::uint8_t> row2 { 0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30 };
+    auto buff = concat_copy(row1, row2); 
+    resultset_base result = make_resultset(
+        resultset_encoding::text,
+        { protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_ }
+    );
+    auto expected_fields = make_fv_vector(string_view_offset(1, 3), std::int64_t(21), 0.0f);
+    std::vector<field_view> fields;
+    error_code err;
+    error_info info;
+
+    // First row
+    deserialize_row(
+        boost::asio::const_buffer(buff.data(), row1.size()),
+        capabilities(),
+        buff.data(),
+        result,
+        fields,
+        err,
+        info
+    );
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(info.message() == "");
+    BOOST_TEST(!result.complete());
+    BOOST_TEST(fields == expected_fields);
+
+    // Second row (fields get appended to existing ones)
+    deserialize_row(
+        boost::asio::const_buffer(buff.data() + row1.size(), row2.size()),
+        capabilities(),
+        buff.data(),
+        result,
+        fields,
+        err,
+        info
+    );
+    expected_fields.emplace_back(string_view_offset(12, 3));
+    expected_fields.emplace_back(20);
+    expected_fields.emplace_back(0.0f);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(info.message() == "");
+    BOOST_TEST(!result.complete());
+    BOOST_TEST(fields == expected_fields);
+
+    // Convert offsets to string views
+    offsets_to_string_views(fields, buff.data());
+    BOOST_TEST(fields == make_fv_vector("val", 21, 0.0f, "abc", 20, 0.0f));
+}
+
+BOOST_AUTO_TEST_CASE(binary_rows)
+{
+    std::vector<std::uint8_t> row1 { 0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07 };
+    std::vector<std::uint8_t> row2 { 0x00, 0x08, 0x03, 0x6d, 0x61, 0x78 };
+    auto buff = concat_copy(row1, row2); 
+    resultset_base result = make_resultset(
+        resultset_encoding::binary,
+        { protocol_field_type::var_string, protocol_field_type::short_ }
+    );
+    auto expected_fields = make_fv_vector(string_view_offset(3, 3), std::int64_t(1901));
+    std::vector<field_view> fields;
+    error_code err;
+    error_info info;
+
+    // First row
+    deserialize_row(
+        boost::asio::const_buffer(buff.data(), row1.size()),
+        capabilities(),
+        buff.data(),
+        result,
+        fields,
+        err,
+        info
+    );
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(info.message() == "");
+    BOOST_TEST(!result.complete());
+    BOOST_TEST(fields == expected_fields);
+
+    // Second row (fields get appended to existing ones)
+    deserialize_row(
+        boost::asio::const_buffer(buff.data() + row1.size(), row2.size()),
+        capabilities(),
+        buff.data(),
+        result,
+        fields,
+        err,
+        info
+    );
+    expected_fields.emplace_back(string_view_offset(11, 3));
+    expected_fields.emplace_back(nullptr);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(info.message() == "");
+    BOOST_TEST(!result.complete());
+    BOOST_TEST(fields == expected_fields);
+
+    // Convert offsets to string views
+    offsets_to_string_views(fields, buff.data());
+    BOOST_TEST(fields == make_fv_vector("min", 1901, "max", nullptr));
+}
+
+// Got ok_packet (with previous rows)
+
+// Got row with error
+// Got ok_packet with error
+// Got err_packet
+// Got err_packet with error
+// Got empty message
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 
