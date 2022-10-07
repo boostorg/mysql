@@ -43,7 +43,7 @@ add_executable(
     unit/detail/protocol/serialization_test.cpp
     unit/detail/protocol/deserialize_text_field.cpp
     unit/detail/protocol/deserialize_binary_field.cpp
-    # unit/detail/protocol/row_deserialization.cpp
+    unit/detail/protocol/deserialize_row.cpp
 
     unit/field_view.cpp
     unit/field.cpp
