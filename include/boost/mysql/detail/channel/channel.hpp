@@ -40,11 +40,11 @@ class channel
     error_info shared_info_; // for async ops
     std::vector<field_view> shared_fields_; // for read_some ops
 public:
-    channel() = default; // Simplify life if stream is default constructible, mainly for tests
-
+    // TODO: use this arg
     template <class... Args>
-    channel(Args&&... args) : 
-        stream_(std::forward<Args>(args)...) 
+    channel(std::size_t read_buffer_size, Args&&... args) : 
+        stream_(std::forward<Args>(args)...),
+        reader_(read_buffer_size)
     {
     }
 

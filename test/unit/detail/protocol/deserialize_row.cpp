@@ -22,6 +22,7 @@
 #include <boost/asio/buffer.hpp>
 #include "buffer_concat.hpp"
 #include "test_common.hpp"
+#include "create_resultset.hpp"
 #include <cstdint>
 
 using namespace boost::mysql::test;
@@ -351,27 +352,12 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(with_resultset)
 
-resultset_base make_resultset(resultset_encoding enc, const std::vector<protocol_field_type>& types)
-{
-    resultset_base res;
-    res.reset(&res, enc); // channel should just be != nullptr
-    column_definition_packet coldef;
-    for (auto type : types)
-    {
-        coldef.type = type;
-        coldef.flags = 0;
-        coldef.decimals = 0;
-        res.add_meta(coldef);
-    }
-    return res;
-}
-
 BOOST_AUTO_TEST_CASE(text_rows)
 {
     std::vector<std::uint8_t> row1 { 0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30 };
     std::vector<std::uint8_t> row2 { 0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30 };
     auto buff = concat_copy(row1, row2); 
-    resultset_base result = make_resultset(
+    resultset_base result = create_resultset(
         resultset_encoding::text,
         { protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_ }
     );
@@ -425,7 +411,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     std::vector<std::uint8_t> row1 { 0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07 };
     std::vector<std::uint8_t> row2 { 0x00, 0x08, 0x03, 0x6d, 0x61, 0x78 };
     auto buff = concat_copy(row1, row2); 
-    resultset_base result = make_resultset(
+    resultset_base result = create_resultset(
         resultset_encoding::binary,
         { protocol_field_type::var_string, protocol_field_type::short_ }
     );
@@ -475,8 +461,8 @@ BOOST_AUTO_TEST_CASE(binary_rows)
 
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
-    std::vector<std::uint8_t> buff { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
-    resultset_base result = make_resultset(
+    std::vector<std::uint8_t> buff { 0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62 };
+    resultset_base result = create_resultset(
         resultset_encoding::binary,
         { protocol_field_type::var_string, protocol_field_type::short_ }
     );
@@ -499,6 +485,10 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
     BOOST_TEST(result.complete());
+    BOOST_TEST(result.affected_rows() == 1);
+    BOOST_TEST(result.last_insert_id() == 6);
+    BOOST_TEST(result.warning_count() == 9);
+    BOOST_TEST(result.info() == "ab");
     BOOST_TEST(fields == fields_before); // they didn't change
 }
 
@@ -551,7 +541,7 @@ BOOST_AUTO_TEST_CASE(error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            resultset_base result = make_resultset(
+            resultset_base result = create_resultset(
                 resultset_encoding::binary,
                 { protocol_field_type::var_string, protocol_field_type::short_ }
             );

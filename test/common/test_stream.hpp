@@ -47,6 +47,9 @@ public:
     using executor_type = boost::asio::any_io_executor;
     executor_type get_executor() noexcept { return executor_; }
 
+    using lowest_layer_type = test_stream;
+    lowest_layer_type& lowest_layer() { return *this; }
+
     struct read_behavior
     {
         std::vector<std::uint8_t> bytes_to_read;

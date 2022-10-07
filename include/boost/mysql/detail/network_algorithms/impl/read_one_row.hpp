@@ -24,8 +24,8 @@ namespace detail {
 
 template <class Stream>
 inline row_view process_one_row(
-    boost::asio::const_buffer read_message,
     channel<Stream>& channel,
+    boost::asio::const_buffer read_message,
     resultset_base& result,
     error_code& err,
     error_info& info
@@ -85,7 +85,7 @@ struct read_one_row_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err, false);
+            self.complete(err, row_view());
             return;
         }
 
@@ -106,8 +106,8 @@ struct read_one_row_op : boost::asio::coroutine
 
             // Process it
             result = process_one_row(
+                chan_,
                 read_message,
-                chan_.current_capabilities(),
                 resultset_,
                 err,
                 output_info_
@@ -142,8 +142,8 @@ boost::mysql::row_view boost::mysql::detail::read_one_row(
         return row_view();
 
     return process_one_row(
+        channel,
         read_message,
-        channel.current_capabilities(),
         result,
         err,
         info

@@ -45,6 +45,8 @@ add_executable(
     unit/detail/protocol/deserialize_binary_field.cpp
     unit/detail/protocol/deserialize_row.cpp
 
+    unit/detail/network_algorithms/read_one_row.cpp
+
     unit/field_view.cpp
     unit/field.cpp
     unit/row_view.cpp
