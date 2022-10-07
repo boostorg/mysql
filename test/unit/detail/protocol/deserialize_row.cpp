@@ -473,13 +473,108 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     BOOST_TEST(fields == make_fv_vector("min", 1901, "max", nullptr));
 }
 
-// Got ok_packet (with previous rows)
+BOOST_AUTO_TEST_CASE(ok_packet)
+{
+    std::vector<std::uint8_t> buff { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
+    resultset_base result = make_resultset(
+        resultset_encoding::binary,
+        { protocol_field_type::var_string, protocol_field_type::short_ }
+    );
+    auto fields_before = make_fv_vector("abc", 20); // previous row
+    auto fields = fields_before;
+    error_code err;
+    error_info info;
 
-// Got row with error
-// Got ok_packet with error
-// Got err_packet
-// Got err_packet with error
-// Got empty message
+    // First row
+    deserialize_row(
+        boost::asio::buffer(buff),
+        capabilities(),
+        buff.data(),
+        result,
+        fields,
+        err,
+        info
+    );
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(info.message() == "");
+    BOOST_TEST(result.complete());
+    BOOST_TEST(fields == fields_before); // they didn't change
+}
+
+BOOST_AUTO_TEST_CASE(error)
+{
+    struct
+    {
+        const char* name;
+        std::vector<std::uint8_t> buffer;
+        errc expected_error;
+        const char* expected_info;
+    } test_cases [] = {
+        {
+            "invalid_row",
+            { 0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, }, // 1 byte missing
+            errc::incomplete_message,
+            ""
+        },
+        {
+            "invalid_ok_packet",
+            { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00 }, // 1 byte missing
+            errc::incomplete_message,
+            ""
+        },
+        {
+            "error_packet",
+            {
+                0xff, 0x19, 0x04, 0x23, 0x34, 0x32, 0x30, 0x30, 0x30, 0x55, 0x6e, 0x6b,
+                0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
+                0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
+            },
+            errc::bad_db_error,
+            "Unknown database 'a'"
+        },
+        {
+            "invalid_error_packet",
+            { 0xff, 0x19 }, // bytes missing
+            errc::incomplete_message,
+            ""
+        },
+        {
+            "empty_message",
+            {},
+            errc::incomplete_message,
+            ""
+        }
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            resultset_base result = make_resultset(
+                resultset_encoding::binary,
+                { protocol_field_type::var_string, protocol_field_type::short_ }
+            );
+            std::vector<field_view> fields;
+            error_code err;
+            error_info info;
+
+            // First row
+            deserialize_row(
+                boost::asio::buffer(tc.buffer),
+                capabilities(),
+                tc.buffer.data(),
+                result,
+                fields,
+                err,
+                info
+            );
+
+            BOOST_TEST(err == error_code(tc.expected_error));
+            BOOST_TEST(info.message() == tc.expected_info);
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
