@@ -6,12 +6,13 @@
 //
 
 #include <boost/mysql/connection.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include "test_stream.hpp"
-#include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
+#include "test_stream.hpp"
 
 using conn_t = boost::mysql::connection<boost::mysql::test::test_stream>;
+
+namespace
+{
 
 BOOST_AUTO_TEST_SUITE(test_connection)
 
@@ -97,3 +98,5 @@ BOOST_AUTO_TEST_CASE(connection_rebind_executor)
 }
 
 BOOST_AUTO_TEST_SUITE_END() // test_connection
+
+}

@@ -7,7 +7,7 @@
 
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
-#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 #include "boost/mysql/errc.hpp"
 #include "er_network_variant.hpp"

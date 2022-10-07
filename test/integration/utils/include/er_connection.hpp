@@ -13,7 +13,7 @@
 #include "er_endpoint.hpp"
 #include "er_resultset.hpp"
 #include "er_statement.hpp"
-#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <memory>
 
 

@@ -13,7 +13,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/rows.hpp>
-#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
 #include <cstddef>

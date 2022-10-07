@@ -10,7 +10,7 @@
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/handshake_params.hpp>
 
 
 namespace boost {
@@ -20,7 +20,7 @@ namespace detail {
 template <class Stream>
 void handshake(
     channel<Stream>& channel,
-    const connection_params& params,
+    const handshake_params& params,
     error_code& err,
     error_info& info
 );
@@ -29,7 +29,7 @@ template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_handshake(
     channel<Stream>& channel,
-    const connection_params& params,
+    const handshake_params& params,
     error_info& info,
     CompletionToken&& token
 );

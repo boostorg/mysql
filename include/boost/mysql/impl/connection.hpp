@@ -29,7 +29,7 @@ template <class Stream>
 template <class EndpointType>
 void boost::mysql::connection<Stream>::connect(
     const EndpointType& endpoint,
-    const connection_params& params,
+    const handshake_params& params,
     error_code& ec,
     error_info& info
 )
@@ -42,7 +42,7 @@ template <class Stream>
 template <class EndpointType>
 void boost::mysql::connection<Stream>::connect(
     const EndpointType& endpoint,
-    const connection_params& params
+    const handshake_params& params
 )
 {
     detail::error_block blk;
@@ -61,7 +61,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::connection<Stream>::async_connect(
     const EndpointType& endpoint,
-    const connection_params& params,
+    const handshake_params& params,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -80,7 +80,7 @@ boost::mysql::connection<Stream>::async_connect(
 // handshake
 template <class Stream>
 void boost::mysql::connection<Stream>::handshake(
-    const connection_params& params,
+    const handshake_params& params,
     error_code& code,
     error_info& info
 )
@@ -91,7 +91,7 @@ void boost::mysql::connection<Stream>::handshake(
 
 template <class Stream>
 void boost::mysql::connection<Stream>::handshake(
-    const connection_params& params
+    const handshake_params& params
 )
 {
     detail::error_block blk;
@@ -106,7 +106,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     void(boost::mysql::error_code)
 )
 boost::mysql::connection<Stream>::async_handshake(
-    const connection_params& params,
+    const handshake_params& params,
     error_info& output_info,
     CompletionToken&& token
 )

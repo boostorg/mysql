@@ -78,13 +78,13 @@ enum class auth_result
 
 class handshake_processor
 {
-    connection_params params_;
+    handshake_params params_;
     capabilities negotiated_caps_;
     auth_calculator auth_calc_;
 public:
-    handshake_processor(const connection_params& params): params_(params) {};
+    handshake_processor(const handshake_params& params): params_(params) {};
     capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
-    const connection_params& params() const noexcept { return params_; }
+    const handshake_params& params() const noexcept { return params_; }
     bool use_ssl() const noexcept { return negotiated_caps_.has(CLIENT_SSL); }
 
     // Initial greeting processing
@@ -260,7 +260,7 @@ struct handshake_op : boost::asio::coroutine
     handshake_op(
         channel<Stream>& channel,
         error_info& output_info,
-        const connection_params& params
+        const handshake_params& params
     ) :
         chan_(channel),
         output_info_(output_info),
@@ -354,7 +354,7 @@ struct handshake_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::handshake(
     channel<Stream>& channel,
-    const connection_params& params,
+    const handshake_params& params,
     error_code& err,
     error_info& info
 )
@@ -427,7 +427,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::detail::async_handshake(
     channel<Stream>& chan,
-    const connection_params& params,
+    const handshake_params& params,
     error_info& info,
     CompletionToken&& token
 )

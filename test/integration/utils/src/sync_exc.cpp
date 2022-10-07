@@ -13,7 +13,7 @@
 #include "streams.hpp"
 #include "er_impl_common.hpp"
 #include "get_endpoint.hpp"
-#include "boost/mysql/connection_params.hpp"
+#include "boost/mysql/handshake_params.hpp"
 #include "boost/mysql/errc.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/execute_params.hpp"

@@ -17,7 +17,7 @@
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/statement.hpp>
-#include <boost/mysql/connection_params.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <type_traits>
 
 #endif
@@ -165,7 +165,7 @@ public:
     template <typename EndpointType>
     void connect(
         const EndpointType& endpoint,
-        const connection_params& params,
+        const handshake_params& params,
         error_code& ec, 
         error_info& info
     );
@@ -185,7 +185,7 @@ public:
     template <typename EndpointType>
     void connect(
         const EndpointType& endpoint,
-        const connection_params& params
+        const handshake_params& params
     );
 
     /**
@@ -216,7 +216,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
         const EndpointType& endpoint,
-        const connection_params& params,
+        const handshake_params& params,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -251,7 +251,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
         const EndpointType& endpoint,
-        const connection_params& params,
+        const handshake_params& params,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
@@ -265,7 +265,7 @@ public:
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
      * See [link mysql.ssl.handshake this section] for more info.
      */
-    void handshake(const connection_params& params, error_code& ec, error_info& info);
+    void handshake(const handshake_params& params, error_code& ec, error_info& info);
 
     /**
      * \brief Performs the MySQL-level handshake (sync with exceptions version).
@@ -276,7 +276,7 @@ public:
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
      * See [link mysql.ssl.handshake this section] for more info.
      */
-    void handshake(const connection_params& params);
+    void handshake(const handshake_params& params);
 
     /**
      * \brief Performs the MySQL-level handshake
@@ -299,7 +299,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_handshake(
-        const connection_params& params,
+        const handshake_params& params,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -327,7 +327,7 @@ public:
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_handshake(
-        const connection_params& params,
+        const handshake_params& params,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

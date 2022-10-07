@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_CONNECTION_PARAMS_HPP
-#define BOOST_MYSQL_CONNECTION_PARAMS_HPP
+#ifndef BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
+#define BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
 
 #include <boost/utility/string_view.hpp>
 #include <boost/mysql/collation.hpp>
@@ -33,7 +33,7 @@ enum class ssl_mode
  * with a MySQL server. See [link mysql.connparams this section]
  * for more information on each parameter.
  */
-class connection_params
+class handshake_params
 {
     boost::string_view username_;
     boost::string_view password_;
@@ -50,7 +50,7 @@ public:
      * Impacts how text queries and prepared statements are interpreted. Defaults to utf8_general_ci.
      * \param mode The [reflink ssl_mode] to use with this connection; ignored if the connection does not support SSL.
      */
-    connection_params(
+    handshake_params(
         boost::string_view username,
         boost::string_view password,
         boost::string_view db = "",

@@ -12,7 +12,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <thread>
-#include "boost/mysql/connection_params.hpp"
+#include "boost/mysql/handshake_params.hpp"
 #include "test_common.hpp"
 #include "metadata_validator.hpp"
 #include "network_test.hpp"
