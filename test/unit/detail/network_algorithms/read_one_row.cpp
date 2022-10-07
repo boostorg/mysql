@@ -38,74 +38,53 @@ namespace
 
 // Machinery to be able to cover the sync and async
 // functions with the same test code
-class read_one_row_fns
+struct
 {
-public:
-    virtual ~read_one_row_fns() {}
-    virtual row_view read_one_row(
-        test_channel& channel,
+    row_view (*read_one_row) (
+        test_channel& chan,
         resultset_base& result,
         error_code& err,
         error_info& info
-    ) = 0;
-    virtual const char* name() const noexcept = 0;
-};
-
-class sync_read_one_row_fns : public read_one_row_fns
-{
-public:
-    row_view read_one_row(
-        test_channel& channel,
-        resultset_base& result,
-        error_code& err,
-        error_info& info
-    ) final override
+    );
+    const char* name;
+} all_fns [] = {
     {
-        return boost::mysql::detail::read_one_row(channel, result, err, info);
-    }
-    const char* name() const noexcept final override { return "sync"; };
-};
-
-class async_read_one_row_fns : public read_one_row_fns
-{
-public:
-    row_view read_one_row(
-        test_channel& channel,
-        resultset_base& result,
-        error_code& err,
-        error_info& info
-    ) final override
+        &boost::mysql::detail::read_one_row<test_stream>,
+        "sync"
+    },
     {
-        boost::asio::io_context ctx_;
-        row_view res;
-        boost::mysql::detail::async_read_one_row(
-            channel,
-            result,
-            info,
-            boost::asio::bind_executor(ctx_.get_executor(), [&](error_code ec, row_view rv) {
-                err = ec;
-                res = rv;
-            })
-        );
-        ctx_.run();
-        return res;
+        [](
+            test_channel& channel,
+            resultset_base& result,
+            error_code& err,
+            error_info& info
+        )
+        {
+            boost::asio::io_context ctx_;
+            row_view res;
+            boost::mysql::detail::async_read_one_row(
+                channel,
+                result,
+                info,
+                boost::asio::bind_executor(ctx_.get_executor(), [&](error_code ec, row_view rv) {
+                    err = ec;
+                    res = rv;
+                })
+            );
+            ctx_.run();
+            return res;
+        },
+        "async"
     }
-    const char* name() const noexcept final override { return "async"; };
 };
-
-
-sync_read_one_row_fns sync;
-async_read_one_row_fns async;
-read_one_row_fns* all_reader_fns [] = { &sync, &async };
-
 
 BOOST_AUTO_TEST_SUITE(test_read_one_row)
 
 BOOST_AUTO_TEST_CASE(success)
 {
-    for (auto* fns : all_reader_fns)
+    for (const auto& fns : all_fns)
     {
-        BOOST_TEST_CONTEXT(fns->name())
+        BOOST_TEST_CONTEXT(fns.name)
         {
             auto row1 = create_message(4, { 0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07 });
             auto row2 = create_message(5, { 0x00, 0x08, 0x03, 0x6d, 0x61, 0x78 });
@@ -115,13 +94,12 @@ BOOST_AUTO_TEST_CASE(success)
                 { protocol_field_type::var_string, protocol_field_type::short_ },
                 4 // seqnum
             );
-            test_channel chan;
+            auto chan = create_channel(concat_copy(row1, row2, ok_packet));
             error_code err;
             error_info info;
-            chan.lowest_layer().add_message(concat_copy(row1, row2, ok_packet));
 
             // 1st row
-            row_view rv = fns->read_one_row(chan, result, err, info);
+            row_view rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv == makerow("min", 1901));
@@ -129,14 +107,14 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_TEST(chan.shared_sequence_number() == 0); // not used
 
             // 2nd row
-            rv = fns->read_one_row(chan, result, err, info);
+            rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv == makerow("max", nullptr));
             BOOST_TEST(!result.complete());
 
             // ok packet
-            rv = fns->read_one_row(chan, result, err, info);
+            rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(result.complete());
             BOOST_TEST(result.affected_rows() == 1);
             BOOST_TEST(result.last_insert_id() == 6);
@@ -149,24 +127,24 @@ BOOST_AUTO_TEST_CASE(success)
 
 BOOST_AUTO_TEST_CASE(resultset_already_complete)
 {
-    for (auto* fns : all_reader_fns)
+    for (const auto& fns : all_fns)
     {
-        BOOST_TEST_CONTEXT(fns->name())
+        BOOST_TEST_CONTEXT(fns.name)
         {
             auto result = create_resultset(resultset_encoding::text, {});
             result.complete(boost::mysql::detail::ok_packet{});
-            test_channel chan;
+            test_channel chan = create_channel();
             error_code err;
             error_info info;
 
-            row_view rv = fns->read_one_row(chan, result, err, info);
+            row_view rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv.empty());
             BOOST_TEST(result.complete());
 
             // Doing it again works, too
-            rv = fns->read_one_row(chan, result, err, info);
+            rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv.empty());
@@ -177,17 +155,17 @@ BOOST_AUTO_TEST_CASE(resultset_already_complete)
 
 BOOST_AUTO_TEST_CASE(error_reading_row)
 {
-    for (auto* fns : all_reader_fns)
+    for (const auto& fns : all_fns)
     {
-        BOOST_TEST_CONTEXT(fns->name())
+        BOOST_TEST_CONTEXT(fns.name)
         {
             auto result = create_resultset(resultset_encoding::text, {});
-            test_channel chan;
+            test_channel chan = create_channel();
             error_code err;
             error_info info;
             chan.lowest_layer().set_fail_count(fail_count(0, errc::no));
 
-            row_view rv = fns->read_one_row(chan, result, err, info);
+            row_view rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(err == error_code(errc::no));
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv.empty());
@@ -198,22 +176,22 @@ BOOST_AUTO_TEST_CASE(error_reading_row)
 
 BOOST_AUTO_TEST_CASE(error_deserializing_row)
 {
-    for (auto* fns : all_reader_fns)
+    for (const auto& fns : all_fns)
     {
-        BOOST_TEST_CONTEXT(fns->name())
+        BOOST_TEST_CONTEXT(fns.name)
         {
             auto r = create_message(0, { 0x00 }); // invalid row
             auto result = create_resultset(
                 resultset_encoding::binary, 
                 { protocol_field_type::var_string }
             );
-            test_channel chan;
+            test_channel chan = create_channel();
             error_code err;
             error_info info;
             chan.lowest_layer().add_message(r);
 
             // deserialize row error
-            row_view rv = fns->read_one_row(chan, result, err, info);
+            row_view rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(err == error_code(errc::incomplete_message));
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv.empty());

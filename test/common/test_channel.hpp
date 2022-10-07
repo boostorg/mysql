@@ -15,12 +15,12 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-class test_channel : public detail::channel<test_stream>
-{
-public:
-    test_channel() : detail::channel<test_stream>(0) {} // initial buffer empty
-};
+using test_channel = detail::channel<test_stream>;
 
+inline test_channel create_channel(std::vector<std::uint8_t> messages = {})
+{
+    return test_channel (0, std::move(messages));
+}
 
 } // test
 } // mysql
