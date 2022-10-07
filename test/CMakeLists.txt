@@ -59,7 +59,7 @@ add_executable(
     unit/error.cpp
     unit/execute_params.cpp
     unit/statement.cpp
-    # unit/resultset.cpp
+    unit/resultset.cpp
     # unit/connection.cpp
     unit/entry_point.cpp
 )

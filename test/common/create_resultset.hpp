@@ -17,13 +17,14 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-inline resultset_base create_resultset(
+template <class ResultsetType = resultset_base>
+inline ResultsetType create_resultset(
     detail::resultset_encoding enc,
     const std::vector<detail::protocol_field_type>& types,
     std::uint8_t seqnum = 0
 )
 {
-    resultset_base res;
+    ResultsetType res;
     res.reset(&res, enc); // channel should just be != nullptr
     boost::mysql::detail::column_definition_packet coldef;
     for (auto type : types)
