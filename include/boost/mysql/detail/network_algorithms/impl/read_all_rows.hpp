@@ -98,7 +98,7 @@ struct read_all_rows_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err);
+            self.complete(err, rows_view());
             return;
         }
 
@@ -113,6 +113,9 @@ struct read_all_rows_op : boost::asio::coroutine
                 self.complete(error_code(), rows_view());
                 BOOST_ASIO_CORO_YIELD break;
             }
+
+            // Clear anything from previous runs
+            chan_.shared_fields().clear();
 
             // Read at least one message
             while (!resultset_.complete())
@@ -153,6 +156,9 @@ boost::mysql::rows_view boost::mysql::detail::read_all_rows(
     {
         return rows_view();
     }
+
+    // Clear anything from previous runs
+    channel.shared_fields().clear();
 
     rows_view output;
     while (!result.complete())
