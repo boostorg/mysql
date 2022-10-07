@@ -37,6 +37,9 @@ add_executable(
     unit/detail/auxiliar/static_string.cpp
     unit/detail/auxiliar/rows_iterator.cpp
     unit/detail/auxiliar/field_type_traits.cpp
+    unit/detail/network_algorithms/read_one_row.cpp
+    unit/detail/network_algorithms/read_some_rows.cpp
+    unit/detail/network_algorithms/read_all_rows.cpp
     unit/detail/protocol/capabilities.cpp
     # unit/detail/protocol/date.cpp
     unit/detail/protocol/null_bitmap_traits.cpp
@@ -44,10 +47,6 @@ add_executable(
     unit/detail/protocol/deserialize_text_field.cpp
     unit/detail/protocol/deserialize_binary_field.cpp
     unit/detail/protocol/deserialize_row.cpp
-
-    unit/detail/network_algorithms/read_one_row.cpp
-    unit/detail/network_algorithms/read_some_rows.cpp
-    unit/detail/network_algorithms/read_all_rows.cpp
 
     unit/field_view.cpp
     unit/field.cpp
@@ -59,7 +58,7 @@ add_executable(
     unit/metadata_collection_view.cpp
     unit/error.cpp
     unit/execute_params.cpp
-    # unit/prepared_statement.cpp
+    unit/statement.cpp
     # unit/resultset.cpp
     # unit/connection.cpp
     unit/entry_point.cpp

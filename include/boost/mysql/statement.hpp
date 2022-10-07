@@ -26,7 +26,7 @@ public:
     statement(const statement&) = delete;
     statement(statement&& other) noexcept : statement_base(other) { other.reset(); }
     statement& operator=(const statement&) = delete;
-    statement& operator=(statement&& rhs) noexcept { swap(std::move(rhs)); return *this; }
+    statement& operator=(statement&& rhs) noexcept { swap(rhs); return *this; }
     ~statement() = default;
 
     using executor_type = typename Stream::executor_type;
