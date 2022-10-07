@@ -95,6 +95,7 @@ BOOST_AUTO_TEST_CASE(success)
                 4 // seqnum
             );
             auto chan = create_channel(concat_copy(row1, row2, ok_packet));
+            chan.shared_fields().emplace_back("abc"); // from previous call
             error_code err;
             error_info info;
 
