@@ -6,8 +6,6 @@
 //
 
 #include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
 #include "boost/mysql/detail/protocol/resultset_encoding.hpp"
 #include "boost/mysql/error.hpp"
 #include "boost/mysql/resultset_base.hpp"

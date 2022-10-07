@@ -101,7 +101,7 @@ struct read_some_rows_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err);
+            self.complete(err, rows_view());
             return;
         }
 
@@ -121,7 +121,7 @@ struct read_some_rows_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            process_some_rows(chan_, resultset_, output, err, output_info_);
+            output = process_some_rows(chan_, resultset_, err, output_info_);
             
             self.complete(err, output);
         }
@@ -168,7 +168,7 @@ boost::mysql::detail::async_read_some_rows(
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)> (
+    return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)> (
         read_some_rows_op<Stream>(
             channel,
             output_info,
