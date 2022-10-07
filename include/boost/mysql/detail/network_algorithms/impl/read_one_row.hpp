@@ -23,11 +23,10 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-inline bool process_one_row(
+inline row_view process_one_row(
     boost::asio::const_buffer read_message,
     channel<Stream>& channel,
     resultset_base& result,
-	row_view& output,
     error_code& err,
     error_info& info
 )
@@ -36,7 +35,7 @@ inline bool process_one_row(
     channel.shared_fields().clear();
 
     // Deserialize the row
-    bool row_read = deserialize_row(
+    deserialize_row(
         read_message,
         channel.current_capabilities(),
         channel.buffer_first(),
@@ -47,17 +46,15 @@ inline bool process_one_row(
     );
 
     // Set the output variable
-    if (row_read)
+    if (!channel.shared_fields().empty())
     {
         offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
-        output = row_view(channel.shared_fields().data(), channel.shared_fields().size());
+        return row_view(channel.shared_fields().data(), channel.shared_fields().size());
     }
     else
     {
-        output = row_view();
+        return row_view();
     }
-
-    return row_read;
 }
 
 template<class Stream>
@@ -66,18 +63,15 @@ struct read_one_row_op : boost::asio::coroutine
     channel<Stream>& chan_;
     error_info& output_info_;
     resultset_base& resultset_;
-    row& output_;
 
     read_one_row_op(
         channel<Stream>& chan,
         error_info& output_info,
-        resultset_base& result,
-		row& output
+        resultset_base& result
     ) noexcept :
         chan_(chan),
         output_info_(output_info),
-        resultset_(result),
-		output_(output)
+        resultset_(result)
     {
     }
 
@@ -96,15 +90,14 @@ struct read_one_row_op : boost::asio::coroutine
         }
 
         // Normal path
-        bool result;
+        row_view result;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // If the resultset is already complete, we don't need to read anything
             if (resultset_.complete())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-                output_.clear();
-                self.complete(error_code(), false);
+                self.complete(error_code(), row_view());
                 BOOST_ASIO_CORO_YIELD break;
             }
 
@@ -116,7 +109,6 @@ struct read_one_row_op : boost::asio::coroutine
                 read_message,
                 chan_.current_capabilities(),
                 resultset_,
-                output_,
                 err,
                 output_info_
             );
@@ -131,10 +123,9 @@ struct read_one_row_op : boost::asio::coroutine
 
 
 template <class Stream>
-bool boost::mysql::detail::read_one_row(
+boost::mysql::row_view boost::mysql::detail::read_one_row(
     channel<Stream>& channel,
     resultset_base& result,
-	row_view& output,
     error_code& err,
     error_info& info
 )
@@ -142,20 +133,18 @@ bool boost::mysql::detail::read_one_row(
     // If the resultset is already complete, we don't need to read anything
     if (result.complete())
     {
-        output = row_view();
-        return false;
+        return row_view();
     }
 
     // Read a packet
     auto read_message = channel.read_one(result.sequence_number(), err);
     if (err)
-        return false;
+        return row_view();
 
     return process_one_row(
         read_message,
         channel.current_capabilities(),
         result,
-		output,
         err,
         info
     );
@@ -164,22 +153,20 @@ bool boost::mysql::detail::read_one_row(
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, bool)
+    void(boost::mysql::error_code, boost::mysql::row_view)
 )
 boost::mysql::detail::async_read_one_row(
     channel<Stream>& channel,
     resultset_base& result,
-	row_view& output,
     error_info& output_info,
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, bool)> (
+    return boost::asio::async_compose<CompletionToken, void(error_code, row_view)> (
         read_one_row_op<Stream>(
             channel,
             output_info,
-            result,
-			output
+            result
         ),
         token,
         channel

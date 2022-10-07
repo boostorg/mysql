@@ -46,7 +46,7 @@ public:
      * (as if [refmem row clear] was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
-    bool read_one(row_view& output, error_code& err, error_info& info);
+    row_view read_one(error_code& err, error_info& info);
 
     /**
      * \brief Reads a single row (sync with exceptions version).
@@ -60,7 +60,7 @@ public:
      * (as if [refmem row clear] was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
-    bool read_one(row_view& output);
+    row_view read_one();
 
     /**
      * \brief Reads a single row (async without [reflink error_info] version).
@@ -78,17 +78,16 @@ public:
      * `void(boost::mysql::error_code, bool)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
     async_read_one(
-        row_view& output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_read_one(output, get_channel().shared_info(), std::forward<CompletionToken>(token));
+        return async_read_one(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -107,19 +106,18 @@ public:
      * `void(boost::mysql::error_code, bool)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
     async_read_one(
-    	row_view& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    void read_some(rows_view& output, error_code& err, error_info& info);
-    void read_some(rows_view& output);
+    rows_view read_some(error_code& err, error_info& info);
+    rows_view read_some();
 
     /**
      * \brief Reads several rows, up to a maximum
@@ -129,17 +127,16 @@ public:
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_some(
-        rows_view& output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_read_some(output, get_channel().shared_info(), std::forward<CompletionToken>(token));
+        return async_read_some(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -150,22 +147,21 @@ public:
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(
-        rows_view& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
     /// Reads all available rows (sync with error code version).
-    void read_all(rows_view& output, error_code& err, error_info& info);
+    rows_view read_all(error_code& err, error_info& info);
 
     /// Reads all available rows (sync with exceptions version).
-    void read_all(rows_view& output);
+    rows_view read_all();
 
     /**
      * \brief Reads all available rows (async without [reflink error_info] version).
@@ -174,17 +170,16 @@ public:
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_all(
-        rows_view& output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_read_all(output, get_channel().shared_info(), std::forward<CompletionToken>(token));
+        return async_read_all(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -194,13 +189,12 @@ public:
      * `void(boost::mysql::error_code, std::vector<boost::mysql::row>)`.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
         CompletionToken
         BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
     >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_all(
-        rows_view& output,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

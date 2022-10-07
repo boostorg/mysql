@@ -128,7 +128,7 @@ void boost::mysql::detail::deserialize_row(
             deserialize_binary_row(ctx, meta, buffer_first, output);
 }
 
-bool boost::mysql::detail::deserialize_row(
+void boost::mysql::detail::deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     const std::uint8_t* buffer_first, // to store strings as offsets and allow buffer reallocation
@@ -139,38 +139,33 @@ bool boost::mysql::detail::deserialize_row(
 )
 {
     assert(result.valid());
+    assert(!result.complete());
 
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
     deserialization_context ctx (read_message, current_capabilities);
     err = make_error_code(deserialize(ctx, msg_type));
     if (err)
-        return false;
+        return;
     if (msg_type == eof_packet_header)
     {
         // end of resultset => this is a ok_packet, not a row
         ok_packet ok_pack;
         err = deserialize_message(ctx, ok_pack);
         if (err)
-            return false;
+            return;
         result.complete(ok_pack);
-        output.clear(); // TODO: this is wrong
-        return false;
     }
     else if (msg_type == error_packet_header)
     {
         // An error occurred during the generation of the rows
         err = process_error_packet(ctx, info);
-        return false;
     }
     else
     {
         // An actual row
         ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
         deserialize_row(result.encoding(), ctx, result.meta(), buffer_first, output, err);
-        if (err)
-            return false;
-        return true;
     }
 }
 
