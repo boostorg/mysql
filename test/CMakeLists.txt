@@ -42,9 +42,7 @@ add_executable(
     unit/detail/protocol/null_bitmap_traits.cpp
     unit/detail/protocol/serialization_test.cpp
     unit/detail/protocol/deserialize_text_field.cpp
-    # unit/detail/protocol/text_deserialization_error.cpp
-    # unit/detail/protocol/binary_deserialization_value.cpp
-    # unit/detail/protocol/binary_deserialization_error.cpp
+    unit/detail/protocol/deserialize_binary_field.cpp
     # unit/detail/protocol/row_deserialization.cpp
 
     unit/field_view.cpp
