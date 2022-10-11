@@ -10,21 +10,22 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+
+#include <array>
 #include <cstddef>
-#include <iterator>
-#include <string>
-#include <vector>
 #include <forward_list>
+#include <iterator>
 #include <list>
 #include <set>
-#include <array>
+#include <string>
+#include <vector>
 
-using boost::mysql::detail::is_field_view_forward_iterator;
-using boost::mysql::detail::is_field_view_collection;
-using boost::mysql::field_view;
 using boost::mysql::field;
-using boost::mysql::row_view;
+using boost::mysql::field_view;
 using boost::mysql::row;
+using boost::mysql::row_view;
+using boost::mysql::detail::is_field_view_collection;
+using boost::mysql::detail::is_field_view_forward_iterator;
 
 //
 // field_view iterator
@@ -38,7 +39,10 @@ static_assert(is_field_view_forward_iterator<const field*>::value, "");
 
 // Array iterators
 static_assert(is_field_view_forward_iterator<std::array<field_view, 10>::iterator>::value, "");
-static_assert(is_field_view_forward_iterator<std::array<field_view, 10>::const_iterator>::value, "");
+static_assert(
+    is_field_view_forward_iterator<std::array<field_view, 10>::const_iterator>::value,
+    ""
+);
 
 static_assert(is_field_view_forward_iterator<std::array<field, 10>::iterator>::value, "");
 static_assert(is_field_view_forward_iterator<std::array<field, 10>::const_iterator>::value, "");
@@ -47,15 +51,25 @@ static_assert(is_field_view_forward_iterator<std::array<field, 10>::const_iterat
 static_assert(is_field_view_forward_iterator<std::vector<field_view>::iterator>::value, "");
 static_assert(is_field_view_forward_iterator<std::vector<field_view>::const_iterator>::value, "");
 static_assert(is_field_view_forward_iterator<std::vector<field_view>::reverse_iterator>::value, "");
-static_assert(is_field_view_forward_iterator<std::vector<field_view>::const_reverse_iterator>::value, "");
-static_assert(is_field_view_forward_iterator<std::vector<std::reference_wrapper<field_view>>::iterator>::value, "");
+static_assert(
+    is_field_view_forward_iterator<std::vector<field_view>::const_reverse_iterator>::value,
+    ""
+);
+static_assert(
+    is_field_view_forward_iterator<
+        std::vector<std::reference_wrapper<field_view>>::iterator>::value,
+    ""
+);
 
 static_assert(is_field_view_forward_iterator<std::vector<field>::iterator>::value, "");
 static_assert(is_field_view_forward_iterator<std::vector<field>::const_iterator>::value, "");
 
 // forward_list iterators
 static_assert(is_field_view_forward_iterator<std::forward_list<field_view>::iterator>::value, "");
-static_assert(is_field_view_forward_iterator<std::forward_list<field_view>::const_iterator>::value, "");
+static_assert(
+    is_field_view_forward_iterator<std::forward_list<field_view>::const_iterator>::value,
+    ""
+);
 
 static_assert(is_field_view_forward_iterator<std::forward_list<field>::iterator>::value, "");
 static_assert(is_field_view_forward_iterator<std::forward_list<field>::const_iterator>::value, "");
@@ -98,16 +112,15 @@ static_assert(!is_field_view_forward_iterator<field_view*&>::value, "");
 static_assert(!is_field_view_forward_iterator<row::iterator&>::value, "");
 static_assert(!is_field_view_forward_iterator<const row::iterator&>::value, "");
 
-
 //
 // Collections
 //
 
 // C arrays
-static_assert(is_field_view_collection<field_view [10]>::value, "");
+static_assert(is_field_view_collection<field_view[10]>::value, "");
 static_assert(is_field_view_collection<const field_view[10]>::value, "");
 
-static_assert(is_field_view_collection<field [10]>::value, "");
+static_assert(is_field_view_collection<field[10]>::value, "");
 static_assert(is_field_view_collection<const field[10]>::value, "");
 
 // std::array

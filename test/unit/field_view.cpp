@@ -5,15 +5,18 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/field.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/field.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test_suite.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <sstream>
 #include <vector>
+
 #include "test_common.hpp"
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
@@ -21,13 +24,12 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 using namespace boost::mysql::test;
-using boost::mysql::field_view;
 using boost::mysql::field;
 using boost::mysql::field_kind;
+using boost::mysql::field_view;
 using boost::mysql::detail::stringize;
 
-namespace
-{
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_field_view)
 
@@ -41,14 +43,14 @@ BOOST_AUTO_TEST_CASE(default_constructor)
 
 BOOST_AUTO_TEST_CASE(copy)
 {
-    field_view v (32);
-    field_view v2 (v);
+    field_view v(32);
+    field_view v2(v);
     BOOST_TEST(v2.as_int64() == 32);
 }
 
 BOOST_AUTO_TEST_CASE(move)
 {
-    field_view v (field_view(32));
+    field_view v(field_view(32));
     BOOST_TEST(v.as_int64() == 32);
 }
 
@@ -121,7 +123,7 @@ BOOST_AUTO_TEST_CASE(from_c_str)
 
 BOOST_AUTO_TEST_CASE(from_string_view)
 {
-    boost::string_view sv ("test123", 4);
+    boost::string_view sv("test123", 4);
     field_view v(sv);
     BOOST_TEST(v.as_string() == "test");
 }
@@ -141,21 +143,21 @@ BOOST_AUTO_TEST_CASE(from_double)
 BOOST_AUTO_TEST_CASE(from_date)
 {
     auto d = makedate(2022, 4, 1);
-    field_view v (d);
+    field_view v(d);
     BOOST_TEST(v.as_date() == d);
 }
 
 BOOST_AUTO_TEST_CASE(from_datetime)
 {
     auto d = makedt(2022, 4, 1, 21);
-    field_view v (d);
+    field_view v(d);
     BOOST_TEST(v.as_datetime() == d);
 }
 
 BOOST_AUTO_TEST_CASE(from_time)
 {
     auto t = maket(20, 10, 1);
-    field_view v (t);
+    field_view v(t);
     BOOST_TEST(v.as_time() == t);
 }
 
@@ -165,15 +167,16 @@ BOOST_AUTO_TEST_SUITE(accesors)
 
 // Owning fields, to create references to them in the table below
 field f_null;
-field f_int64 (50);
-field f_uint64 (50u);
-field f_string ("long_test_string");
-field f_float (4.2f);
-field f_double (5.0);
-field f_date (makedate(2020, 1, 1));
-field f_datetime (makedt(2019, 1, 1));
-field f_time (maket(9, 1, 0));
+field f_int64(50);
+field f_uint64(50u);
+field f_string("long_test_string");
+field f_float(4.2f);
+field f_double(5.0);
+field f_date(makedate(2020, 1, 1));
+field f_datetime(makedt(2019, 1, 1));
+field f_time(maket(9, 1, 0));
 
+// clang-format off
 struct
 {
     const char* name;
@@ -201,6 +204,7 @@ struct
     { "ref_datetime", field_view(f_datetime),           field_kind::datetime, false, false, false, false, false, false, false, true,  false },
     { "ref_time",     field_view(f_time),               field_kind::time,     false, false, false, false, false, false, false, false, true },
 };
+// clang-format on
 
 BOOST_AUTO_TEST_CASE(kind)
 {
@@ -281,35 +285,35 @@ BOOST_AUTO_TEST_CASE(as_exceptions)
 // Success cases (the type matches the called function)
 BOOST_AUTO_TEST_CASE(int64)
 {
-    field_view f (-1);
+    field_view f(-1);
     BOOST_TEST(f.as_int64() == -1);
     BOOST_TEST(f.get_int64() == -1);
 }
 
 BOOST_AUTO_TEST_CASE(uint64)
 {
-    field_view f (42u);
+    field_view f(42u);
     BOOST_TEST(f.as_uint64() == 42u);
     BOOST_TEST(f.get_uint64() == 42u);
 }
 
 BOOST_AUTO_TEST_CASE(string)
 {
-    field_view f ("test");
+    field_view f("test");
     BOOST_TEST(f.as_string() == "test");
     BOOST_TEST(f.get_string() == "test");
 }
 
 BOOST_AUTO_TEST_CASE(float_)
 {
-    field_view f (4.2f);
+    field_view f(4.2f);
     BOOST_TEST(f.as_float() == 4.2f);
     BOOST_TEST(f.get_float() == 4.2f);
 }
 
 BOOST_AUTO_TEST_CASE(double_)
 {
-    field_view f (4.2);
+    field_view f(4.2);
     BOOST_TEST(f.as_double() == 4.2);
     BOOST_TEST(f.get_double() == 4.2);
 }
@@ -317,7 +321,7 @@ BOOST_AUTO_TEST_CASE(double_)
 BOOST_AUTO_TEST_CASE(date)
 {
     auto d = makedate(2020, 1, 2);
-    field_view f (d);
+    field_view f(d);
     BOOST_TEST(f.as_date() == d);
     BOOST_TEST(f.get_date() == d);
 }
@@ -325,7 +329,7 @@ BOOST_AUTO_TEST_CASE(date)
 BOOST_AUTO_TEST_CASE(datetime)
 {
     auto dt = makedt(2020, 1, 2);
-    field_view f (dt);
+    field_view f(dt);
     BOOST_TEST(f.as_datetime() == dt);
     BOOST_TEST(f.get_datetime() == dt);
 }
@@ -333,47 +337,47 @@ BOOST_AUTO_TEST_CASE(datetime)
 BOOST_AUTO_TEST_CASE(time)
 {
     auto t = maket(2020, 1, 2);
-    field_view f (t);
+    field_view f(t);
     BOOST_TEST(f.as_time() == t);
     BOOST_TEST(f.get_time() == t);
 }
 
 BOOST_AUTO_TEST_CASE(ref_int64)
 {
-    field f (-1);
-    field_view fv (f);
+    field f(-1);
+    field_view fv(f);
     BOOST_TEST(fv.as_int64() == -1);
     BOOST_TEST(fv.get_int64() == -1);
 }
 
 BOOST_AUTO_TEST_CASE(ref_uint64)
 {
-    field f (42u);
-    field_view fv (f);
+    field f(42u);
+    field_view fv(f);
     BOOST_TEST(fv.as_uint64() == 42u);
     BOOST_TEST(fv.get_uint64() == 42u);
 }
 
 BOOST_AUTO_TEST_CASE(ref_string)
 {
-    field f ("test");
-    field_view fv (f);
+    field f("test");
+    field_view fv(f);
     BOOST_TEST(fv.as_string() == "test");
     BOOST_TEST(fv.get_string() == "test");
 }
 
 BOOST_AUTO_TEST_CASE(ref_float)
 {
-    field f (4.2f);
-    field_view fv (f);
+    field f(4.2f);
+    field_view fv(f);
     BOOST_TEST(fv.as_float() == 4.2f);
     BOOST_TEST(fv.get_float() == 4.2f);
 }
 
 BOOST_AUTO_TEST_CASE(ref_double)
 {
-    field f (4.2);
-    field_view fv (f);
+    field f(4.2);
+    field_view fv(f);
     BOOST_TEST(fv.as_double() == 4.2);
     BOOST_TEST(fv.get_double() == 4.2);
 }
@@ -381,8 +385,8 @@ BOOST_AUTO_TEST_CASE(ref_double)
 BOOST_AUTO_TEST_CASE(ref_date)
 {
     auto d = makedate(2020, 1, 2);
-    field f (d);
-    field_view fv (f);
+    field f(d);
+    field_view fv(f);
     BOOST_TEST(fv.as_date() == d);
     BOOST_TEST(fv.get_date() == d);
 }
@@ -390,8 +394,8 @@ BOOST_AUTO_TEST_CASE(ref_date)
 BOOST_AUTO_TEST_CASE(ref_datetime)
 {
     auto dt = makedt(2020, 1, 2);
-    field f (dt);
-    field_view fv (f);
+    field f(dt);
+    field_view fv(f);
     BOOST_TEST(fv.as_datetime() == dt);
     BOOST_TEST(fv.get_datetime() == dt);
 }
@@ -399,17 +403,17 @@ BOOST_AUTO_TEST_CASE(ref_datetime)
 BOOST_AUTO_TEST_CASE(ref_time)
 {
     auto t = maket(2020, 1, 2);
-    field f (t);
-    field_view fv (t);
+    field f(t);
+    field_view fv(t);
     BOOST_TEST(fv.as_time() == t);
     BOOST_TEST(fv.get_time() == t);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
 BOOST_AUTO_TEST_CASE(operator_equals)
 {
+    // clang-format off
     struct
     {
         const char* name;
@@ -484,6 +488,7 @@ BOOST_AUTO_TEST_CASE(operator_equals)
         { "time_time_same", field_view(maket(20, 1, 1)), field_view(maket(20, 1, 1)), true },
         { "time_time_different", field_view(maket(20, 1, 1)), field_view(maket(20, 1, 1, 10)), false },
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
@@ -491,14 +496,14 @@ BOOST_AUTO_TEST_CASE(operator_equals)
         {
             // We compare regular field_view's and field_view's holding
             // pointers to fields, using the same cases to reduce duplication
-            field owning_1 (tc.f1);
-            field owning_2 (tc.f2);
+            field owning_1(tc.f1);
+            field owning_2(tc.f2);
 
             field_view f1 = tc.f1;
             field_view f2 = tc.f2;
 
-            field_view fref1 (owning_1);
-            field_view fref2 (owning_2);
+            field_view fref1(owning_1);
+            field_view fref2(owning_2);
 
             if (tc.is_equal)
             {
@@ -529,6 +534,7 @@ BOOST_AUTO_TEST_CASE(operator_equals)
 
 BOOST_AUTO_TEST_CASE(operator_equals_self_compare)
 {
+    // clang-format off
     struct
     {
         const char* name;
@@ -544,6 +550,7 @@ BOOST_AUTO_TEST_CASE(operator_equals_self_compare)
         { "datetime", field_view(makedt(2020, 1, 1)) },
         { "time", field_view(maket(8, 1, 1)) }
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
@@ -551,12 +558,11 @@ BOOST_AUTO_TEST_CASE(operator_equals_self_compare)
         BOOST_TEST(tc.f == tc.f);
 
         // Reference to an owning field
-        field owning_field (tc.f);
-        field_view fref (owning_field);
+        field owning_field(tc.f);
+        field_view fref(owning_field);
         BOOST_TEST(fref == fref);
     }
 }
-
 
 // operator<<
 struct stream_sample
@@ -566,10 +572,8 @@ struct stream_sample
     std::string expected;
 
     template <class T>
-    stream_sample(std::string&& name, const T& input, std::string&& expected) :
-        name(std::move(name)),
-        input(input),
-        expected(std::move(expected))
+    stream_sample(std::string&& name, const T& input, std::string&& expected)
+        : name(std::move(name)), input(input), expected(std::move(expected))
     {
     }
 };
@@ -586,23 +590,23 @@ struct component_value
 
 void add_date_samples(std::vector<stream_sample>& output)
 {
-    constexpr component_value year_values [] = {
-        { "min", 0, "0000" },
-        { "onedig",  1, "0001" },
-        { "twodig", 98, "0098" },
-        { "threedig", 789, "0789" },
-        { "regular", 1999, "1999" },
-        { "max", 9999, "9999" }
+    constexpr component_value year_values[] = {
+        {"min",      0,    "0000"},
+        {"onedig",   1,    "0001"},
+        {"twodig",   98,   "0098"},
+        {"threedig", 789,  "0789"},
+        {"regular",  1999, "1999"},
+        {"max",      9999, "9999"}
     };
 
-    constexpr component_value month_values [] = {
-        { "min", 1, "01" },
-        { "max", 12, "12" }
+    constexpr component_value month_values[] = {
+        {"min", 1,  "01"},
+        {"max", 12, "12"}
     };
 
-    constexpr component_value day_values [] = {
-        { "min", 1, "01" },
-        { "max", 31, "31" }
+    constexpr component_value day_values[] = {
+        {"min", 1,  "01"},
+        {"max", 31, "31"}
     };
 
     for (const auto& year : year_values)
@@ -612,12 +616,17 @@ void add_date_samples(std::vector<stream_sample>& output)
             for (const auto& day : day_values)
             {
                 std::string name = stringize(
-                    "date_year", year.name,
-                    "_month", month.name,
-                    "_day", day.name
+                    "date_year",
+                    year.name,
+                    "_month",
+                    month.name,
+                    "_day",
+                    day.name
                 );
                 std::string str_val = stringize(year.repr, '-', month.repr, '-', day.repr);
-                field_view val (makedate(year.v, static_cast<unsigned>(month.v), static_cast<unsigned>(day.v)));
+                field_view val(
+                    makedate(year.v, static_cast<unsigned>(month.v), static_cast<unsigned>(day.v))
+                );
                 output.emplace_back(std::move(name), val, std::move(str_val));
             }
         }
@@ -626,42 +635,42 @@ void add_date_samples(std::vector<stream_sample>& output)
 
 void add_datetime_samples(std::vector<stream_sample>& output)
 {
-    constexpr component_value year_values [] = {
-        { "min", 0, "0000" },
-        { "onedig",  1, "0001" },
-        { "twodig", 98, "0098" },
-        { "threedig", 789, "0789" },
-        { "regular", 1999, "1999" },
-        { "max", 9999, "9999" }
+    constexpr component_value year_values[] = {
+        {"min",      0,    "0000"},
+        {"onedig",   1,    "0001"},
+        {"twodig",   98,   "0098"},
+        {"threedig", 789,  "0789"},
+        {"regular",  1999, "1999"},
+        {"max",      9999, "9999"}
     };
 
-    constexpr component_value month_values [] = {
-        { "min", 1, "01" },
-        { "max", 12, "12" }
+    constexpr component_value month_values[] = {
+        {"min", 1,  "01"},
+        {"max", 12, "12"}
     };
 
-    constexpr component_value day_values [] = {
-        { "min", 1, "01" },
-        { "max", 31, "31" }
+    constexpr component_value day_values[] = {
+        {"min", 1,  "01"},
+        {"max", 31, "31"}
     };
 
-    constexpr component_value hours_values [] = {
-        { "zero", 0, "00" },
-        { "onedigit", 5, "05" },
-        { "max", 23, "23" }
+    constexpr component_value hours_values[] = {
+        {"zero",     0,  "00"},
+        {"onedigit", 5,  "05"},
+        {"max",      23, "23"}
     };
 
-    constexpr component_value mins_secs_values [] = {
-        { "zero", 0, "00" },
-        { "onedigit", 5, "05" },
-        { "twodigits", 59, "59" }
+    constexpr component_value mins_secs_values[] = {
+        {"zero",      0,  "00"},
+        {"onedigit",  5,  "05"},
+        {"twodigits", 59, "59"}
     };
 
-    constexpr component_value micros_values [] = {
-        { "zero", 0, "000000" },
-        { "onedigit", 5, "000005" },
-        { "twodigits", 50, "000050" },
-        { "max", 999999, "999999" },
+    constexpr component_value micros_values[] = {
+        {"zero",      0,      "000000"},
+        {"onedigit",  5,      "000005"},
+        {"twodigits", 50,     "000050"},
+        {"max",       999999, "999999"},
     };
 
     for (const auto& year : year_values)
@@ -670,30 +679,43 @@ void add_datetime_samples(std::vector<stream_sample>& output)
         {
             for (const auto& day : day_values)
             {
-                for (const auto& hours: hours_values)
+                for (const auto& hours : hours_values)
                 {
-                    for (const auto& mins: mins_secs_values)
+                    for (const auto& mins : mins_secs_values)
                     {
-                        for (const auto& secs: mins_secs_values)
+                        for (const auto& secs : mins_secs_values)
                         {
-                            for (const auto& micros: micros_values)
+                            for (const auto& micros : micros_values)
                             {
                                 std::string name = stringize(
-                                    "datetime_year", year.name,
-                                    "_month", month.name,
-                                    "_day", day.name,
-                                    "_h", hours.name,
-                                    "_m", mins.name,
-                                    "_s", secs.name,
-                                    "_u", micros.name
+                                    "datetime_year",
+                                    year.name,
+                                    "_month",
+                                    month.name,
+                                    "_day",
+                                    day.name,
+                                    "_h",
+                                    hours.name,
+                                    "_m",
+                                    mins.name,
+                                    "_s",
+                                    secs.name,
+                                    "_u",
+                                    micros.name
                                 );
                                 std::string str_val = stringize(
-                                    year.repr, '-',
-                                    month.repr, '-',
-                                    day.repr, ' ',
-                                    hours.repr, ':',
-                                    mins.repr, ':',
-                                    secs.repr, '.',
+                                    year.repr,
+                                    '-',
+                                    month.repr,
+                                    '-',
+                                    day.repr,
+                                    ' ',
+                                    hours.repr,
+                                    ':',
+                                    mins.repr,
+                                    ':',
+                                    secs.repr,
+                                    '.',
                                     micros.repr
                                 );
                                 auto val = makedt(
@@ -705,7 +727,11 @@ void add_datetime_samples(std::vector<stream_sample>& output)
                                     secs.v,
                                     micros.v
                                 );
-                                output.emplace_back(std::move(name), field_view(val), std::move(str_val));
+                                output.emplace_back(
+                                    std::move(name),
+                                    field_view(val),
+                                    std::move(str_val)
+                                );
                             }
                         }
                     }
@@ -717,59 +743,67 @@ void add_datetime_samples(std::vector<stream_sample>& output)
 
 void add_time_samples(std::vector<stream_sample>& output)
 {
-    constexpr component_value sign_values [] = {
-        { "positive", 1, "" },
-        { "negative", -1, "-" }
+    constexpr component_value sign_values[] = {
+        {"positive", 1,  "" },
+        {"negative", -1, "-"}
     };
 
-    constexpr component_value hours_values [] = {
-        { "zero", 0, "00" },
-        { "onedigit", 5, "05" },
-        { "twodigits", 23, "23" },
-        { "max", 838, "838" }
+    constexpr component_value hours_values[] = {
+        {"zero",      0,   "00" },
+        {"onedigit",  5,   "05" },
+        {"twodigits", 23,  "23" },
+        {"max",       838, "838"}
     };
 
-    constexpr component_value mins_secs_values [] = {
-        { "zero", 0, "00" },
-        { "onedigit", 5, "05" },
-        { "twodigits", 59, "59" }
+    constexpr component_value mins_secs_values[] = {
+        {"zero",      0,  "00"},
+        {"onedigit",  5,  "05"},
+        {"twodigits", 59, "59"}
     };
 
-    constexpr component_value micros_values [] = {
-        { "zero", 0, "000000" },
-        { "onedigit", 5, "000005" },
-        { "twodigits", 50, "000050" },
-        { "max", 999999, "999999" },
+    constexpr component_value micros_values[] = {
+        {"zero",      0,      "000000"},
+        {"onedigit",  5,      "000005"},
+        {"twodigits", 50,     "000050"},
+        {"max",       999999, "999999"},
     };
 
-    for (const auto& sign: sign_values)
+    for (const auto& sign : sign_values)
     {
-        for (const auto& hours: hours_values)
+        for (const auto& hours : hours_values)
         {
-            for (const auto& mins: mins_secs_values)
+            for (const auto& mins : mins_secs_values)
             {
-                for (const auto& secs: mins_secs_values)
+                for (const auto& secs : mins_secs_values)
                 {
-                    for (const auto& micros: micros_values)
+                    for (const auto& micros : micros_values)
                     {
                         std::string name = stringize(
-                            "time_", sign.name,
-                            "_h", hours.name,
-                            "_m", mins.name,
-                            "_s", secs.name,
-                            "_u", micros.name
+                            "time_",
+                            sign.name,
+                            "_h",
+                            hours.name,
+                            "_m",
+                            mins.name,
+                            "_s",
+                            secs.name,
+                            "_u",
+                            micros.name
                         );
                         std::string str_val = stringize(
                             sign.repr,
-                            hours.repr, ':',
-                            mins.repr, ':',
-                            secs.repr, '.',
+                            hours.repr,
+                            ':',
+                            mins.repr,
+                            ':',
+                            secs.repr,
+                            '.',
                             micros.repr
                         );
-                        auto val = sign.v * maket(hours.v,
-                                mins.v, secs.v, micros.v);
+                        auto val = sign.v * maket(hours.v, mins.v, secs.v, micros.v);
                         if (sign.v == -1 && val == maket(0, 0, 0))
-                            continue; // This case makes no sense, as negative zero is represented as zero
+                            continue;  // This case makes no sense, as negative zero is represented
+                                       // as zero
                         output.emplace_back(std::move(name), field_view(val), std::move(str_val));
                     }
                 }
@@ -783,15 +817,15 @@ void add_ref_samples(std::vector<stream_sample>& output)
 {
     struct owning_fields_t
     {
-        field f_null {};
-        field f_int64 {-1};
-        field f_uint64 {50u};
-        field f_string {"long_test_string"};
-        field f_float {4.2f};
-        field f_double {5.1};
-        field f_date {makedate(2020, 1, 1)};
-        field f_datetime {makedt(2019, 1, 1, 21, 19, 1, 9)};
-        field f_time {maket(9, 1, 0, 210)};
+        field f_null{};
+        field f_int64{-1};
+        field f_uint64{50u};
+        field f_string{"long_test_string"};
+        field f_float{4.2f};
+        field f_double{5.1};
+        field f_date{makedate(2020, 1, 1)};
+        field f_datetime{makedt(2019, 1, 1, 21, 19, 1, 9)};
+        field f_time{maket(9, 1, 0, 210)};
     };
     static owning_fields_t owning_fields;
 
@@ -808,16 +842,16 @@ void add_ref_samples(std::vector<stream_sample>& output)
 
 std::vector<stream_sample> make_stream_samples()
 {
-    std::vector<stream_sample> res {
-        { "null", nullptr, "<NULL>" },
-        { "i64_positive", std::int64_t(42), "42" },
-        { "i64_negative", std::int64_t(-90), "-90" },
-        { "i64_zero", std::int64_t(0), "0" },
-        { "u64_positive", std::uint64_t(42), "42" },
-        { "u64_zero", std::uint64_t(0), "0" },
-        { "string_view", "a_string", "a_string" },
-        { "float", 2.43f, "2.43" },
-        { "double", 8.12, "8.12" },
+    std::vector<stream_sample> res{
+        {"null",         nullptr,           "<NULL>"  },
+        {"i64_positive", std::int64_t(42),  "42"      },
+        {"i64_negative", std::int64_t(-90), "-90"     },
+        {"i64_zero",     std::int64_t(0),   "0"       },
+        {"u64_positive", std::uint64_t(42), "42"      },
+        {"u64_zero",     std::uint64_t(0),  "0"       },
+        {"string_view",  "a_string",        "a_string"},
+        {"float",        2.43f,             "2.43"    },
+        {"double",       8.12,              "8.12"    },
     };
     add_date_samples(res);
     add_datetime_samples(res);
@@ -848,8 +882,8 @@ BOOST_AUTO_TEST_SUITE(constexpr_fns)
 
 BOOST_AUTO_TEST_CASE(null)
 {
-    constexpr field_view v {};
-    constexpr field_view v2 (nullptr);
+    constexpr field_view v{};
+    constexpr field_view v2(nullptr);
     static_assert(v.is_null(), "");
     static_assert(v == v2, "");
     static_assert(!(v != v2), "");
@@ -857,7 +891,7 @@ BOOST_AUTO_TEST_CASE(null)
 
 BOOST_AUTO_TEST_CASE(int64)
 {
-    constexpr field_view v (60);
+    constexpr field_view v(60);
     static_assert(v.is_int64(), "");
     static_assert(v.as_int64() == 60, "");
     static_assert(v.get_int64() == 60, "");
@@ -866,7 +900,7 @@ BOOST_AUTO_TEST_CASE(int64)
 
 BOOST_AUTO_TEST_CASE(uint64)
 {
-    constexpr field_view v (60u);
+    constexpr field_view v(60u);
     static_assert(v.is_uint64(), "");
     static_assert(v.as_uint64() == 60u, "");
     static_assert(v.get_uint64() == 60u, "");
@@ -875,14 +909,14 @@ BOOST_AUTO_TEST_CASE(uint64)
 
 BOOST_AUTO_TEST_CASE(string)
 {
-    constexpr field_view v ("test");
+    constexpr field_view v("test");
     static_assert(v.is_string(), "");
     // Comparisons are not constexpr
 }
 
 BOOST_AUTO_TEST_CASE(float_)
 {
-    constexpr field_view v (4.2f);
+    constexpr field_view v(4.2f);
     static_assert(v.is_float(), "");
     static_assert(v.as_float() == 4.2f, "");
     static_assert(v.get_float() == 4.2f, "");
@@ -891,7 +925,7 @@ BOOST_AUTO_TEST_CASE(float_)
 
 BOOST_AUTO_TEST_CASE(double_)
 {
-    constexpr field_view v (4.2);
+    constexpr field_view v(4.2);
     static_assert(v.is_double(), "");
     static_assert(v.as_double() == 4.2, "");
     static_assert(v.get_double() == 4.2, "");
@@ -901,7 +935,7 @@ BOOST_AUTO_TEST_CASE(double_)
 BOOST_AUTO_TEST_CASE(date)
 {
     constexpr auto d = makedate(2020, 1, 1);
-    constexpr field_view v (d);
+    constexpr field_view v(d);
     static_assert(v.is_date(), "");
     static_assert(v.as_date() == d, "");
     static_assert(v.get_date() == d, "");
@@ -911,7 +945,7 @@ BOOST_AUTO_TEST_CASE(date)
 BOOST_AUTO_TEST_CASE(datetime)
 {
     constexpr auto d = makedt(2020, 1, 1);
-    constexpr field_view v (d);
+    constexpr field_view v(d);
     static_assert(v.is_datetime(), "");
     static_assert(v.as_datetime() == d, "");
     static_assert(v.get_datetime() == d, "");
@@ -921,7 +955,7 @@ BOOST_AUTO_TEST_CASE(datetime)
 BOOST_AUTO_TEST_CASE(time)
 {
     constexpr auto t = maket(8, 1, 1);
-    constexpr field_view v (t);
+    constexpr field_view v(t);
     static_assert(v.is_time(), "");
     static_assert(v.as_time() == t, "");
     static_assert(v.get_time() == t, "");
@@ -930,8 +964,8 @@ BOOST_AUTO_TEST_CASE(time)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-#endif // BOOST_NO_CXX14_CONSTEXPR
+#endif  // BOOST_NO_CXX14_CONSTEXPR
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}
+}  // namespace

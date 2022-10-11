@@ -5,31 +5,37 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/asio/buffer.hpp>
-#include <boost/test/unit_test.hpp>
-#include <cstddef>
-#include <cstdint>
-#include <vector>
-#include "assert_buffer_equals.hpp"
 #include <boost/mysql/detail/channel/message_writer_processor.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
+
+#include <boost/asio/buffer.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
+#include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
 #include "create_message.hpp"
 
+using boost::asio::buffer;
 using boost::mysql::detail::message_writer_processor;
 using boost::mysql::test::concat_copy;
-using boost::asio::buffer;
 
-namespace
-{
+namespace {
 
-void check_header(boost::asio::const_buffer buff, std::uint8_t expected_seqnum, std::size_t expected_size)
+void check_header(
+    boost::asio::const_buffer buff,
+    std::uint8_t expected_seqnum,
+    std::size_t expected_size
+)
 {
     BOOST_TEST(buff.size() == 4);
-    boost::mysql::detail::deserialization_context ctx (buff, boost::mysql::detail::capabilities());
+    boost::mysql::detail::deserialization_context ctx(buff, boost::mysql::detail::capabilities());
     boost::mysql::detail::packet_header header;
     auto err = boost::mysql::detail::deserialize(ctx, header);
     BOOST_TEST(err == boost::mysql::errc::ok);
@@ -41,8 +47,8 @@ BOOST_AUTO_TEST_SUITE(test_message_writer_processor)
 
 BOOST_AUTO_TEST_CASE(regular_message)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg_body { 0x01, 0x02, 0x03 };
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
     std::uint8_t seqnum = 2;
 
     // Operation start
@@ -62,8 +68,8 @@ BOOST_AUTO_TEST_CASE(regular_message)
 
 BOOST_AUTO_TEST_CASE(empty_message)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg_body {};
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_body{};
     std::uint8_t seqnum = 2;
 
     // Operation start
@@ -83,8 +89,8 @@ BOOST_AUTO_TEST_CASE(empty_message)
 
 BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg_body { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
     std::uint8_t seqnum = 2;
 
     // Operation start
@@ -111,13 +117,12 @@ BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
     BOOST_TEST(processor.is_complete());
 }
 
-
 BOOST_AUTO_TEST_CASE(multiframe_message)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg_frame_1 { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
-    std::vector<std::uint8_t> msg_frame_2 { 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18 };
-    std::vector<std::uint8_t> msg_frame_3 { 0x21 };
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_frame_1{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    std::vector<std::uint8_t> msg_frame_2{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
+    std::vector<std::uint8_t> msg_frame_3{0x21};
     auto msg = concat_copy(msg_frame_1, msg_frame_2, msg_frame_3);
     std::uint8_t seqnum = 2;
 
@@ -156,9 +161,9 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
 
 BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg_frame_1 { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
-    std::vector<std::uint8_t> msg_frame_2 { 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18 };
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_frame_1{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+    std::vector<std::uint8_t> msg_frame_2{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
     auto msg = concat_copy(msg_frame_1, msg_frame_2);
     std::uint8_t seqnum = 2;
 
@@ -197,8 +202,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 
 BOOST_AUTO_TEST_CASE(seqnum_overflow)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg { 0x01, 0x02 };
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg{0x01, 0x02};
     std::uint8_t seqnum = 0xff;
 
     // Operation start
@@ -218,9 +223,9 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
 
 BOOST_AUTO_TEST_CASE(several_messages)
 {
-    message_writer_processor processor (8);
-    std::vector<std::uint8_t> msg_1 { 0x01, 0x02 };
-    std::vector<std::uint8_t> msg_2 { 0x04, 0x05, 0x06 };
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_1{0x01, 0x02};
+    std::vector<std::uint8_t> msg_2{0x04, 0x05, 0x06};
     std::uint8_t seqnum_1 = 2;
     std::uint8_t seqnum_2 = 42;
 
@@ -253,7 +258,6 @@ BOOST_AUTO_TEST_CASE(several_messages)
     BOOST_TEST(processor.is_complete());
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
 
-}
+}  // namespace

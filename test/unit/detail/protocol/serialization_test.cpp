@@ -5,17 +5,19 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/test/data/monomorphic.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include <functional>
+
 #include "serialization_test.hpp"
 #include "serialization_test_samples/basic_types.hpp"
+#include "serialization_test_samples/binary_serialization.hpp"
 #include "serialization_test_samples/common_messages.hpp"
 #include "serialization_test_samples/handshake_messages.hpp"
-#include "serialization_test_samples/query_messages.hpp"
 #include "serialization_test_samples/prepared_statement_messages.hpp"
-#include "serialization_test_samples/binary_serialization.hpp"
-#include <boost/test/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
-#include <boost/test/data/monomorphic.hpp>
-#include <functional>
+#include "serialization_test_samples/query_messages.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
@@ -24,10 +26,7 @@ using boost::mysql::errc;
 
 BOOST_AUTO_TEST_SUITE(test_serialization)
 
-std::string buffer_diff(
-    boost::string_view s0,
-    boost::string_view s1
-)
+std::string buffer_diff(boost::string_view s0, boost::string_view s1)
 {
     std::ostringstream ss;
     ss << std::hex;
@@ -47,11 +46,7 @@ std::string buffer_diff(
     return ss.str();
 }
 
-void compare_buffers(
-    boost::string_view s0,
-    boost::string_view s1,
-    const char* msg = ""
-)
+void compare_buffers(boost::string_view s0, boost::string_view s1, const char* msg = "")
 {
     BOOST_TEST(s0 == s1, msg << ":\n" << buffer_diff(s0, s1));
 }
@@ -63,17 +58,14 @@ struct samples_by_type
     std::vector<serialization_sample> space_samples;
 };
 
-void add_samples(
-    const serialization_test_spec& spec,
-    std::vector<serialization_sample>& to
-)
+void add_samples(const serialization_test_spec& spec, std::vector<serialization_sample>& to)
 {
     to.insert(to.end(), spec.samples.begin(), spec.samples.end());
 }
 
 samples_by_type make_all_samples()
 {
-    const serialization_test_spec* all_specs [] {
+    const serialization_test_spec* all_specs[]{
         &int_spec,
         &enum_spec,
         &string_fixed_spec,
@@ -129,8 +121,7 @@ samples_by_type make_all_samples()
             add_samples(*spec, res.deserialization_samples);
             add_samples(*spec, res.space_samples);
             break;
-        default:
-            assert(false);
+        default: assert(false);
         }
     }
     return res;
@@ -140,7 +131,7 @@ samples_by_type all_samples = make_all_samples();
 
 BOOST_DATA_TEST_CASE(get_size, data::make(all_samples.serialization_samples))
 {
-    serialization_context ctx (sample.caps, nullptr);
+    serialization_context ctx(sample.caps, nullptr);
     auto size = sample.value->get_size(ctx);
     BOOST_TEST(size == sample.expected_buffer.size());
 }
@@ -148,8 +139,8 @@ BOOST_DATA_TEST_CASE(get_size, data::make(all_samples.serialization_samples))
 BOOST_DATA_TEST_CASE(serialize, data::make(all_samples.serialization_samples))
 {
     auto expected_size = sample.expected_buffer.size();
-    std::vector<uint8_t> buffer (expected_size + 8, 0x7a); // buffer overrun detector
-    serialization_context ctx (sample.caps, buffer.data());
+    std::vector<uint8_t> buffer(expected_size + 8, 0x7a);  // buffer overrun detector
+    serialization_context ctx(sample.caps, buffer.data());
     sample.value->serialize(ctx);
 
     // Iterator
@@ -161,7 +152,7 @@ BOOST_DATA_TEST_CASE(serialize, data::make(all_samples.serialization_samples))
     compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
 
     // Check for buffer overruns
-    std::string expected_clean (8, 0x7a);
+    std::string expected_clean(8, 0x7a);
     boost::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
     compare_buffers(expected_clean, actual_clean, "Buffer overrun");
 }
@@ -170,7 +161,7 @@ BOOST_DATA_TEST_CASE(deserialize, data::make(all_samples.deserialization_samples
 {
     auto first = sample.expected_buffer.data();
     auto size = sample.expected_buffer.size();
-    deserialization_context ctx (first, first + size, sample.caps);
+    deserialization_context ctx(first, first + size, sample.caps);
     auto actual_value = sample.value->default_construct();
     auto err = actual_value->deserialize(ctx);
 
@@ -186,10 +177,10 @@ BOOST_DATA_TEST_CASE(deserialize, data::make(all_samples.deserialization_samples
 
 BOOST_DATA_TEST_CASE(deserialize_extra_space, data::make(all_samples.space_samples))
 {
-    std::vector<uint8_t> buffer (sample.expected_buffer);
+    std::vector<uint8_t> buffer(sample.expected_buffer);
     buffer.push_back(0xff);
     auto first = buffer.data();
-    deserialization_context ctx (first, first + buffer.size(), sample.caps);
+    deserialization_context ctx(first, first + buffer.size(), sample.caps);
     auto actual_value = sample.value->default_construct();
     auto err = actual_value->deserialize(ctx);
 
@@ -205,13 +196,12 @@ BOOST_DATA_TEST_CASE(deserialize_extra_space, data::make(all_samples.space_sampl
 
 BOOST_DATA_TEST_CASE(deserialize_not_enough_space, data::make(all_samples.space_samples))
 {
-    std::vector<uint8_t> buffer (sample.expected_buffer);
-    buffer.back() = 0x7a; // try to detect any overruns
-    deserialization_context ctx (buffer.data(), buffer.data() + buffer.size() - 1, sample.caps);
+    std::vector<uint8_t> buffer(sample.expected_buffer);
+    buffer.back() = 0x7a;  // try to detect any overruns
+    deserialization_context ctx(buffer.data(), buffer.data() + buffer.size() - 1, sample.caps);
     auto actual_value = sample.value->default_construct();
     auto err = actual_value->deserialize(ctx);
     BOOST_TEST(err == errc::incomplete_message);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

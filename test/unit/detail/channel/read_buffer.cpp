@@ -5,24 +5,25 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <algorithm>
-#include <boost/asio/buffer.hpp>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
+
+#include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
+
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <ostream>
 #include <vector>
+
 #include "assert_buffer_equals.hpp"
 
-using boost::mysql::detail::read_buffer;
 using boost::asio::buffer;
+using boost::mysql::detail::read_buffer;
 
-namespace
-{
-
+namespace {
 
 // Records the buffer first pointer and size to verify the buffer
 // didn't do any re-allocation
@@ -31,6 +32,7 @@ class stability_checker
     read_buffer& b_;
     const std::uint8_t* first_;
     std::size_t total_size_;
+
 public:
     stability_checker(read_buffer& b) noexcept : b_(b), first_(b.first()), total_size_(b.size()) {}
     void check_stability()
@@ -45,8 +47,7 @@ public:
     }
 };
 
-} // anon namespace
-
+}  // namespace
 
 static void check_buffer(
     read_buffer& buff,
@@ -70,12 +71,12 @@ static void check_buffer(
     BOOST_TEST(buff.pending_area().data() == pending_first);
     BOOST_TEST(buff.free_area().data() == free_first);
 
-    BOOST_TEST(buff.reserved_size() == reserved_size); 
+    BOOST_TEST(buff.reserved_size() == reserved_size);
     BOOST_TEST(buff.current_message_size() == current_message_size);
     BOOST_TEST(buff.pending_size() == pending_size);
     BOOST_TEST(buff.free_size() == free_size);
-    
-    BOOST_TEST(buff.reserved_area().size() == reserved_size); 
+
+    BOOST_TEST(buff.reserved_area().size() == reserved_size);
     BOOST_TEST(buff.current_message().size() == current_message_size);
     BOOST_TEST(buff.pending_area().size() == pending_size);
     BOOST_TEST(buff.free_area().size() == free_size);
@@ -113,25 +114,13 @@ static void check_buffer(
 
 static void check_empty_buffer(read_buffer& buff)
 {
-    check_buffer(
-        buff,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        0,
-        0,
-        0,
-        0
-    );
+    check_buffer(buff, nullptr, nullptr, nullptr, nullptr, 0, 0, 0, 0);
 }
-
 
 static void copy_to_free_area(read_buffer& buff, const std::vector<std::uint8_t>& bytes)
 {
     std::copy(bytes.begin(), bytes.end(), buff.free_first());
 }
-
 
 BOOST_AUTO_TEST_SUITE(test_read_buffer)
 
@@ -139,8 +128,8 @@ BOOST_AUTO_TEST_SUITE(init_ctor)
 
 BOOST_AUTO_TEST_CASE(some_initial_size)
 {
-    read_buffer buff (531);
-    
+    read_buffer buff(531);
+
     BOOST_TEST(buff.free_size() == buff.size());
     BOOST_TEST(buff.size() >= 531);
     check_buffer(buff, {}, {}, {});
@@ -148,7 +137,7 @@ BOOST_AUTO_TEST_CASE(some_initial_size)
 
 BOOST_AUTO_TEST_CASE(zero_initial_size)
 {
-    read_buffer buff (0);
+    read_buffer buff(0);
 
     check_empty_buffer(buff);
 
@@ -163,15 +152,13 @@ BOOST_AUTO_TEST_CASE(zero_initial_size)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
-
 BOOST_AUTO_TEST_SUITE(move_to_pending)
 
 BOOST_AUTO_TEST_CASE(some_bytes)
 {
-    read_buffer buff (512);
-    stability_checker checker (buff);
-    std::vector<std::uint8_t> contents { 0x01, 0x02, 0x03, 0x04 };
+    read_buffer buff(512);
+    stability_checker checker(buff);
+    std::vector<std::uint8_t> contents{0x01, 0x02, 0x03, 0x04};
     copy_to_free_area(buff, contents);
     buff.move_to_pending(4);
 
@@ -181,9 +168,9 @@ BOOST_AUTO_TEST_CASE(some_bytes)
 
 BOOST_AUTO_TEST_CASE(all_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    std::vector<std::uint8_t> contents (buff.size(), 0x01);
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    std::vector<std::uint8_t> contents(buff.size(), 0x01);
     copy_to_free_area(buff, contents);
     buff.move_to_pending(buff.size());
 
@@ -193,8 +180,8 @@ BOOST_AUTO_TEST_CASE(all_bytes)
 
 BOOST_AUTO_TEST_CASE(zero_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
+    read_buffer buff(8);
+    stability_checker checker(buff);
     buff.move_to_pending(0);
 
     check_buffer(buff, {}, {}, {});
@@ -203,9 +190,9 @@ BOOST_AUTO_TEST_CASE(zero_bytes)
 
 BOOST_AUTO_TEST_CASE(several_calls)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    std::vector<std::uint8_t> contents { 0x01, 0x02, 0x03, 0x04 };
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    std::vector<std::uint8_t> contents{0x01, 0x02, 0x03, 0x04};
     copy_to_free_area(buff, contents);
     buff.move_to_pending(2);
     buff.move_to_pending(2);
@@ -216,205 +203,196 @@ BOOST_AUTO_TEST_CASE(several_calls)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
-
 BOOST_AUTO_TEST_SUITE(move_to_current_message)
 
 BOOST_AUTO_TEST_CASE(some_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(2);
 
-    check_buffer(buff, {}, { 0x01, 0x02 }, { 0x03, 0x04, 0x05, 0x06 });
+    check_buffer(buff, {}, {0x01, 0x02}, {0x03, 0x04, 0x05, 0x06});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(all_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(6);
 
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 }, {});
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(zero_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(0);
 
-    check_buffer(buff, {}, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    check_buffer(buff, {}, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(several_calls)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(2);
     buff.move_to_current_message(3);
 
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05 }, { 0x06 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05}, {0x06});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-
 
 BOOST_AUTO_TEST_SUITE(move_to_reserved)
 
 BOOST_AUTO_TEST_CASE(some_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(5);
     buff.move_to_reserved(3);
 
-    check_buffer(buff, { 0x01, 0x02, 0x03 }, { 0x04, 0x05 }, { 0x06 });
+    check_buffer(buff, {0x01, 0x02, 0x03}, {0x04, 0x05}, {0x06});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(all_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(5);
     buff.move_to_reserved(5);
 
-    check_buffer(buff, { 0x01, 0x02, 0x03, 0x04, 0x05 }, {}, { 0x06 });
+    check_buffer(buff, {0x01, 0x02, 0x03, 0x04, 0x05}, {}, {0x06});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(zero_bytes)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(5);
     buff.move_to_reserved(0);
 
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05 }, { 0x06 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05}, {0x06});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(several_calls)
 {
-    read_buffer buff (8);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 });
+    read_buffer buff(8);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06});
     buff.move_to_pending(6);
     buff.move_to_current_message(5);
     buff.move_to_reserved(1);
     buff.move_to_reserved(2);
 
-    check_buffer(buff, { 0x01, 0x02, 0x03 }, { 0x04, 0x05 }, { 0x06 });
+    check_buffer(buff, {0x01, 0x02, 0x03}, {0x04, 0x05}, {0x06});
     checker.check_stability();
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
-
-
 
 BOOST_AUTO_TEST_SUITE(remove_current_message_last)
 
 BOOST_AUTO_TEST_CASE(some_bytes)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.move_to_reserved(1);
     buff.remove_current_message_last(2);
 
-    check_buffer(buff, { 0x01 }, { 0x02, 0x03, 0x04 }, { 0x07, 0x08 });
+    check_buffer(buff, {0x01}, {0x02, 0x03, 0x04}, {0x07, 0x08});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(all_bytes)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.move_to_reserved(1);
     buff.remove_current_message_last(5);
 
-    check_buffer(buff, { 0x01 }, {}, { 0x07, 0x08 });
+    check_buffer(buff, {0x01}, {}, {0x07, 0x08});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(without_pending)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(8);
     buff.move_to_reserved(1);
     buff.remove_current_message_last(4);
 
-    check_buffer(buff, { 0x01 }, { 0x02, 0x03, 0x04 }, {});
+    check_buffer(buff, {0x01}, {0x02, 0x03, 0x04}, {});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(without_reserved)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.remove_current_message_last(4);
 
-    check_buffer(buff, {}, { 0x01, 0x02 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x01, 0x02}, {0x07, 0x08});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
-
 BOOST_AUTO_TEST_SUITE(remove_reserved)
 
 BOOST_AUTO_TEST_CASE(with_other_areas)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.move_to_reserved(2);
     buff.remove_reserved();
 
-    check_buffer(buff, {}, { 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(without_other_areas)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(8);
     buff.move_to_reserved(8);
@@ -426,42 +404,40 @@ BOOST_AUTO_TEST_CASE(without_other_areas)
 
 BOOST_AUTO_TEST_CASE(zero_bytes)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.remove_reserved();
 
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-
-
 BOOST_AUTO_TEST_SUITE(grow_to_fit)
 
 BOOST_AUTO_TEST_CASE(not_enough_space)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.grow_to_fit(100);
 
     BOOST_TEST(buff.free_size() >= 100);
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_reallocation();
 }
 
 BOOST_AUTO_TEST_CASE(one_missing_byte)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
 
@@ -469,33 +445,33 @@ BOOST_AUTO_TEST_CASE(one_missing_byte)
     buff.grow_to_fit(required_size);
 
     BOOST_TEST(buff.free_size() >= required_size);
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_reallocation();
 }
 
 BOOST_AUTO_TEST_CASE(enough_space)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.grow_to_fit(8);
 
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_stability();
 }
 
 BOOST_AUTO_TEST_CASE(zero_bytes)
 {
-    read_buffer buff (16);
-    stability_checker checker (buff);
-    copy_to_free_area(buff, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+    read_buffer buff(16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
     buff.grow_to_fit(0);
 
-    check_buffer(buff, {}, { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 }, { 0x07, 0x08 });
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_stability();
 }
 

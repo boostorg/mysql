@@ -7,4 +7,3 @@
 
 #define BOOST_TEST_MODULE boost_mysql_unittests
 #include <boost/test/unit_test.hpp>
-

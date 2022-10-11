@@ -5,29 +5,30 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/rows.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/rows.hpp>
+#include <boost/mysql/rows_view.hpp>
+
 #include <boost/test/unit_test.hpp>
+
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+
 #include "test_common.hpp"
 
-using boost::mysql::rows_view;
-using boost::mysql::row_view;
-using boost::mysql::rows;
 using boost::mysql::field_view;
 using boost::mysql::make_field_views;
-using boost::mysql::test::makerow;
+using boost::mysql::row_view;
+using boost::mysql::rows;
+using boost::mysql::rows_view;
 using boost::mysql::test::make_fv_vector;
-
+using boost::mysql::test::makerow;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(rows_view::const_iterator);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(rows::const_iterator);
 
-namespace
-{
+namespace {
 
 // Provide a uniform interface for both rows and rows_view types,
 // so we can use template tests to reduce duplication
@@ -39,9 +40,9 @@ struct rows_view_wrapper
     rows_view_wrapper() = default;
 
     template <typename... Args>
-    rows_view_wrapper(std::size_t num_columns, Args&&... args) :
-        fields(make_fv_vector(std::forward<Args>(args)...)),
-        r(fields.data(), sizeof...(args), num_columns)
+    rows_view_wrapper(std::size_t num_columns, Args&&... args)
+        : fields(make_fv_vector(std::forward<Args>(args)...)),
+          r(fields.data(), sizeof...(args), num_columns)
     {
     }
 
@@ -74,35 +75,34 @@ using rows_types = std::tuple<rows_view_wrapper, rows_wrapper>;
 
 BOOST_AUTO_TEST_SUITE(test_rows_iterator)
 
-
 BOOST_AUTO_TEST_SUITE(range_iteration)
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty, RowType, rows_types)
 {
     RowType r;
-    std::vector<row_view> fv (r.begin(), r.end());
+    std::vector<row_view> fv(r.begin(), r.end());
     BOOST_TEST(fv.size() == 0);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(one_row_one_column, RowType, rows_types)
 {
-    RowType r (1, 42);
-    std::vector<row_view> fv (r.begin(), r.end());
+    RowType r(1, 42);
+    std::vector<row_view> fv(r.begin(), r.end());
     BOOST_TEST(fv.size() == 1);
     BOOST_TEST(fv[0] == makerow(42));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(one_row_several_columns, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc");
-    std::vector<row_view> fv (r.begin(), r.end());
+    RowType r(2, 80u, "abc");
+    std::vector<row_view> fv(r.begin(), r.end());
     BOOST_TEST(fv.size() == 1);
     BOOST_TEST(fv[0] == makerow(80u, "abc"));
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(one_column_several_rows, RowType, rows_types)
 {
-    RowType r (1, 42, "abc");
-    std::vector<row_view> fv (r.begin(), r.end());
+    RowType r(1, 42, "abc");
+    std::vector<row_view> fv(r.begin(), r.end());
     BOOST_TEST(fv.size() == 2);
     BOOST_TEST(fv[0] == makerow(42));
     BOOST_TEST(fv[1] == makerow("abc"));
@@ -110,8 +110,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(one_column_several_rows, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(several_rows_several_columns, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 0u, nullptr);
-    std::vector<row_view> fv (r.begin(), r.end());
+    RowType r(2, 80u, "abc", 72u, "cde", 0u, nullptr);
+    std::vector<row_view> fv(r.begin(), r.end());
     BOOST_TEST(fv.size() == 3);
     BOOST_TEST(fv[0] == makerow(80u, "abc"));
     BOOST_TEST(fv[1] == makerow(72u, "cde"));
@@ -119,10 +119,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(several_rows_several_columns, RowType, rows_types)
 }
 BOOST_AUTO_TEST_SUITE_END()
 
-
 BOOST_AUTO_TEST_CASE_TEMPLATE(prefix_increment, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde");
+    RowType r(2, 80u, "abc", 72u, "cde");
     auto it = r.begin();
     BOOST_TEST(*it == makerow(80u, "abc"));
 
@@ -137,7 +136,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(prefix_increment, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(postfix_increment, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde");
+    RowType r(2, 80u, "abc", 72u, "cde");
     auto it = r.begin();
     BOOST_TEST(*it == makerow(80u, "abc"));
 
@@ -154,7 +153,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(postfix_increment, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(prefix_decrement, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde");
+    RowType r(2, 80u, "abc", 72u, "cde");
     auto it = r.end();
 
     // Decrement to a dereferenceable state
@@ -168,7 +167,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(prefix_decrement, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(postfix_decrement, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde");
+    RowType r(2, 80u, "abc", 72u, "cde");
     auto it = r.end();
 
     // Decrement to a dereferenceable state
@@ -184,7 +183,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(postfix_decrement, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(plus_equals, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it = r.begin();
 
     // Increment to a dereferenceable state
@@ -214,7 +213,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(plus_equals_empty, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(minus_equals, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it = r.end();
 
     // Decrement to a dereferenceable state
@@ -244,7 +243,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(minus_equals_empty, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_plus_ptrdiff, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it1 = r.begin();
 
     // Increment to a dereferenceable state
@@ -276,7 +275,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_plus_ptrdiff_empty, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(ptrdiff_plus_iterator, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it1 = r.begin();
 
     // Increment to a dereferenceable state
@@ -308,7 +307,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ptrdiff_plus_iterator_empty, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_ptrdiff, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it1 = r.end();
 
     // Decrement to a dereferenceable state
@@ -342,7 +341,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator, RowType, rows_types)
 {
     using It = typename RowType::iterator;
 
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it1 = r.begin();
     auto it2 = r.begin() + 1;
     auto it3 = r.begin() + 2;
@@ -369,7 +368,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator, RowType, rows_types)
     BOOST_TEST(It(it1) - It(it1) == 0);
     BOOST_TEST(It(it2) - It(it2) == 0);
     BOOST_TEST(It(itend) - It(itend) == 0);
-    
+
     // Self substract
     BOOST_TEST(it1 - it1 == 0);
     BOOST_TEST(it2 - it2 == 0);
@@ -384,7 +383,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator_empty, RowType, rows_types
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(square_brackets, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it = r.begin() + 1;
 
     BOOST_TEST(it[-1] == makerow(80u, "abc"));
@@ -395,7 +394,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(square_brackets, RowType, rows_types)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(arrow, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it = r.begin() + 1;
 
     BOOST_TEST(it->size() == 2);
@@ -407,7 +406,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(operator_equals, RowType, rows_types)
 {
     using It = typename RowType::iterator;
     RowType empty;
-    RowType nonempty (2, 80u, "abc", 72u, "cde");
+    RowType nonempty(2, 80u, "abc", 72u, "cde");
 
     struct
     {
@@ -415,16 +414,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(operator_equals, RowType, rows_types)
         It it1;
         It it2;
         bool is_equal;
-    } test_cases [] = {
-        { "value_initialized",               It(),                 It(),                 true },
-        { "empty_begin_empty_begin",         empty.begin(),        empty.begin(),        true },
-        { "empty_begin_empty_end",           empty.begin(),        empty.end(),          true },
-        { "empty_end_empty_end",             empty.end(),          empty.end(),          true },
-        { "nonempty_begin_nonempty_begin",   nonempty.begin(),     nonempty.begin(),     true },
-        { "nonempty_begin_nonempty_middle",  nonempty.begin(),     nonempty.begin() + 1, false },
-        { "nonempty_middle_nonempty_middle", nonempty.begin() + 1, nonempty.begin() + 1, true },
-        { "nonempty_begin_nonempty_end",     nonempty.begin(),     nonempty.end(),       false },
-        { "nonempty_end_nonempty_end",       nonempty.end(),       nonempty.end(),       true },
+    } test_cases[] = {
+        {"value_initialized",               It(),                 It(),                 true },
+        {"empty_begin_empty_begin",         empty.begin(),        empty.begin(),        true },
+        {"empty_begin_empty_end",           empty.begin(),        empty.end(),          true },
+        {"empty_end_empty_end",             empty.end(),          empty.end(),          true },
+        {"nonempty_begin_nonempty_begin",   nonempty.begin(),     nonempty.begin(),     true },
+        {"nonempty_begin_nonempty_middle",  nonempty.begin(),     nonempty.begin() + 1, false},
+        {"nonempty_middle_nonempty_middle", nonempty.begin() + 1, nonempty.begin() + 1, true },
+        {"nonempty_begin_nonempty_end",     nonempty.begin(),     nonempty.end(),       false},
+        {"nonempty_end_nonempty_end",       nonempty.end(),       nonempty.end(),       true },
     };
 
     for (const auto& tc : test_cases)
@@ -449,10 +448,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(operator_equals, RowType, rows_types)
     }
 }
 
-
 BOOST_AUTO_TEST_CASE_TEMPLATE(operator_lt_lte_gt_gte, RowType, rows_types)
 {
-    RowType r (2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
+    RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it1 = r.begin();
     auto it2 = r.begin() + 1;
     auto it2copy = it2;
@@ -506,4 +504,4 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(operator_lt_lte_gt_gte_empty, RowType, rows_types)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}
+}  // namespace

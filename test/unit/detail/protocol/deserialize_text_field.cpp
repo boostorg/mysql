@@ -7,24 +7,27 @@
 
 // Test deserialize_text_value(), just positive cases
 
-#include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 #include <boost/mysql/field_view.hpp>
-#include "test_common.hpp"
+
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
+#include "test_common.hpp"
+
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::field_view;
-using boost::mysql::error_code;
 using boost::mysql::errc;
+using boost::mysql::error_code;
+using boost::mysql::field_view;
 
-namespace
-{
+namespace {
+
+// clang-format off
 
 BOOST_AUTO_TEST_SUITE(test_deserialize_text_field)
 
@@ -677,4 +680,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // anon namespace
+// clang-format on
+
+}  // namespace

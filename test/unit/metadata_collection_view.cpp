@@ -8,15 +8,16 @@
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+
 #include <boost/test/unit_test.hpp>
+
 #include <stdexcept>
 
 using boost::mysql::metadata;
 using boost::mysql::metadata_collection_view;
 using boost::mysql::detail::column_definition_packet;
 
-namespace
-{
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_metadata_collection_view)
 
@@ -44,25 +45,24 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(v.begin() == nullptr);
     BOOST_TEST(v.end() == nullptr);
 
-    std::vector<metadata> vec (v.begin(), v.end());
+    std::vector<metadata> vec(v.begin(), v.end());
     BOOST_TEST(vec.empty());
 }
 
 BOOST_AUTO_TEST_CASE(non_empty)
 {
-    auto metas = makemetas({ "table1", "table2" });
-    metadata_collection_view v (metas.data(), metas.size());
-    
+    auto metas = makemetas({"table1", "table2"});
+    metadata_collection_view v(metas.data(), metas.size());
+
     BOOST_TEST(v.begin() != nullptr);
     BOOST_TEST(v.end() != nullptr);
 
-    std::vector<metadata> vec (v.begin(), v.end());
+    std::vector<metadata> vec(v.begin(), v.end());
     BOOST_TEST(vec.size() == 2);
     BOOST_TEST(vec[0].table() == "table1");
     BOOST_TEST(vec[1].table() == "table2");
 }
 BOOST_AUTO_TEST_SUITE_END()
-
 
 BOOST_AUTO_TEST_SUITE(at)
 BOOST_AUTO_TEST_CASE(empty)
@@ -73,24 +73,22 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_CASE(non_empty)
 {
-    auto metas = makemetas({ "table1", "table2" });
-    metadata_collection_view v (metas.data(), metas.size());
+    auto metas = makemetas({"table1", "table2"});
+    metadata_collection_view v(metas.data(), metas.size());
     BOOST_TEST(v.at(0).table() == "table1");
     BOOST_TEST(v.at(1).table() == "table2");
     BOOST_CHECK_THROW(v.at(2), std::out_of_range);
 }
 BOOST_AUTO_TEST_SUITE_END()
 
-
 BOOST_AUTO_TEST_CASE(operator_square_brackets)
 {
-    auto metas = makemetas({ "table1", "table2", "table3" });
-    metadata_collection_view v (metas.data(), metas.size());
+    auto metas = makemetas({"table1", "table2", "table3"});
+    metadata_collection_view v(metas.data(), metas.size());
     BOOST_TEST(v[0].table() == "table1");
     BOOST_TEST(v[1].table() == "table2");
     BOOST_TEST(v[2].table() == "table3");
 }
-
 
 BOOST_AUTO_TEST_SUITE(empty_and_size)
 BOOST_AUTO_TEST_CASE(empty)
@@ -102,16 +100,16 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_CASE(one_element)
 {
-    auto metas = makemetas({ "table1" });
-    metadata_collection_view v (metas.data(), metas.size());
+    auto metas = makemetas({"table1"});
+    metadata_collection_view v(metas.data(), metas.size());
     BOOST_TEST(!v.empty());
     BOOST_TEST(v.size() == 1);
 }
 
 BOOST_AUTO_TEST_CASE(several_elements)
 {
-    auto metas = makemetas({ "table1", "table2", "table3" });
-    metadata_collection_view v (metas.data(), metas.size());
+    auto metas = makemetas({"table1", "table2", "table3"});
+    metadata_collection_view v(metas.data(), metas.size());
     BOOST_TEST(!v.empty());
     BOOST_TEST(v.size() == 3);
 }
@@ -119,4 +117,4 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 
-} // anon namespace
+}  // namespace

@@ -6,13 +6,13 @@
 //
 
 #include <boost/mysql/detail/auxiliar/static_string.hpp>
+
 #include <boost/test/unit_test.hpp>
 
-using boost::mysql::detail::static_string;
 using boost::string_view;
+using boost::mysql::detail::static_string;
 
-namespace
-{
+namespace {
 
 struct test_static_string
 {
@@ -39,20 +39,20 @@ BOOST_FIXTURE_TEST_CASE(default_constructor, test_static_string)
 // Init ctor.
 BOOST_FIXTURE_TEST_CASE(initializing_constructor_empty_arg, test_static_string)
 {
-    string_type v ("");
+    string_type v("");
     BOOST_TEST(v.value() == "");
 }
 
 BOOST_FIXTURE_TEST_CASE(initializing_constructor_mid_size_arg, test_static_string)
 {
-    string_type v (midsize);
+    string_type v(midsize);
     wipe_midsize();
     BOOST_TEST(v.value() == original_midsize());
 }
 
 BOOST_FIXTURE_TEST_CASE(initializing_constructor_max_size_arg, test_static_string)
 {
-    string_type v (maxsize);
+    string_type v(maxsize);
     wipe_maxsize();
     BOOST_TEST(v.value() == original_maxsize());
 }
@@ -60,20 +60,20 @@ BOOST_FIXTURE_TEST_CASE(initializing_constructor_max_size_arg, test_static_strin
 // Copy ctor.
 BOOST_FIXTURE_TEST_CASE(copy_constructor_empty_arg, test_static_string)
 {
-    string_type v (string_type{}); // {} prevent deambiguation as function declaration
+    string_type v(string_type{});  // {} prevent deambiguation as function declaration
     BOOST_TEST(v.value() == "");
 }
 
 BOOST_FIXTURE_TEST_CASE(copy_constructor_mid_size_arg, test_static_string)
 {
-    string_type v (string_type{midsize});
+    string_type v(string_type{midsize});
     wipe_midsize();
     BOOST_TEST(v.value() == original_midsize());
 }
 
 BOOST_FIXTURE_TEST_CASE(copy_constructor_max_size_arg, test_static_string)
 {
-    string_type v (string_type{maxsize});
+    string_type v(string_type{maxsize});
     wipe_maxsize();
     BOOST_TEST(v.value() == original_maxsize());
 }
@@ -81,14 +81,14 @@ BOOST_FIXTURE_TEST_CASE(copy_constructor_max_size_arg, test_static_string)
 // Copy assignment
 BOOST_FIXTURE_TEST_CASE(copy_assignment_empty_source, test_static_string)
 {
-    string_type v (maxsize);
+    string_type v(maxsize);
     v = string_type();
     BOOST_TEST(v.value() == "");
 }
 
 BOOST_FIXTURE_TEST_CASE(copy_assignment_mid_size_source, test_static_string)
 {
-    string_type v (maxsize);
+    string_type v(maxsize);
     v = string_type(midsize);
     wipe_midsize();
     BOOST_TEST(v.value() == original_midsize());
@@ -96,7 +96,7 @@ BOOST_FIXTURE_TEST_CASE(copy_assignment_mid_size_source, test_static_string)
 
 BOOST_FIXTURE_TEST_CASE(copy_assignment_max_size_source, test_static_string)
 {
-    string_type v (midsize);
+    string_type v(midsize);
     v = string_type(maxsize);
     wipe_midsize();
     wipe_maxsize();
@@ -111,8 +111,8 @@ BOOST_FIXTURE_TEST_CASE(operator_equals_both_empty, test_static_string)
 
 BOOST_FIXTURE_TEST_CASE(operator_equals_both_empty_after_clear, test_static_string)
 {
-    string_type s1 ("abc");
-    string_type s2 ("def");
+    string_type s1("abc");
+    string_type s2("def");
     s1.clear();
     s2.clear();
     BOOST_TEST(s1 == s2);
@@ -128,16 +128,16 @@ BOOST_FIXTURE_TEST_CASE(operator_equals_one_empty_one_not, test_static_string)
 
 BOOST_FIXTURE_TEST_CASE(operator_equals_same_beginning_different_size, test_static_string)
 {
-    string_type s1 ("abcd");
-    string_type s2 ("abcde");
+    string_type s1("abcd");
+    string_type s2("abcde");
     BOOST_TEST(!(s1 == s2));
     BOOST_TEST(!(s2 == s1));
 }
 
 BOOST_FIXTURE_TEST_CASE(operator_equals_same_size_different_contents, test_static_string)
 {
-    string_type s1 ("abcd");
-    string_type s2 ("dcba");
+    string_type s1("abcd");
+    string_type s2("dcba");
     BOOST_TEST(!(s1 == s2));
     BOOST_TEST(!(s2 == s1));
 }
@@ -173,7 +173,7 @@ BOOST_FIXTURE_TEST_CASE(clear_empty, test_static_string)
 
 BOOST_FIXTURE_TEST_CASE(clear_not_empty, test_static_string)
 {
-    string_type v (maxsize);
+    string_type v(maxsize);
     v.clear();
     BOOST_TEST(v.value() == "");
 }
@@ -205,7 +205,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_empty_to_maxsize, test_static_string)
 
 BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, test_static_string)
 {
-    string_type v ("222");
+    string_type v("222");
     v.append(midsize.data(), midsize.size());
     wipe_midsize();
     BOOST_TEST(v.value() == "222" + original_midsize());
@@ -213,12 +213,11 @@ BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, test_static_string)
 
 BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_maxsize, test_static_string)
 {
-    string_type v (midsize);
-    std::string newbuff (max_size_value - midsize.size(), '1');
+    string_type v(midsize);
+    std::string newbuff(max_size_value - midsize.size(), '1');
     v.append(newbuff.data(), newbuff.size());
     wipe_midsize();
     BOOST_TEST(v.value() == original_midsize() + newbuff);
 }
 
-} // anon namespace
-
+}  // namespace

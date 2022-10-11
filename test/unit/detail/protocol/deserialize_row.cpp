@@ -7,48 +7,48 @@
 
 // Tests for both deserialize_binary_row() and deserialize_text_row()
 
-#include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/resultset_base.hpp>
+
+#include <boost/asio/buffer.hpp>
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/asio/buffer.hpp>
-#include "buffer_concat.hpp"
-#include "test_common.hpp"
-#include "create_resultset.hpp"
+
 #include <cstdint>
+
+#include "buffer_concat.hpp"
+#include "create_resultset.hpp"
+#include "test_common.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
-using boost::mysql::field_view;
+using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::errc;
+using boost::mysql::field_view;
 using boost::mysql::metadata;
 using boost::mysql::resultset_base;
 
-namespace
-{
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_deserialize_row)
 
 BOOST_AUTO_TEST_SUITE(without_resultset)
 
-std::vector<metadata> make_meta(
-    const std::vector<protocol_field_type>& types
-)
+std::vector<metadata> make_meta(const std::vector<protocol_field_type>& types)
 {
     std::vector<metadata> res;
-    for (const auto type: types)
+    for (const auto type : types)
     {
-        column_definition_packet coldef {};
+        column_definition_packet coldef{};
         coldef.type = type;
         res.emplace_back(coldef, false);
     }
@@ -57,13 +57,14 @@ std::vector<metadata> make_meta(
 
 BOOST_AUTO_TEST_CASE(no_resultset_success)
 {
+    // clang-format off
     struct
     {
         const char* name;
         resultset_encoding encoding;
         std::vector<std::uint8_t> from;
-        std::vector<field_view> expected_with_offsets; // before offset conversion
-        std::vector<field_view> expected; // after offset conversion
+        std::vector<field_view> expected_with_offsets;  // before offset conversion
+        std::vector<field_view> expected;               // after offset conversion
         std::vector<metadata> meta;
     } test_cases [] = {
         // Text
@@ -206,13 +207,18 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
             })
         }
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
             const auto& buffer = tc.from;
-            deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+            deserialization_context ctx(
+                buffer.data(),
+                buffer.data() + buffer.size(),
+                capabilities()
+            );
             std::vector<field_view> actual;
             error_code err;
 
@@ -226,9 +232,9 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
     }
 }
 
-
 BOOST_AUTO_TEST_CASE(no_resultset_error)
 {
+    // clang-format off
     struct
     {
         const char* name;
@@ -332,13 +338,18 @@ BOOST_AUTO_TEST_CASE(no_resultset_error)
             make_meta({ protocol_field_type::tiny })
         }
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
             const auto& buffer = tc.from;
-            deserialization_context ctx (buffer.data(), buffer.data() + buffer.size(), capabilities());
+            deserialization_context ctx(
+                buffer.data(),
+                buffer.data() + buffer.size(),
+                capabilities()
+            );
             std::vector<field_view> actual;
             error_code err;
 
@@ -354,12 +365,14 @@ BOOST_AUTO_TEST_SUITE(with_resultset)
 
 BOOST_AUTO_TEST_CASE(text_rows)
 {
-    std::vector<std::uint8_t> row1 { 0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30 };
-    std::vector<std::uint8_t> row2 { 0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30 };
-    auto buff = concat_copy(row1, row2); 
+    std::vector<std::uint8_t>
+        row1{0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30};
+    std::vector<std::uint8_t>
+        row2{0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30};
+    auto buff = concat_copy(row1, row2);
     resultset_base result = create_resultset(
         resultset_encoding::text,
-        { protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_ }
+        {protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_}
     );
     auto expected_fields = make_fv_vector(string_view_offset(1, 3), std::int64_t(21), 0.0f);
     std::vector<field_view> fields;
@@ -408,12 +421,12 @@ BOOST_AUTO_TEST_CASE(text_rows)
 
 BOOST_AUTO_TEST_CASE(binary_rows)
 {
-    std::vector<std::uint8_t> row1 { 0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07 };
-    std::vector<std::uint8_t> row2 { 0x00, 0x08, 0x03, 0x6d, 0x61, 0x78 };
-    auto buff = concat_copy(row1, row2); 
+    std::vector<std::uint8_t> row1{0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07};
+    std::vector<std::uint8_t> row2{0x00, 0x08, 0x03, 0x6d, 0x61, 0x78};
+    auto buff = concat_copy(row1, row2);
     resultset_base result = create_resultset(
         resultset_encoding::binary,
-        { protocol_field_type::var_string, protocol_field_type::short_ }
+        {protocol_field_type::var_string, protocol_field_type::short_}
     );
     auto expected_fields = make_fv_vector(string_view_offset(3, 3), std::int64_t(1901));
     std::vector<field_view> fields;
@@ -461,12 +474,12 @@ BOOST_AUTO_TEST_CASE(binary_rows)
 
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
-    std::vector<std::uint8_t> buff { 0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62 };
+    std::vector<std::uint8_t> buff{0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62};
     resultset_base result = create_resultset(
         resultset_encoding::binary,
-        { protocol_field_type::var_string, protocol_field_type::short_ }
+        {protocol_field_type::var_string, protocol_field_type::short_}
     );
-    auto fields_before = make_fv_vector("abc", 20); // previous row
+    auto fields_before = make_fv_vector("abc", 20);  // previous row
     auto fields = fields_before;
     error_code err;
     error_info info;
@@ -489,11 +502,12 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     BOOST_TEST(result.last_insert_id() == 6);
     BOOST_TEST(result.warning_count() == 9);
     BOOST_TEST(result.info() == "ab");
-    BOOST_TEST(fields == fields_before); // they didn't change
+    BOOST_TEST(fields == fields_before);  // they didn't change
 }
 
 BOOST_AUTO_TEST_CASE(error)
 {
+    // clang-format off
     struct
     {
         const char* name;
@@ -536,6 +550,7 @@ BOOST_AUTO_TEST_CASE(error)
             ""
         }
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
@@ -543,7 +558,7 @@ BOOST_AUTO_TEST_CASE(error)
         {
             resultset_base result = create_resultset(
                 resultset_encoding::binary,
-                { protocol_field_type::var_string, protocol_field_type::short_ }
+                {protocol_field_type::var_string, protocol_field_type::short_}
             );
             std::vector<field_view> fields;
             error_code err;
@@ -570,4 +585,4 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}
+}  // namespace

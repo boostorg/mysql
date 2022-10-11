@@ -5,26 +5,28 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/field.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/field.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/row_view.hpp>
+
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
+
 #include <cstddef>
 #include <stdexcept>
 #include <vector>
+
 #include "test_common.hpp"
 
-using boost::mysql::row_view;
-using boost::mysql::field_view;
 using boost::mysql::field;
-using boost::mysql::detail::stringize;
+using boost::mysql::field_view;
 using boost::mysql::make_field_views;
+using boost::mysql::row_view;
+using boost::mysql::detail::stringize;
 using boost::mysql::test::make_fv_vector;
 
-namespace
-{
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_row_view)
 
@@ -44,7 +46,7 @@ BOOST_AUTO_TEST_CASE(empty)
 BOOST_AUTO_TEST_CASE(in_range)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v.at(0) == field_view(42));
     BOOST_TEST(v.at(1) == field_view(50u));
     BOOST_TEST(v.at(2) == field_view("test"));
@@ -53,17 +55,15 @@ BOOST_AUTO_TEST_CASE(in_range)
 BOOST_AUTO_TEST_CASE(out_of_range)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_CHECK_THROW(v.at(3), std::out_of_range);
 }
 BOOST_AUTO_TEST_SUITE_END()
 
-
-
 BOOST_AUTO_TEST_CASE(operator_square_brackets)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v[0] == field_view(42));
     BOOST_TEST(v[1] == field_view(50u));
     BOOST_TEST(v[2] == field_view("test"));
@@ -72,67 +72,58 @@ BOOST_AUTO_TEST_CASE(operator_square_brackets)
 BOOST_AUTO_TEST_CASE(front)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v.front() == field_view(42));
 }
-
 
 BOOST_AUTO_TEST_SUITE(back)
 BOOST_AUTO_TEST_CASE(multiple_elms)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v.back() == field_view("test"));
 }
 
 BOOST_AUTO_TEST_CASE(single_elm)
 {
     auto fields = make_field_views(42);
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v.back() == field_view(42));
 }
 BOOST_AUTO_TEST_SUITE_END()
 
-
 BOOST_AUTO_TEST_SUITE(empty)
-BOOST_AUTO_TEST_CASE(true_)
-{
-    BOOST_TEST(row_view().empty());
-}
+BOOST_AUTO_TEST_CASE(true_) { BOOST_TEST(row_view().empty()); }
 
 BOOST_AUTO_TEST_CASE(single_elm)
 {
     auto fields = make_field_views(42);
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(!v.empty());
 }
 
 BOOST_AUTO_TEST_CASE(multiple_elms)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(!v.empty());
 }
 BOOST_AUTO_TEST_SUITE_END()
 
-
 BOOST_AUTO_TEST_SUITE(size)
-BOOST_AUTO_TEST_CASE(zero)
-{
-    BOOST_TEST(row_view().size() == 0);
-}
+BOOST_AUTO_TEST_CASE(zero) { BOOST_TEST(row_view().size() == 0); }
 
 BOOST_AUTO_TEST_CASE(single_elm)
 {
     auto fields = make_field_views(42);
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v.size() == 1);
 }
 
 BOOST_AUTO_TEST_CASE(multiple_elms)
 {
     auto fields = make_field_views(42, 50u, "test");
-    row_view v (fields.begin(), fields.size());
+    row_view v(fields.begin(), fields.size());
     BOOST_TEST(v.size() == 3);
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -142,22 +133,22 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(iterators)
 BOOST_AUTO_TEST_CASE(empty)
 {
-    const row_view v; // can be called on const objects
+    const row_view v;  // can be called on const objects
     BOOST_TEST(v.begin() == nullptr);
     BOOST_TEST(v.end() == nullptr);
-    std::vector<field_view> vec { v.begin(), v.end() };
+    std::vector<field_view> vec{v.begin(), v.end()};
     BOOST_TEST(vec.empty());
 }
 
 BOOST_AUTO_TEST_CASE(multiple_elms)
 {
     auto fields = make_field_views(42, 50u, "test");
-    const row_view v (fields.begin(), fields.size()); // can be called on const objects
+    const row_view v(fields.begin(), fields.size());  // can be called on const objects
     BOOST_TEST(v.begin() != nullptr);
     BOOST_TEST(v.end() != nullptr);
     BOOST_TEST(std::distance(v.begin(), v.end()) == 3);
 
-    std::vector<field_view> vec { v.begin(), v.end() };
+    std::vector<field_view> vec{v.begin(), v.end()};
     BOOST_TEST(vec.size() == 3);
     BOOST_TEST(vec[0] == field_view(42));
     BOOST_TEST(vec[1] == field_view(50u));
@@ -168,7 +159,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(as_vector)
 BOOST_AUTO_TEST_CASE(empty)
 {
-    std::vector<field> vec { field_view("abc") };
+    std::vector<field> vec{field_view("abc")};
     row_view v;
     v.as_vector(vec);
     BOOST_TEST(vec.empty());
@@ -176,9 +167,9 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_CASE(non_empty)
 {
-    std::vector<field> vec { field_view("abc") };
+    std::vector<field> vec{field_view("abc")};
     auto fields = make_field_views(42u, "abc");
-    row_view v (fields.data(), fields.size());
+    row_view v(fields.data(), fields.size());
     v.as_vector(vec);
     BOOST_TEST(vec.size() == 2);
     BOOST_TEST(vec[0].as_uint64() == 42u);
@@ -188,7 +179,7 @@ BOOST_AUTO_TEST_CASE(non_empty)
 BOOST_AUTO_TEST_CASE(return_value)
 {
     auto fields = make_field_views(42u, "abc");
-    row_view v (fields.data(), fields.size());
+    row_view v(fields.data(), fields.size());
     auto vec = v.as_vector();
     BOOST_TEST(vec.size() == 2);
     BOOST_TEST(vec[0].as_uint64() == 42u);
@@ -198,6 +189,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_CASE(operator_equals)
 {
+    // clang-format off
     struct
     {
         const char* name;
@@ -211,13 +203,14 @@ BOOST_AUTO_TEST_CASE(operator_equals)
         { "same_size_different_values", make_fv_vector("test", 42), make_fv_vector("test", 50), false },
         { "same_size_and_values", make_fv_vector("test", 42), make_fv_vector("test", 42), true }
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            row_view v1 (tc.f1.data(), tc.f1.size());
-            row_view v2 (tc.f2.data(), tc.f2.size());
+            row_view v1(tc.f1.data(), tc.f1.size());
+            row_view v2(tc.f2.data(), tc.f2.size());
 
             if (tc.is_equal)
             {
@@ -239,6 +232,7 @@ BOOST_AUTO_TEST_CASE(operator_equals)
 
 BOOST_AUTO_TEST_CASE(operator_stream)
 {
+    // clang-format off
     struct
     {
         const char* name;
@@ -250,12 +244,13 @@ BOOST_AUTO_TEST_CASE(operator_stream)
         { "two_elements", make_fv_vector("test", nullptr), "{test, <NULL>}" },
         { "three_elements", make_fv_vector("value", std::uint32_t(2019), 3.14f), "{value, 2019, 3.14}" }
     };
+    // clang-format on
 
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            row_view v (tc.fields.data(), tc.fields.size());
+            row_view v(tc.fields.data(), tc.fields.size());
             BOOST_TEST(stringize(v) == tc.expected);
         }
     }
@@ -263,4 +258,4 @@ BOOST_AUTO_TEST_CASE(operator_stream)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}
+}  // namespace
