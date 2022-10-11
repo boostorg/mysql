@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_AUXILIAR_ROW_BASE_HPP
 
 #include <boost/mysql/field_view.hpp>
+
 #include <cstddef>
 #include <vector>
 
@@ -33,16 +34,22 @@ public:
     inline void assign(const field_view* fields, std::size_t size);
     inline void rebase_strings(const char* old_buffer_base);
     inline void copy_strings();
-    inline void clear() noexcept { fields_.clear(); string_buffer_.clear(); }
+    inline void clear() noexcept
+    {
+        fields_.clear();
+        string_buffer_.clear();
+    }
+
 protected:
     std::vector<field_view> fields_;
+
 private:
     std::vector<char> string_buffer_;
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/auxiliar/impl/row_base.ipp>
 

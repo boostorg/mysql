@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DATETIME_TYPES_HPP
 #define BOOST_MYSQL_DATETIME_TYPES_HPP
 
-#include <chrono>
 #include <boost/config.hpp>
+
+#include <chrono>
 
 namespace boost {
 namespace mysql {
@@ -31,16 +32,17 @@ using datetime = std::chrono::time_point<std::chrono::system_clock, std::chrono:
 using time = std::chrono::microseconds;
 
 /// The minimum allowed value for [reflink date] (0000-01-01).
-BOOST_CXX14_CONSTEXPR const date min_date { days(-719528) };
+BOOST_CXX14_CONSTEXPR const date min_date{days(-719528)};
 
 /// The maximum allowed value for [reflink date] (9999-12-31).
-BOOST_CXX14_CONSTEXPR const date max_date { days(2932896) };
+BOOST_CXX14_CONSTEXPR const date max_date{days(2932896)};
 
 /// The minimum allowed value for [reflink datetime].
 BOOST_CXX14_CONSTEXPR const datetime min_datetime = min_date;
 
 /// The maximum allowed value for [reflink datetime].
-BOOST_CXX14_CONSTEXPR const datetime max_datetime = max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
+BOOST_CXX14_CONSTEXPR const datetime max_datetime =
+    max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
 
 /// The minimum allowed value for [reflink time].
 constexpr time min_time = -std::chrono::hours(839);
@@ -48,7 +50,7 @@ constexpr time min_time = -std::chrono::hours(839);
 /// The maximum allowed value for [reflink time].
 constexpr time max_time = std::chrono::hours(839);
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #endif

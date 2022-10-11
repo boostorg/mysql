@@ -8,10 +8,12 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP
 #define BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP
 
-#include <cstddef>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
-#include <boost/utility/string_view.hpp>
 #include <boost/mysql/error.hpp>
+
+#include <boost/utility/string_view.hpp>
+
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -34,10 +36,10 @@ inline error_code compute_response(
     bytestring& output
 );
 
-} // caching_sha2_password
-} // detail
-} // mysql
-} // boost
+}  // namespace caching_sha2_password
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/auth/impl/caching_sha2_password.ipp>
 

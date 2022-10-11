@@ -11,52 +11,37 @@
 #pragma once
 
 #include <boost/mysql/detail/channel/read_buffer.hpp>
+
 #include <cassert>
 #include <cstring>
 
-
-boost::mysql::detail::read_buffer::read_buffer(
-    std::size_t size
-) :
-    buffer_(size, std::uint8_t(0))
+boost::mysql::detail::read_buffer::read_buffer(std::size_t size) : buffer_(size, std::uint8_t(0))
 {
     buffer_.resize(buffer_.capacity());
 }
 
-void boost::mysql::detail::read_buffer::move_to_reserved(
-    std::size_t length
-) noexcept
+void boost::mysql::detail::read_buffer::move_to_reserved(std::size_t length) noexcept
 {
     assert(length <= current_message_size());
     current_message_offset_ += length;
 }
 
-void boost::mysql::detail::read_buffer::remove_current_message_last(
-    std::size_t length
-) noexcept
+void boost::mysql::detail::read_buffer::remove_current_message_last(std::size_t length) noexcept
 {
     assert(length <= current_message_size());
     assert(length > 0);
-    std::memmove(
-        pending_first() - length,
-        pending_first(),
-        pending_size()
-    );
+    std::memmove(pending_first() - length, pending_first(), pending_size());
     pending_offset_ -= length;
     free_offset_ -= length;
 }
 
-void boost::mysql::detail::read_buffer::move_to_current_message(
-    std::size_t n
-) noexcept
+void boost::mysql::detail::read_buffer::move_to_current_message(std::size_t n) noexcept
 {
     assert(n <= pending_size());
     pending_offset_ += n;
 }
 
-void boost::mysql::detail::read_buffer::move_to_pending(
-    std::size_t n
-) noexcept
+void boost::mysql::detail::read_buffer::move_to_pending(std::size_t n) noexcept
 {
     assert(n <= free_size());
     free_offset_ += n;
@@ -68,11 +53,7 @@ void boost::mysql::detail::read_buffer::remove_reserved() noexcept
     {
         std::size_t currmsg_size = current_message_size();
         std::size_t pend_size = pending_size();
-        std::memmove(
-            buffer_.data(),
-            current_message_first(),
-            currmsg_size + pend_size
-        );
+        std::memmove(buffer_.data(), current_message_first(), currmsg_size + pend_size);
         current_message_offset_ = 0;
         pending_offset_ = currmsg_size;
         free_offset_ = currmsg_size + pend_size;
@@ -87,6 +68,5 @@ void boost::mysql::detail::read_buffer::grow_to_fit(std::size_t n)
         buffer_.resize(buffer_.capacity());
     }
 }
-
 
 #endif

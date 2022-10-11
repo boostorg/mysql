@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TCP_HPP
 
 #include <boost/mysql/connection.hpp>
+
 #include <boost/asio/ip/tcp.hpp>
 
 namespace boost {
@@ -20,7 +21,7 @@ using tcp_connection = connection<boost::asio::ip::tcp::socket>;
 using tcp_statement = typename tcp_connection::statement_type;
 using tcp_resultset = typename tcp_connection::resultset_type;
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #endif

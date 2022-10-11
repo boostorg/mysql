@@ -12,8 +12,8 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <cstddef>
 
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -38,31 +38,30 @@ public:
     row_view front() const noexcept { return (*this)[0]; }
     row_view back() const noexcept { return (*this)[size() - 1]; }
     bool empty() const noexcept { return num_values_ == 0; }
-    std::size_t size() const noexcept { return (num_columns_ == 0) ? 0 : (num_values_ / num_columns_); }
+    std::size_t size() const noexcept
+    {
+        return (num_columns_ == 0) ? 0 : (num_values_ / num_columns_);
+    }
     std::size_t num_columns() const noexcept { return num_columns_; }
 
     // TODO: hide this
-    rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept :
-        fields_(fields),
-        num_values_(num_values),
-        num_columns_(num_columns)
+    rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept
+        : fields_(fields), num_values_(num_values), num_columns_(num_columns)
     {
         assert(num_values % num_columns == 0);
     }
+
 private:
-    const field_view* fields_ {};
-    std::size_t num_values_ {};
-    std::size_t num_columns_ {};
-    
+    const field_view* fields_{};
+    std::size_t num_values_{};
+    std::size_t num_columns_{};
+
     friend class rows;
 };
 
-
-} // mysql
-} // boost
-
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/rows_view.ipp>
-
 
 #endif

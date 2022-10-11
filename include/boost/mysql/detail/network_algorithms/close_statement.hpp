@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_STATEMENT_HPP
 
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/error.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 namespace boost {
@@ -33,9 +33,9 @@ async_close_statement(
     error_info& info
 );
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/close_statement.hpp>
 

@@ -12,15 +12,10 @@
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
-
-inline boost::mysql::errc
-boost::mysql::detail::serialization_traits<
+inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::ok_packet,
-    boost::mysql::detail::serialization_tag::struct_with_fields
->::deserialize_(
-    deserialization_context& ctx,
-    ok_packet& output
-) noexcept
+    boost::mysql::detail::serialization_tag::struct_with_fields>::
+    deserialize_(deserialization_context& ctx, ok_packet& output) noexcept
 {
     {
         auto err = deserialize(
@@ -30,7 +25,7 @@ boost::mysql::detail::serialization_traits<
             output.status_flags,
             output.warnings
         );
-        if (err == errc::ok && ctx.enough_size(1)) // message is optional, may be omitted
+        if (err == errc::ok && ctx.enough_size(1))  // message is optional, may be omitted
         {
             err = deserialize(ctx, output.info);
         }
@@ -38,14 +33,10 @@ boost::mysql::detail::serialization_traits<
     }
 }
 
-inline boost::mysql::errc
-boost::mysql::detail::serialization_traits<
+inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::column_definition_packet,
-    boost::mysql::detail::serialization_tag::struct_with_fields
->::deserialize_(
-    deserialization_context& ctx,
-    column_definition_packet& output
-) noexcept
+    boost::mysql::detail::serialization_tag::struct_with_fields>::
+    deserialize_(deserialization_context& ctx, column_definition_packet& output) noexcept
 {
     int_lenenc length_of_fixed_fields;
     std::uint16_t final_padding = 0;
@@ -67,18 +58,15 @@ boost::mysql::detail::serialization_traits<
     );
 }
 
-inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
-    deserialization_context& ctx,
-    error_info& info
-)
+inline boost::mysql::error_code
+boost::mysql::detail::process_error_packet(deserialization_context& ctx, error_info& info)
 {
-    err_packet error_packet {};
+    err_packet error_packet{};
     auto code = deserialize_message(ctx, error_packet);
     if (code)
         return code;
     info.set_message(error_packet.error_message.value.to_string());
     return make_error_code(static_cast<errc>(error_packet.error_code));
 }
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_COMMON_MESSAGES_IPP_ */

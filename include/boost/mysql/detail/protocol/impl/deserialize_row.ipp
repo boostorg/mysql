@@ -10,19 +10,17 @@
 
 #pragma once
 
+#include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 #include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
-#include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline bool is_next_field_null(
-    const deserialization_context& ctx
-)
+inline bool is_next_field_null(const deserialization_context& ctx)
 {
     if (!ctx.enough_size(1))
         return false;
@@ -54,7 +52,12 @@ inline error_code deserialize_text_row(
             errc err = deserialize(ctx, value_str);
             if (err != errc::ok)
                 return make_error_code(err);
-            err = deserialize_text_field(value_str.value, fields[i], buffer_first, output[old_size + i]);
+            err = deserialize_text_field(
+                value_str.value,
+                fields[i],
+                buffer_first,
+                output[old_size + i]
+            );
             if (err != errc::ok)
                 return make_error_code(err);
         }
@@ -63,7 +66,6 @@ inline error_code deserialize_text_row(
         return make_error_code(errc::extra_bytes);
     return error_code();
 }
-
 
 inline error_code deserialize_binary_row(
     deserialization_context& ctx,
@@ -84,7 +86,7 @@ inline error_code deserialize_binary_row(
     output.resize(old_size + num_fields);
 
     // Null bitmap
-    null_bitmap_traits null_bitmap (binary_row_null_bitmap_offset, num_fields);
+    null_bitmap_traits null_bitmap(binary_row_null_bitmap_offset, num_fields);
     const std::uint8_t* null_bitmap_begin = ctx.first();
     if (!ctx.enough_size(null_bitmap.byte_count()))
         return make_error_code(errc::incomplete_message);
@@ -112,9 +114,9 @@ inline error_code deserialize_binary_row(
     return error_code();
 }
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 void boost::mysql::detail::deserialize_row(
     resultset_encoding encoding,
@@ -125,17 +127,17 @@ void boost::mysql::detail::deserialize_row(
     error_code& err
 )
 {
-    err = encoding == detail::resultset_encoding::text ?
-            deserialize_text_row(ctx, meta, buffer_first, output) :
-            deserialize_binary_row(ctx, meta, buffer_first, output);
+    err = encoding == detail::resultset_encoding::text
+              ? deserialize_text_row(ctx, meta, buffer_first, output)
+              : deserialize_binary_row(ctx, meta, buffer_first, output);
 }
 
 void boost::mysql::detail::deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
-    const std::uint8_t* buffer_first, // to store strings as offsets and allow buffer reallocation
+    const std::uint8_t* buffer_first,  // to store strings as offsets and allow buffer reallocation
     resultset_base& result,
-	std::vector<field_view>& output,
+    std::vector<field_view>& output,
     error_code& err,
     error_info& info
 )
@@ -145,7 +147,7 @@ void boost::mysql::detail::deserialize_row(
 
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
-    deserialization_context ctx (read_message, current_capabilities);
+    deserialization_context ctx(read_message, current_capabilities);
     err = make_error_code(deserialize(ctx, msg_type));
     if (err)
         return;
@@ -166,7 +168,7 @@ void boost::mysql::detail::deserialize_row(
     else
     {
         // An actual row
-        ctx.rewind(1); // keep the 'message type' byte, as it is part of the actual message
+        ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
         deserialize_row(result.encoding(), ctx, result.meta(), buffer_first, output, err);
     }
 }

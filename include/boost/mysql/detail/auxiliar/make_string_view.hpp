@@ -15,16 +15,14 @@ namespace mysql {
 namespace detail {
 
 template <std::size_t N>
-constexpr boost::string_view make_string_view(const char(&buff)[N]) noexcept
+constexpr boost::string_view make_string_view(const char (&buff)[N]) noexcept
 {
-    static_assert(N>=1, "Expected a C-array literal");
-    return boost::string_view(buff, N-1); // discard null terminator
+    static_assert(N >= 1, "Expected a C-array literal");
+    return boost::string_view(buff, N - 1);  // discard null terminator
 }
 
-} // detail
-} // mysql
-} // boost
-
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif

@@ -12,14 +12,15 @@
 
 #include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset_base.hpp>
-#include <boost/asio/post.hpp>
+#include <boost/mysql/rows_view.hpp>
+
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
-#include <cstddef>
+#include <boost/asio/post.hpp>
 
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -55,7 +56,7 @@ inline void process_all_rows(
         );
         if (err)
             return;
-        
+
         // If we received an EOF, we're done
         if (result.complete())
         {
@@ -70,8 +71,7 @@ inline void process_all_rows(
     }
 }
 
-
-template<class Stream>
+template <class Stream>
 struct read_all_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
@@ -82,18 +82,13 @@ struct read_all_rows_op : boost::asio::coroutine
         channel<Stream>& chan,
         error_info& output_info,
         resultset_base& result
-    ) noexcept :
-        chan_(chan),
-        output_info_(output_info),
-        resultset_(result)
+    ) noexcept
+        : chan_(chan), output_info_(output_info), resultset_(result)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {})
     {
         // Error checking
         if (err)
@@ -138,10 +133,9 @@ struct read_all_rows_op : boost::asio::coroutine
     }
 };
 
-} // detail
-} // mysql
-} // boost
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
 boost::mysql::rows_view boost::mysql::detail::read_all_rows(
@@ -167,7 +161,7 @@ boost::mysql::rows_view boost::mysql::detail::read_all_rows(
         channel.read_some(err, true);
         if (err)
             return rows_view();
-        
+
         // Process read messages
         process_all_rows(channel, result, output, err, info);
         if (err)
@@ -188,12 +182,8 @@ boost::mysql::detail::async_read_all_rows(
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)> (
-        read_all_rows_op<Stream>(
-            channel,
-            output_info,
-            result
-        ),
+    return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
+        read_all_rows_op<Stream>(channel, output_info, result),
         token,
         channel
     );

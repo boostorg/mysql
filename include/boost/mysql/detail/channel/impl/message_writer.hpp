@@ -11,6 +11,7 @@
 #pragma once
 
 #include <boost/mysql/detail/channel/message_writer.hpp>
+
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 
@@ -33,25 +34,19 @@ void boost::mysql::detail::message_writer::write(
     } while (!processor_.is_complete());
 }
 
-
 template <class Stream>
 struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
 {
     Stream& stream_;
     message_writer_processor& processor_;
 
-    write_op(Stream& stream, message_writer_processor& processor) noexcept :
-        stream_(stream),
-        processor_(processor)
+    write_op(Stream& stream, message_writer_processor& processor) noexcept
+        : stream_(stream), processor_(processor)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code ec = {},
-        std::size_t = 0
-    )
+    template <class Self>
+    void operator()(Self& self, error_code ec = {}, std::size_t = 0)
     {
         // Error handling
         if (ec)
@@ -59,7 +54,6 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
             self.complete(ec);
             return;
         }
-
 
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
@@ -81,10 +75,9 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
     }
 };
 
-template<
+template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
->
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(::boost::mysql::error_code))
 boost::mysql::detail::message_writer::async_write(
     Stream& stream,
@@ -100,6 +93,5 @@ boost::mysql::detail::message_writer::async_write(
         stream
     );
 }
-
 
 #endif

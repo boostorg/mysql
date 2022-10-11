@@ -8,14 +8,14 @@
 #ifndef BOOST_MYSQL_ROW_HPP
 #define BOOST_MYSQL_ROW_HPP
 
+#include <boost/mysql/detail/auxiliar/row_base.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/detail/auxiliar/row_base.hpp>
+
 #include <cstddef>
 #include <iosfwd>
 #include <vector>
-
 
 namespace boost {
 namespace mysql {
@@ -64,8 +64,12 @@ public:
     row(row_view r) : detail::row_base(r.begin(), r.size()) {}
 
     // UB if r comes from this: this_row = row_view(this_row));
-    row& operator=(row_view r) { assign(r.begin(), r.size()); return *this; }
-    
+    row& operator=(row_view r)
+    {
+        assign(r.begin(), r.size());
+        return *this;
+    }
+
     const_iterator begin() const noexcept { return fields_.data(); }
     const_iterator end() const noexcept { return fields_.data() + fields_.size(); }
     field_view at(std::size_t i) const { return fields_.at(i); }
@@ -75,13 +79,13 @@ public:
     bool empty() const noexcept { return fields_.empty(); }
     std::size_t size() const noexcept { return fields_.size(); }
 
-    operator row_view() const noexcept
-    {
-        return row_view(fields_.data(), fields_.size());
-    }
+    operator row_view() const noexcept { return row_view(fields_.data(), fields_.size()); }
 
     template <class Allocator>
-    void as_vector(std::vector<field, Allocator>& out) const { out.assign(begin(), end()); }
+    void as_vector(std::vector<field, Allocator>& out) const
+    {
+        out.assign(begin(), end());
+    }
 
     std::vector<field> as_vector() const { return std::vector<field>(begin(), end()); }
 
@@ -89,21 +93,27 @@ public:
     using detail::row_base::clear;
 };
 
-
-inline bool operator==(const row& lhs, const row& rhs) noexcept { return row_view(lhs) == row_view(rhs); }
+inline bool operator==(const row& lhs, const row& rhs) noexcept
+{
+    return row_view(lhs) == row_view(rhs);
+}
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 
-inline bool operator==(const row& lhs, const row_view& rhs) noexcept { return row_view(lhs) == rhs; }
+inline bool operator==(const row& lhs, const row_view& rhs) noexcept
+{
+    return row_view(lhs) == rhs;
+}
 inline bool operator!=(const row& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
 
-inline bool operator==(const row_view& lhs, const row& rhs) noexcept { return lhs == row_view(rhs); }
+inline bool operator==(const row_view& lhs, const row& rhs) noexcept
+{
+    return lhs == row_view(rhs);
+}
 inline bool operator!=(const row_view& lhs, const row& rhs) noexcept { return !(lhs == rhs); }
 
 inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
 
-
-} // mysql
-} // boost
-
+}  // namespace mysql
+}  // namespace boost
 
 #endif

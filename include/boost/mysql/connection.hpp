@@ -10,14 +10,16 @@
 
 #include <boost/asio/ssl/context.hpp>
 
-#ifndef BOOST_MYSQL_DOXYGEN // For some arcane reason, Doxygen fails to expand Asio macros without this
+#ifndef BOOST_MYSQL_DOXYGEN  // For some arcane reason, Doxygen fails to expand Asio macros without
+                             // this
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/statement.hpp>
-#include <boost/mysql/handshake_params.hpp>
+
 #include <type_traits>
 
 #endif
@@ -54,9 +56,7 @@ namespace mysql {
  * In particular, it is __not__ allowed to call [refmem connection handshake]
  * on a moved-from connection in order to re-open it.
  */
-template <
-    class Stream
->
+template <class Stream>
 class connection
 {
     std::unique_ptr<detail::channel<Stream>> channel_;
@@ -72,36 +72,36 @@ class connection
         return *channel_;
     }
     error_info& shared_info() noexcept { return get_channel().shared_info(); }
+
 public:
     /**
      * \brief Initializing constructor.
      * \details
      * As part of the initialization, a Stream object is created
      * by forwarding any passed in arguments to its constructor.
-     * 
+     *
      * The constructed connection will have [refmem connection valid]
      * return `true`.
      */
-    template<
+    template <
         class... Args,
-        class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type
-    >
-    connection(Args&&... args) :
-        channel_(new detail::channel<Stream>(std::forward<Args>(args)...))
+        class EnableIf =
+            typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
+    connection(Args&&... args) : channel_(new detail::channel<Stream>(std::forward<Args>(args)...))
     {
     }
 
     /**
-      * \brief Move constructor.
-      * \details The constructed connection will be valid if `other` is valid.
-      * After this operation, `other` is guaranteed to be invalid.
-      */
+     * \brief Move constructor.
+     * \details The constructed connection will be valid if `other` is valid.
+     * After this operation, `other` is guaranteed to be invalid.
+     */
     connection(connection&& other) = default;
 
     /**
-      * \brief Move assignment.
-      * \details The assigned-to connection will be valid if `other` is valid.
-      */
+     * \brief Move assignment.
+     * \details The assigned-to connection will be valid if `other` is valid.
+     */
     connection& operator=(connection&& rhs) = default;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -138,7 +138,7 @@ public:
     /**
      * \brief Returns whether the connection uses SSL or not.
      * \details This function always returns `false` if the underlying
-     * stream does not support SSL. This function always returns `false` 
+     * stream does not support SSL. This function always returns `false`
      * for connections that haven't been
      * established yet (handshake not run yet). If the handshake fails,
      * the return value is undefined.
@@ -148,7 +148,6 @@ public:
      * SSL negotiation (see [link mysql.ssl.negotiation this section]).
      */
     bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
-
 
     /**
      * \brief Performs a connection to the MySQL server (sync with error code version).
@@ -166,7 +165,7 @@ public:
     void connect(
         const EndpointType& endpoint,
         const handshake_params& params,
-        error_code& ec, 
+        error_code& ec,
         error_info& info
     );
 
@@ -183,10 +182,7 @@ public:
      * See [link mysql.ssl.handshake this section] for more info.
      */
     template <typename EndpointType>
-    void connect(
-        const EndpointType& endpoint,
-        const handshake_params& params
-    );
+    void connect(const EndpointType& endpoint, const handshake_params& params);
 
     /**
      * \brief Performs a connection to the MySQL server
@@ -210,9 +206,7 @@ public:
     template <
         typename EndpointType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
         const EndpointType& endpoint,
@@ -220,7 +214,12 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_connect(endpoint, params, this->shared_info(), std::forward<CompletionToken>(token));
+        return async_connect(
+            endpoint,
+            params,
+            this->shared_info(),
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**
@@ -245,9 +244,7 @@ public:
     template <
         typename EndpointType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
         const EndpointType& endpoint,
@@ -258,7 +255,7 @@ public:
 
     /**
      * \brief Performs the MySQL-level handshake (sync with error code version).
-     * \details Does not connect the underlying stream. 
+     * \details Does not connect the underlying stream.
      * If the `Stream` template parameter fulfills the __SocketConnection__
      * requirements, use [refmem connection connect] instead of this function.
      *
@@ -292,11 +289,8 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_handshake(
         const handshake_params& params,
@@ -320,11 +314,8 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_handshake(
         const handshake_params& params,
@@ -340,7 +331,8 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    void query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
+    void
+    query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
 
     /**
      * \brief Executes a SQL text query (sync with exceptions version).
@@ -363,11 +355,8 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         boost::string_view query_string,
@@ -375,7 +364,12 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_query(query_string, result, shared_info(), std::forward<CompletionToken>(token));
+        return async_query(
+            query_string,
+            result,
+            shared_info(),
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**
@@ -389,11 +383,8 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         boost::string_view query_string,
@@ -408,7 +399,8 @@ public:
      * Prepared statements are only valid while the connection object on which
      * this function was called is alive and open.
      */
-    void prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
+    void
+    prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
 
     /**
      * \brief Prepares a statement (sync with exceptions version).
@@ -427,11 +419,8 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::statement_base<Stream>)`
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_prepare_statement(
         boost::string_view stmt,
@@ -439,7 +428,12 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_prepare_statement(stmt, result, shared_info(), std::forward<CompletionToken>(token));
+        return async_prepare_statement(
+            stmt,
+            result,
+            shared_info(),
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**
@@ -451,11 +445,8 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::statement_base<Stream>)`
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_prepare_statement(
         boost::string_view stmt,
@@ -464,10 +455,9 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-
     /**
      * \brief Closes the connection (sync with error code version).
-     * \details 
+     * \details
      * This function is only available if `Stream` satisfies the
      * [reflink SocketStream] requirements.
      *
@@ -478,7 +468,7 @@ public:
 
     /**
      * \brief Closes the connection (sync with exceptions version).
-     * \details 
+     * \details
      * This function is only available if `Stream` satisfies the
      * [reflink SocketStream] requirements.
      *
@@ -489,7 +479,7 @@ public:
 
     /**
      * \brief Closes the connection (async without [reflink error_info] version).
-     * \details 
+     * \details
      * This function is only available if `Stream` satisfies the
      * [reflink SocketStream] requirements.
      *
@@ -498,11 +488,8 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
@@ -511,7 +498,7 @@ public:
 
     /**
      * \brief Closes the connection (async with [reflink error_info] version).
-     * \details 
+     * \details
      * This function is only available if `Stream` satisfies the
      * [reflink SocketStream] requirements.
      *
@@ -520,24 +507,20 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-
     /**
      * \brief Notifies the MySQL server that the client wants to end the session
      * (sync with error code version).
      *
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should 
+     * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
      *
      * If the `Stream` template parameter fulfills the __SocketConnection__
@@ -552,7 +535,7 @@ public:
      * (sync with exceptions version).
      *
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should 
+     * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
      *
      * If the `Stream` template parameter fulfills the __SocketConnection__
@@ -566,7 +549,7 @@ public:
      * (async without [reflink error_info] version).
      *
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should 
+     * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
      *
      * If the `Stream` template parameter fulfills the __SocketConnection__
@@ -575,11 +558,8 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_quit(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
@@ -591,7 +571,7 @@ public:
      * (async with [reflink error_info] version).
      *
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should 
+     * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
      *
      * If the `Stream` template parameter fulfills the __SocketConnection__
@@ -600,11 +580,8 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_quit(
         error_info& output_info,
@@ -618,8 +595,8 @@ constexpr unsigned short default_port = 3306;
 /// The default TCP port for the MySQL protocol, as a string. Useful for hostname resolution.
 constexpr const char* default_port_string = "3306";
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/connection.hpp>
 

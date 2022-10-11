@@ -9,11 +9,12 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_PROTOCOL_TYPES_HPP
 
 #include <boost/utility/string_view.hpp>
-#include <cstdint>
+
 #include <array>
-#include <vector>
+#include <cstdint>
 #include <cstring>
 #include <type_traits>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -24,10 +25,14 @@ struct value_holder
 {
     using value_type = T;
 
-    static_assert(std::is_nothrow_default_constructible<T>::value,
-        "value_holder<T> should be nothrow default constructible");
-    static_assert(std::is_nothrow_move_constructible<T>::value,
-        "value_holder<T> should be nothrow move constructible");
+    static_assert(
+        std::is_nothrow_default_constructible<T>::value,
+        "value_holder<T> should be nothrow default constructible"
+    );
+    static_assert(
+        std::is_nothrow_move_constructible<T>::value,
+        "value_holder<T> should be nothrow move constructible"
+    );
 
     value_type value;
 
@@ -39,19 +44,36 @@ struct value_holder
     constexpr bool operator!=(const value_holder<T>& rhs) const { return value != rhs.value; }
 };
 
-struct int3 : value_holder<std::uint32_t> { using value_holder::value_holder; };
-struct int_lenenc : value_holder<std::uint64_t> { using value_holder::value_holder; };
+struct int3 : value_holder<std::uint32_t>
+{
+    using value_holder::value_holder;
+};
 
-struct string_null : value_holder<boost::string_view> { using value_holder::value_holder; };
-struct string_eof : value_holder<boost::string_view> { using value_holder::value_holder; };
-struct string_lenenc : value_holder<boost::string_view> { using value_holder::value_holder; };
+struct int_lenenc : value_holder<std::uint64_t>
+{
+    using value_holder::value_holder;
+};
+
+struct string_null : value_holder<boost::string_view>
+{
+    using value_holder::value_holder;
+};
+
+struct string_eof : value_holder<boost::string_view>
+{
+    using value_holder::value_holder;
+};
+
+struct string_lenenc : value_holder<boost::string_view>
+{
+    using value_holder::value_holder;
+};
 
 template <std::size_t size>
 using string_fixed = std::array<char, size>;
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif

@@ -8,27 +8,27 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_BINARY_SERIALIZATION_HPP
 
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
+#include <boost/mysql/field_view.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 template <>
-struct serialization_traits<field_view, serialization_tag::none> :
-    noop_deserialize<field_view>
+struct serialization_traits<field_view, serialization_tag::none> : noop_deserialize<field_view>
 {
-    static inline std::size_t get_size_(const serialization_context& ctx,
-            const field_view& input) noexcept;
-    static inline void serialize_(serialization_context& ctx,
-            const field_view& input) noexcept;
+    static inline std::size_t get_size_(
+        const serialization_context& ctx,
+        const field_view& input
+    ) noexcept;
+
+    static inline void serialize_(serialization_context& ctx, const field_view& input) noexcept;
 };
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/protocol/impl/binary_serialization.ipp>
 

@@ -8,10 +8,12 @@
 #ifndef BOOST_MYSQL_ERROR_HPP
 #define BOOST_MYSQL_ERROR_HPP
 
-#include <boost/system/error_code.hpp>
-#include <string>
-#include <ostream>
 #include <boost/mysql/errc.hpp>
+
+#include <boost/system/error_code.hpp>
+
+#include <ostream>
+#include <string>
 
 namespace boost {
 namespace mysql {
@@ -31,12 +33,13 @@ inline error_code make_error_code(errc error);
 class error_info
 {
     std::string msg_;
+
 public:
     /// Default constructor.
     error_info() = default;
 
     /// Initialization constructor.
-    error_info(std::string&& err) noexcept: msg_(std::move(err)) {}
+    error_info(std::string&& err) noexcept : msg_(std::move(err)) {}
 
     /// Gets the error message.
     const std::string& message() const noexcept { return msg_; }
@@ -52,13 +55,19 @@ public:
  * \relates error_info
  * \brief Compare two error_info objects.
  */
-inline bool operator==(const error_info& lhs, const error_info& rhs) noexcept { return lhs.message() == rhs.message(); }
+inline bool operator==(const error_info& lhs, const error_info& rhs) noexcept
+{
+    return lhs.message() == rhs.message();
+}
 
 /**
  * \relates error_info
  * \brief Compare two error_info objects.
  */
-inline bool operator!=(const error_info& lhs, const error_info& rhs) noexcept { return !(lhs==rhs); }
+inline bool operator!=(const error_info& lhs, const error_info& rhs) noexcept
+{
+    return !(lhs == rhs);
+}
 
 /**
  * \relates error_info
@@ -66,8 +75,8 @@ inline bool operator!=(const error_info& lhs, const error_info& rhs) noexcept { 
  */
 inline std::ostream& operator<<(std::ostream& os, const error_info& v) { return os << v.message(); }
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/error.hpp>
 

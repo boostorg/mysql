@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_BYTESTRING_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_BYTESTRING_HPP
 
-#include <vector>
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -20,10 +20,8 @@ using basic_bytestring = std::vector<std::uint8_t, Allocator>;
 
 using bytestring = std::vector<std::uint8_t>;
 
-}
-}
-}
-
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_BYTESTRING_HPP_ */

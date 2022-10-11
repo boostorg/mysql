@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TCP_SSL_HPP
 
 #include <boost/mysql/connection.hpp>
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
 
@@ -20,7 +21,7 @@ using tcp_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::ip::
 using tcp_ssl_statement = typename tcp_ssl_connection::statement_type;
 using tcp_ssl_resultset = typename tcp_ssl_connection::resultset_type;
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #endif

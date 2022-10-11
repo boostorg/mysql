@@ -12,8 +12,10 @@
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/impl/error_descriptions.hpp>
-#include <boost/system/system_error.hpp>
+
 #include <boost/config.hpp>
+#include <boost/system/system_error.hpp>
+
 #include <algorithm>
 
 namespace boost {
@@ -25,18 +27,16 @@ struct is_error_code_enum<mysql::errc>
     static constexpr bool value = true;
 };
 
-} // system
+}  // namespace system
 
 namespace mysql {
 namespace detail {
 
 inline const char* error_to_string(errc error) noexcept
 {
-    auto it = std::find_if(
-        std::begin(all_errors),
-        std::end(all_errors),
-        [error] (error_entry ent) { return error == ent.value; }
-    );
+    auto it = std::find_if(std::begin(all_errors), std::end(all_errors), [error](error_entry ent) {
+        return error == ent.value;
+    });
     return it == std::end(all_errors) ? "<unknown error>" : it->message;
 }
 
@@ -62,10 +62,7 @@ inline mysql_error_category_t& get_mysql_error_category() noexcept
 
 inline mysql_error_category_t mysql_error_category;
 
-inline mysql_error_category_t& get_mysql_error_category() noexcept
-{
-    return mysql_error_category;
-}
+inline mysql_error_category_t& get_mysql_error_category() noexcept { return mysql_error_category; }
 
 #endif
 
@@ -92,24 +89,18 @@ struct error_block
     void check() { detail::check_error_code(err, info); }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
-inline std::ostream& boost::mysql::operator<<(
-    std::ostream& os,
-    errc value
-)
+inline std::ostream& boost::mysql::operator<<(std::ostream& os, errc value)
 {
     return os << detail::error_to_string(value);
 }
 
-inline boost::mysql::error_code boost::mysql::make_error_code(
-    errc error
-)
+inline boost::mysql::error_code boost::mysql::make_error_code(errc error)
 {
     return boost::system::error_code(static_cast<int>(error), detail::get_mysql_error_category());
 }
-
 
 #endif

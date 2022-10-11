@@ -8,12 +8,13 @@
 #ifndef BOOST_MYSQL_RESULTSET_HPP
 #define BOOST_MYSQL_RESULTSET_HPP
 
-
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+
 #include <boost/asio/async_result.hpp>
+
 #include <cassert>
 
 namespace boost {
@@ -27,7 +28,12 @@ public:
     resultset(const resultset&) = delete;
     resultset(resultset&& other) noexcept : resultset_base(std::move(other)) { other.reset(); }
     resultset& operator=(const resultset&) = delete;
-    resultset& operator=(resultset&& rhs) noexcept { swap(rhs); rhs.reset(); return *this; }
+    resultset& operator=(resultset&& rhs) noexcept
+    {
+        swap(rhs);
+        rhs.reset();
+        return *this;
+    }
     ~resultset() = default;
 
     using executor_type = typename Stream::executor_type;
@@ -39,7 +45,7 @@ public:
      * \details Returns `true` if a row was read successfully, `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset_base always returns `false`.
-     * 
+     *
      * If the operation succeeds and returns `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but returns `false`, `output` will be set to the empty row
@@ -53,7 +59,7 @@ public:
      * \details Returns `true` if a row was read successfully, `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset_base always returns `false`.
-     * 
+     *
      * If the operation succeeds and returns `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but returns `false`, `output` will be set to the empty row
@@ -67,7 +73,7 @@ public:
      * \details Completes with `true` if a row was read successfully, and with `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset_base always returns `false`.
-     * 
+     *
      * If the operation succeeds and completes with `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but completes with `false`, `output` will be set to the empty row
@@ -79,13 +85,9 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
-    async_read_one(
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    async_read_one(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
         return async_read_one(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
@@ -95,7 +97,7 @@ public:
      * \details Completes with `true` if a row was read successfully, and with `false` if
      * there was an error or there were no more rows to read. Calling
      * this function on a complete resultset_base always returns `false`.
-     * 
+     *
      * If the operation succeeds and completes with `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but completes with `false`, `output` will be set to the empty row
@@ -107,9 +109,7 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
     async_read_one(
         error_info& output_info,
@@ -128,13 +128,9 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-    async_read_some(
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    async_read_some(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
         return async_read_some(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
@@ -148,9 +144,7 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(
         error_info& output_info,
@@ -171,13 +165,9 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-    async_read_all(
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    async_read_all(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
         return async_read_all(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
@@ -190,9 +180,7 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_all(
         error_info& output_info,
@@ -207,8 +195,8 @@ private:
     }
 };
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/resultset.hpp>
 

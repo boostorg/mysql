@@ -16,9 +16,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline field_type compute_field_type_string(
-    std::uint32_t flags
-)
+inline field_type compute_field_type_string(std::uint32_t flags)
 {
     if (flags & column_flags::set)
         return field_type::set;
@@ -30,9 +28,7 @@ inline field_type compute_field_type_string(
         return field_type::char_;
 }
 
-inline field_type compute_field_type_var_string(
-    std::uint32_t flags
-)
+inline field_type compute_field_type_var_string(std::uint32_t flags)
 {
     if (flags & column_flags::binary)
         return field_type::varbinary;
@@ -40,9 +36,7 @@ inline field_type compute_field_type_var_string(
         return field_type::varchar;
 }
 
-inline field_type compute_field_type_blob(
-    std::uint32_t flags
-)
+inline field_type compute_field_type_blob(std::uint32_t flags)
 {
     if (flags & column_flags::binary)
         return field_type::blob;
@@ -50,16 +44,12 @@ inline field_type compute_field_type_blob(
         return field_type::text;
 }
 
-inline field_type compute_field_type(
-    protocol_field_type protocol_type,
-    std::uint32_t flags
-)
+inline field_type compute_field_type(protocol_field_type protocol_type, std::uint32_t flags)
 {
     switch (protocol_type)
     {
     case protocol_field_type::decimal:
-    case protocol_field_type::newdecimal:
-        return field_type::decimal;
+    case protocol_field_type::newdecimal: return field_type::decimal;
     case protocol_field_type::geometry: return field_type::geometry;
     case protocol_field_type::tiny: return field_type::tinyint;
     case protocol_field_type::short_: return field_type::smallint;
@@ -81,9 +71,9 @@ inline field_type compute_field_type(
     }
 }
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 inline boost::mysql::field_type boost::mysql::metadata::type() const noexcept
 {

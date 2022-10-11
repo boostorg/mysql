@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_METADATA_COLLECTION_VIEW_HPP
 
 #include <boost/mysql/metadata.hpp>
+
 #include <cstddef>
 #include <stdexcept>
 
@@ -17,14 +18,17 @@ namespace mysql {
 
 class metadata_collection_view
 {
-    const metadata* data_ {};
-    std::size_t size_ {};
+    const metadata* data_{};
+    std::size_t size_{};
+
 public:
     metadata_collection_view() = default;
     // TODO: hide this
-    metadata_collection_view(const metadata* data, std::size_t size) noexcept :
-        data_(data), size_(size) {}
-    
+    metadata_collection_view(const metadata* data, std::size_t size) noexcept
+        : data_(data), size_(size)
+    {
+    }
+
     using iterator = const metadata*;
     using const_iterator = iterator;
     using value_type = metadata;
@@ -47,7 +51,7 @@ public:
     std::size_t size() const noexcept { return size_; }
 };
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #endif

@@ -20,10 +20,7 @@ namespace detail {
 
 #ifdef BOOST_MYSQL_VALGRIND_TESTS
 
-inline void valgrind_make_mem_defined(
-    const void* data,
-    std::size_t size
-)
+inline void valgrind_make_mem_defined(const void* data, std::size_t size)
 {
     VALGRIND_MAKE_MEM_DEFINED(data, size);
 }
@@ -34,14 +31,8 @@ inline void valgrind_make_mem_defined(const void*, std::size_t) noexcept {}
 
 #endif
 
-
-
-
-
-} // detail
-} // mysql
-} // boost
-
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_VALGRIND_HPP_ */

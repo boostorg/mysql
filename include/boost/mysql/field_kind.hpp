@@ -29,8 +29,8 @@ enum class field_kind
 
 inline std::ostream& operator<<(std::ostream& os, field_kind v);
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/field_kind.ipp>
 

@@ -10,13 +10,13 @@
 
 #pragma once
 
-#include <boost/mysql/detail/channel/message_reader.hpp>
 #include <boost/mysql/detail/auxiliar/valgrind.hpp>
+#include <boost/mysql/detail/channel/message_reader.hpp>
+
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
-
 
 boost::asio::const_buffer boost::mysql::detail::message_reader::get_next_message(
     std::uint8_t& seqnum,
@@ -30,7 +30,10 @@ boost::asio::const_buffer boost::mysql::detail::message_reader::get_next_message
         return {};
     }
     seqnum = result_.message.seqnum_last + 1;
-    boost::asio::const_buffer res (buffer_.current_message_first() - result_.message.size, result_.message.size);
+    boost::asio::const_buffer res(
+        buffer_.current_message_first() - result_.message.size,
+        result_.message.size
+    );
     parse_message();
     return res;
 }
@@ -45,7 +48,7 @@ void boost::mysql::detail::message_reader::read_some(
     // If we already have a message, complete immediately
     if (has_message())
         return;
-    
+
     // Remove processed messages if we can
     if (!keep_messages)
         buffer_.remove_reserved();
@@ -58,7 +61,8 @@ void boost::mysql::detail::message_reader::read_some(
 
         // Actually read bytes
         std::size_t bytes_read = stream.read_some(buffer_.free_area(), ec);
-        if (ec) break;
+        if (ec)
+            break;
         valgrind_make_mem_defined(buffer_.free_first(), bytes_read);
 
         // Process them
@@ -73,15 +77,13 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
     bool keep_messages_;
     Stream& stream_;
 
-    read_some_op(message_reader& reader, bool keep_messages, Stream& stream) noexcept :
-        reader_(reader), keep_messages_(keep_messages), stream_(stream) {}
+    read_some_op(message_reader& reader, bool keep_messages, Stream& stream) noexcept
+        : reader_(reader), keep_messages_(keep_messages), stream_(stream)
+    {
+    }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code ec = {},
-        std::size_t bytes_read = 0
-    )
+    template <class Self>
+    void operator()(Self& self, error_code ec = {}, std::size_t bytes_read = 0)
     {
         // Error handling
         if (ec)
@@ -89,7 +91,6 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
             self.complete(ec);
             return;
         }
-
 
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
@@ -115,7 +116,7 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
                 // Actually read bytes
                 BOOST_ASIO_CORO_YIELD stream_.async_read_some(
                     reader_.buffer_.free_area(),
-                    std::move(self)    
+                    std::move(self)
                 );
                 valgrind_make_mem_defined(reader_.buffer_.free_first(), bytes_read);
 
@@ -128,10 +129,9 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
     }
 };
 
-template<
+template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken
->
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(::boost::mysql::error_code))
 boost::mysql::detail::message_reader::async_read_some(
     Stream& stream,
@@ -161,34 +161,21 @@ boost::asio::const_buffer boost::mysql::detail::message_reader::read_one(
         return get_next_message(seqnum, ec);
 }
 
-
-template<class Stream>
-struct boost::mysql::detail::message_reader::read_one_op
-    : boost::asio::coroutine
+template <class Stream>
+struct boost::mysql::detail::message_reader::read_one_op : boost::asio::coroutine
 {
     message_reader& reader_;
     bool keep_messages_;
     Stream& stream_;
     std::uint8_t& seqnum_;
 
-    read_one_op(
-        message_reader& reader,
-        bool keep_messages,
-        Stream& stream,
-        std::uint8_t& seqnum
-    ) :
-        reader_(reader),
-        keep_messages_(keep_messages),
-        stream_(stream),
-        seqnum_(seqnum)
+    read_one_op(message_reader& reader, bool keep_messages, Stream& stream, std::uint8_t& seqnum)
+        : reader_(reader), keep_messages_(keep_messages), stream_(stream), seqnum_(seqnum)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code code = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code code = {})
     {
         // Error handling
         if (code)
@@ -208,10 +195,10 @@ struct boost::mysql::detail::message_reader::read_one_op
     }
 };
 
-template<
+template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, boost::asio::const_buffer)) CompletionToken
->
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, boost::asio::const_buffer))
+        CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, ::boost::asio::const_buffer)

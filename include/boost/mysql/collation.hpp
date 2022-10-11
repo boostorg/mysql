@@ -245,9 +245,7 @@ enum class collation : std::uint16_t
     gb18030_unicode_520_ci = 250
 };
 
-} // mysql
-} // boost
-
-
+}  // namespace mysql
+}  // namespace boost
 
 #endif

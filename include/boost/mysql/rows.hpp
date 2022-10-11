@@ -8,12 +8,12 @@
 #ifndef BOOST_MYSQL_ROWS_HPP
 #define BOOST_MYSQL_ROWS_HPP
 
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
-#include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/row_view.hpp>
 #include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -47,18 +47,22 @@ public:
     row_view front() const noexcept { return (*this)[0]; }
     row_view back() const noexcept { return (*this)[size() - 1]; }
     bool empty() const noexcept { return fields_.empty(); }
-    std::size_t size() const noexcept { return num_columns_ == 0 ? 0 : fields_.size() / num_columns_; }
-    operator rows_view() const noexcept { return rows_view(fields_.data(), fields_.size(), num_columns_); }
+    std::size_t size() const noexcept
+    {
+        return num_columns_ == 0 ? 0 : fields_.size() / num_columns_;
+    }
+    operator rows_view() const noexcept
+    {
+        return rows_view(fields_.data(), fields_.size(), num_columns_);
+    }
+
 private:
-    std::size_t num_columns_ {};
+    std::size_t num_columns_{};
 };
 
-
-} // mysql
-} // boost
-
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/rows.ipp>
-
 
 #endif

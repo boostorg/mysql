@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_QUERY_MESSAGES_HPP
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
+
 #include <tuple>
 
 namespace boost {
@@ -24,14 +25,12 @@ struct com_query_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
-        std::forward<Callable>(cb)(
-            self.query
-        );
+        std::forward<Callable>(cb)(self.query);
     }
 };
 
-}
-}
-}
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_QUERY_MESSAGES_HPP_ */

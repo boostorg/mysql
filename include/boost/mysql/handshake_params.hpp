@@ -8,13 +8,15 @@
 #ifndef BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
 #define BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
 
-#include <boost/utility/string_view.hpp>
 #include <boost/mysql/collation.hpp>
+
+#include <boost/utility/string_view.hpp>
 
 namespace boost {
 namespace mysql {
 
-/// Determines whether to use TLS for the connection or not; ignored if the underlying stream is not SSL-capable.
+/// Determines whether to use TLS for the connection or not; ignored if the underlying stream is not
+/// SSL-capable.
 enum class ssl_mode
 {
     /// Never use TLS
@@ -26,7 +28,6 @@ enum class ssl_mode
     /// Always use TLS; abort the connection if the server does not support it.
     require
 };
-
 
 /**
  * \brief Parameters defining how to perform the handshake
@@ -40,6 +41,7 @@ class handshake_params
     boost::string_view database_;
     collation connection_collation_;
     ssl_mode ssl_;
+
 public:
     /**
      * \brief Initializing constructor
@@ -47,8 +49,9 @@ public:
      * \param password Password for that username, possibly empty.
      * \param db Database name to use, or empty string for no database (this is the default).
      * \param connection_col [reflink2 collation Collation] to use for the connection.
-     * Impacts how text queries and prepared statements are interpreted. Defaults to utf8_general_ci.
-     * \param mode The [reflink ssl_mode] to use with this connection; ignored if the connection does not support SSL.
+     * Impacts how text queries and prepared statements are interpreted. Defaults to
+     * utf8_general_ci. \param mode The [reflink ssl_mode] to use with this connection; ignored if
+     * the connection does not support SSL.
      */
     handshake_params(
         boost::string_view username,
@@ -56,12 +59,12 @@ public:
         boost::string_view db = "",
         collation connection_col = collation::utf8_general_ci,
         ssl_mode mode = ssl_mode::require
-    ) :
-        username_(username),
-        password_(password),
-        database_(db),
-        connection_collation_(connection_col),
-        ssl_(mode)
+    )
+        : username_(username),
+          password_(password),
+          database_(db),
+          connection_collation_(connection_col),
+          ssl_(mode)
     {
     }
 
@@ -96,9 +99,7 @@ public:
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
 };
 
-} // mysql
-} // boost
-
-
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_CONNECTION_PARAMS_HPP_ */

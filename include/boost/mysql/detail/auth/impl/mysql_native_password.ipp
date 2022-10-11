@@ -10,9 +10,10 @@
 
 #pragma once
 
-#include <openssl/sha.h>
-#include <cstring>
 #include <boost/mysql/detail/auth/mysql_native_password.hpp>
+
+#include <cstring>
+#include <openssl/sha.h>
 
 namespace boost {
 namespace mysql {
@@ -25,19 +26,15 @@ constexpr std::size_t response_length = 20;
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-inline void compute_auth_string(
-    boost::string_view password,
-    const void* challenge,
-    void* output
-)
+inline void compute_auth_string(boost::string_view password, const void* challenge, void* output)
 {
     // SHA1 (password)
-    using sha1_buffer = unsigned char [SHA_DIGEST_LENGTH];
+    using sha1_buffer = unsigned char[SHA_DIGEST_LENGTH];
     sha1_buffer password_sha1;
     SHA1(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha1);
 
     // Add server challenge (salt)
-    unsigned char salted_buffer [challenge_length + SHA_DIGEST_LENGTH];
+    unsigned char salted_buffer[challenge_length + SHA_DIGEST_LENGTH];
     memcpy(salted_buffer, challenge, challenge_length);
     SHA1(password_sha1, sizeof(password_sha1), salted_buffer + 20);
     sha1_buffer salted_sha1;
@@ -51,17 +48,15 @@ inline void compute_auth_string(
     }
 }
 
-} // mysql_native_password
-} // detail
-} // mysql
-} // boost
+}  // namespace mysql_native_password
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
-
-inline boost::mysql::error_code
-boost::mysql::detail::mysql_native_password::compute_response(
+inline boost::mysql::error_code boost::mysql::detail::mysql_native_password::compute_response(
     boost::string_view password,
     boost::string_view challenge,
-    bool, // use_ssl
+    bool,  // use_ssl
     bytestring& output
 )
 {
@@ -73,14 +68,8 @@ boost::mysql::detail::mysql_native_password::compute_response(
 
     // Do the calculation
     output.resize(response_length);
-    compute_auth_string(
-        password,
-        challenge.data(),
-        output.data()
-    );
+    compute_auth_string(password, challenge.data(), output.data());
     return error_code();
 }
-
-
 
 #endif

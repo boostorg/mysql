@@ -10,15 +10,16 @@
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/statement_base.hpp>
-#include <boost/asio/buffer.hpp>
-#include <cstdint>
 
+#include <boost/asio/buffer.hpp>
+
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
@@ -30,30 +31,31 @@ class prepare_statement_processor
     bytestring& write_buffer_;
     statement_base& output_;
     error_info& output_info_;
-    unsigned remaining_meta_ {};
+    unsigned remaining_meta_{};
+
 public:
     template <class Stream>
     prepare_statement_processor(
         channel<Stream>& chan,
         statement_base& output,
         error_info& output_info
-    ) noexcept :
-        caps_(chan.current_capabilities()),
-        write_buffer_(chan.shared_buffer()),
-        output_(output),
-        output_info_(output_info)
+    ) noexcept
+        : caps_(chan.current_capabilities()),
+          write_buffer_(chan.shared_buffer()),
+          output_(output),
+          output_info_(output_info)
     {
     }
 
     void process_request(boost::string_view statement)
     {
-        com_stmt_prepare_packet packet { string_eof(statement) };
+        com_stmt_prepare_packet packet{string_eof(statement)};
         serialize_message(packet, caps_, write_buffer_);
     }
 
     void process_response(boost::asio::const_buffer message, void* channel, error_code& err)
     {
-        deserialization_context ctx (message, caps_);
+        deserialization_context ctx(message, caps_);
         std::uint8_t msg_type = 0;
         err = make_error_code(deserialize(ctx, msg_type));
         if (err)
@@ -80,27 +82,19 @@ public:
     void on_meta_received() noexcept { --remaining_meta_; }
 };
 
-template<class Stream>
+template <class Stream>
 struct prepare_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     prepare_statement_processor processor_;
 
-    prepare_statement_op(
-        channel<Stream>& chan,
-        const prepare_statement_processor& processor
-    ) :
-        chan_(chan),
-        processor_(processor)
+    prepare_statement_op(channel<Stream>& chan, const prepare_statement_processor& processor)
+        : chan_(chan), processor_(processor)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {},
-        boost::asio::const_buffer read_message = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
     {
         // Error checking
         if (err)
@@ -113,10 +107,17 @@ struct prepare_statement_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Write message (already serialized at this point)
-            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), chan_.shared_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_write(
+                chan_.shared_buffer(),
+                chan_.shared_sequence_number(),
+                std::move(self)
+            );
 
             // Read response
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(
+                chan_.shared_sequence_number(),
+                std::move(self)
+            );
 
             // Process response
             processor_.process_response(read_message, &chan_, err);
@@ -154,9 +155,9 @@ struct prepare_statement_op : boost::asio::coroutine
     }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
 void boost::mysql::detail::prepare_statement(
@@ -168,7 +169,7 @@ void boost::mysql::detail::prepare_statement(
 )
 {
     // Prepare message
-    prepare_statement_processor processor (channel, output, info);
+    prepare_statement_processor processor(channel, output, info);
     processor.process_request(statement);
 
     // Write message
@@ -203,10 +204,7 @@ void boost::mysql::detail::prepare_statement(
 }
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,
     boost::string_view statement,
@@ -215,7 +213,7 @@ boost::mysql::detail::async_prepare_statement(
     CompletionToken&& token
 )
 {
-    prepare_statement_processor processor (chan, output, info);
+    prepare_statement_processor processor(chan, output, info);
     processor.process_request(statement);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         prepare_statement_op(chan, processor),

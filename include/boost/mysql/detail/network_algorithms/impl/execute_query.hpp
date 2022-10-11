@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_query.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 
 template <class Stream>
 void boost::mysql::detail::execute_query(
@@ -24,23 +24,12 @@ void boost::mysql::detail::execute_query(
     error_info& info
 )
 {
-    com_query_packet request { string_eof(query) };
-    execute_generic(
-        resultset_encoding::text,
-        channel,
-        request,
-        output,
-        err,
-        info
-    );
+    com_query_packet request{string_eof(query)};
+    execute_generic(resultset_encoding::text, channel, request, output, err, info);
 }
 
-
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute_query(
     channel<Stream>& chan,
     boost::string_view query,
@@ -49,7 +38,7 @@ boost::mysql::detail::async_execute_query(
     CompletionToken&& token
 )
 {
-    com_query_packet request { string_eof(query) };
+    com_query_packet request{string_eof(query)};
     return async_execute_generic(
         resultset_encoding::text,
         chan,
@@ -59,6 +48,5 @@ boost::mysql::detail::async_execute_query(
         std::forward<CompletionToken>(token)
     );
 }
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP_ */

@@ -11,18 +11,17 @@
 #pragma once
 
 #include <boost/mysql/detail/channel/message_parser.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
+
 #include <boost/core/ignore_unused.hpp>
+
 #include <cstddef>
 
-inline void boost::mysql::detail::message_parser::parse_message(
-    read_buffer& buff,
-    result& res
-) noexcept
+inline void
+boost::mysql::detail::message_parser::parse_message(read_buffer& buff, result& res) noexcept
 {
-
     while (true)
     {
         if (state_.reading_header)
@@ -39,9 +38,9 @@ inline void boost::mysql::detail::message_parser::parse_message(
 
             // Deserialize the header
             packet_header header;
-            deserialization_context ctx (
+            deserialization_context ctx(
                 boost::asio::buffer(buff.pending_first() - HEADER_SIZE, HEADER_SIZE),
-                capabilities(0) // unaffected by capabilities
+                capabilities(0)  // unaffected by capabilities
             );
             errc err = deserialize(ctx, header);
             boost::ignore_unused(err);

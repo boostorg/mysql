@@ -10,11 +10,12 @@
 
 #pragma once
 
-#include <openssl/sha.h>
-#include <cstring>
-#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 #include <boost/mysql/detail/auth/caching_sha2_password.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
+
+#include <cstring>
+#include <openssl/sha.h>
 
 namespace boost {
 namespace mysql {
@@ -27,22 +28,18 @@ constexpr boost::string_view perform_full_auth = make_string_view("\4");
 
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
-inline void compute_auth_string(
-    boost::string_view password,
-    const void* challenge,
-    void* output
-)
+inline void compute_auth_string(boost::string_view password, const void* challenge, void* output)
 {
     static_assert(response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
 
     // SHA(SHA(password_sha) concat challenge) XOR password_sha
     // hash1 = SHA(pass)
-    using sha_buffer = std::uint8_t [response_length];
+    using sha_buffer = std::uint8_t[response_length];
     sha_buffer password_sha;
     SHA256(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha);
 
     // SHA(password_sha) concat challenge = buffer
-    std::uint8_t buffer [response_length + challenge_length];
+    std::uint8_t buffer[response_length + challenge_length];
     SHA256(password_sha, response_length, buffer);
     std::memcpy(buffer + response_length, challenge, challenge_length);
 
@@ -57,15 +54,12 @@ inline void compute_auth_string(
     }
 }
 
-} // caching_sha2_password
-} // detail
-} // mysql
-} // boost
+}  // namespace caching_sha2_password
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
-
-
-inline boost::mysql::error_code
-boost::mysql::detail::caching_sha2_password::compute_response(
+inline boost::mysql::error_code boost::mysql::detail::caching_sha2_password::compute_response(
     boost::string_view password,
     boost::string_view challenge,
     bool use_ssl,
@@ -92,14 +86,9 @@ boost::mysql::detail::caching_sha2_password::compute_response(
 
         // Do the calculation
         output.resize(response_length);
-        compute_auth_string(
-            password,
-            challenge.data(),
-            output.data()
-        );
+        compute_auth_string(password, challenge.data(), output.data());
         return error_code();
     }
 }
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUTH_IMPL_CACHING_SHA2_PASSWORD_IPP_ */

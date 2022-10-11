@@ -8,10 +8,12 @@
 #ifndef BOOST_MYSQL_METADATA_HPP
 #define BOOST_MYSQL_METADATA_HPP
 
-#include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/field_type.hpp>
+
 #include <boost/utility/string_view_fwd.hpp>
+
 #include <string>
 
 namespace boost {
@@ -26,18 +28,20 @@ namespace mysql {
 class metadata
 {
     std::string schema_;
-    std::string table_; // virtual table
-    std::string org_table_; // physical table
-    std::string name_; // virtual column name
-    std::string org_name_; // physical column name
+    std::string table_;      // virtual table
+    std::string org_table_;  // physical table
+    std::string name_;       // virtual column name
+    std::string org_name_;   // physical column name
     collation character_set_;
-    std::uint32_t column_length_; // maximum length of the field
-    detail::protocol_field_type type_; // type of the column as defined in enum_field_types
-    std::uint16_t flags_; // Flags as defined in Column Definition Flags
-    std::uint8_t decimals_; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
-    mutable field_type field_type_ { field_type::_not_computed };
+    std::uint32_t column_length_;       // maximum length of the field
+    detail::protocol_field_type type_;  // type of the column as defined in enum_field_types
+    std::uint16_t flags_;               // Flags as defined in Column Definition Flags
+    std::uint8_t decimals_;  // max shown decimal digits. 0x00 for int/static strings; 0x1f for
+                             // dynamic strings, double, float
+    mutable field_type field_type_{field_type::_not_computed};
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
+
 public:
     /**
      * \brief Default constructor.
@@ -49,19 +53,18 @@ public:
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use.
     // TODO: hide this
-    metadata(const detail::column_definition_packet& msg, bool copy_strings) :
-        schema_(copy_strings ? msg.schema.value : boost::string_view()),
-        table_(copy_strings ? msg.table.value : boost::string_view()),
-        org_table_(copy_strings ? msg.org_table.value : boost::string_view()),
-        name_(copy_strings ? msg.name.value : boost::string_view()),
-        org_name_(copy_strings ? msg.org_name.value : boost::string_view()),
-        character_set_(msg.character_set),
-        column_length_(msg.column_length),
-        type_(msg.type),
-        flags_(msg.flags),
-        decimals_(msg.decimals)
+    metadata(const detail::column_definition_packet& msg, bool copy_strings)
+        : schema_(copy_strings ? msg.schema.value : boost::string_view()),
+          table_(copy_strings ? msg.table.value : boost::string_view()),
+          org_table_(copy_strings ? msg.org_table.value : boost::string_view()),
+          name_(copy_strings ? msg.name.value : boost::string_view()),
+          org_name_(copy_strings ? msg.org_name.value : boost::string_view()),
+          character_set_(msg.character_set),
+          column_length_(msg.column_length),
+          type_(msg.type),
+          flags_(msg.flags),
+          decimals_(msg.decimals)
     {
-
     }
 #endif
 
@@ -129,21 +132,31 @@ public:
     /// Returns `true` if the field has no sign (is `UNSIGNED`).
     bool is_unsigned() const noexcept { return flag_set(detail::column_flags::unsigned_); }
 
-    /// Returns `true` if the field is defined as `ZEROFILL` (padded to its maximum length by zeros).
+    /// Returns `true` if the field is defined as `ZEROFILL` (padded to its maximum length by
+    /// zeros).
     bool is_zerofill() const noexcept { return flag_set(detail::column_flags::zerofill); }
 
     /// Returns `true` if the field is defined as `AUTO_INCREMENT`.
-    bool is_auto_increment() const noexcept { return flag_set(detail::column_flags::auto_increment); }
+    bool is_auto_increment() const noexcept
+    {
+        return flag_set(detail::column_flags::auto_increment);
+    }
 
     /// Returns `true` if the field does not have a default value.
-    bool has_no_default_value() const noexcept { return flag_set(detail::column_flags::no_default_value); }
+    bool has_no_default_value() const noexcept
+    {
+        return flag_set(detail::column_flags::no_default_value);
+    }
 
     /// Returns `true` if the field is defined as `ON UPDATE CURRENT_TIMESTAMP`.
-    bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
+    bool is_set_to_now_on_update() const noexcept
+    {
+        return flag_set(detail::column_flags::on_update_now);
+    }
 };
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/metadata.ipp>
 

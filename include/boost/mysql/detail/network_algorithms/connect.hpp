@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP
 
-#include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/handshake_params.hpp>
 
 namespace boost {
 namespace mysql {
@@ -35,9 +35,9 @@ async_connect(
     CompletionToken&& token
 );
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/connect.hpp>
 

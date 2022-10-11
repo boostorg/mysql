@@ -32,19 +32,13 @@ struct connect_op : boost::asio::coroutine
         error_info& output_info,
         const endpoint_type& ep,
         const handshake_params& params
-    ) :
-        chan_(chan),
-        output_info_(output_info),
-        ep_(ep),
-        params_(params)
+    )
+        : chan_(chan), output_info_(output_info), ep_(ep), params_(params)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code code = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code code = {})
     {
         BOOST_ASIO_CORO_REENTER(*this)
         {
@@ -59,12 +53,7 @@ struct connect_op : boost::asio::coroutine
             }
 
             // Handshake
-            BOOST_ASIO_CORO_YIELD async_handshake(
-                chan_,
-                params_,
-                std::move(self),
-                output_info_
-            );
+            BOOST_ASIO_CORO_YIELD async_handshake(chan_, params_, std::move(self), output_info_);
             if (code)
             {
                 chan_.close();
@@ -74,9 +63,9 @@ struct connect_op : boost::asio::coroutine
     }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
 void boost::mysql::detail::connect(
@@ -102,10 +91,7 @@ void boost::mysql::detail::connect(
 }
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_connect(
     channel<Stream>& chan,
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
@@ -115,7 +101,10 @@ boost::mysql::detail::async_connect(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        connect_op<Stream>{chan, info, endpoint, params}, token, chan);
+        connect_op<Stream>{chan, info, endpoint, params},
+        token,
+        chan
+    );
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CONNECT_HPP_ */

@@ -10,11 +10,12 @@
 
 #pragma once
 
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/bad_field_access.hpp>
-#include <ostream>
+#include <boost/mysql/detail/protocol/date.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <limits>
+#include <ostream>
 
 namespace boost {
 namespace mysql {
@@ -24,7 +25,7 @@ inline std::ostream& print_date(std::ostream& os, const date& value)
 {
     assert(value >= min_date && value <= max_date);
     auto ymd = detail::days_to_ymd(value.time_since_epoch().count());
-    char buffer [32] {};
+    char buffer[32]{};
     snprintf(buffer, sizeof(buffer), "%04d-%02u-%02u", ymd.years, ymd.month, ymd.day);
     os << buffer;
     return os;
@@ -34,14 +35,17 @@ inline std::ostream& print_time(std::ostream& os, const time& value)
 {
     using namespace std::chrono;
     assert(value >= min_time && value <= max_time);
-    char buffer [64] {};
+    char buffer[64]{};
     const char* sign = value < microseconds(0) ? "-" : "";
     auto num_micros = value % seconds(1);
     auto num_secs = duration_cast<seconds>(value % minutes(1) - num_micros);
     auto num_mins = duration_cast<minutes>(value % hours(1) - num_secs);
     auto num_hours = duration_cast<hours>(value - num_mins);
 
-    snprintf(buffer, sizeof(buffer), "%s%02d:%02u:%02u.%06u",
+    snprintf(
+        buffer,
+        sizeof(buffer),
+        "%s%02d:%02u:%02u.%06u",
         sign,
         static_cast<int>(std::abs(num_hours.count())),
         static_cast<unsigned>(std::abs(num_mins.count())),
@@ -60,146 +64,98 @@ inline std::ostream& print_datetime(std::ostream& os, const datetime& value)
     if (date_part > value)
         date_part -= days(1);
     auto tod = value - date_part;
-    print_date(os, date_part); // date part
-    os << ' '; // separator
-    print_time(os, duration_cast<time>(tod)); // time of day part
+    print_date(os, date_part);                 // date part
+    os << ' ';                                 // separator
+    print_time(os, duration_cast<time>(tod));  // time of day part
     return os;
 }
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
-
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    signed char v
-) noexcept :
-    ikind_(internal_kind::int64),
-    repr_(std::int64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(signed char v) noexcept
+    : ikind_(internal_kind::int64), repr_(std::int64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    short v
-) noexcept :
-    ikind_(internal_kind::int64),
-    repr_(std::int64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(short v) noexcept
+    : ikind_(internal_kind::int64), repr_(std::int64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    int v
-) noexcept :
-    ikind_(internal_kind::int64),
-    repr_(std::int64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(int v) noexcept
+    : ikind_(internal_kind::int64), repr_(std::int64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    long v
-) noexcept :
-    ikind_(internal_kind::int64),
-    repr_(std::int64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(long v) noexcept
+    : ikind_(internal_kind::int64), repr_(std::int64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    long long v
-) noexcept :
-    ikind_(internal_kind::int64),
-    repr_(std::int64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(long long v) noexcept
+    : ikind_(internal_kind::int64), repr_(std::int64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    unsigned char v
-) noexcept : 
-    ikind_(internal_kind::uint64),
-    repr_(std::uint64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(unsigned char v) noexcept
+    : ikind_(internal_kind::uint64), repr_(std::uint64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    unsigned short v
-) noexcept : 
-    ikind_(internal_kind::uint64),
-    repr_(std::uint64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(unsigned short v) noexcept
+    : ikind_(internal_kind::uint64), repr_(std::uint64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    unsigned int v
-) noexcept :
-    ikind_(internal_kind::uint64),
-    repr_(std::uint64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(unsigned int v) noexcept
+    : ikind_(internal_kind::uint64), repr_(std::uint64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    unsigned long v
-) noexcept :
-    ikind_(internal_kind::uint64),
-    repr_(std::uint64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(unsigned long v) noexcept
+    : ikind_(internal_kind::uint64), repr_(std::uint64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    unsigned long long v
-) noexcept : 
-    ikind_(internal_kind::uint64),
-    repr_(std::uint64_t(v))
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(unsigned long long v) noexcept
+    : ikind_(internal_kind::uint64), repr_(std::uint64_t(v))
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    boost::string_view v
-) noexcept :
-    ikind_(internal_kind::string),
-    repr_(v)
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(boost::string_view v) noexcept
+    : ikind_(internal_kind::string), repr_(v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    float v
-) noexcept :
-    ikind_(internal_kind::float_),
-    repr_(v)
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(float v) noexcept
+    : ikind_(internal_kind::float_), repr_(v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    double v
-) noexcept :
-    ikind_(internal_kind::double_),
-    repr_(v)
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(double v) noexcept
+    : ikind_(internal_kind::double_), repr_(v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    const date& v
-) noexcept :
-    ikind_(internal_kind::date),
-    repr_(v)
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(const date& v) noexcept
+    : ikind_(internal_kind::date), repr_(v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    const datetime& v
-) noexcept :
-    ikind_(internal_kind::datetime),
-    repr_(v)
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(const datetime& v) noexcept
+    : ikind_(internal_kind::datetime), repr_(v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(
-    const time& v
-) noexcept :
-    ikind_(internal_kind::time),
-    repr_(v)
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(const time& v) noexcept
+    : ikind_(internal_kind::time), repr_(v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::kind() const noexcept
+BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::kind(
+) const noexcept
 {
     switch (ikind_)
     {
@@ -214,12 +170,11 @@ BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::
     case internal_kind::time: return field_kind::time;
     case internal_kind::field_ptr: return repr_.field_ptr->kind();
     // sv_offset values must be converted via offset_to_string_view before calling any other fn
-    default: return field_kind::null; 
+    default: return field_kind::null;
     }
 }
 
-BOOST_CXX14_CONSTEXPR std::int64_t
-boost::mysql::field_view::as_int64() const
+BOOST_CXX14_CONSTEXPR std::int64_t boost::mysql::field_view::as_int64() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<std::int64_t>();
@@ -227,8 +182,7 @@ boost::mysql::field_view::as_int64() const
     return repr_.int64;
 }
 
-BOOST_CXX14_CONSTEXPR std::uint64_t
-boost::mysql::field_view::as_uint64() const
+BOOST_CXX14_CONSTEXPR std::uint64_t boost::mysql::field_view::as_uint64() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<std::uint64_t>();
@@ -236,8 +190,7 @@ boost::mysql::field_view::as_uint64() const
     return repr_.uint64;
 }
 
-BOOST_CXX14_CONSTEXPR boost::string_view
-boost::mysql::field_view::as_string() const
+BOOST_CXX14_CONSTEXPR boost::string_view boost::mysql::field_view::as_string() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<std::string>();
@@ -245,8 +198,7 @@ boost::mysql::field_view::as_string() const
     return repr_.get_string();
 }
 
-BOOST_CXX14_CONSTEXPR float
-boost::mysql::field_view::as_float() const
+BOOST_CXX14_CONSTEXPR float boost::mysql::field_view::as_float() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<float>();
@@ -254,8 +206,7 @@ boost::mysql::field_view::as_float() const
     return repr_.float_;
 }
 
-BOOST_CXX14_CONSTEXPR double
-boost::mysql::field_view::as_double() const
+BOOST_CXX14_CONSTEXPR double boost::mysql::field_view::as_double() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<double>();
@@ -263,8 +214,7 @@ boost::mysql::field_view::as_double() const
     return repr_.double_;
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::date
-boost::mysql::field_view::as_date() const
+BOOST_CXX14_CONSTEXPR boost::mysql::date boost::mysql::field_view::as_date() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<date>();
@@ -272,8 +222,7 @@ boost::mysql::field_view::as_date() const
     return repr_.get_date();
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::datetime
-boost::mysql::field_view::as_datetime() const
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime boost::mysql::field_view::as_datetime() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<datetime>();
@@ -281,8 +230,7 @@ boost::mysql::field_view::as_datetime() const
     return repr_.get_datetime();
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::time
-boost::mysql::field_view::as_time() const
+BOOST_CXX14_CONSTEXPR boost::mysql::time boost::mysql::field_view::as_time() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<time>();
@@ -290,71 +238,61 @@ boost::mysql::field_view::as_time() const
     return repr_.get_time();
 }
 
-BOOST_CXX14_CONSTEXPR std::int64_t
-boost::mysql::field_view::get_int64() const noexcept
+BOOST_CXX14_CONSTEXPR std::int64_t boost::mysql::field_view::get_int64() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<std::int64_t>() : repr_.int64;
 }
 
-BOOST_CXX14_CONSTEXPR std::uint64_t
-boost::mysql::field_view::get_uint64() const noexcept
+BOOST_CXX14_CONSTEXPR std::uint64_t boost::mysql::field_view::get_uint64() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<std::uint64_t>() : repr_.uint64;
 }
 
-BOOST_CXX14_CONSTEXPR boost::string_view
-boost::mysql::field_view::get_string() const noexcept
+BOOST_CXX14_CONSTEXPR boost::string_view boost::mysql::field_view::get_string() const noexcept
 {
-    return is_field_ptr() ? boost::string_view(repr_.field_ptr->get<std::string>()) : repr_.get_string();
+    return is_field_ptr() ? boost::string_view(repr_.field_ptr->get<std::string>())
+                          : repr_.get_string();
 }
 
-BOOST_CXX14_CONSTEXPR float
-boost::mysql::field_view::get_float() const noexcept
+BOOST_CXX14_CONSTEXPR float boost::mysql::field_view::get_float() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<float>() : repr_.float_;
 }
 
-BOOST_CXX14_CONSTEXPR double
-boost::mysql::field_view::get_double() const noexcept
+BOOST_CXX14_CONSTEXPR double boost::mysql::field_view::get_double() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<double>() : repr_.double_;
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::date
-boost::mysql::field_view::get_date() const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::date boost::mysql::field_view::get_date() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<date>() : repr_.get_date();
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::datetime
-boost::mysql::field_view::get_datetime() const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime boost::mysql::field_view::get_datetime() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<datetime>() : repr_.get_datetime();
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::time
-boost::mysql::field_view::get_time() const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::time boost::mysql::field_view::get_time() const noexcept
 {
     return is_field_ptr() ? repr_.field_ptr->get<time>() : repr_.get_time();
 }
 
-BOOST_CXX14_CONSTEXPR void boost::mysql::field_view::check_kind(
-    internal_kind expected
-) const
+BOOST_CXX14_CONSTEXPR void boost::mysql::field_view::check_kind(internal_kind expected) const
 {
     if (ikind_ != expected)
         throw bad_field_access();
 }
 
-BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(
-    const field_view& rhs
+BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(const field_view& rhs
 ) const noexcept
 {
     // Make operator== work for types not representable by field_kind
     if (ikind_ == internal_kind::sv_offset)
     {
         return rhs.ikind_ == internal_kind::sv_offset &&
-            repr_.get_sv_offset() == rhs.repr_.get_sv_offset();
+               repr_.get_sv_offset() == rhs.repr_.get_sv_offset();
     }
 
     auto k = kind(), rhs_k = rhs.kind();
@@ -387,31 +325,23 @@ BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(
         }
         else
             return false;
-    case field_kind::string:
-        return rhs_k == field_kind::string && get_string() == rhs.get_string();
-    case field_kind::float_:
-        return rhs_k == field_kind::float_ && get_float() == rhs.get_float();
+    case field_kind::string: return rhs_k == field_kind::string && get_string() == rhs.get_string();
+    case field_kind::float_: return rhs_k == field_kind::float_ && get_float() == rhs.get_float();
     case field_kind::double_:
         return rhs_k == field_kind::double_ && get_double() == rhs.get_double();
-    case field_kind::date:
-        return rhs_k == field_kind::date && get_date() == rhs.get_date();
+    case field_kind::date: return rhs_k == field_kind::date && get_date() == rhs.get_date();
     case field_kind::datetime:
         return rhs_k == field_kind::datetime && get_datetime() == rhs.get_datetime();
-    case field_kind::time:
-        return rhs_k == field_kind::time && get_time() == rhs.get_time();
+    case field_kind::time: return rhs_k == field_kind::time && get_time() == rhs.get_time();
     }
 }
 
-
-inline std::ostream& boost::mysql::operator<<(
-    std::ostream& os,
-    const field_view& value
-)
+inline std::ostream& boost::mysql::operator<<(std::ostream& os, const field_view& value)
 {
     // Make operator<< work for detail::string_view_offset types
     if (value.ikind_ == field_view::internal_kind::sv_offset)
         return os << "<sv_offset>";
-    
+
     switch (value.kind())
     {
     case field_kind::null: return os << "<NULL>";
@@ -428,13 +358,9 @@ inline std::ostream& boost::mysql::operator<<(
 
 template <class... Types>
 BOOST_CXX14_CONSTEXPR std::array<boost::mysql::field_view, sizeof...(Types)>
-boost::mysql::make_field_views(
-    Types&&... args
-)
+boost::mysql::make_field_views(Types&&... args)
 {
     return std::array<field_view, sizeof...(Types)>{{field_view(std::forward<Types>(args))...}};
 }
-
-
 
 #endif

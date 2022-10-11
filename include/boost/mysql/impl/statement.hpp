@@ -10,10 +10,9 @@
 
 #pragma once
 
-#include <boost/mysql/statement.hpp>
-#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/close_statement.hpp>
-
+#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
+#include <boost/mysql/statement.hpp>
 
 // Execute statement
 template <class Stream>
@@ -26,14 +25,7 @@ void boost::mysql::statement<Stream>::execute(
 )
 {
     detail::clear_errors(err, info);
-    detail::execute_statement(
-        get_channel(),
-        *this,
-        params,
-        result,
-        err,
-        info
-    );
+    detail::execute_statement(get_channel(), *this, params, result, err, info);
 }
 
 template <class Stream>
@@ -44,26 +36,15 @@ void boost::mysql::statement<Stream>::execute(
 )
 {
     detail::error_block blk;
-    detail::execute_statement(
-        get_channel(),
-        *this,
-        params,
-        result,
-        blk.err,
-        blk.info
-    );
+    detail::execute_statement(get_channel(), *this, params, result, blk.err, blk.info);
     blk.check();
 }
 
-
 template <class Stream>
-template <class FieldViewFwdIterator, BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(::boost::mysql::error_code)
-) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
+template <
+    class FieldViewFwdIterator,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::statement<Stream>::async_execute(
     const execute_params<FieldViewFwdIterator>& params,
     resultset<Stream>& result,
@@ -84,10 +65,7 @@ boost::mysql::statement<Stream>::async_execute(
 
 // Close statement
 template <class Stream>
-void boost::mysql::statement<Stream>::close(
-    error_code& code,
-    error_info& info
-)
+void boost::mysql::statement<Stream>::close(error_code& code, error_info& info)
 {
     detail::clear_errors(code, info);
     detail::close_statement(get_channel(), *this, code, info);
@@ -101,19 +79,10 @@ void boost::mysql::statement<Stream>::close()
     blk.check();
 }
 
-
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(
-    void(::boost::mysql::error_code)
-) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
-boost::mysql::statement<Stream>::async_close(
-    error_info& output_info,
-    CompletionToken&& token
-)
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::statement<Stream>::async_close(error_info& output_info, CompletionToken&& token)
 {
     output_info.clear();
     return detail::async_close_statement(
@@ -123,6 +92,5 @@ boost::mysql::statement<Stream>::async_close(
         output_info
     );
 }
-
 
 #endif

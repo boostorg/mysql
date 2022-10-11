@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_ROW_VIEW_HPP
 #define BOOST_MYSQL_ROW_VIEW_HPP
 
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/field.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <cstddef>
 #include <iosfwd>
 #include <iterator>
@@ -17,7 +18,6 @@
 
 namespace boost {
 namespace mysql {
-
 
 class row_view
 {
@@ -42,7 +42,10 @@ public:
     std::size_t size() const noexcept { return size_; }
 
     template <class Allocator>
-    void as_vector(std::vector<field, Allocator>& out) const { out.assign(begin(), end()); }
+    void as_vector(std::vector<field, Allocator>& out) const
+    {
+        out.assign(begin(), end());
+    }
 
     std::vector<field> as_vector() const { return std::vector<field>(begin(), end()); }
 
@@ -50,12 +53,12 @@ public:
     const row_view* operator->() const noexcept { return this; }
 
     // TODO: hide these
-    row_view(const field_view* f, std::size_t size) noexcept : fields_ (f), size_(size) {}
-private:
-    const field_view* fields_ {};
-    std::size_t size_ {};
-};
+    row_view(const field_view* f, std::size_t size) noexcept : fields_(f), size_(size) {}
 
+private:
+    const field_view* fields_{};
+    std::size_t size_{};
+};
 
 /**
  * \relates row
@@ -75,8 +78,8 @@ inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { retu
  */
 inline std::ostream& operator<<(std::ostream& os, const row_view& value);
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/row_view.ipp>
 

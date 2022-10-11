@@ -8,14 +8,16 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_SERIALIZATION_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_SERIALIZATION_HPP
 
-#include <boost/endian/conversion.hpp>
-#include <type_traits>
-#include <algorithm>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/error.hpp>
+
+#include <boost/endian/conversion.hpp>
+
+#include <algorithm>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -32,7 +34,7 @@ enum class serialization_tag
 template <class T>
 constexpr serialization_tag get_serialization_tag();
 
-template <class T, serialization_tag=get_serialization_tag<T>()>
+template <class T, serialization_tag = get_serialization_tag<T>()>
 struct serialization_traits;
 
 template <class... Types>
@@ -50,7 +52,10 @@ struct serialization_traits<T, serialization_tag::plain_int>
 {
     static errc deserialize_(deserialization_context& ctx, T& output) noexcept;
     static void serialize_(serialization_context& ctx, T input) noexcept;
-    static constexpr std::size_t get_size_(const serialization_context&, T) noexcept { return sizeof(T); }
+    static constexpr std::size_t get_size_(const serialization_context&, T) noexcept
+    {
+        return sizeof(T);
+    }
 };
 
 // int3
@@ -82,7 +87,6 @@ struct serialization_traits<int_lenenc, serialization_tag::none>
     static inline std::size_t get_size_(const serialization_context&, int_lenenc input) noexcept;
 };
 
-
 // string_fixed
 template <std::size_t N>
 struct serialization_traits<string_fixed<N>, serialization_tag::none>
@@ -99,12 +103,12 @@ struct serialization_traits<string_fixed<N>, serialization_tag::none>
     {
         ctx.write(input.data(), N);
     }
-    static constexpr std::size_t get_size_(const serialization_context&, const string_fixed<N>&) noexcept
+    static constexpr std::size_t
+    get_size_(const serialization_context&, const string_fixed<N>&) noexcept
     {
         return N;
     }
 };
-
 
 // string_null
 template <>
@@ -114,7 +118,7 @@ struct serialization_traits<string_null, serialization_tag::none>
     static inline void serialize_(serialization_context& ctx, string_null input) noexcept
     {
         ctx.write(input.value.data(), input.value.size());
-        ctx.write(0); // null terminator
+        ctx.write(0);  // null terminator
     }
     static inline std::size_t get_size_(const serialization_context&, string_null input) noexcept
     {
@@ -147,7 +151,8 @@ struct serialization_traits<string_lenenc, serialization_tag::none>
         serialize(ctx, int_lenenc(input.value.size()));
         ctx.write(input.value.data(), input.value.size());
     }
-    static inline std::size_t get_size_(const serialization_context& ctx, string_lenenc input) noexcept
+    static inline std::size_t
+    get_size_(const serialization_context& ctx, string_lenenc input) noexcept
     {
         return get_size(ctx, int_lenenc(input.value.size())) + input.value.size();
     }
@@ -170,7 +175,10 @@ struct serialization_traits<T, serialization_tag::enumeration>
     {
         serialize(ctx, static_cast<underlying_type>(input));
     }
-    static std::size_t get_size_(const serialization_context&, T) noexcept { return sizeof(underlying_type); }
+    static std::size_t get_size_(const serialization_context&, T) noexcept
+    {
+        return sizeof(underlying_type);
+    }
 };
 
 // Structs and commands
@@ -199,7 +207,10 @@ struct serialization_traits<T, serialization_tag::struct_with_fields>
 template <class T>
 struct noop_serialize
 {
-    static inline std::size_t get_size_(const serialization_context&, const T&) noexcept { return 0; }
+    static inline std::size_t get_size_(const serialization_context&, const T&) noexcept
+    {
+        return 0;
+    }
     static inline void serialize_(serialization_context&, const T&) noexcept {}
 };
 
@@ -218,20 +229,18 @@ void serialize_message(
 );
 
 template <class Deserializable>
-error_code deserialize_message(
-    deserialization_context& ctx,
-    Deserializable& output
-);
+error_code deserialize_message(deserialization_context& ctx, Deserializable& output);
 
 // Helpers for (de) serializing a set of fields
 template <class... Types>
 void serialize_fields(serialization_context& ctx, const Types&... fields) noexcept;
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/protocol/impl/serialization.hpp>
+
 #include <boost/mysql/detail/protocol/impl/serialization.ipp>
 
 #endif

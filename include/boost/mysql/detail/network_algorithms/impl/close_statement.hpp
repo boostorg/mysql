@@ -17,26 +17,19 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template<class Stream>
+template <class Stream>
 struct close_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     statement_base& stmt_;
 
-    close_statement_op(
-        channel<Stream>& chan,
-        statement_base& stmt
-    ) noexcept :
-        chan_(chan),
-        stmt_(stmt)
+    close_statement_op(channel<Stream>& chan, statement_base& stmt) noexcept
+        : chan_(chan), stmt_(stmt)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {})
     {
         // Error checking
         if (err)
@@ -64,20 +57,16 @@ struct close_statement_op : boost::asio::coroutine
     }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
-void boost::mysql::detail::close_statement(
-    channel<Stream>& chan,
-    statement_base& stmt,
-    error_code& code,
-    error_info&
-)
+void boost::mysql::detail::
+    close_statement(channel<Stream>& chan, statement_base& stmt, error_code& code, error_info&)
 {
     // Compose the close message
-    com_stmt_close_packet packet {stmt.id()};
+    com_stmt_close_packet packet{stmt.id()};
 
     // Serialize it
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
@@ -90,19 +79,12 @@ void boost::mysql::detail::close_statement(
 }
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
-boost::mysql::detail::async_close_statement(
-    channel<Stream>& chan,
-    statement_base& stmt,
-    CompletionToken&& token,
-    error_info&
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::
+    async_close_statement(channel<Stream>& chan, statement_base& stmt, CompletionToken&& token, error_info&)
 {
     // Compose the close message
-    com_stmt_close_packet packet {stmt.id()};
+    com_stmt_close_packet packet{stmt.id()};
 
     // Serialize it
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
@@ -114,6 +96,5 @@ boost::mysql::detail::async_close_statement(
         chan
     );
 }
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_STATEMENT_HPP_ */

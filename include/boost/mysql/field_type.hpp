@@ -23,31 +23,31 @@ namespace mysql {
  */
 enum class field_type
 {
-    tinyint,      ///< `__TINYINT__` (signed and unsigned).
-    smallint,     ///< `__SMALLINT__` (signed and unsigned).
-    mediumint,    ///< `__MEDIUMINT__` (signed and unsigned).
-    int_,         ///< `__INT__` (signed and unsigned).
-    bigint,       ///< `__BIGINT__` (signed and unsigned).
-    float_,       ///< `__FLOAT__` (warning: FLOAT(p) where p >= 24 creates a DOUBLE column).
-    double_,      ///< `__DOUBLE__`
-    decimal,      ///< `__DECIMAL__`
-    bit,          ///< `__BIT__`
-    year,         ///< `__YEAR__`
-    time,         ///< `__TIME__`
-    date,         ///< `__DATE__`
-    datetime,     ///< `__DATETIME__`
-    timestamp,    ///< `__TIMESTAMP__`
-    char_,        ///< `__CHAR__` (any length)
-    varchar,      ///< `__VARCHAR__` (any length)
-    binary,       ///< `__BINARY__` (any length)
-    varbinary,    ///< `__VARBINARY__` (any length)
-    text,         ///< `__TEXT__` types (`TINYTEXT`, `MEDIUMTEXT`, `TEXT` and `LONGTEXT`)
-    blob,         ///< `__BLOB__` types (`TINYBLOB`, `MEDIUMBLOB`, `BLOB` and `LONGBLOB`)
-    enum_,        ///< `__ENUM__`
-    set,          ///< `__SET__`
-    geometry,     ///< `__GEOMETRY__`
+    tinyint,    ///< `__TINYINT__` (signed and unsigned).
+    smallint,   ///< `__SMALLINT__` (signed and unsigned).
+    mediumint,  ///< `__MEDIUMINT__` (signed and unsigned).
+    int_,       ///< `__INT__` (signed and unsigned).
+    bigint,     ///< `__BIGINT__` (signed and unsigned).
+    float_,     ///< `__FLOAT__` (warning: FLOAT(p) where p >= 24 creates a DOUBLE column).
+    double_,    ///< `__DOUBLE__`
+    decimal,    ///< `__DECIMAL__`
+    bit,        ///< `__BIT__`
+    year,       ///< `__YEAR__`
+    time,       ///< `__TIME__`
+    date,       ///< `__DATE__`
+    datetime,   ///< `__DATETIME__`
+    timestamp,  ///< `__TIMESTAMP__`
+    char_,      ///< `__CHAR__` (any length)
+    varchar,    ///< `__VARCHAR__` (any length)
+    binary,     ///< `__BINARY__` (any length)
+    varbinary,  ///< `__VARBINARY__` (any length)
+    text,       ///< `__TEXT__` types (`TINYTEXT`, `MEDIUMTEXT`, `TEXT` and `LONGTEXT`)
+    blob,       ///< `__BLOB__` types (`TINYBLOB`, `MEDIUMBLOB`, `BLOB` and `LONGBLOB`)
+    enum_,      ///< `__ENUM__`
+    set,        ///< `__SET__`
+    geometry,   ///< `__GEOMETRY__`
 
-    unknown,      ///< None of the known types; maybe a new MySQL type we have no knowledge of.
+    unknown,  ///< None of the known types; maybe a new MySQL type we have no knowledge of.
 #ifndef BOOST_MYSQL_DOXYGEN
     _not_computed,
 #endif
@@ -88,9 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, field_type t)
     }
 }
 
-} // mysql
-} // boost
-
-
+}  // namespace mysql
+}  // namespace boost
 
 #endif

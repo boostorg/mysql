@@ -8,11 +8,13 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP
 #define BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP
 
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/error.hpp>
+
+#include <boost/utility/string_view.hpp>
+
 #include <array>
 #include <vector>
-#include <boost/utility/string_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -33,10 +35,11 @@ struct authentication_plugin
 
 class auth_calculator
 {
-    const authentication_plugin* plugin_ {nullptr};
+    const authentication_plugin* plugin_{nullptr};
     bytestring response_;
 
     inline static const authentication_plugin* find_plugin(boost::string_view name);
+
 public:
     inline error_code calculate(
         boost::string_view plugin_name,
@@ -46,7 +49,10 @@ public:
     );
     boost::string_view response() const noexcept
     {
-        return boost::string_view(reinterpret_cast<const char*>(response_.data()), response_.size());
+        return boost::string_view(
+            reinterpret_cast<const char*>(response_.data()),
+            response_.size()
+        );
     }
     boost::string_view plugin_name() const noexcept
     {
@@ -55,9 +61,9 @@ public:
     }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/auth/impl/auth_calculator.ipp>
 

@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_RESULTSET_ENCODING_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_RESULTSET_ENCODING_HPP
 
-
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -19,9 +18,8 @@ enum class resultset_encoding
     binary
 };
 
-} // detail
-} // mysql
-} // boost
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_COMMON_HPP_ */

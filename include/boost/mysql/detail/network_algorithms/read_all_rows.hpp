@@ -8,23 +8,18 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ALL_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ALL_ROWS_HPP
 
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/rows_view.hpp>
-
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 template <class Stream>
-rows_view read_all_rows(
-    channel<Stream>& channel,
-    resultset_base& result,
-    error_code& err,
-    error_info& info
-);
+rows_view
+read_all_rows(channel<Stream>& channel, resultset_base& result, error_code& err, error_info& info);
 
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
@@ -35,13 +30,10 @@ async_read_all_rows(
     CompletionToken&& token
 );
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/read_all_rows.hpp>
-
-
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_HPP_ */

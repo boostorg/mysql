@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
 
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <cstddef>
 #include <iterator>
 #include <type_traits>
@@ -19,8 +20,11 @@ namespace mysql {
 namespace detail {
 
 template <typename T, typename = void>
-struct is_field_view_forward_iterator : std::false_type { };
+struct is_field_view_forward_iterator : std::false_type
+{
+};
 
+// clang-format off
 template <typename T>
 struct is_field_view_forward_iterator<T, void_t<
     typename std::enable_if<
@@ -36,10 +40,14 @@ struct is_field_view_forward_iterator<T, void_t<
         >::value
     >::type
 >> : std::true_type { };
+// clang-format on
 
 template <typename T, typename = void>
-struct is_field_view_collection : std::false_type {};
+struct is_field_view_collection : std::false_type
+{
+};
 
+// clang-format off
 template <typename T>
 struct is_field_view_collection<T, void_t<
     typename std::enable_if<
@@ -49,19 +57,19 @@ struct is_field_view_collection<T, void_t<
         is_field_view_forward_iterator<decltype(std::end(std::declval<const T&>()))>::value
     >::type
 >> : std::true_type {};
-
+// clang-format on
 
 // Helpers
 template <typename T>
-using enable_if_field_view_forward_iterator = typename std::enable_if<is_field_view_forward_iterator<T>::value>::type;
+using enable_if_field_view_forward_iterator =
+    typename std::enable_if<is_field_view_forward_iterator<T>::value>::type;
 
 template <typename T>
-using enable_if_field_view_collection = typename std::enable_if<is_field_view_collection<T>::value>::type;
+using enable_if_field_view_collection =
+    typename std::enable_if<is_field_view_collection<T>::value>::type;
 
-
-}
-}
-}
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif

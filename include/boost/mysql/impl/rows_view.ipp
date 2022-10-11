@@ -11,21 +11,17 @@
 #pragma once
 
 #include <boost/mysql/rows_view.hpp>
-#include <stdexcept>
+
 #include <cassert>
+#include <stdexcept>
 
-
-boost::mysql::row_view boost::mysql::rows_view::operator[](
-    std::size_t i
-) const noexcept
+boost::mysql::row_view boost::mysql::rows_view::operator[](std::size_t i) const noexcept
 {
     assert(i < size());
     return row_view(fields_ + num_columns_ * i, num_columns_);
 }
 
-boost::mysql::row_view boost::mysql::rows_view::at(
-    std::size_t i
-) const
+boost::mysql::row_view boost::mysql::rows_view::at(std::size_t i) const
 {
     if (i >= size())
     {

@@ -13,12 +13,13 @@
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/row.hpp>
 #include <boost/mysql/resultset_base.hpp>
-#include <boost/asio/post.hpp>
-#include <boost/asio/buffer.hpp>
-#include <cstddef>
+#include <boost/mysql/row.hpp>
 
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/post.hpp>
+
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -55,7 +56,7 @@ inline rows_view process_some_rows(
         );
         if (err)
             return rows_view();
-        
+
         // There is no need to copy strings values anywhere; the returned values
         // will point into the channel's internal buffer
 
@@ -73,8 +74,7 @@ inline rows_view process_some_rows(
     );
 }
 
-
-template<class Stream>
+template <class Stream>
 struct read_some_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
@@ -85,18 +85,13 @@ struct read_some_rows_op : boost::asio::coroutine
         channel<Stream>& chan,
         error_info& output_info,
         resultset_base& result
-    ) noexcept :
-        chan_(chan),
-        output_info_(output_info),
-        resultset_(result)
+    ) noexcept
+        : chan_(chan), output_info_(output_info), resultset_(result)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {})
     {
         // Error checking
         if (err)
@@ -122,16 +117,15 @@ struct read_some_rows_op : boost::asio::coroutine
 
             // Process messages
             output = process_some_rows(chan_, resultset_, err, output_info_);
-            
+
             self.complete(err, output);
         }
     }
 };
 
-} // detail
-} // mysql
-} // boost
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
 boost::mysql::rows_view boost::mysql::detail::read_some_rows(
@@ -168,12 +162,8 @@ boost::mysql::detail::async_read_some_rows(
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)> (
-        read_some_rows_op<Stream>(
-            channel,
-            output_info,
-            result
-        ),
+    return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
+        read_some_rows_op<Stream>(channel, output_info, result),
         token,
         channel
     );

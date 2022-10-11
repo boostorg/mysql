@@ -16,8 +16,7 @@ template <typename...>
 using void_t = void;
 
 }
-}
-}
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_HPP_ */
-

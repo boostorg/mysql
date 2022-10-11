@@ -20,8 +20,7 @@ public:
     const char* what() const noexcept override { return "bad_value_access"; }
 };
 
-
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #endif

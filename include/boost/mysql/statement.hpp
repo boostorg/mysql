@@ -8,11 +8,12 @@
 #ifndef BOOST_MYSQL_STATEMENT_HPP
 #define BOOST_MYSQL_STATEMENT_HPP
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
-#include <boost/mysql/statement_base.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/statement_base.hpp>
+
 #include <cassert>
 
 namespace boost {
@@ -26,7 +27,11 @@ public:
     statement(const statement&) = delete;
     statement(statement&& other) noexcept : statement_base(other) { other.reset(); }
     statement& operator=(const statement&) = delete;
-    statement& operator=(statement&& rhs) noexcept { swap(rhs); return *this; }
+    statement& operator=(statement&& rhs) noexcept
+    {
+        swap(rhs);
+        return *this;
+    }
     ~statement() = default;
 
     using executor_type = typename Stream::executor_type;
@@ -42,7 +47,9 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class FieldViewCollection, class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
+    template <
+        class FieldViewCollection,
+        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     void execute(
         const FieldViewCollection& params,
         resultset<Stream>& result,
@@ -62,11 +69,10 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class FieldViewCollection, class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
-    void execute(
-        const FieldViewCollection& params,
-        resultset<Stream>& result
-    )
+    template <
+        class FieldViewCollection,
+        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
+    void execute(const FieldViewCollection& params, resultset<Stream>& result)
     {
         return execute_statement(make_execute_params(params), result);
     }
@@ -86,13 +92,11 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
-    template<
+    template <
         class FieldViewCollection,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken
-            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-            class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>
-    >
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
         const FieldViewCollection& params,
@@ -124,11 +128,9 @@ public:
      */
     template <
         class FieldViewCollection,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken
-            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-            class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>
-    >
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
         const FieldViewCollection& params,
@@ -144,7 +146,6 @@ public:
             std::forward<CompletionToken>(token)
         );
     }
-
 
     /**
      * \brief Executes a statement (`execute_params`, sync with error code version).
@@ -177,10 +178,7 @@ public:
      * connection. Otherwise, the results are undefined.
      */
     template <class FieldViewFwdIterator>
-    void execute(
-        const execute_params<FieldViewFwdIterator>& params,
-        resultset<Stream>& result
-    );
+    void execute(const execute_params<FieldViewFwdIterator>& params, resultset<Stream>& result);
 
     /**
      * \brief Executes a statement (`execute_params`,
@@ -203,10 +201,8 @@ public:
      */
     template <
         class FieldViewFwdIterator,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken
-            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
         const execute_params<FieldViewFwdIterator>& params,
@@ -214,7 +210,12 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_execute(params, result, get_channel().shared_info(), std::forward<CompletionToken>(token));
+        return async_execute(
+            params,
+            result,
+            get_channel().shared_info(),
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**
@@ -238,10 +239,8 @@ public:
      */
     template <
         class FieldViewFwdIterator,
-            BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken
-            BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
         const execute_params<FieldViewFwdIterator>& params,
@@ -249,7 +248,6 @@ public:
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
-
 
     /**
      * \brief Closes a prepared statement, deallocating it from the server
@@ -278,15 +276,10 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_close(
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
         return async_close(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
@@ -300,11 +293,8 @@ public:
      *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-        CompletionToken
-        BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(
         error_info& output_info,
@@ -319,8 +309,8 @@ private:
     }
 };
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/impl/statement.hpp>
 

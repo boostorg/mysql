@@ -8,11 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_GENERIC_HPP
 
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/resultset_base.hpp>
 
 namespace boost {
 namespace mysql {
@@ -39,9 +38,9 @@ async_execute_generic(
     CompletionToken&& token
 );
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/execute_generic.hpp>
 

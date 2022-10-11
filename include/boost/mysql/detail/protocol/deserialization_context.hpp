@@ -10,10 +10,12 @@
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/error.hpp>
+
 #include <boost/asio/buffer.hpp>
+
+#include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <cassert>
 
 namespace boost {
 namespace mysql {
@@ -24,19 +26,35 @@ class deserialization_context
     const std::uint8_t* first_;
     const std::uint8_t* last_;
     capabilities capabilities_;
+
 public:
-    deserialization_context(const std::uint8_t* first, const std::uint8_t* last, capabilities caps) noexcept:
-        first_(first), last_(last), capabilities_(caps) { assert(last_ >= first_); };
-    deserialization_context(boost::asio::const_buffer buff, capabilities caps) noexcept:
-        deserialization_context(
-                static_cast<const std::uint8_t*>(buff.data()),
-                static_cast<const std::uint8_t*>(buff.data()) + buff.size(),
-                caps
-        ) {};
+    deserialization_context(
+        const std::uint8_t* first,
+        const std::uint8_t* last,
+        capabilities caps
+    ) noexcept
+        : first_(first), last_(last), capabilities_(caps)
+    {
+        assert(last_ >= first_);
+    };
+    deserialization_context(boost::asio::const_buffer buff, capabilities caps) noexcept
+        : deserialization_context(
+              static_cast<const std::uint8_t*>(buff.data()),
+              static_cast<const std::uint8_t*>(buff.data()) + buff.size(),
+              caps
+          ){};
     const std::uint8_t* first() const noexcept { return first_; }
     const std::uint8_t* last() const noexcept { return last_; }
-    void set_first(const std::uint8_t* new_first) noexcept { first_ = new_first; assert(last_ >= first_); }
-    void advance(std::size_t sz) noexcept { first_ += sz; assert(last_ >= first_); }
+    void set_first(const std::uint8_t* new_first) noexcept
+    {
+        first_ = new_first;
+        assert(last_ >= first_);
+    }
+    void advance(std::size_t sz) noexcept
+    {
+        first_ += sz;
+        assert(last_ >= first_);
+    }
     void rewind(std::size_t sz) noexcept { first_ -= sz; }
     std::size_t size() const noexcept { return last_ - first_; }
     bool empty() const noexcept { return last_ == first_; }
@@ -52,10 +70,8 @@ public:
     }
 };
 
-}
-}
-}
-
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZATION_CONTEXT_HPP_ */

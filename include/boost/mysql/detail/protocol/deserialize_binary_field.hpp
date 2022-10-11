@@ -12,6 +12,7 @@
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+
 #include <cstdint>
 #include <vector>
 
@@ -26,9 +27,9 @@ inline errc deserialize_binary_field(
     field_view& output
 );
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/protocol/impl/deserialize_binary_field.ipp>
 

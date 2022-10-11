@@ -10,6 +10,7 @@
 
 #include <boost/utility/string_view.hpp>
 #include <boost/utility/string_view_fwd.hpp>
+
 #include <cstddef>
 #include <cstdint>
 
@@ -23,10 +24,13 @@ class string_view_offset
 {
     std::size_t offset_;
     std::size_t size_;
+
 public:
     constexpr string_view_offset() noexcept : offset_(0), size_(0) {}
-    constexpr string_view_offset(std::size_t offset, std::size_t size) noexcept :
-        offset_(offset), size_(size) {}
+    constexpr string_view_offset(std::size_t offset, std::size_t size) noexcept
+        : offset_(offset), size_(size)
+    {
+    }
     constexpr std::size_t offset() const noexcept { return offset_; }
     constexpr std::size_t size() const noexcept { return size_; }
     constexpr bool operator==(string_view_offset rhs) const noexcept
@@ -35,15 +39,18 @@ public:
     }
     constexpr bool operator!=(string_view_offset rhs) const noexcept { return !(*this == rhs); }
 
-    static string_view_offset from_sv(boost::string_view from, const std::uint8_t* buffer_first) noexcept
+    static string_view_offset
+    from_sv(boost::string_view from, const std::uint8_t* buffer_first) noexcept
     {
-        return string_view_offset(from.data() - reinterpret_cast<const char*>(buffer_first), from.size());
+        return string_view_offset(
+            from.data() - reinterpret_cast<const char*>(buffer_first),
+            from.size()
+        );
     }
 };
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif

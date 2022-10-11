@@ -10,40 +10,31 @@
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
-#include <boost/asio/coroutine.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/mysql/error.hpp>
+
+#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 template <class Stream>
-void compose_quit(
-    channel<Stream>& chan
-)
+void compose_quit(channel<Stream>& chan)
 {
-    serialize_message(
-        quit_packet(),
-        chan.current_capabilities(),
-        chan.shared_buffer()
-    );
+    serialize_message(quit_packet(), chan.current_capabilities(), chan.shared_buffer());
 }
 
-template<class Stream>
+template <class Stream>
 struct quit_connection_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
 
-    quit_connection_op(channel<Stream>& chan) noexcept :
-        chan_(chan) {}
+    quit_connection_op(channel<Stream>& chan) noexcept : chan_(chan) {}
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {})
     {
         BOOST_ASIO_CORO_REENTER(*this)
         {
@@ -66,16 +57,12 @@ struct quit_connection_op : boost::asio::coroutine
     }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
-void boost::mysql::detail::quit_connection(
-    channel<Stream>& chan,
-    error_code& err,
-    error_info&
-)
+void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& err, error_info&)
 {
     compose_quit(chan);
     chan.write(chan.shared_buffer(), chan.shared_sequence_number(), err);
@@ -91,15 +78,9 @@ void boost::mysql::detail::quit_connection(
 }
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
-boost::mysql::detail::async_quit_connection(
-    channel<Stream>& chan,
-    CompletionToken&& token,
-    error_info&
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::
+    async_quit_connection(channel<Stream>& chan, CompletionToken&& token, error_info&)
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         quit_connection_op<Stream>(chan),

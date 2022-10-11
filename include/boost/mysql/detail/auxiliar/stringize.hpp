@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_STRINGIZE_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_STRINGIZE_HPP
 
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace boost {
 namespace mysql {
@@ -32,10 +32,8 @@ std::string stringize(const Types&... inputs)
     return ss.str();
 }
 
-} // detail
-} // mysql
-} // boost
-
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STRINGIZE_HPP_ */

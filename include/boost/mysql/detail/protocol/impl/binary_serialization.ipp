@@ -20,23 +20,16 @@ namespace detail {
 
 // Floating point types
 template <class T>
-void serialize_binary_float(
-    serialization_context& ctx,
-    T input
-)
+void serialize_binary_float(serialization_context& ctx, T input)
 {
-    boost::endian::endian_store<T, sizeof(T),
-        boost::endian::order::little>(ctx.first(), input);
+    boost::endian::endian_store<T, sizeof(T), boost::endian::order::little>(ctx.first(), input);
     ctx.advance(sizeof(T));
 }
 
 // Time types
 
 // Does not add the length prefix byte
-inline void serialize_binary_ymd(
-    serialization_context& ctx,
-    const year_month_day& ymd
-) noexcept
+inline void serialize_binary_ymd(serialization_context& ctx, const year_month_day& ymd) noexcept
 {
     assert(ymd.years >= 0 && ymd.years <= 0xffff);
     serialize(
@@ -47,10 +40,7 @@ inline void serialize_binary_ymd(
     );
 }
 
-inline void serialize_binary_date(
-    serialization_context& ctx,
-    const date& input
-)
+inline void serialize_binary_date(serialization_context& ctx, const date& input)
 {
     assert(input >= min_date && input <= max_date);
     auto ymd = days_to_ymd(input.time_since_epoch().count());
@@ -59,10 +49,7 @@ inline void serialize_binary_date(
     serialize_binary_ymd(ctx, ymd);
 }
 
-inline void serialize_binary_datetime(
-    serialization_context& ctx,
-    const datetime& input
-)
+inline void serialize_binary_datetime(serialization_context& ctx, const datetime& input)
 {
     assert(input >= min_datetime && input <= max_datetime);
 
@@ -87,10 +74,7 @@ inline void serialize_binary_datetime(
     );
 }
 
-inline void serialize_binary_time(
-    serialization_context& ctx,
-    const time& input
-)
+inline void serialize_binary_time(serialization_context& ctx, const time& input)
 {
     // Break time
     using namespace std::chrono;
@@ -114,54 +98,43 @@ inline void serialize_binary_time(
     );
 }
 
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
-} // detail
-} // mysql
-} // boost
-
-inline std::size_t
-boost::mysql::detail::serialization_traits<
-    boost::mysql::field_view,
-    boost::mysql::detail::serialization_tag::none
->::get_size_(
-    const serialization_context& ctx,
-    const field_view& input
-) noexcept
+inline std::size_t boost::mysql::detail::
+    serialization_traits<boost::mysql::field_view, boost::mysql::detail::serialization_tag::none>::
+        get_size_(const serialization_context& ctx, const field_view& input) noexcept
 {
     switch (input.kind())
     {
-        case field_kind::null: return 0;
-        case field_kind::int64: return 8;
-        case field_kind::uint64: return 8;
-        case field_kind::string: return get_size(ctx, string_lenenc(input.get_string()));
-        case field_kind::float_: return 4;
-        case field_kind::double_: return 8;
-        case field_kind::date: return binc::date_sz + binc::length_sz;
-        case field_kind::datetime: return binc::datetime_dhmsu_sz + binc::length_sz;
-        case field_kind::time: return binc::time_dhmsu_sz + binc::length_sz;
+    case field_kind::null: return 0;
+    case field_kind::int64: return 8;
+    case field_kind::uint64: return 8;
+    case field_kind::string: return get_size(ctx, string_lenenc(input.get_string()));
+    case field_kind::float_: return 4;
+    case field_kind::double_: return 8;
+    case field_kind::date: return binc::date_sz + binc::length_sz;
+    case field_kind::datetime: return binc::datetime_dhmsu_sz + binc::length_sz;
+    case field_kind::time: return binc::time_dhmsu_sz + binc::length_sz;
     }
 }
 
-inline void
-boost::mysql::detail::serialization_traits<
-    boost::mysql::field_view,
-    boost::mysql::detail::serialization_tag::none
->::serialize_(
-    serialization_context& ctx,
-    const field_view& input
-) noexcept
+inline void boost::mysql::detail::
+    serialization_traits<boost::mysql::field_view, boost::mysql::detail::serialization_tag::none>::
+        serialize_(serialization_context& ctx, const field_view& input) noexcept
 {
     switch (input.kind())
     {
-        case field_kind::null: break;
-        case field_kind::int64: serialize(ctx, input.get_int64()); break;
-        case field_kind::uint64: serialize(ctx, input.get_uint64()); break;
-        case field_kind::string: serialize(ctx, string_lenenc(input.get_string())); break;
-        case field_kind::float_: serialize_binary_float(ctx, input.get_float()); break;
-        case field_kind::double_: serialize_binary_float(ctx, input.get_double()); break;
-        case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
-        case field_kind::datetime: serialize_binary_datetime(ctx, input.get_datetime()); break;
-        case field_kind::time: serialize_binary_time(ctx, input.get_time()); break;
+    case field_kind::null: break;
+    case field_kind::int64: serialize(ctx, input.get_int64()); break;
+    case field_kind::uint64: serialize(ctx, input.get_uint64()); break;
+    case field_kind::string: serialize(ctx, string_lenenc(input.get_string())); break;
+    case field_kind::float_: serialize_binary_float(ctx, input.get_float()); break;
+    case field_kind::double_: serialize_binary_float(ctx, input.get_double()); break;
+    case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
+    case field_kind::datetime: serialize_binary_datetime(ctx, input.get_datetime()); break;
+    case field_kind::time: serialize_binary_time(ctx, input.get_time()); break;
     }
 }
 

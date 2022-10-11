@@ -8,16 +8,16 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_READ_BUFFER_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_READ_BUFFER_HPP
 
-#include <boost/asio/buffer.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+
+#include <boost/asio/buffer.hpp>
+
 #include <cstddef>
 #include <cstdint>
-
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
 
 // Custom buffer type optimized for read operations performed in the MySQL protocol.
 // The buffer is a single, resizable chunk of memory with four areas:
@@ -29,9 +29,10 @@ namespace detail {
 class read_buffer
 {
     bytestring buffer_;
-    std::size_t current_message_offset_ {0};
-    std::size_t pending_offset_ {0};
-    std::size_t free_offset_ {0};
+    std::size_t current_message_offset_{0};
+    std::size_t pending_offset_{0};
+    std::size_t free_offset_{0};
+
 public:
     inline read_buffer(std::size_t size);
 
@@ -42,22 +43,43 @@ public:
     // Area accessors
     std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
     const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
-    std::uint8_t* current_message_first() noexcept { return buffer_.data() + current_message_offset_; }
-    const std::uint8_t* current_message_first() const noexcept { return buffer_.data() + current_message_offset_; }
+    std::uint8_t* current_message_first() noexcept
+    {
+        return buffer_.data() + current_message_offset_;
+    }
+    const std::uint8_t* current_message_first() const noexcept
+    {
+        return buffer_.data() + current_message_offset_;
+    }
     std::uint8_t* pending_first() noexcept { return buffer_.data() + pending_offset_; }
     const std::uint8_t* pending_first() const noexcept { return buffer_.data() + pending_offset_; }
     std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
     const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
 
     std::size_t reserved_size() const noexcept { return current_message_offset_; }
-    std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
+    std::size_t current_message_size() const noexcept
+    {
+        return pending_offset_ - current_message_offset_;
+    }
     std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
     std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
 
-    boost::asio::const_buffer reserved_area() const noexcept { return boost::asio::buffer(reserved_first(), reserved_size()); }
-    boost::asio::const_buffer current_message() const noexcept { return boost::asio::buffer(current_message_first(), current_message_size()); }
-    boost::asio::const_buffer pending_area() const noexcept { return boost::asio::buffer(pending_first(), pending_size()); }
-    boost::asio::mutable_buffer free_area() noexcept { return boost::asio::buffer(free_first(), free_size()); }
+    boost::asio::const_buffer reserved_area() const noexcept
+    {
+        return boost::asio::buffer(reserved_first(), reserved_size());
+    }
+    boost::asio::const_buffer current_message() const noexcept
+    {
+        return boost::asio::buffer(current_message_first(), current_message_size());
+    }
+    boost::asio::const_buffer pending_area() const noexcept
+    {
+        return boost::asio::buffer(pending_first(), pending_size());
+    }
+    boost::asio::mutable_buffer free_area() noexcept
+    {
+        return boost::asio::buffer(free_first(), free_size());
+    }
 
     // Moves n bytes from the free to the processing area (e.g. they've been read)
     inline void move_to_pending(std::size_t n) noexcept;
@@ -81,17 +103,10 @@ public:
     inline void grow_to_fit(std::size_t n);
 };
 
-
-} // detail
-} // mysql
-} // boost
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/channel/impl/read_buffer.ipp>
 
-
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP_ */
-
-
-
-

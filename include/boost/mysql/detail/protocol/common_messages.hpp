@@ -8,9 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 
-#include <boost/mysql/detail/protocol/serialization.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/collation.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
+
 #include <tuple>
 
 namespace boost {
@@ -26,10 +27,7 @@ struct packet_header
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
-        std::forward<Callable>(cb)(
-            self.packet_size,
-            self.sequence_number
-        );
+        std::forward<Callable>(cb)(self.packet_size, self.sequence_number);
     }
 };
 
@@ -39,7 +37,7 @@ struct ok_packet
     // header: int<1>     header     0x00 or 0xFE the OK packet header
     int_lenenc affected_rows;
     int_lenenc last_insert_id;
-    std::uint16_t status_flags; // server_status_flags
+    std::uint16_t status_flags;  // server_status_flags
     std::uint16_t warnings;
     // CLIENT_SESSION_TRACK: not implemented
     string_lenenc info;
@@ -47,6 +45,7 @@ struct ok_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
+        // clang-format off
         std::forward<Callable>(cb)(
             self.affected_rows,
             self.last_insert_id,
@@ -54,12 +53,13 @@ struct ok_packet
             self.warnings,
             self.info
         );
+        // clang-format on
     }
 };
 
 template <>
-struct serialization_traits<ok_packet, serialization_tag::struct_with_fields> :
-    noop_serialize<ok_packet>
+struct serialization_traits<ok_packet, serialization_tag::struct_with_fields>
+    : noop_serialize<ok_packet>
 {
     static inline errc deserialize_(deserialization_context& ctx, ok_packet& output) noexcept;
 };
@@ -76,12 +76,14 @@ struct err_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
+        // clang-format off
         std::forward<Callable>(cb)(
             self.error_code,
             self.sql_state_marker,
             self.sql_state,
             self.error_message
         );
+        // clang-format on
     }
 };
 
@@ -90,21 +92,23 @@ static_assert(is_struct_with_fields<err_packet>(), "Bad!");
 // col def
 struct column_definition_packet
 {
-    string_lenenc catalog; // always "def"
+    string_lenenc catalog;  // always "def"
     string_lenenc schema;
-    string_lenenc table; // virtual table
-    string_lenenc org_table; // physical table
-    string_lenenc name; // virtual column name
-    string_lenenc org_name; // physical column name
+    string_lenenc table;      // virtual table
+    string_lenenc org_table;  // physical table
+    string_lenenc name;       // virtual column name
+    string_lenenc org_name;   // physical column name
     collation character_set;
-    std::uint32_t column_length; // maximum length of the field
-    protocol_field_type type; // type of the column as defined in enum_field_types
-    std::uint16_t flags; // Flags as defined in Column Definition Flags
-    std::uint8_t decimals; // max shown decimal digits. 0x00 for int/static strings; 0x1f for dynamic strings, double, float
+    std::uint32_t column_length;  // maximum length of the field
+    protocol_field_type type;     // type of the column as defined in enum_field_types
+    std::uint16_t flags;          // Flags as defined in Column Definition Flags
+    std::uint8_t decimals;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
+                                  // dynamic strings, double, float
 
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
+        // clang-format off
         std::forward<Callable>(cb)(
             self.catalog,
             self.schema,
@@ -118,14 +122,18 @@ struct column_definition_packet
             self.flags,
             self.decimals
         );
+        // clang-format on
     }
 };
 
 template <>
-struct serialization_traits<column_definition_packet, serialization_tag::struct_with_fields> :
-    noop_serialize<column_definition_packet>
+struct serialization_traits<column_definition_packet, serialization_tag::struct_with_fields>
+    : noop_serialize<column_definition_packet>
 {
-    static inline errc deserialize_(deserialization_context& ctx, column_definition_packet& output) noexcept;
+    static inline errc deserialize_(
+        deserialization_context& ctx,
+        column_definition_packet& output
+    ) noexcept;
 };
 
 // connection quit
@@ -134,16 +142,17 @@ struct quit_packet
     static constexpr std::uint8_t command_id = 0x01;
 
     template <class Self, class Callable>
-    static void apply(Self&, Callable&&) noexcept {}
+    static void apply(Self&, Callable&&) noexcept
+    {
+    }
 };
 
 // aux
 inline error_code process_error_packet(deserialization_context& ctx, error_info& info);
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/protocol/impl/common_messages.ipp>
 

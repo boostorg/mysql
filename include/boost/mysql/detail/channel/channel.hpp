@@ -8,15 +8,17 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 
-#include <boost/asio/async_result.hpp>
-#include <boost/asio/buffer.hpp>
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
 #include <boost/mysql/detail/channel/message_writer.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/field_view.hpp>
+
+#include <boost/asio/async_result.hpp>
+#include <boost/asio/buffer.hpp>
+
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -24,7 +26,6 @@
 namespace boost {
 namespace mysql {
 namespace detail {
-
 
 // Implements the message layer of the MySQL protocol
 template <class Stream>
@@ -35,16 +36,15 @@ class channel
     message_reader reader_;
     message_writer writer_;
 
-    std::uint8_t shared_sequence_number_ {}; // for async ops
-    bytestring shared_buff_; // for async ops
-    error_info shared_info_; // for async ops
-    std::vector<field_view> shared_fields_; // for read_some ops
+    std::uint8_t shared_sequence_number_{};  // for async ops
+    bytestring shared_buff_;                 // for async ops
+    error_info shared_info_;                 // for async ops
+    std::vector<field_view> shared_fields_;  // for read_some ops
 public:
     // TODO: use this arg
     template <class... Args>
-    channel(std::size_t read_buffer_size, Args&&... args) : 
-        stream_(std::forward<Args>(args)...),
-        reader_(read_buffer_size)
+    channel(std::size_t read_buffer_size, Args&&... args)
+        : stream_(std::forward<Args>(args)...), reader_(read_buffer_size)
     {
     }
 
@@ -65,27 +65,30 @@ public:
         return reader_.read_some(stream_, code, keep_messages);
     }
 
-    template<
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(CompletionToken&& token, bool keep_messages = false)
     {
-        return reader_.async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
+        return reader_
+            .async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
     }
 
-    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec, bool keep_messages = false)
+    boost::asio::const_buffer
+    read_one(std::uint8_t& seqnum, error_code& ec, bool keep_messages = false)
     {
         return reader_.read_one(stream_, seqnum, ec, keep_messages);
     }
 
-    template<
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer)) CompletionToken
-    >
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer))
+                  CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+        CompletionToken,
+        void(error_code, ::boost::asio::const_buffer)
+    )
     async_read_one(std::uint8_t& seqnum, CompletionToken&& token, bool keep_messages = false)
     {
-        return reader_.async_read_one(stream_, seqnum, std::forward<CompletionToken>(token), keep_messages);
+        return reader_
+            .async_read_one(stream_, seqnum, std::forward<CompletionToken>(token), keep_messages);
     }
 
     // Writing
@@ -94,24 +97,19 @@ public:
         writer_.write(stream_, buffer, seqnum, code);
     }
 
-    template<
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, CompletionToken&& token)
     {
         return writer_.async_write(stream_, buffer, seqnum, std::forward<CompletionToken>(token));
     }
 
-
     void write(const bytestring& buffer, std::uint8_t& seqnum, error_code& code)
     {
         write(boost::asio::buffer(buffer), seqnum, code);
     }
 
-    template<
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken
-    >
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(const bytestring& buffer, CompletionToken&& token)
     {
@@ -152,8 +150,8 @@ public:
     const std::vector<field_view>& shared_fields() const noexcept { return shared_fields_; }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif

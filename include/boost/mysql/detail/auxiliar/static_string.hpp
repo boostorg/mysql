@@ -10,8 +10,9 @@
 
 // A very simplified variable-length string with fixed max-size
 
-#include <array>
 #include <boost/utility/string_view.hpp>
+
+#include <array>
 #include <cassert>
 #include <cstring>
 #include <ostream>
@@ -25,8 +26,9 @@ class static_string
 {
     std::array<char, max_size> buffer_;
     std::size_t size_;
+
 public:
-    static_string() noexcept: size_(0) {}
+    static_string() noexcept : size_(0) {}
     static_string(boost::string_view value) noexcept : size_(value.size())
     {
         assert(value.size() <= max_size);
@@ -59,10 +61,8 @@ std::ostream& operator<<(std::ostream& os, const static_string<max_size>& value)
     return os << value.value();
 }
 
-} // detail
-} // mysql
-} // boost
-
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP_ */

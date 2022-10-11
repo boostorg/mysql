@@ -12,28 +12,19 @@
 
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
 
-
-boost::mysql::detail::row_base::row_base(
-    const field_view* fields,
-    std::size_t size
-) :
-    fields_(fields, fields + size)
+boost::mysql::detail::row_base::row_base(const field_view* fields, std::size_t size)
+    : fields_(fields, fields + size)
 {
     copy_strings();
 }
 
-boost::mysql::detail::row_base::row_base(
-    const row_base& rhs
-) :
-    fields_(rhs.fields_),
-    string_buffer_(rhs.string_buffer_)
+boost::mysql::detail::row_base::row_base(const row_base& rhs)
+    : fields_(rhs.fields_), string_buffer_(rhs.string_buffer_)
 {
     rebase_strings(rhs.string_buffer_.data());
 }
 
-boost::mysql::detail::row_base& boost::mysql::detail::row_base::operator=(
-    const row_base& rhs
-)
+boost::mysql::detail::row_base& boost::mysql::detail::row_base::operator=(const row_base& rhs)
 {
     fields_ = rhs.fields_;
     string_buffer_ = rhs.string_buffer_;
@@ -41,21 +32,16 @@ boost::mysql::detail::row_base& boost::mysql::detail::row_base::operator=(
     return *this;
 }
 
-void boost::mysql::detail::row_base::assign(
-    const field_view* fields,
-    std::size_t size
-)
+void boost::mysql::detail::row_base::assign(const field_view* fields, std::size_t size)
 {
     fields_.assign(fields, fields + size);
     copy_strings();
 }
 
-inline void boost::mysql::detail::row_base::rebase_strings(
-    const char* old_buffer_base
-)
+inline void boost::mysql::detail::row_base::rebase_strings(const char* old_buffer_base)
 {
     const char* new_buffer_base = string_buffer_.data();
-    for (auto& f: fields_)
+    for (auto& f : fields_)
     {
         if (f.is_string())
         {
@@ -63,10 +49,7 @@ inline void boost::mysql::detail::row_base::rebase_strings(
             if (!sv.empty())
             {
                 std::size_t offset = sv.data() - old_buffer_base;
-                f = field_view(boost::string_view(
-                    new_buffer_base + offset,
-                    sv.size()
-                ));
+                f = field_view(boost::string_view(new_buffer_base + offset, sv.size()));
             }
         }
     }
@@ -86,10 +69,10 @@ inline void boost::mysql::detail::row_base::copy_strings()
 
     // Make space
     string_buffer_.resize(size);
-    
+
     // Copy the strings
     std::size_t offset = 0;
-    for (auto& f: fields_)
+    for (auto& f : fields_)
     {
         if (f.is_string())
         {
@@ -103,6 +86,5 @@ inline void boost::mysql::detail::row_base::copy_strings()
         }
     }
 }
-
 
 #endif

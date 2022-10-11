@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_UNIX_HPP
 
 #include <boost/mysql/connection.hpp>
+
 #include <boost/asio/local/stream_protocol.hpp>
 
 namespace boost {
@@ -23,7 +24,7 @@ using unix_resultset = typename unix_connection::resultset_type;
 
 #endif
 
-} // mysql
-} // boost
+}  // namespace mysql
+}  // namespace boost
 
 #endif

@@ -10,32 +10,26 @@
 
 #pragma once
 
-#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/rows.hpp>
+#include <boost/mysql/rows_view.hpp>
+
 #include <cstddef>
 #include <stdexcept>
 
-boost::mysql::rows::rows(
-    const rows_view& view
-) :
-    detail::row_base(view.fields_, view.num_values_),
-    num_columns_(view.num_columns_)
+boost::mysql::rows::rows(const rows_view& view)
+    : detail::row_base(view.fields_, view.num_values_), num_columns_(view.num_columns_)
 {
     copy_strings();
 }
 
-boost::mysql::rows& boost::mysql::rows::operator=(
-    const rows_view& rhs
-)
+boost::mysql::rows& boost::mysql::rows::operator=(const rows_view& rhs)
 {
     assign(rhs.fields_, rhs.num_values_);
     num_columns_ = rhs.num_columns_;
     return *this;
 }
 
-boost::mysql::row_view boost::mysql::rows::at(
-    std::size_t i
-) const
+boost::mysql::row_view boost::mysql::rows::at(std::size_t i) const
 {
     if (i >= size())
     {
@@ -44,9 +38,7 @@ boost::mysql::row_view boost::mysql::rows::at(
     return (*this)[i];
 }
 
-boost::mysql::row_view boost::mysql::rows::operator[](
-    std::size_t i
-) const noexcept
+boost::mysql::row_view boost::mysql::rows::operator[](std::size_t i) const noexcept
 {
     return row_view(fields_.data() + num_columns_ * i, num_columns_);
 }

@@ -10,14 +10,16 @@
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset_base.hpp>
+
 #include <boost/asio/buffer.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -32,21 +34,17 @@ class execute_processor
     error_info& output_info_;
     bytestring& write_buffer_;
     capabilities caps_;
-    std::size_t num_fields_ {};
-    std::size_t remaining_fields_ {};
+    std::size_t num_fields_{};
+    std::size_t remaining_fields_{};
+
 public:
     execute_processor(
         resultset_base& output,
         error_info& output_info,
         bytestring& write_buffer,
         capabilities caps
-    ) noexcept:
-        output_(output),
-        output_info_(output_info),
-        write_buffer_(write_buffer),
-        caps_(caps)
-    {
-    };
+    ) noexcept
+        : output_(output), output_info_(output_info), write_buffer_(write_buffer), caps_(caps){};
 
     template <class Serializable, class Stream>
     void process_request(
@@ -59,15 +57,12 @@ public:
         serialize_message(request, caps_, write_buffer_);
     }
 
-    void process_response(
-        boost::asio::const_buffer response,
-        error_code& err
-    )
+    void process_response(boost::asio::const_buffer response, error_code& err)
     {
         // Response may be: ok_packet, err_packet, local infile request (not implemented)
         // If it is none of this, then the message type itself is the beginning of
         // a length-encoded int containing the field count
-        deserialization_context ctx (response, caps_);
+        deserialization_context ctx(response, caps_);
         std::uint8_t msg_type = 0;
         err = make_error_code(deserialize(ctx, msg_type));
         if (err)
@@ -113,7 +108,7 @@ public:
                 return;
             }
 
-            remaining_fields_ = num_fields_; 
+            remaining_fields_ = num_fields_;
             output_.prepare_meta(num_fields_);
         }
     }
@@ -121,7 +116,7 @@ public:
     error_code process_field_definition(boost::asio::const_buffer message)
     {
         column_definition_packet field_definition;
-        deserialization_context ctx (message, caps_);
+        deserialization_context ctx(message, caps_);
         auto err = deserialize_message(ctx, field_definition);
         if (err)
             return err;
@@ -137,27 +132,19 @@ public:
     bool has_remaining_fields() const noexcept { return remaining_fields_ != 0; }
 };
 
-template<class Stream>
+template <class Stream>
 struct execute_generic_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     execute_processor processor_;
 
-    execute_generic_op(
-        channel<Stream>& chan,
-        const execute_processor& processor
-    ) :
-        chan_(chan),
-        processor_(processor)
+    execute_generic_op(channel<Stream>& chan, const execute_processor& processor)
+        : chan_(chan), processor_(processor)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {},
-        boost::asio::const_buffer read_message = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
     {
         // Error checking
         if (err)
@@ -170,10 +157,14 @@ struct execute_generic_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // The request message has already been composed in the initiating fn. Send it
-            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), processor_.sequence_number(),  std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_
+                .async_write(chan_.shared_buffer(), processor_.sequence_number(), std::move(self));
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(processor_.sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(
+                processor_.sequence_number(),
+                std::move(self)
+            );
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
@@ -216,9 +207,9 @@ struct execute_generic_op : boost::asio::coroutine
     }
 };
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream, class Serializable>
 void boost::mysql::detail::execute_generic(
@@ -231,12 +222,8 @@ void boost::mysql::detail::execute_generic(
 )
 {
     // Compose a com_query message, reset seq num
-    execute_processor processor (
-        output,
-        info,
-        channel.shared_buffer(),
-        channel.current_capabilities()
-    );
+    execute_processor
+        processor(output, info, channel.shared_buffer(), channel.current_capabilities());
     processor.process_request(request, encoding, channel);
 
     // Send it
@@ -249,7 +236,8 @@ void boost::mysql::detail::execute_generic(
     if (err)
         return;
 
-    // Response may be: ok_packet, err_packet, local infile request (not implemented), or response with fields
+    // Response may be: ok_packet, err_packet, local infile request (not implemented), or response
+    // with fields
     processor.process_response(read_buffer, err);
     if (err)
         return;
@@ -278,10 +266,7 @@ void boost::mysql::detail::execute_generic(
 }
 
 template <class Stream, class Serializable, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute_generic(
     resultset_encoding encoding,
     channel<Stream>& channel,
@@ -291,12 +276,8 @@ boost::mysql::detail::async_execute_generic(
     CompletionToken&& token
 )
 {
-    execute_processor processor (
-        output,
-        info,
-        channel.shared_buffer(),
-        channel.current_capabilities()
-    );
+    execute_processor
+        processor(output, info, channel.shared_buffer(), channel.current_capabilities());
     processor.process_request(request, encoding, channel);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         execute_generic_op<Stream>(channel, processor),
@@ -304,6 +285,5 @@ boost::mysql::detail::async_execute_generic(
         channel
     );
 }
-
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_IPP_ */

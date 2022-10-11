@@ -8,11 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/statement_base.hpp>
-#include <boost/mysql/resultset_base.hpp>
-#include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/statement_base.hpp>
 
 namespace boost {
 namespace mysql {
@@ -39,9 +39,9 @@ async_execute_statement(
     CompletionToken&& token
 );
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/execute_statement.hpp>
 

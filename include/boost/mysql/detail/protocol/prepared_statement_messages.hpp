@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP
 
-#include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/field_view.hpp>
 
 namespace boost {
@@ -26,9 +26,7 @@ struct com_stmt_prepare_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
-        std::forward<Callable>(cb)(
-            self.statement
-        );
+        std::forward<Callable>(cb)(self.statement);
     }
 };
 
@@ -46,21 +44,25 @@ struct com_stmt_prepare_ok_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
+        // clang-format off
         std::forward<Callable>(cb)(
             self.statement_id,
             self.num_columns,
             self.num_params,
             self.warning_count
         );
+        // clang-format on
     }
 };
 
 template <>
-struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struct_with_fields> :
-    noop_serialize<com_stmt_prepare_ok_packet>
+struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struct_with_fields>
+    : noop_serialize<com_stmt_prepare_ok_packet>
 {
-    static inline errc deserialize_(deserialization_context& ctx,
-            com_stmt_prepare_ok_packet& output) noexcept;
+    static inline errc deserialize_(
+        deserialization_context& ctx,
+        com_stmt_prepare_ok_packet& output
+    ) noexcept;
 };
 
 // execute
@@ -80,25 +82,31 @@ struct com_stmt_execute_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
+        // clang-format off
         std::forward<Callable>(cb)(
             self.statement_id,
             self.flags,
             self.iteration_count,
             self.new_params_bind_flag
         );
+        // clang-format on
     }
 };
 
 template <class FieldViewFwdIterator>
 struct serialization_traits<
     com_stmt_execute_packet<FieldViewFwdIterator>,
-    serialization_tag::struct_with_fields
-> : noop_deserialize<com_stmt_execute_packet<FieldViewFwdIterator>>
+    serialization_tag::struct_with_fields>
+    : noop_deserialize<com_stmt_execute_packet<FieldViewFwdIterator>>
 {
-    static inline std::size_t get_size_(const serialization_context& ctx,
-            const com_stmt_execute_packet<FieldViewFwdIterator>& value) noexcept;
-    static inline void serialize_(serialization_context& ctx,
-            const com_stmt_execute_packet<FieldViewFwdIterator>& input) noexcept;
+    static inline std::size_t get_size_(
+        const serialization_context& ctx,
+        const com_stmt_execute_packet<FieldViewFwdIterator>& value
+    ) noexcept;
+    static inline void serialize_(
+        serialization_context& ctx,
+        const com_stmt_execute_packet<FieldViewFwdIterator>& input
+    ) noexcept;
 };
 
 struct com_stmt_execute_param_meta_packet
@@ -109,10 +117,7 @@ struct com_stmt_execute_param_meta_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
-        std::forward<Callable>(cb)(
-            self.type,
-            self.unsigned_flag
-        );
+        std::forward<Callable>(cb)(self.type, self.unsigned_flag);
     }
 };
 
@@ -126,16 +131,13 @@ struct com_stmt_close_packet
     template <class Self, class Callable>
     static void apply(Self& self, Callable&& cb)
     {
-        std::forward<Callable>(cb)(
-            self.statement_id
-        );
+        std::forward<Callable>(cb)(self.statement_id);
     }
 };
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/protocol/impl/prepared_statement_messages.hpp>
 

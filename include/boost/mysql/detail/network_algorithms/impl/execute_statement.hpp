@@ -10,18 +10,18 @@
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_generic.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-#include <boost/mysql/statement_base.hpp>
-#include <boost/mysql/resultset_base.hpp>
-#include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/asio/post.hpp>
-#include <boost/asio/compose.hpp>
+#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/statement_base.hpp>
 
+#include <boost/asio/compose.hpp>
+#include <boost/asio/post.hpp>
 
 namespace boost {
 namespace mysql {
@@ -33,14 +33,13 @@ com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
     const statement_base& stmt
 )
 {
-    return com_stmt_execute_packet<FieldViewFwdIterator> {
+    return com_stmt_execute_packet<FieldViewFwdIterator>{
         stmt.id(),
-        std::uint8_t(0),  // flags
-        std::uint32_t(1), // iteration count
-        std::uint8_t(1),  // new params flag: set
+        std::uint8_t(0),   // flags
+        std::uint32_t(1),  // iteration count
+        std::uint8_t(1),   // new params flag: set
         params.first(),
-        params.last()
-    };
+        params.last()};
 }
 
 template <class FieldViewFwdIterator>
@@ -54,7 +53,10 @@ error_code check_num_params(
     if (param_count != stmt.num_params())
     {
         info.set_message(detail::stringize(
-            "execute statement: expected ", stmt.num_params(), " params, but got ", param_count
+            "execute statement: expected ",
+            stmt.num_params(),
+            " params, but got ",
+            param_count
         ));
         return make_error_code(errc::wrong_num_params);
     }
@@ -70,7 +72,7 @@ struct fast_fail_op : boost::asio::coroutine
 
     fast_fail_op(error_code err) noexcept : err_(err) {}
 
-    template<class Self>
+    template <class Self>
     void operator()(Self& self)
     {
         BOOST_ASIO_CORO_REENTER(*this)
@@ -81,10 +83,9 @@ struct fast_fail_op : boost::asio::coroutine
     }
 };
 
-
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream, class FieldViewFwdIterator>
 void boost::mysql::detail::execute_statement(
@@ -111,10 +112,7 @@ void boost::mysql::detail::execute_statement(
 }
 
 template <class Stream, class FieldViewFwdIterator, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
     const statement_base& stmt,
@@ -142,7 +140,5 @@ boost::mysql::detail::async_execute_statement(
         std::forward<CompletionToken>(token)
     );
 }
-
-
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_STATEMENT_HPP_ */

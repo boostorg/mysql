@@ -8,11 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/statement_base.hpp>
-#include <boost/utility/string_view.hpp>
-#include <boost/mysql/detail/channel/channel.hpp>
 
+#include <boost/utility/string_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -37,9 +37,9 @@ async_prepare_statement(
     CompletionToken&& token
 );
 
-} // detail
-} // mysql
-} // boost
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/prepare_statement.hpp>
 

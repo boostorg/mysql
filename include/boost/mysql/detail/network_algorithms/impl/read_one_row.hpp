@@ -14,8 +14,10 @@
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/asio/post.hpp>
+
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/post.hpp>
+
 #include <vector>
 
 namespace boost {
@@ -56,30 +58,20 @@ inline row_view process_one_row(
     }
 }
 
-template<class Stream>
+template <class Stream>
 struct read_one_row_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     error_info& output_info_;
     resultset_base& resultset_;
 
-    read_one_row_op(
-        channel<Stream>& chan,
-        error_info& output_info,
-        resultset_base& result
-    ) noexcept :
-        chan_(chan),
-        output_info_(output_info),
-        resultset_(result)
+    read_one_row_op(channel<Stream>& chan, error_info& output_info, resultset_base& result) noexcept
+        : chan_(chan), output_info_(output_info), resultset_(result)
     {
     }
 
-    template<class Self>
-    void operator()(
-        Self& self,
-        error_code err = {},
-        boost::asio::const_buffer read_message = {}
-    )
+    template <class Self>
+    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
     {
         // Error checking
         if (err)
@@ -101,25 +93,21 @@ struct read_one_row_op : boost::asio::coroutine
             }
 
             // Read the message
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(resultset_.sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(
+                resultset_.sequence_number(),
+                std::move(self)
+            );
 
             // Process it
-            result = process_one_row(
-                chan_,
-                read_message,
-                resultset_,
-                err,
-                output_info_
-            );
+            result = process_one_row(chan_, read_message, resultset_, err, output_info_);
             self.complete(err, result);
         }
     }
 };
 
-} // detail
-} // mysql
-} // boost
-
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 template <class Stream>
 boost::mysql::row_view boost::mysql::detail::read_one_row(
@@ -140,13 +128,7 @@ boost::mysql::row_view boost::mysql::detail::read_one_row(
     if (err)
         return row_view();
 
-    return process_one_row(
-        channel,
-        read_message,
-        result,
-        err,
-        info
-    );
+    return process_one_row(channel, read_message, result, err, info);
 }
 
 template <class Stream, class CompletionToken>
@@ -161,12 +143,8 @@ boost::mysql::detail::async_read_one_row(
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, row_view)> (
-        read_one_row_op<Stream>(
-            channel,
-            output_info,
-            result
-        ),
+    return boost::asio::async_compose<CompletionToken, void(error_code, row_view)>(
+        read_one_row_op<Stream>(channel, output_info, result),
         token,
         channel
     );
