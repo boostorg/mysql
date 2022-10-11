@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_BUFFER_CONCAT_HPP
 #define BOOST_MYSQL_TEST_COMMON_BUFFER_CONCAT_HPP
 
-#include <vector>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -48,8 +48,8 @@ inline std::vector<std::uint8_t> concat_copy(
     return lhs;
 }
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

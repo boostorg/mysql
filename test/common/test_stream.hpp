@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_STREAM_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_STREAM_HPP
 
+#include <boost/mysql/error.hpp>
+
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/system_executor.hpp>
-#include <boost/mysql/error.hpp>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -26,18 +28,19 @@ namespace test {
 class fail_count
 {
     std::size_t fail_after_;
-    std::size_t num_calls_ {0};
+    std::size_t num_calls_{0};
     error_code err_;
+
 public:
     static constexpr std::size_t never_fail = std::size_t(-1);
     explicit fail_count(
         std::size_t fail_after = never_fail,
         error_code err = make_error_code(errc::no)
-    ) noexcept : fail_after_(fail_after), err_(err) {}
-    error_code maybe_fail() noexcept
+    ) noexcept
+        : fail_after_(fail_after), err_(err)
     {
-        return ++num_calls_ >= fail_after_ ? err_ : error_code();
     }
+    error_code maybe_fail() noexcept { return ++num_calls_ >= fail_after_ ? err_ : error_code(); }
 };
 
 class test_stream
@@ -56,13 +59,12 @@ public:
         std::set<std::size_t> break_offsets;
 
         read_behavior() = default;
-        read_behavior(std::vector<std::uint8_t> bytes, std::set<std::size_t> offsets = {}) :
-            bytes_to_read(std::move(bytes)), break_offsets(std::move(offsets))
+        read_behavior(std::vector<std::uint8_t> bytes, std::set<std::size_t> offsets = {})
+            : bytes_to_read(std::move(bytes)), break_offsets(std::move(offsets))
         {
             assert(break_offsets.empty() || *break_offsets.rbegin() < bytes_to_read.size());
         }
     };
-
 
     // Constructors
     inline test_stream(
@@ -91,48 +93,50 @@ public:
 
     // Getting test results
     std::size_t num_bytes_read() const noexcept { return num_bytes_read_; }
-    std::size_t num_unread_bytes() const noexcept { return bytes_to_read_.size() - num_bytes_read_; }
+    std::size_t num_unread_bytes() const noexcept
+    {
+        return bytes_to_read_.size() - num_bytes_read_;
+    }
     const std::vector<std::uint8_t>& bytes_written() const noexcept { return bytes_written_; }
 
     // Stream operations
     template <class MutableBufferSequence>
-    std::size_t read_some(const MutableBufferSequence& buffers, error_code& ec) { return do_read(buffers, ec); }
+    std::size_t read_some(const MutableBufferSequence& buffers, error_code& ec)
+    {
+        return do_read(buffers, ec);
+    }
 
     template <class ConstBufferSequence>
-    std::size_t write_some(const ConstBufferSequence& buffers, error_code& ec) { return do_write(buffers, ec); }
+    std::size_t write_some(const ConstBufferSequence& buffers, error_code& ec)
+    {
+        return do_write(buffers, ec);
+    }
 
-    template<
+    template <
         class MutableBufferSequence,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken
-    >
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
-    async_read_some(
-        const MutableBufferSequence& buffers,
-        CompletionToken&& token
-    );
+    async_read_some(const MutableBufferSequence& buffers, CompletionToken&& token);
 
     template <
         class ConstBufferSequence,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken
-    >
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
-    async_write_some(
-        ConstBufferSequence const& buffers,
-        CompletionToken&& token
-    );
+    async_write_some(ConstBufferSequence const& buffers, CompletionToken&& token);
 
 private:
     std::vector<std::uint8_t> bytes_to_read_;
     std::set<std::size_t> read_break_offsets_;
-    std::size_t num_bytes_read_ {0};
+    std::size_t num_bytes_read_{0};
     std::vector<std::uint8_t> bytes_written_;
     fail_count fail_count_;
-    std::size_t write_break_size_ {1024}; // max number of bytes to be written in each write_some
+    std::size_t write_break_size_{1024};  // max number of bytes to be written in each write_some
     executor_type executor_;
 
-
-    template <class MutableBufferSequence> struct read_op;
-    template <class ConstBufferSequence> struct write_op;
+    template <class MutableBufferSequence>
+    struct read_op;
+    template <class ConstBufferSequence>
+    struct write_op;
 
     inline std::size_t get_size_to_read(std::size_t buffer_size) const;
 
@@ -143,9 +147,9 @@ private:
     std::size_t do_write(const ConstBufferSequence& buffers, error_code& ec);
 };
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #include "impl/test_stream.hpp"
 

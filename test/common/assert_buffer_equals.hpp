@@ -10,6 +10,7 @@
 
 #include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
+
 #include <cstring>
 
 namespace boost {
@@ -31,13 +32,15 @@ inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
     return os << "}";
 }
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
-#define BOOST_MYSQL_ASSERT_BUFFER_EQUALS(b1, b2) \
-    BOOST_TEST( \
-        ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0, \
-        #b1 " != " #b2 ": " << ::boost::mysql::test::buffer_printer{b1} << " != " << ::boost::mysql::test::buffer_printer{b2})
+#define BOOST_MYSQL_ASSERT_BUFFER_EQUALS(b1, b2)                                  \
+    BOOST_TEST(                                                                   \
+        ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0,                      \
+        #b1 " != " #b2 ": " << ::boost::mysql::test::buffer_printer{b1}           \
+                            << " != " << ::boost::mysql::test::buffer_printer{b2} \
+    )
 
 #endif

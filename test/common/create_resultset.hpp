@@ -8,10 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATE_RESULTSET_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATE_RESULTSET_HPP
 
-
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/resultset_base.hpp>
-
 
 namespace boost {
 namespace mysql {
@@ -25,7 +23,7 @@ inline ResultsetType create_resultset(
 )
 {
     ResultsetType res;
-    res.reset(&res, enc); // channel should just be != nullptr
+    res.reset(&res, enc);  // channel should just be != nullptr
     boost::mysql::detail::column_definition_packet coldef;
     for (auto type : types)
     {
@@ -38,8 +36,8 @@ inline ResultsetType create_resultset(
     return res;
 }
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

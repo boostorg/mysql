@@ -9,13 +9,14 @@
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_HANDSHAKE_MESSAGES_HPP
 
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
-#include "../serialization_test.hpp"
 
+#include "../serialization_test.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
+// clang-format off
 constexpr std::uint8_t handshake_auth_plugin_data [] = {
     0x52, 0x1a, 0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f,
     0x03, 0x5a, 0x74, 0x05, 0x28, 0x2b, 0x7f, 0x21,
@@ -232,10 +233,10 @@ const serialization_test_spec auth_more_data_packet_spec {
         } }
     }
 };
+// clang-format on
 
-
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

@@ -8,10 +8,12 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_HPP
 
-#include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/type_index.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
+
 #include <boost/any.hpp>
+#include <boost/type_index.hpp>
+
 #include "test_common.hpp"
 
 /**
@@ -50,12 +52,12 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-using detail::string_eof;
-using detail::string_lenenc;
-using detail::string_fixed;
-using detail::string_null;
 using detail::int3;
 using detail::int_lenenc;
+using detail::string_eof;
+using detail::string_fixed;
+using detail::string_lenenc;
+using detail::string_null;
 
 // Helpers for any_value_impl
 template <std::size_t N>
@@ -64,10 +66,7 @@ std::ostream& operator<<(std::ostream& os, const std::array<char, N>& v)
     return os << boost::string_view(v.data(), N);
 }
 
-inline std::ostream& operator<<(std::ostream& os, std::uint8_t value)
-{
-    return os << +value;
-}
+inline std::ostream& operator<<(std::ostream& os, std::uint8_t value) { return os << +value; }
 
 // Operator == for structs. Very poor efficiency but does the
 // job for the purpose of testing
@@ -76,7 +75,7 @@ struct struct_member_comparer_op
 {
     const T& lhs;
     const T& rhs;
-    bool result {};
+    bool result{};
 
     struct_member_comparer_op(const T& lhs, const T& rhs) : lhs(lhs), rhs(rhs) {}
 
@@ -96,10 +95,12 @@ struct struct_member_comparer_op
 };
 
 template <class T>
-typename std::enable_if<detail::is_struct_with_fields<T>(), bool>::type
-operator==(const T& lhs, const T& rhs)
+typename std::enable_if<detail::is_struct_with_fields<T>(), bool>::type operator==(
+    const T& lhs,
+    const T& rhs
+)
 {
-    struct_member_comparer_op<T> op (lhs, rhs);
+    struct_member_comparer_op<T> op(lhs, rhs);
     T::apply(lhs, op);
     return op.result;
 }
@@ -112,11 +113,13 @@ std::ostream& operator<<(std::ostream& os, const detail::value_holder<T>& value)
 }
 
 template <class T>
-typename std::enable_if<std::is_enum<T>::value, std::ostream&>::type
-operator<<(std::ostream& os, T value)
+typename std::enable_if<std::is_enum<T>::value, std::ostream&>::type operator<<(
+    std::ostream& os,
+    T value
+)
 {
-    return os << boost::typeindex::type_id<T>().pretty_name() << "(" <<
-            static_cast<typename std::underlying_type<T>::type>(value) << ")";
+    return os << boost::typeindex::type_id<T>().pretty_name() << "("
+              << static_cast<typename std::underlying_type<T>::type>(value) << ")";
 }
 
 // Operator << for structs
@@ -141,8 +144,10 @@ struct struct_print_op
 };
 
 template <class T>
-typename std::enable_if<detail::is_struct_with_fields<T>(), std::ostream&>::type
-operator<<(std::ostream& os, const T& value)
+typename std::enable_if<detail::is_struct_with_fields<T>(), std::ostream&>::type operator<<(
+    std::ostream& os,
+    const T& value
+)
 {
     os << boost::typeindex::type_id<T>().pretty_name() << "(\n";
     T::apply(value, struct_print_op{os});
@@ -174,8 +179,9 @@ template <class T>
 class any_value_impl : public any_value
 {
     T value_;
+
 public:
-    any_value_impl(const T& v): value_(v) {};
+    any_value_impl(const T& v) : value_(v){};
     void serialize(detail::serialization_context& ctx) const override
     {
         ::boost::mysql::detail::serialize(ctx, value_);
@@ -197,14 +203,8 @@ public:
         auto typed_value = dynamic_cast<const any_value_impl<T>*>(&rhs);
         return typed_value && (typed_value->value_ == value_);
     }
-    void print(std::ostream& os) const override
-    {
-        os << value_;
-    }
-    std::string type_name() const override
-    {
-        return boost::typeindex::type_id<T>().pretty_name();
-    }
+    void print(std::ostream& os) const override { os << value_; }
+    std::string type_name() const override { return boost::typeindex::type_id<T>().pretty_name(); }
 };
 
 struct serialization_sample
@@ -222,30 +222,28 @@ struct serialization_sample
         std::vector<uint8_t>&& buff,
         std::uint32_t caps = 0,
         boost::any&& storage = {}
-    ) :
-        name(std::move(name)),
-        value(std::make_shared<any_value_impl<T>>(v)),
-        expected_buffer(std::move(buff)),
-        caps(caps),
-        additional_storage(std::move(storage))
+    )
+        : name(std::move(name)),
+          value(std::make_shared<any_value_impl<T>>(v)),
+          expected_buffer(std::move(buff)),
+          caps(caps),
+          additional_storage(std::move(storage))
     {
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const serialization_sample& input)
 {
-    return os << "(type=" << input.value->type_name()
-              << ", name=" << input.name << ")";
+    return os << "(type=" << input.value->type_name() << ", name=" << input.name << ")";
 }
-
 
 enum class serialization_test_type
 {
-    serialization,         // only serialization
-    deserialization,       // only deserialization
-    deserialization_space, // only deserialization, plus not enough space / extra space tests
-    full_no_space,         // serialization + deserialization, but not space tests
-    full                   // everything
+    serialization,          // only serialization
+    deserialization,        // only deserialization
+    deserialization_space,  // only deserialization, plus not enough space / extra space tests
+    full_no_space,          // serialization + deserialization, but not space tests
+    full                    // everything
 };
 
 struct serialization_test_spec
@@ -254,9 +252,8 @@ struct serialization_test_spec
     std::vector<serialization_sample> samples;
 };
 
-} // test
-} // mysql
-} // boost
-
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

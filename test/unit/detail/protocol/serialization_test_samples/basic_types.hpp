@@ -9,19 +9,19 @@
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BASIC_TYPES_HPP
 
 #include <boost/mysql/detail/protocol/serialization.hpp>
+
 #include "../serialization_test.hpp"
 #include "buffer_concat.hpp"
-
 
 namespace boost {
 namespace mysql {
 namespace test {
 
 // Definitions for the parameterized tests
-const std::string string_250 (250, 'a');
-const std::string string_251 (251, 'a');
-const std::string string_ffff (0xffff, 'a');
-const std::string string_10000 (0x10000, 'a');
+const std::string string_250(250, 'a');
+const std::string string_251(251, 'a');
+const std::string string_ffff(0xffff, 'a');
+const std::string string_10000(0x10000, 'a');
 
 enum class enum_int1 : std::uint8_t
 {
@@ -44,6 +44,7 @@ enum class enum_int4 : std::uint32_t
     value2 = 0xfcfdfeff
 };
 
+// clang-format off
 const serialization_test_spec int_spec {
     serialization_test_type::full, {
         { "int1", std::uint8_t(0xff), {0xff} },
@@ -130,10 +131,10 @@ const serialization_test_spec string_eof_spec {
         { "empty", string_eof(""), {} }
     }
 };
+// clang-format on
 
-
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

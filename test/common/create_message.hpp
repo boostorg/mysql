@@ -8,28 +8,30 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 
-#include "buffer_concat.hpp"
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <cstring>
+
 #include <cstdint>
+#include <cstring>
+
+#include "buffer_concat.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline std::vector<std::uint8_t> create_message(
-    std::uint8_t seqnum,
-    std::vector<std::uint8_t> body
-)
+inline std::vector<std::uint8_t> create_message(std::uint8_t seqnum, std::vector<std::uint8_t> body)
 {
     std::uint32_t body_size = body.size();
-    boost::mysql::detail::packet_header header { boost::mysql::detail::int3{body_size}, seqnum };
+    boost::mysql::detail::packet_header header{boost::mysql::detail::int3{body_size}, seqnum};
     body.resize(body_size + 4);
     std::memmove(body.data() + 4, body.data(), body_size);
-    boost::mysql::detail::serialization_context ctx (boost::mysql::detail::capabilities(), body.data());
+    boost::mysql::detail::serialization_context ctx(
+        boost::mysql::detail::capabilities(),
+        body.data()
+    );
     boost::mysql::detail::serialize(ctx, header);
     return body;
 }
@@ -63,8 +65,8 @@ inline std::vector<std::uint8_t> create_message(
     );
 }
 
-} // detail
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

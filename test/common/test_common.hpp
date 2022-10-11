@@ -8,19 +8,21 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
-#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/row.hpp>
-#include <boost/mysql/rows.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows.hpp>
+#include <boost/mysql/rows_view.hpp>
+
 #include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
-#include <cstddef>
-#include <vector>
+
 #include <algorithm>
-#include <ostream>
 #include <cassert>
+#include <cstddef>
+#include <ostream>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -48,32 +50,38 @@ rows makerows(std::size_t num_columns, Types&&... args)
 
 BOOST_CXX14_CONSTEXPR inline date makedate(int num_years, unsigned num_months, unsigned num_days)
 {
-    return date(days(detail::ymd_to_days(
-        detail::year_month_day{num_years, num_months, num_days})));
+    return date(days(detail::ymd_to_days(detail::year_month_day{num_years, num_months, num_days})));
 }
 
-BOOST_CXX14_CONSTEXPR inline datetime makedt(int years, unsigned months, unsigned days,
-    int hours=0, int mins=0, int secs=0, int micros=0)
+BOOST_CXX14_CONSTEXPR inline datetime makedt(
+    int years,
+    unsigned months,
+    unsigned days,
+    int hours = 0,
+    int mins = 0,
+    int secs = 0,
+    int micros = 0
+)
 {
-    return datetime(makedate(years, months, days)) +
-           std::chrono::hours(hours) + std::chrono::minutes(mins) +
-           std::chrono::seconds(secs) + std::chrono::microseconds(micros);
+    return datetime(makedate(years, months, days)) + std::chrono::hours(hours) +
+           std::chrono::minutes(mins) + std::chrono::seconds(secs) +
+           std::chrono::microseconds(micros);
 }
 
-BOOST_CXX14_CONSTEXPR inline time maket(int hours, int mins, int secs, int micros=0)
+BOOST_CXX14_CONSTEXPR inline time maket(int hours, int mins, int secs, int micros = 0)
 {
-    return std::chrono::hours(hours) + std::chrono::minutes(mins)
-         + std::chrono::seconds(secs) + std::chrono::microseconds(micros);
+    return std::chrono::hours(hours) + std::chrono::minutes(mins) + std::chrono::seconds(secs) +
+           std::chrono::microseconds(micros);
 }
 
 template <std::size_t N>
-inline boost::string_view makesv(const char (&value) [N])
+inline boost::string_view makesv(const char (&value)[N])
 {
     return detail::make_string_view(value);
 }
 
 template <std::size_t N>
-inline boost::string_view makesv(const std::uint8_t (&value) [N])
+inline boost::string_view makesv(const std::uint8_t (&value)[N])
 {
     return boost::string_view(reinterpret_cast<const char*>(value), N);
 }
@@ -83,17 +91,15 @@ inline boost::string_view makesv(const std::uint8_t* value, std::size_t size)
     return boost::string_view(reinterpret_cast<const char*>(value), size);
 }
 
-
-inline void validate_string_contains(
-    std::string value,
-    const std::vector<std::string>& to_check
-)
+inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
 {
     std::transform(value.begin(), value.end(), value.begin(), &tolower);
-    for (const auto& elm: to_check)
+    for (const auto& elm : to_check)
     {
-        BOOST_TEST(value.find(elm) != std::string::npos,
-            "Substring '" << elm << "' not found in '" << value << "'");
+        BOOST_TEST(
+            value.find(elm) != std::string::npos,
+            "Substring '" << elm << "' not found in '" << value << "'"
+        );
     }
 }
 
@@ -142,7 +148,7 @@ inline const char* to_string(detail::protocol_field_type t) noexcept
     }
 }
 
-} // test
+}  // namespace test
 
 // make protocol_field_type streamable
 namespace detail {
@@ -152,12 +158,9 @@ inline std::ostream& operator<<(std::ostream& os, protocol_field_type t)
     return os << test::to_string(t);
 }
 
-} // detail
+}  // namespace detail
 
-
-} // mysql
-} // boost
-
-
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* TEST_TEST_COMMON_HPP_ */

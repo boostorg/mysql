@@ -9,12 +9,14 @@
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_QUERY_MESSAGES_HPP
 
 #include <boost/mysql/detail/protocol/query_messages.hpp>
+
 #include "../serialization_test.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
+// clang-format off
 const serialization_test_spec com_query_packet_spec {
     serialization_test_type::serialization, {
         { "com_query_packet", detail::com_query_packet{
@@ -25,9 +27,10 @@ const serialization_test_spec com_query_packet_spec {
         } }
     }
 };
+// clang-format on
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

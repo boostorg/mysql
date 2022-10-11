@@ -10,15 +10,18 @@
 
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/field_view.hpp>
-#include "../serialization_test.hpp"
-#include <forward_list>
+
 #include <array>
+#include <forward_list>
 #include <memory>
+
+#include "../serialization_test.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
+// clang-format off
 const serialization_test_spec com_stmt_prepare_packet_spec {
     serialization_test_type::serialization, {
         { "com_stmt_prepare_packet", detail::com_stmt_prepare_packet{
@@ -194,9 +197,10 @@ const serialization_test_spec com_stmt_close_packet_spec {
         { "com_stmt_close_packet", detail::com_stmt_close_packet{1}, {0x19, 0x01, 0x00, 0x00, 0x00} }
     }
 };
+// clang-format on
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

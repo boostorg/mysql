@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BINARY_SERIALIZATION_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_BINARY_SERIALIZATION_HPP
 
-
 #include <boost/mysql/detail/protocol/binary_serialization.hpp>
+
 #include "../serialization_test.hpp"
 
 namespace boost {
@@ -26,6 +26,7 @@ serialization_sample make_binary_serialization_sample(
     return serialization_sample(std::move(name), field_view(expected), std::move(buffer));
 }
 
+// clang-format off
 const serialization_test_spec binary_serialization_spec {
     serialization_test_type::serialization, {
         // Strings and ints: extensive testing already done. Ensure
@@ -73,9 +74,10 @@ const serialization_test_spec binary_serialization_spec {
         make_binary_serialization_sample("null", nullptr, {}),
     }
 };
+// clang-format on
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

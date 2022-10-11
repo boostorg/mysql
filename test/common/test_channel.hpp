@@ -9,7 +9,9 @@
 #define BOOST_MYSQL_TEST_COMMON_TEST_CHANNEL_HPP
 
 #include <boost/mysql/detail/channel/channel.hpp>
+
 #include <cstddef>
+
 #include "test_stream.hpp"
 
 namespace boost {
@@ -18,13 +20,16 @@ namespace test {
 
 using test_channel = detail::channel<test_stream>;
 
-inline test_channel create_channel(std::vector<std::uint8_t> messages = {}, std::size_t buffer_size = 0)
+inline test_channel create_channel(
+    std::vector<std::uint8_t> messages = {},
+    std::size_t buffer_size = 0
+)
 {
-    return test_channel (buffer_size, std::move(messages));
+    return test_channel(buffer_size, std::move(messages));
 }
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

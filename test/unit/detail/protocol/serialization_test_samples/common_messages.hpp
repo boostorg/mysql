@@ -9,12 +9,14 @@
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_COMMON_MESSAGES_HPP
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+
 #include "../serialization_test.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
+// clang-format off
 const serialization_test_spec packet_header_spec {
     serialization_test_type::full, {
         { "small_packet_seqnum_0",
@@ -193,9 +195,10 @@ const serialization_test_spec quit_packet_spec {
         { "quit_packet", detail::quit_packet(), {0x01} }
     }
 };
+// clang-format on
 
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif
