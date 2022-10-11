@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_SRC_ER_IMPL_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_SRC_ER_IMPL_COMMON_HPP
 
-#include "boost/mysql/error.hpp"
-#include "boost/mysql/statement_base.hpp"
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/statement_base.hpp>
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
 #include "er_resultset.hpp"

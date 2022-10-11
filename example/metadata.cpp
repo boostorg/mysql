@@ -7,7 +7,7 @@
 
 //[example_metadata
 
-#include "boost/mysql/connection.hpp"
+#include <boost/mysql/connection.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>

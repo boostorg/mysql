@@ -7,10 +7,10 @@
 
 #include <boost/mysql/resultset.hpp>
 #include <boost/test/unit_test.hpp>
-#include "boost/mysql/detail/protocol/common_messages.hpp"
-#include "boost/mysql/detail/protocol/constants.hpp"
-#include "boost/mysql/detail/protocol/resultset_encoding.hpp"
-#include "boost/mysql/field_type.hpp"
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/field_type.hpp>
 #include "create_resultset.hpp"
 #include "test_channel.hpp"
 #include "test_stream.hpp"

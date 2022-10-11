@@ -9,8 +9,8 @@
 
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
-#include "boost/mysql/detail/auxiliar/string_view_offset.hpp"
-#include "boost/mysql/field_view.hpp"
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/field_view.hpp>
 #include "test_common.hpp"
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>

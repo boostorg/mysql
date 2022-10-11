@@ -9,8 +9,8 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/test/tools/interface.hpp>
 #include <boost/test/unit_test_suite.hpp>
-#include "boost/mysql/handshake_params.hpp"
-#include "boost/mysql/errc.hpp"
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/errc.hpp>
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;

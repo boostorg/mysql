@@ -7,8 +7,8 @@
 
 //[example_query_async_callbacks
 
-#include "boost/mysql/connection.hpp"
-#include "boost/mysql/error.hpp"
+#include <boost/mysql/connection.hpp>
+#include <boost/mysql/error.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
 #include <boost/asio/io_context.hpp>

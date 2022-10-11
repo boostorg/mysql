@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_CONNECTION_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_CONNECTION_HPP
 
-#include "boost/mysql/error.hpp"
+#include <boost/mysql/error.hpp>
 #include "network_result.hpp"
 #include "er_endpoint.hpp"
 #include "er_resultset.hpp"

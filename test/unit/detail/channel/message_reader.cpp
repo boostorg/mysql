@@ -12,8 +12,8 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
-#include "boost/mysql/errc.hpp"
-#include "boost/mysql/error.hpp"
+#include <boost/mysql/errc.hpp>
+#include <boost/mysql/error.hpp>
 #include "assert_buffer_equals.hpp"
 #include "test_stream.hpp"
 #include "create_message.hpp"

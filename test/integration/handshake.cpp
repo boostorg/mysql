@@ -9,7 +9,7 @@
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include "boost/mysql/errc.hpp"
+#include <boost/mysql/errc.hpp>
 #include "er_network_variant.hpp"
 #include "get_endpoint.hpp"
 #include "integration_test_common.hpp"

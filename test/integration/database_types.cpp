@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/tcp.hpp"
+#include <boost/mysql/tcp.hpp>
 #include "tcp_network_fixture.hpp"
 #include "metadata_validator.hpp"
 #include "test_common.hpp"

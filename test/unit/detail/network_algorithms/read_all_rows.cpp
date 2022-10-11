@@ -6,10 +6,10 @@
 //
 
 #include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
-#include "boost/mysql/detail/protocol/resultset_encoding.hpp"
-#include "boost/mysql/error.hpp"
-#include "boost/mysql/resultset_base.hpp"
-#include "boost/mysql/row_view.hpp"
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/io_context.hpp>

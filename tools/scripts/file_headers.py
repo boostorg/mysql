@@ -10,6 +10,7 @@ import os
 import re
 from os import path
 from collections import namedtuple
+from typing import List
 
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
@@ -39,6 +40,7 @@ HEADER_TEMPLATE = '''{begin}
 {end}'''
 
 MYSQL_ERROR_HEADER = '/usr/include/mysql/mysqld_error.h'
+MYSQL_INCLUDE = re.compile('#include <boost/mysql/(.*)>')
 
 def find_first_blank(lines):
     return [i for i, line in enumerate(lines) if line == ''][0]
@@ -53,6 +55,9 @@ def write_file(fpath, lines):
 
 def text_to_lines(text):
     return [line + '\n' for line in text.split('\n')]
+
+def normalize_includes(lines: List[str]):
+    return [re.sub(MYSQL_INCLUDE, '#include <boost/mysql/\\1>', line) for line in lines]
 
 def gen_header(linesym, opensym=None, closesym=None, shebang=None, include_guard=None):
     opensym = linesym if opensym is None else opensym
@@ -75,7 +80,7 @@ class NormalProcessor(object):
     def process(self, fpath):
         lines = read_file(fpath)
         first_blank = find_first_blank(line.replace('\n', '') for line in lines)
-        lines = self.header + lines[first_blank:]
+        lines = self.header + normalize_includes(lines[first_blank:])
         write_file(fpath, lines)
         
 class HppProcessor(object):
@@ -86,7 +91,7 @@ class HppProcessor(object):
         first_content = [i for i, line in enumerate(lines) if line.startswith('#define')][0] + 1
         iguard = self._gen_include_guard(fpath)
         header = gen_header('//', include_guard=iguard)
-        lines = header + lines[first_content:]
+        lines = header + normalize_includes(lines[first_content:])
         write_file(fpath, lines)
         
         
