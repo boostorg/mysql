@@ -373,7 +373,7 @@ void boost::mysql::detail::handshake(
     error_info& info
 )
 {
-    channel.next_layer().reset();
+    channel.stream().reset();
 
     // Set up processor
     handshake_processor processor(params);
@@ -398,7 +398,7 @@ void boost::mysql::detail::handshake(
             return;
 
         // SSL handshake
-        channel.next_layer().handshake(err);
+        channel.stream().handshake(err);
         if (err)
             return;
     }

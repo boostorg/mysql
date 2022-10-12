@@ -134,10 +134,10 @@ public:
     using stream_type = Stream;
 
     /// Retrieves the underlying Stream object.
-    Stream& stream() { return get_channel().next_layer(); }
+    Stream& stream() { return get_channel().stream().next_layer(); }
 
     /// Retrieves the underlying Stream object.
-    const Stream& stream() const { return get_channel().next_layer(); }
+    const Stream& stream() const { return get_channel().stream().next_layer(); }
 
     using statement_type = statement<Stream>;
     using resultset_type = resultset<Stream>;

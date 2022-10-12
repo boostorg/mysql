@@ -8,11 +8,13 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_GET_ENDPOINT_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_GET_ENDPOINT_HPP
 
-#include "er_endpoint.hpp"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
+
 #include <stdexcept>
 #include <utility>
+
+#include "er_endpoint.hpp"
 
 namespace boost {
 namespace mysql {
@@ -36,16 +38,13 @@ struct endpoint_getter<boost::asio::local::stream_protocol>
 #endif
 
 template <class Stream>
-typename Stream::lowest_layer_type::endpoint_type get_endpoint(
-    er_endpoint kind
-)
+typename Stream::lowest_layer_type::endpoint_type get_endpoint(er_endpoint kind)
 {
     return endpoint_getter<typename Stream::lowest_layer_type::protocol_type>()(kind);
 }
 
-
-}
-}
-}
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

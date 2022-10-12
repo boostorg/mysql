@@ -68,12 +68,12 @@ void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& er
     chan.write(chan.shared_buffer(), chan.shared_sequence_number(), err);
     if (err)
         return;
-    if (chan.next_layer().ssl_active())
+    if (chan.stream().ssl_active())
     {
         // SSL shutdown. Result ignored as MySQL does not always perform
         // graceful SSL shutdowns
         error_code ignored;
-        chan.next_layer().shutdown(ignored);
+        chan.stream().shutdown(ignored);
     }
 }
 

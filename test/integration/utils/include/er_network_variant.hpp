@@ -8,10 +8,13 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_NETWORK_VARIANT_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_NETWORK_VARIANT_HPP
 
-#include "er_connection.hpp"
-#include <boost/asio/ssl/context.hpp>
-#include <functional>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/core/span.hpp>
+
+#include <functional>
+
+#include "er_connection.hpp"
 
 namespace boost {
 namespace mysql {
@@ -27,14 +30,13 @@ public:
     virtual er_connection_ptr create(boost::asio::io_context::executor_type, boost::asio::ssl::context&) = 0;
 };
 
-const std::vector<er_network_variant*>& all_variants();
-const std::vector<er_network_variant*>& ssl_variants();
-const std::vector<er_network_variant*>& non_ssl_variants();
+boost::span<er_network_variant*> all_variants();
+boost::span<er_network_variant*> ssl_variants();
+boost::span<er_network_variant*> non_ssl_variants();
 er_network_variant* tcp_sync_errc_variant();
 
-} // test
-} // mysql
-} // boost
-
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

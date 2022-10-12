@@ -19,7 +19,7 @@ enum class er_endpoint
 };
 
 }
-}
-}
+}  // namespace mysql
+}  // namespace boost
 
 #endif

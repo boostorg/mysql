@@ -53,7 +53,7 @@ public:
         resultset_encoding encoding
     )
     {
-        output_.reset(encoding, &chan);
+        output_.reset(&chan, encoding);
         serialize_message(request, caps_, write_buffer_);
     }
 
@@ -224,7 +224,7 @@ void boost::mysql::detail::execute_generic(
     // Compose a com_query message, reset seq num
     execute_processor
         processor(output, info, channel.shared_buffer(), channel.current_capabilities());
-    processor.process_request(request, encoding, channel);
+    processor.process_request(request, channel, encoding);
 
     // Send it
     channel.write(channel.shared_buffer(), processor.sequence_number(), err);
@@ -278,7 +278,7 @@ boost::mysql::detail::async_execute_generic(
 {
     execute_processor
         processor(output, info, channel.shared_buffer(), channel.current_capabilities());
-    processor.process_request(request, encoding, channel);
+    processor.process_request(request, channel, encoding);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         execute_generic_op<Stream>(channel, processor),
         token,

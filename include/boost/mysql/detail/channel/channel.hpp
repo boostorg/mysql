@@ -73,8 +73,11 @@ public:
             .async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
     }
 
-    boost::asio::const_buffer
-    read_one(std::uint8_t& seqnum, error_code& ec, bool keep_messages = false)
+    boost::asio::const_buffer read_one(
+        std::uint8_t& seqnum,
+        error_code& ec,
+        bool keep_messages = false
+    )
     {
         return reader_.read_one(stream_, seqnum, ec, keep_messages);
     }
@@ -131,8 +134,8 @@ public:
 
     // Getting the underlying stream
     using stream_type = disableable_ssl_stream<Stream>;
-    stream_type& next_layer() noexcept { return stream_; }
-    const stream_type& next_layer() const noexcept { return stream_; }
+    stream_type& stream() noexcept { return stream_; }
+    const stream_type& stream() const noexcept { return stream_; }
 
     using lowest_layer_type = typename stream_type::lowest_layer_type;
     lowest_layer_type& lowest_layer() noexcept { return stream_.lowest_layer(); }
