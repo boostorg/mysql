@@ -1601,6 +1601,16 @@ enum class errc : int
     drop_pk_column_to_drop_gipk = 4111, ///< Server error. Error number: 4111, symbol: [mysqlerrlink2 error_er_drop_pk_column_to_drop_gipk ER_DROP_PK_COLUMN_TO_DROP_GIPK].
     create_select_with_gipk_disallowed_in_sbr = 4112, ///< Server error. Error number: 4112, symbol: [mysqlerrlink2 error_er_create_select_with_gipk_disallowed_in_sbr ER_CREATE_SELECT_WITH_GIPK_DISALLOWED_IN_SBR].
     da_expire_logs_days_ignored = 4113, ///< Server error. Error number: 4113, symbol: [mysqlerrlink2 error_er_da_expire_logs_days_ignored ER_DA_EXPIRE_LOGS_DAYS_IGNORED].
+    cte_recursive_not_union = 4114, ///< Server error. Error number: 4114, symbol: [mysqlerrlink2 error_er_cte_recursive_not_union ER_CTE_RECURSIVE_NOT_UNION].
+    command_backend_failed_to_fetch_security_ctx = 4115, ///< Server error. Error number: 4115, symbol: [mysqlerrlink2 error_er_command_backend_failed_to_fetch_security_ctx ER_COMMAND_BACKEND_FAILED_TO_FETCH_SECURITY_CTX].
+    command_service_backend_failed = 4116, ///< Server error. Error number: 4116, symbol: [mysqlerrlink2 error_er_command_service_backend_failed ER_COMMAND_SERVICE_BACKEND_FAILED].
+    client_file_privilege_for_replication_checks = 4117, ///< Server error. Error number: 4117, symbol: [mysqlerrlink2 error_er_client_file_privilege_for_replication_checks ER_CLIENT_FILE_PRIVILEGE_FOR_REPLICATION_CHECKS].
+    group_replication_force_members_command_failure = 4118, ///< Server error. Error number: 4118, symbol: [mysqlerrlink2 error_er_group_replication_force_members_command_failure ER_GROUP_REPLICATION_FORCE_MEMBERS_COMMAND_FAILURE].
+    warn_deprecated_ident = 4119, ///< Server error. Error number: 4119, symbol: [mysqlerrlink2 error_er_warn_deprecated_ident ER_WARN_DEPRECATED_IDENT].
+    intersect_all_max_duplicates_exceeded = 4120, ///< Server error. Error number: 4120, symbol: [mysqlerrlink2 error_er_intersect_all_max_duplicates_exceeded ER_INTERSECT_ALL_MAX_DUPLICATES_EXCEEDED].
+    tp_query_thrs_per_grp_exceeds_txn_thr_limit = 4121, ///< Server error. Error number: 4121, symbol: [mysqlerrlink2 error_er_tp_query_thrs_per_grp_exceeds_txn_thr_limit ER_TP_QUERY_THRS_PER_GRP_EXCEEDS_TXN_THR_LIMIT].
+    bad_timestamp_format = 4122, ///< Server error. Error number: 4122, symbol: [mysqlerrlink2 error_er_bad_timestamp_format ER_BAD_TIMESTAMP_FORMAT].
+    shape_pridiction_udf = 4123, ///< Server error. Error number: 4123, symbol: [mysqlerrlink2 error_er_shape_pridiction_udf ER_SHAPE_PRIDICTION_UDF].
     incomplete_message = 65536, ///< Client error. An incomplete message was received from the server
     extra_bytes = 65537, ///< Client error. Unexpected extra bytes at the end of a message were received
     sequence_number_mismatch = 65538, ///< Client error. Mismatched sequence numbers

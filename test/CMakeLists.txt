@@ -60,7 +60,7 @@ add_executable(
     unit/execute_params.cpp
     unit/statement.cpp
     unit/resultset.cpp
-    # unit/connection.cpp
+    unit/connection.cpp
     unit/entry_point.cpp
 )
 target_link_libraries(

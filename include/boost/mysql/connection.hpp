@@ -8,11 +8,7 @@
 #ifndef BOOST_MYSQL_CONNECTION_HPP
 #define BOOST_MYSQL_CONNECTION_HPP
 
-#include <boost/asio/ssl/context.hpp>
-
-#ifndef BOOST_MYSQL_DOXYGEN  // For some arcane reason, Doxygen fails to expand Asio macros without
-                             // this
-
+#include <boost/mysql/conn_init_params.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/error.hpp>
@@ -21,8 +17,7 @@
 #include <boost/mysql/statement.hpp>
 
 #include <type_traits>
-
-#endif
+#include <utility>
 
 /// The Boost libraries namespace.
 namespace boost {
@@ -87,7 +82,19 @@ public:
         class... Args,
         class EnableIf =
             typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
-    connection(Args&&... args) : channel_(new detail::channel<Stream>(std::forward<Args>(args)...))
+    connection(Args&&... args) : connection(conn_init_params(), std::forward<Args>(args)...)
+    {
+    }
+
+    template <
+        class... Args,
+        class EnableIf =
+            typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
+    connection(const conn_init_params& params, Args&&... args)
+        : channel_(new detail::channel<Stream>(
+              params.initial_read_buffer_size(),
+              std::forward<Args>(args)...
+          ))
     {
     }
 
@@ -331,8 +338,7 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    void
-    query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
+    void query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
 
     /**
      * \brief Executes a SQL text query (sync with exceptions version).
@@ -399,8 +405,7 @@ public:
      * Prepared statements are only valid while the connection object on which
      * this function was called is alive and open.
      */
-    void
-    prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
+    void prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
 
     /**
      * \brief Prepares a statement (sync with exceptions version).
