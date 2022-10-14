@@ -53,7 +53,7 @@ boost::mysql::statement<Stream>::async_execute(
 )
 {
     output_info.clear();
-    detail::async_execute_statement(
+    return detail::async_execute_statement(
         get_channel(),
         *this,
         params,
