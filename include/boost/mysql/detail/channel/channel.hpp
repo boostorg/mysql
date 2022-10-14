@@ -114,9 +114,13 @@ public:
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_write(const bytestring& buffer, CompletionToken&& token)
+    async_write(const bytestring& buffer, std::uint8_t& seqnum, CompletionToken&& token)
     {
-        return async_write(boost::asio::buffer(buffer), std::forward<CompletionToken>(token));
+        return async_write(
+            boost::asio::buffer(buffer),
+            seqnum,
+            std::forward<CompletionToken>(token)
+        );
     }
 
     // SSL

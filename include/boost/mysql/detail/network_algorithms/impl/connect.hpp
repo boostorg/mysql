@@ -53,7 +53,7 @@ struct connect_op : boost::asio::coroutine
             }
 
             // Handshake
-            BOOST_ASIO_CORO_YIELD async_handshake(chan_, params_, std::move(self), output_info_);
+            BOOST_ASIO_CORO_YIELD async_handshake(chan_, params_, output_info_, std::move(self));
             if (code)
             {
                 chan_.close();

@@ -316,9 +316,8 @@ struct handshake_op : boost::asio::coroutine
                 );
 
                 // SSL handshake
-                BOOST_ASIO_CORO_YIELD chan_.next_layer().async_handshake(std::move(self));
+                BOOST_ASIO_CORO_YIELD chan_.stream().async_handshake(std::move(self));
             }
-            BOOST_ASIO_CORO_YIELD async_setup_ssl(chan_, processor_, std::move(self));
 
             // Compose and send handshake response
             processor_.compose_handshake_response(chan_.shared_buffer());
@@ -352,7 +351,11 @@ struct handshake_op : boost::asio::coroutine
                 if (auth_state_ == auth_result::send_more_data)
                 {
                     // We received an auth switch response and we have the response ready to be sent
-                    BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+                    BOOST_ASIO_CORO_YIELD chan_.async_write(
+                        chan_.shared_buffer(),
+                        chan_.shared_sequence_number(),
+                        std::move(self)
+                    );
                 }
             }
 

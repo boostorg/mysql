@@ -139,7 +139,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_execute_statement(
+        return async_execute(
             make_execute_params(params),
             result,
             output_info,

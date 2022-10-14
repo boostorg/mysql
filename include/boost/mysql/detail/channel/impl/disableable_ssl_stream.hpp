@@ -64,7 +64,10 @@ auto get_non_ssl_stream(Stream& s)
 // A no-op operation that can be passed to async_compose
 struct async_compose_noop
 {
-    async_compose_noop(...) noexcept {}
+    template <class... Args>
+    async_compose_noop(Args&&...) noexcept
+    {
+    }
 
     template <class... Args>
     void operator()(Args&&...)
@@ -133,6 +136,7 @@ struct ssl_handshake_op<Stream, true> : boost::asio::coroutine
 template <class Stream>
 struct ssl_handshake_op<Stream, false> : async_compose_noop
 {
+    using async_compose_noop::async_compose_noop;
 };
 
 // Helpers to implement shutdown
