@@ -142,10 +142,7 @@ public:
             );
         });
     }
-    network_result<no_result> connect(
-        er_endpoint kind,
-        const boost::mysql::handshake_params& params
-    ) override
+    network_result<no_result> connect(er_endpoint kind, const handshake_params& params) override
     {
         return impl<no_result>([&](handler<no_result> h, error_info& info) {
             return this->conn_
