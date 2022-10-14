@@ -27,7 +27,9 @@ public:
     virtual bool supports_ssl() const = 0;
     virtual const char* stream_name() const = 0;
     virtual const char* variant_name() const = 0;
-    virtual er_connection_ptr create(boost::asio::io_context::executor_type, boost::asio::ssl::context&) = 0;
+    virtual er_connection_ptr create_connection(boost::asio::io_context::executor_type, boost::asio::ssl::context&) = 0;
+    virtual er_resultset_ptr create_resultset() = 0;
+    virtual er_statement_ptr create_statement() = 0;
 };
 
 boost::span<er_network_variant*> all_variants();

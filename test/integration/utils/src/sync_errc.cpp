@@ -24,6 +24,8 @@
 #include "er_connection.hpp"
 #include "er_impl_common.hpp"
 #include "er_network_variant.hpp"
+#include "er_resultset.hpp"
+#include "er_statement.hpp"
 #include "get_endpoint.hpp"
 #include "network_result.hpp"
 #include "streams.hpp"
@@ -35,10 +37,8 @@ using boost::mysql::error_info;
 using boost::mysql::execute_params;
 using boost::mysql::field_view;
 using boost::mysql::handshake_params;
-using boost::mysql::resultset_base;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
-using boost::mysql::statement_base;
 
 namespace {
 
@@ -58,21 +58,67 @@ static network_result<impl_result_type<Callable>> impl(Callable&& cb)
 }
 
 template <class Stream>
+class sync_errc_resultset : public er_resultset_base<Stream>
+{
+public:
+    network_result<row_view> read_one() override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            return this->obj().read_one(code, info);
+        });
+    }
+    network_result<rows_view> read_some() override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            return this->obj().read_some(code, info);
+        });
+    }
+    network_result<rows_view> read_all() override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            return this->obj().read_all(code, info);
+        });
+    }
+};
+
+template <class Stream>
+class sync_errc_statement : public er_statement_base<Stream>
+{
+public:
+    network_result<no_result> execute_collection(
+        const std::vector<field_view>& params,
+        er_resultset& result
+    ) override
+    {
+        return impl([&](error_code& err, error_info& info) {
+            this->obj().execute(params, this->cast(result), err, info);
+            return no_result();
+        });
+    }
+    network_result<no_result> execute_params(
+        const execute_params<value_list_it>& params,
+        er_resultset& result
+    ) override
+    {
+        return impl([&](error_code& err, error_info& info) {
+            this->obj().execute(params, this->cast(result), err, info);
+            return no_result();
+        });
+    }
+    network_result<no_result> close() override
+    {
+        return impl([&](error_code& code, error_info& info) {
+            this->obj().close(code, info);
+            return no_result();
+        });
+    }
+};
+
+template <class Stream>
 class sync_errc_connection : public er_connection_base<Stream>
 {
 public:
     using er_connection_base<Stream>::er_connection_base;
-    using statement_type = boost::mysql::statement<Stream>;
-    using resultset_type = boost::mysql::resultset<Stream>;
-
-    static statement_type& cast_statement(statement_base& stmt) noexcept
-    {
-        return static_cast<statement_type&>(stmt);
-    }
-    static resultset_type& cast_resultset(resultset_base& stmt) noexcept
-    {
-        return static_cast<resultset_type&>(stmt);
-    }
 
     network_result<no_result> physical_connect(er_endpoint kind) override
     {
@@ -99,65 +145,29 @@ public:
             return no_result();
         });
     }
-    network_result<no_result> query(boost::string_view query, resultset_base& result) override
+    network_result<no_result> query(boost::string_view query, er_resultset& result) override
     {
         return impl([&](error_code& code, error_info& info) {
-            this->conn_.query(query, cast_resultset(result), code, info);
+            this->conn_.query(query, this->cast(result), code, info);
             return no_result();
         });
     }
-    network_result<no_result> prepare_statement(boost::string_view statement, statement_base& stmt)
+    network_result<no_result> prepare_statement(boost::string_view statement, er_statement& stmt)
         override
     {
         return impl([&](error_code& err, error_info& info) {
-            this->conn_.prepare_statement(statement, cast_statement(stmt), err, info);
+            this->conn_.prepare_statement(statement, this->cast(stmt), err, info);
             return no_result();
         });
     }
-    network_result<no_result> execute_statement(
-        statement_base& stmt,
-        const execute_params<const field_view*>& params,
-        resultset_base& result
-    ) override
-    {
-        return impl([&](error_code& err, error_info& info) {
-            cast_statement(stmt).execute(params, cast_resultset(result), err, info);
-            return no_result();
-        });
-    }
-    network_result<no_result> close_statement(statement_base& stmt) override
-    {
-        return impl([&](error_code& code, error_info& info) {
-            cast_statement(stmt).close(code, info);
-            return no_result();
-        });
-    }
-    network_result<row_view> read_one_row(resultset_base& result) override
-    {
-        return impl([&](error_code& code, error_info& info) {
-            return cast_resultset(result).read_one(code, info);
-        });
-    }
-    network_result<rows_view> read_some_rows(resultset_base& result) override
-    {
-        return impl([&](error_code& code, error_info& info) {
-            return cast_resultset(result).read_some(code, info);
-        });
-    }
-    network_result<rows_view> read_all_rows(resultset_base& result) override
-    {
-        return impl([&](error_code& code, error_info& info) {
-            return cast_resultset(result).read_all(code, info);
-        });
-    }
-    network_result<no_result> quit_connection() override
+    network_result<no_result> quit() override
     {
         return impl([&](error_code& code, error_info& info) {
             this->conn_.quit(code, info);
             return no_result();
         });
     }
-    network_result<no_result> close_connection() override
+    network_result<no_result> close() override
     {
         return impl([&](error_code& code, error_info& info) {
             this->conn_.close(code, info);
@@ -167,7 +177,11 @@ public:
 };
 
 template <class Stream>
-class sync_errc_variant : public er_network_variant_base<Stream, sync_errc_connection>
+class sync_errc_variant : public er_network_variant_base<
+                              Stream,
+                              sync_errc_connection,
+                              sync_errc_statement,
+                              sync_errc_resultset>
 {
 public:
     const char* variant_name() const override { return "sync_errc"; }

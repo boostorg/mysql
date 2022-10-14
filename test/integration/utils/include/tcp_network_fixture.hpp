@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_TCP_NETWORK_FIXTURE_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_TCP_NETWORK_FIXTURE_HPP
 
+#include <boost/mysql/tcp.hpp>
+
+#include "get_endpoint.hpp"
 #include "integration_test_common.hpp"
 #include "streams.hpp"
-#include "get_endpoint.hpp"
-#include <boost/mysql/tcp.hpp>
 
 namespace boost {
 namespace mysql {
@@ -23,15 +24,11 @@ struct tcp_network_fixture : network_fixture_base
 
     tcp_network_fixture() : conn(ctx.get_executor()) {}
 
-    void connect()
-    {
-        conn.connect(get_endpoint<tcp_socket>(er_endpoint::valid), params);
-    }
+    void connect() { conn.connect(get_endpoint<tcp_socket>(er_endpoint::valid), params); }
 };
 
-
-}
-}
-}
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif

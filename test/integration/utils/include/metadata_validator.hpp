@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_METADATA_VALIDATOR_HPP
 
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 
 #include <vector>
 
@@ -73,7 +74,7 @@ private:
 };
 
 void validate_meta(
-    const std::vector<metadata>& actual,
+    const metadata_collection_view& actual,
     const std::vector<meta_validator>& expected
 );
 

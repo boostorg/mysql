@@ -8,16 +8,23 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_INTEGRATION_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_INTEGRATION_TEST_COMMON_HPP
 
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/test/unit_test.hpp>
-#include <thread>
 #include <boost/mysql/handshake_params.hpp>
-#include "test_common.hpp"
-#include "metadata_validator.hpp"
-#include "network_test.hpp"
+#include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/resultset_base.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include <thread>
+
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
+#include "er_resultset.hpp"
+#include "er_statement.hpp"
+#include "metadata_validator.hpp"
+#include "network_test.hpp"
+#include "test_common.hpp"
 
 namespace boost {
 namespace mysql {
@@ -25,23 +32,19 @@ namespace test {
 
 struct network_fixture_base
 {
-    connection_params params {"integ_user", "integ_password", "boost_mysql_integtests"};
+    handshake_params params{"integ_user", "integ_password", "boost_mysql_integtests"};
     boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx {boost::asio::ssl::context::tls_client};
+    boost::asio::ssl::context ssl_ctx{boost::asio::ssl::context::tls_client};
 };
 
 struct network_fixture : network_fixture_base
 {
-    er_network_variant* var {};
+    er_network_variant* var{};
     er_connection_ptr conn;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard;
     std::thread runner;
 
-    network_fixture() :
-        guard(ctx.get_executor()),
-        runner([this] { ctx.run(); })
-    {
-    }
+    network_fixture() : guard(ctx.get_executor()), runner([this] { ctx.run(); }) {}
 
     ~network_fixture()
     {
@@ -53,10 +56,14 @@ struct network_fixture : network_fixture_base
         runner.join();
     }
 
+    er_resultset_ptr create_resultset() { return var->create_resultset(); }
+
+    er_statement_ptr create_statement() { return var->create_statement(); }
+
     void setup(er_network_variant* variant)
     {
         var = variant;
-        conn = var->create(ctx.get_executor(), ssl_ctx);
+        conn = var->create_connection(ctx.get_executor(), ssl_ctx);
     }
 
     void setup_and_connect(er_network_variant* variant, ssl_mode m = ssl_mode::require)
@@ -94,23 +101,19 @@ struct network_fixture : network_fixture_base
         validate_ssl(m);
     }
 
-    void validate_2fields_meta(
-        const std::vector<metadata>& fields,
-        const std::string& table
-    ) const
+    void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)
+        const
     {
-        validate_meta(fields, {
-            meta_validator(table, "id", field_type::int_),
-            meta_validator(table, "field_varchar", field_type::varchar)
-        });
+        validate_meta(
+            fields,
+            {meta_validator(table, "id", field_type::int_),
+             meta_validator(table, "field_varchar", field_type::varchar)}
+        );
     }
 
-    void validate_2fields_meta(
-        const er_resultset& result,
-        const std::string& table
-    ) const
+    void validate_2fields_meta(const resultset_base& result, const std::string& table) const
     {
-        validate_2fields_meta(result.fields(), table);
+        validate_2fields_meta(result.meta(), table);
     }
 
     // Call this in the fixture setup of any test invoking write
@@ -118,13 +121,16 @@ struct network_fixture : network_fixture_base
     // make the testing environment more stable and speed up the tests
     void start_transaction()
     {
-        conn->query("START TRANSACTION").get()->read_all().get();
+        auto result = create_resultset();
+        conn->query("START TRANSACTION", *result).get();
+        result->read_all().get();
     }
 
     std::int64_t get_table_size(const std::string& table)
     {
-        return conn->query("SELECT COUNT(*) FROM " + table).get()
-                ->read_all().get().at(0).values().at(0).template get<std::int64_t>();
+        auto result = create_resultset();
+        conn->query("SELECT COUNT(*) FROM " + table, *result).get();
+        return result->read_all().get().at(0).at(0).as_int64();
     }
 };
 
@@ -134,10 +140,7 @@ struct network_sample
 {
     er_network_variant* net;
 
-    network_sample(er_network_variant* var) :
-        net(var)
-    {
-    }
+    network_sample(er_network_variant* var) : net(var) {}
 
     void set_test_attributes(boost::unit_test::test_case& test) const
     {
@@ -160,7 +163,7 @@ struct all_variants_gen
     std::vector<network_sample> make_all() const
     {
         std::vector<network_sample> res;
-        for (auto* net: all_variants())
+        for (auto* net : all_variants())
         {
             res.emplace_back(net);
         }
@@ -179,7 +182,7 @@ struct ssl_only_gen
     std::vector<network_sample> make_all() const
     {
         std::vector<network_sample> res;
-        for (auto* net: ssl_variants())
+        for (auto* net : ssl_variants())
         {
             res.emplace_back(net);
         }
@@ -198,7 +201,7 @@ struct non_ssl_only_gen
     std::vector<network_sample> make_all() const
     {
         std::vector<network_sample> res;
-        for (auto* net: non_ssl_variants())
+        for (auto* net : non_ssl_variants())
         {
             res.emplace_back(net);
         }
@@ -212,9 +215,8 @@ struct non_ssl_only_gen
     }
 };
 
-
-} // test
-} // mysql
-} // boost
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 #endif /* TEST_INTEGRATION_INTEGRATION_TEST_COMMON_HPP_ */
