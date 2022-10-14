@@ -74,7 +74,7 @@ public:
         class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     void execute(const FieldViewCollection& params, resultset<Stream>& result)
     {
-        return execute_statement(make_execute_params(params), result);
+        return execute(make_execute_params(params), result);
     }
 
     /**
