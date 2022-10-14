@@ -144,11 +144,19 @@ public:
     capabilities current_capabilities() const noexcept { return current_caps_; }
     void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 
+    void reset()
+    {
+        stream_.reset();
+        current_caps_ = capabilities();
+        reset_sequence_number();
+    }
+
     // Internal buffer, error_info and sequence_number to help async ops
     const bytestring& shared_buffer() const noexcept { return shared_buff_; }
     bytestring& shared_buffer() noexcept { return shared_buff_; }
     error_info& shared_info() noexcept { return shared_info_; }
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
+    std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
     std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }
     const std::vector<field_view>& shared_fields() const noexcept { return shared_fields_; }
 };

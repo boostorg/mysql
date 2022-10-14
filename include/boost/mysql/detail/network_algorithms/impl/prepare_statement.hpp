@@ -107,11 +107,8 @@ struct prepare_statement_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Write message (already serialized at this point)
-            BOOST_ASIO_CORO_YIELD chan_.async_write(
-                chan_.shared_buffer(),
-                chan_.shared_sequence_number(),
-                std::move(self)
-            );
+            BOOST_ASIO_CORO_YIELD chan_
+                .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
 
             // Read response
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(
@@ -173,7 +170,7 @@ void boost::mysql::detail::prepare_statement(
     processor.process_request(statement);
 
     // Write message
-    channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
+    channel.write(channel.shared_buffer(), channel.reset_sequence_number(), err);
     if (err)
         return;
 

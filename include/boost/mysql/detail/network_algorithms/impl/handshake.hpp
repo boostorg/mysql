@@ -373,7 +373,7 @@ void boost::mysql::detail::handshake(
     error_info& info
 )
 {
-    channel.stream().reset();
+    channel.reset();
 
     // Set up processor
     handshake_processor processor(params);

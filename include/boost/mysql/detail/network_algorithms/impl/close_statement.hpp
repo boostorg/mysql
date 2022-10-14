@@ -42,11 +42,8 @@ struct close_statement_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Write message (already serialized at this point)
-            BOOST_ASIO_CORO_YIELD chan_.async_write(
-                chan_.shared_buffer(),
-                chan_.shared_sequence_number(),
-                std::move(self)
-            );
+            BOOST_ASIO_CORO_YIELD chan_
+                .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
 
             // Mark the statement as invalid
             stmt_.reset();
@@ -72,7 +69,7 @@ void boost::mysql::detail::
     serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
 
     // Send it. No response is sent back
-    chan.write(boost::asio::buffer(chan.shared_buffer()), chan.shared_sequence_number(), code);
+    chan.write(boost::asio::buffer(chan.shared_buffer()), chan.reset_sequence_number(), code);
 
     // Mark the statement as invalid
     stmt.reset();

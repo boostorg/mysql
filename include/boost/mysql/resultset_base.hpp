@@ -115,7 +115,7 @@ public:
         ok_packet_.assign(ok_pack);
     }
 
-    void prepare_meta(std::size_t num_fields) { meta_.resize(num_fields); }
+    void prepare_meta(std::size_t num_fields) { meta_.reserve(num_fields); }
 
     void add_meta(const detail::column_definition_packet& pack) { meta_.emplace_back(pack, true); }
 

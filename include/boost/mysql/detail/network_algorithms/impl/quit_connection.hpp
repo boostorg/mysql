@@ -40,7 +40,8 @@ struct quit_connection_op : boost::asio::coroutine
         {
             // Quit message
             compose_quit(chan_);
-            BOOST_ASIO_CORO_YIELD chan_.async_write(chan_.shared_buffer(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_
+                .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
             if (err)
             {
                 self.complete(err);
@@ -65,7 +66,7 @@ template <class Stream>
 void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& err, error_info&)
 {
     compose_quit(chan);
-    chan.write(chan.shared_buffer(), chan.shared_sequence_number(), err);
+    chan.write(chan.shared_buffer(), chan.reset_sequence_number(), err);
     if (err)
         return;
     if (chan.stream().ssl_active())
