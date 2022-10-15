@@ -11,6 +11,8 @@ using namespace boost::mysql::test;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 
+namespace {
+
 BOOST_AUTO_TEST_SUITE(test_connect)
 
 // The OK case is already being tested by all other integ tests
@@ -30,10 +32,11 @@ BOOST_MYSQL_NETWORK_TEST(physical_ok_handshake_error, network_fixture)
 {
     setup(sample.net);
     set_credentials("integ_user", "bad_password");
-    conn->connect(er_endpoint::valid, params).validate_error(
-        errc::access_denied_error, {"access denied", "integ_user"});
+    conn->connect(er_endpoint::valid, params)
+        .validate_error(errc::access_denied_error, {"access denied", "integ_user"});
     BOOST_TEST(!conn->is_open());
 }
 
-BOOST_AUTO_TEST_SUITE_END() // test_connect
+BOOST_AUTO_TEST_SUITE_END()  // test_connect
 
+}  // namespace

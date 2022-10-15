@@ -5,17 +5,19 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/asio/ssl/host_name_verification.hpp>
-#include <boost/asio/ssl/verify_mode.hpp>
+#include <boost/mysql/errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/errc.hpp>
+
+#include <boost/asio/ssl/host_name_verification.hpp>
+#include <boost/asio/ssl/verify_mode.hpp>
+#include <boost/test/unit_test.hpp>
+
 #include "er_network_variant.hpp"
 #include "get_endpoint.hpp"
 #include "integration_test_common.hpp"
 #include "streams.hpp"
 #include "test_common.hpp"
-#include <boost/test/unit_test_suite.hpp>
 
 // Tests containing with label 'sha256' require SHA256 functionality.
 // This is used by the build script to exclude these tests on databases
@@ -23,11 +25,14 @@
 
 using namespace boost::mysql::test;
 
-using boost::mysql::ssl_mode;
 using boost::mysql::errc;
 using boost::mysql::error_code;
+using boost::mysql::handshake_params;
+using boost::mysql::ssl_mode;
 using boost::mysql::tcp_ssl_connection;
-using boost::mysql::connection_params;
+using boost::mysql::tcp_ssl_resultset;
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
@@ -82,10 +87,12 @@ BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture)
     setup_and_physical_connect(sample.net);
     set_credentials("mysqlnp_user", "bad_password");
     conn->handshake(params).validate_error(
-        errc::access_denied_error, {"access denied", "mysqlnp_user"});
+        errc::access_denied_error,
+        {"access denied", "mysqlnp_user"}
+    );
 }
 
-BOOST_AUTO_TEST_SUITE_END() // mysql_native_password
+BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
 // caching_sha2_password
 BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
@@ -95,22 +102,20 @@ struct caching_sha2_fixture : handshake_fixture
 {
     void load_sha256_cache(boost::string_view user, boost::string_view password)
     {
-        tcp_ssl_connection conn (ctx, ssl_ctx);
+        tcp_ssl_connection conn(ctx, ssl_ctx);
         conn.connect(
             get_endpoint<tcp_socket>(er_endpoint::valid),
-            connection_params(user, password)
+            handshake_params(user, password)
         );
         conn.close();
     }
 
     void clear_sha256_cache()
     {
-        tcp_ssl_connection conn (ctx, ssl_ctx);
-        conn.connect(
-            get_endpoint<tcp_socket>(er_endpoint::valid),
-            connection_params("root", "")
-        );
-        conn.query("FLUSH PRIVILEGES");
+        tcp_ssl_connection conn(ctx, ssl_ctx);
+        tcp_ssl_resultset result;
+        conn.connect(get_endpoint<tcp_socket>(er_endpoint::valid), handshake_params("root", ""));
+        conn.query("FLUSH PRIVILEGES", result);
         conn.close();
     }
 };
@@ -139,7 +144,6 @@ BOOST_MYSQL_NETWORK_TEST_SSL(ssl_on_cache_miss, caching_sha2_fixture)
     clear_sha256_cache();
     do_handshake_ok_ssl();
 }
-
 
 BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture)
 {
@@ -193,7 +197,9 @@ BOOST_MYSQL_NETWORK_TEST_SSL(bad_password_ssl_on_cache_hit, caching_sha2_fixture
     set_credentials("csha2p_user", "bad_password");
     load_sha256_cache("csha2p_user", "csha2p_password");
     conn->handshake(params).validate_error(
-        errc::access_denied_error, {"access denied", "csha2p_user"});
+        errc::access_denied_error,
+        {"access denied", "csha2p_user"}
+    );
 }
 
 BOOST_MYSQL_NETWORK_TEST_SSL(bad_password_ssl_on_cache_miss, caching_sha2_fixture)
@@ -203,16 +209,18 @@ BOOST_MYSQL_NETWORK_TEST_SSL(bad_password_ssl_on_cache_miss, caching_sha2_fixtur
     set_credentials("csha2p_user", "bad_password");
     clear_sha256_cache();
     conn->handshake(params).validate_error(
-        errc::access_denied_error, {"access denied", "csha2p_user"});
+        errc::access_denied_error,
+        {"access denied", "csha2p_user"}
+    );
 }
 
-BOOST_AUTO_TEST_SUITE_END() // caching_sha2_password
+BOOST_AUTO_TEST_SUITE_END()  // caching_sha2_password
 
 // SSL certificate validation
 BOOST_AUTO_TEST_SUITE(ssl_certificate_validation)
 
 // The CA file that signed the server's certificate
-constexpr const char CA_PEM [] = R"%(-----BEGIN CERTIFICATE-----
+constexpr const char CA_PEM[] = R"%(-----BEGIN CERTIFICATE-----
 MIIDZzCCAk+gAwIBAgIUWznm2UoxXw3j7HCcp9PpiayTvFQwDQYJKoZIhvcNAQEL
 BQAwQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAMBgNVBAoM
 BW15c3FsMQ4wDAYDVQQDDAVteXNxbDAgFw0yMDA0MDQxNDMwMjNaGA8zMDE5MDgw
@@ -271,7 +279,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(custom_certificate_verification_ok, handshake_fixtu
     do_handshake_ok_ssl();
 }
 
-BOOST_AUTO_TEST_SUITE_END() // ssl_certificate_validation
+BOOST_AUTO_TEST_SUITE_END()  // ssl_certificate_validation
 
 // Other handshake tests
 BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture)
@@ -286,7 +294,9 @@ BOOST_MYSQL_NETWORK_TEST(bad_database, handshake_fixture)
     setup_and_physical_connect(sample.net);
     params.set_database("bad_database");
     conn->handshake(params).validate_error(
-        errc::dbaccess_denied_error, {"database", "bad_database"});
+        errc::dbaccess_denied_error,
+        {"database", "bad_database"}
+    );
 }
 
 BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
@@ -304,7 +314,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(bad_user, handshake_fixture)
     // (like SHA256), this would fail with 'ssl required'
     setup_and_physical_connect(sample.net);
     set_credentials("non_existing_user", "bad_password");
-    conn->handshake(params).validate_any_error(); // may be access denied or unknown auth plugin
+    conn->handshake(params).validate_any_error();  // may be access denied or unknown auth plugin
 }
 
 BOOST_MYSQL_NETWORK_TEST(ssl_disable, handshake_fixture)
@@ -353,4 +363,6 @@ BOOST_MYSQL_NETWORK_TEST_SSL(ssl_require_ssl_streams, handshake_fixture)
     BOOST_TEST(conn->uses_ssl());
 }
 
-BOOST_AUTO_TEST_SUITE_END() // test_handshake
+BOOST_AUTO_TEST_SUITE_END()  // test_handshake
+
+}  // namespace
