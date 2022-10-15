@@ -22,7 +22,6 @@ BOOST_MYSQL_NETWORK_TEST(insert_ok, network_fixture)
     start_transaction();
 
     // Issue query
-    auto result = create_resultset();
     conn->query(
             "INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')",
             *result
@@ -46,7 +45,6 @@ BOOST_MYSQL_NETWORK_TEST(insert_error, network_fixture)
 {
     setup_and_connect(sample.net);
     start_transaction();
-    auto result = create_resultset();
     auto netresult = conn->query(
         "INSERT INTO bad_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')",
         *result
@@ -60,7 +58,6 @@ BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture)
     start_transaction();
 
     // Issue the query
-    auto result = create_resultset();
     conn->query("UPDATE updates_table SET field_int = field_int+10", *result).get();
 
     // Validate resultset_base
@@ -82,7 +79,6 @@ BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture)
 {
     setup_and_connect(sample.net);
 
-    auto result = create_resultset();
     conn->query("SELECT * FROM empty_table", *result).get();
 
     BOOST_TEST(result->base().valid());
@@ -93,7 +89,6 @@ BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture)
 BOOST_MYSQL_NETWORK_TEST(select_error, network_fixture)
 {
     setup_and_connect(sample.net);
-    auto result = create_resultset();
     auto netresult = conn->query("SELECT field_varchar, field_bad FROM one_row_table", *result);
     netresult.validate_error(errc::bad_field_error, {"unknown column", "field_bad"});
 }

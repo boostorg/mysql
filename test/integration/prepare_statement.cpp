@@ -6,101 +6,88 @@
 //
 
 #include <boost/mysql/statement_base.hpp>
-#include "integration_test_common.hpp"
-#include "tcp_network_fixture.hpp"
-#include "streams.hpp"
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/mysql/tcp.hpp>
 
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/test/tools/interface.hpp>
+
+#include "integration_test_common.hpp"
+#include "streams.hpp"
+#include "tcp_network_fixture.hpp"
+
 using namespace boost::mysql::test;
-using boost::mysql::error_code;
 using boost::mysql::errc;
-using boost::mysql::tcp_prepared_statement;
+using boost::mysql::error_code;
 using boost::mysql::no_statement_params;
+using boost::mysql::tcp_resultset;
+using boost::mysql::tcp_statement;
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_prepare_statement)
 
 BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture)
 {
     setup_and_connect(sample.net);
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table").get();
-    BOOST_TEST_REQUIRE(stmt->valid());
-    BOOST_TEST(stmt->id() > 0u);
-    BOOST_TEST(stmt->num_params() == 0u);
+    conn->prepare_statement("SELECT * FROM empty_table", *stmt).validate_no_error();
+    BOOST_TEST_REQUIRE(stmt->base().valid());
+    BOOST_TEST(stmt->base().id() > 0u);
+    BOOST_TEST(stmt->base().num_params() == 0u);
 }
 
 BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture)
 {
     setup_and_connect(sample.net);
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-    BOOST_TEST_REQUIRE(stmt->valid());
-    BOOST_TEST(stmt->id() > 0u);
-    BOOST_TEST(stmt->num_params() == 2u);
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
+        .validate_no_error();
+    BOOST_TEST_REQUIRE(stmt->base().valid());
+    BOOST_TEST(stmt->base().id() > 0u);
+    BOOST_TEST(stmt->base().num_params() == 2u);
 }
 
 BOOST_MYSQL_NETWORK_TEST(invalid_statement, network_fixture)
 {
     setup_and_connect(sample.net);
-    auto stmt = conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)");
-    stmt.validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
+    conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)", *stmt)
+        .validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
 }
-
-// Move operations
-BOOST_AUTO_TEST_SUITE(move_operations)
 
 BOOST_FIXTURE_TEST_CASE(move_ctor, tcp_network_fixture)
 {
     connect();
 
     // Get a valid prepared statement and perform a move construction
-    tcp_prepared_statement s1 = conn.prepare_statement("SELECT * FROM empty_table");
-    tcp_prepared_statement s2 (std::move(s1));
+    tcp_statement s1;
+    conn.prepare_statement("SELECT * FROM empty_table", s1);
 
-    // Validate valid()
-    BOOST_TEST(!s1.valid());
-    BOOST_TEST(s2.valid());
+    // Move construct
+    tcp_statement s2(std::move(s1));
+    BOOST_TEST_REQUIRE(s2.valid());
 
     // We can use the 2nd stmt
-    auto rows = s2.execute(no_statement_params).read_all();
-    BOOST_TEST(rows.empty());
+    tcp_resultset result;
+    s2.execute(no_statement_params, result);
+    BOOST_TEST(result.read_all().empty());
 }
 
-BOOST_FIXTURE_TEST_CASE(move_assignment_to_invalid, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(move_assignment, tcp_network_fixture)
 {
     connect();
 
     // Get a valid resultset_base and perform a move assignment
-    tcp_prepared_statement s1 = conn.prepare_statement("SELECT * FROM empty_table");
-    tcp_prepared_statement s2;
-    s2 = std::move(s1);
+    tcp_statement s1, s2;
+    conn.prepare_statement("SELECT * FROM empty_table", s1);
+    conn.prepare_statement("SELECT 1", s2);
 
-    // Validate valid()
-    BOOST_TEST(!s1.valid());
-    BOOST_TEST(s2.valid());
+    s2 = std::move(s1);
+    BOOST_TEST_REQUIRE(s2.valid());
 
     // We can use the 2nd stmt
-    auto rows = s2.execute(no_statement_params).read_all();
-    BOOST_TEST(rows.empty());
+    tcp_resultset result;
+    s2.execute(no_statement_params, result);
+    BOOST_TEST(result.read_all().empty());
 }
 
-BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, tcp_network_fixture)
-{
-    connect();
-    
-    // Get a valid resultset_base and perform a move assignment
-    tcp_prepared_statement s1 = conn.prepare_statement("SELECT * FROM empty_table");
-    tcp_prepared_statement s2 = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
-    s2 = std::move(s1);
+BOOST_AUTO_TEST_SUITE_END()  // test_prepare_statement
 
-    // Validate valid()
-    BOOST_TEST(!s1.valid());
-    BOOST_TEST(s2.valid());
-
-    // We can use the 2nd resultset_base
-    auto rows = s2.execute(no_statement_params).read_all();
-    BOOST_TEST(rows.empty());
-}
-
-BOOST_AUTO_TEST_SUITE_END() // move_operations
-
-BOOST_AUTO_TEST_SUITE_END() // test_prepare_statement
+}  // namespace

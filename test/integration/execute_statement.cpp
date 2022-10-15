@@ -6,143 +6,151 @@
 //
 
 #include <boost/mysql/execute_params.hpp>
-#include "er_network_variant.hpp"
-#include "integration_test_common.hpp"
-#include "tcp_network_fixture.hpp"
-#include "streams.hpp"
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/tcp.hpp>
+
 #include <forward_list>
 
+#include "er_network_variant.hpp"
+#include "integration_test_common.hpp"
+#include "streams.hpp"
+#include "tcp_network_fixture.hpp"
+#include "test_common.hpp"
+
 using namespace boost::mysql::test;
-using boost::mysql::field_view;
-using boost::mysql::error_code;
-using boost::mysql::make_execute_params;
 using boost::mysql::errc;
+using boost::mysql::error_code;
+using boost::mysql::field_view;
+using boost::mysql::make_execute_params;
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_execute_statement)
 
-// Iterator version
-BOOST_MYSQL_NETWORK_TEST(iterator_ok_no_params, network_fixture)
+BOOST_AUTO_TEST_SUITE(iterator)
+BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture)
 {
     setup_and_connect(sample.net);
 
     // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table").get();
+    conn->prepare_statement("SELECT * FROM empty_table", *stmt).validate_no_error();
 
     // Execute
     std::forward_list<field_view> params;
-    auto result = stmt->execute_params(make_execute_params(params)).get();
-    BOOST_TEST(result->valid());
+    stmt->execute_params(make_execute_params(params), *result).validate_no_error();
+    BOOST_TEST(result->base().valid());
 }
 
-BOOST_MYSQL_NETWORK_TEST(iterator_ok_with_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture)
 {
     setup_and_connect(sample.net);
 
     // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
+        .validate_no_error();
 
     // Execute
-    std::forward_list<field_view> params { field_view("item"), field_view(42) };
-    auto result = stmt->execute_params(make_execute_params(params)).get();
-    BOOST_TEST(result->valid());
+    std::forward_list<field_view> params{field_view("item"), field_view(42)};
+    stmt->execute_params(make_execute_params(params), *result).validate_no_error();
+    BOOST_TEST(result->base().valid());
 }
 
-BOOST_MYSQL_NETWORK_TEST(iterator_mismatched_num_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(mismatched_num_params, network_fixture)
 {
     setup_and_connect(sample.net);
 
     // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-    
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
+        .validate_no_error();
+
     // Execute
-    std::forward_list<field_view> params { field_view("item") };
-    auto result = stmt->execute_params(make_execute_params(params));
-    result.validate_error(errc::wrong_num_params,
-        {"param", "2", "1", "statement", "execute"});
+    std::forward_list<field_view> params{field_view("item")};
+    stmt->execute_params(make_execute_params(params), *result)
+        .validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
 }
 
-BOOST_MYSQL_NETWORK_TEST(iterator_server_error, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(server_error, network_fixture)
 {
     setup_and_connect(sample.net);
     start_transaction();
 
     // Prepare
-    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)").get();
+    conn->prepare_statement(
+            "INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)",
+            *stmt
+    )
+        .validate_no_error();
 
     // Execute
-    std::forward_list<field_view> params { field_view("f0"), field_view("bad_date") };
-    auto result = stmt->execute_params(make_execute_params(params));
-    result.validate_error(errc::truncated_wrong_value,
-        {"field_date", "bad_date", "incorrect date value"});
+    std::forward_list<field_view> params{field_view("f0"), field_view("bad_date")};
+    stmt->execute_params(make_execute_params(params), *result)
+        .validate_error(
+            errc::truncated_wrong_value,
+            {"field_date", "bad_date", "incorrect date value"}
+        );
 }
+BOOST_AUTO_TEST_SUITE_END()
 
-// Container version
-BOOST_MYSQL_NETWORK_TEST(container_ok_no_params, network_fixture)
+// collection is a wrapper around execute_params, so only
+// a subset of tests are run here
+BOOST_AUTO_TEST_SUITE(collection)
+BOOST_MYSQL_NETWORK_TEST(ok, network_fixture)
 {
     setup_and_connect(sample.net);
 
     // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table").get();
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
+        .validate_no_error();
 
     // Execute
-    auto result = stmt->execute_container(std::vector<field_view>()).get();
-    BOOST_TEST(result->valid());
+    stmt->execute_collection(make_fv_vector("item", 42), *result).validate_no_error();
+    BOOST_TEST(result->base().valid());
 }
 
-BOOST_MYSQL_NETWORK_TEST(container_ok_with_params, network_fixture)
-{
-    setup_and_connect(sample.net);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-    auto result = stmt->execute_container(make_value_vector("item", 42)).get();
-    BOOST_TEST(result->valid());
-}
-
-BOOST_MYSQL_NETWORK_TEST(container_mismatched_num_params, network_fixture)
-{
-    setup_and_connect(sample.net);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    auto result = stmt->execute_container(make_value_vector("item"));
-    result.validate_error(errc::wrong_num_params,
-        {"param", "2", "1", "statement", "execute"});
-}
-
-BOOST_MYSQL_NETWORK_TEST(container_server_error, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(error, network_fixture)
 {
     setup_and_connect(sample.net);
     start_transaction();
 
     // Prepare
-    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)").get();
+    conn->prepare_statement(
+            "INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)",
+            *stmt
+    )
+        .validate_no_error();
 
     // Execute
-    auto result = stmt->execute_container(make_value_vector("f0", "bad_date"));
-    result.validate_error(errc::truncated_wrong_value,
-        {"field_date", "bad_date", "incorrect date value"});
+    stmt->execute_collection(make_fv_vector("f0", "bad_date"), *result)
+        .validate_error(
+            errc::truncated_wrong_value,
+            {"field_date", "bad_date", "incorrect date value"}
+        );
 }
 
 // Other containers. We can't use the type-erased functions here
 BOOST_FIXTURE_TEST_CASE(no_statement_params_variable, tcp_network_fixture)
 {
+    boost::mysql::tcp_statement stmt;
+    boost::mysql::tcp_resultset result;
+
     connect();
-    auto stmt = conn.prepare_statement("SELECT * FROM empty_table");
-    auto result = stmt.execute(boost::mysql::no_statement_params);
+    conn.prepare_statement("SELECT * FROM empty_table", stmt);
+    stmt.execute(boost::mysql::no_statement_params, result);
     BOOST_TEST(result.valid());
 }
 
-BOOST_FIXTURE_TEST_CASE(c_array, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(array, tcp_network_fixture)
 {
+    boost::mysql::tcp_statement stmt;
+    boost::mysql::tcp_resultset result;
+
     connect();
-    auto stmt = conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)");
-    field_view arr [] = { field_view("hola"), field_view(10) };
-    auto result = stmt.execute(arr);
+    conn.prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", stmt);
+    stmt.execute(boost::mysql::make_field_views("hola", 10), result);
     BOOST_TEST(result.valid());
 }
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()  // test_execute_statement
 
-BOOST_AUTO_TEST_SUITE_END() // test_execute_statement
+}  // namespace

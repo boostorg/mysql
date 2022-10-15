@@ -41,6 +41,8 @@ struct network_fixture : network_fixture_base
 {
     er_network_variant* var{};
     er_connection_ptr conn;
+    er_statement_ptr stmt;
+    er_resultset_ptr result;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard;
     std::thread runner;
 
@@ -56,14 +58,12 @@ struct network_fixture : network_fixture_base
         runner.join();
     }
 
-    er_resultset_ptr create_resultset() { return var->create_resultset(); }
-
-    er_statement_ptr create_statement() { return var->create_statement(); }
-
     void setup(er_network_variant* variant)
     {
         var = variant;
         conn = var->create_connection(ctx.get_executor(), ssl_ctx);
+        stmt = var->create_statement();
+        result = var->create_resultset();
     }
 
     void setup_and_connect(er_network_variant* variant, ssl_mode m = ssl_mode::require)
@@ -121,14 +121,12 @@ struct network_fixture : network_fixture_base
     // make the testing environment more stable and speed up the tests
     void start_transaction()
     {
-        auto result = create_resultset();
         conn->query("START TRANSACTION", *result).get();
         result->read_all().get();
     }
 
     std::int64_t get_table_size(const std::string& table)
     {
-        auto result = create_resultset();
         conn->query("SELECT COUNT(*) FROM " + table, *result).get();
         return result->read_all().get().at(0).at(0).as_int64();
     }

@@ -188,15 +188,21 @@ void boost::mysql::detail::prepare_statement(
     // We ignore these for now.
     while (processor.has_remaining_meta())
     {
+        // Read from the stream if necessary
         if (!channel.has_read_messages())
         {
             channel.read_some(err);
             if (err)
                 return;
         }
+
+        // Discard the message
         channel.next_read_message(channel.shared_sequence_number(), err);
         if (err)
             return;
+
+        // Update the processor state
+        processor.on_meta_received();
     }
 }
 
