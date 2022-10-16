@@ -20,7 +20,7 @@ BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture)
     conn->quit().validate_no_error();
 
     // We are no longer able to query
-    conn->query("SELECT 1").validate_any_error();
+    conn->query("SELECT 1", *result).validate_any_error();
 }
 
-BOOST_AUTO_TEST_SUITE_END() // test_quit_connection
+BOOST_AUTO_TEST_SUITE_END()  // test_quit_connection
