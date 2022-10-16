@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_CONNECTION_HPP
 #define BOOST_MYSQL_CONNECTION_HPP
 
-#include <boost/mysql/conn_init_params.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/error.hpp>
@@ -82,19 +81,8 @@ public:
         class... Args,
         class EnableIf =
             typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
-    connection(Args&&... args) : connection(conn_init_params(), std::forward<Args>(args)...)
-    {
-    }
-
-    template <
-        class... Args,
-        class EnableIf =
-            typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
-    connection(const conn_init_params& params, Args&&... args)
-        : channel_(new detail::channel<Stream>(
-              params.initial_read_buffer_size(),
-              std::forward<Args>(args)...
-          ))
+    connection(Args&&... args)
+        : channel_(new detail::channel<Stream>(0, std::forward<Args>(args)...))
     {
     }
 

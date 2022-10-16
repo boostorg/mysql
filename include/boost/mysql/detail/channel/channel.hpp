@@ -148,11 +148,12 @@ public:
     capabilities current_capabilities() const noexcept { return current_caps_; }
     void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 
-    void reset()
+    void reset(std::size_t read_buffer_size)
     {
         stream_.reset();
         current_caps_ = capabilities();
         reset_sequence_number();
+        reader_.buffer().grow_to_fit(read_buffer_size);
     }
 
     // Internal buffer, error_info and sequence_number to help async ops

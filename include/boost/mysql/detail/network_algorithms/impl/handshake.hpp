@@ -376,7 +376,7 @@ void boost::mysql::detail::handshake(
     error_info& info
 )
 {
-    channel.reset();
+    channel.reset(params.buffer_config().initial_read_buffer_size());
 
     // Set up processor
     handshake_processor processor(params);
@@ -456,7 +456,7 @@ boost::mysql::detail::async_handshake(
     CompletionToken&& token
 )
 {
-    chan.reset();
+    chan.reset(params.buffer_config().initial_read_buffer_size());
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         handshake_op<Stream>(chan, info, params),
         token,

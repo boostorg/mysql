@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
 #define BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
 
+#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/collation.hpp>
 
 #include <boost/utility/string_view.hpp>
@@ -41,6 +42,7 @@ class handshake_params
     boost::string_view database_;
     collation connection_collation_;
     ssl_mode ssl_;
+    buffer_params buffer_config_;
 
 public:
     /**
@@ -58,13 +60,15 @@ public:
         boost::string_view password,
         boost::string_view db = "",
         collation connection_col = collation::utf8_general_ci,
-        ssl_mode mode = ssl_mode::require
+        ssl_mode mode = ssl_mode::require,
+        const buffer_params& buffer_config = {}
     )
         : username_(username),
           password_(password),
           database_(db),
           connection_collation_(connection_col),
-          ssl_(mode)
+          ssl_(mode),
+          buffer_config_(buffer_config)
     {
     }
 
@@ -97,6 +101,9 @@ public:
 
     /// Sets SSL mode
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
+
+    buffer_params buffer_config() const noexcept { return buffer_config_; }
+    void set_buffer_config(const buffer_params& value) noexcept { buffer_config_ = value; }
 };
 
 }  // namespace mysql

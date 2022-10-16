@@ -13,12 +13,12 @@
 namespace boost {
 namespace mysql {
 
-class conn_init_params
+class buffer_params
 {
     std::size_t initial_read_buffer_size_;
 
 public:
-    constexpr conn_init_params(std::size_t init_read_buffer_size = 0) noexcept
+    constexpr buffer_params(std::size_t init_read_buffer_size = 0) noexcept
         : initial_read_buffer_size_(init_read_buffer_size)
     {
     }
