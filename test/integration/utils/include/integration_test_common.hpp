@@ -165,6 +165,20 @@ inline std::vector<network_sample> create_network_samples(std::initializer_list<
     return res;
 }
 
+inline std::vector<network_sample> create_all_network_samples()
+{
+    std::vector<network_sample> res;
+    for (auto* var : all_variants())
+        res.emplace_back(var);
+    return res;
+}
+
+inline const std::vector<network_sample>& all_network_samples()
+{
+    static std::vector<network_sample> res = create_all_network_samples();
+    return res;
+}
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost

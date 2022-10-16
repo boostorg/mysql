@@ -166,11 +166,10 @@ public:
     const char* variant_name() const override { return "default_completion_tokens"; }
 };
 
-default_completion_tokens_variant<tcp_ssl_future_socket> obj;
-
 }  // namespace
 
 void boost::mysql::test::add_default_completion_tokens(std::vector<er_network_variant*>& output)
 {
+    static default_completion_tokens_variant<tcp_ssl_future_socket> obj;
     output.push_back(&obj);
 }

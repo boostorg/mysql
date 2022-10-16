@@ -207,13 +207,12 @@ public:
     const char* variant_name() const override { return "async_future"; }
 };
 
-async_future_variant<tcp_socket> tcp;
-async_future_variant<tcp_ssl_socket> tcp_ssl;
-
 }  // namespace
 
 void boost::mysql::test::add_async_future(std::vector<er_network_variant*>& output)
 {
+    static async_future_variant<tcp_socket> tcp;
+    static async_future_variant<tcp_ssl_socket> tcp_ssl;
     output.push_back(&tcp);
     output.push_back(&tcp_ssl);
 }

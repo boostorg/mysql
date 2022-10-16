@@ -179,14 +179,12 @@ public:
     const char* variant_name() const override { return "sync_exc"; }
 };
 
-sync_exc_variant<tcp_socket> tcp;
-sync_exc_variant<tcp_ssl_socket> tcp_ssl;
-// UNIX sockets don't add much value here
-
 }  // namespace
 
 void boost::mysql::test::add_sync_exc(std::vector<er_network_variant*>& output)
 {
+    static sync_exc_variant<tcp_socket> tcp;
+    static sync_exc_variant<tcp_ssl_socket> tcp_ssl;
     output.push_back(&tcp);
     output.push_back(&tcp_ssl);
 }

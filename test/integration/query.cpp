@@ -16,9 +16,10 @@ using boost::mysql::errc;
 
 namespace {
 
-auto net_samples = create_network_samples(
-    {"tcp_sync_errc", "tcp_sync_exc", "tcp_async_callback", "tcp_async_callback_noerrinfo"}
-);
+auto net_samples = create_network_samples({
+    "tcp_sync_errc",
+    "tcp_async_callback",
+});
 
 BOOST_AUTO_TEST_SUITE(test_query)
 
@@ -81,7 +82,7 @@ BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture, net_samples)
     BOOST_TEST(updated_value == 52);  // initial value was 42
 }
 
-BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture, net_samples)
+BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
@@ -92,7 +93,7 @@ BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture, net_samples)
     this->validate_2fields_meta(result->base(), "empty_table");
 }
 
-BOOST_MYSQL_NETWORK_TEST(select_error, network_fixture, net_samples)
+BOOST_MYSQL_NETWORK_TEST(select_error, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
     auto netresult = conn->query("SELECT field_varchar, field_bad FROM one_row_table", *result);

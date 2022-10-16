@@ -233,19 +233,18 @@ public:
     const char* variant_name() const override { return "async_coroutinecpp20"; }
 };
 
-async_coroutinecpp20_variant<tcp_socket> tcp;
-async_coroutinecpp20_variant<tcp_ssl_socket> tcp_ssl;
-
 }  // namespace
 
-#endif
-
-#if BOOST_ASIO_HAS_CO_AWAIT
 void boost::mysql::test::add_async_coroutinecpp20(std::vector<er_network_variant*>& output)
 {
+    static async_coroutinecpp20_variant<tcp_socket> tcp;
+    static async_coroutinecpp20_variant<tcp_ssl_socket> tcp_ssl;
     output.push_back(&tcp);
     output.push_back(&tcp_ssl);
 }
+
 #else
+
 void boost::mysql::test::add_async_coroutinecpp20(std::vector<er_network_variant*>&) {}
+
 #endif

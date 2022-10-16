@@ -13,16 +13,20 @@ using boost::mysql::error_code;
 
 namespace {
 
-auto net_samples = create_network_samples(
-    {"tcp_sync_errc", "tcp_sync_exc", "tcp_async_callback", "tcp_async_callback_noerrinfo"}
-);
+auto net_samples = create_network_samples({
+    "tcp_sync_errc",
+    "tcp_async_callback",
+    "tcp_ssl_sync_errc",
+    "tcp_ssl_async_callback",
+});
 
 BOOST_AUTO_TEST_SUITE(test_connect)
 
 // The OK case is already being tested by all other integ tests
 // that require the connection to be connected
 
-BOOST_MYSQL_NETWORK_TEST(physical_error, network_fixture, net_samples)
+// All network variants coverage test
+BOOST_MYSQL_NETWORK_TEST(physical_error, network_fixture, all_network_samples())
 {
     setup(sample.net);
 
@@ -32,6 +36,7 @@ BOOST_MYSQL_NETWORK_TEST(physical_error, network_fixture, net_samples)
     BOOST_TEST(!conn->is_open());
 }
 
+// TODO: this should be a unit test
 BOOST_MYSQL_NETWORK_TEST(physical_ok_handshake_error, network_fixture, net_samples)
 {
     setup(sample.net);

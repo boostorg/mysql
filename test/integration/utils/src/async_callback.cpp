@@ -192,17 +192,17 @@ public:
     const char* variant_name() const override { return "async_callback"; }
 };
 
-async_callback_variant<tcp_socket> tcp_variant;
-async_callback_variant<tcp_ssl_socket> tcp_ssl_variant;
-async_callback_variant<tcp_ssl_future_socket> def_compl_variant;
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
-async_callback_variant<unix_socket> unix_variant;
-#endif
-
 }  // namespace
 
 void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& output)
 {
+    static async_callback_variant<tcp_socket> tcp_variant;
+    static async_callback_variant<tcp_ssl_socket> tcp_ssl_variant;
+    static async_callback_variant<tcp_ssl_future_socket> def_compl_variant;
+#if BOOST_ASIO_HAS_LOCAL_SOCKETS
+    static async_callback_variant<unix_socket> unix_variant;
+#endif
+
     output.push_back(&tcp_variant);
     output.push_back(&tcp_ssl_variant);
     output.push_back(&def_compl_variant);

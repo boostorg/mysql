@@ -15,11 +15,25 @@ using boost::mysql::error_code;
 
 namespace {
 
-auto net_samples = create_network_samples({"tcp_sync_errc", "tcp_async_callback"});
+auto net_samples = create_network_samples({
+    "tcp_sync_errc",
+    "tcp_async_callback",
+    "tcp_ssl_sync_errc",
+    "tcp_ssl_async_callback",
+});
 
 BOOST_AUTO_TEST_SUITE(test_close_connection)
 
-BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture, net_samples)
+BOOST_MYSQL_NETWORK_TEST(success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    // Close successful
+    conn->close().validate_no_error();
+    BOOST_TEST(!conn->is_open());
+}
+
+BOOST_MYSQL_NETWORK_TEST(double_close, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 

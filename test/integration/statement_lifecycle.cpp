@@ -15,7 +15,10 @@ using boost::mysql::field_view;
 
 namespace {
 
-auto net_samples = create_network_samples({"tcp_sync_errc", "tcp_async_callback"});
+auto net_samples = create_network_samples({
+    "tcp_sync_errc",
+    "tcp_async_callback",
+});
 
 BOOST_AUTO_TEST_SUITE(test_statement_lifecycle)
 
