@@ -52,8 +52,9 @@ struct quit_connection_op : boost::asio::coroutine
             if (chan_.stream().ssl_active())
             {
                 BOOST_ASIO_CORO_YIELD chan_.stream().async_shutdown(std::move(self));
-                self.complete(error_code());
             }
+
+            self.complete(error_code());
         }
     }
 };
