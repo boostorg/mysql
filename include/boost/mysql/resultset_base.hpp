@@ -123,7 +123,7 @@ public:
 
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
 
-    std::vector<metadata>& meta() noexcept { return meta_; }
+    std::vector<metadata>& fields() noexcept { return meta_; }
     const std::vector<metadata>& fields() const noexcept { return meta_; }
 #endif
 

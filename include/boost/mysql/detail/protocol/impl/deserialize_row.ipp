@@ -169,7 +169,7 @@ void boost::mysql::detail::deserialize_row(
     {
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        deserialize_row(result.encoding(), ctx, result.meta(), buffer_first, output, err);
+        deserialize_row(result.encoding(), ctx, result.fields(), buffer_first, output, err);
     }
 }
 

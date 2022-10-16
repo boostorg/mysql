@@ -5,24 +5,30 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/tcp.hpp>
-#include "tcp_network_fixture.hpp"
-#include "metadata_validator.hpp"
-#include "test_common.hpp"
+
 #include <boost/asio/io_context.hpp>
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
+
+#include <bitset>
 #include <cstdint>
 #include <map>
-#include <bitset>
+
+#include "metadata_validator.hpp"
+#include "tcp_network_fixture.hpp"
+#include "test_common.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::field_view;
-using boost::mysql::metadata;
-using boost::mysql::field_type;
 using boost::mysql::datetime;
-using boost::mysql::make_values;
+using boost::mysql::field_type;
+using boost::mysql::field_view;
+using boost::mysql::make_field_views;
+using boost::mysql::metadata;
+using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
 
@@ -41,13 +47,18 @@ struct database_types_sample
     meta_validator mvalid;
 
     template <class ValueType, class... Args>
-    database_types_sample(std::string table, std::string field, std::string row_id,
-            ValueType&& expected_value, Args&&... args) :
-        table(table),
-        field(field),
-        row_id(move(row_id)),
-        expected_value(std::forward<ValueType>(expected_value)),
-        mvalid(move(table), move(field), std::forward<Args>(args)...)
+    database_types_sample(
+        std::string table,
+        std::string field,
+        std::string row_id,
+        ValueType&& expected_value,
+        Args&&... args
+    )
+        : table(table),
+          field(field),
+          row_id(std::move(row_id)),
+          expected_value(std::forward<ValueType>(expected_value)),
+          mvalid(std::move(table), std::move(field), std::forward<Args>(args)...)
     {
     }
 };
@@ -60,10 +71,11 @@ std::ostream& operator<<(std::ostream& os, const database_types_sample& input)
 // Helpers
 using flagsvec = std::vector<meta_validator::flag_getter>;
 
-const flagsvec no_flags {};
-const flagsvec flags_unsigned { &field_metadata::is_unsigned };
-const flagsvec flags_zerofill { &field_metadata::is_unsigned, &field_metadata::is_zerofill };
+const flagsvec no_flags{};
+const flagsvec flags_unsigned{&metadata::is_unsigned};
+const flagsvec flags_zerofill{&metadata::is_unsigned, &metadata::is_zerofill};
 
+// clang-format off
 // Int cases
 void add_int_samples_helper(
     const char* table_name,
@@ -328,7 +340,7 @@ database_types_sample create_datetime_sample(
         type,
         no_flags,
         decimals,
-        flagsvec{ &field_metadata::is_unsigned }
+        flagsvec{ &metadata::is_unsigned }
     );
 }
 
@@ -388,7 +400,7 @@ void add_common_datetime_samples(
             if (bitset_id[3] && decimals == 0)
                 continue; // cases with micros don't make sense for fields with no decimals
             auto dt = datetime_from_id(int_id, decimals);
-            output.push_back(create_datetime_sample(decimals, move(dt.first), field_view(dt.second), type));
+            output.push_back(create_datetime_sample(decimals, std::move(dt.first), field_view(dt.second), type));
         }
 
         // Tests for leap years (valid dates)
@@ -457,7 +469,7 @@ void add_time_samples(std::vector<database_types_sample>& output)
             if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
             auto t = time_from_id(int_id, decimals);
             output.push_back(create_datetime_sample(
-                decimals, move(t.first), field_view(t.second), field_type::time));
+                decimals, std::move(t.first), field_view(t.second), field_type::time));
         }
 
         // min and max
@@ -565,19 +577,17 @@ void add_not_implemented_samples(std::vector<database_types_sample>& output)
 void add_flags_samples(std::vector<database_types_sample>& output)
 {
     output.emplace_back("types_flags", "field_timestamp", "default",
-        nullptr, field_type::timestamp, flagsvec{&field_metadata::is_set_to_now_on_update},
-            0, flagsvec{&field_metadata::is_unsigned});
+        nullptr, field_type::timestamp, flagsvec{&metadata::is_set_to_now_on_update}, 0, flagsvec{&metadata::is_unsigned});
     output.emplace_back("types_flags", "field_primary_key", "default",
-        std::int64_t(50), field_type::int_,
-            flagsvec{&field_metadata::is_primary_key, &field_metadata::is_not_null,
-                &field_metadata::is_auto_increment});
+        std::int64_t(50), field_type::int_, flagsvec{&metadata::is_primary_key, &metadata::is_not_null, &metadata::is_auto_increment});
     output.emplace_back("types_flags", "field_not_null", "default",
-        "char", field_type::char_, flagsvec{&field_metadata::is_not_null});
+        "char", field_type::char_, flagsvec{&metadata::is_not_null});
     output.emplace_back("types_flags", "field_unique", "default",
-        std::int64_t(21), field_type::int_, flagsvec{&field_metadata::is_unique_key});
+        std::int64_t(21), field_type::int_, flagsvec{&metadata::is_unique_key});
     output.emplace_back("types_flags", "field_indexed", "default",
-        std::int64_t(42), field_type::int_, flagsvec{&field_metadata::is_multiple_key});
+        std::int64_t(42), field_type::int_, flagsvec{&metadata::is_multiple_key});
 }
+// clang-format on
 
 std::vector<database_types_sample> make_all_samples()
 {
@@ -606,47 +616,50 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, query, data::make(all_samples))
 
     // Compose the query
     auto query = stringize(
-        "SELECT ", sample.field,
-        " FROM ", sample.table,
-        " WHERE id = '", sample.row_id, "'"
+        "SELECT ",
+        sample.field,
+        " FROM ",
+        sample.table,
+        " WHERE id = '",
+        sample.row_id,
+        "'"
     );
 
     // Execute it
-    auto result = conn.query(query);
+    boost::mysql::tcp_resultset result;
+    conn.query(query, result);
     auto rows = result.read_all();
 
     // Validate the received metadata
-    validate_meta(result.fields(), {sample.mvalid});
+    validate_meta(result.meta(), {sample.mvalid});
 
     // Validate the returned value
     BOOST_TEST_REQUIRE(rows.size() == 1u);
-    BOOST_TEST_REQUIRE(rows[0].values().size() == 1u);
-    BOOST_TEST(rows[0].values()[0] == sample.expected_value);
+    BOOST_TEST_REQUIRE(rows[0].size() == 1u);
+    BOOST_TEST(rows[0][0] == sample.expected_value);
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, statement_base, data::make(all_samples))
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, statement, data::make(all_samples))
 {
     connect();
 
     // Prepare the statement
-    auto stmt_sql = stringize(
-        "SELECT ", sample.field,
-        " FROM ", sample.table,
-        " WHERE id = ?"
-    );
-    auto stmt = conn.prepare_statement(stmt_sql);
+    boost::mysql::tcp_statement stmt;
+    auto stmt_sql = stringize("SELECT ", sample.field, " FROM ", sample.table, " WHERE id = ?");
+    conn.prepare_statement(stmt_sql, stmt);
 
     // Execute it with the provided parameters
-    auto result = stmt.execute(make_values(sample.row_id));
+    boost::mysql::tcp_resultset result;
+    stmt.execute(make_field_views(sample.row_id), result);
     auto rows = result.read_all();
 
     // Validate the received metadata
-    validate_meta(result.fields(), {sample.mvalid});
+    validate_meta(result.meta(), {sample.mvalid});
 
     // Validate the returned value
     BOOST_TEST_REQUIRE(rows.size() == 1u);
-    BOOST_TEST_REQUIRE(rows[0].values().size() == 1u);
-    BOOST_TEST(rows[0].values()[0] == sample.expected_value);
+    BOOST_TEST_REQUIRE(rows[0].size() == 1u);
+    BOOST_TEST(rows[0][0] == sample.expected_value);
 }
 
 // The prepared statement param tests binary serialization.
@@ -654,8 +667,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, statement_base, data::make(all_sampl
 // Doing "field = ?" where ? is NULL never matches anything.
 // Filter the cases to remove the ones that
 // are not applicable
-std::vector<database_types_sample>
-make_prepared_stmt_param_samples()
+std::vector<database_types_sample> make_prepared_stmt_param_samples()
 {
     std::vector<database_types_sample> res;
     res.reserve(all_samples.size());
@@ -669,42 +681,48 @@ make_prepared_stmt_param_samples()
     return res;
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture,
+BOOST_DATA_TEST_CASE_F(
+    tcp_network_fixture,
     prepared_statement_execute_param,
-    data::make(make_prepared_stmt_param_samples()))
+    data::make(make_prepared_stmt_param_samples())
+)
 {
     connect();
-    
+
     // Prepare the statement
     auto stmt_sql = stringize(
-        "SELECT ", sample.field,
-        " FROM ", sample.table,
-        " WHERE id = ? AND ", sample.field, " = ?"
+        "SELECT ",
+        sample.field,
+        " FROM ",
+        sample.table,
+        " WHERE id = ? AND ",
+        sample.field,
+        " = ?"
     );
-    auto stmt = conn.prepare_statement(stmt_sql);
+    boost::mysql::tcp_statement stmt;
+    conn.prepare_statement(stmt_sql, stmt);
 
     // Execute it with the provided parameters
-    auto result = stmt.execute(make_values(sample.row_id, sample.expected_value));
+    boost::mysql::tcp_resultset result;
+    stmt.execute(make_field_views(sample.row_id, sample.expected_value), result);
     auto rows = result.read_all();
 
     // Validate the returned value
     BOOST_TEST_REQUIRE(rows.size() == 1u);
-    BOOST_TEST_REQUIRE(rows[0].values().size() == 1u);
-    BOOST_TEST(rows[0].values()[0] == sample.expected_value);
+    BOOST_TEST_REQUIRE(rows[0].size() == 1u);
+    BOOST_TEST(rows[0][0] == sample.expected_value);
 }
 
 // Validate that the metadata we retrieve with certain queries is correct
 BOOST_FIXTURE_TEST_CASE(aliased_table_metadata, tcp_network_fixture)
 {
     connect();
-    auto result = conn.query(
-        "SELECT field_varchar AS field_alias FROM empty_table table_alias");
-    std::vector<meta_validator> validators {
-        { "table_alias", "empty_table", "field_alias",
-            "field_varchar", field_type::varchar }
+    boost::mysql::tcp_resultset result;
+    conn.query("SELECT field_varchar AS field_alias FROM empty_table table_alias", result);
+    std::vector<meta_validator> validators{
+        {"table_alias", "empty_table", "field_alias", "field_varchar", field_type::varchar}
     };
-    validate_meta(result.fields(), validators);
+    validate_meta(result.meta(), validators);
 }
 
-
-BOOST_AUTO_TEST_SUITE_END() // test_database_types
+BOOST_AUTO_TEST_SUITE_END()  // test_database_types
