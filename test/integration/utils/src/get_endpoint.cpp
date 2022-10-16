@@ -20,29 +20,16 @@ namespace {
 
 // Get the endpoint to use for TCP from an environment variable.
 // Required as CI MySQL doesn't run on loocalhost
-struct global_fixture
+boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 {
-    static boost::asio::ip::tcp::endpoint valid_endpoint;
-
-    global_fixture()
-    {
-        const char* hostname = std::getenv("BOOST_MYSQL_SERVER_HOST");
-        if (hostname)
-        {
-            boost::asio::io_context ctx;
-            boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
-            auto results = resolver.resolve(hostname, boost::mysql::default_port_string);
-            valid_endpoint = *results.begin();
-        }
-    }
-};
-
-boost::asio::ip::tcp::endpoint global_fixture::valid_endpoint(
-    boost::asio::ip::address_v4::loopback(),
-    boost::mysql::default_port
-);
-
-BOOST_TEST_GLOBAL_FIXTURE(global_fixture);
+    const char* hostname = std::getenv("BOOST_MYSQL_SERVER_HOST");
+    if (!hostname)
+        hostname = "localhost";
+    boost::asio::io_context ctx;
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
+    auto results = resolver.resolve(hostname, boost::mysql::default_port_string);
+    return *results.begin();
+}
 
 }  // namespace
 
@@ -51,7 +38,8 @@ boost::asio::ip::tcp::endpoint boost::mysql::test::endpoint_getter<
 {
     if (kind == er_endpoint::valid)
     {
-        return global_fixture::valid_endpoint;
+        static auto res = get_tcp_valid_endpoint();
+        return res;
     }
     else if (kind == er_endpoint::inexistent)
     {
