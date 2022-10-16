@@ -15,6 +15,8 @@ using boost::mysql::field_view;
 
 namespace {
 
+auto net_samples = create_network_samples({"tcp_sync_errc", "tcp_async_callback"});
+
 BOOST_AUTO_TEST_SUITE(test_statement_lifecycle)
 
 struct statement_lifecycle_fixture : network_fixture
@@ -30,7 +32,7 @@ struct statement_lifecycle_fixture : network_fixture
     }
 };
 
-BOOST_MYSQL_NETWORK_TEST(select_with_parameters_multiple_executions, statement_lifecycle_fixture)
+BOOST_MYSQL_NETWORK_TEST(select_with_parameters, statement_lifecycle_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -65,7 +67,7 @@ BOOST_MYSQL_NETWORK_TEST(select_with_parameters_multiple_executions, statement_l
     stmt->close().validate_no_error();
 }
 
-BOOST_MYSQL_NETWORK_TEST(insert_with_parameters_multiple_executions, statement_lifecycle_fixture)
+BOOST_MYSQL_NETWORK_TEST(insert_with_parameters, statement_lifecycle_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -93,7 +95,7 @@ BOOST_MYSQL_NETWORK_TEST(insert_with_parameters_multiple_executions, statement_l
     stmt->close().validate_no_error();
 }
 
-BOOST_MYSQL_NETWORK_TEST(update_with_parameters_multiple_executions, statement_lifecycle_fixture)
+BOOST_MYSQL_NETWORK_TEST(update_with_parameters, statement_lifecycle_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -124,7 +126,7 @@ BOOST_MYSQL_NETWORK_TEST(update_with_parameters_multiple_executions, statement_l
     stmt->close().validate_no_error();
 }
 
-BOOST_MYSQL_NETWORK_TEST(multiple_statements, statement_lifecycle_fixture)
+BOOST_MYSQL_NETWORK_TEST(multiple_statements, statement_lifecycle_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -174,7 +176,7 @@ BOOST_MYSQL_NETWORK_TEST(multiple_statements, statement_lifecycle_fixture)
     stmt_select->close().validate_no_error();
 }
 
-BOOST_MYSQL_NETWORK_TEST(insert_with_null_values, statement_lifecycle_fixture)
+BOOST_MYSQL_NETWORK_TEST(insert_with_null_values, statement_lifecycle_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();

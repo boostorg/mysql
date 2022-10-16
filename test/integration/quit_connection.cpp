@@ -10,9 +10,13 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 
+namespace {
+
+auto net_samples = create_network_samples({"tcp_sync_errc", "tcp_async_callback"});
+
 BOOST_AUTO_TEST_SUITE(test_quit_connection)
 
-BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -24,3 +28,5 @@ BOOST_MYSQL_NETWORK_TEST(active_connection, network_fixture)
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_quit_connection
+
+}  // namespace

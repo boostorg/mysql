@@ -23,9 +23,13 @@ using boost::mysql::tcp_statement;
 
 namespace {
 
+auto net_samples = create_network_samples(
+    {"tcp_sync_errc", "tcp_sync_exc", "tcp_async_callback", "tcp_async_callback_noerrinfo"}
+);
+
 BOOST_AUTO_TEST_SUITE(test_prepare_statement)
 
-BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     conn->prepare_statement("SELECT * FROM empty_table", *stmt).validate_no_error();
@@ -34,7 +38,7 @@ BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture)
     BOOST_TEST(stmt->base().num_params() == 0u);
 }
 
-BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
@@ -44,7 +48,7 @@ BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture)
     BOOST_TEST(stmt->base().num_params() == 2u);
 }
 
-BOOST_MYSQL_NETWORK_TEST(invalid_statement, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(invalid_statement, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)", *stmt)

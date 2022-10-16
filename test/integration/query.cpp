@@ -14,9 +14,15 @@
 using namespace boost::mysql::test;
 using boost::mysql::errc;
 
+namespace {
+
+auto net_samples = create_network_samples(
+    {"tcp_sync_errc", "tcp_sync_exc", "tcp_async_callback", "tcp_async_callback_noerrinfo"}
+);
+
 BOOST_AUTO_TEST_SUITE(test_query)
 
-BOOST_MYSQL_NETWORK_TEST(insert_ok, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(insert_ok, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -41,7 +47,7 @@ BOOST_MYSQL_NETWORK_TEST(insert_ok, network_fixture)
     BOOST_TEST(this->get_table_size("inserts_table") == 1u);
 }
 
-BOOST_MYSQL_NETWORK_TEST(insert_error, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(insert_error, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -52,7 +58,7 @@ BOOST_MYSQL_NETWORK_TEST(insert_error, network_fixture)
     netresult.validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
 }
 
-BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -75,7 +81,7 @@ BOOST_MYSQL_NETWORK_TEST(update_ok, network_fixture)
     BOOST_TEST(updated_value == 52);  // initial value was 42
 }
 
-BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -86,7 +92,7 @@ BOOST_MYSQL_NETWORK_TEST(select_ok, network_fixture)
     this->validate_2fields_meta(result->base(), "empty_table");
 }
 
-BOOST_MYSQL_NETWORK_TEST(select_error, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(select_error, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     auto netresult = conn->query("SELECT field_varchar, field_bad FROM one_row_table", *result);
@@ -94,3 +100,5 @@ BOOST_MYSQL_NETWORK_TEST(select_error, network_fixture)
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_query
+
+}  // namespace

@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
+#include <stdexcept>
+#include <unordered_map>
 
 #include "er_impl_common.hpp"
 #include "er_network_variant.hpp"
@@ -30,23 +32,11 @@ static std::vector<er_network_variant*> make_all_variants()
     return res;
 }
 
-static std::vector<er_network_variant*> make_ssl_variants()
+static std::unordered_map<std::string, er_network_variant*> make_variants_map()
 {
-    auto all = make_all_variants();
-    std::vector<er_network_variant*> res;
-    std::copy_if(all.begin(), all.end(), std::back_inserter(res), [](er_network_variant* v) {
-        return v->supports_ssl();
-    });
-    return res;
-}
-
-static std::vector<er_network_variant*> make_non_ssl_variants()
-{
-    auto all = make_all_variants();
-    std::vector<er_network_variant*> res;
-    std::copy_if(all.begin(), all.end(), std::back_inserter(res), [](er_network_variant* v) {
-        return !v->supports_ssl();
-    });
+    std::unordered_map<std::string, er_network_variant*> res;
+    for (auto* var : all_variants())
+        res[var->name()] = var;
     return res;
 }
 
@@ -56,14 +46,12 @@ boost::span<er_network_variant*> boost::mysql::test::all_variants()
     return res;
 }
 
-boost::span<er_network_variant*> boost::mysql::test::ssl_variants()
+er_network_variant* boost::mysql::test::get_variant(boost::string_view name)
 {
-    static auto res = make_ssl_variants();
-    return res;
-}
-
-boost::span<er_network_variant*> boost::mysql::test::non_ssl_variants()
-{
-    static auto res = make_non_ssl_variants();
-    return res;
+    static auto by_name = make_variants_map();
+    std::string name_str(name);
+    auto it = by_name.find(name_str);
+    if (it == by_name.end())
+        throw std::out_of_range("Unknown network variant: " + name_str);
+    return it->second;
 }

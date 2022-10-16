@@ -92,24 +92,11 @@ std::ostream& operator<<(std::ostream& os, const resultset_sample& input)
     return os << static_cast<const network_sample&>(input) << '_' << input.gen->name();
 }
 
-struct sample_gen
-{
-    std::vector<resultset_sample> make_all() const
-    {
-        std::vector<resultset_sample> res;
-        for (auto* net : all_variants())
-        {
-            res.emplace_back(net, &text_obj);
-            res.emplace_back(net, &binary_obj);
-        }
-        return res;
-    }
-
-    const std::vector<resultset_sample>& operator()() const
-    {
-        static const auto res = make_all();
-        return res;
-    }
+resultset_sample net_samples[] = {
+    resultset_sample(get_variant("tcp_sync_errc"), &text_obj),
+    resultset_sample(get_variant("tcp_async_callback"), &text_obj),
+    resultset_sample(get_variant("tcp_sync_exc"), &binary_obj),
+    resultset_sample(get_variant("tcp_async_callback_noerrinfo"), &binary_obj),
 };
 
 struct resultset_fixture : network_fixture
@@ -131,7 +118,7 @@ struct resultset_fixture : network_fixture
 
 BOOST_AUTO_TEST_SUITE(read_one)
 
-BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(no_results, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM empty_table");
@@ -150,7 +137,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(one_row, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM one_row_table");
@@ -170,7 +157,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(two_rows, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(two_rows, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM two_rows_table");
@@ -200,7 +187,7 @@ BOOST_AUTO_TEST_SUITE_END()  // read_one
 
 BOOST_AUTO_TEST_SUITE(read_some)
 
-BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(no_results, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM empty_table");
@@ -216,7 +203,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(one_row, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM one_row_table");
@@ -237,7 +224,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(several_rows, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(several_rows, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM three_rows_table");
@@ -268,7 +255,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(several_rows, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(several_rows_single_read, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(several_rows_single_read, resultset_fixture, net_samples)
 {
     // make sure the entire result can be read at once
     params.set_buffer_config(boost::mysql::buffer_params(4096));
@@ -290,7 +277,7 @@ BOOST_AUTO_TEST_SUITE_END()  // read_many
 
 BOOST_AUTO_TEST_SUITE(read_all)
 
-BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(no_results, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM empty_table");
@@ -306,7 +293,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(one_row, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM one_row_table");
@@ -322,7 +309,7 @@ BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(several_rows, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST(several_rows, resultset_fixture, net_samples)
 {
     setup_and_connect(sample);
     generate("SELECT * FROM two_rows_table");

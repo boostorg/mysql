@@ -16,6 +16,7 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <initializer_list>
 #include <thread>
 
 #include "er_connection.hpp"
@@ -156,62 +157,13 @@ inline std::ostream& operator<<(std::ostream& os, const network_sample& value)
     return os << value.net->stream_name() << "_" << value.net->variant_name();
 }
 
-struct all_variants_gen
+inline std::vector<network_sample> create_network_samples(std::initializer_list<const char*> names)
 {
-    std::vector<network_sample> make_all() const
-    {
-        std::vector<network_sample> res;
-        for (auto* net : all_variants())
-        {
-            res.emplace_back(net);
-        }
-        return res;
-    }
-
-    const std::vector<network_sample>& operator()() const
-    {
-        static auto res = make_all();
-        return res;
-    }
-};
-
-struct ssl_only_gen
-{
-    std::vector<network_sample> make_all() const
-    {
-        std::vector<network_sample> res;
-        for (auto* net : ssl_variants())
-        {
-            res.emplace_back(net);
-        }
-        return res;
-    }
-
-    const std::vector<network_sample>& operator()() const
-    {
-        static auto res = make_all();
-        return res;
-    }
-};
-
-struct non_ssl_only_gen
-{
-    std::vector<network_sample> make_all() const
-    {
-        std::vector<network_sample> res;
-        for (auto* net : non_ssl_variants())
-        {
-            res.emplace_back(net);
-        }
-        return res;
-    }
-
-    const std::vector<network_sample>& operator()() const
-    {
-        static auto res = make_all();
-        return res;
-    }
-};
+    std::vector<network_sample> res;
+    for (const char* name : names)
+        res.emplace_back(get_variant(name));
+    return res;
+}
 
 }  // namespace test
 }  // namespace mysql

@@ -19,6 +19,11 @@ using namespace boost::mysql::test;
 
 namespace {
 
+auto net_samples_nossl = create_network_samples({"tcp_sync_errc", "tcp_async_callback"});
+auto net_samples_all = create_network_samples(
+    {"tcp_sync_errc", "tcp_async_callback", "tcp_ssl_sync_errc", "tcp_ssl_async_callback"}
+);
+
 BOOST_AUTO_TEST_SUITE(test_reconnect)
 
 struct reconnect_fixture : network_fixture
@@ -31,7 +36,7 @@ struct reconnect_fixture : network_fixture
     }
 };
 
-BOOST_MYSQL_NETWORK_TEST_NOSSL(reconnect_after_close, reconnect_fixture)
+BOOST_MYSQL_NETWORK_TEST(reconnect_after_close, reconnect_fixture, net_samples_nossl)
 {
     setup(sample.net);
 
@@ -47,7 +52,7 @@ BOOST_MYSQL_NETWORK_TEST_NOSSL(reconnect_after_close, reconnect_fixture)
     do_query_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST_NOSSL(reconnect_after_handshake_error, reconnect_fixture)
+BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, net_samples_nossl)
 {
     setup(sample.net);
 
@@ -62,7 +67,7 @@ BOOST_MYSQL_NETWORK_TEST_NOSSL(reconnect_after_handshake_error, reconnect_fixtur
     do_query_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(reconnect_after_physical_connect_error, reconnect_fixture)
+BOOST_MYSQL_NETWORK_TEST(reconnect_after_physical_connect_error, reconnect_fixture, net_samples_all)
 {
     setup(sample.net);
 

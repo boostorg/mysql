@@ -11,6 +11,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/core/span.hpp>
+#include <boost/utility/string_view.hpp>
 
 #include <functional>
 
@@ -27,15 +28,14 @@ public:
     virtual bool supports_ssl() const = 0;
     virtual const char* stream_name() const = 0;
     virtual const char* variant_name() const = 0;
+    std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }
     virtual er_connection_ptr create_connection(boost::asio::io_context::executor_type, boost::asio::ssl::context&) = 0;
     virtual er_resultset_ptr create_resultset() = 0;
     virtual er_statement_ptr create_statement() = 0;
 };
 
 boost::span<er_network_variant*> all_variants();
-boost::span<er_network_variant*> ssl_variants();
-boost::span<er_network_variant*> non_ssl_variants();
-er_network_variant* tcp_sync_errc_variant();
+er_network_variant* get_variant(boost::string_view name);
 
 }  // namespace test
 }  // namespace mysql

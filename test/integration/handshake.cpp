@@ -34,6 +34,27 @@ using boost::mysql::tcp_ssl_resultset;
 
 namespace {
 
+auto net_samples_ssl = create_network_samples(
+    {"tcp_ssl_sync_errc",
+     "tcp_ssl_sync_exc",
+     "tcp_ssl_async_callback",
+     "tcp_ssl_async_callback_noerrinfo"}
+);
+
+auto net_samples_nossl = create_network_samples(
+    {"tcp_sync_errc", "tcp_sync_exc", "tcp_async_callback", "tcp_async_callback_noerrinfo"}
+);
+
+// Subset of plaintext variants, to reduce test runtime
+auto net_samples_all = create_network_samples(
+    {"tcp_ssl_sync_errc",
+     "tcp_ssl_sync_exc",
+     "tcp_ssl_async_callback",
+     "tcp_ssl_async_callback_noerrinfo",
+     "tcp_sync_errc",
+     "tcp_async_callback"}
+);
+
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
 struct handshake_fixture : network_fixture
@@ -68,21 +89,21 @@ struct handshake_fixture : network_fixture
 // mysql_native_password
 BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
-BOOST_MYSQL_NETWORK_TEST(regular_user, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(regular_user, handshake_fixture, net_samples_all)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("mysqlnp_user", "mysqlnp_password");
     do_handshake_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(empty_password, handshake_fixture, net_samples_all)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("mysqlnp_empty_password_user", "");
     do_handshake_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, net_samples_all)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("mysqlnp_user", "bad_password");
@@ -120,7 +141,7 @@ struct caching_sha2_fixture : handshake_fixture
     }
 };
 
-BOOST_MYSQL_NETWORK_TEST_SSL(ssl_on_cache_hit, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("csha2p_user", "csha2p_password");
@@ -128,7 +149,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(ssl_on_cache_hit, caching_sha2_fixture)
     do_handshake_ok_ssl();
 }
 
-BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_hit, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_hit, caching_sha2_fixture, net_samples_all)
 {
     // As we are sending password hashed, it is OK to not have SSL for this
     setup_and_physical_connect(sample.net);
@@ -137,7 +158,7 @@ BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_hit, caching_sha2_fixture)
     do_handshake_ok_nossl();
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(ssl_on_cache_miss, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("csha2p_user", "csha2p_password");
@@ -145,7 +166,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(ssl_on_cache_miss, caching_sha2_fixture)
     do_handshake_ok_ssl();
 }
 
-BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture, net_samples_all)
 {
     // A cache miss would force us send a plaintext password over
     // a non-TLS connection, so we fail
@@ -156,7 +177,7 @@ BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture)
     conn->handshake(params).validate_error(errc::auth_plugin_requires_ssl, {});
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(empty_password_ssl_on_cache_hit, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("csha2p_empty_password_user", "");
@@ -164,7 +185,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(empty_password_ssl_on_cache_hit, caching_sha2_fixtu
     do_handshake_ok_ssl();
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_hit, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_hit, caching_sha2_fixture, net_samples_all)
 {
     // Empty passwords are allowed over non-TLS connections
     setup_and_physical_connect(sample.net);
@@ -173,7 +194,7 @@ BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_hit, caching_sha2_fixture)
     do_handshake_ok_nossl();
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(empty_password_ssl_on_cache_miss, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
     set_credentials("csha2p_empty_password_user", "");
@@ -181,7 +202,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(empty_password_ssl_on_cache_miss, caching_sha2_fixt
     do_handshake_ok_ssl();
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_miss, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_miss, caching_sha2_fixture, net_samples_all)
 {
     // Empty passwords are allowed over non-TLS connections
     setup_and_physical_connect(sample.net);
@@ -190,7 +211,7 @@ BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_miss, caching_sha2_fixture
     do_handshake_ok_nossl();
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(bad_password_ssl_on_cache_hit, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
 {
     // Note: test over non-TLS would return "ssl required"
     setup_and_physical_connect(sample.net);
@@ -202,7 +223,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(bad_password_ssl_on_cache_hit, caching_sha2_fixture
     );
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(bad_password_ssl_on_cache_miss, caching_sha2_fixture)
+BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
 {
     // Note: test over non-TLS would return "ssl required"
     setup_and_physical_connect(sample.net);
@@ -243,7 +264,7 @@ OzBrmpfHEhF6NDU=
 -----END CERTIFICATE-----
 )%";
 
-BOOST_MYSQL_NETWORK_TEST_SSL(certificate_valid, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(certificate_valid, handshake_fixture, net_samples_ssl)
 {
     // Context changes need to be before setup
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
@@ -252,7 +273,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(certificate_valid, handshake_fixture)
     do_handshake_ok_ssl();
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(certificate_invalid, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(certificate_invalid, handshake_fixture, net_samples_ssl)
 {
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     setup_and_physical_connect(sample.net);
@@ -260,7 +281,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(certificate_invalid, handshake_fixture)
     BOOST_TEST(result.err.message().find("certificate verify failed") != std::string::npos);
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(custom_certificate_verification_failed, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(custom_certificate_verification_failed, handshake_fixture, net_samples_ssl)
 {
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
@@ -270,7 +291,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(custom_certificate_verification_failed, handshake_f
     BOOST_TEST(result.err.message().find("certificate verify failed") != std::string::npos);
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(custom_certificate_verification_ok, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(custom_certificate_verification_ok, handshake_fixture, net_samples_ssl)
 {
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
@@ -282,14 +303,14 @@ BOOST_MYSQL_NETWORK_TEST_SSL(custom_certificate_verification_ok, handshake_fixtu
 BOOST_AUTO_TEST_SUITE_END()  // ssl_certificate_validation
 
 // Other handshake tests
-BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture, net_samples_all)
 {
     setup_and_physical_connect(sample.net);
     params.set_database("");
     do_handshake_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(bad_database, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(bad_database, handshake_fixture, net_samples_all)
 {
     setup_and_physical_connect(sample.net);
     params.set_database("bad_database");
@@ -300,7 +321,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_database, handshake_fixture)
 }
 
 BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
-BOOST_MYSQL_NETWORK_TEST_SSL(unknown_auth_plugin, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(unknown_auth_plugin, handshake_fixture, net_samples_ssl)
 {
     // Note: sha256_password is not supported, so it's an unknown plugin to us
     setup_and_physical_connect(sample.net);
@@ -308,7 +329,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(unknown_auth_plugin, handshake_fixture)
     conn->handshake(params).validate_error(errc::unknown_auth_plugin, {});
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(bad_user, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(bad_user, handshake_fixture, net_samples_nossl)
 {
     // unreliable without SSL. If the default plugin requires SSL
     // (like SHA256), this would fail with 'ssl required'
@@ -317,7 +338,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(bad_user, handshake_fixture)
     conn->handshake(params).validate_any_error();  // may be access denied or unknown auth plugin
 }
 
-BOOST_MYSQL_NETWORK_TEST(ssl_disable, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_disable, handshake_fixture, net_samples_all)
 {
     // Both SSL and non-SSL streams will act as non-SSL streams
     setup_and_physical_connect(sample.net);
@@ -326,7 +347,7 @@ BOOST_MYSQL_NETWORK_TEST(ssl_disable, handshake_fixture)
     BOOST_TEST(!conn->uses_ssl());
 }
 
-BOOST_MYSQL_NETWORK_TEST_NOSSL(ssl_enable_nonssl_streams, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_enable_nonssl_streams, handshake_fixture, net_samples_nossl)
 {
     // Ignored by non-ssl streams
     setup_and_physical_connect(sample.net);
@@ -335,7 +356,7 @@ BOOST_MYSQL_NETWORK_TEST_NOSSL(ssl_enable_nonssl_streams, handshake_fixture)
     BOOST_TEST(!conn->uses_ssl());
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(ssl_enable_ssl_streams, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_enable_ssl_streams, handshake_fixture, net_samples_ssl)
 {
     // In all our CI systems, our servers support SSL, so
     // ssl_mode::enable will do the same as ssl_mode::require.
@@ -346,7 +367,7 @@ BOOST_MYSQL_NETWORK_TEST_SSL(ssl_enable_ssl_streams, handshake_fixture)
     BOOST_TEST(conn->uses_ssl());
 }
 
-BOOST_MYSQL_NETWORK_TEST_NOSSL(ssl_require_nonssl_streams, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_require_nonssl_streams, handshake_fixture, net_samples_nossl)
 {
     // Ignored by non-ssl streams
     setup_and_physical_connect(sample.net);
@@ -355,7 +376,7 @@ BOOST_MYSQL_NETWORK_TEST_NOSSL(ssl_require_nonssl_streams, handshake_fixture)
     BOOST_TEST(!conn->uses_ssl());
 }
 
-BOOST_MYSQL_NETWORK_TEST_SSL(ssl_require_ssl_streams, handshake_fixture)
+BOOST_MYSQL_NETWORK_TEST(ssl_require_ssl_streams, handshake_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
     params.set_ssl(ssl_mode::require);

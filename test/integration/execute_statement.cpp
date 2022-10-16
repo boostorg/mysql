@@ -25,10 +25,14 @@ using boost::mysql::make_execute_params;
 
 namespace {
 
+auto net_samples = create_network_samples(
+    {"tcp_sync_errc", "tcp_sync_exc", "tcp_async_callback", "tcp_async_callback_noerrinfo"}
+);
+
 BOOST_AUTO_TEST_SUITE(test_execute_statement)
 
 BOOST_AUTO_TEST_SUITE(iterator)
-BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -41,7 +45,7 @@ BOOST_MYSQL_NETWORK_TEST(ok_no_params, network_fixture)
     BOOST_TEST(result->base().valid());
 }
 
-BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -55,7 +59,7 @@ BOOST_MYSQL_NETWORK_TEST(ok_with_params, network_fixture)
     BOOST_TEST(result->base().valid());
 }
 
-BOOST_MYSQL_NETWORK_TEST(mismatched_num_params, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(mismatched_num_params, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -69,7 +73,7 @@ BOOST_MYSQL_NETWORK_TEST(mismatched_num_params, network_fixture)
         .validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
 }
 
-BOOST_MYSQL_NETWORK_TEST(server_error, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(server_error, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -94,7 +98,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // collection is a wrapper around execute_params, so only
 // a subset of tests are run here
 BOOST_AUTO_TEST_SUITE(collection)
-BOOST_MYSQL_NETWORK_TEST(ok, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(ok, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -107,7 +111,7 @@ BOOST_MYSQL_NETWORK_TEST(ok, network_fixture)
     BOOST_TEST(result->base().valid());
 }
 
-BOOST_MYSQL_NETWORK_TEST(error, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(error, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();

@@ -11,9 +11,11 @@ using namespace boost::mysql::test;
 
 namespace {
 
+auto net_samples = create_network_samples({"tcp_sync_errc", "tcp_async_callback"});
+
 BOOST_AUTO_TEST_SUITE(test_close_statement)
 
-BOOST_MYSQL_NETWORK_TEST(success, network_fixture)
+BOOST_MYSQL_NETWORK_TEST(success, network_fixture, net_samples)
 {
     setup_and_connect(sample.net);
 
