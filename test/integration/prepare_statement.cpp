@@ -18,7 +18,6 @@
 using namespace boost::mysql::test;
 using boost::mysql::errc;
 using boost::mysql::error_code;
-using boost::mysql::no_statement_params;
 using boost::mysql::tcp_resultset;
 using boost::mysql::tcp_statement;
 
@@ -50,42 +49,6 @@ BOOST_MYSQL_NETWORK_TEST(invalid_statement, network_fixture)
     setup_and_connect(sample.net);
     conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)", *stmt)
         .validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
-}
-
-BOOST_FIXTURE_TEST_CASE(move_ctor, tcp_network_fixture)
-{
-    connect();
-
-    // Get a valid prepared statement and perform a move construction
-    tcp_statement s1;
-    conn.prepare_statement("SELECT * FROM empty_table", s1);
-
-    // Move construct
-    tcp_statement s2(std::move(s1));
-    BOOST_TEST_REQUIRE(s2.valid());
-
-    // We can use the 2nd stmt
-    tcp_resultset result;
-    s2.execute(no_statement_params, result);
-    BOOST_TEST(result.read_all().empty());
-}
-
-BOOST_FIXTURE_TEST_CASE(move_assignment, tcp_network_fixture)
-{
-    connect();
-
-    // Get a valid resultset_base and perform a move assignment
-    tcp_statement s1, s2;
-    conn.prepare_statement("SELECT * FROM empty_table", s1);
-    conn.prepare_statement("SELECT 1", s2);
-
-    s2 = std::move(s1);
-    BOOST_TEST_REQUIRE(s2.valid());
-
-    // We can use the 2nd stmt
-    tcp_resultset result;
-    s2.execute(no_statement_params, result);
-    BOOST_TEST(result.read_all().empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_prepare_statement

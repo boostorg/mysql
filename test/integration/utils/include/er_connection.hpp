@@ -25,6 +25,8 @@ namespace boost {
 namespace mysql {
 namespace test {
 
+class er_network_variant;
+
 class er_connection
 {
 public:
@@ -43,6 +45,7 @@ public:
     virtual network_result<no_result> quit() = 0;
     virtual network_result<no_result> close() = 0;
     virtual void sync_close() noexcept = 0;  // used by fixture cleanup functions
+    virtual er_network_variant& variant() const = 0;
 };
 
 using er_connection_ptr = std::unique_ptr<er_connection>;

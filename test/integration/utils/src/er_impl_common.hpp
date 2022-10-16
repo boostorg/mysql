@@ -106,14 +106,19 @@ class er_connection_base : public er_connection
 {
 protected:
     connection<Stream> conn_;
+    er_network_variant& var_;
 
 public:
-    er_connection_base(connection<Stream>&& conn) : conn_(std::move(conn)) {}
+    er_connection_base(connection<Stream>&& conn, er_network_variant& var)
+        : conn_(std::move(conn)), var_(var)
+    {
+    }
     er_connection_base(
         boost::asio::io_context::executor_type executor,
-        boost::asio::ssl::context& ssl_ctx
+        boost::asio::ssl::context& ssl_ctx,
+        er_network_variant& var
     )
-        : conn_(create_connection<Stream>(executor, ssl_ctx))
+        : conn_(create_connection<Stream>(executor, ssl_ctx)), var_(var)
     {
     }
     bool valid() const override { return conn_.valid(); }
@@ -129,6 +134,7 @@ public:
         {
         }
     }
+    er_network_variant& variant() const override { return var_; }
     static resultset<Stream>& cast(er_resultset& r) noexcept
     {
         return static_cast<er_resultset_base<Stream>&>(r).obj();
@@ -160,7 +166,7 @@ public:
         boost::asio::ssl::context& ssl_ctx
     ) override
     {
-        return er_connection_ptr(new ConnectionImpl<Stream>(ex, ssl_ctx));
+        return er_connection_ptr(new ConnectionImpl<Stream>(ex, ssl_ctx, *this));
     }
     er_statement_ptr create_statement() override
     {

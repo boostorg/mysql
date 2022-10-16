@@ -5,79 +5,59 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/resultset_base.hpp>
-#include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
+
+#include <boost/test/unit_test.hpp>
+
 #include "er_connection.hpp"
-#include "er_resultset.hpp"
-#include "network_result.hpp"
 #include "er_network_variant.hpp"
+#include "er_resultset.hpp"
 #include "integration_test_common.hpp"
 #include "test_common.hpp"
-#include "tcp_network_fixture.hpp"
-#include <boost/test/unit_test_suite.hpp>
-#include <boost/utility/string_view_fwd.hpp>
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-using boost::mysql::ssl_mode;
 using boost::mysql::row;
-using boost::mysql::tcp_resultset;
+using boost::mysql::row_view;
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_resultset)
 
-// Helpers
-template <class... Types>
-std::vector<row> makerows(std::size_t row_size, Types&&... args)
-{
-    auto values = make_value_vector(std::forward<Types>(args)...);
-    assert(values.size() % row_size == 0);
-    std::vector<row> res;
-    for (std::size_t i = 0; i < values.size(); i += row_size)
-    {
-        std::vector<boost::mysql::field_view> row_values (
-            values.begin() + i, values.begin() + i + row_size);
-        res.push_back(row(std::move(row_values), {}));
-    }
-    return res;
-}
-
-bool operator==(const std::vector<row>& lhs, const std::vector<row>& rhs)
-{
-    return boost::mysql::detail::container_equals(lhs, rhs);
-}
-
 void validate_eof(
     const er_resultset& result,
-    unsigned affected_rows=0,
-    unsigned warnings=0,
-    unsigned last_insert=0,
-    boost::string_view info=""
+    unsigned affected_rows = 0,
+    unsigned warnings = 0,
+    unsigned last_insert = 0,
+    boost::string_view info = ""
 )
 {
-    BOOST_TEST_REQUIRE(result.valid());
-    BOOST_TEST_REQUIRE(result.complete());
-    BOOST_TEST(result.affected_rows() == affected_rows);
-    BOOST_TEST(result.warning_count() == warnings);
-    BOOST_TEST(result.last_insert_id() == last_insert);
-    BOOST_TEST(result.info() == info);
+    BOOST_TEST_REQUIRE(result.base().valid());
+    BOOST_TEST_REQUIRE(result.base().complete());
+    BOOST_TEST(result.base().affected_rows() == affected_rows);
+    BOOST_TEST(result.base().warning_count() == warnings);
+    BOOST_TEST(result.base().last_insert_id() == last_insert);
+    BOOST_TEST(result.base().info() == info);
 }
 
-// Interface to generate a resultset_base
+// Interface to generate a resultset
 class resultset_generator
 {
 public:
     virtual ~resultset_generator() {}
     virtual const char* name() const = 0;
-    virtual er_resultset_ptr generate(er_connection&, boost::string_view) = 0;
+    virtual void generate(er_connection&, er_resultset&, boost::string_view) = 0;
 };
 
 class text_resultset_generator : public resultset_generator
 {
 public:
     const char* name() const override { return "text"; }
-    er_resultset_ptr generate(er_connection& conn, boost::string_view query) override
+    void generate(er_connection& conn, er_resultset& output, boost::string_view query) override
     {
-        return conn.query(query).get();
+        conn.query(query, output).validate_no_error();
     }
 };
 
@@ -85,9 +65,11 @@ class binary_resultset_generator : public resultset_generator
 {
 public:
     const char* name() const override { return "binary"; }
-    er_resultset_ptr generate(er_connection& conn, boost::string_view query) override
+    void generate(er_connection& conn, er_resultset& output, boost::string_view query) override
     {
-        return conn.prepare_statement(query).get()->execute_container({}).get();
+        auto stmt = conn.variant().create_statement();
+        conn.prepare_statement(query, *stmt).validate_no_error();
+        stmt->execute_collection({}, output).validate_no_error();
     }
 };
 
@@ -99,8 +81,8 @@ struct resultset_sample : network_sample
 {
     resultset_generator* gen;
 
-    resultset_sample(er_network_variant* net, resultset_generator* gen):
-        network_sample(net), gen(gen)
+    resultset_sample(er_network_variant* net, resultset_generator* gen)
+        : network_sample(net), gen(gen)
     {
     }
 };
@@ -115,7 +97,7 @@ struct sample_gen
     std::vector<resultset_sample> make_all() const
     {
         std::vector<resultset_sample> res;
-        for (auto* net: all_variants())
+        for (auto* net : all_variants())
         {
             res.emplace_back(net, &text_obj);
             res.emplace_back(net, &binary_obj);
@@ -140,64 +122,50 @@ struct resultset_fixture : network_fixture
         gen = sample.gen;
     }
 
-    er_resultset_ptr generate(boost::string_view query)
+    void generate(boost::string_view query)
     {
         assert(gen);
-        return gen->generate(*conn, query);
+        return gen->generate(*conn, *result, query);
     }
 };
 
 BOOST_AUTO_TEST_SUITE(read_one)
 
-// Verify read_one clears its paremeter correctly
-static row make_initial_row()
-{
-    return row(make_value_vector(10), {});
-}
-
 BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM empty_table");
-    BOOST_TEST(result->valid());
-    BOOST_TEST(!result->complete());
-    BOOST_TEST(result->fields().size() == 2u);
+    generate("SELECT * FROM empty_table");
+    BOOST_TEST(result->base().valid());
+    BOOST_TEST(!result->base().complete());
+    BOOST_TEST(result->base().meta().size() == 2u);
 
-    // Already in the end of the resultset_base, we receive the EOF
-    row r = make_initial_row();
-    bool has_row = result->read_one(r).get();
-    BOOST_TEST(!has_row);
-    BOOST_TEST(r == row());
+    // Already in the end of the resultset, we receive the EOF
+    row_view r = result->read_one().get();
+    BOOST_TEST(r == row_view());
     validate_eof(*result);
 
-    // Reading again just returns null
-    r = make_initial_row();
-    has_row = result->read_one(r).get();
-    BOOST_TEST(!has_row);
-    BOOST_TEST(r == row());
+    // Reading again does nothing
+    r = result->read_one().get();
+    BOOST_TEST(r == row_view());
     validate_eof(*result);
 }
 
 BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM one_row_table");
-    BOOST_TEST(result->valid());
-    BOOST_TEST(!result->complete());
-    BOOST_TEST(result->fields().size() == 2u);
+    generate("SELECT * FROM one_row_table");
+    BOOST_TEST(result->base().valid());
+    BOOST_TEST(!result->base().complete());
+    BOOST_TEST(result->base().meta().size() == 2u);
 
     // Read the only row
-    row r = make_initial_row();
-    bool has_row = result->read_one(r).get();
-    validate_2fields_meta(*result, "one_row_table");
-    BOOST_TEST(has_row);
+    row_view r = result->read_one().get();
+    validate_2fields_meta(result->base(), "one_row_table");
     BOOST_TEST((r == makerow(1, "f0")));
-    BOOST_TEST(!result->complete());
+    BOOST_TEST(!result->base().complete());
 
     // Read next: end of resultset_base
-    r = make_initial_row();
-    has_row = result->read_one(r).get();
-    BOOST_TEST(!has_row);
+    r = result->read_one().get();
     BOOST_TEST(r == row());
     validate_eof(*result);
 }
@@ -205,124 +173,132 @@ BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
 BOOST_MYSQL_NETWORK_TEST_EX(two_rows, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM two_rows_table");
-    BOOST_TEST(result->valid());
-    BOOST_TEST(!result->complete());
-    BOOST_TEST(result->fields().size() == 2u);
+    generate("SELECT * FROM two_rows_table");
+    BOOST_TEST(result->base().valid());
+    BOOST_TEST(!result->base().complete());
+    BOOST_TEST(result->base().meta().size() == 2u);
 
     // Read first row
-    row r = make_initial_row();
-    bool has_row = result->read_one(r).get();
-    BOOST_TEST(has_row);
-    validate_2fields_meta(*result, "two_rows_table");
+    row_view r = result->read_one().get();
+    validate_2fields_meta(result->base(), "two_rows_table");
     BOOST_TEST((r == makerow(1, "f0")));
-    BOOST_TEST(!result->complete());
+    BOOST_TEST(!result->base().complete());
 
     // Read next row
-    r = make_initial_row();
-    has_row = result->read_one(r).get();
-    BOOST_TEST(has_row);
-    validate_2fields_meta(*result, "two_rows_table");
+    r = result->read_one().get();
+    validate_2fields_meta(result->base(), "two_rows_table");
     BOOST_TEST((r == makerow(2, "f1")));
-    BOOST_TEST(!result->complete());
+    BOOST_TEST(!result->base().complete());
 
     // Read next: end of resultset_base
-    r = make_initial_row();
-    has_row = result->read_one(r).get();
-    BOOST_TEST(!has_row);
+    r = result->read_one().get();
     BOOST_TEST(r == row());
     validate_eof(*result);
 }
 
-// There seems to be no real case where read can fail (other than net fails)
+BOOST_AUTO_TEST_SUITE_END()  // read_one
 
-BOOST_AUTO_TEST_SUITE_END() // read_one
-
-BOOST_AUTO_TEST_SUITE(read_many)
+BOOST_AUTO_TEST_SUITE(read_some)
 
 BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM empty_table");
+    generate("SELECT * FROM empty_table");
 
-    // Read many, but there are no results
-    auto rows = result->read_many(10).get();
+    // Read, but there are no results
+    auto rows = result->read_some().get();
     BOOST_TEST(rows.empty());
     validate_eof(*result);
 
     // Read again, should return OK and empty
-    rows = result->read_many(10).get();
+    rows = result->read_some().get();
     BOOST_TEST(rows.empty());
     validate_eof(*result);
 }
 
-BOOST_MYSQL_NETWORK_TEST_EX(more_rows_than_count, resultset_fixture, sample_gen())
+BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM three_rows_table");
+    generate("SELECT * FROM one_row_table");
 
-    // Read 2, one remaining
-    auto rows = result->read_many(2).get();
-    BOOST_TEST(!result->complete());
-    BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
-
-    // Read another two (completes the resultset_base)
-    rows = result->read_many(2).get();
-    validate_eof(*result);
-    BOOST_TEST((rows == makerows(2, 3, "f2")));
-}
-
-BOOST_MYSQL_NETWORK_TEST_EX(less_rows_than_count, resultset_fixture, sample_gen())
-{
-    setup_and_connect(sample);
-    auto result = generate("SELECT * FROM two_rows_table");
-
-    // Read 3, resultset_base exhausted
-    auto rows = result->read_many(3).get();
-    BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
-    validate_eof(*result);
-}
-
-BOOST_MYSQL_NETWORK_TEST_EX(same_rows_as_count, resultset_fixture, sample_gen())
-{
-    setup_and_connect(sample);
-    auto result = generate("SELECT * FROM two_rows_table");
-
-    // Read 2, 0 remaining but resultset_base not exhausted
-    auto rows = result->read_many(2).get();
-    BOOST_TEST(!result->complete());
-    BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
-
-    // Read again, exhausts the resultset_base
-    rows = result->read_many(2).get();
-    BOOST_TEST(rows.empty());
-    validate_eof(*result);
-}
-
-BOOST_MYSQL_NETWORK_TEST_EX(count_equals_one, resultset_fixture, sample_gen())
-{
-    setup_and_connect(sample);
-    auto result = generate("SELECT * FROM one_row_table");
-
-    // Read 1, 1 remaining
-    auto rows = result->read_many(1).get();
-    BOOST_TEST(!result->complete());
+    // Read once. The resultset may or may not be complete, depending
+    // on how the buffer reallocated memory
+    auto rows = result->read_some().get();
     BOOST_TEST((rows == makerows(2, 1, "f0")));
+
+    // Reading again should complete the resultset
+    rows = result->read_some().get();
+    BOOST_TEST(rows.empty());
+    validate_eof(*result);
+
+    // Reading again does nothing
+    rows = result->read_some().get();
+    BOOST_TEST(rows.empty());
+    validate_eof(*result);
 }
 
-BOOST_AUTO_TEST_SUITE_END() // read_many
+BOOST_MYSQL_NETWORK_TEST_EX(several_rows, resultset_fixture, sample_gen())
+{
+    setup_and_connect(sample);
+    generate("SELECT * FROM three_rows_table");
+
+    // We don't know how many rows there will be in each batch,
+    // but they will come in order
+    std::size_t call_count = 0;
+    std::vector<row> all_rows;
+    while (!result->base().complete() && call_count <= 4)
+    {
+        ++call_count;
+        for (row_view rv : result->read_some().get())
+            all_rows.emplace_back(rv);
+    }
+
+    // Verify rows
+    BOOST_TEST_REQUIRE(all_rows.size() == 3);
+    BOOST_TEST(all_rows[0] == makerow(1, "f0"));
+    BOOST_TEST(all_rows[1] == makerow(2, "f1"));
+    BOOST_TEST(all_rows[2] == makerow(3, "f2"));
+
+    // Verify eof
+    validate_eof(*result);
+
+    // Reading again does nothing
+    auto rows = result->read_some().get();
+    BOOST_TEST(rows.empty());
+    validate_eof(*result);
+}
+
+BOOST_MYSQL_NETWORK_TEST_EX(several_rows_single_read, resultset_fixture, sample_gen())
+{
+    // make sure the entire result can be read at once
+    params.set_buffer_config(boost::mysql::buffer_params(4096));
+    setup_and_connect(sample);
+    generate("SELECT * FROM three_rows_table");
+
+    // Read
+    auto rows = result->read_some().get();
+    BOOST_TEST(rows == makerows(2, 1, "f0", 2, "f1", 3, "f2"));
+    validate_eof(*result);
+
+    // Reading again does nothing
+    rows = result->read_some().get();
+    BOOST_TEST(rows.empty());
+    validate_eof(*result);
+}
+
+BOOST_AUTO_TEST_SUITE_END()  // read_many
 
 BOOST_AUTO_TEST_SUITE(read_all)
 
 BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM empty_table");
+    generate("SELECT * FROM empty_table");
 
-    // Read many, but there are no results
+    // Read all
     auto rows = result->read_all().get();
     BOOST_TEST(rows.empty());
-    BOOST_TEST(result->complete());
+    validate_eof(*result);
 
     // Read again, should return OK and empty
     rows = result->read_all().get();
@@ -333,88 +309,37 @@ BOOST_MYSQL_NETWORK_TEST_EX(no_results, resultset_fixture, sample_gen())
 BOOST_MYSQL_NETWORK_TEST_EX(one_row, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM one_row_table");
+    generate("SELECT * FROM one_row_table");
 
+    // Read all
     auto rows = result->read_all().get();
-    BOOST_TEST(result->complete());
-    BOOST_TEST((rows == makerows(2, 1, "f0")));
+    BOOST_TEST(rows == makerows(2, 1, "f0"));
+    validate_eof(*result);
+
+    // Reading again does nothing
+    rows = result->read_all().get();
+    BOOST_TEST(rows.empty());
     validate_eof(*result);
 }
 
 BOOST_MYSQL_NETWORK_TEST_EX(several_rows, resultset_fixture, sample_gen())
 {
     setup_and_connect(sample);
-    auto result = generate("SELECT * FROM two_rows_table");
+    generate("SELECT * FROM two_rows_table");
 
+    // Read all
     auto rows = result->read_all().get();
-    BOOST_TEST(result->complete());
-    BOOST_TEST((rows == makerows(2, 1, "f0", 2, "f1")));
+    BOOST_TEST(rows == makerows(2, 1, "f0", 2, "f1"));
+    validate_eof(*result);
+
+    // Reading again does nothing
+    rows = result->read_all().get();
+    BOOST_TEST(rows.empty());
     validate_eof(*result);
 }
 
-BOOST_AUTO_TEST_SUITE_END() // read_all
+BOOST_AUTO_TEST_SUITE_END()  // read_all
 
-// Move operations
-BOOST_AUTO_TEST_SUITE(move_operations)
+BOOST_AUTO_TEST_SUITE_END()  // test_resultset
 
-BOOST_FIXTURE_TEST_CASE(move_ctor, tcp_network_fixture)
-{
-    connect();
-
-    // Get a valid resultset_base and perform a move construction
-    tcp_resultset r = conn.query("SELECT * FROM one_row_table");
-    tcp_resultset r2 (std::move(r));
-
-    // Validate valid()
-    BOOST_TEST(!r.valid());
-    BOOST_TEST(r2.valid());
-
-    // We can use the 2nd resultset_base
-    auto rows = r2.read_all();
-    BOOST_TEST((rows == makerows(2, 1, "f0")));
-    BOOST_TEST(r2.complete());
-}
-
-BOOST_FIXTURE_TEST_CASE(move_assignment_to_invalid, tcp_network_fixture)
-{
-    connect();
-
-    // Get a valid resultset_base and perform a move assignment
-    tcp_resultset r = conn.query("SELECT * FROM one_row_table");
-    tcp_resultset r2;
-    r2 = std::move(r);
-
-    // Validate valid()
-    BOOST_TEST(!r.valid());
-    BOOST_TEST(r2.valid());
-
-    // We can use the 2nd resultset_base
-    auto rows = r2.read_all();
-    BOOST_TEST((rows == makerows(2, 1, "f0")));
-    BOOST_TEST(r2.complete());
-}
-
-BOOST_FIXTURE_TEST_CASE(move_assignment_to_valid, tcp_network_fixture)
-{
-    connect();
-
-    // Get a valid resultset_base and perform a move assignment
-    tcp_resultset r2 = conn.query("SELECT * FROM empty_table");
-    r2.read_all(); // clean any remaining packets
-    tcp_resultset r = conn.query("SELECT * FROM one_row_table");
-    r2 = std::move(r);
-
-    // Validate valid()
-    BOOST_TEST(!r.valid());
-    BOOST_TEST(r2.valid());
-
-    // We can use the 2nd resultset_base
-    auto rows = r2.read_all();
-    BOOST_TEST((rows == makerows(2, 1, "f0")));
-    BOOST_TEST(r2.complete());
-}
-
-BOOST_AUTO_TEST_SUITE_END() // move_operations
-
-BOOST_AUTO_TEST_SUITE_END() // test_resultset
-
+}  // namespace
