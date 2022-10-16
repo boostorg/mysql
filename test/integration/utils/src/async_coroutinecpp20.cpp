@@ -71,7 +71,7 @@ network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
         boost::asio::detached
     );
 
-    return prom.get_future().get();
+    return wait_for_result(prom);
 }
 
 template <class IoObj, class Callable>
@@ -96,7 +96,7 @@ network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb)
         boost::asio::detached
     );
 
-    return prom.get_future().get();
+    return wait_for_result(prom);
 }
 
 template <class Stream>

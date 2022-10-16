@@ -16,6 +16,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 
+#include <future>
+#include <stdexcept>
 #include <type_traits>
 
 #include "er_connection.hpp"
@@ -177,6 +179,22 @@ public:
         return er_resultset_ptr(new ResultsetImpl<Stream>());
     }
 };
+
+template <typename R>
+R wait_for_result(std::future<R>& fut)
+{
+    auto status = fut.wait_for(std::chrono::seconds(2));
+    if (status == std::future_status::timeout)
+        throw std::runtime_error("async_callback wait timeout");
+    return fut.get();
+}
+
+template <typename R>
+R wait_for_result(std::promise<R>& prom)
+{
+    auto fut = prom.get_future();
+    return wait_for_result(fut);
+}
 
 }  // namespace test
 }  // namespace mysql

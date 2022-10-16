@@ -67,9 +67,7 @@ network_result<R> impl(Callable&& cb)
     std::promise<network_result<R>> prom;
     error_info info("error_info not cleared properly");
     cb(handler<R>{prom, info, call_tracker}, info);
-    auto res = prom.get_future().get();
-
-    return res;
+    return wait_for_result(prom);
 }
 
 template <class Stream>

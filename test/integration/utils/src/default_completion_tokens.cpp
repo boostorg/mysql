@@ -45,7 +45,7 @@ auto impl(Callable&& cb) -> network_result<decltype(cb().get())>
     std::future<R> fut = cb();
     try
     {
-        return network_result<R>(error_code(), fut.get());
+        return network_result<R>(error_code(), wait_for_result(fut));
     }
     catch (const boost::system::system_error& err)
     {
@@ -59,7 +59,7 @@ network_result<no_result> impl_no_result(Callable&& cb)
     std::future<void> fut = cb();
     try
     {
-        fut.get();
+        wait_for_result(fut);
         return network_result<no_result>(error_code());
     }
     catch (const boost::system::system_error& err)

@@ -66,7 +66,7 @@ network_result<R> impl(Callable&& cb)
     handler_call_tracker call_tracker;
     std::promise<network_result<R>> prom;
     cb(handler<R>{prom, call_tracker});
-    return prom.get_future().get();
+    return wait_for_result(prom);
 }
 
 template <class Stream>

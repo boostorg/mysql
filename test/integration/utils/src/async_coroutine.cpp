@@ -59,7 +59,7 @@ network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
         prom.set_value(network_result<R>(ec, std::move(info), std::move(result)));
     });
 
-    return prom.get_future().get();
+    return wait_for_result(prom);
 }
 
 template <class Stream>
