@@ -10,8 +10,8 @@
 #include <boost/mysql/tcp.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/test/data/monomorphic/collection.hpp>
-#include <boost/test/data/test_case.hpp>
+#include <boost/test/tools/context.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <bitset>
 #include <cstdint>
@@ -61,12 +61,9 @@ struct database_types_sample
           mvalid(std::move(table), std::move(field), std::forward<Args>(args)...)
     {
     }
-};
 
-std::ostream& operator<<(std::ostream& os, const database_types_sample& input)
-{
-    return os << input.table << '.' << input.field << '.' << input.row_id;
-}
+    std::string name() const { return stringize(table, '.', field, '.', row_id); }
+};
 
 // Helpers
 using flagsvec = std::vector<meta_validator::flag_getter>;
@@ -610,56 +607,74 @@ std::vector<database_types_sample> make_all_samples()
 
 std::vector<database_types_sample> all_samples = make_all_samples();
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, query, data::make(all_samples))
+BOOST_FIXTURE_TEST_CASE(query, tcp_network_fixture)
 {
     connect();
 
-    // Compose the query
-    auto query = stringize(
-        "SELECT ",
-        sample.field,
-        " FROM ",
-        sample.table,
-        " WHERE id = '",
-        sample.row_id,
-        "'"
-    );
+    for (const auto& sample : all_samples)
+    {
+        BOOST_TEST_CONTEXT(sample.name())
+        {
+            // Compose the query
+            auto query = stringize(
+                "SELECT ",
+                sample.field,
+                " FROM ",
+                sample.table,
+                " WHERE id = '",
+                sample.row_id,
+                "'"
+            );
 
-    // Execute it
-    boost::mysql::tcp_resultset result;
-    conn.query(query, result);
-    auto rows = result.read_all();
+            // Execute it
+            boost::mysql::tcp_resultset result;
+            conn.query(query, result);
+            auto rows = result.read_all();
 
-    // Validate the received metadata
-    validate_meta(result.meta(), {sample.mvalid});
+            // Validate the received metadata
+            validate_meta(result.meta(), {sample.mvalid});
 
-    // Validate the returned value
-    BOOST_TEST_REQUIRE(rows.size() == 1u);
-    BOOST_TEST_REQUIRE(rows[0].size() == 1u);
-    BOOST_TEST(rows[0][0] == sample.expected_value);
+            // Validate the returned value
+            BOOST_TEST_REQUIRE(rows.size() == 1u);
+            BOOST_TEST_REQUIRE(rows[0].size() == 1u);
+            BOOST_TEST(rows[0][0] == sample.expected_value);
+        }
+    }
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, statement, data::make(all_samples))
+BOOST_FIXTURE_TEST_CASE(statement, tcp_network_fixture)
 {
     connect();
 
-    // Prepare the statement
-    boost::mysql::tcp_statement stmt;
-    auto stmt_sql = stringize("SELECT ", sample.field, " FROM ", sample.table, " WHERE id = ?");
-    conn.prepare_statement(stmt_sql, stmt);
+    for (const auto& sample : all_samples)
+    {
+        BOOST_TEST_CONTEXT(sample.name())
+        {
+            // Prepare the statement
+            boost::mysql::tcp_statement stmt;
+            auto stmt_sql = stringize(
+                "SELECT ",
+                sample.field,
+                " FROM ",
+                sample.table,
+                " WHERE id = ?"
+            );
+            conn.prepare_statement(stmt_sql, stmt);
 
-    // Execute it with the provided parameters
-    boost::mysql::tcp_resultset result;
-    stmt.execute(make_field_views(sample.row_id), result);
-    auto rows = result.read_all();
+            // Execute it with the provided parameters
+            boost::mysql::tcp_resultset result;
+            stmt.execute(make_field_views(sample.row_id), result);
+            auto rows = result.read_all();
 
-    // Validate the received metadata
-    validate_meta(result.meta(), {sample.mvalid});
+            // Validate the received metadata
+            validate_meta(result.meta(), {sample.mvalid});
 
-    // Validate the returned value
-    BOOST_TEST_REQUIRE(rows.size() == 1u);
-    BOOST_TEST_REQUIRE(rows[0].size() == 1u);
-    BOOST_TEST(rows[0][0] == sample.expected_value);
+            // Validate the returned value
+            BOOST_TEST_REQUIRE(rows.size() == 1u);
+            BOOST_TEST_REQUIRE(rows[0].size() == 1u);
+            BOOST_TEST(rows[0][0] == sample.expected_value);
+        }
+    }
 }
 
 // The prepared statement param tests binary serialization.
@@ -681,36 +696,38 @@ std::vector<database_types_sample> make_prepared_stmt_param_samples()
     return res;
 }
 
-BOOST_DATA_TEST_CASE_F(
-    tcp_network_fixture,
-    prepared_statement_execute_param,
-    data::make(make_prepared_stmt_param_samples())
-)
+BOOST_FIXTURE_TEST_CASE(prepared_statement_execute_param, tcp_network_fixture)
 {
     connect();
 
-    // Prepare the statement
-    auto stmt_sql = stringize(
-        "SELECT ",
-        sample.field,
-        " FROM ",
-        sample.table,
-        " WHERE id = ? AND ",
-        sample.field,
-        " = ?"
-    );
-    boost::mysql::tcp_statement stmt;
-    conn.prepare_statement(stmt_sql, stmt);
+    for (const auto& sample : make_prepared_stmt_param_samples())
+    {
+        BOOST_TEST_CONTEXT(sample.name())
+        {
+            // Prepare the statement
+            auto stmt_sql = stringize(
+                "SELECT ",
+                sample.field,
+                " FROM ",
+                sample.table,
+                " WHERE id = ? AND ",
+                sample.field,
+                " = ?"
+            );
+            boost::mysql::tcp_statement stmt;
+            conn.prepare_statement(stmt_sql, stmt);
 
-    // Execute it with the provided parameters
-    boost::mysql::tcp_resultset result;
-    stmt.execute(make_field_views(sample.row_id, sample.expected_value), result);
-    auto rows = result.read_all();
+            // Execute it with the provided parameters
+            boost::mysql::tcp_resultset result;
+            stmt.execute(make_field_views(sample.row_id, sample.expected_value), result);
+            auto rows = result.read_all();
 
-    // Validate the returned value
-    BOOST_TEST_REQUIRE(rows.size() == 1u);
-    BOOST_TEST_REQUIRE(rows[0].size() == 1u);
-    BOOST_TEST(rows[0][0] == sample.expected_value);
+            // Validate the returned value
+            BOOST_TEST_REQUIRE(rows.size() == 1u);
+            BOOST_TEST_REQUIRE(rows[0].size() == 1u);
+            BOOST_TEST(rows[0][0] == sample.expected_value);
+        }
+    }
 }
 
 // Validate that the metadata we retrieve with certain queries is correct
