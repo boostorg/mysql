@@ -30,4 +30,16 @@ boost::mysql::row_view boost::mysql::rows_view::at(std::size_t i) const
     return (*this)[i];
 }
 
+inline bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noexcept
+{
+    if (num_values_ != rhs.num_values_ || num_columns_ != rhs.num_columns_)
+        return false;
+    for (std::size_t i = 0; i < num_values_; ++i)
+    {
+        if (fields_[i] != rhs.fields_[i])
+            return false;
+    }
+    return true;
+}
+
 #endif

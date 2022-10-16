@@ -60,6 +60,24 @@ private:
     std::size_t num_columns_{};
 };
 
+inline bool operator==(const rows& lhs, const rows& rhs) noexcept
+{
+    return rows_view(lhs) == rows_view(rhs);
+}
+inline bool operator!=(const rows& lhs, const rows& rhs) noexcept { return !(lhs == rhs); }
+
+inline bool operator==(const rows_view& lhs, const rows& rhs) noexcept
+{
+    return lhs == rows_view(rhs);
+}
+inline bool operator!=(const rows_view& lhs, const rows& rhs) noexcept { return !(lhs == rhs); }
+
+inline bool operator==(const rows& lhs, const rows_view& rhs) noexcept
+{
+    return rows_view(lhs) == rhs;
+}
+inline bool operator!=(const rows& lhs, const rows_view& rhs) noexcept { return !(lhs == rhs); }
+
 }  // namespace mysql
 }  // namespace boost
 

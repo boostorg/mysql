@@ -44,6 +44,9 @@ public:
     }
     std::size_t num_columns() const noexcept { return num_columns_; }
 
+    inline bool operator==(const rows_view& rhs) const noexcept;
+    inline bool operator!=(const rows_view& rhs) const noexcept { return !(*this == rhs); }
+
     // TODO: hide this
     rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept
         : fields_(fields), num_values_(num_values), num_columns_(num_columns)
