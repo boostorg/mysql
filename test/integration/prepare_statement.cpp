@@ -9,7 +9,7 @@
 #include <boost/mysql/tcp.hpp>
 
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/test/tools/interface.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include "integration_test_common.hpp"
 #include "streams.hpp"

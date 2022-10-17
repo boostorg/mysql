@@ -10,8 +10,7 @@
 #include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/ssl/verify_mode.hpp>
-#include <boost/test/tools/interface.hpp>
-#include <boost/test/unit_test_suite.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include "integration_test_common.hpp"
 

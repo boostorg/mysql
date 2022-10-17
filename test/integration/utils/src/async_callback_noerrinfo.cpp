@@ -193,7 +193,5 @@ public:
 void boost::mysql::test::add_async_callback_noerrinfo(std::vector<er_network_variant*>& output)
 {
     static async_callback_noerrinfo_variant<tcp_socket> tcp;
-    static async_callback_noerrinfo_variant<tcp_ssl_socket> tcp_ssl;
     output.push_back(&tcp);
-    output.push_back(&tcp_ssl);
 }
