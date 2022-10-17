@@ -5,12 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/date.hpp>
+
+#include <boost/test/unit_test.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <limits>
+#include <string>
 
 #include "test_common.hpp"
 
@@ -19,7 +23,41 @@ using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 
 // These tests are very extensive in range. Making them parameterized
-// proves very runtime expensive. We rather use plain loops.
+// proves very runtime expensive. We rather use plain loops. Using plain
+// BOOST_TEST() also increases runtime way too much
+
+namespace {
+
+class test_state
+{
+    const char* context_ = "";
+    std::vector<std::string> failed_assertions_;
+
+public:
+    const std::vector<std::string>& failures() const noexcept { return failed_assertions_; }
+    void set_context(const char* v) noexcept { context_ = v; }
+
+    template <class T1, class T2>
+    void assert_equals(const T1& v1, const T2& v2, int line)
+    {
+        if (v1 != v2)
+        {
+            failed_assertions_.push_back(
+                stringize(__FILE__, ":", line, " (context=", context_, "): ", v1, " != ", v2)
+            );
+        }
+    }
+
+    void check()
+    {
+        for (const auto& fail : failed_assertions_)
+        {
+            BOOST_TEST(false, fail);
+        }
+    }
+};
+
+#define BOOST_MYSQL_ASSERT_EQ(st, v1, v2) st.assert_equals(v1, v2, __LINE__)
 
 BOOST_AUTO_TEST_SUITE(test_date)
 
@@ -31,7 +69,8 @@ constexpr int leap_years[] = {
     1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020, 2024, 2028,
     2032, 2036, 2040, 2044, 2048, 2052, 2056, 2060, 2064, 2068, 2072, 2076, 2080, 2084,
     2088, 2092, 2096, 2104, 2108, 2112, 2116, 2120, 2124, 2128, 2132, 2136, 2140, 2144,
-    2148, 2152, 2156, 2160, 2164, 2168, 2172, 2176, 2180, 2184, 2188, 2192, 2196, 2204};
+    2148, 2152, 2156, 2160, 2164, 2168, 2172, 2176, 2180, 2184, 2188, 2192, 2196, 2204,
+};
 
 bool is_leap_year(int y)
 {
@@ -48,13 +87,15 @@ unsigned last_day_of_month(unsigned month)  // doesn't take leap years into acco
 std::array<char, 32> date_to_string(int year, unsigned month, unsigned day)
 {
     std::array<char, 32> res{};
-    snprintf(res.data(), 32, "%4d-%2u-%2u", year, month, day);
+    snprintf(res.data(), 32, "%4d-%02u-%2u", year, month, day);
     return res;
 }
 
 // is_valid
 BOOST_AUTO_TEST_CASE(is_valid_ymd_valid_year_month_invalid_day)
 {
+    test_state st;
+
     for (int year = 1804; year <= 2204; ++year)
     {
         bool leap = is_leap(year);
@@ -64,11 +105,15 @@ BOOST_AUTO_TEST_CASE(is_valid_ymd_valid_year_month_invalid_day)
             for (unsigned day = 1; day <= 32; ++day)
             {
                 auto test_name = date_to_string(year, month, day);
+                st.set_context(test_name.data());
+
                 year_month_day ymd{year, month, day};
-                BOOST_TEST(is_valid(ymd) == (day <= last_month_day), test_name.data());
+                BOOST_MYSQL_ASSERT_EQ(st, is_valid(ymd), (day <= last_month_day));
             }
         }
     }
+
+    st.check();
 }
 
 BOOST_AUTO_TEST_CASE(is_valid_ymd_year_out_of_mysql_range)
@@ -94,23 +139,25 @@ BOOST_AUTO_TEST_CASE(is_valid_ymd_month_out_of_range)
 
 // ymd_to_days, days_to_ymd
 // Helper function that actually performs the assertions for us
-void ymd_years_test(int year, unsigned month, unsigned day, int num_days)
+void ymd_years_test(test_state& st, int year, unsigned month, unsigned day, int num_days)
 {
     auto test_name = date_to_string(year, month, day);
-    BOOST_TEST_CHECKPOINT(test_name.data());
+    st.set_context(test_name.data());
 
     year_month_day ymd{year, month, day};
-
-    BOOST_TEST(is_valid(ymd), test_name.data());
-    BOOST_TEST(ymd_to_days(ymd) == num_days, test_name.data());
+    BOOST_MYSQL_ASSERT_EQ(st, is_valid(ymd), true);
+    BOOST_MYSQL_ASSERT_EQ(st, ymd_to_days(ymd), num_days);
     auto actual_ymd = days_to_ymd(num_days);
-    BOOST_TEST(actual_ymd.day == day, test_name.data());
-    BOOST_TEST(actual_ymd.month == month, test_name.data());
-    BOOST_TEST(actual_ymd.years == year, test_name.data());
+
+    BOOST_MYSQL_ASSERT_EQ(st, actual_ymd.day, day);
+    BOOST_MYSQL_ASSERT_EQ(st, actual_ymd.month, month);
+    BOOST_MYSQL_ASSERT_EQ(st, actual_ymd.years, year);
 }
 
 BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
 {
+    test_state st;
+
     // Starting from 1970, going up
     int num_days = 0;
 
@@ -122,7 +169,7 @@ BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
                                                                        : last_day_of_month(month);
             for (unsigned day = 1; day <= last_month_day; ++day)
             {
-                ymd_years_test(year, month, day, num_days++);
+                ymd_years_test(st, year, month, day, num_days++);
             }
         }
     }
@@ -138,10 +185,14 @@ BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
                                                                        : last_day_of_month(month);
             for (unsigned day = last_month_day; day >= 1; --day)
             {
-                ymd_years_test(year, month, day, num_days--);
+                ymd_years_test(st, year, month, day, num_days--);
             }
         }
     }
+
+    st.check();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_date
+
+}  // namespace
