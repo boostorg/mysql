@@ -195,11 +195,13 @@ void boost::mysql::test::add_sync_errc(std::vector<er_network_variant*>& output)
     static sync_errc_variant<tcp_ssl_socket> tcp_ssl_variant;
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     static sync_errc_variant<unix_socket> unix_variant;
+    static sync_errc_variant<unix_ssl_socket> unix_ssl_variant;
 #endif
 
     output.push_back(&tcp_variant);
     output.push_back(&tcp_ssl_variant);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     output.push_back(&unix_variant);
+    output.push_back(&unix_ssl_variant);
 #endif
 }

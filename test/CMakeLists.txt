@@ -11,7 +11,11 @@ find_package(Boost 1.72 REQUIRED COMPONENTS
 )
 
 # Test common
-add_library(boost_mysql_testing INTERFACE)
+add_library(
+    boost_mysql_testing
+    STATIC
+    common/asio.cpp
+)
 target_include_directories(
     boost_mysql_testing
     INTERFACE
@@ -19,10 +23,16 @@ target_include_directories(
 )
 target_link_libraries(
     boost_mysql_testing
-    INTERFACE
+    PUBLIC
+    Boost::headers
     Boost::unit_test_framework
     Boost::mysql
     Boost::disable_autolinking
+)
+target_compile_definitions(
+    boost_mysql_testing
+    PUBLIC
+    BOOST_ASIO_SEPARATE_COMPILATION
 )
 
 # Unit testing
@@ -41,13 +51,12 @@ add_executable(
     unit/detail/network_algorithms/read_some_rows.cpp
     unit/detail/network_algorithms/read_all_rows.cpp
     unit/detail/protocol/capabilities.cpp
-    # unit/detail/protocol/date.cpp
+    unit/detail/protocol/date.cpp
     unit/detail/protocol/null_bitmap_traits.cpp
     unit/detail/protocol/serialization_test.cpp
     unit/detail/protocol/deserialize_text_field.cpp
     unit/detail/protocol/deserialize_binary_field.cpp
     unit/detail/protocol/deserialize_row.cpp
-
     unit/field_view.cpp
     unit/field.cpp
     unit/row_view.cpp
@@ -68,13 +77,16 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
-# TODO: review this
 target_precompile_headers(
     boost_mysql_unittests
     PRIVATE
     <boost/test/unit_test.hpp>
 )
-set_source_files_properties(unit/entry_point.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+set_source_files_properties(
+    unit/entry_point.cpp
+    PROPERTIES
+    SKIP_PRECOMPILE_HEADERS ON
+)
 common_target_settings(boost_mysql_unittests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
@@ -116,12 +128,13 @@ if(BOOST_MYSQL_INTEGRATION_TESTS)
         integration/prepare_statement.cpp
         integration/execute_statement.cpp
         integration/close_statement.cpp
+        integration/statement_lifecycle.cpp
         integration/resultset.cpp
-        integration/prepared_statement_lifecycle.cpp
         integration/quit_connection.cpp
         integration/close_connection.cpp
         integration/reconnect.cpp
         integration/database_types.cpp
+
         integration/entry_point.cpp
     )
     target_include_directories(
@@ -136,6 +149,17 @@ if(BOOST_MYSQL_INTEGRATION_TESTS)
         Boost::coroutine
     )
     common_target_settings(boost_mysql_integrationtests)
+    target_precompile_headers(
+        boost_mysql_integrationtests
+        PRIVATE
+        <boost/test/unit_test.hpp>
+        <boost/mysql.hpp>
+    )
+    set_source_files_properties(
+        integration/entry_point.cpp
+        PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+    )
 
     # Compose the test filter
     if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
