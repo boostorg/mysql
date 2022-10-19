@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_HPP
 
+#include <boost/mysql/rows_view.hpp>
 #pragma once
 
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
@@ -123,6 +124,48 @@ struct read_some_rows_op : boost::asio::coroutine
     }
 };
 
+template <class Stream>
+struct read_some_rows_op_rows : boost::asio::coroutine
+{
+    channel<Stream>& chan_;
+    error_info& output_info_;
+    resultset_base& resultset_;
+    rows& output_;
+
+    read_some_rows_op_rows(
+        channel<Stream>& chan,
+        error_info& output_info,
+        resultset_base& result,
+        rows& output
+    ) noexcept
+        : chan_(chan), output_info_(output_info), resultset_(result), output_(output)
+    {
+    }
+
+    template <class Self>
+    void operator()(Self& self, error_code err = {}, rows_view rv = {})
+    {
+        // Error checking
+        if (err)
+        {
+            self.complete(err, rows_view());
+            return;
+        }
+
+        // Normal path
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            output_.clear();
+
+            BOOST_ASIO_CORO_YIELD
+            async_read_some_rows(chan_, resultset_, output_info_, std::move(self));
+
+            output_ = rv;
+            self.complete(err);
+        }
+    }
+};
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
@@ -150,6 +193,19 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     return process_some_rows(channel, result, err, info);
 }
 
+template <class Stream>
+void boost::mysql::detail::read_some_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    rows& output,
+    error_code& err,
+    error_info& info
+)
+{
+    // TODO: this can be optimized
+    output = read_some_rows(channel, result, err, info);
+}
+
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
@@ -164,6 +220,23 @@ boost::mysql::detail::async_read_some_rows(
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
         read_some_rows_op<Stream>(channel, output_info, result),
+        token,
+        channel
+    );
+}
+
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::async_read_some_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    rows& output,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
+        read_some_rows_op_rows<Stream>(channel, output_info, result, output),
         token,
         channel
     );

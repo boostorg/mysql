@@ -11,6 +11,7 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 
 namespace boost {
@@ -18,14 +19,46 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-rows_view
-read_some_rows(channel<Stream>& channel, resultset_base& result, error_code& err, error_info& info);
+rows_view read_some_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    error_code& err,
+    error_info& info
+);
 
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
 async_read_some_rows(
     channel<Stream>& channel,
     resultset_base& result,
+    error_info& output_info,
+    CompletionToken&& token
+);
+
+template <class Stream>
+void read_some_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    rows& output,
+    error_code& err,
+    error_info& info
+);
+
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
+async_read_some_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    error_info& output_info,
+    CompletionToken&& token
+);
+
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_read_some_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    rows& output,
     error_info& output_info,
     CompletionToken&& token
 );

@@ -133,6 +133,48 @@ struct read_all_rows_op : boost::asio::coroutine
     }
 };
 
+template <class Stream>
+struct read_all_rows_op_rows : boost::asio::coroutine
+{
+    channel<Stream>& chan_;
+    error_info& output_info_;
+    resultset_base& resultset_;
+    rows& output_;
+
+    read_all_rows_op_rows(
+        channel<Stream>& chan,
+        error_info& output_info,
+        resultset_base& result,
+        rows& output
+    ) noexcept
+        : chan_(chan), output_info_(output_info), resultset_(result), output_(output)
+    {
+    }
+
+    template <class Self>
+    void operator()(Self& self, error_code err = {}, rows_view rv = {})
+    {
+        // Error checking
+        if (err)
+        {
+            self.complete(err, rows_view());
+            return;
+        }
+
+        // Normal path
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            output_.clear();
+
+            BOOST_ASIO_CORO_YIELD
+            async_read_all_rows(chan_, resultset_, output_info_, std::move(self));
+
+            output_ = rv;
+            self.complete(error_code());
+        }
+    }
+};
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
@@ -184,6 +226,36 @@ boost::mysql::detail::async_read_all_rows(
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
         read_all_rows_op<Stream>(channel, output_info, result),
+        token,
+        channel
+    );
+}
+
+template <class Stream>
+void boost::mysql::detail::read_all_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    rows& output,
+    error_code& err,
+    error_info& info
+)
+{
+    // TODO: this can be optimized
+    output = read_all_rows(channel, result, err, info);
+}
+
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::async_read_all_rows(
+    channel<Stream>& channel,
+    resultset_base& result,
+    rows& outpùt,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
+        read_all_rows_op_rows<Stream>(channel, output_info, result, outpùt),
         token,
         channel
     );

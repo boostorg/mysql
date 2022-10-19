@@ -18,14 +18,37 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-row_view
-read_one_row(channel<Stream>& channel, resultset_base& result, error_code& err, error_info& info);
+row_view read_one_row(
+    channel<Stream>& channel,
+    resultset_base& result,
+    error_code& err,
+    error_info& info
+);
 
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
 async_read_one_row(
     channel<Stream>& channel,
     resultset_base& result,
+    error_info& output_info,
+    CompletionToken&& token
+);
+
+template <class Stream>
+void read_one_row(
+    channel<Stream>& channel,
+    resultset_base& result,
+    row& output,
+    error_code& err,
+    error_info& info
+);
+
+template <class Stream, class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_read_one_row(
+    channel<Stream>& channel,
+    resultset_base& result,
+    row& output,
     error_info& output_info,
     CompletionToken&& token
 );

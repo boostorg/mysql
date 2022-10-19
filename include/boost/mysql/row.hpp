@@ -91,6 +91,8 @@ public:
 
     // TODO: hide this
     using detail::row_base::clear;
+    using detail::row_base::copy_strings;
+    std::vector<field_view>& fields() noexcept { return fields_; }
 };
 
 inline bool operator==(const row& lhs, const row& rhs) noexcept

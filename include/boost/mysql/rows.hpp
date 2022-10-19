@@ -56,6 +56,9 @@ public:
         return rows_view(fields_.data(), fields_.size(), num_columns_);
     }
 
+    // TODO: hide this
+    using detail::row_base::clear;
+
 private:
     std::size_t num_columns_{};
 };
