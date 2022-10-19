@@ -6,11 +6,14 @@
 //
 
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/handshake_params.hpp>
+
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
+
 #include <iostream>
 #include <string>
 
@@ -36,41 +39,40 @@ void main_impl(int argc, char** argv)
 
     // The SSL context, required to establish TLS connections.
     // The default SSL options are good enough for us at this point.
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
 
     // The object defining the connection to the MySQL server.
-    boost::mysql::tcp_ssl_connection conn (ctx.get_executor(), ssl_ctx);
+    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
     //]
 
     //[tutorial_connect
-    // Resolve the hostname to get a collection of endpoints    
-    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+    // Resolve the hostname to get a collection of endpoints
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
     auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
 
     // The username and password to use
-    boost::mysql::connection_params params (
-        argv[1], // username
-        argv[2]  // password
+    boost::mysql::handshake_params params(
+        argv[1],  // username
+        argv[2]   // password
     );
 
     // Connect to the server using the first endpoint returned by the resolver
     conn.connect(*endpoints.begin(), params);
     //]
 
-
     //[tutorial_query
     const char* sql = "SELECT \"Hello world!\"";
-    boost::mysql::tcp_ssl_resultset result = conn.query(sql);
+    boost::mysql::tcp_ssl_resultset result;
+    conn.query(sql, result);
     //]
 
     //[tutorial_read
-    std::vector<boost::mysql::row> employees = result.read_all();
+    boost::mysql::rows employees;
+    result.read_all(employees);
     //]
 
     //[tutorial_values
-    const boost::mysql::row& first_row = employees.at(0);
-    boost::mysql::field_view first_value = first_row.values().at(0);
-    std::cout << first_value << std::endl;
+    std::cout << employees.at(0).at(0) << std::endl;
     //]
 
     //[tutorial_close

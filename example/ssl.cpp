@@ -6,22 +6,25 @@
 //
 
 //[example_ssl
+#include <boost/mysql.hpp>
+#include <boost/mysql/handshake_params.hpp>
+
 #include <boost/asio/io_context.hpp>
-#include <boost/system/system_error.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
-#include <iostream>
-#include <boost/mysql.hpp>
+#include <boost/system/system_error.hpp>
 
-#define ASSERT(expr) \
-    if (!(expr)) \
-    { \
+#include <iostream>
+
+#define ASSERT(expr)                                          \
+    if (!(expr))                                              \
+    {                                                         \
         std::cerr << "Assertion failed: " #expr << std::endl; \
-        exit(1); \
+        exit(1);                                              \
     }
 
 // The CA file that signed the server's certificate
-constexpr const char CA_PEM [] = R"%(-----BEGIN CERTIFICATE-----
+constexpr const char CA_PEM[] = R"%(-----BEGIN CERTIFICATE-----
 MIIDZzCCAk+gAwIBAgIUWznm2UoxXw3j7HCcp9PpiayTvFQwDQYJKoZIhvcNAQEL
 BQAwQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAMBgNVBAoM
 BW15c3FsMQ4wDAYDVQQDDAVteXNxbDAgFw0yMDA0MDQxNDMwMjNaGA8zMDE5MDgw
@@ -44,13 +47,11 @@ OzBrmpfHEhF6NDU=
 -----END CERTIFICATE-----
 )%";
 
-
-void print_employee(const boost::mysql::row& employee)
+void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '"
-              << employee.fields()[0] << " "                   // first_name (type boost::string_view)
-              << employee.fields()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.fields()[2] << " dollars yearly\n";  // salary     (type double)
+    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
+              << employee[1] << "' earns "            // last_name  (string)
+              << employee[2] << " dollars yearly\n";  // salary     (double)
 }
 
 void main_impl(int argc, char** argv)
@@ -65,23 +66,24 @@ void main_impl(int argc, char** argv)
     boost::asio::io_context ctx;
 
     // Resolver for hostname resolution
-    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     // Connection params
-    boost::mysql::connection_params params (
-        argv[1],               // username
-        argv[2],               // password
-        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database to use; leave empty or omit the parameter for no
+                                // database
     );
 
     // This context will be used by the underlying SSL stream object. We can
     // set up here any SSL-related options, like peer verification or CA
     // certificates. We will do these in the next lines.
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
 
     // Check whether the server's certificate is valid and signed by a trusted CA.
     // If it's not, our handshake or connect operation will fail.
-    ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer); 
+    ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
 
     // Load a trusted CA, which was used to sign the server's certificate.
     // This will allow the signature verification to succeed in our example.
@@ -96,7 +98,7 @@ void main_impl(int argc, char** argv)
     // Pass in our SSL context to the connection. Note that we
     // can create many connections out of a single context. We need to keep the
     // context alive until we finish using the connection.
-    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
 
     // Hostname resolution
     auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
@@ -107,9 +109,12 @@ void main_impl(int argc, char** argv)
 
     // We can now use the connection as we would normally do.
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::tcp_ssl_resultset result = conn.query(sql);
-    std::vector<boost::mysql::row> employees = result.read_all();
-    for (const auto& employee: employees)
+    boost::mysql::tcp_ssl_resultset result;
+    conn.query(sql, result);
+
+    boost::mysql::rows employees;
+    result.read_all(employees);
+    for (const auto& employee : employees)
     {
         print_employee(employee);
     }

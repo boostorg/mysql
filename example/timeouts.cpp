@@ -7,38 +7,39 @@
 
 //[example_timeouts
 
-
-#include <boost/asio/steady_timer.hpp>
 #include <boost/mysql.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/system/system_error.hpp>
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/use_awaitable.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
+
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/system/system_error.hpp>
+
 #include <chrono>
 #include <exception>
 #include <iostream>
 #include <stdexcept>
-
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 #include <boost/asio/experimental/awaitable_operators.hpp>
 
 using namespace boost::asio::experimental::awaitable_operators;
-using boost::mysql::error_code;
 using boost::asio::use_awaitable;
+using boost::mysql::error_code;
 
-constexpr std::chrono::milliseconds TIMEOUT (2000);
+constexpr std::chrono::milliseconds TIMEOUT(2000);
 
-void print_employee(const boost::mysql::row& employee)
+void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type boost::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
+    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
+              << employee[1] << "' earns "            // last_name  (string)
+              << employee[2] << " dollars yearly\n";  // salary     (double)
 }
 
 /**
@@ -50,12 +51,12 @@ void print_employee(const boost::mysql::row& employee)
 template <class T>
 T check_timeout(std::variant<std::monostate, T>&& op_result)
 {
-    if (op_result.index() == 0) {
+    if (op_result.index() == 0)
+    {
         throw std::runtime_error("Operation timed out");
     }
     return std::get<1>(std::move(op_result));
 }
-
 
 /**
  * We use Boost.Asio's cancellation capabilities to implement timeouts for our
@@ -67,10 +68,10 @@ T check_timeout(std::variant<std::monostate, T>&& op_result)
  * in parallel. Once the first of them finishes, the other operation is cancelled
  * (the behavior is similar to JavaScripts's Promise.race).
  * If we co_await the awaitable returned by operator ||, we get a std::variant<std::monostate, T>,
- * where T is the async operation's result type. If the timer wait finishes first (we have a timeout),
- * the variant will hold the std::monostate at index 0; otherwise, it will have the async operation's
- * result at index 1. The function check_timeout throws an exception in the case of timeout and
- * extracts the operation's result otherwise.
+ * where T is the async operation's result type. If the timer wait finishes first (we have a
+ * timeout), the variant will hold the std::monostate at index 0; otherwise, it will have the async
+ * operation's result at index 1. The function check_timeout throws an exception in the case of
+ * timeout and extracts the operation's result otherwise.
  *
  * If any of the MySQL specific operations result in a timeout, the connection is left
  * in an unspecified state. You should close it and re-open it to get it working again.
@@ -79,21 +80,17 @@ boost::asio::awaitable<void> start_query(
     boost::mysql::tcp_ssl_connection& conn,
     boost::asio::ip::tcp::resolver& resolver,
     boost::asio::steady_timer& timer,
-    const boost::mysql::connection_params& params,
+    const boost::mysql::handshake_params& params,
     const char* hostname
 )
 {
-    try 
+    try
     {
         // Resolve hostname
         timer.expires_after(TIMEOUT);
         auto endpoints = check_timeout(co_await (
             timer.async_wait(use_awaitable) ||
-            resolver.async_resolve(
-                hostname,
-                boost::mysql::default_port_string,
-                use_awaitable
-            )
+            resolver.async_resolve(hostname, boost::mysql::default_port_string, use_awaitable)
         ));
 
         // Connect to server. Note that we need to reset the timer before using it again.
@@ -104,33 +101,31 @@ boost::asio::awaitable<void> start_query(
         ));
 
         // Issue the query to the server
-        const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
+        const char*
+            sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
+        boost::mysql::tcp_ssl_resultset result;
         timer.expires_after(TIMEOUT);
-        auto result = check_timeout(co_await (
-            timer.async_wait(use_awaitable) ||
-            conn.async_query(sql, use_awaitable)
+        check_timeout(co_await (
+            timer.async_wait(use_awaitable) || conn.async_query(sql, result, use_awaitable)
         ));
 
         // Read all rows
         boost::mysql::row row;
-        bool more_rows = true;
         while (true)
         {
             timer.expires_after(TIMEOUT);
-            more_rows = check_timeout(co_await (
-                timer.async_wait(use_awaitable) ||
-                result.async_read_one(row, use_awaitable)
+            check_timeout(co_await (
+                timer.async_wait(use_awaitable) || result.async_read_one(row, use_awaitable)
             ));
-            if (!more_rows) break;
+            if (result.complete())
+                break;
             print_employee(row);
         }
 
         // Notify the MySQL server we want to quit, then close the underlying connection.
-        check_timeout(co_await (
-            timer.async_wait(use_awaitable) ||
-            conn.async_close(use_awaitable)
-        ));
-    } 
+        check_timeout(co_await (timer.async_wait(use_awaitable) || conn.async_close(use_awaitable))
+        );
+    }
     catch (const boost::system::system_error& err)
     {
         std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
@@ -153,27 +148,31 @@ void main_impl(int argc, char** argv)
 
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
-    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
-    boost::asio::steady_timer timer (ctx.get_executor());
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
+    boost::asio::steady_timer timer(ctx.get_executor());
 
     // Connection parameters
-    boost::mysql::connection_params params (
-        argv[1],               // username
-        argv[2],               // password
-        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database to use; leave empty or omit for no database
     );
 
     // Resolver for hostname resolution
-    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     /**
      * The entry point. We pass in a function returning
      * a boost::asio::awaitable<void>, as required.
      */
-    boost::asio::co_spawn(ctx.get_executor(), [&conn, &resolver, &timer, params, hostname] {
-        return start_query(conn, resolver, timer, params, hostname);
-    }, boost::asio::detached);
+    boost::asio::co_spawn(
+        ctx.get_executor(),
+        [&conn, &resolver, &timer, params, hostname] {
+            return start_query(conn, resolver, timer, params, hostname);
+        },
+        boost::asio::detached
+    );
 
     // Calling run will actually start the requested operations.
     ctx.run();

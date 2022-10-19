@@ -7,37 +7,33 @@
 
 //[example_query_async_coroutines
 
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
+#include <boost/mysql/handshake_params.hpp>
+
 #include <boost/asio/io_context.hpp>
-#include <boost/system/system_error.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/system/system_error.hpp>
+
 #include <iostream>
 
 using boost::mysql::error_code;
 using boost::mysql::error_info;
 
-void print_employee(const boost::mysql::row& employee)
+void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '"
-              << employee.fields()[0] << " "                   // first_name (type boost::string_view)
-              << employee.fields()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.fields()[2] << " dollars yearly\n";  // salary     (type double)
+    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
+              << employee[1] << "' earns "            // last_name  (string)
+              << employee[2] << " dollars yearly\n";  // salary     (double)
 }
 
 // Throws an exception if an operation failed
-void check_error(
-    const error_code& err,
-    const error_info& info = {}
-)
+void check_error(const error_code& err, const error_info& info = {})
 {
     if (err)
-    {
         throw boost::system::system_error(err, info.message());
-    }
 }
-
 
 void main_impl(int argc, char** argv)
 {
@@ -51,19 +47,18 @@ void main_impl(int argc, char** argv)
 
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
-    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
 
     // Connection params
-    boost::mysql::connection_params params (
-        argv[1],               // username
-        argv[2],               // password
-        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database to use; leave empty or omit for no database
     );
 
     // Resolver for hostname resolution
-    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
-
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     /**
      * The entry point. We spawn a stackful coroutine using boost::asio::spawn.
@@ -72,49 +67,54 @@ void main_impl(int argc, char** argv)
      * It will suspend every time we call one of the asynchronous functions, saving
      * all information it needs for resuming. When the asynchronous operation completes,
      * the coroutine will resume in the point it was left.
-     *
-     * The return type of a coroutine is the second argument to the handler signature
-     * for the asynchronous operation. For example, connection::query has a handler
-     * signature of void(error_code, resultset<Stream>), so the coroutine return
-     * type is resultset<Stream>.
-     *
      */
-    boost::asio::spawn(ctx.get_executor(), [&conn, &resolver, params, hostname](boost::asio::yield_context yield) {
-        // This error_code and error_info will be filled if an
-        // operation fails. We will check them for every operation we perform.
-        boost::mysql::error_code ec;
-        boost::mysql::error_info additional_info;
+    boost::asio::spawn(
+        ctx.get_executor(),
+        [&conn, &resolver, params, hostname](boost::asio::yield_context yield) {
+            // This error_code and error_info will be filled if an
+            // operation fails. We will check them for every operation we perform.
+            boost::mysql::error_code ec;
+            boost::mysql::error_info additional_info;
 
-        // Hostname resolution
-        auto endpoints = resolver.async_resolve(hostname, boost::mysql::default_port_string, yield[ec]);
-        check_error(ec);
+            // Hostname resolution
+            auto endpoints = resolver.async_resolve(
+                hostname,
+                boost::mysql::default_port_string,
+                yield[ec]
+            );
+            check_error(ec);
 
-        // Connect to server
-        conn.async_connect(*endpoints.begin(), params, additional_info, yield[ec]);
-        check_error(ec);
+            // Connect to server
+            conn.async_connect(*endpoints.begin(), params, additional_info, yield[ec]);
+            check_error(ec);
 
-        // Issue the query to the server
-        const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        boost::mysql::tcp_ssl_resultset result = conn.async_query(sql, additional_info, yield[ec]);
-        check_error(ec, additional_info);
-
-        /**
-          * Get all rows in the resultset. We will employ resultset::async_read_one(),
-          * which reads a single row at every call. The row is read in-place, preventing
-          * unnecessary copies. resultset::async_read_one() returns true if a row has been
-          * read, false if no more rows are available or an error occurred.
-         */
-        boost::mysql::row row;
-        while (result.async_read_one(row, additional_info, yield[ec]))
-        {
+            // Issue the query to the server
+            const char*
+                sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
+            boost::mysql::tcp_ssl_resultset result;
+            conn.async_query(sql, result, additional_info, yield[ec]);
             check_error(ec, additional_info);
-            print_employee(row);
-        }
 
-        // Notify the MySQL server we want to quit, then close the underlying connection.
-        conn.async_close(additional_info, yield[ec]);
-        check_error(ec, additional_info);
-    });
+            /**
+             * Get all rows in the resultset. We will employ resultset::async_read_one(),
+             * which reads a single row at every call. resultset::complete() returns true only after
+             * we've read the last row in the resultset.
+             */
+            boost::mysql::row row;
+            while (true)
+            {
+                result.async_read_one(row, additional_info, yield[ec]);
+                check_error(ec, additional_info);
+                if (result.complete())
+                    break;
+                print_employee(row);
+            }
+
+            // Notify the MySQL server we want to quit, then close the underlying connection.
+            conn.async_close(additional_info, yield[ec]);
+            check_error(ec, additional_info);
+        }
+    );
 
     // Don't forget to call run()! Otherwise, your program
     // will not spawn the coroutine and will do nothing.

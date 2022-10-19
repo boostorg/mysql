@@ -65,7 +65,7 @@ endif()
 # Build and run all the examples
 if (BOOST_MYSQL_INTEGRATION_TESTS)
     add_example(tutorial                    TRUE    ${SERVER_HOST})
-    add_example(value                       TRUE    ${SERVER_HOST})
+    # add_example(value                       TRUE    ${SERVER_HOST})
     add_example(query_sync                  TRUE    ${SERVER_HOST})
     add_example(query_async_callbacks       TRUE    ${SERVER_HOST})
     add_example(query_async_coroutines      FALSE   ${SERVER_HOST})

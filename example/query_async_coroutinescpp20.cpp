@@ -8,14 +8,18 @@
 //[example_query_async_coroutinescpp20
 
 #include <boost/mysql.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/system/system_error.hpp>
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/use_awaitable.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
+
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
+#include <boost/system/system_error.hpp>
+
 #include <exception>
 #include <iostream>
 
@@ -23,12 +27,11 @@ using boost::mysql::error_code;
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
-void print_employee(const boost::mysql::row& employee)
+void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '"
-              << employee.values()[0] << " "                   // first_name (type boost::string_view)
-              << employee.values()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.values()[2] << " dollars yearly\n";  // salary     (type double)
+    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
+              << employee[1] << "' earns "            // last_name  (string)
+              << employee[2] << " dollars yearly\n";  // salary     (double)
 }
 
 /**
@@ -46,21 +49,17 @@ void print_employee(const boost::mysql::row& employee)
  * The return type of an asynchronous operation that uses boost::asio::use_awaitable
  * as completion token is a boost::asio::awaitable<T>, where T
  * is the second argument to the handler signature for the asynchronous operation.
- * For example, connection::query has a handler
- * signature of void(error_code, resultset<Stream>), so async_query will return
- * a boost::asio::awaitable<boost::mysql::resultset<Stream>>. The return type of
- * calling co_await on such a expression would be a boost::mysql::resultset<Stream>.
  * If any of the asynchronous operations fail, an exception will be raised
  * within the coroutine.
  */
 boost::asio::awaitable<void> start_query(
     boost::mysql::tcp_ssl_connection& conn,
     boost::asio::ip::tcp::resolver& resolver,
-    const boost::mysql::connection_params& params,
+    const boost::mysql::handshake_params& params,
     const char* hostname
 )
 {
-    try 
+    try
     {
         // Resolve hostname
         auto endpoints = co_await resolver.async_resolve(
@@ -73,27 +72,31 @@ boost::asio::awaitable<void> start_query(
         co_await conn.async_connect(*endpoints.begin(), params, boost::asio::use_awaitable);
 
         /**
-        * Issue the query to the server. Note that async_query returns a
-        * boost::asio::awaitable<boost::mysql::tcp_ssl_resultset>.
-        */
-        const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        auto result = co_await conn.async_query(sql, boost::asio::use_awaitable);
+         * Issue the query to the server. Note that async_query returns a
+         * boost::asio::awaitable<boost::mysql::tcp_ssl_resultset>.
+         */
+        const char*
+            sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
+        boost::mysql::tcp_ssl_resultset result;
+        co_await conn.async_query(sql, result, boost::asio::use_awaitable);
 
         /**
-        * Get all rows in the resultset. We will employ resultset::async_read_one(),
-        * which reads a single row at every call. The row is read in-place, preventing
-        * unnecessary copies. resultset::async_read_one() returns true if a row has been
-        * read, false if no more rows are available or an error occurred.
-        */
+         * Get all rows in the resultset. We will employ resultset::async_read_one(),
+         * which reads a single row at every call. resultset::complete() returns true only after
+         * we've read the last row in the resultset.
+         */
         boost::mysql::row row;
-        while (co_await result.async_read_one(row, boost::asio::use_awaitable))
+        while (true)
         {
+            co_await result.async_read_one(row, boost::asio::use_awaitable);
+            if (result.complete())
+                break;
             print_employee(row);
         }
 
         // Notify the MySQL server we want to quit, then close the underlying connection.
         co_await conn.async_close(boost::asio::use_awaitable);
-    } 
+    }
     catch (const boost::system::system_error& err)
     {
         std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
@@ -116,26 +119,31 @@ void main_impl(int argc, char** argv)
 
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
-    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
 
     // Connection parameters
-    boost::mysql::connection_params params (
-        argv[1],               // username
-        argv[2],               // password
-        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database to use; leave empty or omit the parameter for no
+                                // database
     );
 
     // Resolver for hostname resolution
-    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     /**
      * The entry point. We pass in a function returning
      * a boost::asio::awaitable<void>, as required.
      */
-    boost::asio::co_spawn(ctx.get_executor(), [&conn, &resolver, params, hostname] {
-        return start_query(conn, resolver, params, hostname);
-    }, boost::asio::detached);
+    boost::asio::co_spawn(
+        ctx.get_executor(),
+        [&conn, &resolver, params, hostname] {
+            return start_query(conn, resolver, params, hostname);
+        },
+        boost::asio::detached
+    );
 
     // Calling run will actually start the requested operations.
     ctx.run();

@@ -6,36 +6,36 @@
 //
 
 //[example_query_sync
-#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/row_view.hpp>
+
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/system/system_error.hpp>
+
 #include <iostream>
 
-#define ASSERT(expr) \
-    if (!(expr)) \
-    { \
+#define ASSERT(expr)                                          \
+    if (!(expr))                                              \
+    {                                                         \
         std::cerr << "Assertion failed: " #expr << std::endl; \
-        exit(1); \
+        exit(1);                                              \
     }
 
 /**
- * Prints an employee to std::cout. An employee here is a boost::mysql::row,
- * which represents a row returned by a SQL query. You can access the values in
- * the row using row::values(), which returns a vector of boost::mysql::value.
+ * Prints an employee to std::cout. An employee here is a boost::mysql::row_view,
+ * which represents a row returned by a SQL query. row_view objects are an ordered
+ * collection of SQL fields, representing each value returned by the query.
  *
- * boost::mysql::value is a variant-like type representing 
- * a single value returned by MySQL.
- *
- * row::values() has the same number of elements as fields are in the SQL query,
- * and in the same order.
+ * Indexing a row_view yields a boost::mysql::field_view, which is a variant-like
+ * type representing a single value returned by MySQL.
  */
 void print_employee(const boost::mysql::row& employee)
 {
-    std::cout << "Employee '"
-              << employee.fields()[0] << " "                   // first_name (type boost::string_view)
-              << employee.fields()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.fields()[2] << " dollars yearly\n";  // salary     (type double)
+    std::cout << "Employee '" << employee[0] << " "   // first_name (type string)
+              << employee[1] << "' earns "            // last_name  (type string)
+              << employee[2] << " dollars yearly\n";  // salary     (type double)
 }
 
 void main_impl(int argc, char** argv)
@@ -53,24 +53,24 @@ void main_impl(int argc, char** argv)
      * Connection parameters that tell us how to connect to the MySQL server:
      * database credentials and schema to use.
      */
-    boost::mysql::connection_params params (
-        argv[1],               // username
-        argv[2],               // password
-        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database to use; leave empty or omit for no database
     );
 
     /* We will use SSL in all our examples. To enable SSL, use boost::mysql::tcp_ssl_connection.
      * MySQL 8+ default is to use an authentication method that requires SSL, so we encourage
      * you to use SSL connections if you can.
      */
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
 
     // Represents a single connection over TCP to a MySQL server.
-    boost::mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
 
     // To establish the connection, we need a TCP endpoint. We have a hostname,
     // so we need to perform hostname resolution. We create a resolver for this.
-    boost::asio::ip::tcp::resolver resolver (ctx.get_executor());
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     // Invoke the resolver's appropriate function to perform the resolution.
     const char* hostname = argv[3];
@@ -86,21 +86,27 @@ void main_impl(int argc, char** argv)
 
     /**
      * To issue a SQL query to the database server, use tcp_ssl_connection::query, which takes
-     * the SQL to be executed as parameter and returns a resultset object.
+     * the SQL to be executed as parameter and returns a resultset object by lvalue reference.
      *
-     * Resultset objects represent the result of a query, in tabular format.
+     * Resultset objects represent the result of a query.
      * They hold metadata describing the fields the resultset holds (in this case, first_name,
-     * last_name and salary). To get the actual data, use read_one, read_many or read_all.
-     * We will use read_all, which returns all the received rows as a std::vector.
+     * last_name and salary). Resultsets don't contain the actual data, but have methods to read it.
      *
      * We will get all employees working for 'High Growth Startup'.
      */
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::tcp_ssl_resultset result = conn.query(sql);
+    boost::mysql::tcp_ssl_resultset result;
+    conn.query(sql, result);
 
-    // Get all the rows in the resultset
-    std::vector<boost::mysql::row> employees = result.read_all();
-    for (const auto& employee: employees)
+    /**
+     * We will use resultset::read_all(), which will read all our rows into
+     * a boost::mysql::rows object. This is a matrix-like object, specialized for
+     * MySQL fields. Indexing a rows object returns a row_view, which represents
+     * an individual row.
+     */
+    boost::mysql::rows employees;
+    result.read_all(employees);
+    for (boost::mysql::row_view employee : employees)
     {
         print_employee(employee);
     }
@@ -108,14 +114,16 @@ void main_impl(int argc, char** argv)
     // We can issue any SQL statement, not only SELECTs. In this case, the returned
     // resultset will have no fields and no rows
     sql = "UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'";
-    result = conn.query(sql);
-    ASSERT(result.fields().size() == 0); // fields() returns a vector containing metadata about the query fields
+    conn.query(sql, result);
+    ASSERT(
+        result.meta().size() == 0
+    );  // meta() returns a collection containing metadata about the query fields
 
     // Check we have updated our poor intern salary
-    result = conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'");
+    conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'", result);
     auto rows = result.read_all();
     ASSERT(rows.size() == 1);
-    double salary = rows[0].values()[0].get<double>();
+    double salary = rows[0][0].as_double();
     ASSERT(salary == 10000);
 
     // Close the connection. This notifies the MySQL we want to log out

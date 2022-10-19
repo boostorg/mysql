@@ -148,7 +148,7 @@ struct read_some_rows_op_rows : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err, rows_view());
+            self.complete(err);
             return;
         }
 

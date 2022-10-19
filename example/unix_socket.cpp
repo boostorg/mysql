@@ -7,25 +7,26 @@
 
 //[example_unix_socket
 
-#include <boost/asio/ssl/context.hpp>
 #include <boost/mysql.hpp>
+
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/system/system_error.hpp>
+
 #include <iostream>
 
-void print_employee(const boost::mysql::row& employee)
+void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '"
-              << employee.fields()[0] << " "                   // first_name (type boost::string_view)
-              << employee.fields()[1] << "' earns "            // last_name  (type boost::string_view)
-              << employee.fields()[2] << " dollars yearly\n";  // salary     (type double)
+    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
+              << employee[1] << "' earns "            // last_name  (string)
+              << employee[2] << " dollars yearly\n";  // salary     (double)
 }
 
-#define ASSERT(expr) \
-    if (!(expr)) \
-    { \
+#define ASSERT(expr)                                          \
+    if (!(expr))                                              \
+    {                                                         \
         std::cerr << "Assertion failed: " #expr << std::endl; \
-        exit(1); \
+        exit(1);                                              \
     }
 
 /* UNIX sockets are only available in, er, UNIX systems. Typedefs for
@@ -55,26 +56,29 @@ void main_impl(int argc, char** argv)
      *   - UNIX-level connection parameters, identifying the UNIX socket to connect to.
      *   - MySQL level parameters: database credentials and schema to use.
      */
-    boost::asio::local::stream_protocol::endpoint ep (socket_path);
-    boost::mysql::connection_params params (
-        argv[1],               // username
-        argv[2],               // password
-        "boost_mysql_examples" // database to use; leave empty or omit the parameter for no database
+    boost::asio::local::stream_protocol::endpoint ep(socket_path);
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database to use; leave empty or omit the parameter for no
+                                // database
     );
 
     boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx (boost::asio::ssl::context::tls_client);
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
 
     // Connection to the MySQL server, over a UNIX socket
-    boost::mysql::unix_ssl_connection conn (ctx, ssl_ctx);
-    conn.connect(ep, params); // UNIX socket connect and MySQL handshake
+    boost::mysql::unix_ssl_connection conn(ctx, ssl_ctx);
+    conn.connect(ep, params);  // UNIX socket connect and MySQL handshake
 
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::unix_ssl_resultset result = conn.query(sql);
+    boost::mysql::unix_ssl_resultset result;
+    conn.query(sql, result);
 
     // Get all the rows in the resultset
-    std::vector<boost::mysql::row> employees = result.read_all();
-    for (const auto& employee: employees)
+    boost::mysql::rows all_rows;
+    result.read_all(all_rows);
+    for (const auto& employee : all_rows)
     {
         print_employee(employee);
     }
@@ -82,14 +86,13 @@ void main_impl(int argc, char** argv)
     // We can issue any SQL statement, not only SELECTs. In this case, the returned
     // resultset will have no fields and no rows
     sql = "UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'";
-    result = conn.query(sql);
-    ASSERT(result.fields().size() == 0); // fields() returns a vector containing metadata about the query fields
+    conn.query(sql, result);
+    ASSERT(result.complete());  // UPDATE queries never return rows
 
     // Check we have updated our poor intern salary
-    result = conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'");
-    auto rows = result.read_all();
-    ASSERT(rows.size() == 1);
-    double salary = rows[0].values()[0].get<double>();
+    conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'", result);
+    result.read_all(all_rows);
+    double salary = all_rows.at(0).at(0).as_double();
     ASSERT(salary == 10000);
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
