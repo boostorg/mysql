@@ -129,7 +129,7 @@ struct read_one_row_op_row : boost::asio::coroutine
         // Error checking
         if (err)
         {
-            self.complete(err);
+            self.complete(err, false);
             return;
         }
 
@@ -142,7 +142,7 @@ struct read_one_row_op_row : boost::asio::coroutine
             async_read_one_row(chan_, resultset_, output_info_, std::move(self));
 
             output_ = rv;
-            self.complete(error_code());
+            self.complete(error_code(), !rv.empty());
         }
     }
 };
@@ -174,7 +174,7 @@ boost::mysql::row_view boost::mysql::detail::read_one_row(
 }
 
 template <class Stream>
-void boost::mysql::detail::read_one_row(
+bool boost::mysql::detail::read_one_row(
     channel<Stream>& channel,
     resultset_base& result,
     row& output,
@@ -184,6 +184,7 @@ void boost::mysql::detail::read_one_row(
 {
     // TODO: this can be optimized
     output = read_one_row(channel, result, err, info);
+    return !output.empty();
 }
 
 template <class Stream, class CompletionToken>
@@ -215,7 +216,7 @@ boost::mysql::detail::async_read_one_row(
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
+    return boost::asio::async_compose<CompletionToken, void(error_code, bool)>(
         read_one_row_op_row<Stream>(channel, output_info, result, output),
         token,
         channel

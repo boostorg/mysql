@@ -51,23 +51,24 @@ boost::mysql::resultset<Stream>::async_read_one(error_info& output_info, Complet
 }
 
 template <class Stream>
-void boost::mysql::resultset<Stream>::read_one(row& output, error_code& err, error_info& info)
+bool boost::mysql::resultset<Stream>::read_one(row& output, error_code& err, error_info& info)
 {
     detail::clear_errors(err, info);
-    detail::read_one_row(get_channel(), *this, output, err, info);
+    return detail::read_one_row(get_channel(), *this, output, err, info);
 }
 
 template <class Stream>
-void boost::mysql::resultset<Stream>::read_one(row& output)
+bool boost::mysql::resultset<Stream>::read_one(row& output)
 {
     detail::error_block blk;
-    detail::read_one_row(get_channel(), *this, output, blk.err, blk.info);
+    bool res = detail::read_one_row(get_channel(), *this, output, blk.err, blk.info);
     blk.check();
+    return res;
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, bool))
 boost::mysql::resultset<Stream>::async_read_one(
     row& output,
     error_info& output_info,

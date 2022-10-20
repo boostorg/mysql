@@ -129,7 +129,7 @@ public:
      * (as if [refmem row clear] was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
-    void read_one(row& output, error_code& err, error_info& info);
+    bool read_one(row& output, error_code& err, error_info& info);
 
     /**
      * \brief Reads a single row (sync with exceptions version).
@@ -143,7 +143,7 @@ public:
      * (as if [refmem row clear] was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
-    void read_one(row& output);
+    bool read_one(row& output);
 
     /**
      * \brief Reads a single row (async without [reflink error_info] version).
@@ -160,9 +160,9 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, bool)`.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
     async_read_one(
         row& output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -190,9 +190,9 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, bool)`.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
     async_read_one(
         row& output,
         error_info& output_info,

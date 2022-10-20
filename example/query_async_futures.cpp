@@ -108,11 +108,8 @@ void main_impl(int argc, char** argv)
      * read the last row in the resultset.
      */
     boost::mysql::row row;
-    while (true)
+    while (result.async_read_one(row, use_future).get())
     {
-        result.async_read_one(row, use_future).get();
-        if (result.complete())
-            break;
         print_employee(row);
     }
 

@@ -35,7 +35,7 @@ async_read_one_row(
 );
 
 template <class Stream>
-void read_one_row(
+bool read_one_row(
     channel<Stream>& channel,
     resultset_base& result,
     row& output,
@@ -44,7 +44,7 @@ void read_one_row(
 );
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
 async_read_one_row(
     channel<Stream>& channel,
     resultset_base& result,

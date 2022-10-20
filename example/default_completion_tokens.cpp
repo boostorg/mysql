@@ -93,15 +93,11 @@ boost::asio::awaitable<void, base_executor_type> start_query(
 
         /**
          * Get all rows in the resultset. We will employ resultset::async_read_one(),
-         * which reads a single row at every call. resultset::complete() will return
-         * true after we've read all the rows in the resultset
+         * which reads a single row at every call and returns true if a row was read successfully.
          */
         boost::mysql::row row;
-        while (true)
+        while (co_await result.async_read_one(row))
         {
-            co_await result.async_read_one(row);
-            if (result.complete())
-                break;
             print_employee(row);
         }
 

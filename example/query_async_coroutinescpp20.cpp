@@ -86,11 +86,8 @@ boost::asio::awaitable<void> start_query(
          * we've read the last row in the resultset.
          */
         boost::mysql::row row;
-        while (true)
+        while (co_await result.async_read_one(row, boost::asio::use_awaitable))
         {
-            co_await result.async_read_one(row, boost::asio::use_awaitable);
-            if (result.complete())
-                break;
             print_employee(row);
         }
 
