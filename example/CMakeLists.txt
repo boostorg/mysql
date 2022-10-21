@@ -18,6 +18,7 @@ function (build_example EXECUTABLE_NAME CPPFILE)
         PRIVATE
         Boost::mysql
         Boost::coroutine
+        asio
     )
     common_target_settings(${EXECUTABLE_NAME})
 endfunction()

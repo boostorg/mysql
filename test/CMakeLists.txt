@@ -13,8 +13,7 @@ find_package(Boost 1.72 REQUIRED COMPONENTS
 # Test common
 add_library(
     boost_mysql_testing
-    STATIC
-    common/asio.cpp
+    INTERFACE
 )
 target_include_directories(
     boost_mysql_testing
@@ -23,15 +22,16 @@ target_include_directories(
 )
 target_link_libraries(
     boost_mysql_testing
-    PUBLIC
+    INTERFACE
     Boost::headers
     Boost::unit_test_framework
     Boost::mysql
     Boost::disable_autolinking
+    asio
 )
 target_compile_definitions(
     boost_mysql_testing
-    PUBLIC
+    INTERFACE
     BOOST_ASIO_SEPARATE_COMPILATION
 )
 
@@ -80,7 +80,7 @@ target_link_libraries(
 target_precompile_headers(
     boost_mysql_unittests
     PRIVATE
-    <boost/test/unit_test.hpp>
+    unit/pch.hpp
 )
 set_source_files_properties(
     unit/entry_point.cpp
@@ -152,8 +152,7 @@ if(BOOST_MYSQL_INTEGRATION_TESTS)
     target_precompile_headers(
         boost_mysql_integrationtests
         PRIVATE
-        <boost/test/unit_test.hpp>
-        <boost/mysql.hpp>
+        integration/pch.hpp
     )
     set_source_files_properties(
         integration/entry_point.cpp
