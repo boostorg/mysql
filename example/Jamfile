@@ -17,7 +17,7 @@ if $(hostname) = ""
 # Example list
 local examples_no_unix =
     tutorial
-    value
+    field
     query_sync
     query_async_callbacks
     query_async_coroutines

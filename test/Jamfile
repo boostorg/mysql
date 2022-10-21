@@ -9,43 +9,71 @@ import os ;
 import sequence ;
 
 # Stuff shared between unit and integration tests
-alias boost_mysql_test
+lib asio_separate
+    :
+        common/asio.cpp
+    :
+        <link>static
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+    :
+    :
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+    ;
+
+
+# Unit tests
+cpp-pch unittests_pch : unit/pch.hpp ;
+
+lib unittests_entry_point
+    :
+        unit/entry_point.cpp
+    :
+        <link>static
+        <define>BOOST_TEST_DYN_LINK
+    ;
+
+unit-test boost_mysql_unittests
     :
         /boost/mysql//boost_mysql
         /boost/test//boost_unit_test_framework
-    :
-    :
-    :
-        <include>common
-        <link>shared
-    ;
+        asio_separate
+        unittests_entry_point
+        unittests_pch
 
-# Unit tests
-unit-test boost_mysql_unittests 
-    : 
-        boost_mysql_test
+        unit/detail/channel/read_buffer.cpp
+        unit/detail/channel/message_parser.cpp
+        unit/detail/channel/message_reader.cpp
+        unit/detail/channel/message_writer_processor.cpp
+        unit/detail/channel/message_writer.cpp
         unit/detail/auth/auth_calculator.cpp
         unit/detail/auxiliar/static_string.cpp
-        unit/detail/auxiliar/value_type_traits.cpp
+        unit/detail/auxiliar/rows_iterator.cpp
+        unit/detail/auxiliar/field_type_traits.cpp
+        unit/detail/network_algorithms/read_one_row.cpp
+        unit/detail/network_algorithms/read_some_rows.cpp
+        unit/detail/network_algorithms/read_all_rows.cpp
         unit/detail/protocol/capabilities.cpp
         unit/detail/protocol/date.cpp
         unit/detail/protocol/null_bitmap_traits.cpp
         unit/detail/protocol/serialization_test.cpp
-        unit/detail/protocol/text_deserialization_value.cpp
-        unit/detail/protocol/text_deserialization_error.cpp
-        unit/detail/protocol/binary_deserialization_value.cpp
-        unit/detail/protocol/binary_deserialization_error.cpp
-        unit/detail/protocol/row_deserialization.cpp
-        unit/metadata.cpp
-        unit/value.cpp
-        unit/value_constexpr.cpp
+        unit/detail/protocol/deserialize_text_field.cpp
+        unit/detail/protocol/deserialize_binary_field.cpp
+        unit/detail/protocol/deserialize_row.cpp
+        unit/field_view.cpp
+        unit/field.cpp
+        unit/row_view.cpp
         unit/row.cpp
+        unit/rows_view.cpp
+        unit/rows.cpp
+        unit/metadata.cpp
+        unit/metadata_collection_view.cpp
         unit/error.cpp
         unit/execute_params.cpp
-        unit/prepared_statement.cpp
+        unit/statement.cpp
         unit/resultset.cpp
         unit/connection.cpp
-        unit/entry_point.cpp
+    :
+        <include>common
     ;
 
 
@@ -66,10 +94,25 @@ if $(test_filter) != "" {
 }
 
 # Integration tests
-unit-test boost_mysql_integrationtests 
+lib integrationtests_entry_point :
+        integration/entry_point.cpp
     :
-        boost_mysql_test
+        <link>static
+        <define>BOOST_TEST_DYN_LINK
+    ;
+
+cpp-pch integrationtests_pch : integration/pch.hpp ;
+
+unit-test boost_mysql_integrationtests
+    :
+        /boost/mysql//boost_mysql
         /boost/coroutine//boost_coroutine
+        /boost/test//boost_unit_test_framework
+        asio_separate
+        integrationtests_entry_point
+        integrationtests_pch
+
+        # Utilities
         integration/utils/src/get_endpoint.cpp
         integration/utils/src/metadata_validator.cpp
         integration/utils/src/network_result.cpp
@@ -82,6 +125,8 @@ unit-test boost_mysql_integrationtests
         integration/utils/src/async_coroutine.cpp
         integration/utils/src/async_coroutinecpp20.cpp
         integration/utils/src/default_completion_tokens.cpp
+
+        # Actual tests
         integration/connection.cpp
         integration/connect.cpp
         integration/handshake.cpp
@@ -89,16 +134,16 @@ unit-test boost_mysql_integrationtests
         integration/prepare_statement.cpp
         integration/execute_statement.cpp
         integration/close_statement.cpp
+        integration/statement_lifecycle.cpp
         integration/resultset.cpp
-        integration/prepared_statement_lifecycle.cpp
         integration/quit_connection.cpp
         integration/close_connection.cpp
         integration/reconnect.cpp
         integration/database_types.cpp
-        integration/entry_point.cpp
     :
         <testing.arg>$(test_command)
         <include>integration/utils/include
+        <include>common
     ;
 
 explicit boost_mysql_integrationtests ;

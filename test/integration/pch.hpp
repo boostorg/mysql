@@ -5,5 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#define BOOST_TEST_MODULE boost_mysql_integrationtests
+#ifndef BOOST_MYSQL_TEST_INTEGRATION_PCH_HPP
+#define BOOST_MYSQL_TEST_INTEGRATION_PCH_HPP
+
+#include <boost/mysql.hpp>
+
 #include <boost/test/unit_test.hpp>
+
+#endif
