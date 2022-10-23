@@ -393,7 +393,7 @@ BOOST_AUTO_TEST_CASE(size)
 BOOST_AUTO_TEST_SUITE(iterators)
 BOOST_AUTO_TEST_CASE(empty)
 {
-    const row r;  // can be called on const objects
+    const row r{};  // can be called on const objects
     BOOST_TEST(r.begin() == nullptr);
     BOOST_TEST(r.end() == nullptr);
     std::vector<field_view> vec{r.begin(), r.end()};
