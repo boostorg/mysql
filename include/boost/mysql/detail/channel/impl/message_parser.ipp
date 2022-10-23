@@ -19,8 +19,10 @@
 
 #include <cstddef>
 
-inline void
-boost::mysql::detail::message_parser::parse_message(read_buffer& buff, result& res) noexcept
+inline void boost::mysql::detail::message_parser::parse_message(
+    read_buffer& buff,
+    result& res
+) noexcept
 {
     while (true)
     {
@@ -37,7 +39,7 @@ boost::mysql::detail::message_parser::parse_message(read_buffer& buff, result& r
             buff.move_to_current_message(HEADER_SIZE);
 
             // Deserialize the header
-            packet_header header;
+            packet_header header{};
             deserialization_context ctx(
                 boost::asio::buffer(buff.pending_first() - HEADER_SIZE, HEADER_SIZE),
                 capabilities(0)  // unaffected by capabilities
