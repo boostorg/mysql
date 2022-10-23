@@ -8,7 +8,7 @@
 [section:values MySQL values]
 [nochunk]
 
-[import ../../example/value.cpp]
+[import ../../example/field.cpp]
 
 This section describes the [reflink2 value boost::mysql::value] class, presents
 several examples and discusses some topics regarding its usage.
