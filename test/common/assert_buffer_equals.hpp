@@ -32,13 +32,25 @@ inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
     return os << "}";
 }
 
+inline bool buffer_equals(boost::asio::const_buffer b1, boost::asio::const_buffer b2) noexcept
+{
+    // If any of the buffers are empty (data() == nullptr), prevent
+    // calling memcmp (UB)
+    if (b1.size() == 0 || b2.size() == 0)
+    {
+        return b1.size() == 0 && b2.size() == 0;
+    }
+
+    return ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0;
+}
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
 
 #define BOOST_MYSQL_ASSERT_BUFFER_EQUALS(b1, b2)                                  \
     BOOST_TEST(                                                                   \
-        ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0,                      \
+        ::boost::mysql::test::buffer_equals(b1, b2),                              \
         #b1 " != " #b2 ": " << ::boost::mysql::test::buffer_printer{b1}           \
                             << " != " << ::boost::mysql::test::buffer_printer{b2} \
     )
