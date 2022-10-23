@@ -100,6 +100,7 @@ jobs:
     env:
       BOOST_MYSQL_SERVER_HOST: 127.0.0.1 # Force use IPv4
       OPENSSL_ROOT: /usr/local/opt/openssl
+      B2_TOOLSET: clang
       B2_VARIANT: debug,release
       B2_CXXSTD: 17
       B2_STDLIB: native
