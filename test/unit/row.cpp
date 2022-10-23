@@ -137,7 +137,14 @@ BOOST_AUTO_TEST_CASE(strings)
     BOOST_TEST(r2[0] == field_view(""));
     BOOST_TEST(r2[1] == field_view(42));
     BOOST_TEST(r2[2] == field_view("test"));
-    BOOST_TEST(r2[2].as_string().data() == str_begin_before);
+
+    // Check that pointers to strings are not invalidated.
+    // Cast them to void* so that UTF doesn't try to print them and
+    // generate valgrind errors
+    BOOST_TEST(
+        static_cast<const void*>(r2[2].as_string().data()) ==
+        static_cast<const void*>(str_begin_before)
+    );
 }
 BOOST_AUTO_TEST_SUITE_END()
 
