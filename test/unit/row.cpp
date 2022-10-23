@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
 
     // Fields still valid even when the original source of the view changed
     fields = make_field_views(90, 2.0);
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == field_view(42));
     BOOST_TEST(r[1] == field_view(5.0f));
 }
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(strings)
     // Fields still valid even when the original strings changed
     s1 = "other";
     s2 = "abcdef";
-    BOOST_TEST(r.size() == 3);
+    BOOST_TEST(r.size() == 3u);
     BOOST_TEST(r[0] == field_view("test"));
     BOOST_TEST(r[1] == field_view(""));
     BOOST_TEST(r[2] == field_view(50));
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     row r2(r1);
     r1 = makerow(42, "test");  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2.size() == 2u);
     BOOST_TEST(r2[0] == field_view(42));
     BOOST_TEST(r2[1] == field_view(5.0f));
 }
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(strings)
     row r2(r1);
     r1 = makerow("another_string", 4.2f, "");  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 3);
+    BOOST_TEST(r2.size() == 3u);
     BOOST_TEST(r2[0] == field_view(""));
     BOOST_TEST(r2[1] == field_view(42));
     BOOST_TEST(r2[2] == field_view("test"));
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     row r2(std::move(r1));
     r1 = makerow(42, "test");  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2.size() == 2u);
     BOOST_TEST(r2[0] == field_view(42));
     BOOST_TEST(r2[1] == field_view(5.0f));
     BOOST_TEST(r2.begin() == begin_before);
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(strings)
     row r2(std::move(r1));
     r1 = makerow("another_string", 4.2f, "");  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 3);
+    BOOST_TEST(r2.size() == 3u);
     BOOST_TEST(r2[0] == field_view(""));
     BOOST_TEST(r2[1] == field_view(42));
     BOOST_TEST(r2[2] == field_view("test"));
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     r = row_view(fields.data(), fields.size());
     fields = make_field_views("abc", 42u);  // r should be independent of the original fields
 
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == field_view(90));
     BOOST_TEST(r[1] == field_view());
 }
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(strings)
     s1 = "another_string";                     // r should be independent of the original strings
     s2 = "yet_another";
 
-    BOOST_TEST(r.size() == 3);
+    BOOST_TEST(r.size() == 3u);
     BOOST_TEST(r[0] == field_view("a_very_long_string"));
     BOOST_TEST(r[1] == field_view());
     BOOST_TEST(r[2] == field_view(""));
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(strings_empty_to)
     auto fields = make_field_views("abc", nullptr, "bcd");
     r = row_view(fields.data(), fields.size());
 
-    BOOST_TEST(r.size() == 3);
+    BOOST_TEST(r.size() == 3u);
     BOOST_TEST(r[0] == field_view("abc"));
     BOOST_TEST(r[1] == field_view());
     BOOST_TEST(r[2] == field_view("bcd"));
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     r1 = r2;
     r2 = makerow("abc", 80, nullptr);  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view(50.0f));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view(80u));
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(strings)
     r1 = r2;
     r2 = makerow("another_string", 90, "yet_another");  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view("a_very_long_string"));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view(""));
@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE(strings_empty_to)
     row r2 = makerow("abc", nullptr, "bcd");
     r1 = r2;
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view("abc"));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view("bcd"));
@@ -253,7 +253,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
     const row& ref = r;
     r = ref;
 
-    BOOST_TEST(r.size() == 3);
+    BOOST_TEST(r.size() == 3u);
     BOOST_TEST(r[0] == field_view("abc"));
     BOOST_TEST(r[1] == field_view(50u));
     BOOST_TEST(r[2] == field_view("fgh"));
@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     r1 = std::move(r2);
     r2 = makerow("abc", 80, nullptr);  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view(50.0f));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view(80u));
@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE(strings)
     r1 = std::move(r2);
     r2 = makerow("another_string", 90, "yet_another");  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view("a_very_long_string"));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view(""));
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE(strings_empty_to)
     row r2 = makerow("abc", nullptr, "bcd");
     r1 = std::move(r2);
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view("abc"));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view("bcd"));
@@ -316,7 +316,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_empty)
 
     // r is in a valid but unspecified state; can be assigned to
     r = makerow("abcdef");
-    BOOST_TEST(r.size() == 1);
+    BOOST_TEST(r.size() == 1u);
     BOOST_TEST(r[0] == field_view("abcdef"));
 }
 
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
 
     // r is in a valid but unspecified state; can be assigned to
     r = makerow("abcdef");
-    BOOST_TEST(r.size() == 1);
+    BOOST_TEST(r.size() == 1u);
     BOOST_TEST(r[0] == field_view("abcdef"));
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -376,9 +376,9 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_CASE(size)
 {
-    BOOST_TEST(row().size() == 0);
-    BOOST_TEST(makerow(42).size() == 1);
-    BOOST_TEST(makerow(50, nullptr).size() == 2);
+    BOOST_TEST(row().size() == 0u);
+    BOOST_TEST(makerow(42).size() == 1u);
+    BOOST_TEST(makerow(50, nullptr).size() == 2u);
 }
 
 // As iterators are regular pointers, we don't perform
@@ -401,7 +401,7 @@ BOOST_AUTO_TEST_CASE(multiple_elms)
     BOOST_TEST(std::distance(r.begin(), r.end()) == 3);
 
     std::vector<field_view> vec{r.begin(), r.end()};
-    BOOST_TEST(vec.size() == 3);
+    BOOST_TEST(vec.size() == 3u);
     BOOST_TEST(vec[0] == field_view(42));
     BOOST_TEST(vec[1] == field_view(50u));
     BOOST_TEST(vec[2] == field_view("test"));
@@ -415,7 +415,7 @@ BOOST_AUTO_TEST_CASE(empty)
     row_view rv(r);
 
     BOOST_TEST(rv.empty());
-    BOOST_TEST(rv.size() == 0);
+    BOOST_TEST(rv.size() == 0u);
     BOOST_TEST(rv.begin() == nullptr);
     BOOST_TEST(rv.end() == nullptr);
 }
@@ -425,7 +425,7 @@ BOOST_AUTO_TEST_CASE(non_empty)
     row r = makerow("abc", 24, "def");
     row_view rv(r);
 
-    BOOST_TEST(rv.size() == 3);
+    BOOST_TEST(rv.size() == 3u);
     BOOST_TEST(rv[0] == field_view("abc"));
     BOOST_TEST(rv[1] == field_view(24));
     BOOST_TEST(rv[2] == field_view("def"));
@@ -446,7 +446,7 @@ BOOST_AUTO_TEST_CASE(non_empty)
     std::vector<field> vec{field_view("abc")};
     row r = makerow(42u, "abc");
     r.as_vector(vec);
-    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec.size() == 2u);
     BOOST_TEST(vec[0].as_uint64() == 42u);
     BOOST_TEST(vec[1].as_string() == "abc");
 }
@@ -454,7 +454,7 @@ BOOST_AUTO_TEST_CASE(non_empty)
 BOOST_AUTO_TEST_CASE(return_value)
 {
     auto vec = makerow(42u, "abc").as_vector();
-    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec.size() == 2u);
     BOOST_TEST(vec[0].as_uint64() == 42u);
     BOOST_TEST(vec[1].as_string() == "abc");
 }

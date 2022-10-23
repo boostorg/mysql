@@ -75,25 +75,25 @@ BOOST_AUTO_TEST_CASE(from_nullptr)
 BOOST_AUTO_TEST_CASE(from_u8)
 {
     field v(std::uint8_t(0xfe));
-    BOOST_TEST(v.as_uint64() == 0xfe);
+    BOOST_TEST(v.as_uint64() == 0xfeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u16)
 {
     field v(std::uint16_t(0xfefe));
-    BOOST_TEST(v.as_uint64() == 0xfefe);
+    BOOST_TEST(v.as_uint64() == 0xfefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u32)
 {
     field v(std::uint32_t(0xfefefefe));
-    BOOST_TEST(v.as_uint64() == 0xfefefefe);
+    BOOST_TEST(v.as_uint64() == 0xfefefefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u64)
 {
     field v(std::uint64_t(0xfefefefefefefefe));
-    BOOST_TEST(v.as_uint64() == 0xfefefefefefefefe);
+    BOOST_TEST(v.as_uint64() == 0xfefefefefefefefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_s8)
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_uint64)
 {
     field_view fv(42u);
     field f(fv);
-    BOOST_TEST(f.as_uint64() == 42);
+    BOOST_TEST(f.as_uint64() == 42u);
 }
 
 BOOST_AUTO_TEST_CASE(from_field_view_string)
@@ -322,28 +322,28 @@ BOOST_AUTO_TEST_CASE(from_u8)
 {
     field v(9.2f);
     v = std::uint8_t(0xfe);
-    BOOST_TEST(v.as_uint64() == 0xfe);
+    BOOST_TEST(v.as_uint64() == 0xfeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u16)
 {
     field v(9.2f);
     v = std::uint16_t(0xfefe);
-    BOOST_TEST(v.as_uint64() == 0xfefe);
+    BOOST_TEST(v.as_uint64() == 0xfefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u32)
 {
     field v(9.2f);
     v = std::uint32_t(0xfefefefe);
-    BOOST_TEST(v.as_uint64() == 0xfefefefe);
+    BOOST_TEST(v.as_uint64() == 0xfefefefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u64)
 {
     field v(9.2f);
     v = std::uint64_t(0xfefefefefefefefe);
-    BOOST_TEST(v.as_uint64() == 0xfefefefefefefefe);
+    BOOST_TEST(v.as_uint64() == 0xfefefefefefefefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_s8)
@@ -481,7 +481,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_uint64)
     field_view fv(42u);
     field f("test");
     f = fv;
-    BOOST_TEST(f.as_uint64() == 42);
+    BOOST_TEST(f.as_uint64() == 42u);
 }
 
 BOOST_AUTO_TEST_CASE(from_field_view_string)

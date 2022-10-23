@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_TEST(info.message() == "");
             BOOST_TEST(rv == makerow("min", 1901));
             BOOST_TEST(!result.complete());
-            BOOST_TEST(chan.shared_sequence_number() == 0);  // not used
+            BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
 
             // 2nd row
             rv = fns.read_one_row(chan, result, err, info);
@@ -120,9 +120,9 @@ BOOST_AUTO_TEST_CASE(success)
             // ok packet
             rv = fns.read_one_row(chan, result, err, info);
             BOOST_TEST(result.complete());
-            BOOST_TEST(result.affected_rows() == 1);
-            BOOST_TEST(result.last_insert_id() == 6);
-            BOOST_TEST(result.warning_count() == 9);
+            BOOST_TEST(result.affected_rows() == 1u);
+            BOOST_TEST(result.last_insert_id() == 6u);
+            BOOST_TEST(result.warning_count() == 9u);
             BOOST_TEST(result.info() == "ab");
             BOOST_TEST(rv.empty());
         }

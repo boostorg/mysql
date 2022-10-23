@@ -106,15 +106,15 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof)
             rows_view rv = fns.read_some_rows(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
-            BOOST_TEST_REQUIRE(rv.size() == 2);
+            BOOST_TEST_REQUIRE(rv.size() == 2u);
             BOOST_TEST(rv[0] == makerow("min", 1901));
             BOOST_TEST(rv[1] == makerow("max", nullptr));
             BOOST_TEST(result.complete());
-            BOOST_TEST(result.affected_rows() == 1);
-            BOOST_TEST(result.last_insert_id() == 6);
-            BOOST_TEST(result.warning_count() == 9);
+            BOOST_TEST(result.affected_rows() == 1u);
+            BOOST_TEST(result.last_insert_id() == 6u);
+            BOOST_TEST(result.warning_count() == 9u);
             BOOST_TEST(result.info() == "ab");
-            BOOST_TEST(chan.shared_sequence_number() == 0);  // not used
+            BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof_separate)
             rows_view rv = fns.read_some_rows(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
-            BOOST_TEST_REQUIRE(rv.size() == 1);
+            BOOST_TEST_REQUIRE(rv.size() == 1u);
             BOOST_TEST(rv[0] == makerow("min", 1901));
             BOOST_TEST(!result.complete());
 
@@ -155,14 +155,14 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof_separate)
             rv = fns.read_some_rows(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
-            BOOST_TEST_REQUIRE(rv.size() == 1);
+            BOOST_TEST_REQUIRE(rv.size() == 1u);
             BOOST_TEST(rv[0] == makerow("max", nullptr));
             BOOST_TEST(result.complete());
-            BOOST_TEST(result.affected_rows() == 1);
-            BOOST_TEST(result.last_insert_id() == 6);
-            BOOST_TEST(result.warning_count() == 9);
+            BOOST_TEST(result.affected_rows() == 1u);
+            BOOST_TEST(result.last_insert_id() == 6u);
+            BOOST_TEST(result.warning_count() == 9u);
             BOOST_TEST(result.info() == "ab");
-            BOOST_TEST(chan.shared_sequence_number() == 0);  // not used
+            BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -194,19 +194,19 @@ BOOST_AUTO_TEST_CASE(success_row_eof_separate)
             rows_view rv = fns.read_some_rows(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
-            BOOST_TEST_REQUIRE(rv.size() == 1);
+            BOOST_TEST_REQUIRE(rv.size() == 1u);
             BOOST_TEST(rv[0] == makerow("min", 1901));
             BOOST_TEST(!result.complete());
 
             // eof
             rv = fns.read_some_rows(chan, result, err, info);
-            BOOST_TEST(rv.size() == 0);
+            BOOST_TEST(rv.size() == 0u);
             BOOST_TEST(result.complete());
-            BOOST_TEST(result.affected_rows() == 1);
-            BOOST_TEST(result.last_insert_id() == 6);
-            BOOST_TEST(result.warning_count() == 9);
+            BOOST_TEST(result.affected_rows() == 1u);
+            BOOST_TEST(result.last_insert_id() == 6u);
+            BOOST_TEST(result.warning_count() == 9u);
             BOOST_TEST(result.info() == "ab");
-            BOOST_TEST(chan.shared_sequence_number() == 0);  // not used
+            BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -234,13 +234,13 @@ BOOST_AUTO_TEST_CASE(success_eof)
             rows_view rv = fns.read_some_rows(chan, result, err, info);
             BOOST_TEST(err == error_code());
             BOOST_TEST(info.message() == "");
-            BOOST_TEST(rv.size() == 0);
+            BOOST_TEST(rv.size() == 0u);
             BOOST_TEST(result.complete());
-            BOOST_TEST(result.affected_rows() == 1);
-            BOOST_TEST(result.last_insert_id() == 6);
-            BOOST_TEST(result.warning_count() == 9);
+            BOOST_TEST(result.affected_rows() == 1u);
+            BOOST_TEST(result.last_insert_id() == 6u);
+            BOOST_TEST(result.warning_count() == 9u);
             BOOST_TEST(result.info() == "ab");
-            BOOST_TEST(chan.shared_sequence_number() == 0);  // not used
+            BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
 }

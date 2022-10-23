@@ -36,8 +36,8 @@ BOOST_AUTO_TEST_CASE(member_fns)
     stmt.reset(&chan, com_stmt_prepare_ok_packet{1, 2, 3, 4});
 
     BOOST_TEST(stmt.valid());
-    BOOST_TEST(stmt.id() == 1);
-    BOOST_TEST(stmt.num_params() == 3);
+    BOOST_TEST(stmt.id() == 1u);
+    BOOST_TEST(stmt.num_params() == 3u);
 }
 
 BOOST_AUTO_TEST_CASE(move_ctor_from_invalid)
@@ -55,8 +55,8 @@ BOOST_AUTO_TEST_CASE(move_ctor_from_valid)
     statement_t stmt2(std::move(stmt1));
 
     BOOST_TEST(stmt2.valid());
-    BOOST_TEST(stmt2.id() == 1);
-    BOOST_TEST(stmt2.num_params() == 3);
+    BOOST_TEST(stmt2.id() == 1u);
+    BOOST_TEST(stmt2.num_params() == 3u);
 }
 
 BOOST_AUTO_TEST_CASE(move_assign_from_invalid)
@@ -78,8 +78,8 @@ BOOST_AUTO_TEST_CASE(move_assign_from_valid)
 
     stmt1 = std::move(stmt2);
     BOOST_TEST(stmt1.valid());
-    BOOST_TEST(stmt1.id() == 1);
-    BOOST_TEST(stmt1.num_params() == 3);
+    BOOST_TEST(stmt1.id() == 1u);
+    BOOST_TEST(stmt1.num_params() == 3u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

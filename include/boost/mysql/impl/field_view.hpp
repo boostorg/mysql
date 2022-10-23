@@ -333,6 +333,7 @@ BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(const field_view
     case field_kind::datetime:
         return rhs_k == field_kind::datetime && get_datetime() == rhs.get_datetime();
     case field_kind::time: return rhs_k == field_kind::time && get_time() == rhs.get_time();
+    default: assert(false); return false;
     }
 }
 
@@ -353,12 +354,13 @@ inline std::ostream& boost::mysql::operator<<(std::ostream& os, const field_view
     case field_kind::date: return detail::print_date(os, value.get_date());
     case field_kind::datetime: return detail::print_datetime(os, value.get_datetime());
     case field_kind::time: return detail::print_time(os, value.get_time());
+    default: assert(false); return os;
     }
 }
 
 template <class... Types>
-BOOST_CXX14_CONSTEXPR std::array<boost::mysql::field_view, sizeof...(Types)>
-boost::mysql::make_field_views(Types&&... args)
+BOOST_CXX14_CONSTEXPR std::array<boost::mysql::field_view, sizeof...(Types)> boost::mysql::
+    make_field_views(Types&&... args)
 {
     return std::array<field_view, sizeof...(Types)>{{field_view(std::forward<Types>(args))...}};
 }

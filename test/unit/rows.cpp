@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     rows r(v);
     fields = make_field_views(0, 0, 0, 0);  // r should be independent of the original fields
 
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == makerow(20u, 1.0f));
     BOOST_TEST(r[1] == makerow(nullptr, -1));
 }
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(strings)
     s1 = "other";
     s2 = "yet_another";
 
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == makerow("abc", 1.0f));
     BOOST_TEST(r[1] == makerow("", -1));
 }
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     rows r2(r1);
     r1 = makerows(2, 0, 0, 0, 0);  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2.size() == 2u);
     BOOST_TEST(r2[0] == makerow(1, 21.0f, nullptr));
     BOOST_TEST(r2[1] == makerow(2, 22.0f, -1));
 }
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(strings)
     rows r2(r1);
     r1 = makerows(2, 0, 0, 0, 0);  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2.size() == 2u);
     BOOST_TEST(r2[0] == makerow("abc", 21.0f, ""));
     BOOST_TEST(r2[1] == makerow("cdefg", 22.0f, "aaa"));
 }
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     rows r2(std::move(r1));
     r1 = makerows(2, 0, 0, 0, 0);  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2.size() == 2u);
     BOOST_TEST(r2[0] == makerow(1, 21.0f, nullptr));
     BOOST_TEST(r2[1] == makerow(2, 22.0f, -1));
 }
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(strings)
     rows r2(std::move(r1));
     r1 = makerows(2, 0, 0, 0, 0);  // r2 should be independent of r1
 
-    BOOST_TEST(r2.size() == 2);
+    BOOST_TEST(r2.size() == 2u);
     BOOST_TEST(r2[0] == makerow("abc", 21.0f, ""));
     BOOST_TEST(r2[1] == makerow("cdefg", 22.0f, "aaa"));
 }
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     r1 = r2;
     r2 = makerows(1, "abc", 80, nullptr);  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 2);
+    BOOST_TEST(r1.size() == 2u);
     BOOST_TEST(r1[0] == makerow(50.0f));
     BOOST_TEST(r1[1] == makerow(nullptr));
 }
@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE(strings)
     r1 = r2;
     r2 = makerows(1, "another_string", 90, "yet_another");  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 2);
+    BOOST_TEST(r1.size() == 2u);
     BOOST_TEST(r1[0] == makerow("a_very_long_string", nullptr));
     BOOST_TEST(r1[1] == makerow("", "abc"));
 }
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(strings_empty_to)
     rows r2 = makerows(1, "abc", nullptr, "");
     r1 = r2;
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == makerow("abc"));
     BOOST_TEST(r1[1] == makerow(nullptr));
     BOOST_TEST(r1[2] == makerow(""));
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
     const rows& ref = r;
     r = ref;
 
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == makerow("abc", 50u));
     BOOST_TEST(r[1] == makerow("fgh", ""));
 }
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(non_strings)
     r1 = std::move(r2);
     r2 = makerows(1, "abc", 80, nullptr);  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 1);
+    BOOST_TEST(r1.size() == 1u);
     BOOST_TEST(r1[0] == makerow(50.0f, nullptr, 80u));
 }
 
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(strings)
     r1 = std::move(r2);
     r2 = makerows(1, "another_string", 90, "yet_another");  // r1 is independent of r2
 
-    BOOST_TEST(r1.size() == 2);
+    BOOST_TEST(r1.size() == 2u);
     BOOST_TEST(r1[0] == makerow("a_very_long_string", nullptr));
     BOOST_TEST(r1[1] == makerow("", "ppp"));
 }
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(strings_empty_to)
     rows r2 = makerows(1, "abc", nullptr, "bcd");
     r1 = std::move(r2);
 
-    BOOST_TEST(r1.size() == 3);
+    BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == makerow("abc"));
     BOOST_TEST(r1[1] == makerow(nullptr));
     BOOST_TEST(r1[2] == makerow("bcd"));
@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_empty)
 
     // r is in a valid but unspecified state; can be assigned to
     r = makerows(1, "abcdef");
-    BOOST_TEST(r.size() == 1);
+    BOOST_TEST(r.size() == 1u);
     BOOST_TEST(r[0] == makerow("abcdef"));
 }
 
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
 
     // r is in a valid but unspecified state; can be assigned to
     r = makerows(1, "abcdef");
-    BOOST_TEST(r.size() == 1);
+    BOOST_TEST(r.size() == 1u);
     BOOST_TEST(r[0] == makerow("abcdef"));
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -358,31 +358,31 @@ BOOST_AUTO_TEST_SUITE(size)
 BOOST_AUTO_TEST_CASE(empty)
 {
     rows r;
-    BOOST_TEST(r.size() == 0);
+    BOOST_TEST(r.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(one_column_one_row)
 {
     rows r = makerows(1, 42u);
-    BOOST_TEST(r.size() == 1);
+    BOOST_TEST(r.size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(one_column_several_rows)
 {
     rows r = makerows(1, 42u, "abc");
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
 }
 
 BOOST_AUTO_TEST_CASE(several_columns_one_row)
 {
     rows r = makerows(2, 42u, "abc");
-    BOOST_TEST(r.size() == 1);
+    BOOST_TEST(r.size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(several_columns_several_rows)
 {
     rows r = makerows(3, 42u, "abc", nullptr, "bcd", 90u, nullptr);
-    BOOST_TEST(r.size() == 2);
+    BOOST_TEST(r.size() == 2u);
 }
 BOOST_AUTO_TEST_SUITE_END()
 

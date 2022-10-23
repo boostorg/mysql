@@ -130,35 +130,35 @@ BOOST_AUTO_TEST_SUITE(size)
 BOOST_AUTO_TEST_CASE(empty)
 {
     rows_view v;
-    BOOST_TEST(v.size() == 0);
+    BOOST_TEST(v.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(one_column_one_row)
 {
     auto fields = make_field_views(42u);
     rows_view v(fields.data(), 1, 1);
-    BOOST_TEST(v.size() == 1);
+    BOOST_TEST(v.size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(one_column_several_rows)
 {
     auto fields = make_field_views(42u, "abc");
     rows_view v(fields.data(), 2, 1);
-    BOOST_TEST(v.size() == 2);
+    BOOST_TEST(v.size() == 2u);
 }
 
 BOOST_AUTO_TEST_CASE(several_columns_one_row)
 {
     auto fields = make_field_views(42u, "abc");
     rows_view v(fields.data(), 2, 2);
-    BOOST_TEST(v.size() == 1);
+    BOOST_TEST(v.size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(several_columns_several_rows)
 {
     auto fields = make_field_views(42u, "abc", nullptr, "bcd", 90u, nullptr);
     rows_view v(fields.data(), 6, 2);
-    BOOST_TEST(v.size() == 3);
+    BOOST_TEST(v.size() == 3u);
 }
 BOOST_AUTO_TEST_SUITE_END()
 

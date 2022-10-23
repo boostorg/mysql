@@ -498,9 +498,9 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
     BOOST_TEST(result.complete());
-    BOOST_TEST(result.affected_rows() == 1);
-    BOOST_TEST(result.last_insert_id() == 6);
-    BOOST_TEST(result.warning_count() == 9);
+    BOOST_TEST(result.affected_rows() == 1u);
+    BOOST_TEST(result.last_insert_id() == 6u);
+    BOOST_TEST(result.warning_count() == 9u);
     BOOST_TEST(result.info() == "ab");
     BOOST_TEST(fields == fields_before);  // they didn't change
 }

@@ -219,7 +219,7 @@ boost::mysql::detail::async_prepare_statement(
     prepare_statement_processor processor(chan, output, info);
     processor.process_request(statement);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        prepare_statement_op(chan, processor),
+        prepare_statement_op<Stream>(chan, processor),
         token,
         chan
     );

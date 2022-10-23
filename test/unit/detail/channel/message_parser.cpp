@@ -77,30 +77,30 @@ BOOST_AUTO_TEST_CASE(fragmented_header_and_body_multiple)
     // 1 byte in the header received
     auto res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 3);
+    BOOST_TEST(res.required_size == 3u);
 
     // Another 2 bytes received
     res = fixture.parse_bytes(2);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 1);
+    BOOST_TEST(res.required_size == 1u);
 
     // Header fully received
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 3);
+    BOOST_TEST(res.required_size == 3u);
 
     // 1 byte in body received
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 2);
+    BOOST_TEST(res.required_size == 2u);
 
     // body fully received (single frame messages keep header as an optimization)
     res = fixture.parse_bytes(2);
     fixture.check_message({0x01, 0x02, 0x03});
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // Buffer did not reallocate
@@ -115,15 +115,15 @@ BOOST_AUTO_TEST_CASE(fragmented_header_and_body_single)
     // Full header received
     auto res = fixture.parse_bytes(4);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 3);
+    BOOST_TEST(res.required_size == 3u);
 
     // Full body received
     res = fixture.parse_bytes(3);
     fixture.check_message({0x01, 0x02, 0x03});
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // Buffer did not reallocate
@@ -138,15 +138,15 @@ BOOST_AUTO_TEST_CASE(fragmented_body)
     // Full header and body part received
     auto res = fixture.parse_bytes(5);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 2);
+    BOOST_TEST(res.required_size == 2u);
 
     // Full body + next header + next body received
     res = fixture.parse_bytes(2);
     fixture.check_message({0x01, 0x02, 0x03});
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // Buffer did not reallocate
@@ -162,9 +162,9 @@ BOOST_AUTO_TEST_CASE(full_message)
     auto res = fixture.parse_bytes(7);
     fixture.check_message({0x01, 0x02, 0x03});
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // Buffer did not reallocate
@@ -180,9 +180,9 @@ BOOST_AUTO_TEST_CASE(empty_message)
     auto res = fixture.parse_bytes(4);
     fixture.check_message({});
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 0);
-    BOOST_TEST(res.message.seqnum_first == 1);
-    BOOST_TEST(res.message.seqnum_last == 1);
+    BOOST_TEST(res.message.size == 0u);
+    BOOST_TEST(res.message.seqnum_first == 1u);
+    BOOST_TEST(res.message.seqnum_last == 1u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // Buffer did not reallocate
@@ -200,18 +200,18 @@ BOOST_AUTO_TEST_CASE(two_messages_one_after_another)
     auto res = fixture.parse_bytes(7);
     auto first_msg = fixture.check_message(first_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 2nd message
     res = fixture.parse_bytes(8);
     fixture.check_message(second_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 4);
-    BOOST_TEST(res.message.seqnum_first == 2);
-    BOOST_TEST(res.message.seqnum_last == 2);
+    BOOST_TEST(res.message.size == 4u);
+    BOOST_TEST(res.message.seqnum_first == 2u);
+    BOOST_TEST(res.message.seqnum_last == 2u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st message still valid
@@ -232,18 +232,18 @@ BOOST_AUTO_TEST_CASE(two_messages_at_once)
     auto res = fixture.parse_bytes(15);
     auto first_msg = fixture.check_message(first_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 2nd message
     res = fixture.parse_bytes(0);
     fixture.check_message(second_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 4);
-    BOOST_TEST(res.message.seqnum_first == 2);
-    BOOST_TEST(res.message.seqnum_last == 2);
+    BOOST_TEST(res.message.size == 4u);
+    BOOST_TEST(res.message.seqnum_first == 2u);
+    BOOST_TEST(res.message.seqnum_last == 2u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st message still valid
@@ -266,32 +266,32 @@ BOOST_AUTO_TEST_CASE(three_messages_last_fragmented)
     auto res = fixture.parse_bytes(20);  // 1st and 2nd messages + 3rd message header and body part
     auto first_msg = fixture.check_message(first_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 2nd message
     res = fixture.parse_bytes(0);
     auto second_msg = fixture.check_message(second_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 4);
-    BOOST_TEST(res.message.seqnum_first == 2);
-    BOOST_TEST(res.message.seqnum_last == 2);
+    BOOST_TEST(res.message.size == 4u);
+    BOOST_TEST(res.message.seqnum_first == 2u);
+    BOOST_TEST(res.message.seqnum_last == 2u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 3rd message header + body part
     res = fixture.parse_bytes(0);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 1);
+    BOOST_TEST(res.required_size == 1u);
 
     // 3rd message
     res = fixture.parse_bytes(1);
     fixture.check_message(third_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 2);
-    BOOST_TEST(res.message.seqnum_first == 3);
-    BOOST_TEST(res.message.seqnum_last == 3);
+    BOOST_TEST(res.message.size == 2u);
+    BOOST_TEST(res.message.seqnum_first == 3u);
+    BOOST_TEST(res.message.seqnum_last == 3u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st and 2nd messages still valid
@@ -314,25 +314,25 @@ BOOST_AUTO_TEST_CASE(two_frame_message)
     // header 1 + body part
     auto res = fixture.parse_bytes(6);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 64 - 2);
+    BOOST_TEST(res.required_size == unsigned(64 - 2));
 
     // body part
     res = fixture.parse_bytes(64 - 10);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 8);
+    BOOST_TEST(res.required_size == 8u);
 
     // body part + header 2 + body 2 part
     res = fixture.parse_bytes(13);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 2);
+    BOOST_TEST(res.required_size == 2u);
 
     // remaining of body 2
     res = fixture.parse_bytes(2);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 + 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 1);
+    BOOST_TEST(res.message.size == 64u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 1u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate
@@ -360,18 +360,18 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     auto res = fixture.parse_bytes(7);
     auto first_msg = fixture.check_message(first_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // msg 2 (multiframe)
     res = fixture.parse_bytes(64 + 4 * 2 + 3);
     fixture.check_message(second_msg_body);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 + 3);
-    BOOST_TEST(res.message.seqnum_first == 4);
-    BOOST_TEST(res.message.seqnum_last == 5);
+    BOOST_TEST(res.message.size == 64u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 4u);
+    BOOST_TEST(res.message.seqnum_last == 5u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // msg 1 still valid
@@ -393,55 +393,55 @@ BOOST_AUTO_TEST_CASE(two_frame_message_fragmented)
     // part of header 1
     auto res = fixture.parse_bytes(3);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 1);
+    BOOST_TEST(res.required_size == 1u);
 
     // header 1 full
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 64);
+    BOOST_TEST(res.required_size == 64u);
 
     // part of body 1
     res = fixture.parse_bytes(64 - 8);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 8);
+    BOOST_TEST(res.required_size == 8u);
 
     // rest of body 1
     res = fixture.parse_bytes(8);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 4);
+    BOOST_TEST(res.required_size == 4u);
 
     // part of header 2
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 3);
+    BOOST_TEST(res.required_size == 3u);
 
     // another part of header 2
     res = fixture.parse_bytes(2);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 1);
+    BOOST_TEST(res.required_size == 1u);
 
     // rest of header 2
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 3);
+    BOOST_TEST(res.required_size == 3u);
 
     // part of body 1
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 2);
+    BOOST_TEST(res.required_size == 2u);
 
     // another part of body 2
     res = fixture.parse_bytes(1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 1);
+    BOOST_TEST(res.required_size == 1u);
 
     // remaining of body 2
     res = fixture.parse_bytes(1);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 + 3);
-    BOOST_TEST(res.message.seqnum_first == 0);
-    BOOST_TEST(res.message.seqnum_last == 1);
+    BOOST_TEST(res.message.size == 64u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 0u);
+    BOOST_TEST(res.message.seqnum_last == 1u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate
@@ -471,25 +471,25 @@ BOOST_AUTO_TEST_CASE(three_frame_message)
     // header 1 + body 1 part
     auto res = fixture.parse_bytes(6);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 64 - 2);
+    BOOST_TEST(res.required_size == unsigned(64u - 2u));
 
     // body 1 part + header 2 + body 2 part
     res = fixture.parse_bytes(64 - 2 + 4 + 3);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 64 - 3);
+    BOOST_TEST(res.required_size == 64u - 3u);
 
     // body 2 part + header 3 + body 3 part
     res = fixture.parse_bytes(64 - 3 + 4 + 1);
     BOOST_TEST(!res.has_message);
-    BOOST_TEST(res.required_size == 2);
+    BOOST_TEST(res.required_size == 2u);
 
     // body 3 part
     res = fixture.parse_bytes(2);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 * 2 + 3);
-    BOOST_TEST(res.message.seqnum_first == 2);
-    BOOST_TEST(res.message.seqnum_last == 4);
+    BOOST_TEST(res.message.size == 64u * 2u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 2u);
+    BOOST_TEST(res.message.seqnum_last == 4u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate
@@ -509,8 +509,8 @@ BOOST_AUTO_TEST_CASE(two_frame_message_mismatched_seqnums)
     auto res = fixture.parse_bytes(64 + 4 * 2 + 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 + 3);
-    BOOST_TEST(res.message.seqnum_first == 1);
+    BOOST_TEST(res.message.size == 64u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 1u);
     BOOST_TEST(res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate
@@ -541,8 +541,8 @@ BOOST_AUTO_TEST_CASE(three_frame_message_mismatched_seqnums)
     auto res = fixture.parse_bytes(64 * 2 + 4 * 3 + 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 * 2 + 3);
-    BOOST_TEST(res.message.seqnum_first == 1);
+    BOOST_TEST(res.message.size == 64u * 2u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 1u);
     BOOST_TEST(res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate
@@ -562,9 +562,9 @@ BOOST_AUTO_TEST_CASE(two_frame_seqnum_overflow)
     auto res = fixture.parse_bytes(64 + 4 * 2 + 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 + 3);
-    BOOST_TEST(res.message.seqnum_first == 255);
-    BOOST_TEST(res.message.seqnum_last == 0);
+    BOOST_TEST(res.message.size == 64u + 3u);
+    BOOST_TEST(res.message.seqnum_first == 255u);
+    BOOST_TEST(res.message.seqnum_last == 0u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate
@@ -595,9 +595,9 @@ BOOST_AUTO_TEST_CASE(two_frame_max_size)
     auto res = fixture.parse_bytes(64 * 2 + 4 * 3);
     fixture.check_message(expected_message);
     BOOST_TEST(res.has_message);
-    BOOST_TEST(res.message.size == 64 * 2);
-    BOOST_TEST(res.message.seqnum_first == 1);
-    BOOST_TEST(res.message.seqnum_last == 3);
+    BOOST_TEST(res.message.size == 64u * 2u);
+    BOOST_TEST(res.message.seqnum_first == 1u);
+    BOOST_TEST(res.message.seqnum_last == 3u);
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // buffer did not reallocate

@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(member_fns)
     r.reset(&chan, resultset_encoding::binary);
     BOOST_TEST(r.valid());
     BOOST_TEST(!r.complete());
-    BOOST_TEST(r.meta().size() == 0);
+    BOOST_TEST(r.meta().size() == 0u);
 
     // Add meta
     column_definition_packet pack{};
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(member_fns)
     r.add_meta(pack);
 
     BOOST_TEST(!r.complete());
-    BOOST_TEST(r.meta().size() == 2);
+    BOOST_TEST(r.meta().size() == 2u);
     BOOST_TEST(r.meta()[0].type() == field_type::varchar);
     BOOST_TEST(r.meta()[1].type() == field_type::bit);
 
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(member_fns)
     r.reset(&chan, resultset_encoding::binary);
     BOOST_TEST(r.valid());
     BOOST_TEST(!r.complete());
-    BOOST_TEST(r.meta().size() == 0);
+    BOOST_TEST(r.meta().size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(move_ctor_from_invalid)
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(move_ctor_from_valid)
     resultset_t r2(std::move(r1));
     BOOST_TEST(r2.valid());
     BOOST_TEST(!r2.complete());
-    BOOST_TEST(r2.meta().size() == 1);
+    BOOST_TEST(r2.meta().size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(move_assign_from_invalid)
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(move_assign_from_valid)
     r2 = std::move(r1);
     BOOST_TEST(r2.valid());
     BOOST_TEST(!r2.complete());
-    BOOST_TEST(r2.meta().size() == 1);
+    BOOST_TEST(r2.meta().size() == 1u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE(some_initial_size)
     read_buffer buff(531);
 
     BOOST_TEST(buff.free_size() == buff.size());
-    BOOST_TEST(buff.size() >= 531);
+    BOOST_TEST(buff.size() >= 531u);
     check_buffer(buff, {}, {}, {});
 }
 
@@ -428,7 +428,7 @@ BOOST_AUTO_TEST_CASE(not_enough_space)
     buff.move_to_current_message(6);
     buff.grow_to_fit(100);
 
-    BOOST_TEST(buff.free_size() >= 100);
+    BOOST_TEST(buff.free_size() >= 100u);
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_reallocation();
 }

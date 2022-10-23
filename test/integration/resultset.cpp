@@ -248,7 +248,7 @@ BOOST_MYSQL_NETWORK_TEST(several_rows, resultset_fixture, net_samples_all)
     }
 
     // Verify rows
-    BOOST_TEST_REQUIRE(all_rows.size() == 3);
+    BOOST_TEST_REQUIRE(all_rows.size() == 3u);
     BOOST_TEST(all_rows[0] == makerow(1, "f0"));
     BOOST_TEST(all_rows[1] == makerow(2, "f1"));
     BOOST_TEST(all_rows[2] == makerow(3, "f2"));

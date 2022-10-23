@@ -32,6 +32,7 @@ inline protocol_field_type get_protocol_field_type(const field_view& input) noex
     case field_kind::date: return protocol_field_type::date;
     case field_kind::datetime: return protocol_field_type::datetime;
     case field_kind::time: return protocol_field_type::time;
+    default: assert(false); return protocol_field_type::null;
     }
 }
 

@@ -249,13 +249,13 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_read_all_rows(
     channel<Stream>& channel,
     resultset_base& result,
-    rows& outpùt,
+    rows& output,
     error_info& output_info,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        read_all_rows_op_rows<Stream>(channel, output_info, result, outpùt),
+        read_all_rows_op_rows<Stream>(channel, output_info, result, output),
         token,
         channel
     );

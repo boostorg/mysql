@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(non_empty)
     BOOST_TEST(v.end() != nullptr);
 
     std::vector<metadata> vec(v.begin(), v.end());
-    BOOST_TEST(vec.size() == 2);
+    BOOST_TEST(vec.size() == 2u);
     BOOST_TEST(vec[0].table() == "table1");
     BOOST_TEST(vec[1].table() == "table2");
 }
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(empty)
 {
     metadata_collection_view v;
     BOOST_TEST(v.empty());
-    BOOST_TEST(v.size() == 0);
+    BOOST_TEST(v.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(one_element)
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(one_element)
     auto metas = makemetas({"table1"});
     metadata_collection_view v(metas.data(), metas.size());
     BOOST_TEST(!v.empty());
-    BOOST_TEST(v.size() == 1);
+    BOOST_TEST(v.size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(several_elements)
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(several_elements)
     auto metas = makemetas({"table1", "table2", "table3"});
     metadata_collection_view v(metas.data(), metas.size());
     BOOST_TEST(!v.empty());
-    BOOST_TEST(v.size() == 3);
+    BOOST_TEST(v.size() == 3u);
 }
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -117,6 +117,7 @@ inline std::size_t boost::mysql::detail::
     case field_kind::date: return binc::date_sz + binc::length_sz;
     case field_kind::datetime: return binc::datetime_dhmsu_sz + binc::length_sz;
     case field_kind::time: return binc::time_dhmsu_sz + binc::length_sz;
+    default: assert(false); return 0;
     }
 }
 
@@ -135,6 +136,7 @@ inline void boost::mysql::detail::
     case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
     case field_kind::datetime: serialize_binary_datetime(ctx, input.get_datetime()); break;
     case field_kind::time: serialize_binary_time(ctx, input.get_time()); break;
+    default: assert(false); break;
     }
 }
 

@@ -151,12 +151,12 @@ BOOST_AUTO_TEST_CASE(message_fits_in_buffer)
             fns->read_some(reader, stream, err);
             BOOST_TEST(err == error_code());
             BOOST_REQUIRE(reader.has_message());
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
 
             // Get next message and validate it
             auto msg = reader.get_next_message(seqnum, err);
             BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(seqnum == 3);
+            BOOST_TEST(seqnum == 3u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
             // There isn't another message
@@ -187,12 +187,12 @@ BOOST_AUTO_TEST_CASE(fragmented_message_fits_in_buffer)
             fns->read_some(reader, stream, err);
             BOOST_TEST(err == error_code());
             BOOST_REQUIRE(reader.has_message());
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
 
             // Get next message and validate it
             auto msg = reader.get_next_message(seqnum, err);
             BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(seqnum == 3);
+            BOOST_TEST(seqnum == 3u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
             // There isn't another message
@@ -221,12 +221,12 @@ BOOST_AUTO_TEST_CASE(message_doesnt_fit_in_buffer)
             BOOST_TEST(err == error_code());
             BOOST_REQUIRE(reader.has_message());
             BOOST_TEST(reader.buffer().size() >= msg_body.size());
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
 
             // Get next message and validate it
             auto msg = reader.get_next_message(seqnum, err);
             BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(seqnum == 3);
+            BOOST_TEST(seqnum == 3u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
             // There isn't another message
@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(two_messages)
             fns->read_some(reader, stream, err);
             BOOST_TEST(err == error_code());
             BOOST_REQUIRE(reader.has_message());
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
 
             // Get next message and validate it
             auto msg = reader.get_next_message(seqnum1, err);
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE(two_messages)
             // Get the 2nd message and validate it
             msg = reader.get_next_message(seqnum2, err);
             BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(seqnum2 == 6);
+            BOOST_TEST(seqnum2 == 6u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg2_body));
 
             // There isn't another message
@@ -309,7 +309,7 @@ BOOST_AUTO_TEST_CASE(previous_message_keep_messages_false)
             BOOST_REQUIRE(reader.has_message());
             auto msg2 = reader.get_next_message(seqnum2, err);
             BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
             BOOST_TEST(seqnum2 == 6);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, buffer(msg2_body));
             BOOST_TEST(!reader.has_message());
@@ -349,8 +349,8 @@ BOOST_AUTO_TEST_CASE(previous_message_keep_messages_true)
             BOOST_REQUIRE(reader.has_message());
             auto msg2 = reader.get_next_message(seqnum2, err);
             BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(stream.num_unread_bytes() == 0);
-            BOOST_TEST(seqnum2 == 6);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
+            BOOST_TEST(seqnum2 == 6u);
             BOOST_TEST(!reader.has_message());
 
             // Both messages are valid
@@ -398,12 +398,12 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     reader.read_some(stream, err);
     BOOST_TEST(err == error_code());
     BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+    BOOST_TEST(stream.num_unread_bytes() == 0u);
 
     // Get next message and validate it
     auto msg = reader.get_next_message(seqnum, err);
     BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum == 4);
+    BOOST_TEST(seqnum == 4u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(expected_msg));
 
     // There isn't another message
@@ -422,12 +422,12 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
     reader.read_some(stream, err);
     BOOST_TEST(err == error_code());
     BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+    BOOST_TEST(stream.num_unread_bytes() == 0u);
 
     // Get next message and validate it
     auto msg = reader.get_next_message(seqnum, err);
     BOOST_REQUIRE(err == error_code());
-    BOOST_TEST(seqnum == 0);
+    BOOST_TEST(seqnum == 0u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 }
 
@@ -441,13 +441,13 @@ BOOST_AUTO_TEST_CASE(error_passed_seqnum_mismatch)
     reader.read_some(stream, err);
     BOOST_TEST(err == error_code());
     BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+    BOOST_TEST(stream.num_unread_bytes() == 0u);
 
     // Passed-in seqnum is invalid
     std::uint8_t bad_seqnum = 0;
     reader.get_next_message(bad_seqnum, err);
     BOOST_TEST(err == make_error_code(errc::sequence_number_mismatch));
-    BOOST_TEST(bad_seqnum == 0);
+    BOOST_TEST(bad_seqnum == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(error_intermediate_frame_seqnum_mismatch)
@@ -467,12 +467,12 @@ BOOST_AUTO_TEST_CASE(error_intermediate_frame_seqnum_mismatch)
     reader.read_some(stream, err);
     BOOST_TEST(err == error_code());
     BOOST_REQUIRE(reader.has_message());
-    BOOST_TEST(stream.num_unread_bytes() == 0);
+    BOOST_TEST(stream.num_unread_bytes() == 0u);
 
     // The read frame has a mismatched seqnum
     reader.get_next_message(seqnum, err);
     BOOST_TEST(err == make_error_code(errc::sequence_number_mismatch));
-    BOOST_TEST(seqnum == 2);
+    BOOST_TEST(seqnum == 2u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -494,10 +494,10 @@ BOOST_AUTO_TEST_CASE(success)
             // Read succesfully
             auto msg = fns->read_one(reader, stream, seqnum, err);
             BOOST_TEST(err == error_code());
-            BOOST_TEST(seqnum == 3);
+            BOOST_TEST(seqnum == 3u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg_body));
 
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
             BOOST_TEST(!reader.has_message());
         }
     }
@@ -520,16 +520,16 @@ BOOST_AUTO_TEST_CASE(cached_message)
             // Read succesfully
             auto msg = fns->read_one(reader, stream, seqnum1, err);
             BOOST_TEST(err == error_code());
-            BOOST_TEST(seqnum1 == 3);
+            BOOST_TEST(seqnum1 == 3u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg1_body));
             BOOST_TEST(reader.has_message());
 
             // Read again
             msg = fns->read_one(reader, stream, seqnum2, err);
             BOOST_TEST(err == error_code());
-            BOOST_TEST(seqnum2 == 9);
+            BOOST_TEST(seqnum2 == 9u);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, buffer(msg2_body));
-            BOOST_TEST(stream.num_unread_bytes() == 0);
+            BOOST_TEST(stream.num_unread_bytes() == 0u);
             BOOST_TEST(!reader.has_message());
         }
     }
@@ -552,7 +552,7 @@ BOOST_AUTO_TEST_CASE(error_in_read)
 
             fns->read_one(reader, stream, seqnum, err);
             BOOST_TEST(err == error_code(errc::base64_decode_error));
-            BOOST_TEST(seqnum == 2);
+            BOOST_TEST(seqnum == 2u);
         }
     }
 }
@@ -570,7 +570,7 @@ BOOST_AUTO_TEST_CASE(seqnum_mismatch)
             std::uint8_t bad_seqnum = 42;
             fns->read_one(reader, stream, bad_seqnum, err);
             BOOST_TEST(err == error_code(errc::sequence_number_mismatch));
-            BOOST_TEST(bad_seqnum == 42);
+            BOOST_TEST(bad_seqnum == 42u);
         }
     }
 }

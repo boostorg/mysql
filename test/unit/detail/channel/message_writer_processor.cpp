@@ -34,7 +34,7 @@ void check_header(
     std::size_t expected_size
 )
 {
-    BOOST_TEST(buff.size() == 4);
+    BOOST_TEST(buff.size() == 4u);
     boost::mysql::detail::deserialization_context ctx(buff, boost::mysql::detail::capabilities());
     boost::mysql::detail::packet_header header;
     auto err = boost::mysql::detail::deserialize(ctx, header);
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(regular_message)
 
     // On write successful
     processor.on_bytes_written();
-    BOOST_TEST(seqnum == 3);
+    BOOST_TEST(seqnum == 3u);
     BOOST_TEST(processor.is_complete());
 }
 
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(empty_message)
 
     // On write successful
     processor.on_bytes_written();
-    BOOST_TEST(seqnum == 3);
+    BOOST_TEST(seqnum == 3u);
     BOOST_TEST(processor.is_complete());
 }
 
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
 
     // On write successful
     processor.on_bytes_written();
-    BOOST_TEST(seqnum == 4);
+    BOOST_TEST(seqnum == 4u);
     BOOST_TEST(processor.is_complete());
 }
 
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
 
     // On write successful
     processor.on_bytes_written();
-    BOOST_TEST(seqnum == 5);
+    BOOST_TEST(seqnum == 5u);
     BOOST_TEST(processor.is_complete());
 }
 
@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 
     // On write successful
     processor.on_bytes_written();
-    BOOST_TEST(seqnum == 5);
+    BOOST_TEST(seqnum == 5u);
     BOOST_TEST(processor.is_complete());
 }
 
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE(several_messages)
 
     // On write successful message 1
     processor.on_bytes_written();
-    BOOST_TEST(seqnum_1 == 3);
+    BOOST_TEST(seqnum_1 == 3u);
     BOOST_TEST(processor.is_complete());
 
     // Operation start for message 2
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(several_messages)
 
     // On write successful message 2
     processor.on_bytes_written();
-    BOOST_TEST(seqnum_2 == 43);
+    BOOST_TEST(seqnum_2 == 43u);
     BOOST_TEST(processor.is_complete());
 }
 

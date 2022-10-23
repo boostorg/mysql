@@ -80,14 +80,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(empty, RowType, rows_types)
 {
     RowType r;
     std::vector<row_view> fv(r.begin(), r.end());
-    BOOST_TEST(fv.size() == 0);
+    BOOST_TEST(fv.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(one_row_one_column, RowType, rows_types)
 {
     RowType r(1, 42);
     std::vector<row_view> fv(r.begin(), r.end());
-    BOOST_TEST(fv.size() == 1);
+    BOOST_TEST(fv.size() == 1u);
     BOOST_TEST(fv[0] == makerow(42));
 }
 
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(one_row_several_columns, RowType, rows_types)
 {
     RowType r(2, 80u, "abc");
     std::vector<row_view> fv(r.begin(), r.end());
-    BOOST_TEST(fv.size() == 1);
+    BOOST_TEST(fv.size() == 1u);
     BOOST_TEST(fv[0] == makerow(80u, "abc"));
 }
 
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(one_column_several_rows, RowType, rows_types)
 {
     RowType r(1, 42, "abc");
     std::vector<row_view> fv(r.begin(), r.end());
-    BOOST_TEST(fv.size() == 2);
+    BOOST_TEST(fv.size() == 2u);
     BOOST_TEST(fv[0] == makerow(42));
     BOOST_TEST(fv[1] == makerow("abc"));
 }
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(several_rows_several_columns, RowType, rows_types)
 {
     RowType r(2, 80u, "abc", 72u, "cde", 0u, nullptr);
     std::vector<row_view> fv(r.begin(), r.end());
-    BOOST_TEST(fv.size() == 3);
+    BOOST_TEST(fv.size() == 3u);
     BOOST_TEST(fv[0] == makerow(80u, "abc"));
     BOOST_TEST(fv[1] == makerow(72u, "cde"));
     BOOST_TEST(fv[2] == makerow(0u, nullptr));
@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(arrow, RowType, rows_types)
     RowType r(2, 80u, "abc", 72u, "cde", 90u, "fff", 0u, nullptr);
     auto it = r.begin() + 1;
 
-    BOOST_TEST(it->size() == 2);
+    BOOST_TEST(it->size() == 2u);
     BOOST_TEST(it->front() == field_view(72u));
     BOOST_TEST(it->back() == field_view("cde"));
 }

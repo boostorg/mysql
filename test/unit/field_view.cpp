@@ -63,25 +63,25 @@ BOOST_AUTO_TEST_CASE(from_nullptr)
 BOOST_AUTO_TEST_CASE(from_u8)
 {
     field_view v(std::uint8_t(0xfe));
-    BOOST_TEST(v.as_uint64() == 0xfe);
+    BOOST_TEST(v.as_uint64() == 0xfeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u16)
 {
     field_view v(std::uint16_t(0xfefe));
-    BOOST_TEST(v.as_uint64() == 0xfefe);
+    BOOST_TEST(v.as_uint64() == 0xfefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u32)
 {
     field_view v(std::uint32_t(0xfefefefe));
-    BOOST_TEST(v.as_uint64() == 0xfefefefe);
+    BOOST_TEST(v.as_uint64() == 0xfefefefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_u64)
 {
     field_view v(std::uint64_t(0xfefefefefefefefe));
-    BOOST_TEST(v.as_uint64() == 0xfefefefefefefefe);
+    BOOST_TEST(v.as_uint64() == 0xfefefefefefefefeu);
 }
 
 BOOST_AUTO_TEST_CASE(from_s8)
@@ -909,7 +909,7 @@ BOOST_AUTO_TEST_CASE(uint64)
 
 BOOST_AUTO_TEST_CASE(string)
 {
-    constexpr field_view v("test");
+    constexpr field_view v(makesv("test"));
     static_assert(v.is_string(), "");
     // Comparisons are not constexpr
 }

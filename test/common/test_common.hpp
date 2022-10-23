@@ -75,7 +75,7 @@ BOOST_CXX14_CONSTEXPR inline time maket(int hours, int mins, int secs, int micro
 }
 
 template <std::size_t N>
-inline boost::string_view makesv(const char (&value)[N])
+constexpr boost::string_view makesv(const char (&value)[N])
 {
     return detail::make_string_view(value);
 }
