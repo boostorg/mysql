@@ -8,37 +8,34 @@
 import os ;
 import sequence ;
 
-# Stuff shared between unit and integration tests
-lib asio_separate
+alias test_common
     :
-        common/asio.cpp
-    :
-        <link>static
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
-    :
-    :
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
+        /boost/mysql//mysql
+        /boost/test//boost_unit_test_framework
+    : usage-requirements
+        <include>common
     ;
 
 
 # Unit tests
-cpp-pch unittests_pch : unit/pch.hpp ;
-
 lib unittests_entry_point
     :
         unit/entry_point.cpp
+        test_common
     :
         <link>static
-        <define>BOOST_TEST_DYN_LINK
     ;
+
+# cpp-pch unittests_pch
+#     :
+#         unit/pch.hpp
+#         unittests_entry_point
+#     ;
 
 unit-test boost_mysql_unittests
     :
-        /boost/mysql//boost_mysql
-        /boost/test//boost_unit_test_framework
-        asio_separate
         unittests_entry_point
-        unittests_pch
+        # unittests_pch
 
         unit/detail/channel/read_buffer.cpp
         unit/detail/channel/message_parser.cpp
@@ -72,8 +69,6 @@ unit-test boost_mysql_unittests
         unit/statement.cpp
         unit/resultset.cpp
         unit/connection.cpp
-    :
-        <include>common
     ;
 
 
@@ -96,21 +91,22 @@ if $(test_filter) != "" {
 # Integration tests
 lib integrationtests_entry_point :
         integration/entry_point.cpp
+        test_common
     :
         <link>static
-        <define>BOOST_TEST_DYN_LINK
     ;
 
-cpp-pch integrationtests_pch : integration/pch.hpp ;
+# cpp-pch integrationtests_pch
+#     :
+#         integration/pch.hpp
+#         integrationtests_entry_point
+#     ;
 
 unit-test boost_mysql_integrationtests
     :
-        /boost/mysql//boost_mysql
         /boost/coroutine//boost_coroutine
-        /boost/test//boost_unit_test_framework
-        asio_separate
         integrationtests_entry_point
-        integrationtests_pch
+        # integrationtests_pch
 
         # Utilities
         integration/utils/src/get_endpoint.cpp
@@ -143,7 +139,6 @@ unit-test boost_mysql_integrationtests
     :
         <testing.arg>$(test_command)
         <include>integration/utils/include
-        <include>common
     ;
 
 explicit boost_mysql_integrationtests ;

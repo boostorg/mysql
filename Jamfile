@@ -9,14 +9,12 @@ import os ;
 
 project /boost/mysql ;
 
-alias boost_mysql
-    : # Sources
-        /boost/system//boost_system
-        /user-config//ssl
-        /user-config//crypto
-    : # Requirements
-    : # Default build
-    : # Usage requirements
+# System libraries. TODO: windows
+lib ssl : : <link>shared ;
+lib crypto : : <link>shared ;
+
+# Requirements to use across targets
+local requirements = 
         <include>../include
         <define>BOOST_ALL_NO_LIB=1
         <define>BOOST_ASIO_NO_DEPRECATED=1
@@ -38,8 +36,23 @@ alias boost_mysql
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
     ;
-    
+
+# A static Asio library to speed up builds
+lib asio
+    :
+        test/common/asio.cpp
+        ssl
+        crypto
+    : requirements
+        <link>static
+        $(requirements)
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+    : usage-requirements
+        $(requirements)
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+    ;
+
+alias mysql : asio ;
+
 build-project example ;
 build-project test ;
-    
-    

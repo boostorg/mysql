@@ -39,7 +39,7 @@ for local example in $(examples_no_unix)
     unit-test $(example_name)
         :
             "$(example).cpp"
-            /boost/mysql//boost_mysql
+            /boost/mysql//mysql
             /boost/coroutine//boost_coroutine
         :
             <testing.arg>"example_user example_password $(hostname)"
@@ -53,7 +53,7 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     unit-test boost_mysql_example_unix_socket
         :
             unix_socket.cpp
-            /boost/mysql//boost_mysql
+            /boost/mysql//mysql
         :
             <testing.arg>"example_user example_password"
         ;
