@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_PCH_HPP
 #define BOOST_MYSQL_TEST_UNIT_PCH_HPP
 
+#include <boost/mysql.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 #endif

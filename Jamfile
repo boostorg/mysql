@@ -43,11 +43,12 @@ lib asio
         test/common/asio.cpp
         ssl
         crypto
-    : requirements
+    :
         <link>static
         $(requirements)
         <define>BOOST_ASIO_SEPARATE_COMPILATION
-    : usage-requirements
+    :
+    :
         $(requirements)
         <define>BOOST_ASIO_SEPARATE_COMPILATION
     ;
