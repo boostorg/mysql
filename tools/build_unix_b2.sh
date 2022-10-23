@@ -42,6 +42,7 @@ cp $BOOST_ROOT/libs/mysql/tools/user-config.jam ~/user-config.jam
 
 # Build
 ./b2 \
+    toolset=$B2_TOOLSET \
     variant=$B2_VARIANT \
     cxxstd=$B2_CXXSTD \
     stdlib=$B2_STDLIB \
