@@ -102,13 +102,14 @@ lib integrationtests_entry_point :
 cpp-pch integrationtests_pch
     :
         integration/pch.hpp
+        /boost/coroutine//boost_coroutine
         integrationtests_entry_point
     ;
 
 unit-test boost_mysql_integrationtests
     :
-        /boost/coroutine//boost_coroutine
         integrationtests_pch
+        /boost/coroutine//boost_coroutine
         integrationtests_entry_point
 
         # Utilities
