@@ -207,7 +207,7 @@ boost::mysql::detail::async_read_one_row(
 }
 
 template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, bool))
 boost::mysql::detail::async_read_one_row(
     channel<Stream>& channel,
     resultset_base& result,

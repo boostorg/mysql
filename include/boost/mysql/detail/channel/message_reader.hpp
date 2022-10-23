@@ -34,8 +34,10 @@ public:
     bool has_message() const noexcept { return result_.has_message; }
     const std::uint8_t* buffer_first() const noexcept { return buffer_.first(); }
 
-    inline boost::asio::const_buffer
-    get_next_message(std::uint8_t& seqnum, error_code& ec) noexcept;
+    inline boost::asio::const_buffer get_next_message(
+        std::uint8_t& seqnum,
+        error_code& ec
+    ) noexcept;
 
     // Reads some messages from stream, until there is at least one
     // or an error happens. On success, has_message() returns true
@@ -52,14 +54,18 @@ public:
 
     // Equivalent to read_some + get_next_message
     template <class Stream>
-    boost::asio::const_buffer
-    read_one(Stream& stream, std::uint8_t& seqnum, error_code& ec, bool keep_messages = false);
+    boost::asio::const_buffer read_one(
+        Stream& stream,
+        std::uint8_t& seqnum,
+        error_code& ec,
+        bool keep_messages = false
+    );
 
     template <
         class Stream,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, boost::asio::const_buffer))
             CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, boost::asio::const_buffer))
     async_read_one(
         Stream& stream,
         std::uint8_t& seqnum,

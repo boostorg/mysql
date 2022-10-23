@@ -120,7 +120,7 @@ public:
 
     /// Tests for equality (type and value); see [link mysql.values.relational this section] for
     /// more info.
-    BOOST_CXX14_CONSTEXPR bool operator==(const field_view& rhs) const noexcept;
+    BOOST_CXX14_CONSTEXPR inline bool operator==(const field_view& rhs) const noexcept;
 
     /// Tests for inequality (type and value); see [link mysql.values.relational this section] for
     /// more info.
