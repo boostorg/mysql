@@ -13,7 +13,8 @@
 namespace boost {
 namespace mysql {
 
-/// Exception type thrown when trying to access a [reflink value] with an incorrect type.
+/// Exception type thrown when trying to access a [reflink field]
+/// or [reflink field_view] with an incorrect type.
 class bad_field_access : public std::exception
 {
 public:

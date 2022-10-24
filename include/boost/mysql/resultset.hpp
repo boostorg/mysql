@@ -50,7 +50,7 @@ public:
      * If the operation succeeds and returns `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but returns `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (TODO). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
     row_view read_one(error_code& err, error_info& info);
@@ -64,7 +64,7 @@ public:
      * If the operation succeeds and returns `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but returns `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
     row_view read_one();
@@ -78,7 +78,7 @@ public:
      * If the operation succeeds and completes with `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but completes with `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      *
      * The handler signature for this operation is
@@ -102,7 +102,7 @@ public:
      * If the operation succeeds and completes with `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but completes with `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      *
      * The handler signature for this operation is
@@ -126,7 +126,7 @@ public:
      * If the operation succeeds and returns `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but returns `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
     bool read_one(row& output, error_code& err, error_info& info);
@@ -140,7 +140,7 @@ public:
      * If the operation succeeds and returns `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but returns `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      */
     bool read_one(row& output);
@@ -154,7 +154,7 @@ public:
      * If the operation succeeds and completes with `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but completes with `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      *
      * The handler signature for this operation is
@@ -184,7 +184,7 @@ public:
      * If the operation succeeds and completes with `true`, the new row will be
      * read against `output`, possibly reusing its memory. If the operation
      * succeeds but completes with `false`, `output` will be set to the empty row
-     * (as if [refmem row clear] was called). If the operation fails,
+     * (as if TODO was called). If the operation fails,
      * `output` is left in a valid but undetrmined state.
      *
      * The handler signature for this operation is

@@ -141,7 +141,7 @@ public:
 
     /**
      * \brief Returns [link mysql.resultsets.metadata metadata] about the fields in the query.
-     * \details There will be as many [reflink field_metadata] objects as fields
+     * \details There will be as many [reflink metadata] objects as fields
      * in the SQL query, and in the same order.
      */
     metadata_collection_view meta() const noexcept

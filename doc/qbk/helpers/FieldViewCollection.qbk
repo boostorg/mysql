@@ -5,11 +5,11 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:boost__mysql__ValueCollection ValueCollection concept]
+[section:boost__mysql__FieldViewCollection FieldViewCollection concept]
 
-ValueCollection should be a collection-like object,
-such that, being col a `const ValueCollection&`, the expressions
+FieldViewCollection should be a collection-like object,
+such that, being col a `const FieldViewCollection&`, the expressions
 `std::begin(col)` and `std::end(col)` yield a type
-fulfilling the [reflink ValueForwardIterator] concept.
+fulfilling the [reflink FieldViewFwdIterator] concept.
 
 [endsect]

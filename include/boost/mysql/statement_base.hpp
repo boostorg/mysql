@@ -25,7 +25,7 @@ constexpr std::array<field_view, 0> no_statement_params{};
  * \details This class is a handle to a server-side prepared statement.
  *
  * The main use of a prepared statement is executing it
- * using [refmem statement_base execute], which yields a [reflink resultset_base].
+ * using [refmem statement execute], which yields a [reflink resultset_base].
  *
  * Prepared statements are default-constructible and movable, but not copyable.
  * [refmem statement_base valid] returns `false` for default-constructed
@@ -92,4 +92,4 @@ private:
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_PREPARED_STATEMENT_HPP_ */
+#endif

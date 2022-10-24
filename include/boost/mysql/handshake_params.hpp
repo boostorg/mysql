@@ -54,6 +54,7 @@ public:
      * Impacts how text queries and prepared statements are interpreted. Defaults to
      * utf8_general_ci. \param mode The [reflink ssl_mode] to use with this connection; ignored if
      * the connection does not support SSL.
+     * \param buffer_config Configuration about internal buffers.
      */
     handshake_params(
         boost::string_view username,

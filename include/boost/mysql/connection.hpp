@@ -127,7 +127,10 @@ public:
     /// Retrieves the underlying Stream object.
     const Stream& stream() const { return get_channel().stream().next_layer(); }
 
+    /// The type of prepared statements that can be used with this connection type.
     using statement_type = statement<Stream>;
+
+    /// The type of resultsets that can be used with this connection type.
     using resultset_type = resultset<Stream>;
 
     /**

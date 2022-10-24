@@ -53,7 +53,7 @@ for each one.
     is not enabled, MySQL will accept zero dates, like `"0000-00-00"`, and
     dates with zero components, like `"2010-00-20"`. These dates are invalid
     and not representable as a [reflink date]. In this library, they are
-    all represented as NULL values, instead ([reflink null_t] type). These values
+    all represented as NULL values, instead. These values
     can be retrieved from the database in both text queries and prepared
     statements, but cannot be specified as parameters of prepared statements.
   * __DATETIME__. MySQL representation of a time point without time zone,
@@ -69,7 +69,7 @@ for each one.
     datetimes with zero date components, like `"2010-00-20 00:00:00"`.
     These datetimes are invalid because they do not represent any real time point,
     and are thus not representable as a [reflink datetime]. In this library, they are
-    all represented as NULL values, instead ([reflink null_t] type). These values
+    all represented as NULL values, instead. These values
     can be retrieved from the database in both text queries and prepared
     statements, but cannot be specified as parameters of prepared statements.
   * __TIMESTAMP__. Like __DATETIME__, it also represents a time point. When inserted,
@@ -86,7 +86,7 @@ for each one.
     `"0000-00-00 00:00:00"`. These timestamps are invalid because
     they do not represent any real time point, and are thus not representable
     as a [reflink datetime]. In this library, they are
-    all represented as NULL values, instead ([reflink null_t] type). These values
+    all represented as NULL values, instead. These values
     can be retrieved from the database in both text queries and prepared
     statements, but cannot be specified as parameters of prepared statements.
 
@@ -98,7 +98,7 @@ for each one.
   is exposed as a `boost::string_view`. Character strings are [*NOT] aware of encoding -
   they are represented as the string raw bytes. The encoding for each character
   string column is part of the column metadata, and can be accessed using
-  [refmem field_metadata character_set].
+  [refmem metadata character_set].
 
   The following types are represented as strings in Boost.Mysql:
     * __CHAR__. Fixed-size character string.
@@ -120,7 +120,7 @@ for each one.
       
   [warning
       String values do [*not] own the memory they point to. This is
-      done for efficiency reasons. See [link mysql.values.strings this section]
+      [/ done for efficiency reasons. See [link mysql.values.strings this section] ]
       for more info.
   ]
 

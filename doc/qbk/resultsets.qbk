@@ -10,14 +10,14 @@
 
 [reflink2 resultset Resultset objects] represent the result of
 a SQL query. They are returned by the [refmem connection query] and
-[refmem prepared_statement execute] functions, as well as their
+[refmem statement execute] functions, as well as their
 corresponding asynchronous versions.
 
 [section:rows Rows]
 
 A [reflink resultset] represents tabular data. Data is represented
 row-by-row, using the [reflink row] class, which represent an array 
-of [reflink value]s, which you can retrieve using [refmem row values]. 
+of [reflink field_view]s.
 This array will have a single element for each field (column) in the [reflink resultset].
 Fields appear in the resultset in the same order as in the SQL query.
 
@@ -46,7 +46,7 @@ There are three methods of retrieving rows:
 
 * [refmem resultset read_one] and [refmem resultset async_read_one]: 
   retrieves a single row.
-* [refmem resultset read_many] and [refmem resultset async_read_many]:
+* [refmem resultset read_some] and [refmem resultset async_read_some]:
   retrieves an array of rows, up to a certain count.
 * [refmem resultset read_all] and [refmem resultset async_read_all]:
   retrieves all the remaining rows.
@@ -79,17 +79,17 @@ make use of [refmem resultset async_read_one].
 
 [heading Reading multiple rows]
 
-The [refmem resultset read_many] family retrieve many
+The [refmem resultset read_some] family retrieve many
 rows at a single time. When you call them, you pass in
 the maximum number of rows you want to read. For example:
 
 ``
 tcp_resultset result = /* obtain a resultset, e.g. via connection::query */
-std::vector<row> rows = result.read_many(5); // at most 5 rows
+std::vector<row> rows = result.read_some(5); // at most 5 rows
 ``
 
 The [refmem resultset read_all] functions work similarly to
-[refmem resultset read_many], except that they retrieve all the
+[refmem resultset read_some], except that they retrieve all the
 rows in the resultset.
 
 [endsect]
@@ -106,7 +106,7 @@ in a resultset with 4 rows, any of the following actions will
 complete the resultset:
 
 * Calling [refmem resultset read_one] 5 times.
-* Calling [refmem resultset read_many] with a count of 5 or greater
+* Calling [refmem resultset read_some] with a count of 5 or greater
   (or several times, with a total count of 5 or greater).
 * Calling [refmem resultset read_all].
 
@@ -141,8 +141,8 @@ open while reading rows.
 [section:metadata Metadata]
 
 Resultset objects hold metadata describing the fields they
-contain. You can access these data using [refmem resultset fields].
-This function returns a collection of [reflink field_metadata]
+contain. You can access these data using [refmem resultset meta].
+This function returns a collection of [reflink metadata]
 objects. There is one object for each field in the SQL query,
 and in the same order as in the query. You can find a bunch
 of useful information in this object, like the field name,
@@ -150,7 +150,7 @@ its type, whether it's a key or not, and so on.
 
 Metadata is always available (i.e. you don't need to
 make the [reflink resultset] [link mysql.resultsets.complete complete]
-before accessing it). For empty resultsets, [refmem resultset fields]
+before accessing it). For empty resultsets, [refmem resultset meta]
 returns an empty collection.
 
 [endsect]
@@ -169,16 +169,16 @@ how the [reflink resultset] was generated:
   (the protocol provides no option to avoid this).
   However you can choose to start processing them
   as soon as the first one arrives by using
-  [refmem resultset read_one] or [refmem resultset read_many].
-* If it was generated using [refmem prepared_statement execute]
-  or [refmem prepared_statement async_execute], then you are
+  [refmem resultset read_one] or [refmem resultset read_some].
+* If it was generated using [refmem statement execute]
+  or [refmem statement async_execute], then you are
   using the [*binary protocol]. The current implementation
   asks the server to send every row after the execution,
   making it similar to the case above. However, the
   protocol does allow sending rows progressively.
   Future implementations may take advantage of this
   fact when using [refmem resultset read_one] or 
-  [refmem resultset read_many].
+  [refmem resultset read_some].
 
 [endsect]
 

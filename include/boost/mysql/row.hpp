@@ -23,21 +23,18 @@ namespace mysql {
 /**
  * \brief Represents a row returned from a database operation.
  * \details A row is a collection of values, plus a buffer holding memory
- * for the string [reflink value]s.
- *
- * Call [refmem row values] to get the actual sequence of
- * [reflink value]s the row contains.
+ * for the string [reflink field_view]s.
  *
  * There will be the same number of values and in the same order as fields
  * in the SQL query that produced the row. You can get more information
- * about these fields using [refmem resultset_base fields].
+ * about these fields using [refmem resultset meta].
  *
  * If any of the values is a string, it will be represented as a `string_view`
  * pointing into the row's buffer. These string values will be valid as long as
  * the [reflink row] object containing the memory they point to is alive and valid. Concretely:
  * - Destroying the row object invalidates the string values.
  * - Move assigning against the row invalidates the string values.
- * - Calling [refmem row clear] invalidates the string values.
+ * - Calling row clear invalidates the string values.
  * - Move-constructing a [reflink row] from the current row does **not**
  *   invalidate the string values.
  *

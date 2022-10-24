@@ -30,7 +30,7 @@ To prepare a statement, call [refmem connection prepare_statement]
 or [refmem connection async_prepare_statement]. You must pass in
 a string containing the text of the SQL statement (similar
 to how [link mysql.queries text queries] work). These functions
-return a [reflink prepared_statement] object.
+return a [reflink statement] object.
 
 In addition to regular SQL, you can also use 
 question mark characters (`?`) to represent parameters 
@@ -49,13 +49,13 @@ parameter (`conn` is a [reflink tcp_connection]):
 
 [heading Executing a statement]
 
-To execute a statement, use the [refmem prepared_statement execute]
-or [refmem prepared_statement async_execute] function family.
+To execute a statement, use the [refmem statement execute]
+or [refmem statement async_execute] function family.
 Executing a statement yields a [reflink resultset].
 
 When executing a statement, you must pass in [*exactly as many parameters
 as the statement has]. Failing to do so will result in an error.
-Parameters are passed in as [reflink2 value boost::mysql::value] objects,
+Parameters are passed in as [reflink2 field_view boost::mysql::field_view] objects,
 and in the same order as they appear in the statement text.
 Values should be in the MySQL range of validity. In particular,
 [reflink date]s, [reflink datetime]s and [reflink time]s should
@@ -64,15 +64,15 @@ be in their validity range; otherwise the results are undefined.
 There are two different signatures for execute functions:
 
 * One accepting an [reflink execute_params] object, which
-  represents a range of forward iterators pointing to [reflink value]s.
+  represents a range of forward iterators pointing to [reflink field_view]s.
   You can use [reflink2 execute_params.make_execute_params make_execute_params] to create [reflink execute_params]
   objects easier.
 * Another accepting a collection such that `std::begin()` and `std::end()`
-  yield forward iterators pointing to [reflink value]s. This is syntactic
+  yield forward iterators pointing to [reflink field_view]s. This is syntactic
   sugar over the former.
 
-You may use the [reflink2 value.make_values make_values] function
-to create a `std::array` of [reflink value]s suitable for
+You may use the [reflink2 field_view.make_field_views make_field_views] function
+to create a `std::array` of [reflink field_view]s suitable for
 the container version, or the [reflink no_statement_params] variable
 if your statement has no parameters.
 
@@ -92,9 +92,9 @@ information on resultsets.
 
 Prepared statements are created in the server side, and
 thus consume server resources. Once you don't need a 
-[reflink prepared_statement] anymore, you can call
-[refmem prepared_statement close] or
-[refmem prepared_statement async_close] to instruct
+[reflink statement] anymore, you can call
+[refmem statement close] or
+[refmem statement async_close] to instruct
 the server to deallocate it. You must not execute
 a closed prepared statement. As a close operation involves
 a network transfer, you should finish reading any incomplete
@@ -106,19 +106,19 @@ with the server, all prepared statements you have
 created using this connection will be automatically
 deallocated. This also means that you must keep
 the [reflink connection] object alive and open to
-use a [reflink prepared_statement] object.
+use a [reflink statement] object.
 
 If you are creating your prepared statements at the beginning
 of your program and keeping them alive until the connection
 is closed, then there is no need to call [refmem
-prepared_statement close] or [refmem prepared_statement
+statement close] or [refmem statement
 async_close], as closing the connection will do the cleanup
 for you. If you are creating and destroying prepared statements
 dynamically, then it is advised to use [refmem
-prepared_statement close] or [refmem prepared_statement
+statement close] or [refmem statement
 async_close] to prevent excessive resource usage in the server.
 
-Finally, note that [reflink prepared_statement]'s destructor
+Finally, note that [reflink statement]'s destructor
 does not perform any server-side deallocation of the statement.
 This is because closing a statement involves a network
 operation that may block your code or fail.

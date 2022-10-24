@@ -39,8 +39,8 @@
 [def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]
 [def __Executor__ [@boost:/doc/html/boost_asio/reference/Executor1.html ['Executor]]]
 [def __CompletionToken__ [@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers ['CompletionToken]]]
-[def __ValueCollection__ [reflink2 ValueCollection ['ValueCollection]]]
-[def __ValueForwardIterator__ [reflink2 ValueForwardIterator ['ValueForwardIterator]]]
+[def __FieldViewCollection__ [reflink2 FieldViewCollection ['FieldViewCollection]]]
+[def __FieldViewFwdIterator__ [reflink2 FieldViewFwdIterator ['FieldViewFwdIterator]]]
 
 [def __Boost__ [@https://www.boost.org/ Boost]]
 [def __Asio__ [@boost:/libs/asio/index.html Boost.Asio]]
@@ -111,8 +111,8 @@
 [include reference.qbk]
 [include helpers/Stream.qbk]
 [include helpers/SocketStream.qbk]
-[include helpers/ValueCollection.qbk]
-[include helpers/ValueForwardIterator.qbk]
+[include helpers/FieldViewCollection.qbk]
+[include helpers/FieldViewFwdIterator.qbk]
 [endsect]
 [block'''</reference>''']
 

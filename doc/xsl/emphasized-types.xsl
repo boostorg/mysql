@@ -15,8 +15,8 @@
     'Stream',
     'SocketStream',
     'Executor',
-    'ValueCollection',
-    'ValueForwardIterator'
+    'FieldViewCollection',
+    'FieldViewFwdIterator'
   "/>
 
 </xsl:stylesheet>

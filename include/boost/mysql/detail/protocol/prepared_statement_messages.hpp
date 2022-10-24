@@ -141,4 +141,4 @@ struct com_stmt_close_packet
 
 #include <boost/mysql/detail/protocol/impl/prepared_statement_messages.hpp>
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP_ */
+#endif

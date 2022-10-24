@@ -29,7 +29,7 @@ namespace mysql {
  *        See [link mysql.values this section] for more info.
  * \details
  *
- * A [reflink value] is a variant-like class. At a given time,
+ * A [reflink field_view] is a variant-like class. At a given time,
  * it always holds a value of one of the type alternatives.
  * See [link mysql.values this section] for information
  * on how to use this class.
@@ -38,7 +38,7 @@ namespace mysql {
  * are represented as string_views, not as owning strings.
  * This implies that if a value is a string, it will point
  * to a [*externally owned] piece of memory. See
- * [link mysql.values.strings this section] for more info.
+ * TODO for more info.
  */
 class field_view
 {
@@ -118,12 +118,14 @@ public:
     BOOST_CXX14_CONSTEXPR inline datetime get_datetime() const noexcept;
     BOOST_CXX14_CONSTEXPR inline time get_time() const noexcept;
 
-    /// Tests for equality (type and value); see [link mysql.values.relational this section] for
-    /// more info.
+    /// \brief Tests for equality.
+    /// \details If one of the `field_view`s contains a `std::uint64_t` and the other a
+    /// `std::int64_t`, and the values are equal, returns `true`. Otherwise, if the tpes are
+    /// different, returns always `false` (`float` and `double` values are considered to be
+    /// different between them). `NULL` values are equal to other `NULL` values.
     BOOST_CXX14_CONSTEXPR inline bool operator==(const field_view& rhs) const noexcept;
 
-    /// Tests for inequality (type and value); see [link mysql.values.relational this section] for
-    /// more info.
+    /// Tests for inequality.
     BOOST_CXX14_CONSTEXPR bool operator!=(const field_view& rhs) const noexcept
     {
         return !(*this == rhs);
@@ -224,7 +226,7 @@ private:
 };
 
 /**
- * \relates value
+ * \relates field_view
  * \brief Streams a value.
  * \details The value should be in the MySQL valid range of values. Concretely,
  * if the value is a [reflink date], [reflink datetime] or
@@ -237,10 +239,10 @@ private:
 inline std::ostream& operator<<(std::ostream& os, const field_view& v);
 
 /**
- * \relates value
- * \brief Creates an array of [reflink value]s out of the passed in arguments.
+ * \relates field_view
+ * \brief Creates an array of [reflink field_view]s out of the passed in arguments.
  * \details Each argument creates an element in the array. It should be possible
- * to construct a [reflink value] out of every single argument passed in.
+ * to construct a [reflink field_view] out of every single argument passed in.
  */
 template <class... Types>
 BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_field_views(Types&&... args);

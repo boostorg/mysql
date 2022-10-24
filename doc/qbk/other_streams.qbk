@@ -7,7 +7,7 @@
 
 [section:other_streams UNIX sockets and other stream types]
 
-All I/O objects ([reflink connection], [reflink prepared_statement]
+All I/O objects ([reflink connection], [reflink statement]
 and [reflink resultset]) are templatized on the stream type.
 Any object fulfilling the __Stream__ concept may be used
 as template argument.
@@ -16,19 +16,19 @@ as template argument.
 
 __Self__ provides helper type aliases for the most common cases:
 
-* [reflink tcp_ssl_connection], [reflink tcp_ssl_prepared_statement] and
+* [reflink tcp_ssl_connection], [reflink tcp_ssl_statement] and
   [reflink tcp_ssl_resultset] are alias for the three I/O objects,
   instantiated with `boost::asio::ssl::stream<boost::asio::ip::tcp::socket>`.
   Use them when connecting to MySQL over TCP and using TLS.
-* [reflink unix_ssl_connection], [reflink unix_ssl_prepared_statement] and
+* [reflink unix_ssl_connection], [reflink unix_ssl_statement] and
   [reflink unix_ssl_resultset] are alias for the three I/O objects,
   instantiated with `boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>`.
   Use them when connecting to MySQL over UNIX sockets and using TLS.
-* [reflink tcp_connection], [reflink tcp_prepared_statement] and
+* [reflink tcp_connection], [reflink tcp_statement] and
   [reflink tcp_resultset] are alias for the three I/O objects,
   instantiated with `boost::asio::ip::tcp::socket`.
   Use them when connecting to MySQL over TCP and not using TLS.
-* [reflink unix_connection], [reflink unix_prepared_statement] and
+* [reflink unix_connection], [reflink unix_statement] and
   [reflink unix_resultset] are alias for the three I/O objects,
   instantiated with `boost::asio::local::stream_protocol::socket`.
   Use them when connecting to MySQL over UNIX sockets and using TLS.
@@ -54,7 +54,7 @@ Instead, to establish a connection, you should follow these two steps,
 roughly equivalent to what [refmem connection connect] does for sockets:
 
 * Connect the underlying stream. You can access it using
-  [refmem connection next_layer]. Use whatever connection establishment
+  [refmem connection stream]. Use whatever connection establishment
   mechanism the stream implements. If you are using TLS, you should *not*
   perform the TLS handshake yourself, as the library will do it as part of the
   MySQL handshake.

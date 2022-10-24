@@ -131,4 +131,4 @@ inline void boost::mysql::detail::serialization_traits<
     }
 }
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_PREPARED_STATEMENT_MESSAGES_HPP_ */
+#endif

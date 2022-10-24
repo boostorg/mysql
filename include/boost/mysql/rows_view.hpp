@@ -59,7 +59,9 @@ private:
     std::size_t num_values_{};
     std::size_t num_columns_{};
 
+#ifndef BOOST_MYSQL_DOXYGEN
     friend class rows;
+#endif
 };
 
 }  // namespace mysql

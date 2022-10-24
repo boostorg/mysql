@@ -280,7 +280,7 @@ BOOST_MYSQL_NETWORK_TEST(several_rows_single_read, resultset_fixture, net_sample
     validate_eof(*result);
 }
 
-BOOST_AUTO_TEST_SUITE_END()  // read_many
+BOOST_AUTO_TEST_SUITE_END()  // read_some
 
 BOOST_AUTO_TEST_SUITE(read_all)
 

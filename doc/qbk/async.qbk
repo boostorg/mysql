@@ -152,7 +152,7 @@ one finishes. For example, it is illegal to call
 
 Reading resultsets is a particularly sensitive case of the above.
 For the server, an [refmem connection async_query] or
-[refmem prepared_statement async_execute] is considered complete
+[refmem statement async_execute] is considered complete
 after all rows in the originated resultset are sent (as detailed
 [link mysql.resultsets.server_send here]). This means that
 after calling any of these methods and before the resultset

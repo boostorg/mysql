@@ -19,14 +19,14 @@ namespace mysql {
 /**
  * \brief Represents the parameters required to execute a [reflink statement_base].
  * \details In essence, this class contains an iterator range \\[first, last), pointing
- * to a sequence of [reflink value]s that will be used as parameters to execute a
+ * to a sequence of [reflink field_view]s that will be used as parameters to execute a
  * [reflink statement_base]. FieldViewFwdIterator must meet the [reflink FieldViewFwdIterator]
  * type requirements.
  *
  * In the future, this class may define extra members providing finer control
  * over prepared statement execution.
  *
- * The \ref make_execute_params helper functions make it easier to create
+ * The [refmem execute_params make_execute_params] helper functions make it easier to create
  * instances of this class.
  */
 template <class FieldViewFwdIterator>
@@ -53,15 +53,19 @@ public:
     constexpr FieldViewFwdIterator last() const { return last_; }
 };
 
+/// \relates execute_params
 template <
     class FieldViewFwdIterator,
     class EnableIf = detail::enable_if_field_view_forward_iterator<FieldViewFwdIterator> >
-constexpr execute_params<FieldViewFwdIterator>
-make_execute_params(FieldViewFwdIterator first, FieldViewFwdIterator last)
+constexpr execute_params<FieldViewFwdIterator> make_execute_params(
+    FieldViewFwdIterator first,
+    FieldViewFwdIterator last
+)
 {
     return execute_params<FieldViewFwdIterator>(first, last);
 }
 
+/// \relates execute_params
 template <
     class FieldViewCollection,
     class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection> >
