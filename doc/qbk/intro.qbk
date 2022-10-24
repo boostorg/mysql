@@ -9,7 +9,6 @@
 [nochunk]
 
 __Self__ is a C++11 client for the __Mysql__ database server, based on __Asio__.
-This library is in the process of being proposed for __Boost__.
 
 [section Motivation]
 
@@ -18,15 +17,59 @@ clients connect to the server in order to issue SQL queries. For this
 purpose, MySQL employs a dedicated protocol. __Self__ is an
 implementation of the client side of this protocol.
 
+This library is a full implementation of the
+[@https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_PROTOCOL.html MySQL client/server protocol].
+It aims to expose the protocol primitives in an efficient but easy-to-use way.
+It is similar in scope to the official [@https://dev.mysql.com/doc/c-api/8.0/en/ libmysqlclient],
+but interoperable with Asio, safer and more expressive. Note that __Self__
+[*does not use libmysqlclient]: it's a full implementation of the MySQL protocol, which makes
+it natively compatible with Asio.
+
+This library is relatively low level. It gives you access to text SQL queries and
+prepared statements. Don't expect an ORM. [link tour This section] presents a quick tour
+over the main library capabilities.
+
 The design goals of this library are:
 
-* [*Ease of use]: designed to be intuitive and hide the __Mysql__ protocol complexities.
 * [*Interoperability with Asio]: this library employs the same principles as __Asio__ and __Beast__.
   Users of any of these libraries will immediately understand Boost.Mysql, and will have it easy
   to integrate it in their programs.
-* [*Basis for further abstraction]: this library is focused on doing a single thing and doing it well.
-  For this reason, it can be used easily by higher level components as a building block.
+* [*Basis for further abstraction]: it allows efficient access to the MySQL client/server protocol
+  so it can be used by higher level components as a building block. Do a single thing and do it well.
 * [*Efficiency].
+* [*Ease of use]: the MySQL protocol is full of pitfalls. We believe in simplicity. While retaining
+  control over the important parts, the library hides as much complexity from the protocol as possible.
+
+Non-goals:
+
+* [*Being an ORM].
+* [*Being a SQL query generator]. The library doesn't focus on utilities to generate queries.
+  Don't expect syntax sugar like `table("orders").select(["id", "quantity"]).where("id", 42)`.
+* [*Portability to other SQL databases]. This library focuses on MySQL. It won't work with Postgres
+  or SQLite.
+
+[endsect]
+
+[section When to use]
+
+If any of the following statements is true, you may consider using __Self__:
+
+* Your application uses __Asio__ and you need to access a MySQL server.
+* You need asynchronous access to a MySQL server from a C++ application.
+* You need efficient access to a MySQL server from a C++ application.
+* You need a BSL-licensed library to access your MySQL server.
+* You are writing a higher-level database access library, like an ORM.
+
+Use cases may include web servers, ETL processes and IoT systems.
+
+It may not be a good fit for you if:
+
+* You only need synchronous access to a MySQL server and efficiency doesn't matter
+  to your application. The official client libraries may be better suited for you, in this case.
+* You need homogeneous SQL access to different SQL databases (and not only MySQL access).
+  You may find more value in using [@https://github.com/rbock/sqlpp11 sqlpp11] or a similar wrapper
+  library.
+
 
 [endsect]
 
