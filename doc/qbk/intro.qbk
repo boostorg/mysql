@@ -26,7 +26,7 @@ but interoperable with Asio, safer and more expressive. Note that __Self__
 it natively compatible with Asio.
 
 This library is relatively low level. It gives you access to text SQL queries and
-prepared statements. Don't expect an ORM. [link tour This section] presents a quick tour
+prepared statements. Don't expect an ORM. [link mysql.concepts This section] presents a quick tour
 over the main library capabilities.
 
 The design goals of this library are:

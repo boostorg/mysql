@@ -109,4 +109,4 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_CONNECTION_PARAMS_HPP_ */
+#endif

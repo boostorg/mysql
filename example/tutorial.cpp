@@ -5,13 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/connection.hpp>
-#include <boost/mysql/handshake_params.hpp>
+//[tutorial_listing
+
+#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/mysql.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <iostream>
@@ -34,14 +33,14 @@ void main_impl(int argc, char** argv)
     }
 
     //[tutorial_connection
-    // The execution context, required to run I/O operations
+    // The execution context, required to run I/O operations.
     boost::asio::io_context ctx;
 
     // The SSL context, required to establish TLS connections.
     // The default SSL options are good enough for us at this point.
     boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
 
-    // The object defining the connection to the MySQL server.
+    // Represents a connection to the MySQL server.
     boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
     //]
 
@@ -67,12 +66,12 @@ void main_impl(int argc, char** argv)
     //]
 
     //[tutorial_read
-    boost::mysql::rows employees;
-    result.read_all(employees);
+    boost::mysql::rows all_rows;
+    result.read_all(all_rows);
     //]
 
-    //[tutorial_values
-    std::cout << employees.at(0).at(0) << std::endl;
+    //[tutorial_fields
+    std::cout << all_rows.at(0).at(0) << std::endl;
     //]
 
     //[tutorial_close
@@ -97,3 +96,5 @@ int main(int argc, char** argv)
         return 1;
     }
 }
+
+//]

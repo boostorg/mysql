@@ -62,7 +62,7 @@ are implemented in terms of [refmem connection quit] and
 
 During the handshake, client and server will negotiate whether to use TLS or not. For SSL
 capable streams, we support using TLS conditionally. This is controlled using the [reflink ssl_mode]
-parameter in [reflink connection_params], which configue the MySQL handshake process.
+parameter in [reflink handshake_params], which configue the MySQL handshake process.
 
 There are three possible values for this [reflink ssl_mode]:
 
@@ -83,7 +83,7 @@ uses SSL or not.
 This parameter is ignored for non-SSL connections. In this case, TLS will never
 be used.
 
-See [link mysql.connparams this section] for more information on [reflink connection_params].
+See [link mysql.connparams this section] for more information on [reflink handshake_params].
 
 [endsect]
 

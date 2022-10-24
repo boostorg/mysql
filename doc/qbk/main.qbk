@@ -87,6 +87,7 @@
 
 [include intro.qbk]
 [include tutorial.qbk]
+[include concepts.qbk]
 [include values.qbk]
 [include queries.qbk]
 [include prepared_statements.qbk]

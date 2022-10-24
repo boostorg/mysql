@@ -10,12 +10,12 @@
 
 This section discusses several aspects regarding the establishment
 of a connection with the MySQL server, including a detailed
-description of the parameters in [reflink connection_params].
+description of the parameters in [reflink handshake_params].
 
 [section:auth Authentication]
 
-The parameters [refmem connection_params username] and
-[refmem connection_params password] are mandatory. The
+The parameters [refmem handshake_params username] and
+[refmem handshake_params password] are mandatory. The
 password is provided to __Self__ in plain text,
 but it is not sent like that to the server (see below for more info).
 If your password is empty, just provide an empty string.
@@ -58,7 +58,7 @@ an unsupported authentication plugin, the operation will fail.
 
 [section:database Connect with database]
 
-The parameter [refmem connection_params database] is a string
+The parameter [refmem handshake_params database] is a string
 with the database name to connect to. If you specify it,
 your connection will default to use that database, as if
 you had issued a __USE__ statement. You can leave it blank
@@ -71,7 +71,7 @@ the connection.
 [section:collation Connection encoding and collation]
 
 When establishing a connection, you specify a [reflink collation]
-parameter ([refmem connection_params connection_collation]).
+parameter ([refmem handshake_params connection_collation]).
 This parameter defines the expected encoding of the SQL query strings
 you issue. When you establish a connection, you specify a 
 [reflink collation], which is a character set plus a 
