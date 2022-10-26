@@ -101,6 +101,8 @@ struct read_all_rows_op : boost::asio::coroutine
         rows_view output;
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            output_info_.clear();
+
             // If the resultset_base is already complete, we don't need to read anything
             if (resultset_.complete())
             {
@@ -164,6 +166,7 @@ struct read_all_rows_op_rows : boost::asio::coroutine
         // Normal path
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            // error_info already cleared by child ops
             output_.clear();
 
             BOOST_ASIO_CORO_YIELD

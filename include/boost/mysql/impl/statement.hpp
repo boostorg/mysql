@@ -52,7 +52,6 @@ boost::mysql::statement<Stream>::async_execute(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_execute_statement(
         get_channel(),
         *this,
@@ -84,7 +83,6 @@ template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) Comp
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::statement<Stream>::async_close(error_info& output_info, CompletionToken&& token)
 {
-    output_info.clear();
     return detail::async_close_statement(
         get_channel(),
         *this,

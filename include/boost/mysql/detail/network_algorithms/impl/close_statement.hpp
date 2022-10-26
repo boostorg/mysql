@@ -22,9 +22,14 @@ struct close_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     statement_base& stmt_;
+    error_info& output_info_;
 
-    close_statement_op(channel<Stream>& chan, statement_base& stmt) noexcept
-        : chan_(chan), stmt_(stmt)
+    close_statement_op(
+        channel<Stream>& chan,
+        statement_base& stmt,
+        error_info& output_info
+    ) noexcept
+        : chan_(chan), stmt_(stmt), output_info_(output_info)
     {
     }
 
@@ -41,6 +46,15 @@ struct close_statement_op : boost::asio::coroutine
         // Regular coroutine body; if there has been an error, we don't get here
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            output_info_.clear();
+
+            // Serialize the close message
+            serialize_message(
+                com_stmt_close_packet{stmt_.id()},
+                chan_.current_capabilities(),
+                chan_.shared_buffer()
+            );
+
             // Write message (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
                 .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
@@ -62,11 +76,12 @@ template <class Stream>
 void boost::mysql::detail::
     close_statement(channel<Stream>& chan, statement_base& stmt, error_code& code, error_info&)
 {
-    // Compose the close message
-    com_stmt_close_packet packet{stmt.id()};
-
-    // Serialize it
-    serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
+    // Serialize the close message
+    serialize_message(
+        com_stmt_close_packet{stmt.id()},
+        chan.current_capabilities(),
+        chan.shared_buffer()
+    );
 
     // Send it. No response is sent back
     chan.write(boost::asio::buffer(chan.shared_buffer()), chan.reset_sequence_number(), code);
@@ -77,18 +92,15 @@ void boost::mysql::detail::
 
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::
-    async_close_statement(channel<Stream>& chan, statement_base& stmt, CompletionToken&& token, error_info&)
+boost::mysql::detail::async_close_statement(
+    channel<Stream>& chan,
+    statement_base& stmt,
+    CompletionToken&& token,
+    error_info& output_info
+)
 {
-    // Compose the close message
-    com_stmt_close_packet packet{stmt.id()};
-
-    // Serialize it
-    serialize_message(packet, chan.current_capabilities(), chan.shared_buffer());
-
-    // Trigger the async op
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        close_statement_op<Stream>(chan, stmt),
+        close_statement_op<Stream>(chan, stmt, output_info),
         token,
         chan
     );

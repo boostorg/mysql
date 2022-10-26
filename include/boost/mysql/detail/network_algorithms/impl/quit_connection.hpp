@@ -30,14 +30,20 @@ template <class Stream>
 struct quit_connection_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
+    error_info& output_info_;
 
-    quit_connection_op(channel<Stream>& chan) noexcept : chan_(chan) {}
+    quit_connection_op(channel<Stream>& chan, error_info& output_info) noexcept
+        : chan_(chan), output_info_(output_info)
+    {
+    }
 
     template <class Self>
     void operator()(Self& self, error_code err = {})
     {
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            output_info_.clear();
+
             // Quit message
             compose_quit(chan_);
             BOOST_ASIO_CORO_YIELD chan_
@@ -81,11 +87,14 @@ void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& er
 
 template <class Stream, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::
-    async_quit_connection(channel<Stream>& chan, CompletionToken&& token, error_info&)
+boost::mysql::detail::async_quit_connection(
+    channel<Stream>& chan,
+    CompletionToken&& token,
+    error_info& output_info
+)
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        quit_connection_op<Stream>(chan),
+        quit_connection_op<Stream>(chan, output_info),
         token,
         chan
     );

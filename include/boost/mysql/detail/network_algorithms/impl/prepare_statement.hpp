@@ -27,6 +27,7 @@ namespace detail {
 
 class prepare_statement_processor
 {
+    boost::string_view statement_;
     capabilities caps_;
     bytestring& write_buffer_;
     statement_base& output_;
@@ -37,19 +38,23 @@ public:
     template <class Stream>
     prepare_statement_processor(
         channel<Stream>& chan,
+        boost::string_view statement,
         statement_base& output,
         error_info& output_info
     ) noexcept
-        : caps_(chan.current_capabilities()),
+        : statement_(statement),
+          caps_(chan.current_capabilities()),
           write_buffer_(chan.shared_buffer()),
           output_(output),
           output_info_(output_info)
     {
     }
 
-    void process_request(boost::string_view statement)
+    void clear_output_info() noexcept { output_info_.clear(); }
+
+    void process_request()
     {
-        com_stmt_prepare_packet packet{string_eof(statement)};
+        com_stmt_prepare_packet packet{string_eof(statement_)};
         serialize_message(packet, caps_, write_buffer_);
     }
 
@@ -106,7 +111,12 @@ struct prepare_statement_op : boost::asio::coroutine
         // Regular coroutine body; if there has been an error, we don't get here
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            // Write message (already serialized at this point)
+            processor_.clear_output_info();
+
+            // Serialize request
+            processor_.process_request();
+
+            // Write message
             BOOST_ASIO_CORO_YIELD chan_
                 .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
 
@@ -165,9 +175,10 @@ void boost::mysql::detail::prepare_statement(
     error_info& info
 )
 {
+    prepare_statement_processor processor(channel, statement, output, info);
+
     // Prepare message
-    prepare_statement_processor processor(channel, output, info);
-    processor.process_request(statement);
+    processor.process_request();
 
     // Write message
     channel.write(channel.shared_buffer(), channel.reset_sequence_number(), err);
@@ -216,10 +227,11 @@ boost::mysql::detail::async_prepare_statement(
     CompletionToken&& token
 )
 {
-    prepare_statement_processor processor(chan, output, info);
-    processor.process_request(statement);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        prepare_statement_op<Stream>(chan, processor),
+        prepare_statement_op<Stream>(
+            chan,
+            prepare_statement_processor(chan, statement, output, info)
+        ),
         token,
         chan
     );

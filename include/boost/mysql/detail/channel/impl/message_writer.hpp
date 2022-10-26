@@ -39,9 +39,16 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
 {
     Stream& stream_;
     message_writer_processor& processor_;
+    boost::asio::const_buffer buffer_;
+    std::uint8_t& seqnum_;
 
-    write_op(Stream& stream, message_writer_processor& processor) noexcept
-        : stream_(stream), processor_(processor)
+    write_op(
+        Stream& stream,
+        message_writer_processor& processor,
+        boost::asio::const_buffer buffer,
+        std::uint8_t& seqnum
+    ) noexcept
+        : stream_(stream), processor_(processor), buffer_(buffer), seqnum_(seqnum)
     {
     }
 
@@ -58,8 +65,10 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            // is_complete never returns false after a call to
-            // reset(), so no post() needed
+            processor_.reset(buffer_, seqnum_);
+
+            // is_complete never returns false after a call to reset(), so no post() needed
+
             do
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::async_write(
@@ -86,9 +95,8 @@ boost::mysql::detail::message_writer::async_write(
     CompletionToken&& token
 )
 {
-    processor_.reset(buffer, seqnum);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        write_op<Stream>(stream, processor_),
+        write_op<Stream>(stream, processor_, buffer, seqnum),
         token,
         stream
     );

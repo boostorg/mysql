@@ -41,7 +41,6 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::resultset<Stream>::async_read_one(error_info& output_info, CompletionToken&& token)
 {
-    output_info.clear();
     return detail::async_read_one_row(
         get_channel(),
         *this,
@@ -75,7 +74,6 @@ boost::mysql::resultset<Stream>::async_read_one(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_read_one_row(
         get_channel(),
         *this,
@@ -115,7 +113,6 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::resultset<Stream>::async_read_some(error_info& output_info, CompletionToken&& token)
 {
-    output_info.clear();
     return detail::async_read_some_rows(
         get_channel(),
         *this,
@@ -148,7 +145,6 @@ boost::mysql::resultset<Stream>::async_read_some(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_read_some_rows(
         get_channel(),
         *this,
@@ -185,7 +181,6 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
 )
 boost::mysql::resultset<Stream>::async_read_all(error_info& output_info, CompletionToken&& token)
 {
-    output_info.clear();
     return detail::async_read_all_rows(
         get_channel(),
         *this,
@@ -218,7 +213,6 @@ boost::mysql::resultset<Stream>::async_read_all(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_read_all_rows(
         get_channel(),
         *this,

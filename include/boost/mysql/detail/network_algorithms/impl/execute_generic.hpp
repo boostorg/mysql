@@ -30,6 +30,7 @@ namespace detail {
 
 class execute_processor
 {
+    resultset_encoding encoding_;
     resultset_base& output_;
     error_info& output_info_;
     bytestring& write_buffer_;
@@ -39,21 +40,24 @@ class execute_processor
 
 public:
     execute_processor(
+        resultset_encoding encoding,
         resultset_base& output,
         error_info& output_info,
         bytestring& write_buffer,
         capabilities caps
     ) noexcept
-        : output_(output), output_info_(output_info), write_buffer_(write_buffer), caps_(caps){};
+        : encoding_(encoding),
+          output_(output),
+          output_info_(output_info),
+          write_buffer_(write_buffer),
+          caps_(caps){};
+
+    void clear_output_info() noexcept { output_info_.clear(); }
 
     template <class Serializable, class Stream>
-    void process_request(
-        const Serializable& request,
-        channel<Stream>& chan,
-        resultset_encoding encoding
-    )
+    void process_request(const Serializable& request, channel<Stream>& chan)
     {
-        output_.reset(&chan, encoding);
+        output_.reset(&chan, encoding_);
         serialize_message(request, caps_, write_buffer_);
     }
 
@@ -132,14 +136,19 @@ public:
     bool has_remaining_fields() const noexcept { return remaining_fields_ != 0; }
 };
 
-template <class Stream>
+template <class Stream, class Serializable>
 struct execute_generic_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
+    Serializable request_;  // Either a com_query or com_execute_statement
     execute_processor processor_;
 
-    execute_generic_op(channel<Stream>& chan, const execute_processor& processor)
-        : chan_(chan), processor_(processor)
+    execute_generic_op(
+        channel<Stream>& chan,
+        const Serializable& request,
+        const execute_processor& processor
+    )
+        : chan_(chan), request_(request), processor_(processor)
     {
     }
 
@@ -156,7 +165,12 @@ struct execute_generic_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            // The request message has already been composed in the initiating fn. Send it
+            processor_.clear_output_info();
+
+            // Serialize the request
+            processor_.process_request(request_, chan_);
+
+            // Send it
             BOOST_ASIO_CORO_YIELD chan_
                 .async_write(chan_.shared_buffer(), processor_.sequence_number(), std::move(self));
 
@@ -221,10 +235,10 @@ void boost::mysql::detail::execute_generic(
     error_info& info
 )
 {
-    // Compose a com_query message, reset seq num
+    // Serialize the request
     execute_processor
-        processor(output, info, channel.shared_buffer(), channel.current_capabilities());
-    processor.process_request(request, channel, encoding);
+        processor(encoding, output, info, channel.shared_buffer(), channel.current_capabilities());
+    processor.process_request(request, channel);
 
     // Send it
     channel.write(channel.shared_buffer(), processor.sequence_number(), err);
@@ -276,11 +290,18 @@ boost::mysql::detail::async_execute_generic(
     CompletionToken&& token
 )
 {
-    execute_processor
-        processor(output, info, channel.shared_buffer(), channel.current_capabilities());
-    processor.process_request(request, channel, encoding);
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        execute_generic_op<Stream>(channel, processor),
+        execute_generic_op<Stream, Serializable>(
+            channel,
+            request,
+            execute_processor(
+                encoding,
+                output,
+                info,
+                channel.shared_buffer(),
+                channel.current_capabilities()
+            )
+        ),
         token,
         channel
     );

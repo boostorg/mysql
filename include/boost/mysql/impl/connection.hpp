@@ -63,7 +63,6 @@ boost::mysql::connection<Stream>::async_connect(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_connect(
         get_channel(),
         endpoint,
@@ -102,7 +101,6 @@ boost::mysql::connection<Stream>::async_handshake(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_handshake(
         get_channel(),
         params,
@@ -145,7 +143,6 @@ boost::mysql::connection<Stream>::async_query(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_execute_query(
         get_channel(),
         query_string,
@@ -189,7 +186,6 @@ boost::mysql::connection<Stream>::async_prepare_statement(
     CompletionToken&& token
 )
 {
-    output_info.clear();
     return detail::async_prepare_statement(
         get_channel(),
         stmt,
@@ -220,7 +216,6 @@ template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) Comp
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_close(error_info& output_info, CompletionToken&& token)
 {
-    output_info.clear();
     return detail::async_close_connection(
         get_channel(),
         std::forward<CompletionToken>(token),
@@ -248,7 +243,6 @@ template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) Comp
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_quit(error_info& output_info, CompletionToken&& token)
 {
-    output_info.clear();
     return detail::async_quit_connection(
         get_channel(),
         std::forward<CompletionToken>(token),

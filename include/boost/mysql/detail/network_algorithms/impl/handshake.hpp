@@ -288,6 +288,11 @@ struct handshake_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            output_info_.clear();
+
+            // Setup the channel
+            chan_.reset(processor_.params().buffer_config().initial_read_buffer_size());
+
             // Read server greeting
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(
                 chan_.shared_sequence_number(),
@@ -456,7 +461,6 @@ boost::mysql::detail::async_handshake(
     CompletionToken&& token
 )
 {
-    chan.reset(params.buffer_config().initial_read_buffer_size());
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         handshake_op<Stream>(chan, info, params),
         token,

@@ -42,6 +42,8 @@ struct connect_op : boost::asio::coroutine
     {
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            output_info_.clear();
+
             // Physical connect
             BOOST_ASIO_CORO_YIELD chan_.lowest_layer().async_connect(ep_, std::move(self));
             if (code)

@@ -38,6 +38,8 @@ struct close_connection_op : boost::asio::coroutine
         error_code close_err;
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            output_info_.clear();
+
             if (!chan_.lowest_layer().is_open())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
