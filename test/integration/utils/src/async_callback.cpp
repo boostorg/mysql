@@ -8,7 +8,7 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/errc.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/execute_options.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/row.hpp>
@@ -31,9 +31,9 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
+using boost::mysql::execute_options;
 using boost::mysql::field_view;
 using boost::mysql::handshake_params;
-using boost::mysql::row;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
 
@@ -99,12 +99,21 @@ class async_callback_statement : public er_statement_base<Stream>
 {
 public:
     network_result<no_result> execute_params(
-        const boost::mysql::execute_params<value_list_it>& params,
+        value_list_it params_first,
+        value_list_it params_last,
+        const execute_options& opts,
         er_resultset& result
     ) override
     {
         return impl<no_result>([&](handler<no_result> h, error_info& info) {
-            return this->obj().async_execute(params, this->cast(result), info, std::move(h));
+            return this->obj().async_execute(
+                params_first,
+                params_last,
+                opts,
+                this->cast(result),
+                info,
+                std::move(h)
+            );
         });
     }
     network_result<no_result> execute_collection(

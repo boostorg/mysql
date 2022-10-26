@@ -8,7 +8,6 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/errc.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/resultset.hpp>
@@ -34,7 +33,7 @@ using namespace boost::mysql::test;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
-using boost::mysql::execute_params;
+using boost::mysql::execute_options;
 using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::row_view;
@@ -96,12 +95,14 @@ public:
         });
     }
     network_result<no_result> execute_params(
-        const execute_params<value_list_it>& params,
+        value_list_it params_first,
+        value_list_it params_last,
+        const execute_options& opts,
         er_resultset& result
     ) override
     {
         return impl([&](error_code& err, error_info& info) {
-            this->obj().execute(params, this->cast(result), err, info);
+            this->obj().execute(params_first, params_last, opts, this->cast(result), err, info);
             return no_result();
         });
     }

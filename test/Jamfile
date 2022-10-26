@@ -68,7 +68,6 @@ unit-test boost_mysql_unittests
         unit/metadata.cpp
         unit/metadata_collection_view.cpp
         unit/error.cpp
-        unit/execute_params.cpp
         unit/statement.cpp
         unit/resultset.cpp
         unit/regressions.cpp

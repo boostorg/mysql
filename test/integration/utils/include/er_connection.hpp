@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_CONNECTION_HPP
 
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/rows_view.hpp>

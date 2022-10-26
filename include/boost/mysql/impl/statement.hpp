@@ -18,25 +18,47 @@
 template <class Stream>
 template <class FieldViewFwdIterator>
 void boost::mysql::statement<Stream>::execute(
-    const execute_params<FieldViewFwdIterator>& params,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    const execute_options& opts,
     resultset<Stream>& result,
     error_code& err,
     error_info& info
 )
 {
     detail::clear_errors(err, info);
-    detail::execute_statement(get_channel(), *this, params, result, err, info);
+    detail::execute_statement(
+        get_channel(),
+        *this,
+        params_first,
+        params_last,
+        opts,
+        result,
+        err,
+        info
+    );
 }
 
 template <class Stream>
 template <class FieldViewFwdIterator>
 void boost::mysql::statement<Stream>::execute(
-    const execute_params<FieldViewFwdIterator>& params,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    const execute_options& opts,
     resultset<Stream>& result
 )
 {
     detail::error_block blk;
-    detail::execute_statement(get_channel(), *this, params, result, blk.err, blk.info);
+    detail::execute_statement(
+        get_channel(),
+        *this,
+        params_first,
+        params_last,
+        opts,
+        result,
+        blk.err,
+        blk.info
+    );
     blk.check();
 }
 
@@ -46,7 +68,9 @@ template <
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::statement<Stream>::async_execute(
-    const execute_params<FieldViewFwdIterator>& params,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    const execute_options& opts,
     resultset<Stream>& result,
     error_info& output_info,
     CompletionToken&& token
@@ -55,7 +79,9 @@ boost::mysql::statement<Stream>::async_execute(
     return detail::async_execute_statement(
         get_channel(),
         *this,
-        params,
+        params_first,
+        params_last,
+        opts,
         result,
         output_info,
         std::forward<CompletionToken>(token)

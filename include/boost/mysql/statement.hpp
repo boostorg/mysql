@@ -10,11 +10,12 @@
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/execute_options.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <cassert>
+#include <iterator>
 
 namespace boost {
 namespace mysql {
@@ -57,7 +58,7 @@ public:
         error_info& info
     )
     {
-        return execute(make_execute_params(params), result, err, info);
+        return execute(std::begin(params), std::end(params), execute_options(), result, err, info);
     }
 
     /**
@@ -74,7 +75,7 @@ public:
         class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
     void execute(const FieldViewCollection& params, resultset<Stream>& result)
     {
-        return execute(make_execute_params(params), result);
+        return execute(std::begin(params), std::end(params), execute_options(), result);
     }
 
     /**
@@ -105,7 +106,9 @@ public:
     )
     {
         return async_execute(
-            make_execute_params(params),
+            std::begin(params),
+            std::end(params),
+            execute_options(),
             result,
             std::forward<CompletionToken>(token)
         );
@@ -140,7 +143,9 @@ public:
     )
     {
         return async_execute(
-            make_execute_params(params),
+            std::begin(params),
+            std::end(params),
+            execute_options(),
             result,
             output_info,
             std::forward<CompletionToken>(token)
@@ -160,7 +165,9 @@ public:
      */
     template <class FieldViewFwdIterator>
     void execute(
-        const execute_params<FieldViewFwdIterator>& params,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        const execute_options& options,
         resultset<Stream>& result,
         error_code& ec,
         error_info& info
@@ -178,7 +185,12 @@ public:
      * connection. Otherwise, the results are undefined.
      */
     template <class FieldViewFwdIterator>
-    void execute(const execute_params<FieldViewFwdIterator>& params, resultset<Stream>& result);
+    void execute(
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        const execute_options& options,
+        resultset<Stream>& result
+    );
 
     /**
      * \brief Executes a statement (`execute_params`,
@@ -205,13 +217,17 @@ public:
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
-        const execute_params<FieldViewFwdIterator>& params,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        const execute_options& options,
         resultset<Stream>& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
         return async_execute(
-            params,
+            params_first,
+            params_last,
+            options,
             result,
             get_channel().shared_info(),
             std::forward<CompletionToken>(token)
@@ -243,7 +259,9 @@ public:
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
-        const execute_params<FieldViewFwdIterator>& params,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        const execute_options& options,
         resultset<Stream>& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)

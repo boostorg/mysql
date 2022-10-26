@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/execute_options.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/tcp.hpp>
 
@@ -20,8 +20,8 @@
 using namespace boost::mysql::test;
 using boost::mysql::errc;
 using boost::mysql::error_code;
+using boost::mysql::execute_options;
 using boost::mysql::field_view;
-using boost::mysql::make_execute_params;
 
 namespace {
 
@@ -44,7 +44,8 @@ BOOST_MYSQL_NETWORK_TEST(success, network_fixture, all_network_samples())
 
     // Execute
     std::forward_list<field_view> params{field_view("item"), field_view(42)};
-    stmt->execute_params(make_execute_params(params), *result).validate_no_error();
+    stmt->execute_params(params.begin(), params.end(), execute_options(), *result)
+        .validate_no_error();
     BOOST_TEST(result->base().valid());
 }
 
@@ -59,7 +60,7 @@ BOOST_MYSQL_NETWORK_TEST(mismatched_num_params, network_fixture, net_samples)
 
     // Execute
     std::forward_list<field_view> params{field_view("item")};
-    stmt->execute_params(make_execute_params(params), *result)
+    stmt->execute_params(params.begin(), params.end(), execute_options(), *result)
         .validate_error(errc::wrong_num_params, {"param", "2", "1", "statement", "execute"});
 }
 
@@ -77,7 +78,7 @@ BOOST_MYSQL_NETWORK_TEST(server_error, network_fixture, all_network_samples())
 
     // Execute
     std::forward_list<field_view> params{field_view("f0"), field_view("bad_date")};
-    stmt->execute_params(make_execute_params(params), *result)
+    stmt->execute_params(params.begin(), params.end(), execute_options(), *result)
         .validate_error(
             errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}

@@ -16,7 +16,6 @@
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/execute_params.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/statement_base.hpp>
 
@@ -29,8 +28,9 @@ namespace detail {
 
 template <class FieldViewFwdIterator>
 com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
-    const execute_params<FieldViewFwdIterator>& params,
-    const statement_base& stmt
+    const statement_base& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last
 )
 {
     return com_stmt_execute_packet<FieldViewFwdIterator>{
@@ -38,18 +38,20 @@ com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
         std::uint8_t(0),   // flags
         std::uint32_t(1),  // iteration count
         std::uint8_t(1),   // new params flag: set
-        params.first(),
-        params.last()};
+        params_first,
+        params_last,
+    };
 }
 
 template <class FieldViewFwdIterator>
 error_code check_num_params(
     const statement_base& stmt,
-    const execute_params<FieldViewFwdIterator>& params,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
     error_info& info
 )
 {
-    auto param_count = std::distance(params.first(), params.last());
+    auto param_count = std::distance(params_first, params_last);
     if (param_count != stmt.num_params())
     {
         info.set_message(detail::stringize(
@@ -91,19 +93,21 @@ template <class Stream, class FieldViewFwdIterator>
 void boost::mysql::detail::execute_statement(
     channel<Stream>& chan,
     const statement_base& stmt,
-    const execute_params<FieldViewFwdIterator>& params,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    const execute_options&,
     resultset_base& output,
     error_code& err,
     error_info& info
 )
 {
-    err = check_num_params(stmt, params, info);
+    err = check_num_params(stmt, params_first, params_last, info);
     if (!err)
     {
         execute_generic(
             resultset_encoding::binary,
             chan,
-            make_stmt_execute_packet(params, stmt),
+            make_stmt_execute_packet(stmt, params_first, params_last),
             output,
             err,
             info
@@ -116,13 +120,15 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
     const statement_base& stmt,
-    const execute_params<FieldViewFwdIterator>& params,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    const execute_options&,
     resultset_base& output,
     error_info& info,
     CompletionToken&& token
 )
 {
-    error_code err = check_num_params(stmt, params, info);
+    error_code err = check_num_params(stmt, params_first, params_last, info);
     if (err)
     {
         return boost::asio::async_compose<CompletionToken, void(error_code)>(
@@ -134,7 +140,7 @@ boost::mysql::detail::async_execute_statement(
     return async_execute_generic(
         resultset_encoding::binary,
         chan,
-        make_stmt_execute_packet(params, stmt),
+        make_stmt_execute_packet(stmt, params_first, params_last),
         output,
         info,
         std::forward<CompletionToken>(token)

@@ -66,7 +66,6 @@ add_executable(
     unit/metadata.cpp
     unit/metadata_collection_view.cpp
     unit/error.cpp
-    unit/execute_params.cpp
     unit/statement.cpp
     unit/resultset.cpp
     unit/connection.cpp

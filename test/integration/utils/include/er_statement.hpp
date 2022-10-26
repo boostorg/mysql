@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_STATEMENT_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_STATEMENT_HPP
 
-#include <boost/mysql/execute_params.hpp>
+#include <boost/mysql/execute_options.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/statement_base.hpp>
 
@@ -35,7 +35,9 @@ public:
         er_resultset& result
     ) = 0;
     virtual network_result<no_result> execute_params(
-        const execute_params<value_list_it>& params,
+        value_list_it params_first,
+        value_list_it params_last,
+        const execute_options& opts,
         er_resultset& result
     ) = 0;
     virtual network_result<no_result> close() = 0;
