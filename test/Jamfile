@@ -71,6 +71,7 @@ unit-test boost_mysql_unittests
         unit/execute_params.cpp
         unit/statement.cpp
         unit/resultset.cpp
+        unit/regressions.cpp
         unit/connection.cpp
     ;
 

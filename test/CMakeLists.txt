@@ -70,6 +70,7 @@ add_executable(
     unit/statement.cpp
     unit/resultset.cpp
     unit/connection.cpp
+    unit/regressions.cpp
     unit/entry_point.cpp
 )
 target_link_libraries(

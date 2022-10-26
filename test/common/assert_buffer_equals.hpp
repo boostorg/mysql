@@ -37,9 +37,10 @@ inline bool buffer_equals(boost::asio::const_buffer b1, boost::asio::const_buffe
     // If any of the buffers are empty (data() == nullptr), prevent
     // calling memcmp (UB)
     if (b1.size() == 0 || b2.size() == 0)
-    {
         return b1.size() == 0 && b2.size() == 0;
-    }
+
+    if (b1.size() != b2.size())
+        return false;
 
     return ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0;
 }
