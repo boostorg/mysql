@@ -10,7 +10,7 @@ find_package(OpenSSL REQUIRED)
 add_library(
     asio
     STATIC
-    ${CMAKE_SOURCE_DIR}/test/common/asio.cpp
+    ${CMAKE_SOURCE_DIR}/tools/asio.cpp
 )
 target_link_libraries(
     asio

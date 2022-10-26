@@ -40,7 +40,7 @@ local requirements =
 # A static Asio library to speed up builds
 lib asio
     :
-        test/common/asio.cpp
+        tools/asio.cpp
         ssl
         crypto
     :
