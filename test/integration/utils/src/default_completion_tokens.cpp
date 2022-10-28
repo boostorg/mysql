@@ -17,6 +17,7 @@
 #include <boost/mysql/statement_base.hpp>
 
 #include <memory>
+#include <tuple>
 
 #include "er_connection.hpp"
 #include "er_impl_common.hpp"
@@ -90,7 +91,27 @@ template <class Stream>
 class default_completion_tokens_statement : public er_statement_base<Stream>
 {
 public:
-    network_result<no_result> execute_params(
+    network_result<no_result> execute_tuple_1(
+        field_view param,
+        const execute_options& opts,
+        er_resultset& result
+    ) override
+    {
+        return impl_no_result([&] {
+            return this->obj().async_execute(std::make_tuple(param), opts, this->cast(result));
+        });
+    }
+    network_result<no_result> execute_tuple_2(
+        field_view param1,
+        field_view param2,
+        er_resultset& result
+    ) override
+    {
+        return impl_no_result([&] {
+            return this->obj().async_execute(std::make_tuple(param1, param2), this->cast(result));
+        });
+    }
+    network_result<no_result> execute_it(
         value_list_it params_first,
         value_list_it params_last,
         const execute_options& opts,
@@ -100,14 +121,6 @@ public:
         return impl_no_result([&] {
             return this->obj().async_execute(params_first, params_last, opts, this->cast(result));
         });
-    }
-    network_result<no_result> execute_collection(
-        const std::vector<field_view>& values,
-        er_resultset& result
-    ) override
-    {
-        return impl_no_result([&] { return this->obj().async_execute(values, this->cast(result)); }
-        );
     }
     network_result<no_result> close() override
     {

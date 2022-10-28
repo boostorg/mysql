@@ -6,10 +6,14 @@
 //
 
 #include <boost/mysql/buffer_params.hpp>
+#include <boost/mysql/execute_options.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/resultset_base.hpp>
 #include <boost/mysql/row_view.hpp>
 
 #include <boost/test/unit_test.hpp>
+
+#include <forward_list>
 
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
@@ -69,7 +73,9 @@ public:
     {
         auto stmt = conn.variant().create_statement();
         conn.prepare_statement(query, *stmt).validate_no_error();
-        stmt->execute_collection({}, output).validate_no_error();
+        std::forward_list<boost::mysql::field_view> params;
+        stmt->execute_it(params.begin(), params.end(), boost::mysql::execute_options(), output)
+            .validate_no_error();
     }
 };
 

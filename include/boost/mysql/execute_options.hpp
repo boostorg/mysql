@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_EXECUTE_PARAMS_HPP
-#define BOOST_MYSQL_EXECUTE_PARAMS_HPP
+#ifndef BOOST_MYSQL_EXECUTE_OPTIONS_HPP
+#define BOOST_MYSQL_EXECUTE_OPTIONS_HPP
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 

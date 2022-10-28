@@ -5,15 +5,19 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/datetime_types.hpp>
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/utility/string_view_fwd.hpp>
+
 #include <array>
 #include <cstddef>
 #include <forward_list>
+#include <iosfwd>
 #include <iterator>
 #include <list>
 #include <set>
@@ -24,8 +28,88 @@ using boost::mysql::field;
 using boost::mysql::field_view;
 using boost::mysql::row;
 using boost::mysql::row_view;
-using boost::mysql::detail::is_field_view_collection;
+using boost::mysql::detail::is_field_like;
+using boost::mysql::detail::is_field_like_tuple;
 using boost::mysql::detail::is_field_view_forward_iterator;
+using std::tuple;
+
+//
+// field_like
+//
+// field_view accepted
+static_assert(is_field_like<field_view>::value, "");
+static_assert(is_field_like<const field_view>::value, "");
+static_assert(is_field_like<field_view&>::value, "");
+static_assert(is_field_like<const field_view&>::value, "");
+static_assert(is_field_like<field_view&&>::value, "");
+
+// field accepted
+static_assert(is_field_like<field>::value, "");
+static_assert(is_field_like<const field>::value, "");
+static_assert(is_field_like<field&>::value, "");
+static_assert(is_field_like<const field&>::value, "");
+static_assert(is_field_like<field&&>::value, "");
+
+// scalars accepted
+static_assert(is_field_like<std::nullptr_t>::value, "");
+static_assert(is_field_like<unsigned char>::value, "");
+static_assert(is_field_like<char>::value, "");
+static_assert(is_field_like<signed char>::value, "");
+static_assert(is_field_like<short>::value, "");
+static_assert(is_field_like<unsigned short>::value, "");
+static_assert(is_field_like<int>::value, "");
+static_assert(is_field_like<unsigned int>::value, "");
+static_assert(is_field_like<long>::value, "");
+static_assert(is_field_like<unsigned long>::value, "");
+static_assert(is_field_like<float>::value, "");
+static_assert(is_field_like<double>::value, "");
+static_assert(is_field_like<boost::mysql::date>::value, "");
+static_assert(is_field_like<boost::mysql::datetime>::value, "");
+static_assert(is_field_like<boost::mysql::time>::value, "");
+
+// references to scalars accepted
+static_assert(is_field_like<int&>::value, "");
+static_assert(is_field_like<const int&>::value, "");
+static_assert(is_field_like<int&&>::value, "");
+
+// string types accepted
+static_assert(is_field_like<std::string>::value, "");
+static_assert(is_field_like<std::string&>::value, "");
+static_assert(is_field_like<const std::string&>::value, "");
+static_assert(is_field_like<std::string&&>::value, "");
+static_assert(is_field_like<boost::string_view>::value, "");
+
+// other stuff not accepted
+static_assert(!is_field_like<field*>::value, "");
+static_assert(!is_field_like<field_view*>::value, "");
+
+//
+// field_like_tuple
+//
+// Empty tuples accepted
+static_assert(is_field_like_tuple<tuple<>>::value, "");
+static_assert(is_field_like_tuple<tuple<>&>::value, "");
+static_assert(is_field_like_tuple<const tuple<>&>::value, "");
+static_assert(is_field_like_tuple<tuple<>&&>::value, "");
+
+// Tuples of field likes accepted
+static_assert(is_field_like_tuple<tuple<int, std::string&, const char*>>::value, "");
+static_assert(is_field_like_tuple<tuple<field_view, boost::string_view, int&&>>::value, "");
+
+// References accepted
+static_assert(is_field_like_tuple<tuple<int, float&, std::string&&>&>::value, "");
+static_assert(is_field_like_tuple<const tuple<int, float&, std::string&&>&>::value, "");
+static_assert(is_field_like_tuple<tuple<int, float&, std::string&&>&&>::value, "");
+
+// Tuples of other stuff not accepted
+static_assert(!is_field_like_tuple<tuple<int, std::ostream&>>::value, "");
+static_assert(!is_field_like_tuple<tuple<std::ostream&, char>>::value, "");
+static_assert(!is_field_like_tuple<tuple<std::ostream&, char>&>::value, "");
+
+// Non-tuples not accepted
+static_assert(!is_field_like_tuple<int>::value, "");
+static_assert(!is_field_like_tuple<std::array<int, 1>>::value, "");
+static_assert(!is_field_like_tuple<field_view>::value, "");
 
 //
 // field_view iterator
@@ -111,70 +195,3 @@ static_assert(!is_field_view_forward_iterator<std::vector<int>>::value, "");
 static_assert(!is_field_view_forward_iterator<field_view*&>::value, "");
 static_assert(!is_field_view_forward_iterator<row::iterator&>::value, "");
 static_assert(!is_field_view_forward_iterator<const row::iterator&>::value, "");
-
-//
-// Collections
-//
-
-// C arrays
-static_assert(is_field_view_collection<field_view[10]>::value, "");
-static_assert(is_field_view_collection<const field_view[10]>::value, "");
-
-static_assert(is_field_view_collection<field[10]>::value, "");
-static_assert(is_field_view_collection<const field[10]>::value, "");
-
-// std::array
-static_assert(is_field_view_collection<std::array<field_view, 10>>::value, "");
-static_assert(is_field_view_collection<const std::array<field_view, 10>>::value, "");
-
-static_assert(is_field_view_collection<std::array<field, 10>>::value, "");
-static_assert(is_field_view_collection<const std::array<field, 10>>::value, "");
-
-// vector
-static_assert(is_field_view_collection<std::vector<field_view>>::value, "");
-static_assert(is_field_view_collection<const std::vector<field_view>>::value, "");
-
-static_assert(is_field_view_collection<std::vector<field>>::value, "");
-static_assert(is_field_view_collection<const std::vector<field>>::value, "");
-
-// forward_list
-static_assert(is_field_view_collection<std::forward_list<field_view>>::value, "");
-static_assert(is_field_view_collection<const std::forward_list<field_view>>::value, "");
-
-static_assert(is_field_view_collection<std::forward_list<field>>::value, "");
-static_assert(is_field_view_collection<const std::forward_list<field>>::value, "");
-
-// list
-static_assert(is_field_view_collection<std::list<field_view>>::value, "");
-static_assert(is_field_view_collection<const std::list<field_view>>::value, "");
-
-static_assert(is_field_view_collection<std::list<field>>::value, "");
-static_assert(is_field_view_collection<const std::list<field>>::value, "");
-
-// set
-static_assert(is_field_view_collection<std::set<field_view>>::value, "");
-static_assert(is_field_view_collection<const std::set<field_view>>::value, "");
-
-static_assert(is_field_view_collection<std::set<field>>::value, "");
-static_assert(is_field_view_collection<const std::set<field>>::value, "");
-
-// row_view
-static_assert(is_field_view_collection<row_view>::value, "");
-static_assert(is_field_view_collection<const row_view>::value, "");
-
-// row
-static_assert(is_field_view_collection<row>::value, "");
-static_assert(is_field_view_collection<const row>::value, "");
-
-// wrong collection type
-static_assert(!is_field_view_collection<std::vector<const field_view*>>::value, "");
-static_assert(!is_field_view_collection<std::vector<field_view*>>::value, "");
-static_assert(!is_field_view_collection<std::vector<int>>::value, "");
-static_assert(!is_field_view_collection<std::string>::value, "");
-
-// not a collection
-static_assert(!is_field_view_collection<field_view>::value, "");
-static_assert(!is_field_view_collection<const field_view>::value, "");
-static_assert(!is_field_view_collection<const field_view*>::value, "");
-static_assert(!is_field_view_collection<std::vector<field_view>::iterator>::value, "");
-static_assert(!is_field_view_collection<int>::value, "");

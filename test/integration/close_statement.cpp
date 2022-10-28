@@ -20,10 +20,6 @@ BOOST_MYSQL_NETWORK_TEST(success, network_fixture, all_network_samples())
     // Prepare a statement
     conn->prepare_statement("SELECT * FROM empty_table", *stmt).validate_no_error();
 
-    // Verify it works fine
-    stmt->execute_collection({}, *result).validate_no_error();
-    result->read_all().validate_no_error();  // clean all packets sent for this execution
-
     // Close the statement
     stmt->close().validate_no_error();
 

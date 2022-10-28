@@ -7,15 +7,16 @@
 
 //[example_prepared_statements
 
+#include <boost/mysql.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/mysql.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <iostream>
+#include <tuple>
 
 #define ASSERT(expr)                                          \
     if (!(expr))                                              \
@@ -102,7 +103,7 @@ void main_impl(int argc, char** argv)
      */
     //[prepared_statements_execute
     boost::mysql::tcp_ssl_resultset result;
-    salary_getter.execute(boost::mysql::make_field_views("Efficient"), result);
+    salary_getter.execute(std::make_tuple("Efficient"), result);
 
     boost::mysql::rows salaries;
     result.read_all(salaries);  // Get all the results
@@ -112,7 +113,7 @@ void main_impl(int argc, char** argv)
     std::cout << "The salary before the payrise was: " << salary << std::endl;
 
     // Run the update. In this case, we must pass in two parameters.
-    salary_updater.execute(boost::mysql::make_field_views(35000.0, "Efficient"), result);
+    salary_updater.execute(std::make_tuple(35000.0, "Efficient"), result);
     ASSERT(result.complete());  // an UPDATE never returns rows
 
     /**
@@ -120,7 +121,7 @@ void main_impl(int argc, char** argv)
      * as many times as we want. We do NOT need to call
      * connection::prepare_statement() again.
      */
-    salary_getter.execute(boost::mysql::make_field_views("Efficient"), result);
+    salary_getter.execute(std::make_tuple("Efficient"), result);
     result.read_all(salaries);
     salary = salaries.at(0).at(0).as_double();
     ASSERT(salary == 35000);  // Our update took place, and the dev got his pay rise

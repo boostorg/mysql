@@ -30,11 +30,21 @@ class er_statement
 public:
     virtual ~er_statement() {}
     virtual const statement_base& base() const = 0;
-    virtual network_result<no_result> execute_collection(
-        const std::vector<field_view>& params,
+    virtual network_result<no_result> execute_tuple_1(
+        field_view fv1,
+        const execute_options& opts,
         er_resultset& result
-    ) = 0;
-    virtual network_result<no_result> execute_params(
+    ) = 0;  // tuple with options
+    network_result<no_result> execute_tuple_1(field_view fv1, er_resultset& result)
+    {
+        return execute_tuple_1(fv1, execute_options(), result);
+    }
+    virtual network_result<no_result> execute_tuple_2(
+        field_view fv1,
+        field_view fv2,
+        er_resultset& result
+    ) = 0;  // tuple without options
+    virtual network_result<no_result> execute_it(
         value_list_it params_first,
         value_list_it params_last,
         const execute_options& opts,

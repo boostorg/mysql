@@ -663,7 +663,7 @@ BOOST_FIXTURE_TEST_CASE(statement, tcp_network_fixture)
 
             // Execute it with the provided parameters
             boost::mysql::tcp_resultset result;
-            stmt.execute(make_field_views(sample.row_id), result);
+            stmt.execute(std::make_tuple(sample.row_id), result);
             auto rows = result.read_all();
 
             // Validate the received metadata
@@ -719,7 +719,7 @@ BOOST_FIXTURE_TEST_CASE(prepared_statement_execute_param, tcp_network_fixture)
 
             // Execute it with the provided parameters
             boost::mysql::tcp_resultset result;
-            stmt.execute(make_field_views(sample.row_id, sample.expected_value), result);
+            stmt.execute(std::make_tuple(sample.row_id, sample.expected_value), result);
             auto rows = result.read_all();
 
             // Validate the returned value

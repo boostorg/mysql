@@ -54,11 +54,18 @@ public:
 
     void clear_output_info() noexcept { output_info_.clear(); }
 
-    template <class Serializable, class Stream>
-    void process_request(const Serializable& request, channel<Stream>& chan)
+    template <BOOST_MYSQL_EXECUTE_REQUEST Request, class Stream>
+    void process_request(const Request& request, channel<Stream>& chan)
     {
         output_.reset(&chan, encoding_);
         serialize_message(request, caps_, write_buffer_);
+    }
+
+    template <BOOST_MYSQL_EXECUTE_REQUEST_MAKER RequestMaker, class Stream>
+    void process_request_maker(const RequestMaker& reqmaker, channel<Stream>& chan)
+    {
+        auto st = reqmaker.make_storage();
+        process_request(reqmaker.make_request(st), chan);
     }
 
     void process_response(boost::asio::const_buffer response, error_code& err)
@@ -136,19 +143,19 @@ public:
     bool has_remaining_fields() const noexcept { return remaining_fields_ != 0; }
 };
 
-template <class Stream, class Serializable>
+template <class Stream, BOOST_MYSQL_EXECUTE_REQUEST_MAKER RequestMaker>
 struct execute_generic_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    Serializable request_;  // Either a com_query or com_execute_statement
+    RequestMaker reqmaker_;
     execute_processor processor_;
 
     execute_generic_op(
         channel<Stream>& chan,
-        const Serializable& request,
+        RequestMaker&& reqmaker,
         const execute_processor& processor
     )
-        : chan_(chan), request_(request), processor_(processor)
+        : chan_(chan), reqmaker_(std::move(reqmaker)), processor_(processor)
     {
     }
 
@@ -168,7 +175,7 @@ struct execute_generic_op : boost::asio::coroutine
             processor_.clear_output_info();
 
             // Serialize the request
-            processor_.process_request(request_, chan_);
+            processor_.process_request_maker(reqmaker_, chan_);
 
             // Send it
             BOOST_ASIO_CORO_YIELD chan_
@@ -225,11 +232,11 @@ struct execute_generic_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream, class Serializable>
+template <class Stream, BOOST_MYSQL_EXECUTE_REQUEST Request>
 void boost::mysql::detail::execute_generic(
     resultset_encoding encoding,
     channel<Stream>& channel,
-    const Serializable& request,
+    const Request& request,
     resultset_base& output,
     error_code& err,
     error_info& info
@@ -279,21 +286,21 @@ void boost::mysql::detail::execute_generic(
     }
 }
 
-template <class Stream, class Serializable, class CompletionToken>
+template <class Stream, BOOST_MYSQL_EXECUTE_REQUEST_MAKER RequestMaker, class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute_generic(
     resultset_encoding encoding,
     channel<Stream>& channel,
-    const Serializable& request,
+    RequestMaker&& reqmaker,
     resultset_base& output,
     error_info& info,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        execute_generic_op<Stream, Serializable>(
+        execute_generic_op<Stream, typename std::decay<RequestMaker>::type>(
             channel,
-            request,
+            std::move(reqmaker),
             execute_processor(
                 encoding,
                 output,

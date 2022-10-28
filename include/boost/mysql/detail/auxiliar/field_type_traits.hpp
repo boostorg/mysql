@@ -11,6 +11,9 @@
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/field_view.hpp>
 
+#include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/list.hpp>
+
 #include <cstddef>
 #include <iterator>
 #include <type_traits>
@@ -19,6 +22,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// field_view_forward_iterator
 template <typename T, typename = void>
 struct is_field_view_forward_iterator : std::false_type
 {
@@ -42,31 +46,73 @@ struct is_field_view_forward_iterator<T, void_t<
 >> : std::true_type { };
 // clang-format on
 
-template <typename T, typename = void>
-struct is_field_view_collection : std::false_type
+#ifdef __cpp_concepts
+
+template <class T>
+concept field_view_forward_iterator = is_field_view_forward_iterator<T>::value;
+
+#define BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR ::boost::mysql::detail::field_view_forward_iterator
+
+#else
+
+#define BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR class
+
+#endif
+
+// field_like
+template <class T>
+using is_field_like = std::is_constructible<field_view, T>;
+
+#ifdef __cpp_concepts
+
+template <class T>
+concept field_like = is_field_like<T>::value;
+
+#define BOOST_MYSQL_FIELD_LIKE ::boost::mysql::detail::field_like
+
+#else
+
+#define BOOST_MYSQL_FIELD_LIKE class
+
+#endif
+
+// field_like_tuple
+template <class... T>
+struct is_field_like_tuple_impl : std::false_type
 {
 };
 
-// clang-format off
-template <typename T>
-struct is_field_view_collection<T, void_t<
-    typename std::enable_if<
-        is_field_view_forward_iterator<decltype(std::begin(std::declval<const T&>()))>::value
-    >::type,
-    typename std::enable_if<
-        is_field_view_forward_iterator<decltype(std::end(std::declval<const T&>()))>::value
-    >::type
->> : std::true_type {};
-// clang-format on
+template <class... T>
+struct is_field_like_tuple_impl<std::tuple<T...>>
+    : mp11::mp_all_of<mp11::mp_list<T...>, is_field_like>
+{
+};
+
+template <class Tuple>
+struct is_field_like_tuple : is_field_like_tuple_impl<typename std::decay<Tuple>::type>
+{
+};
+
+#ifdef __cpp_concepts
+
+template <class T>
+concept field_like_tuple = is_field_like_tuple<T>::value;
+
+#define BOOST_MYSQL_FIELD_LIKE_TUPLE ::boost::mysql::detail::field_like_tuple
+
+#else
+
+#define BOOST_MYSQL_FIELD_LIKE_TUPLE class
+
+#endif
 
 // Helpers
 template <typename T>
-using enable_if_field_view_forward_iterator =
-    typename std::enable_if<is_field_view_forward_iterator<T>::value>::type;
+using enable_if_field_view_forward_iterator = typename std::enable_if<
+    is_field_view_forward_iterator<T>::value>::type;
 
 template <typename T>
-using enable_if_field_view_collection =
-    typename std::enable_if<is_field_view_collection<T>::value>::type;
+using enable_if_field_like_tuple = typename std::enable_if<is_field_like_tuple<T>::value>::type;
 
 }  // namespace detail
 }  // namespace mysql

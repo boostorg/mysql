@@ -13,12 +13,13 @@
 
 #include <array>
 #include <cstdint>
+#include <tuple>
 
 namespace boost {
 namespace mysql {
 
 /// Convenience constant to use when executing a statement without parameters.
-constexpr std::array<field_view, 0> no_statement_params{};
+constexpr std::tuple<> no_statement_params{};
 
 /**
  * \brief Represents a prepared statement. See [link mysql.prepared_statements] for more info.

@@ -49,16 +49,16 @@ public:
      * connection. Otherwise, the results are undefined.
      */
     template <
-        class FieldViewCollection,
-        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
     void execute(
-        const FieldViewCollection& params,
+        const FieldLikeTuple& params,
         resultset<Stream>& result,
         error_code& err,
         error_info& info
     )
     {
-        return execute(std::begin(params), std::end(params), execute_options(), result, err, info);
+        execute(params, execute_options(), result, err, info);
     }
 
     /**
@@ -71,11 +71,11 @@ public:
      * connection. Otherwise, the results are undefined.
      */
     template <
-        class FieldViewCollection,
-        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
-    void execute(const FieldViewCollection& params, resultset<Stream>& result)
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void execute(const FieldLikeTuple& params, resultset<Stream>& result)
     {
-        return execute(std::begin(params), std::end(params), execute_options(), result);
+        execute(params, execute_options(), result);
     }
 
     /**
@@ -94,20 +94,19 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
     template <
-        class FieldViewCollection,
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
-        const FieldViewCollection& params,
+        FieldLikeTuple&& params,
         resultset<Stream>& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
         return async_execute(
-            std::begin(params),
-            std::end(params),
+            std::forward<FieldLikeTuple>(params),
             execute_options(),
             result,
             std::forward<CompletionToken>(token)
@@ -130,27 +129,121 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
     template <
-        class FieldViewCollection,
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf = detail::enable_if_field_view_collection<FieldViewCollection>>
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute(
-        const FieldViewCollection& params,
+        FieldLikeTuple&& params,
         resultset<Stream>& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
         return async_execute(
-            std::begin(params),
-            std::end(params),
+            std::forward<FieldLikeTuple>(params),
             execute_options(),
             result,
             output_info,
             std::forward<CompletionToken>(token)
         );
     }
+
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void execute(
+        const FieldLikeTuple& params,
+        const execute_options& opts,
+        resultset<Stream>& result,
+        error_code& err,
+        error_info& info
+    );
+
+    /**
+     * \brief Executes a statement (collection, sync with exceptions version).
+     * \details
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
+     *
+     * After this function has returned, you should read the entire resultset_base
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void execute(
+        const FieldLikeTuple& params,
+        const execute_options& opts,
+        resultset<Stream>& result
+    );
+
+    /**
+     * \brief Executes a statement (collection,
+     *        async without [reflink error_info] version).
+     * \details
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
+     *
+     * After this operation completes, you should read the entire resultset_base
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     * It is __not__ necessary to keep the collection of parameters or the
+     * values they may point to alive after the initiating function returns.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute(
+        FieldLikeTuple&& params,
+        const execute_options& opts,
+        resultset<Stream>& result,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute(
+            std::forward<FieldLikeTuple>(params),
+            opts,
+            result,
+            get_channel().shared_info(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /**
+     * \brief Executes a statement (collection,
+     *        async with [reflink error_info] version).
+     * \details
+     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
+     *
+     * After this operation completes, you should read the entire resultset_base
+     * before calling any function that involves communication with the server over this
+     * connection. Otherwise, the results are undefined.
+     * It is __not__ necessary to keep the collection of parameters or the
+     * values they may point to alive after the initiating function returns.
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute(
+        FieldLikeTuple&& params,
+        const execute_options& opts,
+        resultset<Stream>& result,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
 
     /**
      * \brief Executes a statement (`execute_params`, sync with error code version).
@@ -163,7 +256,7 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class FieldViewFwdIterator>
+    template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void execute(
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last,
@@ -184,7 +277,7 @@ public:
      * before calling any function that involves communication with the server over this
      * connection. Otherwise, the results are undefined.
      */
-    template <class FieldViewFwdIterator>
+    template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void execute(
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last,
@@ -212,7 +305,7 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
     template <
-        class FieldViewFwdIterator,
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -254,7 +347,7 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
      */
     template <
-        class FieldViewFwdIterator,
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))

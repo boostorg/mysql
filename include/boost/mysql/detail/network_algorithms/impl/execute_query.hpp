@@ -15,6 +15,33 @@
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
+#include <boost/utility/string_view_fwd.hpp>
+
+namespace boost {
+namespace mysql {
+namespace detail {
+
+class query_request_maker
+{
+    boost::string_view query_;
+
+public:
+    struct storage_type
+    {
+    };
+
+    query_request_maker(boost::string_view query) noexcept : query_(query) {}
+    storage_type make_storage() const noexcept { return storage_type(); }
+    com_query_packet make_request(storage_type) const noexcept
+    {
+        return com_query_packet{string_eof(query_)};
+    }
+};
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
 template <class Stream>
 void boost::mysql::detail::execute_query(
     channel<Stream>& channel,
@@ -24,8 +51,14 @@ void boost::mysql::detail::execute_query(
     error_info& info
 )
 {
-    com_query_packet request{string_eof(query)};
-    execute_generic(resultset_encoding::text, channel, request, output, err, info);
+    execute_generic(
+        resultset_encoding::text,
+        channel,
+        com_query_packet{string_eof(query)},
+        output,
+        err,
+        info
+    );
 }
 
 template <class Stream, class CompletionToken>
@@ -38,11 +71,10 @@ boost::mysql::detail::async_execute_query(
     CompletionToken&& token
 )
 {
-    com_query_packet request{string_eof(query)};
     return async_execute_generic(
         resultset_encoding::text,
         chan,
-        request,
+        query_request_maker(query),
         output,
         info,
         std::forward<CompletionToken>(token)

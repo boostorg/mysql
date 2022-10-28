@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/field_view.hpp>
+
 #include "er_connection.hpp"
 #include "er_resultset.hpp"
 #include "integration_test_common.hpp"
@@ -44,7 +46,7 @@ BOOST_MYSQL_NETWORK_TEST(select_with_parameters, statement_lifecycle_fixture, ne
         .validate_no_error();
 
     // Execute it. Only one row will be returned (because of the id)
-    stmt->execute_collection(make_fv_vector(1, "non_existent"), *result).validate_no_error();
+    stmt->execute_tuple_2(field_view(1), field_view("non_existent"), *result).validate_no_error();
     BOOST_TEST(result->base().valid());
     BOOST_TEST(!result->base().complete());
     validate_2fields_meta(result->base(), "two_rows_table");
@@ -55,7 +57,7 @@ BOOST_MYSQL_NETWORK_TEST(select_with_parameters, statement_lifecycle_fixture, ne
     BOOST_TEST(result->base().complete());
 
     // Execute it again, but with different values. This time, two rows are returned
-    stmt->execute_collection(make_fv_vector(1, "f1"), *result).validate_no_error();
+    stmt->execute_tuple_2(field_view(1), field_view("f1"), *result).validate_no_error();
     BOOST_TEST(result->base().valid());
     BOOST_TEST(!result->base().complete());
     validate_2fields_meta(result->base(), "two_rows_table");
@@ -80,13 +82,13 @@ BOOST_MYSQL_NETWORK_TEST(insert_with_parameters, statement_lifecycle_fixture, ne
         .validate_no_error();
 
     // Insert one value
-    stmt->execute_collection(make_fv_vector("value0"), *result).validate_no_error();
+    stmt->execute_tuple_1(field_view("value0"), *result).validate_no_error();
     BOOST_TEST(result->base().valid());
     BOOST_TEST(result->base().complete());
     BOOST_TEST(result->base().meta().empty());
 
     // Insert another one
-    stmt->execute_collection(make_fv_vector("value1"), *result).validate_no_error();
+    stmt->execute_tuple_1(field_view("value1"), *result).validate_no_error();
     BOOST_TEST(result->base().valid());
     BOOST_TEST(result->base().complete());
     BOOST_TEST(result->base().meta().empty());
@@ -108,7 +110,7 @@ BOOST_MYSQL_NETWORK_TEST(update_with_parameters, statement_lifecycle_fixture, ne
         .validate_no_error();
 
     // Set field_int to something
-    stmt->execute_collection(make_fv_vector(200, "f0"), *result).validate_no_error();
+    stmt->execute_tuple_2(field_view(200), field_view("f0"), *result).validate_no_error();
     BOOST_TEST(result->base().valid());
     BOOST_TEST(result->base().complete());
     BOOST_TEST(result->base().meta().empty());
@@ -117,7 +119,7 @@ BOOST_MYSQL_NETWORK_TEST(update_with_parameters, statement_lifecycle_fixture, ne
     BOOST_TEST(get_updates_table_value() == field_view(200));
 
     // Set field_int to something different
-    stmt->execute_collection(make_fv_vector(250, "f0"), *result).validate_no_error();
+    stmt->execute_tuple_2(field_view(250), field_view("f0"), *result).validate_no_error();
     BOOST_TEST(result->base().valid());
     BOOST_TEST(result->base().complete());
     BOOST_TEST(result->base().meta().empty());
@@ -152,17 +154,17 @@ BOOST_MYSQL_NETWORK_TEST(multiple_statements, statement_lifecycle_fixture, net_s
     BOOST_TEST(stmt_update->base().id() != stmt_select->base().id());
 
     // Execute update
-    stmt_update->execute_collection(make_fv_vector(210, "f0"), *result).validate_no_error();
+    stmt_update->execute_tuple_2(field_view(210), field_view("f0"), *result).validate_no_error();
     BOOST_TEST(result->base().complete());
 
     // Execute select
-    stmt_select->execute_collection(make_fv_vector("f0"), *result).validate_no_error();
+    stmt_select->execute_tuple_1(field_view("f0"), *result).validate_no_error();
     auto rows = result->read_all().get();
     BOOST_TEST(rows.size() == 1u);
     BOOST_TEST(rows[0] == makerow(210));
 
     // Execute update again
-    stmt_update->execute_collection(make_fv_vector(220, "f0"), *result).validate_no_error();
+    stmt_update->execute_tuple_2(field_view(220), field_view("f0"), *result).validate_no_error();
     BOOST_TEST(result->base().complete());
 
     // Update no longer needed, close it
@@ -170,7 +172,7 @@ BOOST_MYSQL_NETWORK_TEST(multiple_statements, statement_lifecycle_fixture, net_s
     BOOST_TEST(!stmt_update->base().valid());
 
     // Execute select again
-    stmt_select->execute_collection(make_fv_vector("f0"), *result).validate_no_error();
+    stmt_select->execute_tuple_1(field_view("f0"), *result).validate_no_error();
     rows = result->read_all().get();
     BOOST_TEST(rows.size() == 1u);
     BOOST_TEST(rows[0] == makerow(220));
@@ -192,13 +194,13 @@ BOOST_MYSQL_NETWORK_TEST(insert_with_null_values, statement_lifecycle_fixture, n
         .validate_no_error();
 
     // Set the value we will be updating to something non-NULL
-    stmt->execute_collection(make_fv_vector(42), *result).validate_no_error();
+    stmt->execute_tuple_1(field_view(42), *result).validate_no_error();
 
     // Verify it took effect
     BOOST_TEST_REQUIRE((get_updates_table_value("fnull") == field_view(42)));
 
     // Update the value to NULL
-    stmt->execute_collection(make_fv_vector(nullptr), *result).validate_no_error();
+    stmt->execute_tuple_1(field_view(nullptr), *result).validate_no_error();
 
     // Verify it took effect
     BOOST_TEST_REQUIRE((get_updates_table_value("fnull") == field_view(nullptr)));
