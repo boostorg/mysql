@@ -29,12 +29,12 @@ namespace mysql {
 /**
  * \brief Variant-like class that can represent of any of the allowed database types.
  * \details For a thorough explanation on how to use fields, see [link mysql.fields this section].
- *
+ * \n
  * This is a regular variant-like class that can represent any of the types that MySQL allows. It
  * has value semantics (as opposed to [reflink field_view]). Instances of this class are not created
  * by the library. They should be created by the user, when the reference semantics of
  * [reflink field_view]s are not appropriate.
- *
+ * \n
  * Like a variant, at any point, a `field` always contains a value of
  * certain type. You can query the type using [refmem field kind] and the `is_xxx` functions
  * like [refmem field is_int64]. Use `as_xxx` and `get_xxx` for checked and unchecked value

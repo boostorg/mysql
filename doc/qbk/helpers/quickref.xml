@@ -26,6 +26,7 @@
           <member><link linkend="mysql.ref.boost__mysql__rows_view">rows_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows">rows</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__metadata_collection_view">metadata_collection_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__handshake_params">handshake_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__execute_options">execute_options</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_info">error_info</link></member>

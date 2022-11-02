@@ -21,6 +21,7 @@
 namespace boost {
 namespace mysql {
 
+/// placeholder
 template <class Stream>
 class resultset : public resultset_base
 {

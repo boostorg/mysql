@@ -46,13 +46,14 @@ class handshake_params
 
 public:
     /**
-     * \brief Initializing constructor
+     * \brief Initializing constructor.
      * \param username User name to authenticate as.
      * \param password Password for that username, possibly empty.
      * \param db Database name to use, or empty string for no database (this is the default).
-     * \param connection_col [reflink2 collation Collation] to use for the connection.
+     * \param connection_col The \ref collation to use for the connection.
      * Impacts how text queries and prepared statements are interpreted. Defaults to
-     * utf8_general_ci. \param mode The [reflink ssl_mode] to use with this connection; ignored if
+     * \ref collation::utf8_general_ci.
+     * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection does not support SSL.
      * \param buffer_config Configuration about internal buffers.
      */
@@ -103,7 +104,10 @@ public:
     /// Sets SSL mode
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
 
+    /// Retrieves the buffer configuration.
     buffer_params buffer_config() const noexcept { return buffer_config_; }
+
+    /// Sets the buffer configuration.
     void set_buffer_config(const buffer_params& value) noexcept { buffer_config_ = value; }
 };
 

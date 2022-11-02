@@ -29,18 +29,17 @@ namespace mysql {
  *        See [link mysql.fields this section] for more info.
  * \details
  * For a thorough explanation on how to use fields, see [link mysql.fields this section].
- *
+ * \n
  * This is a variant-like class, similar to \ref field, but semi-owning and read-only. Values
  * of this type are usually created by the library, not directly by the user. It's cheap to
  * construct and copy, and it's the main library interface when reading values from MySQL.
- *
- *
+ * \n
  * Like a variant, at any point, a `field_view` always points to a value of
  * certain type. You can query the type using \ref field_view::kind and the `is_xxx` functions
  * like \ref field_view::is_int64. Use `as_xxx` and `get_xxx` for checked and unchecked value
  * access, respectively. As opposed to \ref field, these functions return values instead of
  * references.
- *
+ * \n
  * Depending on how it was constructed, `field_view` can have value or reference semantics:
  *  - If it was created by the library, the `field_view` will have an associated \ref row or
  *    \ref rows object holding memory to which the `field_view` points. It will be valid as

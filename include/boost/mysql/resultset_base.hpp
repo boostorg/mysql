@@ -127,6 +127,8 @@ public:
     const std::vector<metadata>& fields() const noexcept { return meta_; }
 #endif
 
+    // TODO: indicate that moving a resultset doesn't invalidate meta() but copying does.
+
     /**
      * \brief Returns whether this object represents a valid resultset_base.
      * \details Returns `false` for default-constructed and moved-from resultsets.
