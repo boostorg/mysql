@@ -24,8 +24,6 @@
 #include <concepts>
 #endif
 
-static_assert(__cpp_lib_concepts > 0);
-
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -56,7 +54,7 @@ concept execute_request_maker = requires(const T& t)
 
 #else  // BOOST_MYSQL_HAS_CONCEPTS
 
-#define BOOST_MYSQL_EXECUTE_REQUEST
+#define BOOST_MYSQL_EXECUTE_REQUEST class
 #define BOOST_MYSQL_EXECUTE_REQUEST_MAKER class
 
 #endif  // BOOST_MYSQL_HAS_CONCEPTS

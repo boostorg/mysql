@@ -23,6 +23,8 @@
 #include "create_message.hpp"
 #include "test_connection.hpp"
 
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 using namespace boost::mysql::test;
 using boost::asio::buffer;
 
@@ -82,3 +84,5 @@ BOOST_AUTO_TEST_CASE(side_effects_in_initiation)
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
+
+#endif  // BOOST_ASIO_HAS_CO_AWAIT

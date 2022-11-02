@@ -53,7 +53,7 @@ com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
 template <BOOST_MYSQL_FIELD_LIKE... T, std::size_t... I>
 std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, boost::mp11::index_sequence<I...>) noexcept
 {
-    return std::array<field_view, sizeof...(T)>{field_view(std::get<I>(t))...};
+    return std::array<field_view, sizeof...(T)>{{field_view(std::get<I>(t))...}};
 }
 
 template <BOOST_MYSQL_FIELD_LIKE... T>
