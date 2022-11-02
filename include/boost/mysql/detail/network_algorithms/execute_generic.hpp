@@ -10,6 +10,7 @@
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -19,15 +20,17 @@
 #include <type_traits>
 #include <utility>
 
-#ifdef __cpp_concepts
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
 #include <concepts>
 #endif
+
+static_assert(__cpp_lib_concepts > 0);
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-#ifdef __cpp_concepts
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
 // clang-format off
 template <class T>
 struct is_com_stmt_execute_packet : std::false_type {};
@@ -51,12 +54,12 @@ concept execute_request_maker = requires(const T& t)
 #define BOOST_MYSQL_EXECUTE_REQUEST ::boost::mysql::detail::execute_request
 #define BOOST_MYSQL_EXECUTE_REQUEST_MAKER ::boost::mysql::detail::execute_request_maker
 
-#else
+#else  // BOOST_MYSQL_HAS_CONCEPTS
 
 #define BOOST_MYSQL_EXECUTE_REQUEST
 #define BOOST_MYSQL_EXECUTE_REQUEST_MAKER class
 
-#endif
+#endif  // BOOST_MYSQL_HAS_CONCEPTS
 
 // The sync version gets passed directlty the request packet to be serialized.
 // There is no need to defer the serialization here.

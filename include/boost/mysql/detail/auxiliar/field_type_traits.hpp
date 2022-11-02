@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
 
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/field_view.hpp>
 
 #include <boost/mp11/algorithm.hpp>
@@ -46,35 +47,35 @@ struct is_field_view_forward_iterator<T, void_t<
 >> : std::true_type { };
 // clang-format on
 
-#ifdef __cpp_concepts
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
 
 template <class T>
 concept field_view_forward_iterator = is_field_view_forward_iterator<T>::value;
 
 #define BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR ::boost::mysql::detail::field_view_forward_iterator
 
-#else
+#else  // BOOST_MYSQL_HAS_CONCEPTS
 
 #define BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR class
 
-#endif
+#endif  // BOOST_MYSQL_HAS_CONCEPTS
 
 // field_like
 template <class T>
 using is_field_like = std::is_constructible<field_view, T>;
 
-#ifdef __cpp_concepts
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
 
 template <class T>
 concept field_like = is_field_like<T>::value;
 
 #define BOOST_MYSQL_FIELD_LIKE ::boost::mysql::detail::field_like
 
-#else
+#else  // BOOST_MYSQL_HAS_CONCEPTS
 
 #define BOOST_MYSQL_FIELD_LIKE class
 
-#endif
+#endif  // BOOST_MYSQL_HAS_CONCEPTS
 
 // field_like_tuple
 template <class... T>
@@ -93,18 +94,18 @@ struct is_field_like_tuple : is_field_like_tuple_impl<typename std::decay<Tuple>
 {
 };
 
-#ifdef __cpp_concepts
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
 
 template <class T>
 concept field_like_tuple = is_field_like_tuple<T>::value;
 
 #define BOOST_MYSQL_FIELD_LIKE_TUPLE ::boost::mysql::detail::field_like_tuple
 
-#else
+#else  // BOOST_MYSQL_HAS_CONCEPTS
 
 #define BOOST_MYSQL_FIELD_LIKE_TUPLE class
 
-#endif
+#endif  // BOOST_MYSQL_HAS_CONCEPTS
 
 // Helpers
 template <typename T>
