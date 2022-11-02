@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_FIELD_TYPE_HPP
-#define BOOST_MYSQL_FIELD_TYPE_HPP
+#ifndef BOOST_MYSQL_COLUMN_TYPE_HPP
+#define BOOST_MYSQL_COLUMN_TYPE_HPP
 
 #include <cstdint>
 #include <ostream>
@@ -21,10 +21,10 @@ namespace mysql {
  *
  * Unless otherwise noted, the names in this enumeration
  * directly correspond to the names of the types you would use in
- * a `CREATE TABLE` statement to create a field of this type
- * (e.g. `__VARCHAR__` corresponds to `field_type::varchar`).
+ * a `CREATE TABLE` statement to create a column of this type
+ * (e.g. `__VARCHAR__` corresponds to \ref column_type::varchar).
  */
-enum class field_type
+enum class column_type
 {
     tinyint,    ///< `__TINYINT__` (signed and unsigned).
     smallint,   ///< `__SMALLINT__` (signed and unsigned).
@@ -49,44 +49,40 @@ enum class field_type
     enum_,      ///< `__ENUM__`
     set,        ///< `__SET__`
     geometry,   ///< `__GEOMETRY__`
-
-    unknown,  ///< None of the known types; maybe a new MySQL type we have no knowledge of.
-#ifndef BOOST_MYSQL_DOXYGEN
-    _not_computed,
-#endif
+    unknown,    ///< None of the known types; maybe a new MySQL type we have no knowledge of.
 };
 
 /**
- * \relates field_type
- * \brief Streams a boost::mysql::field_type.
+ * \relates column_type
+ * \brief Streams a `column_type`.
  */
-inline std::ostream& operator<<(std::ostream& os, field_type t)
+inline std::ostream& operator<<(std::ostream& os, column_type t)
 {
     switch (t)
     {
-    case field_type::tinyint: return os << "tinyint";
-    case field_type::smallint: return os << "smallint";
-    case field_type::mediumint: return os << "mediumint";
-    case field_type::int_: return os << "int_";
-    case field_type::bigint: return os << "bigint";
-    case field_type::float_: return os << "float_";
-    case field_type::double_: return os << "double_";
-    case field_type::decimal: return os << "decimal";
-    case field_type::bit: return os << "bit";
-    case field_type::year: return os << "year";
-    case field_type::time: return os << "time";
-    case field_type::date: return os << "date";
-    case field_type::datetime: return os << "datetime";
-    case field_type::timestamp: return os << "timestamp";
-    case field_type::char_: return os << "char_";
-    case field_type::varchar: return os << "varchar";
-    case field_type::binary: return os << "binary";
-    case field_type::varbinary: return os << "varbinary";
-    case field_type::text: return os << "text";
-    case field_type::blob: return os << "blob";
-    case field_type::enum_: return os << "enum_";
-    case field_type::set: return os << "set";
-    case field_type::geometry: return os << "geometry";
+    case column_type::tinyint: return os << "tinyint";
+    case column_type::smallint: return os << "smallint";
+    case column_type::mediumint: return os << "mediumint";
+    case column_type::int_: return os << "int_";
+    case column_type::bigint: return os << "bigint";
+    case column_type::float_: return os << "float_";
+    case column_type::double_: return os << "double_";
+    case column_type::decimal: return os << "decimal";
+    case column_type::bit: return os << "bit";
+    case column_type::year: return os << "year";
+    case column_type::time: return os << "time";
+    case column_type::date: return os << "date";
+    case column_type::datetime: return os << "datetime";
+    case column_type::timestamp: return os << "timestamp";
+    case column_type::char_: return os << "char_";
+    case column_type::varchar: return os << "varchar";
+    case column_type::binary: return os << "binary";
+    case column_type::varbinary: return os << "varbinary";
+    case column_type::text: return os << "text";
+    case column_type::blob: return os << "blob";
+    case column_type::enum_: return os << "enum_";
+    case column_type::set: return os << "set";
+    case column_type::geometry: return os << "geometry";
     default: return os << "<unknown field type>";
     }
 }

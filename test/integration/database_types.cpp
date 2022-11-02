@@ -23,8 +23,8 @@
 
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
+using boost::mysql::column_type;
 using boost::mysql::datetime;
-using boost::mysql::field_type;
 using boost::mysql::field_view;
 using boost::mysql::make_field_views;
 using boost::mysql::metadata;
@@ -76,7 +76,7 @@ const flagsvec flags_zerofill{&metadata::is_unsigned, &metadata::is_zerofill};
 // Int cases
 void add_int_samples_helper(
     const char* table_name,
-    field_type type,
+    column_type type,
     std::int64_t signed_min,
     std::int64_t signed_max,
     std::uint64_t unsigned_max,
@@ -101,15 +101,15 @@ void add_int_samples_helper(
 
 void add_int_samples(std::vector<database_types_sample>& output)
 {
-    add_int_samples_helper("types_tinyint", field_type::tinyint,
+    add_int_samples_helper("types_tinyint", column_type::tinyint,
         -0x80, 0x7f, 0xff, output);
-    add_int_samples_helper("types_smallint", field_type::smallint,
+    add_int_samples_helper("types_smallint", column_type::smallint,
         -0x8000, 0x7fff, 0xffff, output);
-    add_int_samples_helper("types_mediumint", field_type::mediumint,
+    add_int_samples_helper("types_mediumint", column_type::mediumint,
         -0x800000, 0x7fffff, 0xffffff, output);
-    add_int_samples_helper("types_int", field_type::int_,
+    add_int_samples_helper("types_int", column_type::int_,
         -0x80000000LL, 0x7fffffff, 0xffffffff, output);
-    add_int_samples_helper("types_bigint", field_type::bigint,
+    add_int_samples_helper("types_bigint", column_type::bigint,
         -0x7fffffffffffffff - 1, 0x7fffffffffffffff, 0xffffffffffffffff, output);
 }
 
@@ -121,9 +121,9 @@ void add_bit_samples_helper(
     std::uint64_t max_value
 )
 {
-    output.emplace_back("types_bit", field_name, "min",     std::uint64_t(0), field_type::bit, flags_unsigned);
-    output.emplace_back("types_bit", field_name, "regular", regular_value,    field_type::bit, flags_unsigned);
-    output.emplace_back("types_bit", field_name, "max",     max_value,        field_type::bit, flags_unsigned);
+    output.emplace_back("types_bit", field_name, "min",     std::uint64_t(0), column_type::bit, flags_unsigned);
+    output.emplace_back("types_bit", field_name, "regular", regular_value,    column_type::bit, flags_unsigned);
+    output.emplace_back("types_bit", field_name, "max",     max_value,        column_type::bit, flags_unsigned);
 }
 
 void add_bit_samples(std::vector<database_types_sample>& output)
@@ -145,91 +145,91 @@ void add_bit_samples(std::vector<database_types_sample>& output)
 void add_float_samples(std::vector<database_types_sample>& output)
 {
     output.emplace_back("types_float", "field_signed", "zero",
-        0.0f, field_type::float_, no_flags, 31);
+        0.0f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "int_positive",
-        4.0f, field_type::float_, no_flags, 31);
+        4.0f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "int_negative",
-        -4.0f, field_type::float_, no_flags, 31);
+        -4.0f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "fractional_positive",
-        4.2f, field_type::float_, no_flags, 31);
+        4.2f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "fractional_negative",
-        -4.2f, field_type::float_, no_flags, 31);
+        -4.2f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "positive_exp_positive_int",
-        3e20f, field_type::float_, no_flags, 31);
+        3e20f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "positive_exp_negative_int",
-        -3e20f, field_type::float_, no_flags, 31);
+        -3e20f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "positive_exp_positive_fractional",
-        3.14e20f, field_type::float_, no_flags, 31);
+        3.14e20f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "positive_exp_negative_fractional",
-        -3.14e20f, field_type::float_, no_flags, 31);
+        -3.14e20f, column_type::float_, no_flags, 31);
     output.emplace_back("types_float", "field_signed", "negative_exp_positive_fractional",
-        3.14e-20f, field_type::float_, no_flags, 31);
+        3.14e-20f, column_type::float_, no_flags, 31);
 
     output.emplace_back("types_float", "field_unsigned", "zero",
-        0.0f, field_type::float_, flags_unsigned, 31);
+        0.0f, column_type::float_, flags_unsigned, 31);
     output.emplace_back("types_float", "field_unsigned", "fractional_positive",
-        4.2f, field_type::float_, flags_unsigned, 31);
+        4.2f, column_type::float_, flags_unsigned, 31);
 
     output.emplace_back("types_float", "field_width", "zero",
-        0.0f, field_type::float_, no_flags, 10);
+        0.0f, column_type::float_, no_flags, 10);
     output.emplace_back("types_float", "field_width", "fractional_positive",
-        4.2f, field_type::float_, no_flags, 10);
+        4.2f, column_type::float_, no_flags, 10);
     output.emplace_back("types_float", "field_width", "fractional_negative",
-        -4.2f, field_type::float_, no_flags, 10);
+        -4.2f, column_type::float_, no_flags, 10);
 
     output.emplace_back("types_float", "field_zerofill", "zero",
-        0.0f, field_type::float_, flags_zerofill, 31);
+        0.0f, column_type::float_, flags_zerofill, 31);
     output.emplace_back("types_float", "field_zerofill", "fractional_positive",
-        4.2f, field_type::float_, flags_zerofill, 31);
+        4.2f, column_type::float_, flags_zerofill, 31);
     output.emplace_back("types_float", "field_zerofill", "positive_exp_positive_fractional",
-        3.14e20f, field_type::float_, flags_zerofill, 31);
+        3.14e20f, column_type::float_, flags_zerofill, 31);
     output.emplace_back("types_float", "field_zerofill", "negative_exp_positive_fractional",
-        3.14e-20f, field_type::float_, flags_zerofill, 31);
+        3.14e-20f, column_type::float_, flags_zerofill, 31);
 }
 
 void add_double_samples(std::vector<database_types_sample>& output)
 {
     output.emplace_back("types_double", "field_signed", "zero",
-        0.0, field_type::double_, no_flags, 31);
+        0.0, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "int_positive",
-        4.0, field_type::double_, no_flags, 31);
+        4.0, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "int_negative",
-        -4.0, field_type::double_, no_flags, 31);
+        -4.0, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "fractional_positive",
-        4.2, field_type::double_, no_flags, 31);
+        4.2, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "fractional_negative",
-        -4.2, field_type::double_, no_flags, 31);
+        -4.2, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "positive_exp_positive_int",
-        3e200, field_type::double_, no_flags, 31);
+        3e200, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "positive_exp_negative_int",
-        -3e200, field_type::double_, no_flags, 31);
+        -3e200, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "positive_exp_positive_fractional",
-        3.14e200, field_type::double_, no_flags, 31);
+        3.14e200, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "positive_exp_negative_fractional",
-        -3.14e200, field_type::double_, no_flags, 31);
+        -3.14e200, column_type::double_, no_flags, 31);
     output.emplace_back("types_double", "field_signed", "negative_exp_positive_fractional",
-        3.14e-200, field_type::double_, no_flags, 31);
+        3.14e-200, column_type::double_, no_flags, 31);
 
     output.emplace_back("types_double", "field_unsigned", "zero",
-        0.0, field_type::double_, flags_unsigned, 31);
+        0.0, column_type::double_, flags_unsigned, 31);
     output.emplace_back("types_double", "field_unsigned", "fractional_positive",
-        4.2, field_type::double_, flags_unsigned, 31);
+        4.2, column_type::double_, flags_unsigned, 31);
 
     output.emplace_back("types_double", "field_width", "zero",
-        0.0, field_type::double_, no_flags, 10);
+        0.0, column_type::double_, no_flags, 10);
     output.emplace_back("types_double", "field_width", "fractional_positive",
-        4.2, field_type::double_, no_flags, 10);
+        4.2, column_type::double_, no_flags, 10);
     output.emplace_back("types_double", "field_width", "fractional_negative",
-        -4.2, field_type::double_, no_flags, 10);
+        -4.2, column_type::double_, no_flags, 10);
 
     output.emplace_back("types_double", "field_zerofill", "zero",
-        0.0, field_type::double_, flags_zerofill, 31);
+        0.0, column_type::double_, flags_zerofill, 31);
     output.emplace_back("types_double", "field_zerofill", "fractional_positive",
-        4.2, field_type::double_, flags_zerofill, 31);
+        4.2, column_type::double_, flags_zerofill, 31);
     output.emplace_back("types_double", "field_zerofill", "positive_exp_positive_fractional",
-        3.14e200, field_type::double_, flags_zerofill, 31);
+        3.14e200, column_type::double_, flags_zerofill, 31);
     output.emplace_back("types_double", "field_zerofill", "negative_exp_positive_fractional",
-        3.14e-200, field_type::double_, flags_zerofill, 31);
+        3.14e-200, column_type::double_, flags_zerofill, 31);
 }
 
 // Date cases
@@ -249,7 +249,7 @@ constexpr const char* invalid_date_cases [] = {
 
 void add_date_samples(std::vector<database_types_sample>& output)
 {
-    constexpr auto type = field_type::date;
+    constexpr auto type = column_type::date;
     constexpr const char* table = "types_date";
     constexpr const char* field = "field_date";
 
@@ -319,13 +319,13 @@ database_types_sample create_datetime_sample(
     int decimals,
     std::string id,
     field_view expected,
-    field_type type
+    column_type type
 )
 {
-    static std::map<field_type, const char*> table_map {
-        { field_type::datetime, "types_datetime" },
-        { field_type::timestamp, "types_timestamp" },
-        { field_type::time, "types_time" }
+    static std::map<column_type, const char*> table_map {
+        { column_type::datetime, "types_datetime" },
+        { column_type::timestamp, "types_timestamp" },
+        { column_type::time, "types_time" }
     };
     // Inconsistencies between Maria and MySQL in the unsigned flag
     // we don't really care here about signedness of timestamps
@@ -383,7 +383,7 @@ std::pair<std::string, boost::mysql::time> time_from_id(std::bitset<6> id, int d
 
 // shared between DATETIME and TIMESTAMP
 void add_common_datetime_samples(
-    field_type type,
+    column_type type,
     std::vector<database_types_sample>& output
 )
 {
@@ -410,16 +410,16 @@ void add_common_datetime_samples(
 
 void add_datetime_samples(std::vector<database_types_sample>& output)
 {
-    add_common_datetime_samples(field_type::datetime, output);
+    add_common_datetime_samples(column_type::datetime, output);
 
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
         // min and max
         output.push_back(create_datetime_sample(decimals, "min",
-                field_view(makedt(0, 1, 1)), field_type::datetime));
+                field_view(makedt(0, 1, 1)), column_type::datetime));
         output.push_back(create_datetime_sample(decimals, "max",
                 field_view(makedt(9999, 12, 31, 23, 59, 59,
-                    round_micros(999999, decimals))), field_type::datetime));
+                    round_micros(999999, decimals))), column_type::datetime));
 
         // invalid dates
         const char* lengths [] = {"date", "hms", decimals ? "hmsu" : nullptr };
@@ -433,7 +433,7 @@ void add_datetime_samples(std::vector<database_types_sample>& output)
                     decimals,
                     stringize(length, '_', invalid_date_case),
                     field_view(),
-                    field_type::datetime
+                    column_type::datetime
                 ));
             }
         }
@@ -442,14 +442,14 @@ void add_datetime_samples(std::vector<database_types_sample>& output)
 
 void add_timestamp_samples(std::vector<database_types_sample>& output)
 {
-    add_common_datetime_samples(field_type::timestamp, output);
+    add_common_datetime_samples(column_type::timestamp, output);
 
     // Only the full-zero TIMESTAMP is allowed - timestamps with
     // invalid date parts are converted to the zero TIMESTAMP
     for (int decimals = 0; decimals <= 6; ++decimals)
     {
         output.push_back(create_datetime_sample(decimals,
-            "zero", field_view(), field_type::timestamp));
+            "zero", field_view(), column_type::timestamp));
     }
 }
 
@@ -466,15 +466,15 @@ void add_time_samples(std::vector<database_types_sample>& output)
             if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
             auto t = time_from_id(int_id, decimals);
             output.push_back(create_datetime_sample(
-                decimals, std::move(t.first), field_view(t.second), field_type::time));
+                decimals, std::move(t.first), field_view(t.second), column_type::time));
         }
 
         // min and max
         auto max_value = decimals == 0 ? maket(838, 59, 59) : maket(838, 59, 58, round_micros(999999, decimals));
         output.push_back(create_datetime_sample(
-            decimals, "min", field_view(-max_value), field_type::time));
+            decimals, "min", field_view(-max_value), column_type::time));
         output.push_back(create_datetime_sample(
-            decimals, "max",  field_view(max_value), field_type::time));
+            decimals, "max",  field_view(max_value), column_type::time));
     }
 }
 
@@ -482,74 +482,74 @@ void add_time_samples(std::vector<database_types_sample>& output)
 void add_year_samples(std::vector<database_types_sample>& output)
 {
     output.emplace_back("types_year", "field_default", "regular",
-        std::uint64_t(2019), field_type::year, flags_zerofill);
+        std::uint64_t(2019), column_type::year, flags_zerofill);
     output.emplace_back("types_year", "field_default", "min",
-        std::uint64_t(1901), field_type::year, flags_zerofill);
+        std::uint64_t(1901), column_type::year, flags_zerofill);
     output.emplace_back("types_year", "field_default", "max",
-        std::uint64_t(2155), field_type::year, flags_zerofill);
+        std::uint64_t(2155), column_type::year, flags_zerofill);
     output.emplace_back("types_year", "field_default", "zero",
-        std::uint64_t(0), field_type::year, flags_zerofill);
+        std::uint64_t(0), column_type::year, flags_zerofill);
 }
 
 // String types
 void add_string_samples(std::vector<database_types_sample>& output)
 {
-    output.emplace_back("types_string", "field_char", "regular", "test_char", field_type::char_);
-    output.emplace_back("types_string", "field_char", "utf8", "\xc3\xb1", field_type::char_);
-    output.emplace_back("types_string", "field_char", "empty", "", field_type::char_);
+    output.emplace_back("types_string", "field_char", "regular", "test_char", column_type::char_);
+    output.emplace_back("types_string", "field_char", "utf8", "\xc3\xb1", column_type::char_);
+    output.emplace_back("types_string", "field_char", "empty", "", column_type::char_);
 
-    output.emplace_back("types_string", "field_varchar", "regular", "test_varchar", field_type::varchar);
-    output.emplace_back("types_string", "field_varchar", "utf8", "\xc3\x91", field_type::varchar);
-    output.emplace_back("types_string", "field_varchar", "empty", "", field_type::varchar);
+    output.emplace_back("types_string", "field_varchar", "regular", "test_varchar", column_type::varchar);
+    output.emplace_back("types_string", "field_varchar", "utf8", "\xc3\x91", column_type::varchar);
+    output.emplace_back("types_string", "field_varchar", "empty", "", column_type::varchar);
 
-    output.emplace_back("types_string", "field_tinytext", "regular", "test_tinytext", field_type::text);
-    output.emplace_back("types_string", "field_tinytext", "utf8", "\xc3\xa1", field_type::text);
-    output.emplace_back("types_string", "field_tinytext", "empty", "", field_type::text);
+    output.emplace_back("types_string", "field_tinytext", "regular", "test_tinytext", column_type::text);
+    output.emplace_back("types_string", "field_tinytext", "utf8", "\xc3\xa1", column_type::text);
+    output.emplace_back("types_string", "field_tinytext", "empty", "", column_type::text);
 
-    output.emplace_back("types_string", "field_text", "regular", "test_text", field_type::text);
-    output.emplace_back("types_string", "field_text", "utf8", "\xc3\xa9", field_type::text);
-    output.emplace_back("types_string", "field_text", "empty", "", field_type::text);
+    output.emplace_back("types_string", "field_text", "regular", "test_text", column_type::text);
+    output.emplace_back("types_string", "field_text", "utf8", "\xc3\xa9", column_type::text);
+    output.emplace_back("types_string", "field_text", "empty", "", column_type::text);
 
-    output.emplace_back("types_string", "field_mediumtext", "regular", "test_mediumtext", field_type::text);
-    output.emplace_back("types_string", "field_mediumtext", "utf8", "\xc3\xad", field_type::text);
-    output.emplace_back("types_string", "field_mediumtext", "empty", "", field_type::text);
+    output.emplace_back("types_string", "field_mediumtext", "regular", "test_mediumtext", column_type::text);
+    output.emplace_back("types_string", "field_mediumtext", "utf8", "\xc3\xad", column_type::text);
+    output.emplace_back("types_string", "field_mediumtext", "empty", "", column_type::text);
 
-    output.emplace_back("types_string", "field_longtext", "regular", "test_longtext", field_type::text);
-    output.emplace_back("types_string", "field_longtext", "utf8", "\xc3\xb3", field_type::text);
-    output.emplace_back("types_string", "field_longtext", "empty", "", field_type::text);
+    output.emplace_back("types_string", "field_longtext", "regular", "test_longtext", column_type::text);
+    output.emplace_back("types_string", "field_longtext", "utf8", "\xc3\xb3", column_type::text);
+    output.emplace_back("types_string", "field_longtext", "empty", "", column_type::text);
 
-    output.emplace_back("types_string", "field_enum", "regular", "red", field_type::enum_);
+    output.emplace_back("types_string", "field_enum", "regular", "red", column_type::enum_);
 
-    output.emplace_back("types_string", "field_set", "regular", "red,green", field_type::set);
-    output.emplace_back("types_string", "field_set", "empty", "", field_type::set);
+    output.emplace_back("types_string", "field_set", "regular", "red,green", column_type::set);
+    output.emplace_back("types_string", "field_set", "empty", "", column_type::set);
 }
 
 void add_binary_samples(std::vector<database_types_sample>& output)
 {
     // BINARY values get padded with zeros to the declared length
-    output.emplace_back("types_binary", "field_binary", "regular", makesv("\0_binary\0\0"), field_type::binary);
-    output.emplace_back("types_binary", "field_binary", "nonascii", makesv("\0\xff" "\0\0\0\0\0\0\0\0"), field_type::binary);
-    output.emplace_back("types_binary", "field_binary", "empty", makesv("\0\0\0\0\0\0\0\0\0\0"), field_type::binary);
+    output.emplace_back("types_binary", "field_binary", "regular", makesv("\0_binary\0\0"), column_type::binary);
+    output.emplace_back("types_binary", "field_binary", "nonascii", makesv("\0\xff" "\0\0\0\0\0\0\0\0"), column_type::binary);
+    output.emplace_back("types_binary", "field_binary", "empty", makesv("\0\0\0\0\0\0\0\0\0\0"), column_type::binary);
 
-    output.emplace_back("types_binary", "field_varbinary", "regular", makesv("\0_varbinary"), field_type::varbinary);
-    output.emplace_back("types_binary", "field_varbinary", "nonascii", makesv("\1\xfe"), field_type::varbinary);
-    output.emplace_back("types_binary", "field_varbinary", "empty", "", field_type::varbinary);
+    output.emplace_back("types_binary", "field_varbinary", "regular", makesv("\0_varbinary"), column_type::varbinary);
+    output.emplace_back("types_binary", "field_varbinary", "nonascii", makesv("\1\xfe"), column_type::varbinary);
+    output.emplace_back("types_binary", "field_varbinary", "empty", "", column_type::varbinary);
 
-    output.emplace_back("types_binary", "field_tinyblob", "regular", makesv("\0_tinyblob"), field_type::blob);
-    output.emplace_back("types_binary", "field_tinyblob", "nonascii", makesv("\2\xfd"), field_type::blob);
-    output.emplace_back("types_binary", "field_tinyblob", "empty", "", field_type::blob);
+    output.emplace_back("types_binary", "field_tinyblob", "regular", makesv("\0_tinyblob"), column_type::blob);
+    output.emplace_back("types_binary", "field_tinyblob", "nonascii", makesv("\2\xfd"), column_type::blob);
+    output.emplace_back("types_binary", "field_tinyblob", "empty", "", column_type::blob);
 
-    output.emplace_back("types_binary", "field_blob", "regular", makesv("\0_blob"), field_type::blob);
-    output.emplace_back("types_binary", "field_blob", "nonascii", makesv("\3\xfc"), field_type::blob);
-    output.emplace_back("types_binary", "field_blob", "empty", "", field_type::blob);
+    output.emplace_back("types_binary", "field_blob", "regular", makesv("\0_blob"), column_type::blob);
+    output.emplace_back("types_binary", "field_blob", "nonascii", makesv("\3\xfc"), column_type::blob);
+    output.emplace_back("types_binary", "field_blob", "empty", "", column_type::blob);
 
-    output.emplace_back("types_binary", "field_mediumblob", "regular", makesv("\0_mediumblob"), field_type::blob);
-    output.emplace_back("types_binary", "field_mediumblob", "nonascii", makesv("\4\xfb"), field_type::blob);
-    output.emplace_back("types_binary", "field_mediumblob", "empty", "", field_type::blob);
+    output.emplace_back("types_binary", "field_mediumblob", "regular", makesv("\0_mediumblob"), column_type::blob);
+    output.emplace_back("types_binary", "field_mediumblob", "nonascii", makesv("\4\xfb"), column_type::blob);
+    output.emplace_back("types_binary", "field_mediumblob", "empty", "", column_type::blob);
 
-    output.emplace_back("types_binary", "field_longblob", "regular", makesv("\0_longblob"), field_type::blob);
-    output.emplace_back("types_binary", "field_longblob", "nonascii", makesv("\5\xfa"), field_type::blob);
-    output.emplace_back("types_binary", "field_longblob", "empty", "", field_type::blob);
+    output.emplace_back("types_binary", "field_longblob", "regular", makesv("\0_longblob"), column_type::blob);
+    output.emplace_back("types_binary", "field_longblob", "nonascii", makesv("\5\xfa"), column_type::blob);
+    output.emplace_back("types_binary", "field_longblob", "empty", "", column_type::blob);
 }
 
 // Tests for not implemented types
@@ -565,24 +565,24 @@ std::uint8_t geometry_value [] = {
 void add_not_implemented_samples(std::vector<database_types_sample>& output)
 {
     output.emplace_back("types_not_implemented", "field_decimal", "regular",
-        "300", field_type::decimal);
+        "300", column_type::decimal);
     output.emplace_back("types_not_implemented", "field_geometry", "regular",
-        makesv(geometry_value), field_type::geometry);
+        makesv(geometry_value), column_type::geometry);
 }
 
 // Tests for certain metadata flags and NULL values
 void add_flags_samples(std::vector<database_types_sample>& output)
 {
     output.emplace_back("types_flags", "field_timestamp", "default",
-        nullptr, field_type::timestamp, flagsvec{&metadata::is_set_to_now_on_update}, 0, flagsvec{&metadata::is_unsigned});
+        nullptr, column_type::timestamp, flagsvec{&metadata::is_set_to_now_on_update}, 0, flagsvec{&metadata::is_unsigned});
     output.emplace_back("types_flags", "field_primary_key", "default",
-        std::int64_t(50), field_type::int_, flagsvec{&metadata::is_primary_key, &metadata::is_not_null, &metadata::is_auto_increment});
+        std::int64_t(50), column_type::int_, flagsvec{&metadata::is_primary_key, &metadata::is_not_null, &metadata::is_auto_increment});
     output.emplace_back("types_flags", "field_not_null", "default",
-        "char", field_type::char_, flagsvec{&metadata::is_not_null});
+        "char", column_type::char_, flagsvec{&metadata::is_not_null});
     output.emplace_back("types_flags", "field_unique", "default",
-        std::int64_t(21), field_type::int_, flagsvec{&metadata::is_unique_key});
+        std::int64_t(21), column_type::int_, flagsvec{&metadata::is_unique_key});
     output.emplace_back("types_flags", "field_indexed", "default",
-        std::int64_t(42), field_type::int_, flagsvec{&metadata::is_multiple_key});
+        std::int64_t(42), column_type::int_, flagsvec{&metadata::is_multiple_key});
 }
 // clang-format on
 
@@ -737,7 +737,7 @@ BOOST_FIXTURE_TEST_CASE(aliased_table_metadata, tcp_network_fixture)
     boost::mysql::tcp_resultset result;
     conn.query("SELECT field_varchar AS field_alias FROM empty_table table_alias", result);
     std::vector<meta_validator> validators{
-        {"table_alias", "empty_table", "field_alias", "field_varchar", field_type::varchar}
+        {"table_alias", "empty_table", "field_alias", "field_varchar", column_type::varchar}
     };
     validate_meta(result.meta(), validators);
 }

@@ -11,7 +11,7 @@
 
 using namespace boost::mysql::detail;
 using boost::mysql::collation;
-using boost::mysql::field_type;
+using boost::mysql::column_type;
 using boost::mysql::metadata;
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
     BOOST_TEST(meta.column_name() == "id");
     BOOST_TEST(meta.original_column_name() == "id");
     BOOST_TEST(meta.column_length() == 11u);
-    BOOST_TEST(meta.type() == field_type::int_);
+    BOOST_TEST(meta.type() == column_type::int_);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::long_);
     BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(meta.is_not_null());
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
     BOOST_TEST(meta.original_column_name() == "field_varchar");
     BOOST_TEST(meta.column_length() == 765u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
-    BOOST_TEST(meta.type() == field_type::varchar);
+    BOOST_TEST(meta.type() == column_type::varchar);
     BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(!meta.is_not_null());
     BOOST_TEST(!meta.is_primary_key());
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(float_)
     BOOST_TEST(meta.original_column_name() == "field_float");
     BOOST_TEST(meta.column_length() == 12u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::float_);
-    BOOST_TEST(meta.type() == field_type::float_);
+    BOOST_TEST(meta.type() == column_type::float_);
     BOOST_TEST(meta.decimals() == 31u);
     BOOST_TEST(!meta.is_not_null());
     BOOST_TEST(!meta.is_primary_key());
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
     BOOST_TEST(meta.original_column_name() == "");
     BOOST_TEST(meta.column_length() == 765u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
-    BOOST_TEST(meta.type() == field_type::varchar);
+    BOOST_TEST(meta.type() == column_type::varchar);
     BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(!meta.is_not_null());
     BOOST_TEST(!meta.is_primary_key());

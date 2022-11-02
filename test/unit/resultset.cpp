@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/field_type.hpp>
 #include <boost/mysql/resultset.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -19,7 +19,7 @@
 
 using namespace boost::mysql::test;
 using resultset_t = boost::mysql::resultset<boost::mysql::test::test_stream>;
-using boost::mysql::field_type;
+using boost::mysql::column_type;
 using boost::mysql::detail::column_definition_packet;
 using boost::mysql::detail::ok_packet;
 using boost::mysql::detail::protocol_field_type;
@@ -59,8 +59,8 @@ BOOST_AUTO_TEST_CASE(member_fns)
 
     BOOST_TEST(!r.complete());
     BOOST_TEST(r.meta().size() == 2u);
-    BOOST_TEST(r.meta()[0].type() == field_type::varchar);
-    BOOST_TEST(r.meta()[1].type() == field_type::bit);
+    BOOST_TEST(r.meta()[0].type() == column_type::varchar);
+    BOOST_TEST(r.meta()[1].type() == column_type::bit);
 
     // Complete the resultset
     r.complete(ok_packet{});

@@ -76,7 +76,7 @@ void main_impl(int argc, char** argv)
     ASSERT(company_name.original_table() == "company");   // the original table name
     ASSERT(company_name.column_name() == "company_name");  // the name of the column in the query
     ASSERT(company_name.original_column_name() == "name");  // the name of the physical column in the table
-    ASSERT(company_name.type() == boost::mysql::field_type::varchar);  // we created the column as a VARCHAR
+    ASSERT(company_name.type() == boost::mysql::column_type::varchar);  // we created the column as a VARCHAR
     ASSERT(!company_name.is_primary_key());     // column is not a primary key
     ASSERT(!company_name.is_auto_increment());  // column is not AUTO_INCREMENT
     ASSERT(company_name.is_not_null());         // column may not be NULL
@@ -87,7 +87,7 @@ void main_impl(int argc, char** argv)
     ASSERT(employee_id.original_table() == "employee");  // the original table name
     ASSERT(employee_id.column_name() == "employee_id");   // the name of the column in the query
     ASSERT(employee_id.original_column_name() == "id");  // the name of the physical column in the table
-    ASSERT(employee_id.type() == boost::mysql::field_type::int_);  // we created the column as INT
+    ASSERT(employee_id.type() == boost::mysql::column_type::int_);  // we created the column as INT
     ASSERT(employee_id.is_primary_key()); // column is a primary key
     ASSERT(employee_id.is_auto_increment()); // we declared the column as AUTO_INCREMENT
     ASSERT(employee_id.is_not_null()); // column cannot be NULL

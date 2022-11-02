@@ -60,7 +60,7 @@
         <simplelist type="vert" columns="1">
           <member><link linkend="mysql.ref.boost__mysql__collation">collation</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ssl_mode">ssl_mode</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__field_type">field_type</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__column_type">column_type</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field_kind">field_kind</link></member>
           <member><link linkend="mysql.ref.boost__mysql__errc">errc</link></member>
         </simplelist>

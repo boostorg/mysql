@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_METADATA_HPP
 #define BOOST_MYSQL_METADATA_HPP
 
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/field_type.hpp>
 
 #include <boost/utility/string_view_fwd.hpp>
 
@@ -37,7 +37,6 @@ class metadata
     std::uint16_t flags_;               // Flags as defined in Column Definition Flags
     std::uint8_t decimals_;  // max shown decimal digits. 0x00 for int/static strings; 0x1f for
                              // dynamic strings, double, float
-    mutable field_type field_type_{field_type::_not_computed};
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
@@ -136,8 +135,8 @@ public:
     detail::protocol_field_type protocol_type() const noexcept { return type_; }
 #endif
 
-    /// Returns the type of the column (see \ref field_type for more info).
-    field_type type() const noexcept;
+    /// Returns the type of the column (see \ref column_type for more info).
+    column_type type() const noexcept;
 
     /// Returns the number of decimals of the column.
     unsigned decimals() const noexcept { return decimals_; }

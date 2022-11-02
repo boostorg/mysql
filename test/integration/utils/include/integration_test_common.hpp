@@ -107,8 +107,8 @@ struct network_fixture : network_fixture_base
     {
         validate_meta(
             fields,
-            {meta_validator(table, "id", field_type::int_),
-             meta_validator(table, "field_varchar", field_type::varchar)}
+            {meta_validator(table, "id", column_type::int_),
+             meta_validator(table, "field_varchar", column_type::varchar)}
         );
     }
 

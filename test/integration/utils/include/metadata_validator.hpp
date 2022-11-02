@@ -24,7 +24,7 @@ public:
     meta_validator(
         std::string table,
         std::string field,
-        field_type type,
+        column_type type,
         std::vector<flag_getter> flags = {},
         unsigned decimals = 0,
         std::vector<flag_getter> ignore_flags = {}
@@ -44,7 +44,7 @@ public:
         std::string org_table,
         std::string field,
         std::string org_field,
-        field_type type,
+        column_type type,
         std::vector<flag_getter> flags = {},
         unsigned decimals = 0,
         std::vector<flag_getter> ignore_flags = {}
@@ -60,7 +60,7 @@ public:
     {
     }
     void validate(const metadata& value) const;
-    field_type type() const noexcept { return type_; }
+    column_type type() const noexcept { return type_; }
 
 private:
     std::string table_;
@@ -68,7 +68,7 @@ private:
     std::string field_;
     std::string org_field_;
     unsigned decimals_;
-    field_type type_;
+    column_type type_;
     std::vector<flag_getter> flags_;
     std::vector<flag_getter> ignore_flags_;
 };
