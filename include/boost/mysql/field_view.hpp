@@ -51,6 +51,9 @@ namespace mysql {
  *    `field_view` has value semnatics and will always be valid.
  *  - If it was created from a string type, the `field_view` acts as a `string_view` type, and will
  *    be valid as long as the original string is.
+ * \n
+ * Calling any member function on a `field_view` that has been invalidated results in undefined
+ * behavior.
  */
 class field_view
 {

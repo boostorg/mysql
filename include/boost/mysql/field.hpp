@@ -580,7 +580,7 @@ public:
     /// \copybrief operator=(std::nullptr_t)
     void emplace_null() noexcept { repr_.data.emplace<detail::field_impl::null_t>(); }
 
-    /// \copybrief operator=(signed long long)
+    /// \copybrief operator=(long long)
     void emplace_int64(std::int64_t v) noexcept { repr_.data.emplace<std::int64_t>(v); }
 
     /// \copybrief operator=(unsigned long long)

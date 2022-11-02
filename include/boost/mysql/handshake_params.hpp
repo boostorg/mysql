@@ -52,7 +52,7 @@ public:
      * \param db Database name to use, or empty string for no database (this is the default).
      * \param connection_col The \ref collation to use for the connection.
      * Impacts how text queries and prepared statements are interpreted. Defaults to
-     * \ref collation::utf8_general_ci.
+     * `collation::utf8_general_ci`.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection does not support SSL.
      * \param buffer_config Configuration about internal buffers.

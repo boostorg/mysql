@@ -96,7 +96,7 @@ public:
     const metadata& operator[](std::size_t i) const noexcept { return data_[i]; }
 
     /**
-     * \brief Returns true of there are no elements in the collection (i.e. `this->size() == 0`)
+     * \brief Returns true if there are no elements in the collection (i.e. `this->size() == 0`)
      */
     bool empty() const noexcept { return size_ == 0; }
 
