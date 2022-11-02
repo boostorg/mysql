@@ -42,8 +42,9 @@ concept execute_request = std::is_same_v<T, com_query_packet> || is_com_stmt_exe
 template <class T>
 concept execute_request_maker = requires(const T& t)
 {
-    typename T::storage_type {}; // Used by prepared statements (tuple version) to store field_view's
-    requires std::is_copy_constructible_v<T>;
+    typename T::storage_type; // Used by prepared statements (tuple version) to store field_view's
+    requires std::default_initializable<typename T::storage_type>;
+    requires std::copy_constructible<T>;
     { t.make_storage() } -> std::same_as<typename T::storage_type>;
     { t.make_request(std::declval<const typename T::storage_type&>()) } -> execute_request;
 };
