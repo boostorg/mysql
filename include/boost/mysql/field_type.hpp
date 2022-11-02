@@ -15,8 +15,11 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents the type of a MySQL field.
- * \details Unless otherwise noted, the names in this enumeration
+ * \brief Represents the database type of a MySQL column.
+ * \details This represents a database type, as opposed to [reflink field_kind], which represents a
+ * C++ type.
+ *
+ * Unless otherwise noted, the names in this enumeration
  * directly correspond to the names of the types you would use in
  * a `CREATE TABLE` statement to create a field of this type
  * (e.g. `__VARCHAR__` corresponds to `field_type::varchar`).

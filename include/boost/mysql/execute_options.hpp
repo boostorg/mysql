@@ -17,17 +17,8 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents the parameters required to execute a [reflink statement_base].
- * \details In essence, this class contains an iterator range \\[first, last), pointing
- * to a sequence of [reflink field_view]s that will be used as parameters to execute a
- * [reflink statement_base]. FieldViewFwdIterator must meet the [reflink FieldViewFwdIterator]
- * type requirements.
- *
- * In the future, this class may define extra members providing finer control
- * over prepared statement execution.
- *
- * The [refmem execute_params make_execute_params] helper functions make it easier to create
- * instances of this class.
+ * \brief Additional [reflink statement] execution options.
+ * \details Placeholder for now.
  */
 class execute_options
 {

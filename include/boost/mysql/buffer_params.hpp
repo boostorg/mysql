@@ -15,7 +15,7 @@ namespace mysql {
 
 /**
  * \brief Buffer configuration parameters for a connection.
- * \details See [link mysql.connparams the section on connection parameters] for more info.
+ * \details See [link mysql.connparams the section on handshake parameters] for more info.
  */
 class buffer_params
 {

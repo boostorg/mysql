@@ -13,20 +13,46 @@
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief Represents the possible C++ types a [reflink field] or [reflink field_view] may have.
+ */
 enum class field_kind
 {
     // Order here is important
+
+    /// Any of the below when the value is NULL
     null = 0,
+
+    /// The field contains a `std::int64_t`.
     int64,
+
+    /// The field contains a `std::uint64_t`.
     uint64,
+
+    /// The field contains a string (`std::string` for `field` and `boost::string_view` for
+    /// `field_view`).
     string,
+
+    /// The field contains a `float`.
     float_,
+
+    /// The field contains a `double`.
     double_,
+
+    /// The field contains a [reflink date].
     date,
+
+    /// The field contains a [reflink datetime].
     datetime,
+
+    /// The field contains a [reflink time].
     time
 };
 
+/**
+ * \relates field_kind
+ * \brief Streams a field_kind.
+ */
 inline std::ostream& operator<<(std::ostream& os, field_kind v);
 
 }  // namespace mysql
