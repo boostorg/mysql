@@ -27,24 +27,27 @@ namespace mysql {
 /**
  * \brief Non-owning variant-like class that can represent of any of the allowed database types.
  *        See [link mysql.fields this section] for more info.
- * \details For a thorough explanation on how to use fields, see [link mysql.fields this section].
+ * \details
+ * For a thorough explanation on how to use fields, see [link mysql.fields this section].
  *
- * This is a variant-like class, similar to [reflink field], but semi-owning and read-only. Values
+ * This is a variant-like class, similar to \ref field, but semi-owning and read-only. Values
  * of this type are usually created by the library, not directly by the user. It's cheap to
  * construct and copy, and it's the main library interface when reading values from MySQL.
  *
+ *
  * Like a variant, at any point, a `field_view` always points to a value of
- * certain type. You can query the type using [refmem field_view kind] and the `is_xxx` functions
- * like [refmem field_view is_int64]. Use `as_xxx` and `get_xxx` for checked and unchecked value
- * access, respectively. As opposed to [reflink field], these functions return values instead of
+ * certain type. You can query the type using \ref field_view::kind and the `is_xxx` functions
+ * like \ref field_view::is_int64. Use `as_xxx` and `get_xxx` for checked and unchecked value
+ * access, respectively. As opposed to \ref field, these functions return values instead of
  * references.
  *
  * Depending on how it was constructed, `field_view` can have value or reference semantics:
- *  - If it was created by the library, the `field_view` will have an associated [reflink row] or
- *    [reflink rows] object holding memory to which the `field_view` points. It will be valid as
+ *  - If it was created by the library, the `field_view` will have an associated \ref row or
+ *    \ref rows object holding memory to which the `field_view` points. It will be valid as
  *    long as the memory allocated by that object is valid.
- *  - If it was created from a [reflink field], the `field_view` acts as a reference to that `field`
- *    object, and will be valid as long as the `field` is.
+ *  - If it was created from a \ref field (by calling \ref field operator field_view), the
+ *   `field_view` acts as a reference to that `field` object, and will be valid as long as the
+ *   `field` is.
  *  - If it was created from a scalar (null, integral, floating point or date/time), the
  *    `field_view` has value semnatics and will always be valid.
  *  - If it was created from a string type, the `field_view` acts as a `string_view` type, and will
@@ -66,7 +69,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}
 
-    /// \brief Constructs a `field_view` holding `int64` (`this->kind() == field_kind::int64`).
+    /// \brief Constructs a `field_view` holding an `int64` (`this->kind() == field_kind::int64`).
     /// \details Results in a `field_view` with value semantics (always valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(signed char v) noexcept;
 
@@ -82,7 +85,7 @@ public:
     /// \copydoc field_view(signed char)
     BOOST_CXX14_CONSTEXPR explicit inline field_view(long long v) noexcept;
 
-    /// \brief Constructs a `field_view` holding `unt64` (`this->kind() == field_kind::uint64`).
+    /// \brief Constructs a `field_view` holding a `uint64` (`this->kind() == field_kind::uint64`).
     /// \details Results in a `field_view` with value semantics (always valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned char v) noexcept;
 
@@ -169,35 +172,35 @@ public:
     /// Returns whether this `field_view` points to a time value.
     BOOST_CXX14_CONSTEXPR bool is_time() const noexcept { return kind() == field_kind::time; }
 
-    /// \brief Retrieves the underlying value as an `int64` (checked access).
+    /// \brief Retrieves the underlying value as an `int64` or throws an exception.
     /// \details If `!this->is_int64()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline std::int64_t as_int64() const;
 
-    /// \brief Retrieves the underlying value as an `uint64` (checked access).
+    /// \brief Retrieves the underlying value as an `uint64` or throws an exception.
     /// \details If `!this->is_uint64()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline std::uint64_t as_uint64() const;
 
-    /// \brief Retrieves the underlying value as a string (checked access).
+    /// \brief Retrieves the underlying value as a string or throws an exception.
     /// \details If `!this->is_string()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline boost::string_view as_string() const;
 
-    /// \brief Retrieves the underlying value as a `float` (checked access).
+    /// \brief Retrieves the underlying value as a `float` or throws an exception.
     /// \details If `!this->is_float()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline float as_float() const;
 
-    /// \brief Retrieves the underlying value as a `double` (checked access).
+    /// \brief Retrieves the underlying value as a `double` or throws an exception.
     /// \details If `!this->is_double()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline double as_double() const;
 
-    /// \brief Retrieves the underlying value as a `date` (checked access).
+    /// \brief Retrieves the underlying value as a `date` or throws an exception.
     /// \details If `!this->is_date()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline date as_date() const;
 
-    /// \brief Retrieves the underlying value as a `datetime` (checked access).
+    /// \brief Retrieves the underlying value as a `datetime` or throws an exception.
     /// \details If `!this->is_datetime()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline datetime as_datetime() const;
 
-    /// \brief Retrieves the underlying value as a `time` (checked access).
+    /// \brief Retrieves the underlying value as a `time` or throws an exception.
     /// \details If `!this->is_time()`, throws [reflink bad_field_access].
     BOOST_CXX14_CONSTEXPR inline time as_time() const;
 
@@ -234,7 +237,7 @@ public:
     BOOST_CXX14_CONSTEXPR inline time get_time() const noexcept;
 
     /// \brief Tests for equality.
-    /// \details If one of the `field_view`s is a `uint64` and the other a
+    /// \details If one of the operands is a `uint64` and the other a
     /// `int64`, and the values are equal, returns `true`. Otherwise, if the types are
     /// different, returns always `false` (`float` and `double` values are considered to be
     /// different between them). `NULL` values are equal to other `NULL` values.
