@@ -16,6 +16,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/use_views.hpp>
 
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
@@ -41,6 +42,7 @@ using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::use_views;
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
@@ -108,19 +110,19 @@ public:
     network_result<row_view> read_one() override
     {
         return impl(this->obj(), [&](error_info& info) {
-            return this->obj().async_read_one(info, boost::asio::use_awaitable);
+            return this->obj().async_read_one(use_views, info, boost::asio::use_awaitable);
         });
     }
     network_result<rows_view> read_some() override
     {
         return impl(this->obj(), [&](error_info& info) {
-            return this->obj().async_read_some(info, boost::asio::use_awaitable);
+            return this->obj().async_read_some(use_views, info, boost::asio::use_awaitable);
         });
     }
     network_result<rows_view> read_all() override
     {
         return impl(this->obj(), [&](error_info& info) {
-            return this->obj().async_read_all(info, boost::asio::use_awaitable);
+            return this->obj().async_read_all(use_views, info, boost::asio::use_awaitable);
         });
     }
 };

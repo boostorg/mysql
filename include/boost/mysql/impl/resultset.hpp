@@ -17,14 +17,18 @@
 
 // Read one row
 template <class Stream>
-boost::mysql::row_view boost::mysql::resultset<Stream>::read_one(error_code& err, error_info& info)
+boost::mysql::row_view boost::mysql::resultset<Stream>::read_one(
+    use_views_t,
+    error_code& err,
+    error_info& info
+)
 {
     detail::clear_errors(err, info);
     return detail::read_one_row(get_channel(), *this, err, info);
 }
 
 template <class Stream>
-boost::mysql::row_view boost::mysql::resultset<Stream>::read_one()
+boost::mysql::row_view boost::mysql::resultset<Stream>::read_one(use_views_t)
 {
     detail::error_block blk;
     row_view res = detail::read_one_row(get_channel(), *this, blk.err, blk.info);
@@ -39,7 +43,11 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::row_view)
 )
-boost::mysql::resultset<Stream>::async_read_one(error_info& output_info, CompletionToken&& token)
+boost::mysql::resultset<Stream>::async_read_one(
+    use_views_t,
+    error_info& output_info,
+    CompletionToken&& token
+)
 {
     return detail::async_read_one_row(
         get_channel(),
@@ -86,6 +94,7 @@ boost::mysql::resultset<Stream>::async_read_one(
 // Read some rows
 template <class Stream>
 boost::mysql::rows_view boost::mysql::resultset<Stream>::read_some(
+    use_views_t,
     error_code& err,
     error_info& info
 )
@@ -95,7 +104,7 @@ boost::mysql::rows_view boost::mysql::resultset<Stream>::read_some(
 }
 
 template <class Stream>
-boost::mysql::rows_view boost::mysql::resultset<Stream>::read_some()
+boost::mysql::rows_view boost::mysql::resultset<Stream>::read_some(use_views_t)
 {
     detail::error_block blk;
     rows_view res = detail::read_some_rows(get_channel(), *this, blk.err, blk.info);
@@ -111,7 +120,11 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::rows_view)
 )
-boost::mysql::resultset<Stream>::async_read_some(error_info& output_info, CompletionToken&& token)
+boost::mysql::resultset<Stream>::async_read_some(
+    use_views_t,
+    error_info& output_info,
+    CompletionToken&& token
+)
 {
     return detail::async_read_some_rows(
         get_channel(),
@@ -156,14 +169,18 @@ boost::mysql::resultset<Stream>::async_read_some(
 
 // Read all rows
 template <class Stream>
-boost::mysql::rows_view boost::mysql::resultset<Stream>::read_all(error_code& err, error_info& info)
+boost::mysql::rows_view boost::mysql::resultset<Stream>::read_all(
+    use_views_t,
+    error_code& err,
+    error_info& info
+)
 {
     detail::clear_errors(err, info);
     return detail::read_all_rows(get_channel(), *this, err, info);
 }
 
 template <class Stream>
-boost::mysql::rows_view boost::mysql::resultset<Stream>::read_all()
+boost::mysql::rows_view boost::mysql::resultset<Stream>::read_all(use_views_t)
 {
     detail::error_block blk;
     rows_view res = detail::read_all_rows(get_channel(), *this, blk.err, blk.info);
@@ -179,7 +196,11 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::rows_view)
 )
-boost::mysql::resultset<Stream>::async_read_all(error_info& output_info, CompletionToken&& token)
+boost::mysql::resultset<Stream>::async_read_all(
+    use_views_t,
+    error_info& output_info,
+    CompletionToken&& token
+)
 {
     return detail::async_read_all_rows(
         get_channel(),

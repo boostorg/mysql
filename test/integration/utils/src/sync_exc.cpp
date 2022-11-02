@@ -15,6 +15,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/use_views.hpp>
 
 #include <memory>
 
@@ -35,6 +36,7 @@ using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::use_views;
 
 namespace {
 
@@ -63,15 +65,15 @@ class sync_exc_resultset : public er_resultset_base<Stream>
 public:
     network_result<row_view> read_one() override
     {
-        return impl([&] { return this->obj().read_one(); });
+        return impl([&] { return this->obj().read_one(use_views); });
     }
     network_result<rows_view> read_some() override
     {
-        return impl([&] { return this->obj().read_some(); });
+        return impl([&] { return this->obj().read_some(use_views); });
     }
     network_result<rows_view> read_all() override
     {
-        return impl([&] { return this->obj().read_all(); });
+        return impl([&] { return this->obj().read_all(use_views); });
     }
 };
 

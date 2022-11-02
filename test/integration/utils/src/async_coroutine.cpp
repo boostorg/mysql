@@ -38,6 +38,7 @@ using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::use_views;
 
 namespace {
 
@@ -69,19 +70,19 @@ public:
     network_result<row_view> read_one() override
     {
         return impl(this->obj(), [&](boost::asio::yield_context yield, error_info& info) {
-            return this->obj().async_read_one(info, yield);
+            return this->obj().async_read_one(use_views, info, yield);
         });
     }
     network_result<rows_view> read_some() override
     {
         return impl(this->obj(), [&](boost::asio::yield_context yield, error_info& info) {
-            return this->obj().async_read_some(info, yield);
+            return this->obj().async_read_some(use_views, info, yield);
         });
     }
     network_result<rows_view> read_all() override
     {
         return impl(this->obj(), [&](boost::asio::yield_context yield, error_info& info) {
-            return this->obj().async_read_all(info, yield);
+            return this->obj().async_read_all(use_views, info, yield);
         });
     }
 };

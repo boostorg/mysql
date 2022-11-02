@@ -104,9 +104,9 @@ void main_impl(int argc, char** argv)
      * MySQL fields. Indexing a rows object returns a row_view, which represents
      * an individual row.
      */
-    boost::mysql::rows employees;
-    result.read_all(employees);
-    for (boost::mysql::row_view employee : employees)
+    boost::mysql::rows all_rows;
+    result.read_all(all_rows);
+    for (boost::mysql::row_view employee : all_rows)
     {
         print_employee(employee);
     }
@@ -121,9 +121,9 @@ void main_impl(int argc, char** argv)
 
     // Check we have updated our poor intern salary
     conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'", result);
-    auto rows = result.read_all();
-    ASSERT(rows.size() == 1);
-    double salary = rows[0][0].as_double();
+    result.read_all(all_rows);
+    ASSERT(all_rows.size() == 1);
+    double salary = all_rows[0][0].as_double();
     ASSERT(salary == 10000);
 
     // Close the connection. This notifies the MySQL we want to log out

@@ -8,6 +8,7 @@
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/tcp.hpp>
+#include <boost/mysql/use_views.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/test/tools/context.hpp>
@@ -28,6 +29,7 @@ using boost::mysql::datetime;
 using boost::mysql::field_view;
 using boost::mysql::make_field_views;
 using boost::mysql::metadata;
+using boost::mysql::use_views;
 using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
@@ -629,7 +631,7 @@ BOOST_FIXTURE_TEST_CASE(query, tcp_network_fixture)
             // Execute it
             boost::mysql::tcp_resultset result;
             conn.query(query, result);
-            auto rows = result.read_all();
+            auto rows = result.read_all(use_views);
 
             // Validate the received metadata
             validate_meta(result.meta(), {sample.mvalid});
@@ -664,7 +666,7 @@ BOOST_FIXTURE_TEST_CASE(statement, tcp_network_fixture)
             // Execute it with the provided parameters
             boost::mysql::tcp_resultset result;
             stmt.execute(std::make_tuple(sample.row_id), result);
-            auto rows = result.read_all();
+            auto rows = result.read_all(use_views);
 
             // Validate the received metadata
             validate_meta(result.meta(), {sample.mvalid});
@@ -720,7 +722,7 @@ BOOST_FIXTURE_TEST_CASE(prepared_statement_execute_param, tcp_network_fixture)
             // Execute it with the provided parameters
             boost::mysql::tcp_resultset result;
             stmt.execute(std::make_tuple(sample.row_id, sample.expected_value), result);
-            auto rows = result.read_all();
+            auto rows = result.read_all(use_views);
 
             // Validate the returned value
             BOOST_TEST_REQUIRE(rows.size() == 1u);

@@ -36,6 +36,7 @@ using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::use_views;
 
 namespace {
 
@@ -75,15 +76,15 @@ class default_completion_tokens_resultset : public er_resultset_base<Stream>
 public:
     network_result<row_view> read_one() override
     {
-        return impl([&] { return this->obj().async_read_one(); });
+        return impl([&] { return this->obj().async_read_one(use_views); });
     }
     network_result<rows_view> read_some() override
     {
-        return impl([&] { return this->obj().async_read_some(); });
+        return impl([&] { return this->obj().async_read_some(use_views); });
     }
     network_result<rows_view> read_all() override
     {
-        return impl([&] { return this->obj().async_read_all(); });
+        return impl([&] { return this->obj().async_read_all(use_views); });
     }
 };
 
