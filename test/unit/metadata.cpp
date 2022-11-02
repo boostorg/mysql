@@ -35,8 +35,8 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
     BOOST_TEST(meta.original_table() == "test_table");
-    BOOST_TEST(meta.field_name() == "id");
-    BOOST_TEST(meta.original_field_name() == "id");
+    BOOST_TEST(meta.column_name() == "id");
+    BOOST_TEST(meta.original_column_name() == "id");
     BOOST_TEST(meta.column_length() == 11u);
     BOOST_TEST(meta.type() == field_type::int_);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::long_);
@@ -71,8 +71,8 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "child");
     BOOST_TEST(meta.original_table() == "child_table");
-    BOOST_TEST(meta.field_name() == "field_alias");
-    BOOST_TEST(meta.original_field_name() == "field_varchar");
+    BOOST_TEST(meta.column_name() == "field_alias");
+    BOOST_TEST(meta.original_column_name() == "field_varchar");
     BOOST_TEST(meta.column_length() == 765u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
     BOOST_TEST(meta.type() == field_type::varchar);
@@ -107,8 +107,8 @@ BOOST_AUTO_TEST_CASE(float_)
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
     BOOST_TEST(meta.original_table() == "test_table");
-    BOOST_TEST(meta.field_name() == "field_float");
-    BOOST_TEST(meta.original_field_name() == "field_float");
+    BOOST_TEST(meta.column_name() == "field_float");
+    BOOST_TEST(meta.original_column_name() == "field_float");
     BOOST_TEST(meta.column_length() == 12u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::float_);
     BOOST_TEST(meta.type() == field_type::float_);
@@ -143,8 +143,8 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
     BOOST_TEST(meta.database() == "");
     BOOST_TEST(meta.table() == "");
     BOOST_TEST(meta.original_table() == "");
-    BOOST_TEST(meta.field_name() == "");
-    BOOST_TEST(meta.original_field_name() == "");
+    BOOST_TEST(meta.column_name() == "");
+    BOOST_TEST(meta.original_column_name() == "");
     BOOST_TEST(meta.column_length() == 765u);
     BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
     BOOST_TEST(meta.type() == field_type::varchar);

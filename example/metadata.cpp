@@ -7,12 +7,12 @@
 
 //[example_metadata
 
+#include <boost/mysql.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/mysql.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <iostream>
@@ -60,11 +60,11 @@ void main_impl(int argc, char** argv)
     conn.query(sql, result);
 
     /**
-     * Resultsets allow you to access metadata about the fields in the query
+     * Resultsets allow you to access metadata about the columns in the query
      * using the meta() function, which returns span-like object containing metadata objects
-     * (one per field in the query, and in the same order as in the query).
-     * You can retrieve the field name, type, number of decimals,
-     * suggested display width, whether the field is part of a key...
+     * (one per column in the query, and in the same order as in the query).
+     * You can retrieve the column name, type, number of decimals,
+     * suggested display width, whether the column is part of a key...
      * These metadata objects are owned by the resultset.
      */
     ASSERT(result.meta().size() == 2);
@@ -74,23 +74,23 @@ void main_impl(int argc, char** argv)
     ASSERT(company_name.database() == "boost_mysql_examples");  // database name
     ASSERT(company_name.table() == "comp");  // the alias we assigned to the table in the query
     ASSERT(company_name.original_table() == "company");   // the original table name
-    ASSERT(company_name.field_name() == "company_name");  // the name of the field in the query
-    ASSERT(company_name.original_field_name() == "name");  // the name of the physical field in the table
-    ASSERT(company_name.type() == boost::mysql::field_type::varchar);  // we created the field as a VARCHAR
-    ASSERT(!company_name.is_primary_key());     // field is not a primary key
-    ASSERT(!company_name.is_auto_increment());  // field is not AUTO_INCREMENT
-    ASSERT(company_name.is_not_null());         // field may not be NULL
+    ASSERT(company_name.column_name() == "company_name");  // the name of the column in the query
+    ASSERT(company_name.original_column_name() == "name");  // the name of the physical column in the table
+    ASSERT(company_name.type() == boost::mysql::field_type::varchar);  // we created the column as a VARCHAR
+    ASSERT(!company_name.is_primary_key());     // column is not a primary key
+    ASSERT(!company_name.is_auto_increment());  // column is not AUTO_INCREMENT
+    ASSERT(company_name.is_not_null());         // column may not be NULL
 
     const boost::mysql::metadata& employee_id = result.meta()[1];
     ASSERT(employee_id.database() == "boost_mysql_examples");  // database name
     ASSERT(employee_id.table() == "emp");  // the alias we assigned to the table in the query
     ASSERT(employee_id.original_table() == "employee");  // the original table name
-    ASSERT(employee_id.field_name() == "employee_id");   // the name of the field in the query
-    ASSERT(employee_id.original_field_name() == "id");  // the name of the physical field in the table
-    ASSERT(employee_id.type() == boost::mysql::field_type::int_);  // we created the field as INT
-    ASSERT(employee_id.is_primary_key()); // field is a primary key
-    ASSERT(employee_id.is_auto_increment()); // we declared the field as AUTO_INCREMENT
-    ASSERT(employee_id.is_not_null()); // field cannot be NULL
+    ASSERT(employee_id.column_name() == "employee_id");   // the name of the column in the query
+    ASSERT(employee_id.original_column_name() == "id");  // the name of the physical column in the table
+    ASSERT(employee_id.type() == boost::mysql::field_type::int_);  // we created the column as INT
+    ASSERT(employee_id.is_primary_key()); // column is a primary key
+    ASSERT(employee_id.is_auto_increment()); // we declared the column as AUTO_INCREMENT
+    ASSERT(employee_id.is_not_null()); // column cannot be NULL
     // clang-format on
 
     // Close the connection

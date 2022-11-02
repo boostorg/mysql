@@ -20,10 +20,9 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds [link mysql.resultsets.metadata metadata] about a field in a SQL query.
- * \details All strings point into externally owned memory. The object
- * will be valid while the parent object is alive
- * (typically, a [reflink resultset_base] object).
+ * \brief Holds [link mysql.resultsets.metadata metadata] about a column in a SQL query.
+ * \details This is a regular, value type. Instances of this class are not created by the user
+ * directly, but by the library.
  */
 class metadata
 {
@@ -50,6 +49,32 @@ public:
      */
     metadata() = default;
 
+    /**
+     * \brief Move constructor.
+     * \details Any `string_view`s obtained by calling accessor functions on `other` remain valid.
+     */
+    metadata(metadata&& other) = default;
+
+    /// Copy constructor
+    metadata(const metadata& other) = default;
+
+    /**
+     * \brief Move assignment.
+     * \details Any `string_view`s obtained by calling accessor functions on `other` remain valid.
+     * Any `string_view`s pointing into `*this` are invalidated.
+     */
+    metadata& operator=(metadata&& other) = default;
+
+    /**
+     * \brief Copy assignment.
+     * \details Any `string_view`s obtained by calling accessor functions on `*this` are
+     * invalidated.
+     */
+    metadata& operator=(const metadata& other) = default;
+
+    /// Destructor.
+    ~metadata() = default;
+
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use.
     // TODO: hide this
@@ -68,42 +93,42 @@ public:
     }
 #endif
 
-    /// Returns the name of the database (schema) the field belongs to.
+    /// Returns the name of the database (schema) the column belongs to.
     boost::string_view database() const noexcept { return schema_; }
 
     /**
-     * \brief Returns the name of the virtual table the field belongs to.
+     * \brief Returns the name of the virtual table the column belongs to.
      * \details If the table was aliased, this will be the name of the alias
      * (e.g. in `"SELECT * FROM employees emp"`, `table()` will be `"emp"`).
      */
     boost::string_view table() const noexcept { return table_; }
 
     /**
-     * \brief Returns the name of the physical table the field belongs to.
+     * \brief Returns the name of the physical table the column belongs to.
      * \details E.g. in `"SELECT * FROM employees emp"`,
      * `original_table()` will be `"employees"`.
      */
     boost::string_view original_table() const noexcept { return org_table_; }
 
     /**
-     * \brief Returns the actual name of the field.
-     * \details If the field was aliased, this will be the name of the alias
+     * \brief Returns the actual name of the column.
+     * \details If the column was aliased, this will be the name of the alias
      * (e.g. in `"SELECT id AS employee_id FROM employees"`,
-     * `field_name()` will be `"employee_id"`).
+     * `column_name()` will be `"employee_id"`).
      */
-    boost::string_view field_name() const noexcept { return name_; }
+    boost::string_view column_name() const noexcept { return name_; }
 
     /**
-     * \brief Returns the original (physical) name of the field.
+     * \brief Returns the original (physical) name of the column.
      * \details E.g. in `"SELECT id AS employee_id FROM employees"`,
-     * `original_field_name()` will be `"id"`.
+     * `original_column_name()` will be `"id"`.
      */
-    boost::string_view original_field_name() const noexcept { return org_name_; }
+    boost::string_view original_column_name() const noexcept { return org_name_; }
 
-    /// Returns the character set ([reflink collation]) for the column.
-    collation character_set() const noexcept { return character_set_; }
+    /// Returns the \ref collation of the column.
+    ::boost::mysql::collation collation() const noexcept { return character_set_; }
 
-    /// Returns the maximum length of the field.
+    /// Returns the maximum length of the column.
     unsigned column_length() const noexcept { return column_length_; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -111,44 +136,44 @@ public:
     detail::protocol_field_type protocol_type() const noexcept { return type_; }
 #endif
 
-    /// Returns the type of the field (see [reflink field_type] for more info).
+    /// Returns the type of the column (see \ref field_type for more info).
     field_type type() const noexcept;
 
-    /// Returns the number of decimals of the field.
+    /// Returns the number of decimals of the column.
     unsigned decimals() const noexcept { return decimals_; }
 
-    /// Returns `true` if the field is not allowed to be NULL, `false` if it is nullable.
+    /// Returns `true` if the column is not allowed to be NULL, `false` if it is nullable.
     bool is_not_null() const noexcept { return flag_set(detail::column_flags::not_null); }
 
-    /// Returns `true` if the field is part of a `PRIMARY KEY`.
+    /// Returns `true` if the column is part of a `PRIMARY KEY`.
     bool is_primary_key() const noexcept { return flag_set(detail::column_flags::pri_key); }
 
-    /// Returns `true` if the field is part of a `UNIQUE KEY` (but not a `PRIMARY KEY`).
+    /// Returns `true` if the column is part of a `UNIQUE KEY` (but not a `PRIMARY KEY`).
     bool is_unique_key() const noexcept { return flag_set(detail::column_flags::unique_key); }
 
-    /// Returns `true` if the field is part of a `KEY` (but not a `UNIQUE KEY` or `PRIMARY KEY`).
+    /// Returns `true` if the column is part of a `KEY` (but not a `UNIQUE KEY` or `PRIMARY KEY`).
     bool is_multiple_key() const noexcept { return flag_set(detail::column_flags::multiple_key); }
 
-    /// Returns `true` if the field has no sign (is `UNSIGNED`).
+    /// Returns `true` if the column has no sign (is `UNSIGNED`).
     bool is_unsigned() const noexcept { return flag_set(detail::column_flags::unsigned_); }
 
-    /// Returns `true` if the field is defined as `ZEROFILL` (padded to its maximum length by
+    /// Returns `true` if the column is defined as `ZEROFILL` (padded to its maximum length by
     /// zeros).
     bool is_zerofill() const noexcept { return flag_set(detail::column_flags::zerofill); }
 
-    /// Returns `true` if the field is defined as `AUTO_INCREMENT`.
+    /// Returns `true` if the column is defined as `AUTO_INCREMENT`.
     bool is_auto_increment() const noexcept
     {
         return flag_set(detail::column_flags::auto_increment);
     }
 
-    /// Returns `true` if the field does not have a default value.
+    /// Returns `true` if the column does not have a default value.
     bool has_no_default_value() const noexcept
     {
         return flag_set(detail::column_flags::no_default_value);
     }
 
-    /// Returns `true` if the field is defined as `ON UPDATE CURRENT_TIMESTAMP`.
+    /// Returns `true` if the column is defined as `ON UPDATE CURRENT_TIMESTAMP`.
     bool is_set_to_now_on_update() const noexcept
     {
         return flag_set(detail::column_flags::on_update_now);

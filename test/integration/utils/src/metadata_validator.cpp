@@ -50,8 +50,8 @@ void meta_validator::validate(const metadata& value) const
     BOOST_TEST(value.database() == "boost_mysql_integtests");
     BOOST_TEST(value.table() == table_);
     BOOST_TEST(value.original_table() == org_table_);
-    BOOST_TEST(value.field_name() == field_);
-    BOOST_TEST(value.original_field_name() == org_field_);
+    BOOST_TEST(value.column_name() == field_);
+    BOOST_TEST(value.original_column_name() == org_field_);
     BOOST_TEST(value.column_length() > 0u);
     BOOST_TEST(value.type() == type_);
     BOOST_TEST(value.decimals() == decimals_);
