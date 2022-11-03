@@ -65,7 +65,7 @@ public:
 
     /**
      * \brief A type that can hold elements in this collection with value semantics.
-     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
+     * \details Note that element accesors (like \ref row_view::operator[]) return \ref reference
      * objects instead of `value_type` objects. You can use this type if you need an owning class.
      */
     using value_type = field;
@@ -117,7 +117,7 @@ public:
     field_view back() const noexcept { return fields_[size_ - 1]; }
 
     /**
-     * \brief Returns true of there are no fields in the row (i.e. `this->size() == 0`)
+     * \brief Returns true if there are no fields in the row (i.e. `this->size() == 0`)
      */
     bool empty() const noexcept { return size_ == 0; }
 

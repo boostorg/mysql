@@ -18,41 +18,140 @@
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief A non-owning read-only reference to a sequence of rows.
+ * \details
+ * Models a non-owning matrix-like container. Indexing a `rows_view` object (by using iterators,
+ * \ref rows_view::at or \ref rows_view::operator[]) returns a \ref row_view object, representing a
+ * single row. All rows in the collection are the same size (as given by \ref num_columns).
+ * \n
+ * A `rows_view` object points to memory owned by an external entity (like `string_view` does). The
+ * validity of a `rows_view` object depends on how it was obtained: \n
+ *  - If it was constructed from a \ref rows object (by calling \ref rows::operator rows_view()),
+ * the view acts as a reference to the `rows`' allocated memory, and is valid as long as references
+ *    to that `rows` element's are valid.
+ *  - If it was obtained by a call to `resultset::read_xxx` or similar functions taking a \ref
+ *    use_views_t parameter, it's valid until the underlying \ref connection performs the next
+ *    network call or is destroyed.
+ * \n
+ * Calling any member function on an invalid view results in undefined behavior.
+ * \n
+ * Instances of this class are usually created by the library and not by the user.
+ */
 class rows_view
 {
 public:
+    /**
+     * \brief Construct an empty (but valid) view.
+     */
     rows_view() = default;
 
+#ifdef BOOST_MYSQL_DOXYGEN
+    /**
+     * \brief A random access iterator to an element.
+     * \details The exact type of the iterator is unspecified.
+     */
+    using iterator = __see_below__;
+#else
     using iterator = detail::rows_iterator<rows_view>;
+#endif
+
+    /// \copydoc iterator
     using const_iterator = iterator;
+
+    /**
+     * \brief A type that can hold elements in this collection with value semantics.
+     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
+     * objects instead of `value_type` objects. You can use this type if you need an owning class.
+     */
     using value_type = row;
+
+    /// The reference type.
     using reference = row_view;
+
+    /// \copydoc reference
     using const_reference = row_view;
+
+    /// An unsigned integer type to represent sizes.
     using size_type = std::size_t;
+
+    /// A signed integer type used to represent differences.
     using difference_type = std::ptrdiff_t;
 
+    /**
+     * \brief Returns an iterator to the first element in the collection.
+     */
     const_iterator begin() const noexcept { return iterator(this, 0); }
+
+    /**
+     * \brief Returns an iterator to one-past-the-last element in the collection.
+     */
     const_iterator end() const noexcept { return iterator(this, size()); }
+
+    /**
+     * \brief Returns the i-th row or throws an exception.
+     * \details Throws `std::out_of_range` if `i >= this->size()`.
+     */
     inline row_view at(std::size_t i) const;
+
+    /**
+     * \brief Returns the i-th row (unchecked access).
+     * \details Results in undefined behavior if `i >= this->size()`.
+     */
     inline row_view operator[](std::size_t i) const noexcept;
+
+    /**
+     * \brief Returns the first row.
+     * \details Results in undefined behavior if `this->size() == 0`.
+     */
     row_view front() const noexcept { return (*this)[0]; }
+
+    /**
+     * \brief Returns the last row.
+     * \details Results in undefined behavior if `this->size() == 0`.
+     */
     row_view back() const noexcept { return (*this)[size() - 1]; }
+
+    /**
+     * \brief Returns true if there are no rows in the collection (i.e. `this->size() == 0`)
+     */
     bool empty() const noexcept { return num_values_ == 0; }
+
+    /**
+     * \brief Returns the number of rows in the collection.
+     */
     std::size_t size() const noexcept
     {
         return (num_columns_ == 0) ? 0 : (num_values_ / num_columns_);
     }
+
+    /**
+     * \brief Returns the number of elements each row in the collection has.
+     * \details For every \ref row_view `r` obtained from this collection,
+     * `r.size() == this->num_columns()`.
+     */
     std::size_t num_columns() const noexcept { return num_columns_; }
 
+    /**
+     * \brief Equality operator.
+     * \details The containers are considered equal if they have the same number of rows and
+     * they all compare equal, as defined by \ref row_view::operator==.
+     */
     inline bool operator==(const rows_view& rhs) const noexcept;
+
+    /**
+     * \brief Inequality operator.
+     */
     inline bool operator!=(const rows_view& rhs) const noexcept { return !(*this == rhs); }
 
+#ifndef BOOST_MYSQL_DOXYGEN
     // TODO: hide this
     rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept
         : fields_(fields), num_values_(num_values), num_columns_(num_columns)
     {
         assert(num_values % num_columns == 0);
     }
+#endif
 
 private:
     const field_view* fields_{};
