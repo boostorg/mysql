@@ -98,7 +98,7 @@ for each one.
   is exposed as a `boost::string_view`. Character strings are [*NOT] aware of encoding -
   they are represented as the string raw bytes. The encoding for each character
   string column is part of the column metadata, and can be accessed using
-  [refmem metadata collation].
+  [refmem metadata column_collation].
 
   The following types are represented as strings in Boost.Mysql:
     * __CHAR__. Fixed-size character string.

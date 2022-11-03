@@ -125,7 +125,7 @@ public:
     boost::string_view original_column_name() const noexcept { return org_name_; }
 
     /// Returns the \ref collation of the column.
-    ::boost::mysql::collation collation() const noexcept { return character_set_; }
+    collation column_collation() const noexcept { return character_set_; }
 
     /// Returns the maximum length of the column.
     unsigned column_length() const noexcept { return column_length_; }
