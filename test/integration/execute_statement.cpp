@@ -104,7 +104,10 @@ BOOST_MYSQL_NETWORK_TEST(server_error, network_fixture, all_network_samples())
     start_transaction();
 
     // Prepare
-    conn->prepare_statement("INSERT INTO inserts_table (field_date) VALUES (?)", *stmt)
+    conn->prepare_statement(
+            "INSERT INTO inserts_table (field_varchar, field_date) VALUES ('abc', ?)",
+            *stmt
+    )
         .validate_no_error();
 
     // Execute
