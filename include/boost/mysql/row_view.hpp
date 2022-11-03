@@ -151,17 +151,23 @@ public:
 private:
     const field_view* fields_{};
     std::size_t size_{};
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend class row;
+#endif
 };
 
 /**
- * \relates row
- * \brief Compares two rows.
+ * \relates row_view
+ * \brief Equality operator.
+ * \details The containers are considered equal if they have the same number of elements and they
+ * all compare equal, as defined by \ref field_view::operator==.
  */
 inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
 
 /**
- * \relates row
- * \brief Compares two rows.
+ * \relates row_view
+ * \brief Inequality operator.
  */
 inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
 

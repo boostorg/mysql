@@ -66,7 +66,7 @@ public:
      * \brief Constructs a `field_view` holding NULL (`this->kind() == field_kind::null`).
      * \details Results in a `field_view` with value semantics (always valid).
      *
-     * Caution: `value(NULL)` will __NOT__ match this overload. It will try to construct
+     * Caution: `field_view(NULL)` will __NOT__ match this overload. It will try to construct
      * a `boost::string_view` from a NULL C string, causing undefined behavior.
      */
     BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}

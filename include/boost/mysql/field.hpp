@@ -66,7 +66,7 @@ public:
     /**
      * \copybrief field()
      * \details
-     * Caution: `value(NULL)` will __NOT__ match this overload. It will try to construct
+     * Caution: `field(NULL)` will __NOT__ match this overload. It will try to construct
      * a `boost::string_view` from a NULL C string, causing undefined behavior.
      */
     explicit field(std::nullptr_t) noexcept {}

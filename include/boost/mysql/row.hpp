@@ -21,95 +21,220 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents a row returned from a database operation.
- * \details A row is a collection of values, plus a buffer holding memory
- * for the string [reflink field_view]s.
- *
- * There will be the same number of values and in the same order as fields
- * in the SQL query that produced the row. You can get more information
- * about these fields using [refmem resultset meta].
- *
- * If any of the values is a string, it will be represented as a `string_view`
- * pointing into the row's buffer. These string values will be valid as long as
- * the [reflink row] object containing the memory they point to is alive and valid. Concretely:
- * - Destroying the row object invalidates the string values.
- * - Move assigning against the row invalidates the string values.
- * - Calling row clear invalidates the string values.
- * - Move-constructing a [reflink row] from the current row does **not**
- *   invalidate the string values.
- *
- * Default constructible and movable, but not copyable.
+ * \brief An owning, read-only sequence of fields.
+ * \details
+ * A `row` object owns a chunk of memory in which it stores its elements. On element access (using
+ * iterators, \ref row::at or \ref row::operator[]) it returns \ref field_view's pointing into thw
+ * `row`'s internal storage. These views behave like references, and are valid as long as pointers,
+ * iterators and references into the `row` remain valid.
+ * \n
+ * Objects of this type are populated by calls to `resultset::read_xxx` functions. You may create a
+ * `row` directly to persist a \ref row_view, too.
+ * \n
+ * Although owning, `row` is read-only. It's optimized for memory re-use in \ref resultset::read_one
+ * loops. If you need to mutate fields, use a `std::vector<field>` instead (see \ref
+ * row_view::as_vector and \ref row::as_vector).
  */
 class row : private detail::row_base
 {
 public:
+#ifdef BOOST_MYSQL_DOXYGEN
+    /**
+     * \brief A random access iterator to an element.
+     * \details The exact type of the iterator is unspecified.
+     */
+    using iterator = __see_below__;
+#else
     using iterator = const field_view*;
+#endif
+
+    /// \copydoc iterator
     using const_iterator = const field_view*;
+
+    /**
+     * \brief A type that can hold elements in this collection with value semantics.
+     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
+     * objects instead of `value_type` objects. You can use this type if you need an owning class.
+     */
     using value_type = field;
+
+    /// The reference type.
     using reference = field_view;
+
+    /// \copydoc reference
     using const_reference = field_view;
+
+    /// An unsigned integer type to represent sizes.
     using size_type = std::size_t;
+
+    /// A signed integer type used to represent differences.
     using difference_type = std::ptrdiff_t;
 
+    /**
+     * \brief Constructs an empty row.
+     */
     row() = default;
-    row(const row&) = default;
-    row(row&&) = default;
-    row& operator=(const row&) = default;
-    row& operator=(row&&) = default;
+
+    /**
+     * \brief Copy constructor.
+     * \details `*this` lifetime will be independent of `other`'s.
+     */
+    row(const row& other) = default;
+
+    /**
+     * \brief Move constructor.
+     * \details Iterators and references (including \ref row_view's and \ref field_view's) to
+     * elements in `other` remain valid.
+     */
+    row(row&& other) = default;
+
+    /**
+     * \brief Copy assignment.
+     * \details `*this` lifetime will be independent of `other`'s. Iterators and references
+     * (including \ref row_view's and \ref field_view's) to elements in `*this` are invalidated.
+     */
+    row& operator=(const row& other) = default;
+
+    /**
+     * \brief Move assignment.
+     * \details Iterators and references (including \ref row_view's and \ref field_view's) to
+     * elements in `*this` are invalidated. Iterators and references to elements in `other` remain
+     * valid.
+     */
+    row& operator=(row&& other) = default;
+
+    /**
+     * \brief Destructor.
+     * \details Iterators and references (including \ref row_view's and \ref field_view's) to
+     * elements in `*this` are invalidated.
+     */
     ~row() = default;
 
+    /**
+     * \brief Constructs a row from a \ref row_view.
+     * \details `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
+     * into `*this`).
+     */
     row(row_view r) : detail::row_base(r.begin(), r.size()) {}
 
-    // UB if r comes from this: this_row = row_view(this_row));
+    /**
+     * \brief Replaces the contents with a \ref row_view.
+     * \details `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
+     * into `*this`). Iterators and references (including \ref row_view's and \ref field_view's) to
+     * elements in `*this` are invalidated.
+     */
     row& operator=(row_view r)
     {
-        assign(r.begin(), r.size());
+        // Protect against self-assignment. This is valid as long as we
+        // don't implement sub-range operators (e.g. row_view[2:4])
+        if (r.fields_ != fields_.data())
+        {
+            assign(r.begin(), r.size());
+        }
         return *this;
     }
 
+    /// \copydoc row_view::begin
     const_iterator begin() const noexcept { return fields_.data(); }
+
+    /// \copydoc row_view::end
     const_iterator end() const noexcept { return fields_.data() + fields_.size(); }
+
+    /// \copydoc row_view::at
     field_view at(std::size_t i) const { return fields_.at(i); }
+
+    /// \copydoc row_view::operator[]
     field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
+
+    /// \copydoc row_view::front
     field_view front() const noexcept { return fields_.front(); }
+
+    /// \copydoc row_view::back
     field_view back() const noexcept { return fields_.back(); }
+
+    /// \copydoc row_view::empty
     bool empty() const noexcept { return fields_.empty(); }
+
+    /// \copydoc row_view::size
     std::size_t size() const noexcept { return fields_.size(); }
 
+    /**
+     * \brief Creates a \ref row_view that references `*this`.
+     * \details The returned view will be valid until any function that invalidates iterators and
+     * references is invoked on `*this` or `*this` is destroyed.
+     */
     operator row_view() const noexcept { return row_view(fields_.data(), fields_.size()); }
 
+    /// \copydoc row_view::as_vector
     template <class Allocator>
     void as_vector(std::vector<field, Allocator>& out) const
     {
         out.assign(begin(), end());
     }
 
+    /// \copydoc row_view::as_vector
     std::vector<field> as_vector() const { return std::vector<field>(begin(), end()); }
 
+#ifndef BOOST_MYSQL_DOXYGEN
     // TODO: hide this
     using detail::row_base::clear;
     using detail::row_base::copy_strings;
     std::vector<field_view>& fields() noexcept { return fields_; }
+#endif
 };
 
+/**
+ * \relates row
+ * \brief Equality operator.
+ * \copydetails row_view::operator==(const row_view&,const row_view&)
+ */
 inline bool operator==(const row& lhs, const row& rhs) noexcept
 {
     return row_view(lhs) == row_view(rhs);
 }
+
+/**
+ * \relates row
+ * \brief Inequality operator.
+ */
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 
+/**
+ * \relates row
+ * \brief Equality operator.
+ * \copydetails row_view::operator==(const row_view&,const row_view&)
+ */
 inline bool operator==(const row& lhs, const row_view& rhs) noexcept
 {
     return row_view(lhs) == rhs;
 }
+
+/**
+ * \relates row
+ * \brief Inequality operator.
+ */
 inline bool operator!=(const row& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
 
+/**
+ * \relates row
+ * \brief Equality operator.
+ * \copydetails row_view::operator==(const row_view&,const row_view&)
+ */
 inline bool operator==(const row_view& lhs, const row& rhs) noexcept
 {
     return lhs == row_view(rhs);
 }
+
+/**
+ * \relates row
+ * \brief Inequality operator.
+ */
 inline bool operator!=(const row_view& lhs, const row& rhs) noexcept { return !(lhs == rhs); }
 
+/**
+ * \relates row
+ * \brief Streams a row.
+ */
 inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
 
 }  // namespace mysql

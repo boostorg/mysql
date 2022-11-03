@@ -195,6 +195,17 @@ BOOST_AUTO_TEST_CASE(strings_empty_to)
     BOOST_TEST(r[1] == field_view());
     BOOST_TEST(r[2] == field_view("bcd"));
 }
+
+BOOST_AUTO_TEST_CASE(self_assignment)
+{
+    row r = makerow("abcdef", 42, "plk");
+    r = row_view(r);
+
+    BOOST_TEST(r.size() == 3u);
+    BOOST_TEST(r[0] == field_view("abcdef"));
+    BOOST_TEST(r[1] == field_view(42));
+    BOOST_TEST(r[2] == field_view("plk"));
+}
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(copy_assignment)
