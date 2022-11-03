@@ -38,9 +38,10 @@ namespace mysql {
  * Calling any member function on an invalid view results in undefined behavior.
  * \n
  * When indexed (by using iterators, \ref row_view::at or \ref row_view::operator[]), it returns
- * \ref field_view elements that are valid as long as `*this` is valid.
- * \n
- * Instances of this class are usually created by the library and not by the user.
+ * \ref field_view elements that are valid as long as the underlying storage that `*this` points
+ * to is valid. Destroying a `row_view` doesn't invalidate references `field_view`s obtained from
+ * it.
+ * \n Instances of this class are usually created by the library and not by the user.
  */
 class row_view
 {

@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/rows_view.hpp>
 
 #include <cassert>
@@ -18,7 +19,7 @@
 boost::mysql::row_view boost::mysql::rows_view::operator[](std::size_t i) const noexcept
 {
     assert(i < size());
-    return row_view(fields_ + num_columns_ * i, num_columns_);
+    return detail::row_slice(fields_, num_columns_, i);
 }
 
 boost::mysql::row_view boost::mysql::rows_view::at(std::size_t i) const
@@ -27,7 +28,7 @@ boost::mysql::row_view boost::mysql::rows_view::at(std::size_t i) const
     {
         throw std::out_of_range("rows_view::at");
     }
-    return (*this)[i];
+    return detail::row_slice(fields_, num_columns_, i);
 }
 
 inline bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noexcept

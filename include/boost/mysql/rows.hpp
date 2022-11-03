@@ -48,7 +48,7 @@ public:
      */
     using iterator = __see_below__;
 #else
-    using iterator = detail::rows_iterator<rows>;
+    using iterator = detail::rows_iterator;
 #endif
 
     /// \copydoc iterator
@@ -130,10 +130,10 @@ public:
     inline rows& operator=(const rows_view& r);
 
     /// \copydoc rows_view::begin
-    iterator begin() const noexcept { return iterator(this, 0); }
+    iterator begin() const noexcept { return iterator(fields_.data(), num_columns_, 0); }
 
     /// \copydoc rows_view::end
-    iterator end() const noexcept { return iterator(this, size()); }
+    iterator end() const noexcept { return iterator(fields_.data(), num_columns_, size()); }
 
     /// \copydoc rows_view::at
     inline row_view at(std::size_t i) const;

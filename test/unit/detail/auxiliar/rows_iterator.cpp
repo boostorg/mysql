@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -25,8 +26,7 @@ using boost::mysql::rows_view;
 using boost::mysql::test::make_fv_vector;
 using boost::mysql::test::makerow;
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(rows_view::const_iterator);
-BOOST_TEST_DONT_PRINT_LOG_VALUE(rows::const_iterator);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator);
 
 namespace {
 

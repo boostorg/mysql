@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_ROWS_ITERATOR_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_ROWS_ITERATOR_HPP
 
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 
@@ -18,10 +20,19 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class RowsType>  // This can be either rows or rows_view
+inline row_view row_slice(
+    const field_view* fields,
+    std::size_t num_columns,
+    std::size_t offset
+) noexcept
+{
+    return row_view(fields + num_columns * offset, num_columns);
+}
+
 class rows_iterator
 {
-    const RowsType* obj_{nullptr};
+    const field_view* fields_{nullptr};
+    std::size_t num_columns_{0};
     std::size_t row_num_{0};
 
 public:
@@ -32,7 +43,10 @@ public:
     using iterator_category = std::random_access_iterator_tag;
 
     rows_iterator() = default;
-    rows_iterator(const RowsType* obj, std::size_t rownum) noexcept : obj_(obj), row_num_(rownum) {}
+    rows_iterator(const field_view* fields, std::size_t num_columns, std::size_t rownum) noexcept
+        : fields_(fields), num_columns_(num_columns), row_num_(rownum)
+    {
+    }
 
     rows_iterator& operator++() noexcept
     {
@@ -68,17 +82,20 @@ public:
     }
     rows_iterator operator+(std::ptrdiff_t n) const noexcept
     {
-        return rows_iterator(obj_, row_num_ + n);
+        return rows_iterator(fields_, num_columns_, row_num_ + n);
     }
     rows_iterator operator-(std::ptrdiff_t n) const noexcept
     {
-        return rows_iterator(obj_, row_num_ - n);
+        return rows_iterator(fields_, num_columns_, row_num_ - n);
     }
     std::ptrdiff_t operator-(rows_iterator rhs) const noexcept { return row_num_ - rhs.row_num_; }
 
     pointer operator->() const noexcept { return **this; }
-    reference operator*() const noexcept { return (*obj_)[row_num_]; }
-    reference operator[](std::ptrdiff_t i) const noexcept { return (*obj_)[row_num_ + i]; }
+    reference operator*() const noexcept { return (*this)[0]; }
+    reference operator[](std::ptrdiff_t i) const noexcept
+    {
+        return row_slice(fields_, num_columns_, row_num_ + i);
+    }
 
     bool operator==(rows_iterator rhs) const noexcept { return row_num_ == rhs.row_num_; }
     bool operator!=(rows_iterator rhs) const noexcept { return !(*this == rhs); }
@@ -88,11 +105,7 @@ public:
     bool operator>=(rows_iterator rhs) const noexcept { return row_num_ >= rhs.row_num_; }
 };
 
-template <class RowsType>
-rows_iterator<RowsType> operator+(std::ptrdiff_t n, rows_iterator<RowsType> it) noexcept
-{
-    return it + n;
-}
+inline rows_iterator operator+(std::ptrdiff_t n, rows_iterator it) noexcept { return it + n; }
 
 }  // namespace detail
 }  // namespace mysql

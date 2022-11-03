@@ -10,9 +10,11 @@
 
 #pragma once
 
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 
+#include <cassert>
 #include <cstddef>
 #include <stdexcept>
 
@@ -44,12 +46,13 @@ boost::mysql::row_view boost::mysql::rows::at(std::size_t i) const
     {
         throw std::out_of_range("rows::at");
     }
-    return (*this)[i];
+    return detail::row_slice(fields_.data(), num_columns_, i);
 }
 
 boost::mysql::row_view boost::mysql::rows::operator[](std::size_t i) const noexcept
 {
-    return row_view(fields_.data() + num_columns_ * i, num_columns_);
+    assert(i < size());
+    return detail::row_slice(fields_.data(), num_columns_, i);
 }
 
 #endif

@@ -34,6 +34,10 @@ namespace mysql {
  *    use_views_t parameter, it's valid until the underlying \ref connection performs the next
  *    network call or is destroyed.
  * \n
+ * \ref row_view's and \ref field_view's obtained by using a `rows_view` object are valid as long as
+ * the underlying storage that `*this` points to is valid. Destroying `*this` doesn't invalidate
+ * such references.
+ * \n
  * Calling any member function on an invalid view results in undefined behavior.
  * \n
  * Instances of this class are usually created by the library and not by the user.
@@ -48,7 +52,7 @@ public:
      */
     using iterator = __see_below__;
 #else
-    using iterator = detail::rows_iterator<rows_view>;
+    using iterator = detail::rows_iterator;
 #endif
 
     /// \copydoc iterator
@@ -81,12 +85,12 @@ public:
     /**
      * \brief Returns an iterator to the first element in the collection.
      */
-    const_iterator begin() const noexcept { return iterator(this, 0); }
+    const_iterator begin() const noexcept { return iterator(fields_, num_columns_, 0); }
 
     /**
      * \brief Returns an iterator to one-past-the-last element in the collection.
      */
-    const_iterator end() const noexcept { return iterator(this, size()); }
+    const_iterator end() const noexcept { return iterator(fields_, num_columns_, size()); }
 
     /**
      * \brief Returns the i-th row or throws an exception.
