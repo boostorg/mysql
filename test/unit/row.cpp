@@ -148,66 +148,6 @@ BOOST_AUTO_TEST_CASE(strings)
 }
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE(assignment_from_view)
-BOOST_AUTO_TEST_CASE(empty)
-{
-    row r = makerow(42, "abcdef");
-    r = row();
-    BOOST_TEST(r.empty());
-}
-
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    row r = makerow(42, "abcdef");
-    auto fields = make_field_views(90, nullptr);
-    r = row_view(fields.data(), fields.size());
-    fields = make_field_views("abc", 42u);  // r should be independent of the original fields
-
-    BOOST_TEST(r.size() == 2u);
-    BOOST_TEST(r[0] == field_view(90));
-    BOOST_TEST(r[1] == field_view());
-}
-
-BOOST_AUTO_TEST_CASE(strings)
-{
-    std::string s1("a_very_long_string"), s2("");
-    row r = makerow(42, "abcdef");
-    auto fields = make_field_views(s1, nullptr, s2);
-    r = row_view(fields.data(), fields.size());
-    fields = make_field_views("abc", 42u, 9);  // r should be independent of the original fields
-    s1 = "another_string";                     // r should be independent of the original strings
-    s2 = "yet_another";
-
-    BOOST_TEST(r.size() == 3u);
-    BOOST_TEST(r[0] == field_view("a_very_long_string"));
-    BOOST_TEST(r[1] == field_view());
-    BOOST_TEST(r[2] == field_view(""));
-}
-
-BOOST_AUTO_TEST_CASE(strings_empty_to)
-{
-    row r;
-    auto fields = make_field_views("abc", nullptr, "bcd");
-    r = row_view(fields.data(), fields.size());
-
-    BOOST_TEST(r.size() == 3u);
-    BOOST_TEST(r[0] == field_view("abc"));
-    BOOST_TEST(r[1] == field_view());
-    BOOST_TEST(r[2] == field_view("bcd"));
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment)
-{
-    row r = makerow("abcdef", 42, "plk");
-    r = row_view(r);
-
-    BOOST_TEST(r.size() == 3u);
-    BOOST_TEST(r[0] == field_view("abcdef"));
-    BOOST_TEST(r[1] == field_view(42));
-    BOOST_TEST(r[2] == field_view("plk"));
-}
-BOOST_AUTO_TEST_SUITE_END()
-
 BOOST_AUTO_TEST_SUITE(copy_assignment)
 BOOST_AUTO_TEST_CASE(empty)
 {
@@ -348,6 +288,66 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
     r = makerow("abcdef");
     BOOST_TEST(r.size() == 1u);
     BOOST_TEST(r[0] == field_view("abcdef"));
+}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(assignment_from_view)
+BOOST_AUTO_TEST_CASE(empty)
+{
+    row r = makerow(42, "abcdef");
+    r = row();
+    BOOST_TEST(r.empty());
+}
+
+BOOST_AUTO_TEST_CASE(non_strings)
+{
+    row r = makerow(42, "abcdef");
+    auto fields = make_field_views(90, nullptr);
+    r = row_view(fields.data(), fields.size());
+    fields = make_field_views("abc", 42u);  // r should be independent of the original fields
+
+    BOOST_TEST(r.size() == 2u);
+    BOOST_TEST(r[0] == field_view(90));
+    BOOST_TEST(r[1] == field_view());
+}
+
+BOOST_AUTO_TEST_CASE(strings)
+{
+    std::string s1("a_very_long_string"), s2("");
+    row r = makerow(42, "abcdef");
+    auto fields = make_field_views(s1, nullptr, s2);
+    r = row_view(fields.data(), fields.size());
+    fields = make_field_views("abc", 42u, 9);  // r should be independent of the original fields
+    s1 = "another_string";                     // r should be independent of the original strings
+    s2 = "yet_another";
+
+    BOOST_TEST(r.size() == 3u);
+    BOOST_TEST(r[0] == field_view("a_very_long_string"));
+    BOOST_TEST(r[1] == field_view());
+    BOOST_TEST(r[2] == field_view(""));
+}
+
+BOOST_AUTO_TEST_CASE(strings_empty_to)
+{
+    row r;
+    auto fields = make_field_views("abc", nullptr, "bcd");
+    r = row_view(fields.data(), fields.size());
+
+    BOOST_TEST(r.size() == 3u);
+    BOOST_TEST(r[0] == field_view("abc"));
+    BOOST_TEST(r[1] == field_view());
+    BOOST_TEST(r[2] == field_view("bcd"));
+}
+
+BOOST_AUTO_TEST_CASE(self_assignment)
+{
+    row r = makerow("abcdef", 42, "plk");
+    r = row_view(r);
+
+    BOOST_TEST(r.size() == 3u);
+    BOOST_TEST(r[0] == field_view("abcdef"));
+    BOOST_TEST(r[1] == field_view(42));
+    BOOST_TEST(r[2] == field_view("plk"));
 }
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -17,15 +17,24 @@
 #include <stdexcept>
 
 boost::mysql::rows::rows(const rows_view& view)
-    : detail::row_base(view.fields_, view.num_values_), num_columns_(view.num_columns_)
+    : detail::row_base(view.fields_, view.num_fields_), num_columns_(view.num_columns_)
 {
     copy_strings();
 }
 
 boost::mysql::rows& boost::mysql::rows::operator=(const rows_view& rhs)
 {
-    assign(rhs.fields_, rhs.num_values_);
-    num_columns_ = rhs.num_columns_;
+    // Protect against self-assignment
+    if (rhs.fields_ == fields_.data())
+    {
+        assert(rhs.num_fields_ == fields_.size());
+        assert(rhs.num_columns() == num_columns());
+    }
+    else
+    {
+        assign(rhs.fields_, rhs.num_fields_);
+        num_columns_ = rhs.num_columns_;
+    }
     return *this;
 }
 

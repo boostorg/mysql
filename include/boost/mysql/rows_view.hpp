@@ -41,11 +41,6 @@ namespace mysql {
 class rows_view
 {
 public:
-    /**
-     * \brief Construct an empty (but valid) view.
-     */
-    rows_view() = default;
-
 #ifdef BOOST_MYSQL_DOXYGEN
     /**
      * \brief A random access iterator to an element.
@@ -77,6 +72,11 @@ public:
 
     /// A signed integer type used to represent differences.
     using difference_type = std::ptrdiff_t;
+
+    /**
+     * \brief Construct an empty (but valid) view.
+     */
+    rows_view() = default;
 
     /**
      * \brief Returns an iterator to the first element in the collection.
@@ -115,14 +115,14 @@ public:
     /**
      * \brief Returns true if there are no rows in the collection (i.e. `this->size() == 0`)
      */
-    bool empty() const noexcept { return num_values_ == 0; }
+    bool empty() const noexcept { return num_fields_ == 0; }
 
     /**
      * \brief Returns the number of rows in the collection.
      */
     std::size_t size() const noexcept
     {
-        return (num_columns_ == 0) ? 0 : (num_values_ / num_columns_);
+        return (num_columns_ == 0) ? 0 : (num_fields_ / num_columns_);
     }
 
     /**
@@ -147,7 +147,7 @@ public:
 #ifndef BOOST_MYSQL_DOXYGEN
     // TODO: hide this
     rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept
-        : fields_(fields), num_values_(num_values), num_columns_(num_columns)
+        : fields_(fields), num_fields_(num_values), num_columns_(num_columns)
     {
         assert(num_values % num_columns == 0);
     }
@@ -155,7 +155,7 @@ public:
 
 private:
     const field_view* fields_{};
-    std::size_t num_values_{};
+    std::size_t num_fields_{};
     std::size_t num_columns_{};
 
 #ifndef BOOST_MYSQL_DOXYGEN

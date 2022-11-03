@@ -24,16 +24,16 @@ namespace mysql {
  * \brief An owning, read-only sequence of fields.
  * \details
  * A `row` object owns a chunk of memory in which it stores its elements. On element access (using
- * iterators, \ref row::at or \ref row::operator[]) it returns \ref field_view's pointing into thw
+ * iterators, \ref row::at or \ref row::operator[]) it returns \ref field_view's pointing into the
  * `row`'s internal storage. These views behave like references, and are valid as long as pointers,
  * iterators and references into the `row` remain valid.
  * \n
- * Objects of this type are populated by calls to `resultset::read_xxx` functions. You may create a
- * `row` directly to persist a \ref row_view, too.
+ * Objects of this type can be populated by the \ref resultset::read_one function family. You may
+ * create a `row` directly to persist a \ref row_view, too.
  * \n
- * Although owning, `row` is read-only. It's optimized for memory re-use in \ref resultset::read_one
- * loops. If you need to mutate fields, use a `std::vector<field>` instead (see \ref
- * row_view::as_vector and \ref row::as_vector).
+ * Although owning, `row` is read-only.
+ * It's optimized for memory re-use in \ref resultset::read_one loops. If you need to mutate fields,
+ * use a `std::vector<field>` instead (see \ref row_view::as_vector and \ref row::as_vector).
  */
 class row : private detail::row_base
 {
@@ -127,7 +127,11 @@ public:
     {
         // Protect against self-assignment. This is valid as long as we
         // don't implement sub-range operators (e.g. row_view[2:4])
-        if (r.fields_ != fields_.data())
+        if (r.fields_ == fields_.data())
+        {
+            assert(r.size() == fields_.size());
+        }
+        else
         {
             assign(r.begin(), r.size());
         }
@@ -186,7 +190,8 @@ public:
 /**
  * \relates row
  * \brief Equality operator.
- * \copydetails row_view::operator==(const row_view&,const row_view&)
+ * \details The containers are considered equal if they have the same number of elements and they
+ * all compare equal, as defined by \ref field_view::operator==.
  */
 inline bool operator==(const row& lhs, const row& rhs) noexcept
 {
@@ -201,8 +206,7 @@ inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 
 /**
  * \relates row
- * \brief Equality operator.
- * \copydetails row_view::operator==(const row_view&,const row_view&)
+ * \copydoc row::operator==(const row&,const row&)
  */
 inline bool operator==(const row& lhs, const row_view& rhs) noexcept
 {
@@ -211,14 +215,13 @@ inline bool operator==(const row& lhs, const row_view& rhs) noexcept
 
 /**
  * \relates row
- * \brief Inequality operator.
+ * \copydoc row::operator!=(const row&,const row&)
  */
 inline bool operator!=(const row& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
 
 /**
  * \relates row
- * \brief Equality operator.
- * \copydetails row_view::operator==(const row_view&,const row_view&)
+ * \copydoc row::operator==(const row&,const row&)
  */
 inline bool operator==(const row_view& lhs, const row& rhs) noexcept
 {
@@ -227,7 +230,7 @@ inline bool operator==(const row_view& lhs, const row& rhs) noexcept
 
 /**
  * \relates row
- * \brief Inequality operator.
+ * \copydoc row::operator!=(const row&,const row&)
  */
 inline bool operator!=(const row_view& lhs, const row& rhs) noexcept { return !(lhs == rhs); }
 
