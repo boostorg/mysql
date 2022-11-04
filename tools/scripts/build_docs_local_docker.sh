@@ -11,4 +11,5 @@ set -e
 cd /opt/boost/
 export BOOST_ROOT=$(pwd)
 cp libs/mysql/tools/user-config.jam ~/
+rm -rf bin.v2/libs/mysql
 ./b2 -j4 libs/mysql/doc//boostrelease

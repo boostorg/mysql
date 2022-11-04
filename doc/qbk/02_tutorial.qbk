@@ -81,8 +81,8 @@ object:
 
 [tutorial_read]
 
-A [reflink rows] object is a matrix-like container of MySQL values.
-Each value is represented as a [reflink field_view], a variant-like class that
+A [reflink rows] object is a matrix-like container of MySQL fields.
+Each field is represented as a [reflink field_view], a variant-like class that
 can hold any type allowed in MySQL.
 
 [tutorial_fields]

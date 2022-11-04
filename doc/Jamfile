@@ -259,7 +259,7 @@ explicit images ;
 
 xml mysql_doc
     :
-        qbk/main.qbk
+        qbk/00_main.qbk
     :
         <dependency>qbk
     ;
