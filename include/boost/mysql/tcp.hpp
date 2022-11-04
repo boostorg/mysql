@@ -18,7 +18,10 @@ namespace mysql {
 /// A connection to MySQL over a TCP socket.
 using tcp_connection = connection<boost::asio::ip::tcp::socket>;
 
+/// The statement type to use with \ref tcp_connection.
 using tcp_statement = typename tcp_connection::statement_type;
+
+/// The resultset type to use with \ref tcp_connection.
 using tcp_resultset = typename tcp_connection::resultset_type;
 
 }  // namespace mysql
