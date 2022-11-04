@@ -20,33 +20,91 @@
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief Represents a server-side prepared statement.
+ * \details
+ * You can obtain a `valid` statement by calling \ref connection::prepare_statement. You can execute
+ * a statement using \ref statement::execute, and close it using \ref statement::close.
+ *\n
+ * Statements are proxy I/O objects, meaning that they hold a reference to the internal state of the
+ * \ref connection that created them. I/O operations on a statement result in reads and writes on
+ * the connection's stream. A `statement` is usable for I/O operations as long as the original \ref
+ * connection is alive and open. Moving the `connection` object doesn't invalidate `statement`s
+ * pointing into it, but destroying or closing it does. The executor object used by a `statement` is
+ * always the underlying stream's.
+ *\n
+ * Statements are default-constructible and movable, but not copyable. A default constructed or
+ * closed statement has `!this->valid()`. Calling any member function on an invalid
+ * statement, other than assignment, results in undefined behavior.
+ *\n
+ * See [link mysql.prepared_statements] for more info.
+ */
 template <class Stream>
 class statement : public statement_base
 {
 public:
+    /**
+     * \brief Default constructor.
+     * \details Default constructed statements have `!this->valid()`. To obtain a valid statement,
+     * call \ref connection::prepare_statement.
+     */
     statement() = default;
-    statement(const statement&) = delete;
-    statement(statement&& other) noexcept : statement_base(other) { other.reset(); }
+
+#ifndef BOOST_MYSQL_DOXYGEN
     statement& operator=(const statement&) = delete;
-    statement& operator=(statement&& rhs) noexcept
+    statement(const statement&) = delete;
+#endif
+
+    /**
+     * \brief Move constructor.
+     */
+    statement(statement&& other) noexcept : statement_base(other) { other.reset(); }
+
+    /**
+     * \brief Move assignment.
+     */
+    statement& operator=(statement&& other) noexcept
     {
-        swap(rhs);
+        swap(other);
         return *this;
     }
+
+    /**
+     * \brief Destructor.
+     * \details Doesn't invoke \ref close, as this is a network operation that may fail.
+     */
     ~statement() = default;
 
+    /// The executor type associated to this object.
     using executor_type = typename Stream::executor_type;
 
+    /// Retrieves the executor associated to this object.
     executor_type get_executor() { return get_channel().get_executor(); }
 
     /**
-     * \brief Executes a statement (collection, sync with error code version).
+     * \brief Executes a prepared statement, passing parameters as a tuple.
      * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
-     *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
+     * Starts a multi-function operation. This function will write the execute request to the
+     * server and read the initial server response, but won't read the generated rows, if any. After
+     * this operation completes, `result` will have \ref resultset::meta populated, and may become
+     * \ref resultset::complete, if the operation did not generate any rows (e.g. it was an
+     * `UPDATE`). `result` will reference the same \ref connection object that `*this` references,
+     * and will be usable for server interaction as long as I/O object references to `*this` are
+     * valid.
+     *\n
+     * If the operation generated any rows, these __must__ be read (by using any of the
+     * `resultset::read_xxx` functions) before engaging in any further operation involving server
+     * communication. Otherwise, the results are undefined.
+     *\n
+     * The statement actual parameters (`params`) are passed as a `std::tuple`. There should be
+     * __exactly__ as many parameters as required (as given by \ref statement::num_params). The
+     * tuple elements can be any built-in integral or floating point type, `date`, `datetime`,
+     * `time`, a string type, a \ref field or a \ref field_view. See the [reflink FieldLikeTuple]
+     * concept defition for more info.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     *\n
+     * See [link mysql.prepared_statements this section] for more info.
      */
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
@@ -61,15 +119,7 @@ public:
         execute(params, execute_options(), result, err, info);
     }
 
-    /**
-     * \brief Executes a statement (collection, sync with exceptions version).
-     * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
-     *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     */
+    /// \copydoc execute
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
@@ -79,19 +129,13 @@ public:
     }
 
     /**
-     * \brief Executes a statement (collection,
-     *        async without [reflink error_info] version).
-     * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
+     * \copydoc execute
+     * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
+     * type (like `string_view`), the caller must keep the values pointed by these references alive
+     * until the operation is initiated. Value types will be copied/moved as required, so don't need
+     * to be kept alive.
      *
-     * After this operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     * It is __not__ necessary to keep the collection of parameters or the
-     * values they may point to alive after the initiating function returns.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
@@ -113,21 +157,7 @@ public:
         );
     }
 
-    /**
-     * \brief Executes a statement (collection,
-     *        async with [reflink error_info] version).
-     * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
-     *
-     * After this operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     * It is __not__ necessary to keep the collection of parameters or the
-     * values they may point to alive after the initiating function returns.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
-     */
+    /// \copydoc async_execute
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -150,6 +180,7 @@ public:
         );
     }
 
+    /// \copydoc execute
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
@@ -161,15 +192,7 @@ public:
         error_info& info
     );
 
-    /**
-     * \brief Executes a statement (collection, sync with exceptions version).
-     * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
-     *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     */
+    /// \copydoc execute
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
@@ -179,21 +202,7 @@ public:
         resultset<Stream>& result
     );
 
-    /**
-     * \brief Executes a statement (collection,
-     *        async without [reflink error_info] version).
-     * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
-     *
-     * After this operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     * It is __not__ necessary to keep the collection of parameters or the
-     * values they may point to alive after the initiating function returns.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
-     */
+    /// \copydoc async_execute
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -216,21 +225,7 @@ public:
         );
     }
 
-    /**
-     * \brief Executes a statement (collection,
-     *        async with [reflink error_info] version).
-     * \details
-     * FieldViewCollection should meet the [reflink FieldViewCollection] requirements.
-     *
-     * After this operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     * It is __not__ necessary to keep the collection of parameters or the
-     * values they may point to alive after the initiating function returns.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
-     */
+    /// \copydoc async_execute
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -246,15 +241,31 @@ public:
     );
 
     /**
-     * \brief Executes a statement (`execute_params`, sync with error code version).
+     * \brief (Experimental) Executes a prepared statement, passing parameters as a range.
      * \details
-     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
-     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
-     * statement execution. They should be a valid iterator range.
+     * [warning This function is experimental. Details may change in the future without notice.]
      *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
+     * Starts a multi-function operation. This function will write the execute request to the
+     * server and read the initial server response, but won't read the generated rows, if any. After
+     * this operation completes, `result` will have \ref resultset::meta populated, and may become
+     * \ref resultset::complete, if the operation did not generate any rows (e.g. it was an
+     * `UPDATE`). `result` will reference the same \ref connection object that `*this` references,
+     * and will be usable for server interaction as long as I/O object references to `*this` are
+     * valid.
+     *\n
+     * If the operation generated any rows, these __must__ be read (by using any of the
+     * `resultset::read_xxx` functions) before engaging in any further operation involving server
+     * communication. Otherwise, the results are undefined.
+     *\n
+     * The statement actual parameters are passed as an iterator range. There should be
+     * __exactly__ as many parameters as required (as given by \ref statement::num_params).
+     * Dereferencing the passed iterators should yield a type convertible to \ref field_view.
+     * Both \ref field and \ref field_view satisfy this. See [reflink FieldViewFwdIterator] for
+     * details.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     *\n
+     * See [link mysql.prepared_statements this section] for more info.
      */
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void execute(
@@ -266,17 +277,7 @@ public:
         error_info& info
     );
 
-    /**
-     * \brief Executes a statement (`execute_params`, sync with exceptions version).
-     * \details
-     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
-     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
-     * statement execution. They should be a valid iterator range.
-     *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     */
+    /// \copydoc execute(FieldViewFwdIterator,FieldViewFwdIterator,const execute_options&,resultset<Stream>&,error_code&,error_info&)
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void execute(
         FieldViewFwdIterator params_first,
@@ -286,23 +287,12 @@ public:
     );
 
     /**
-     * \brief Executes a statement (`execute_params`,
-     *        async without [reflink error_info] version).
+     * \copydoc execute(FieldViewFwdIterator,FieldViewFwdIterator,const execute_options&,resultset<Stream>&,error_code&,error_info&)
      * \details
-     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
-     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
-     * statement execution. They should be a valid iterator range.
+     * If `CompletionToken` is deferred (like `use_awaitable`), the caller must keep objects in
+     * the range `\\[params_first, params_last)` alive until the  operation is initiated.
      *
-     * After this operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     *
-     * It is __not__ necessary to keep the objects in
-     * \\[`params.first()`, `params.last()`) or the
-     * values they may point to alive after the initiating function returns.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
         BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
@@ -327,25 +317,7 @@ public:
         );
     }
 
-    /**
-     * \brief Executes a statement (`execute_params`,
-     *        async with [reflink error_info] version).
-     * \details
-     * FieldViewFwdIterator should meet the [reflink FieldViewFwdIterator] requirements.
-     * The range \\[`params.first()`, `params.last()`) will be used as parameters for
-     * statement execution. They should be a valid iterator range.
-     *
-     * After this operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     *
-     * It is __not__ necessary to keep the objects in
-     * \\[`params.first()`, `params.last()`) or the
-     * values they may point to alive after the initiating function returns.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
-     */
+    /// \copydoc async_execute(FieldViewFwdIterator,FieldViewFwdIterator,const execute_options&,resultset<Stream>&,CompletionToken&&)
     template <
         BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -361,30 +333,21 @@ public:
     );
 
     /**
-     * \brief Closes a prepared statement, deallocating it from the server
-              (sync with error code version).
+     * \brief Closes a prepared statement, deallocating it from the server.
      * \details
-     * After calling this function, no further functions may be called on this prepared
-     * statement, other than assignment. Failing to do so results in undefined behavior.
+     * After this operation succeeds, `this->valid()` will return `false`, and no further functions
+     * may be called on this prepared statement, other than assignment.
+     *\n
+     * This operation involves only writes on the underlying stream.
      */
     void close(error_code&, error_info&);
 
-    /**
-     * \brief Closes a prepared statement, deallocating it from the server
-              (sync with exceptions version).
-     * \details
-     * After calling this function, no further functions may be called on this prepared
-     * statement, other than assignment. Failing to do so results in undefined behavior.
-     */
+    /// \copydoc close
     void close();
 
     /**
-     * \brief Closes a prepared statement, deallocating it from the server
-              (async without [reflink error_info] version).
+     * \copydoc close
      * \details
-     * After the operation completes, no further functions may be called on this prepared
-     * statement, other than assignment. Failing to do so results in undefined behavior.
-     *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -395,15 +358,7 @@ public:
         return async_close(get_channel().shared_info(), std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \brief Closes a prepared statement, deallocating it from the server
-              (async with [reflink error_info] version).
-     * \details
-     * After the operation completes, no further functions may be called on this prepared
-     * statement, other than assignment. Failing to do so results in undefined behavior.
-     *
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc async_close
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))

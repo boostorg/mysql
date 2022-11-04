@@ -45,7 +45,9 @@ PREDEFINED             = BOOST_MYSQL_DOXYGEN \
                         "BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(ex)=" \
                         "BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(ex)=" \
                         "protected=private" \
-                        "BOOST_CXX14_CONSTEXPR=constexpr"
+                        "BOOST_CXX14_CONSTEXPR=constexpr" \
+                        "BOOST_MYSQL_FIELD_LIKE_TUPLE=class" \
+                        "BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR=class"
 
 SKIP_FUNCTION_MACROS   = NO
 

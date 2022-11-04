@@ -103,13 +103,13 @@ public:
 
     /**
      * \brief Move constructor.
-     * \details \ref resultset and \ref statement objects referencing to `other` will remain valid.
+     * \details \ref resultset and \ref statement objects referencing `other` will remain valid.
      */
     connection(connection&& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details \ref resultset and \ref statement objects referencing to `other` will remain valid.
+     * \details \ref resultset and \ref statement objects referencing `other` will remain valid.
      * Objects referencing `*this` will no longer be valid. They can be re-used
      * in I/O object generting operations like \ref query or \ref prepare_statement.
      */

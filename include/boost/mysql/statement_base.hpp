@@ -22,33 +22,18 @@ namespace mysql {
 constexpr std::tuple<> no_statement_params{};
 
 /**
- * \brief Represents a prepared statement. See [link mysql.prepared_statements] for more info.
- * \details This class is a handle to a server-side prepared statement.
- *
- * The main use of a prepared statement is executing it
- * using [refmem statement execute], which yields a [reflink resultset_base].
- *
- * Prepared statements are default-constructible and movable, but not copyable.
- * [refmem statement_base valid] returns `false` for default-constructed
- * and moved-from prepared statements. Calling any member function on an invalid
- * prepared statements, other than assignment, results in undefined behavior.
- *
- * Prepared statements are managed by the server in a per-connection basis:
- * once created, a prepared statement may be used as long as the parent
- * [reflink connection] object (i.e. the connection that originated the resultset_base)
- * is alive and open. Calling any function on a statement_base
- * whose parent connection has been closed or destroyed results
- * in undefined behavior.
+ * \brief The base class for prepared statements.
+ * \details Don't instantiate this class directly - use \ref statement instead.
+ *\n
+ * All member functions, except otherwise noted, have `this->valid()` as precondition.
+ * Calling any function on an invalid statement results in undefined behavior.
  */
 class statement_base
 {
-public:
-    /**
-     * \brief Default constructor.
-     * \details Default constructed statements have [refmem statement_base valid] return `false`.
-     */
+protected:
     statement_base() = default;
 
+public:
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private. Do not use. TODO: hide this
     void reset(void* channel, const detail::com_stmt_prepare_ok_packet& msg) noexcept
