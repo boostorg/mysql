@@ -25,29 +25,45 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief A connection to a MySQL server. See the following sections for how to use
+ * \brief A connection to a MySQL server.
+ *
+ * \details
+ * Represents a connection to a MySQL server. See the following sections for how to use
  * [link mysql.queries text queries], [link mysql.prepared_statements prepared statements],
  * [link mysql.connparams connect], [link mysql.other_streams.connection handshake and quit]
  * and [link mysql.reconnecting error recovery].
- *
- * \details
- * Represents a connection to a MySQL server, allowing you to interact with it.
- *
- * Because of how the MySQL protocol works, you must fully perform an operation before
- * starting the next one. More information [link mysql.async.sequencing here].
- * Otherwise, the results are undefined.
- *
- * connection is move constructible and move assignable, but not copyable.
+ *\n
+ * `connection` is the main I/O object that this library implements. It owns a `Stream` object that
+ * is accessed by functions involving network operations, as well as session state. You can access
+ * the stream using \ref connection::stream, and its executor via \ref connection::get_executor. The
+ * executor used by this object is always the same as the underlying stream. Other I/O objects
+ * (`statement` and `resultset`) are proxy I/O objects, which means that they pointing to the stream
+ * and state owned by `*this`.
+ *\n
+ * All I/O operations involve stream reads, stream writes, or both. At any given point in time, for
+ * a single connection, only one read and one write operation may be outstanding. Invoking several
+ * reads or writes in parallel for a single connection results in undefined behavior. Note that
+ * operations on `resultset`s and `statement`s count towards this limit, too.
+ *\n
+ * The MySQL protocol is a half-duplex request/reply protocol that has the concept of "operations".
+ * This library models some operations as single functions (e.g. \ref connection prepare_statement),
+ * and splits other operations into several calls (e.g. \ref connection query + \ref resultset
+ * read_all), to provide more flexibility. Once you engage in a multi-function operation, you must
+ * complete it (e.g. by calling `resultset::read_xxx` until all rows have been read) before engaging
+ * into the next one. Failing to do so will produce network packet mismatches, resulting in
+ * unspecified behavior. More information [link mysql.async.sequencing here].
+ *\n
+ * `connection` is move constructible and move assignable, but not copyable.
  * Moved-from connection objects are left in a state that makes them not
- * usable for most of the operations. The function [refmem connection valid]
+ * usable for most of the operations. The function \ref connection::valid
  * returns whether an object is in a usable state or not. The only allowed
  * operations on moved-from connections are:
- *
+ *\n
  *  * Destroying them.
  *  * Participating in other move construction/assignment operations.
- *  * Calling [refmem connection valid].
- *
- * In particular, it is __not__ allowed to call [refmem connection handshake]
+ *  * Calling \ref connection::valid.
+ *\n
+ * In particular, it is __not__ allowed to call \ref connection::handshake
  * on a moved-from connection in order to re-open it.
  */
 template <class Stream>
@@ -71,11 +87,10 @@ public:
     /**
      * \brief Initializing constructor.
      * \details
-     * As part of the initialization, a Stream object is created
+     * As part of the initialization, a `Stream` object is created
      * by forwarding any passed in arguments to its constructor.
      *
-     * The constructed connection will have [refmem connection valid]
-     * return `true`.
+     * `this->valid()` will return `true` for the newly constructed object.
      */
     template <
         class... Args,
@@ -88,14 +103,15 @@ public:
 
     /**
      * \brief Move constructor.
-     * \details The constructed connection will be valid if `other` is valid.
-     * After this operation, `other` is guaranteed to be invalid.
+     * \details \ref resultset and \ref statement objects referencing to `other` will remain valid.
      */
     connection(connection&& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details The assigned-to connection will be valid if `other` is valid.
+     * \details \ref resultset and \ref statement objects referencing to `other` will remain valid.
+     * Objects referencing `*this` will no longer be valid. They can be re-used
+     * in I/O object generting operations like \ref query or \ref prepare_statement.
      */
     connection& operator=(connection&& rhs) = default;
 
@@ -148,16 +164,18 @@ public:
     bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
 
     /**
-     * \brief Performs a connection to the MySQL server (sync with error code version).
+     * \brief Establishes a connection to a MySQL server.
      * \details This function is only available if `Stream` satisfies the
      * [reflink SocketStream] requirements.
-     *
-     * Connects the underlying stream and then performs the handshake
+     *\n
+     * Connects the underlying stream and performs the handshake
      * with the server. The underlying stream is closed in case of error. Prefer
-     * this function to [refmem connection handshake].
-     *
+     * this function to \ref connection::handshake.
+     *\n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
      * See [link mysql.ssl.handshake this section] for more info.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
      */
     template <typename EndpointType>
     void connect(
@@ -167,38 +185,16 @@ public:
         error_info& info
     );
 
-    /**
-     * \brief Performs a connection to the MySQL server (sync with exceptions version).
-     * \details This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
-     *
-     * Connects the underlying stream and then performs the handshake
-     * with the server. The underlying stream is closed in case of error. Prefer
-     * this function to [refmem connection handshake].
-     *
-     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
-     */
+    /// \copydoc connect
     template <typename EndpointType>
     void connect(const EndpointType& endpoint, const handshake_params& params);
 
     /**
-     * \brief Performs a connection to the MySQL server
-     *        (async without [reflink error_info] version).
-     * \details
-     * This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
-     *
-     * Connects the underlying stream and then performs the handshake
-     * with the server. The underlying stream is closed in case of error. Prefer
-     * this function to [refmem connection async_handshake].
-     *
-     * The strings pointed to by params should be kept alive by the caller
+     * \copydoc connect
+     *\n
+     * The strings pointed to by `params` should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
-     *
-     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
-     *
+     *\n
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -220,25 +216,7 @@ public:
         );
     }
 
-    /**
-     * \brief Performs a connection to the MySQL server
-     *        (async with [reflink error_info] version).
-     * \details
-     * This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
-     *
-     * Connects the underlying stream and then performs the handshake
-     * with the server. The underlying stream is closed in case of error. Prefer
-     * this function to [refmem connection async_handshake].
-     *
-     * The strings pointed to by params should be kept alive by the caller
-     * until the operation completes, as no copy is made by the library.
-     *
-     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
-     *
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc async_connect
     template <
         typename EndpointType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -252,39 +230,27 @@ public:
     );
 
     /**
-     * \brief Performs the MySQL-level handshake (sync with error code version).
+     * \brief Performs the MySQL-level handshake.
      * \details Does not connect the underlying stream.
      * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection connect] instead of this function.
-     *
+     * requirements, use \ref connection::connect instead of this function.
+     *\n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
      * See [link mysql.ssl.handshake this section] for more info.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
      */
     void handshake(const handshake_params& params, error_code& ec, error_info& info);
 
-    /**
-     * \brief Performs the MySQL-level handshake (sync with exceptions version).
-     * \details Does not connect the underlying stream.
-     * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection connect] instead of this function.
-     *
-     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
-     */
+    /// \copydoc handshake
     void handshake(const handshake_params& params);
 
     /**
-     * \brief Performs the MySQL-level handshake
-     *        (async without [reflink error_info] version).
-     * \details Does not connect the underlying stream.
-     * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection connect] instead of this function.
+     * \copydoc handshake
+     *\n
      * The strings pointed to by params should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
-     *
-     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
-     *
+     *\n
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -298,20 +264,7 @@ public:
         return async_handshake(params, shared_info(), std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \brief Performs the MySQL-level handshake
-     *        (async with [reflink error_info] version).
-     * \details Does not connect the underlying stream.
-     * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection connect] instead of this function.
-     * The strings pointed to by params should be kept alive by the caller
-     * until the operation completes, as no copy is made by the library.
-     *
-     * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
-     *
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc async_handshake
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -322,35 +275,35 @@ public:
     );
 
     /**
-     * \brief Executes a SQL text query (sync with error code version).
-     * \details See [link mysql.queries this section] for more info.
-     *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
+     * \brief Executes a SQL text query.
+     * \details Starts a multi-function operation. This function will write the query request to the
+     * server and read the initial server response, but won't read the generated rows, if any. After
+     * this operation completes, `result` will have \ref resultset::meta populated, and may become
+     * \ref resultset::complete, if the operation did not generate any rows (e.g. it was an
+     * `UPDATE`). `result` will reference `*this`, and will be usable for server interaction as long
+     * as I/O object references to `*this` are valid.
+     *\n
+     * If the operation generated any rows, these __must__ be read (by using any of the
+     * `resultset::read_xxx` functions) before engaging in any further operation involving server
+     * communication. Otherwise, the results are undefined.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     *\n
+     * See [link mysql.queries this section] for more info.
      */
     void query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
 
-    /**
-     * \brief Executes a SQL text query (sync with exceptions version).
-     * \details See [link mysql.queries this section] for more info.
-     *
-     * After this function has returned, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     */
+    /// \copydoc query
     void query(boost::string_view query_string, resultset<Stream>& result);
 
     /**
-     * \brief Executes a SQL text query (async without [reflink error_info] version).
-     * \details See [link mysql.queries this section] for more info.
+     * \copydoc query
+     * \details
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
+     * pointed to by `query_string` __must be kept alive by the caller until the operation is
+     * initiated__.
      *
-     * After the operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -369,17 +322,7 @@ public:
         );
     }
 
-    /**
-     * \brief Executes a SQL text query (async with [reflink error_info] version).
-     * \details See [link mysql.queries this section] for more info.
-     *
-     * After the operation completes, you should read the entire resultset_base
-     * before calling any function that involves communication with the server over this
-     * connection. Otherwise, the results are undefined.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::resultset_base<Stream>)`.
-     */
+    /// \copydoc async_query
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -391,29 +334,28 @@ public:
     );
 
     /**
-     * \brief Prepares a statement (sync with error code version).
-     * \details See [link mysql.prepared_statements this section] for more info.
-     * Prepared statements are only valid while the connection object on which
-     * this function was called is alive and open.
+     * \brief Prepares a statement server-side.
+     * \details
+     * After this operation completes, `result` will reference `*this`. It will be usable for server
+     * interaction as long as I/O object references to `*this` are valid.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     *\n
+     * See [link mysql.prepared_statements this section] for more info.
      */
     void prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
 
-    /**
-     * \brief Prepares a statement (sync with exceptions version).
-     * \details See [link mysql.prepared_statements this section] for more info.
-     * Prepared statements are only valid while the connection object on which
-     * this function was called is alive and open.
-     */
+    /// \copydoc prepare_statement
     void prepare_statement(boost::string_view stmt, statement<Stream>& result);
 
     /**
-     * \brief Prepares a statement (async without [reflink error_info] version).
-     * \details See [link mysql.prepared_statements this section] for more info.
-     * Prepared statements are only valid while the connection object on which
-     * this function was called is alive and open.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::statement_base<Stream>)`
+     * \copydoc prepare_statement
+     * \details
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
+     * pointed to by `stmt` __must be kept alive by the caller until the operation is
+     * initiated__.
+     *\n
+     * The handler signature for this operation is `void(boost::mysql::error_code)`
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -432,15 +374,7 @@ public:
         );
     }
 
-    /**
-     * \brief Prepares a statement (async with [reflink error_info] version).
-     * \details See [link mysql.prepared_statements this section] for more info.
-     * Prepared statements are only valid while the connection object on which
-     * this function was called is alive and open.
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::statement_base<Stream>)`
-     */
+    /// \copydoc async_prepare_statement
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -452,36 +386,26 @@ public:
     );
 
     /**
-     * \brief Closes the connection (sync with error code version).
+     * \brief Closes the connection with the server.
      * \details
      * This function is only available if `Stream` satisfies the
      * [reflink SocketStream] requirements.
-     *
+     *\n
      * Sends a quit request, performs the TLS shutdown (if required)
-     * and closes the underlying stream. Prefer this function to [refmem connection quit].
+     * and closes the underlying stream. Prefer this function to \ref connection::quit.
+     *\n
+     * After calling this function, any \ref statement and \ref resultset referencing `*this` will
+     * no longer be usable for server interaction.
+     *\n
      */
     void close(error_code&, error_info&);
 
-    /**
-     * \brief Closes the connection (sync with exceptions version).
-     * \details
-     * This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
-     *
-     * Sends a quit request, performs the TLS shutdown (if required)
-     * and closes the underlying stream. Prefer this function to [refmem connection quit].
-     */
+    /// \copydoc close
     void close();
 
     /**
-     * \brief Closes the connection (async without [reflink error_info] version).
+     * \copydoc close
      * \details
-     * This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
-     *
-     * Sends a quit request, performs the TLS shutdown (if required)
-     * and closes the underlying stream. Prefer this function to [refmem connection quit].
-     *
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -492,17 +416,7 @@ public:
         return async_close(this->shared_info(), std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \brief Closes the connection (async with [reflink error_info] version).
-     * \details
-     * This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
-     *
-     * Sends a quit request, performs the TLS shutdown (if required)
-     * and closes the underlying stream. Prefer this function to [refmem connection quit].
-     *
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc async_close
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -512,46 +426,23 @@ public:
     );
 
     /**
-     * \brief Notifies the MySQL server that the client wants to end the session
-     * (sync with error code version).
-     *
+     * \brief Notifies the MySQL server that the client wants to end the session and shutdowns SSL.
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
      * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
-     *
+     *\n
      * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection close] instead of this function,
+     * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.
-     *
      */
     void quit(error_code&, error_info&);
 
-    /**
-     * \brief Notifies the MySQL server that the client wants to end the session
-     * (sync with exceptions version).
-     *
-     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should
-     * close the underlying physical connection after calling this function.
-     *
-     * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection close] instead of this function,
-     * as it also takes care of closing the underlying stream.
-     */
+    /// \copydoc quit
     void quit();
 
     /**
-     * \brief Notifies the MySQL server that the client wants to end the session
-     * (async without [reflink error_info] version).
-     *
-     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should
-     * close the underlying physical connection after calling this function.
-     *
-     * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection close] instead of this function,
-     * as it also takes care of closing the underlying stream.
-     *
+     * \copydoc quit
+     * \details
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -562,20 +453,7 @@ public:
         return async_quit(shared_info(), std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \brief Notifies the MySQL server that the client wants to end the session
-     * (async with [reflink error_info] version).
-     *
-     * \details Sends a quit request to the MySQL server. If the connection is using SSL,
-     * this function will also perform the SSL shutdown. You should
-     * close the underlying physical connection after calling this function.
-     *
-     * If the `Stream` template parameter fulfills the __SocketConnection__
-     * requirements, use [refmem connection close] instead of this function,
-     * as it also takes care of closing the underlying stream.
-     *
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc async_quit
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
