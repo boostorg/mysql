@@ -30,11 +30,9 @@ constexpr std::tuple<> no_statement_params{};
  */
 class statement_base
 {
-protected:
-    statement_base() = default;
-
 public:
 #ifndef BOOST_MYSQL_DOXYGEN
+    statement_base() = default;
     // Private. Do not use. TODO: hide this
     void reset(void* channel, const detail::com_stmt_prepare_ok_packet& msg) noexcept
     {
@@ -46,9 +44,14 @@ public:
 #endif
 
     /**
-     * \brief Returns `true` if the statement is not a default-constructed object.
-     * \details Calling any function other than assignment on an statement for which
+     * \brief Returns `true` if the object represents an actual server statement.
+     * \details Calling any function other than assignment on a statement for which
      * this function returns `false` results in undefined behavior.
+     *
+     * To be usable for server communication, the \ref connection referenced by this object must be
+     * alive and open, too.
+     *
+     * Returns `false` for default-constructed, moved-from and closed statements.
      */
     bool valid() const noexcept { return channel_ != nullptr; }
 

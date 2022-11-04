@@ -28,17 +28,11 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents tabular data retrieved from the MySQL server.
- *        See [link mysql.resultsets this section] for more info.
- * \details Returned as the result of a [link mysql.queries text query]
- * or a [link mysql.prepared_statements statement execution]. It is an I/O object
- * that allows reading rows progressively. [link mysql.resultsets This section]
- * provides an in-depth explanation of the mechanics of this class.
- *
- * Resultsets are default-constructible and movable, but not copyable.
- * [refmem resultset_base valid] returns `false` for default-constructed
- * and moved-from resultsets. Calling any member function on an invalid
- * resultset_base, other than assignment, results in undefined behavior.
+ * \brief The base class for resultsets.
+ * \details Don't instantiate this class directly - use \ref resultset instead.
+ *\n
+ * All member functions, except otherwise noted, have `this->valid()` as precondition.
+ * Calling any function on an invalid resultset results in undefined behavior.
  */
 class resultset_base
 {
@@ -94,12 +88,9 @@ class resultset_base
     ok_packet_data ok_packet_;
 
 public:
-    /// \brief Default constructor.
-    /// \details Default constructed resultsets have [refmem resultset_base valid] return `false`.
-    resultset_base() = default;
-
 #ifndef BOOST_MYSQL_DOXYGEN
     // Private, do not use. TODO: hide these
+    resultset_base() = default;
     void reset(void* channel, detail::resultset_encoding encoding) noexcept
     {
         channel_ = channel;
@@ -127,24 +118,37 @@ public:
     const std::vector<metadata>& fields() const noexcept { return meta_; }
 #endif
 
-    // TODO: indicate that moving a resultset doesn't invalidate meta() but copying does.
-
     /**
-     * \brief Returns whether this object represents a valid resultset_base.
-     * \details Returns `false` for default-constructed and moved-from resultsets.
-     * Calling any member function on an invalid resultset_base,
-     * other than assignment, results in undefined behavior.
+     * \brief Returns `true` if the object represents an actual resultset.
+     * \details Calling any function other than assignment on a resultset for which
+     * this function returns `false` results in undefined behavior.
+     *
+     * To be usable for server communication, the \ref connection referenced by this object must be
+     * alive and open, too.
+     *
+     * Returns `false` for default-constructed and moved-from objects.
      */
     bool valid() const noexcept { return channel_ != nullptr; }
 
-    /// \brief Returns whether the resultset_base has been completely read or not.
-    /// \details See [link mysql.resultsets.complete this section] for more info.
+    /**
+     * \brief Returns whether the resultset has been completely read or not.
+     * \details
+     * After a resultset is `complete`, you may access extra information about the operation, like
+     * \ref affected_rows or \ref last_insert_id.
+     *
+     * See [link mysql.resultsets.complete this section] for more info.
+     */
     bool complete() const noexcept { return ok_packet_.has_value(); }
 
     /**
-     * \brief Returns [link mysql.resultsets.metadata metadata] about the fields in the query.
-     * \details There will be as many [reflink metadata] objects as fields
-     * in the SQL query, and in the same order.
+     * \brief Returns [link mysql.resultsets.metadata metadata] about the columns in the query.
+     * \details
+     * The returned collection will have as many \ref metadata objects as columns retrieved by
+     * the SQL query, and in the same order.
+     *\n
+     * This function returns a view object, with reference semantics. This view object references
+     * `*this` internal state, and will be valid as long as `*this` (or a `resultset`
+     * move-constructed from `*this`) is alive.
      */
     metadata_collection_view meta() const noexcept
     {
@@ -152,32 +156,35 @@ public:
     }
 
     /**
-     * \brief The number of rows affected by the SQL that generated this resultset_base.
-     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
+     * \brief The number of rows affected by the SQL statement that generated this resultset.
+     * \details The resultset **must be [link mysql.resultsets.complete complete]**
      * before calling this function.
      */
     std::uint64_t affected_rows() const noexcept { return ok_packet_.affected_rows(); }
 
     /**
-     * \brief The last insert ID produced by the SQL that generated this resultset_base.
-     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
+     * \brief The last insert ID produced by the SQL statement that generated this resultset.
+     * \details The resultset **must be [link mysql.resultsets.complete complete]**
      * before calling this function.
      */
     std::uint64_t last_insert_id() const noexcept { return ok_packet_.last_insert_id(); }
 
     /**
-     * \brief The number of warnings produced by the SQL that generated this resultset_base.
-     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
+     * \brief The number of warnings produced by the SQL statement that generated this resultset.
+     * \details The resultset **must be [link mysql.resultsets.complete complete]**
      *  before calling this function.
      */
     unsigned warning_count() const noexcept { return ok_packet_.warning_count(); }
 
     /**
      * \brief Additionat text information about the execution of
-     *        the SQL that generated this resultset_base.
-     * \details The resultset_base __must be [link mysql.resultsets.complete complete]__
-     * before calling this function. The returned string is guaranteed to be valid
-     * until the resultset_base object is destroyed.
+     *        the SQL statement that generated this resultset.
+     * \details The resultset **must be [link mysql.resultsets.complete complete]**
+     * before calling this function.
+     *\n
+     * This function returns a view object, with reference semantics. This view object references
+     * `*this` internal state, and will be valid as long as `*this` (or a `resultset`
+     * move-constructed from `*this`) is alive.
      */
     boost::string_view info() const noexcept { return ok_packet_.info(); }
 
