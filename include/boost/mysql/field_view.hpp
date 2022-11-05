@@ -26,9 +26,9 @@ namespace mysql {
 
 /**
  * \brief Non-owning variant-like class that can represent of any of the allowed database types.
- *        See [link mysql.fields this section] for more info.
  * \details
- * For a thorough explanation on how to use fields, see [link mysql.fields this section].
+ * For an overview on how to use fields, see [link mysql.overview.rows_fields this section].
+ * The MySQL <=> C++ type mapping reference is [link mysql.types here].
  * \n
  * This is a variant-like class, similar to \ref field, but semi-owning and read-only. Values
  * of this type are usually created by the library, not directly by the user. It's cheap to
@@ -63,16 +63,16 @@ public:
     BOOST_CXX14_CONSTEXPR field_view() = default;
 
     /**
-     * \brief Constructs a `field_view` holding NULL (`this->kind() == field_kind::null`).
-     * \details Results in a `field_view` with value semantics (always valid).
+     * \brief (EXPERIMENTAL) Constructs a `field_view` holding NULL (`this->kind() ==
+     * field_kind::null`). \details Results in a `field_view` with value semantics (always valid).
      *
      * Caution: `field_view(NULL)` will __NOT__ match this overload. It will try to construct
      * a `boost::string_view` from a NULL C string, causing undefined behavior.
      */
     BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}
 
-    /// \brief Constructs a `field_view` holding an `int64` (`this->kind() == field_kind::int64`).
-    /// \details Results in a `field_view` with value semantics (always valid).
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding an `int64` (`this->kind() ==
+    /// field_kind::int64`). \details Results in a `field_view` with value semantics (always valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(signed char v) noexcept;
 
     /// \copydoc field_view(signed char)
@@ -87,8 +87,9 @@ public:
     /// \copydoc field_view(signed char)
     BOOST_CXX14_CONSTEXPR explicit inline field_view(long long v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a `uint64` (`this->kind() == field_kind::uint64`).
-    /// \details Results in a `field_view` with value semantics (always valid).
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a `uint64` (`this->kind() ==
+    /// field_kind::uint64`). \details Results in a `field_view` with value semantics (always
+    /// valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned char v) noexcept;
 
     /// \copydoc field_view(unsigned char)
@@ -103,30 +104,32 @@ public:
     /// \copydoc field_view(unsigned char)
     BOOST_CXX14_CONSTEXPR explicit inline field_view(unsigned long long v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a string (`this->kind() == field_kind::string`).
-    /// \details Results in a `field_view` with reference semantics. It will be valid as long as the
-    /// character buffer the `string_view` points to is valid.
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a string (`this->kind() ==
+    /// field_kind::string`). \details Results in a `field_view` with reference semantics. It will
+    /// be valid as long as the character buffer the `string_view` points to is valid.
     BOOST_CXX14_CONSTEXPR explicit inline field_view(boost::string_view v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a float (`this->kind() == field_kind::float_`).
-    /// \details Results in a `field_view` with value semantics (always valid).
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a float (`this->kind() ==
+    /// field_kind::float_`). \details Results in a `field_view` with value semantics (always
+    /// valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(float v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a double (`this->kind() == field_kind::double_`).
-    /// \details Results in a `field_view` with value semantics (always valid).
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a double (`this->kind() ==
+    /// field_kind::double_`). \details Results in a `field_view` with value semantics (always
+    /// valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(double v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a date (`this->kind() == field_kind::date`).
-    /// \details Results in a `field_view` with value semantics (always valid).
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a date (`this->kind() ==
+    /// field_kind::date`). \details Results in a `field_view` with value semantics (always valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(const date& v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a datetime (`this->kind() ==
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a datetime (`this->kind() ==
     /// field_kind::datetime`). \details Results in a `field_view` with value semantics (always
     /// valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(const datetime& v) noexcept;
 
-    /// \brief Constructs a `field_view` holding a time (`this->kind() == field_kind::time`).
-    /// \details Results in a `field_view` with value semantics (always valid).
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a time (`this->kind() ==
+    /// field_kind::time`). \details Results in a `field_view` with value semantics (always valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(const time& v) noexcept;
 
     // TODO: hide this

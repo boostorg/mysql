@@ -242,10 +242,9 @@ explicit callout ;
 
 install images
     :
-        [ glob $(BOOST_ROOT)/doc/src/images/*.png ]
-        images/proposed_for_boost.svg
+        [ glob $(BOOST_ROOT)/doc/src/images/*.png images/*.svg ]
     :
-        <location>html/images
+        <location>html/mysql/images
     ;
 
 explicit images ;
@@ -276,8 +275,8 @@ boostbook mysql
     :
         mysql_doc
     :
-        <xsl:param>"boost.root=https://www.boost.org/doc/libs/1_78_0"
-        <xsl:param>boost.image.src=images/proposed_for_boost.svg
+        <xsl:param>boost.defaults=Boost
+        <xsl:param>"boost.root=https://www.boost.org/doc/libs/1_80_0"
         <xsl:param>boost.graphics.root=images/
         <xsl:param>nav.layout=none
         <xsl:param>chapter.autolabel=1

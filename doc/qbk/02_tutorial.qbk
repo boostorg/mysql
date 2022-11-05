@@ -104,7 +104,7 @@ we are closing the connection, and thus may fail.
 [heading Final notes]
 
 This concludes our __Self__ tutorial! You can now learn more about the
-core concepts of this library in the [link mysql.concepts concepts section].
+core functionality of this library in the [link mysql.overview overview section].
 You can also look at more complex [link mysql.examples examples].
 
 [heading:listing Full listing]
