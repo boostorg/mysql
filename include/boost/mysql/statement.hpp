@@ -96,11 +96,8 @@ public:
      * `resultset::read_xxx` functions) before engaging in any further operation involving server
      * communication. Otherwise, the results are undefined.
      *\n
-     * The statement actual parameters (`params`) are passed as a `std::tuple`. There should be
-     * __exactly__ as many parameters as required (as given by \ref statement::num_params). The
-     * tuple elements can be any built-in integral or floating point type, `date`, `datetime`,
-     * `time`, a string type, a \ref field or a \ref field_view. See the [reflink FieldLikeTuple]
-     * concept defition for more info.
+     * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
+     * See the [reflink FieldLikeTuple] concept defition for more info.
      *\n
      * This operation involves both reads and writes on the underlying stream.
      *\n

@@ -14,8 +14,7 @@ server-side prepared statements]. The functionality is broadly
 similar to the `PREPARE`, `EXECUTE` and `DEALLOCATE`
 SQL commands. However, note that the functions and classes
 here described are [*not based on SQL query composition],
-but rather use of dedicated protocol functionality
-(sometimes called the binary protocol).
+but make use of dedicated protocol functionality.
 This makes using this API preferable to using query composition
 in terms of security and efficiency.
 
@@ -41,7 +40,7 @@ You don't need to escape or sanitize these values anyhow,
 thus avoiding the possibility of SQL injection attacks.
 
 The following prepares a statement with one
-parameter (`conn` is a [reflink tcp_connection]):
+parameter (`conn` is a [reflink tcp_ssl_connection]):
 
 [prepared_statements_prepare]
 
@@ -49,74 +48,60 @@ parameter (`conn` is a [reflink tcp_connection]):
 
 [heading Executing a statement]
 
-To execute a statement, use the [refmem statement execute]
-or [refmem statement async_execute] function family.
+To execute a statement, use [refmem statement execute] or [refmem statement async_execute].
 Executing a statement yields a [reflink resultset].
 
 When executing a statement, you must pass in [*exactly as many parameters
 as the statement has]. Failing to do so will result in an error.
-Parameters are passed in as [reflink2 field_view boost::mysql::field_view] objects,
-and in the same order as they appear in the statement text.
-Values should be in the MySQL range of validity. In particular,
+Parameters are passed as a `std::tuple`, and in the same order as they
+appear in the statement text. You can pass in built-in integers,
+`float`, `double`, [reflink date], [reflink datetime], [reflink time],
+[reflink field_view] and [reflink field] objects as parameters,
+with the expected results. You can use `nullptr` objects to represent `NULL`
+parameters. If your statement doesn't have any parameters, use the
+[reflink no_statement_params] variable.
+
+TODO: check this. Values should be in the MySQL range of validity. In particular,
 [reflink date]s, [reflink datetime]s and [reflink time]s should
 be in their validity range; otherwise the results are undefined.
-
-There are two different signatures for execute functions:
-
-* One accepting an [reflink execute_params] object, which
-  represents a range of forward iterators pointing to [reflink field_view]s.
-  You can use [reflink2 execute_params.make_execute_params make_execute_params] to create [reflink execute_params]
-  objects easier.
-* Another accepting a collection such that `std::begin()` and `std::end()`
-  yield forward iterators pointing to [reflink field_view]s. This is syntactic
-  sugar over the former.
-
-You may use the [reflink2 field_view.make_field_views make_field_views] function
-to create a `std::array` of [reflink field_view]s suitable for
-the container version, or the [reflink no_statement_params] variable
-if your statement has no parameters.
 
 The following executes the statement we prepared in the previous
 section, binding the `first_name` parameter to `"Efficient"`:
 
 [prepared_statements_execute]
 
-You can execute a statement as many times as you want.
-However, recall that once you obtain a [reflink resultset],
-[*you must read it completely before engaging in any other
-network operation] (e.g. executing the statement again).
-See [link mysql.resultsets.complete this section] for more
-information on resultsets.
+[heading Multi-function operation]
+
+When you call [refmem statement execute], you start a "multi-function" operation.
+`execute()` will send the execute request to the server. The server then sends an initial response
+and all the generated rows. `execute()` will just read the initial response, and not the rows.
+
+After a successful `execute()`, [*you must read all the generated rows] by calling any of the `read_xxx`
+functions on `resultset`. If you start any other operation involving a read before doing this,
+you will get undefined results.
 
 [heading Closing a statement]
 
-Prepared statements are created in the server side, and
-thus consume server resources. Once you don't need a 
+Prepared statements are created server-side, and
+thus consume server resources. If you don't need a 
 [reflink statement] anymore, you can call
 [refmem statement close] or
 [refmem statement async_close] to instruct
-the server to deallocate it. You must not execute
-a closed prepared statement. As a close operation involves
-a network transfer, you should finish reading any incomplete
-[reflink resultset] before starting it.
+the server to deallocate it.
 
 Prepared statements are managed by the server on a
 per-connection basis. Once you close your connection
 with the server, all prepared statements you have
 created using this connection will be automatically
-deallocated. This also means that you must keep
-the [reflink connection] object alive and open to
-use a [reflink statement] object.
+deallocated.
 
 If you are creating your prepared statements at the beginning
 of your program and keeping them alive until the connection
 is closed, then there is no need to call [refmem
-statement close] or [refmem statement
-async_close], as closing the connection will do the cleanup
+statement close], as closing the connection will do the cleanup
 for you. If you are creating and destroying prepared statements
 dynamically, then it is advised to use [refmem
-statement close] or [refmem statement
-async_close] to prevent excessive resource usage in the server.
+statement close] to prevent excessive resource usage in the server.
 
 Finally, note that [reflink statement]'s destructor
 does not perform any server-side deallocation of the statement.
