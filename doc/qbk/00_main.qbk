@@ -40,7 +40,6 @@
 [def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]
 [def __Executor__ [@boost:/doc/html/boost_asio/reference/Executor1.html ['Executor]]]
 [def __CompletionToken__ [@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers ['CompletionToken]]]
-[def __FieldViewCollection__ [reflink2 FieldViewCollection ['FieldViewCollection]]]
 [def __FieldViewFwdIterator__ [reflink2 FieldViewFwdIterator ['FieldViewFwdIterator]]]
 [def __FieldLikeTuple__ [reflink2 FieldLikeTuple ['FieldLikeTuple]]]
 
@@ -113,7 +112,6 @@
 [include reference.qbk]
 [include helpers/Stream.qbk]
 [include helpers/SocketStream.qbk]
-[include helpers/FieldViewCollection.qbk]
 [include helpers/FieldViewFwdIterator.qbk]
 [include helpers/FieldLikeTuple.qbk]
 [endsect]

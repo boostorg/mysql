@@ -15,7 +15,7 @@
     'Stream',
     'SocketStream',
     'Executor',
-    'FieldViewCollection',
+    'FieldLikeTuple',
     'FieldViewFwdIterator'
   "/>
 
