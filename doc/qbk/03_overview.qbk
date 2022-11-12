@@ -158,7 +158,7 @@ These view objects are valid until you perform the next operation involving netw
 transfers on the connection.
 
 The following table shows the most used methods. For a full reference, see
-[link mysql.reading_rows this section].
+[link mysql.resultsets.reading_rows this section].
 
 [table
     [
@@ -237,13 +237,17 @@ us a special packet ("EOF packet" in MySQL slang). After a `resultset` is `compl
 additional information about the query execution, like [refmem resultset last_insert_id]
 and [refmem resultset affected_rows].
 
-TODO: warn about "you must fully read the entire resultset"
+[warning
+    Once you call `connection::query` or `statement::execute`, the server immediately sends all rows to the client.
+    [*You must read all rows], until the resultset is `complete`, before engaging in further operations.
+    Otherwise, the results are undefined.
+]
 
 [endsect]
 
 [section Using rows and fields]
 
-All row types support random access iterators, as well as `at` and `operator[]` with the usual semantics.
+All row types support random access iterators, as well as `at()` and `operator[]` with the usual semantics.
 
 When iterating or indexing a [reflink row] object, you obtain a [reflink field_view], which is an object
 with reference semantics, pointing into `row`'s storage. You can "persist" a `field_view` by constructing a
@@ -261,6 +265,8 @@ with reference semantics, pointing into `row`'s storage. You can "persist" a `fi
 
 Indexing or iterating a `row_view` also yields `field_view`s. Similarly, indexing
 or iterating [reflink rows] or [reflink rows_view] objects yields a `row_view`.
+
+[h4 Using fields]
 
 Both `field` and `field_view` are specialized variant-like types that can hold any type
 you may find in a MySQL table. The following accessor operations are supported:
@@ -332,6 +338,7 @@ The following table shows the mapping from MySQL types to C++ types:
         [`string`]
         [
             `boost::string_view` for `field_view`
+            
             `std::string` for `field`
         ]
         [`CHAR`, `VARCHAR`, `BINARY`, `VARBINARY`, `TEXT`, `BLOB`...]
@@ -389,55 +396,104 @@ The following table shows the mapping from MySQL types to C++ types:
     ]
 ]
 
-TODO: how to handle NULL values correctly
+[link mysql.types This section] contains the full reference of type mappings.
 
-See [link mysql.types this section] for more info on this topic.
+[h4 Handling NULL values]
+
+`NULL` values are represented as `field`/`field_view` objects having `kind() == field_kind::null`.
+You can check whether a value is `NULL` or not using [refmemunq field_view is_null].
+In the following snippet, the `salary` column was defined as a nullable `double`.
+This is how `NULL`s are typically handled:
+
+```
+    tcp_ssl_resultset result;
+    conn.query("SELECT last_name, salary FROM employees", result);
+
+    row r;
+    while(result.read_one(r))
+    {
+        boost::string_view last_name = r.at(0).as_string();
+        field_view salary_fv = r.at(1);
+        if (salary_fv.is_null())
+        {
+            // Handle the NULL value
+            // Note: salary_fv.is_double() will return false here; NULL is represented as a separate type
+            std::cout << "No salary stored for employee " << last_name << std::endl;
+        }
+        else
+        {
+            // Handle the non-NULL case. Get the underlying value and use it as you want
+            // If there is any schema mismatch (and salary was not defined as DOUBLE), this will throw
+            double salary = salary_fv.as_double();
+
+            // Use salary as required
+            std::cout << "Employee " << last_name << " earns " << salary << "dollars yearly" << std::endl;
+        }
+    }
+```
+
+[note
+    Even though the column was defined as `DOUBLE`, for a `NULL` field, `salary_fv.is_double() == false` and
+    `salary_fv.as_double()` will throw an exception. At all effects, `NULL` values are not doubles!     
+]
+
+
 
 [endsect]
 
-[section:async Asynchronous functions]
+[section:async Asynchronous functions and multi-threading]
 
-Async: there are sync with err, exc, async and async with error_info. All operations may imply reads, writes, or both.
-You can't call operations that imply reads and writes concurrently. At the moment, most ops are both, so one async at a time.
-All operations end up modifying the Stream state, so not thread-safe, use strands.
+The library offers asynchronous versions of each operation involving network transfers.
+Following Asio's convention, these are named `async_xxx` (e.g. [refmem connection async_query]).
 
-In all cases, communication will happen over the Stream contained in connection, even if the operation
-is called on resultset or statement. Relevant for lifetimes and threading.
+As mentioned, `connection` holds an internal `Stream` that is used for network transfers.
+All network operations involve stream [*reads], stream [*writes], or [*both]. At any given point in time, for
+a single connection, [*only one read and one write operation may be outstanding]. Invoking several
+reads or writes in parallel for a single connection results in undefined behavior. All network functions
+document whether they perform reads, writes or both. Most of them imply both.
 
-Resultset and statements are proxy I/O objects: they use the stream created by the
-`connection` to perform the required I/O. This means that they're also templates.
-Typedefs like [reflink tcp_ssl_resultset] and [reflink tcp_ssl_statement] exist for simplicity.
+For example, [refmem connection query] performs both reads and writes. Doing this is illegal and should be avoided:
 
-All I/O operations involve stream reads, stream writes, or both. At any given point in time, for
-a single connection, only one read and one write operation may be outstanding. Invoking several
-reads or writes in parallel for a single connection results in undefined behavior. Note that
-operations on `resultset`s and `statement`s count towards this limit, too.
+```
+    // Coroutine body
+    // DO NOT DO THIS!!!!
+    auto q1 = conn.async_query("SELECT 1", result1, use_awaitable);
+    auto q2 = conn.async_query("SELECT 2", result2, use_awaitable);
+    co_await (q1 && q2);
+```
 
-The MySQL protocol is a half-duplex request/reply protocol that has the concept of "operations".
-This library models some operations as single functions (e.g. connection prepare_statement),
-and splits other operations into several calls (e.g. connection query + resultset
-read_all), to provide more flexibility. Once you engage in a multi-function operation, you must
-complete it (e.g. by calling `resultset::read_xxx` until all rows have been read) before engaging
-into the next one. Failing to do so will produce network packet mismatches, resulting in
-unspecified behavior. More information [link mysql.async.sequencing here].
+If you need to perform queries in parallel, open more connections to the server.
+
+[h4 Proxy I/O objects]
+
+`resultset` and `statement` are proxy I/O objects: they use the stream created by the
+`connection` to perform the required I/O. This means that [*read and write operations invoked
+on resultsets and statements also count toward the `connection` maximum]. This is illegal, too:
+
+```
+    // Coroutine body
+    // DO NOT DO THIS!!!!
+    tcp_ssl_resultset result1, result2;
+    rows all_rows;
+    co_await conn.async_query("SELECT 1", result1, use_awaitable);
+
+    // Invokes two read operations in parallel - DO NOT DO THIS!!!
+    auto query_aw = conn.async_query("SELECT 2", result2, use_awaitable);
+    auto read_all_aw = result1.async_read_all(all_rows, use_awaitable);
+    co_await (query_aw && read_all_aw);
+```
+
+If you're working in a multi-threading environment, please bear in mind that
+[*network operations invoked on `statement` and `resultset` also mutate the
+`connection`] that created them. Use strands as required to avoid race conditions.
 
 [endsect]
 
 [section:encoding Character sets, collations and time zones]
 
 Encoding: set it on handshake or with SET NAMES and everything you send/receive will be in this encoding.
-We don't do any handling.
+We don't do any handling. TODO.
 
 [endsect]
-
-[section:errors Error recovery]
-
-Error recovery: after any server error, you can still use the connection. After a client or network error, close/reopen. In the common case
-of ssl streams, delete the object and create it again.
-
-Beware of errors + leaving incomplete results
-
-[endsect]
-
 
 [endsect]
