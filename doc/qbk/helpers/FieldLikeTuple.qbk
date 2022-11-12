@@ -7,6 +7,18 @@
 
 [section:boost__mysql__FieldLikeTuple FieldLikeTuple concept]
 
-TODO
+A type `T` is a `FieldLikeTuple` if it's a `std::tuple` specialization,
+or a reference to one, and all element types fulfill the exposition-only
+concept `FieldLike`. Empty tuples satisfy `FieldLikeTuple`.
+
+Currently, a type `T2` satisfies `FieldLike` if a [reflink field_view]
+can be constructed from `T2`. The exact definition may change in future releases.
+However, the following types are guaranteed to satisfy `FieldLike`:
+
+* Built-in integer types, `float`, `double`, `date`, `datetime`, `time`
+  and `std::nullptr_t`, and references to them.
+* `std::string` and references to it.
+* `boost::string_view` and `std::string_view`.
+* `field`, `field_view` and references to them.
 
 [endsect]
