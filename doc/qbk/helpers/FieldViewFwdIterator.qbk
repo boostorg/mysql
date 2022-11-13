@@ -7,8 +7,13 @@
 
 [section:boost__mysql__FieldViewFwdIterator FieldViewFwdIterator concept]
 
-FieldViewFwdIterator should be a type fulfilling the
-`LegacyForwardIterator` standard concept. Additionally,
-its `value_type` should be convertible to [reflink field_view].
+A type `T` fulfills `FieldViewFwdIterator` if it fulfills the
+`LegacyForwardIterator` standard concept, and
+`std::iterator_traits<T>::reference` is convertible to [reflink field_view].
+
+[warning
+    This concept is used in experimental code. The requirements for this concept
+    may change in future releases without notice.
+]
 
 [endsect]
