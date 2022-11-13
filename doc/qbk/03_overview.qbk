@@ -132,7 +132,7 @@ Fields are organized in rows. This library defines the following types to repres
 
 [endsect]
 
-[section Reading rows]
+[section:read Reading rows]
 
 There are three methods to read rows from a `resultset`:
 
@@ -158,7 +158,7 @@ These view objects are valid until you perform the next operation involving netw
 transfers on the connection.
 
 The following table shows the most used methods. For a full reference, see
-[link mysql.resultsets.reading_rows this section].
+[link mysql.resultsets.read this section].
 
 [table
     [
