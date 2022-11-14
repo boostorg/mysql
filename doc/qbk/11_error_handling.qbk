@@ -44,7 +44,7 @@ has one of the following two forms:
 * `void(error_code)`. Used in operations that do
   not have a proper result, e.g. [refmem connection async_connect].
 * `void(error_code, T)`. Used in operations that
-  have a result, e.g. [refmem connection async_query].
+  have a result, e.g. [refmem resultset async_read_one].
   
 When asynchronous operations fail, they communicate it
 by calling the handler with a non-zero [reflink error_code].
@@ -73,5 +73,5 @@ two different origins:
     The server may define additional error codes, and that should
     not make operations fail. 
 ]
-  
+
 [endsect]
