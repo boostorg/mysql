@@ -20,9 +20,9 @@ handler type, which dictates how the asynchronous operation
 communicates its result back to the caller. This handler
 type always has one of the two folling forms:
 
-#) `void(error_code)`. Used in operations that do
+# `void(error_code)`. Used in operations that do
    not have a proper result, e.g. [refmem connection async_connect].
-#) `void(error_code, T)`. Used in operations that
+# `void(error_code, T)`. Used in operations that
    have a result, e.g. [refmem resultset async_read_one]
    (in this case, `T` is `bool` for the "owning" version).
    
