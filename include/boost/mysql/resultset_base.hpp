@@ -135,8 +135,6 @@ public:
      * \details
      * After a resultset is `complete`, you may access extra information about the operation, like
      * \ref affected_rows or \ref last_insert_id.
-     *
-     * See [link mysql.resultsets.complete this section] for more info.
      */
     bool complete() const noexcept { return ok_packet_.has_value(); }
 
@@ -157,30 +155,27 @@ public:
 
     /**
      * \brief The number of rows affected by the SQL statement that generated this resultset.
-     * \details The resultset **must be [link mysql.resultsets.complete complete]**
+     * \details The resultset **must be complete**
      * before calling this function.
      */
     std::uint64_t affected_rows() const noexcept { return ok_packet_.affected_rows(); }
 
     /**
      * \brief The last insert ID produced by the SQL statement that generated this resultset.
-     * \details The resultset **must be [link mysql.resultsets.complete complete]**
-     * before calling this function.
+     * \details The resultset **must be complete** before calling this function.
      */
     std::uint64_t last_insert_id() const noexcept { return ok_packet_.last_insert_id(); }
 
     /**
      * \brief The number of warnings produced by the SQL statement that generated this resultset.
-     * \details The resultset **must be [link mysql.resultsets.complete complete]**
-     *  before calling this function.
+     * \details The resultset **must be complete** before calling this function.
      */
     unsigned warning_count() const noexcept { return ok_packet_.warning_count(); }
 
     /**
      * \brief Additionat text information about the execution of
      *        the SQL statement that generated this resultset.
-     * \details The resultset **must be [link mysql.resultsets.complete complete]**
-     * before calling this function.
+     * \details The resultset **must be complete** before calling this function.
      *\n
      * This function returns a view object, with reference semantics. This view object references
      * `*this` internal state, and will be valid as long as `*this` (or a `resultset`

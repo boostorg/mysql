@@ -450,9 +450,10 @@ As mentioned, `connection` holds an internal `Stream` that is used for network t
 All network operations involve stream [*reads], stream [*writes], or [*both]. At any given point in time, for
 a single connection, [*only one read and one write operation may be outstanding]. Invoking several
 reads or writes in parallel for a single connection results in undefined behavior. All network functions
-document whether they perform reads, writes or both. Most of them imply both.
+document whether they perform reads, writes or both.
 
-For example, [refmem connection query] performs both reads and writes. Doing this is illegal and should be avoided:
+For example, [refmem connection async_query] performs both reads and writes.
+Doing this is illegal and should be avoided:
 
 ```
     // Coroutine body

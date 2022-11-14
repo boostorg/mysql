@@ -28,10 +28,14 @@ namespace mysql {
  * \brief A connection to a MySQL server.
  *
  * \details
- * Represents a connection to a MySQL server. See the following sections for how to use
- * [link mysql.queries text queries], [link mysql.prepared_statements prepared statements],
- * [link mysql.connparams connect], [link mysql.other_streams.connection handshake and quit]
- * and [link mysql.reconnecting error recovery].
+ * Represents a connection to a MySQL server. You can find more info in the following sections:
+ *\n
+ *  * [link mysql.queries Text queries].
+ *  * [link mysql.prepared_statements Prepared statements].
+ *  * [link mysql.overview.async Asynchronous functions and multi-threading].
+ *  * [link mysql.connparams Connect].
+ *  * [link mysql.other_streams.connection Handshake and quit].
+ *  * [link mysql.reconnecting Error recovery].
  *\n
  * `connection` is the main I/O object that this library implements. It owns a `Stream` object that
  * is accessed by functions involving network operations, as well as session state. You can access
@@ -39,19 +43,6 @@ namespace mysql {
  * executor used by this object is always the same as the underlying stream. Other I/O objects
  * (`statement` and `resultset`) are proxy I/O objects, which means that they pointing to the stream
  * and state owned by `*this`.
- *\n
- * All I/O operations involve stream reads, stream writes, or both. At any given point in time, for
- * a single connection, only one read and one write operation may be outstanding. Invoking several
- * reads or writes in parallel for a single connection results in undefined behavior. Note that
- * operations on `resultset`s and `statement`s count towards this limit, too.
- *\n
- * The MySQL protocol is a half-duplex request/reply protocol that has the concept of "operations".
- * This library models some operations as single functions (e.g. \ref connection prepare_statement),
- * and splits other operations into several calls (e.g. \ref connection query + \ref resultset
- * read_all), to provide more flexibility. Once you engage in a multi-function operation, you must
- * complete it (e.g. by calling `resultset::read_xxx` until all rows have been read) before engaging
- * into the next one. Failing to do so will produce network packet mismatches, resulting in
- * unspecified behavior. More information [link mysql.async.sequencing here].
  *\n
  * `connection` is move constructible and move assignable, but not copyable.
  * Moved-from connection objects are left in a state that makes them not

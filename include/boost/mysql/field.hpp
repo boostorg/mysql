@@ -35,7 +35,7 @@ namespace mysql {
  * This is a regular variant-like class that can represent any of the types that MySQL allows. It
  * has value semantics (as opposed to [reflink field_view]). Instances of this class are not created
  * by the library. They should be created by the user, when the reference semantics of
- * [reflink field_view]s are not appropriate.
+ * [reflink field_view] are not appropriate.
  * \n
  * Like a variant, at any point, a `field` always contains a value of
  * certain type. You can query the type using [refmem field kind] and the `is_xxx` functions
