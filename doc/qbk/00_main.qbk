@@ -93,6 +93,7 @@
 [include 05_queries.qbk]
 [include 06_prepared_statements.qbk]
 [include 07_resultsets.qbk]
+[include 07_z_fields.qbk]
 [include 08_async.qbk]
 [include 09_ssl.qbk]
 [include 10_other_streams.qbk]
@@ -100,7 +101,6 @@
 [include 12_connparams.qbk]
 [include 13_reconnecting.qbk]
 [include 14_examples.qbk]
-[include 15_types.qbk]
 [include 16_tests.qbk]
 
 [section:quickref Reference]

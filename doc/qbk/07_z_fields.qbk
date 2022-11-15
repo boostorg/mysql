@@ -1,0 +1,485 @@
+[/
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+
+[section:fields Fields]
+[nochunk]
+
+[section Field accessors]
+
+
+This section is intended as a reference on all the accessors you may use on [reflink field] and
+[reflink field_view]. Please read [link mysql.overview.rows_fields.fields this section] for an overview.
+For `field`s, you can also use the `emplace_xxx` functions to change the type and value that the field contains.
+
+
+[template table_field_accessor[mem][refmem field [mem]][br][refmem field_view [mem]]]
+
+
+[table
+    [
+        [`field_kind`]
+        [C++ type]
+        [MySQL types]
+        [`is` accessor]
+        [`as` accessor]
+        [`get` accessor]
+        [`emplace` mutator]
+    ]
+    [
+        [`int64`]
+        [`std::int64_t`]
+        [Signed __TINYINT__, __SMALLINT__, __MEDIUMINT__, __INT__, __BIGINT__, __YEAR__, __BIT__]
+        [[table_field_accessor is_int64]]
+        [[table_field_accessor as_int64]]
+        [[table_field_accessor get_int64]]
+        [[refmem field emplace_int64]]
+    ]
+    [
+        [`uint64`]
+        [`std::uint64_t`]
+        [Unsigned __TINYINT__, __SMALLINT__, __MEDIUMINT__, __INT__, __BIGINT__]
+        [[table_field_accessor is_uint64]]
+        [[table_field_accessor as_uint64]]
+        [[table_field_accessor get_uint64]]
+        [[refmem field emplace_uint64]]
+    ]
+    [
+        [`string`]
+        [
+            `boost::string_view` for `field_view`
+            
+            `std::string` for `field`
+        ]
+        [
+            __CHAR__, __VARCHAR__, __BINARY__, __VARBINARY__, __TEXT__, __BLOB__, __ENUM__, __SET__
+
+            __DECIMAL__, __NUMERIC__, __GEOMETRY__
+        ]
+        [[table_field_accessor is_string]]
+        [[table_field_accessor as_string]]
+        [[table_field_accessor get_string]]
+        [[refmem field emplace_string]]
+    ]
+    [
+        [`float_`]
+        [`float`]
+        [__FLOAT__]
+        [[table_field_accessor is_float]]
+        [[table_field_accessor as_float]]
+        [[table_field_accessor get_float]]
+        [[refmem field emplace_float]]
+    ]
+    [
+        [`double_`]
+        [`double`]
+        [__DOUBLE__]
+        [[table_field_accessor is_double]]
+        [[table_field_accessor as_double]]
+        [[table_field_accessor get_double]]
+        [[refmem field emplace_double]]
+    ]
+    [
+        [`date`]
+        [[reflink date]]
+        [__DATE__]
+        [[table_field_accessor is_date]]
+        [[table_field_accessor as_date]]
+        [[table_field_accessor get_date]]
+        [[refmem field emplace_date]]
+    ]
+    [
+        [`datetime`]
+        [[reflink datetime]]
+        [__DATETIME__, __TIMESTAMP__]
+        [[table_field_accessor is_datetime]]
+        [[table_field_accessor as_datetime]]
+        [[table_field_accessor get_datetime]]
+        [[refmem field emplace_datetime]]
+    ]
+    [
+        [`time`]
+        [[reflink time]]
+        [__TIME__]
+        [[table_field_accessor is_time]]
+        [[table_field_accessor as_time]]
+        [[table_field_accessor get_time]]
+        [[refmem field emplace_time]]
+    ]
+    [
+        [`null`]
+        []
+        [Any of the above, when they're `NULL`]
+        [[table_field_accessor is_null]]
+        []
+        []
+        [[refmem field emplace_null]]
+    ]
+]
+
+[endsect]
+
+[section MySQL to C++ type mappings]
+
+The following table reflects mapping from database types to C++ types.
+The range column shows the range of values that MySQL admits for that type. This library
+guarantees that any field retrieved from the database honors that range. The `column_type`
+column shows what [refmem metadata type] would return for a column of that type. Additional
+considerations are listed below.
+
+[table
+    [
+        [MySQL type]
+        [`field_kind`]
+        [C++ type]
+        [Range]
+        [`column_type`]
+        [Considerations]
+    ]
+    [
+        [__TINYINT__, signed]
+        [`int64`]
+        [`std::int64_t`]
+        [`-0x80` to `0x7f`]
+        [`tinyint`]
+        [1 byte integer]
+    ]
+    [
+        [__TINYINT__, unsigned]
+        [`uint64`]
+        [`std::uint64_t`]
+        [`0` to `0xff`]
+        [`tinyint`]
+        [1 byte integer]
+    ]
+    [
+        [__SMALLINT__, signed]
+        [`int64`]
+        [`std::int64_t`]
+        [`-0x8000` to `0x7fff`]
+        [`smallint`]
+        [2 byte integer]
+    ]
+    [
+        [__SMALLINT__, unsigned]
+        [`uint64`]
+        [`std::uint64_t`]
+        [`0` to `0xffff`]
+        [`smallint`]
+        [2 byte integer]
+    ]
+    [
+        [__MEDIUMINT__, signed]
+        [`int64`]
+        [`std::int64_t`]
+        [`-0x800000` to `0x7fffff`]
+        [`mediumint`]
+        [3 byte integer]
+    ]
+    [
+        [__MEDIUMINT__, unsigned]
+        [`uint64`]
+        [`std::uint64_t`]
+        [`0` to `0xffffff`]
+        [`mediumint`]
+        [3 byte integer]
+    ]
+    [
+        [__INT__, signed]
+        [`int64`]
+        [`std::int64_t`]
+        [`-0x80000000` to `0x7fffffff`]
+        [`int_`]
+        [4 byte integer]
+    ]
+    [
+        [__INT__, unsigned]
+        [`uint64`]
+        [`std::uint64_t`]
+        [`0` to `0xffffffff`]
+        [`int_`]
+        [4 byte integer]
+    ]
+    [
+        [__BIGINT__, signed]
+        [`int64`]
+        [`std::int64_t`]
+        [`-0x8000000000000000` to `0x7fffffffffffffff`]
+        [`bigint`]
+        [8 byte integer]
+    ]
+    [
+        [__BIGINT__, unsigned]
+        [`uint64`]
+        [`std::uint64_t`]
+        [`0` and `0xffffffffffffffff`]
+        [`bigint`]
+        [8 byte integer]
+    ]
+    [
+        [__YEAR__]
+        [`uint64`]
+        [`std::uint64_t`]
+        [\[`1901`, `2155`\], plus zero]
+        [`year`]
+        [
+            1 byte integer type used to represent years
+
+            Zero is often employed to represent invalid year values. We represent zero year here as a numeric 0.
+        ]
+    ]
+    [
+        [__BIT__]
+        [`uint64`]
+        [`std::uint64_t`]
+        [Depends on the bitset width. Max `0` to `0xffffffffffffffff`.]
+        [`bit`]
+        [
+            A bitset between 1 and 64 bits wide.
+        ]
+    ]
+    [
+        [__FLOAT__]
+        [`float_`]
+        [`float`]
+        [IEEE 754 `float` range]
+        [`float_`]
+        [
+            4 byte floating point type
+        ]
+    ]
+    [
+        [__DOUBLE__]
+        [`double_`]
+        [`double`]
+        [IEEE 754 `double` range]
+        [`double_`]
+        [
+            8 byte floating point type
+        ]
+    ]
+    [
+        [__DATE__, valid]
+        [`date`]
+        [[reflink date]]
+        [
+            \[[reflink min_date], [reflink max_date]\]
+        ]
+        [`date`]
+        [
+            Time point type with a resolution of one day.
+        ]
+    ]
+    [
+        [__DATE__, invalid]
+        [`null`]
+        [`std::nullptr_t`]
+        []
+        [`date`]
+        [
+            If the __allow_invalid_dates__ __sql_mode__ is set, MySQL will accept
+            invalid dates, like `"2010-02-31"`. Furthermore, if __strict_sql__
+            is not enabled, MySQL will accept zero dates, like `"0000-00-00"`, and
+            dates with zero components, like `"2010-00-20"`. These dates are invalid
+            and not representable as a [reflink date]. In this library, they are
+            all represented as NULL values, instead. These values
+            can be retrieved from the database in both text queries and prepared
+            statements, but cannot be specified as parameters of prepared statements.
+        ]
+    ]
+    [
+        [__DATETIME__, valid]
+        [`datetime`]
+        [[reflink datetime]]
+        [
+            \[[reflink min_datetime], [reflink max_datetime]\]
+        ]
+        [`datetime`]
+        [
+            Time point type without time zone, with a resolution of one microsecond.
+        ]
+    ]
+    [
+        [__DATETIME__, invalid]
+        [`null`]
+        [`std::nullptr_t`]
+        []
+        [`datetime`]
+        [
+            If __allow_invalid_dates__ __sql_mode__ is set, MySQL will accept
+            datetimes with invalid dates, like `"2010-02-31 10:10:10"`.
+            Furthermore, if __strict_sql__ is not enabled, MySQL will accept
+            zero datetimes, like `"0000-00-00 00:00:00"`, and
+            datetimes with zero date components, like `"2010-00-20 00:00:00"`.
+            These datetimes are invalid because they do not represent any real time point,
+            and are thus not representable as a [reflink datetime]. In this library, they are
+            all represented as NULL values, instead. These values
+            can be retrieved from the database in both text queries and prepared
+            statements, but cannot be specified as parameters of prepared statements.
+        ]
+    ]
+    [
+        [__TIMESTAMP__, valid]
+        [`datetime`]
+        [[reflink datetime]]
+        [
+            \[[reflink min_datetime], [reflink max_datetime]\]
+        ]
+        [`timestamp`]
+        [
+            Like `DATETIME`, it also represents a time point. When inserted,
+            `TIMESTAMP`'s are interpreted as local times, according to the __time_zone__ variable,
+            and converted to UTC for storage. When retrieved, they are converted back
+            to the time zone indicated by __time_zone__. The retrieved value of a `TIMESTAMP`
+            field is thus a time point in some local time zone, dictated by the current
+            __time_zone__ variable. As this variable can be changed programmatically, without
+            the client knowing it, we represent `TIMESTAMP`'s without their time zone.
+
+            Although the range is narrower than `DATETIME`'s, we do not enforce it in the client.
+        ]
+    ]
+    [
+        [__TIMESTAMP__, invalid]
+        [`null`]
+        [`std::nullptr_t`]
+        []
+        [`timestamp`]
+        [
+            If __strict_sql__ is not enabled, MySQL accepts zero `TIMESTAMPs`, like
+            `"0000-00-00 00:00:00"`. These timestamps are invalid because
+            they do not represent any real time point, and are thus not representable
+            as a [reflink datetime]. In this library, they are
+            all represented as NULL values, instead. These values
+            can be retrieved from the database in both text queries and prepared
+            statements, but cannot be specified as parameters of prepared statements.
+        ]
+    ]
+    [
+        [__TIME__]
+        [`time`]
+        [[reflink time]]
+        [
+            \[[reflink min_time], [reflink max_time]\]
+        ]
+        [`time`]
+        [
+            Signed time duration, with a resolution of one microsecond.
+        ]
+    ]
+    [
+        [__CHAR__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`char_`]
+        [
+            Fixed-size character string.
+        ]
+    ]
+    [
+        [__VARCHAR__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`varchar`]
+        [
+            Variable size character string with a maximum size.
+        ]
+    ]
+    [
+        [__BINARY__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`binary`]
+        [
+            Fixed-size blob.
+        ]
+    ]
+    [
+        [__VARBINARY__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`varbinary`]
+        [
+            Variable size blob with a maximum size.
+        ]
+    ]
+    [
+        [__TEXT__ (all sizes)]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`text`]
+        [
+            Variable size character string.
+        ]
+    ]
+    [
+        [__BLOB__ (all sizes)]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`blob`]
+        [
+            Variable size blob.
+        ]
+    ]
+    [
+        [__ENUM__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`enum_`]
+        [
+            Character string with a fixed set of possible values (only one possible).
+        ]
+    ]
+    [
+        [__SET__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`set`]
+        [
+            Character string with a fixed set of possible values (many possible).
+        ]
+    ]
+    [
+        [__DECIMAL__/__NUMERIC__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        [Depends on the column definition]
+        [`decimal`]
+        [
+            A fixed precision numeric value. In this case, the string will contain
+            the textual representation of the number (e.g. the string `"20.52"` for `20.52`).
+        ]
+    ]
+    [
+        [__GEOMETRY__]
+        [`string`]
+        [`boost::string_view` or `std::string`]
+        []
+        [`geometry`]
+        [
+            Any of the spatial data types. The string contains the binary representation of the geometry type.
+        ]
+    ]
+]
+
+[note
+    Character strings are [*NOT] aware of encoding -
+    they are represented as the string raw bytes. The encoding for each character
+    string column is part of the column metadata, and can be accessed using
+    [refmem metadata column_collation].
+]
+
+[endsect]
+
+[endsect]

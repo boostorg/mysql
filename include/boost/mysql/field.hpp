@@ -29,8 +29,8 @@ namespace mysql {
 /**
  * \brief Variant-like class that can represent of any of the allowed database types.
  * \details
- * For an overview on how to use fields, see [link mysql.overview.rows_fields this section].
- * The MySQL <=> C++ type mapping reference is [link mysql.types here].
+ * For an overview on how to use fields, see [link mysql.overview.rows_fields.fields this section].
+ * The accessors and type mappings reference is [link mysql.fields here].
  * \n
  * This is a regular variant-like class that can represent any of the types that MySQL allows. It
  * has value semantics (as opposed to [reflink field_view]). Instances of this class are not created

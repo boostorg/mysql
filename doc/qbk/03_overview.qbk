@@ -98,7 +98,7 @@ server-side prepared statements, as we've seen.
 
 [endsect]
 
-[section:rows_fields Rows and fields]
+[section Rows and fields]
 
 Values retrieved from SQL queries are represented as variant-like objects called fields.
 Fields are organized in rows. This library defines the following types to represent fields and rows:
@@ -245,7 +245,7 @@ and [refmem resultset affected_rows].
 
 [endsect]
 
-[section Using rows and fields]
+[section:rows_fields Using rows and fields]
 
 All row types support random access iterators, as well as `at()` and `operator[]` with the usual semantics.
 
@@ -266,7 +266,7 @@ with reference semantics, pointing into `row`'s storage. You can "persist" a `fi
 Indexing or iterating a `row_view` also yields `field_view`s. Similarly, indexing
 or iterating [reflink rows] or [reflink rows_view] objects yields a `row_view`.
 
-[h4 Using fields]
+[h4:fields Using fields]
 
 Both `field` and `field_view` are specialized variant-like types that can hold any type
 you may find in a MySQL table. The following accessor operations are supported:
@@ -396,7 +396,7 @@ The following table shows the mapping from MySQL types to C++ types:
     ]
 ]
 
-[link mysql.types This section] contains the full reference of type mappings.
+[link mysql.fields This section] contains the full reference of accessors and type mappings.
 
 [h4 Handling NULL values]
 
