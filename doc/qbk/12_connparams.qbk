@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:connparams Connection parameters]
+[section:connparams Handshake parameters]
 [nochunk]
 
 This section discusses several aspects regarding the establishment
@@ -79,9 +79,16 @@ defined order for the characters. [mysqllink charset-general.html
 This section of the MySQL documentation] provides more details
 on collations.
 
-If left unspecified, `utf8_general_ci` will be used.
+If left unspecified, `utf8mb4_general_ci` will be used.
 You can change it at any time issuing a __SET_NAMES__ statement 
-(e.g. using [refmem connection query]). 
+(e.g. using [refmem connection query]).
+
+[warning
+    If you specify a `collation` that is unknown to the server (an old server
+    that doesn't recognizes the newest collations), the handshake operation
+    will succeed but the connection will sillently fall back to the server's default character set
+    and collation. If you want to be sure, use a `"SET NAMES"` statement.
+]
 
 [endsect]
 
@@ -92,6 +99,15 @@ value to configure whether to use SSL/TLS or not. As explained in
 [link mysql.ssl.negotiation this section], this parameters can be
 employed to configure SSL negotiation. This value is ignored if the
 underlying stream does not support SSL.
+
+[endsect]
+
+[section:buffer_config Buffer configuration]
+
+[refmem handshake_params buffer_config], of type [reflink buffer_params], lets you
+specify some defaults for internal buffer sizes. You can currently set the initial
+size of the read buffer, which can impact the performance of [refmem resultset read_some],
+as explained [link mysql.resultsets.read.read_some in this section].
 
 [endsect]
 

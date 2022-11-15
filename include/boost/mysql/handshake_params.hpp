@@ -52,7 +52,7 @@ public:
      * \param db Database name to use, or empty string for no database (this is the default).
      * \param connection_col The \ref collation to use for the connection.
      * Impacts how text queries and prepared statements are interpreted. Defaults to
-     * `collation::utf8_general_ci`.
+     * `collation::utf8mb4_general_ci`.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection does not support SSL.
      * \param buffer_config Configuration about internal buffers.
@@ -61,7 +61,7 @@ public:
         boost::string_view username,
         boost::string_view password,
         boost::string_view db = "",
-        collation connection_col = collation::utf8_general_ci,
+        collation connection_col = collation::utf8mb4_general_ci,
         ssl_mode mode = ssl_mode::require,
         const buffer_params& buffer_config = {}
     )

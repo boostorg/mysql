@@ -22,6 +22,7 @@ Here is a list of available examples:
 # [link mysql.examples.query_async_coroutines Text query, async with Boost.Coroutine coroutines]
 # [link mysql.examples.query_async_coroutinescpp20 Text query, async with C++20 coroutines]
 # [link mysql.examples.default_completion_tokens Default completion tokens]
+# [link mysql.examples.timeouts Settings timeouts]
 # [link mysql.examples.ssl Setting SSL options]
 
 [section:setup Setup]

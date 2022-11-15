@@ -246,7 +246,7 @@ For example:
     // Do NOT use all_rows here - dangling view!!
 ```
 
-[heading More on read_some]
+[heading:read_some More on read_some]
 
 To properly understand `read_one`, we need to know that every [reflink connection]
 owns an internal *read buffer*, where packets sent by the server are stored.
