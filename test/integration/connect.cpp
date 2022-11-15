@@ -24,20 +24,10 @@ BOOST_AUTO_TEST_SUITE(test_connect)
 
 // The OK case is already being tested by all other integ tests
 // that require the connection to be connected
-
-// All network variants coverage test
-BOOST_MYSQL_NETWORK_TEST(physical_error, network_fixture, all_network_samples())
-{
-    setup(sample.net);
-
-    // Connect to a bad endpoint
-    // depending on system and stream type, error code will be different
-    conn->connect(er_endpoint::inexistent, params).validate_any_error({"physical connect failed"});
-    BOOST_TEST(!conn->is_open());
-}
+// An integ test that connects to an inexistent endpoint is slow and brittle
 
 // TODO: this should be a unit test
-BOOST_MYSQL_NETWORK_TEST(physical_ok_handshake_error, network_fixture, net_samples)
+BOOST_MYSQL_NETWORK_TEST(physical_ok_handshake_error, network_fixture, all_network_samples())
 {
     setup(sample.net);
     set_credentials("integ_user", "bad_password");
