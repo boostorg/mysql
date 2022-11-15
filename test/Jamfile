@@ -33,8 +33,9 @@ cpp-pch unittests_pch
     :
         unit/pch.hpp
         unittests_entry_point
+    :
+        <include>unit
     ;
-
 unit-test boost_mysql_unittests
     :
         unittests_pch
@@ -72,6 +73,8 @@ unit-test boost_mysql_unittests
         unit/resultset.cpp
         unit/regressions.cpp
         unit/connection.cpp
+    :
+        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
     ;
 
 
@@ -104,6 +107,8 @@ cpp-pch integrationtests_pch
         integration/pch.hpp
         /boost/coroutine//boost_coroutine
         integrationtests_entry_point
+    :
+        <include>integration
     ;
 
 unit-test boost_mysql_integrationtests
@@ -143,6 +148,7 @@ unit-test boost_mysql_integrationtests
     :
         <testing.arg>$(test_command)
         <include>integration/utils/include
+        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
     ;
 
 explicit boost_mysql_integrationtests ;

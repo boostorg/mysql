@@ -64,14 +64,14 @@ public:
         buffer_to_write_ = buffer;
         seqnum_ = &seqnum;
         bytes_written_ = 0;
-        send_empty_frame_ =
-            (buffer.size() == 0);  // If the packet is empty, we should just send the header
+        send_empty_frame_ = (buffer.size() == 0);  // If the packet is empty, we should just send
+                                                   // the header
     }
 
     buffers_type prepare_next_chunk() noexcept
     {
         auto first = static_cast<const std::uint8_t*>(buffer_to_write_.data());
-        std::size_t size_to_write = compute_size_to_write();
+        auto size_to_write = compute_size_to_write();
         process_header_write(size_to_write, (*seqnum_)++);
         return {
             {boost::asio::buffer(header_buffer_),
