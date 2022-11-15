@@ -190,7 +190,7 @@ void boost::mysql::detail::disableable_ssl_stream<Stream>::handshake(error_code&
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::disableable_ssl_stream<Stream>::async_handshake(CompletionToken&& token)
 {
@@ -208,7 +208,7 @@ void boost::mysql::detail::disableable_ssl_stream<Stream>::shutdown(error_code& 
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::disableable_ssl_stream<Stream>::async_shutdown(CompletionToken&& token)
 {
@@ -238,7 +238,7 @@ std::size_t boost::mysql::detail::disableable_ssl_stream<Stream>::read_some(
 template <class Stream>
 template <
     class MutableBufferSequence,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, std::size_t)) CompletionToken>
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::disableable_ssl_stream<Stream>::async_read_some(
     const MutableBufferSequence& buff,
@@ -276,7 +276,7 @@ std::size_t boost::mysql::detail::disableable_ssl_stream<Stream>::write_some(
 template <class Stream>
 template <
     class ConstBufferSequence,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, std::size_t)) CompletionToken>
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
 BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::disableable_ssl_stream<Stream>::async_write_some(
     const ConstBufferSequence& buff,

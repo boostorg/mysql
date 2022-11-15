@@ -131,7 +131,7 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
 
 template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(::boost::mysql::error_code))
 boost::mysql::detail::message_reader::async_read_some(
     Stream& stream,
@@ -197,7 +197,7 @@ struct boost::mysql::detail::message_reader::read_one_op : boost::asio::coroutin
 
 template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code, boost::asio::const_buffer))
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
         CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,

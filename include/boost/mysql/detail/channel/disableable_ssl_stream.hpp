@@ -45,13 +45,13 @@ public:
 
     void handshake(error_code& ec);
 
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
     async_handshake(CompletionToken&& token);
 
     void shutdown(error_code& ec);
 
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code))
     async_shutdown(CompletionToken&& token);
 
@@ -60,7 +60,8 @@ public:
 
     template <
         class MutableBufferSequence,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
+            CompletionToken>
     BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some(const MutableBufferSequence& buff, CompletionToken&& token);
 
@@ -69,7 +70,8 @@ public:
 
     template <
         class ConstBufferSequence,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t)) CompletionToken>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
+            CompletionToken>
     BOOST_ASIO_INITFN_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_write_some(const ConstBufferSequence& buff, CompletionToken&& token);
 

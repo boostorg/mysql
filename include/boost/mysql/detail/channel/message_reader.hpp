@@ -48,7 +48,9 @@ public:
     template <class Stream>
     void read_some(Stream& stream, error_code& ec, bool keep_messages = false);
 
-    template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <
+        class Stream,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(Stream& stream, CompletionToken&& token, bool keep_messages = false);
 
@@ -63,7 +65,7 @@ public:
 
     template <
         class Stream,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, boost::asio::const_buffer))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
             CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, boost::asio::const_buffer))
     async_read_one(

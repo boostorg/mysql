@@ -86,8 +86,8 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
 
 template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(::boost::mysql::error_code))
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::message_writer::async_write(
     Stream& stream,
     boost::asio::const_buffer buffer,
