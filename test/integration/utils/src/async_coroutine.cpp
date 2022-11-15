@@ -143,18 +143,18 @@ class async_coroutine_connection : public er_connection_base<Stream>
 public:
     using er_connection_base<Stream>::er_connection_base;
 
-    network_result<no_result> physical_connect(er_endpoint kind) override
+    network_result<no_result> physical_connect() override
     {
         return impl(this->conn_, [&](boost::asio::yield_context yield, error_info& info) {
             info.clear();
-            this->conn_.stream().lowest_layer().async_connect(get_endpoint<Stream>(kind), yield);
+            this->conn_.stream().lowest_layer().async_connect(get_endpoint<Stream>(), yield);
             return no_result();
         });
     }
-    network_result<no_result> connect(er_endpoint kind, const handshake_params& params) override
+    network_result<no_result> connect(const handshake_params& params) override
     {
         return impl(this->conn_, [&](boost::asio::yield_context yield, error_info& info) {
-            this->conn_.async_connect(get_endpoint<Stream>(kind), params, info, yield);
+            this->conn_.async_connect(get_endpoint<Stream>(), params, info, yield);
             return no_result();
         });
     }

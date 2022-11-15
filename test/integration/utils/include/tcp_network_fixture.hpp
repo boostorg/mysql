@@ -24,7 +24,7 @@ struct tcp_network_fixture : network_fixture_base
 
     tcp_network_fixture() : conn(ctx.get_executor()) {}
 
-    void connect() { conn.connect(get_endpoint<tcp_socket>(er_endpoint::valid), params); }
+    void connect() { conn.connect(get_endpoint<tcp_socket>(), params); }
 };
 
 }  // namespace test

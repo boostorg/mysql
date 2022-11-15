@@ -98,7 +98,7 @@ struct network_fixture : network_fixture_base
     {
         assert(conn);
         params.set_ssl(m);
-        conn->connect(er_endpoint::valid, params).validate_no_error();
+        conn->connect(params).validate_no_error();
         validate_ssl(m);
     }
 

@@ -129,20 +129,17 @@ class sync_exc_connection : public er_connection_base<Stream>
 {
 public:
     using er_connection_base<Stream>::er_connection_base;
-    network_result<no_result> physical_connect(er_endpoint kind) override
+    network_result<no_result> physical_connect() override
     {
         return impl([&] {
-            this->conn_.stream().lowest_layer().connect(get_endpoint<Stream>(kind));
+            this->conn_.stream().lowest_layer().connect(get_endpoint<Stream>());
             return no_result();
         });
     }
-    network_result<no_result> connect(
-        er_endpoint kind,
-        const boost::mysql::handshake_params& params
-    ) override
+    network_result<no_result> connect(const handshake_params& params) override
     {
         return impl([&] {
-            this->conn_.connect(get_endpoint<Stream>(kind), params);
+            this->conn_.connect(get_endpoint<Stream>(), params);
             return no_result();
         });
     }

@@ -64,23 +64,13 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, net
 
     // Error during server handshake
     params.set_database("bad_database");
-    conn->connect(er_endpoint::valid, params)
-        .validate_error(boost::mysql::errc::dbaccess_denied_error, {"database", "bad_database"});
+    conn->connect(params).validate_error(
+        boost::mysql::errc::dbaccess_denied_error,
+        {"database", "bad_database"}
+    );
 
     // Reopen with correct parameters and use the connection normally
     params.set_database("boost_mysql_integtests");
-    connect();
-    do_query_ok();
-}
-
-BOOST_MYSQL_NETWORK_TEST(reconnect_after_physical_connect_error, reconnect_fixture, net_samples_all)
-{
-    setup(sample.net);
-
-    // Error during connection
-    conn->connect(er_endpoint::inexistent, params).validate_any_error({"physical connect failed"});
-
-    // Reopen with and use the connection normally
     connect();
     do_query_ok();
 }

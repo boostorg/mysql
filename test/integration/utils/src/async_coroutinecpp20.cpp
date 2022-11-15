@@ -194,26 +194,22 @@ class async_coroutinecpp20_connection : public er_connection_base<Stream>
 public:
     using er_connection_base<Stream>::er_connection_base;
 
-    network_result<no_result> physical_connect(er_endpoint kind) override
+    network_result<no_result> physical_connect() override
     {
         return impl_no_result(this->conn_, [&](error_info& info) {
             info.clear();
 
             return this->conn_.stream().lowest_layer().async_connect(
-                get_endpoint<Stream>(kind),
+                get_endpoint<Stream>(),
                 boost::asio::use_awaitable
             );
         });
     }
-    network_result<no_result> connect(er_endpoint kind, const handshake_params& params) override
+    network_result<no_result> connect(const handshake_params& params) override
     {
         return impl_no_result(this->conn_, [&](error_info& info) {
-            return this->conn_.async_connect(
-                get_endpoint<Stream>(kind),
-                params,
-                info,
-                boost::asio::use_awaitable
-            );
+            return this->conn_
+                .async_connect(get_endpoint<Stream>(), params, info, boost::asio::use_awaitable);
         });
     }
     network_result<no_result> handshake(const handshake_params& params) override

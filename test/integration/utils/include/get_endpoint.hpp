@@ -14,8 +14,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "er_endpoint.hpp"
-
 namespace boost {
 namespace mysql {
 namespace test {
@@ -26,21 +24,21 @@ struct endpoint_getter;
 template <>
 struct endpoint_getter<boost::asio::ip::tcp>
 {
-    boost::asio::ip::tcp::endpoint operator()(er_endpoint kind);
+    boost::asio::ip::tcp::endpoint operator()();
 };
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 template <>
 struct endpoint_getter<boost::asio::local::stream_protocol>
 {
-    boost::asio::local::stream_protocol::endpoint operator()(er_endpoint kind);
+    boost::asio::local::stream_protocol::endpoint operator()();
 };
 #endif
 
 template <class Stream>
-typename Stream::lowest_layer_type::endpoint_type get_endpoint(er_endpoint kind)
+typename Stream::lowest_layer_type::endpoint_type get_endpoint()
 {
-    return endpoint_getter<typename Stream::lowest_layer_type::protocol_type>()(kind);
+    return endpoint_getter<typename Stream::lowest_layer_type::protocol_type>()();
 }
 
 }  // namespace test

@@ -27,7 +27,7 @@ std::string get_host()
 #endif
     const char* hostname = std::getenv("BOOST_MYSQL_SERVER_HOST");
 #ifdef BOOST_MSVC
-#pragma warning(pop) 
+#pragma warning(pop)
 #endif
 
     return std::string(hostname ? hostname : "localhost");
@@ -37,7 +37,6 @@ std::string get_host()
 // Required as CI MySQL doesn't run on loocalhost
 boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 {
-    
     std::string hostname = get_host();
     boost::asio::io_context ctx;
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
@@ -48,38 +47,16 @@ boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 }  // namespace
 
 boost::asio::ip::tcp::endpoint boost::mysql::test::endpoint_getter<
-    boost::asio::ip::tcp>::operator()(er_endpoint kind)
+    boost::asio::ip::tcp>::operator()()
 {
-    if (kind == er_endpoint::valid)
-    {
-        static auto res = get_tcp_valid_endpoint();
-        return res;
-    }
-    else if (kind == er_endpoint::inexistent)
-    {
-        return boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::loopback(), 45678);
-    }
-    else
-    {
-        throw std::invalid_argument("er_endpoint");
-    }
+    static auto res = get_tcp_valid_endpoint();
+    return res;
 }
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 boost::asio::local::stream_protocol::endpoint boost::mysql::test::endpoint_getter<
-    boost::asio::local::stream_protocol>::operator()(er_endpoint kind)
+    boost::asio::local::stream_protocol>::operator()()
 {
-    if (kind == er_endpoint::valid)
-    {
-        return boost::asio::local::stream_protocol::endpoint("/var/run/mysqld/mysqld.sock");
-    }
-    else if (kind == er_endpoint::inexistent)
-    {
-        return boost::asio::local::stream_protocol::endpoint("/tmp/this/endpoint/does/not/exist");
-    }
-    else
-    {
-        throw std::invalid_argument("er_endpoint");
-    }
+    return boost::asio::local::stream_protocol::endpoint("/var/run/mysqld/mysqld.sock");
 }
 #endif

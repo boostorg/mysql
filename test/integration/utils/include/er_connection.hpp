@@ -15,7 +15,6 @@
 
 #include <memory>
 
-#include "er_endpoint.hpp"
 #include "er_resultset.hpp"
 #include "er_statement.hpp"
 #include "network_result.hpp"
@@ -33,8 +32,8 @@ public:
     virtual bool valid() const = 0;
     virtual bool uses_ssl() const = 0;
     virtual bool is_open() const = 0;
-    virtual network_result<no_result> physical_connect(er_endpoint) = 0;
-    virtual network_result<no_result> connect(er_endpoint, const handshake_params&) = 0;
+    virtual network_result<no_result> physical_connect() = 0;
+    virtual network_result<no_result> connect(const handshake_params&) = 0;
     virtual network_result<no_result> handshake(const handshake_params&) = 0;
     virtual network_result<no_result> query(boost::string_view query, er_resultset& result) = 0;
     virtual network_result<no_result> prepare_statement(

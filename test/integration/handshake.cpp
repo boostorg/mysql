@@ -58,7 +58,7 @@ struct handshake_fixture : network_fixture
     void setup_and_physical_connect(er_network_variant* net)
     {
         setup(net);
-        conn->physical_connect(er_endpoint::valid).validate_no_error();
+        conn->physical_connect().validate_no_error();
     }
 
     void do_handshake_ok()
@@ -120,10 +120,7 @@ struct caching_sha2_fixture : handshake_fixture
     void load_sha256_cache(boost::string_view user, boost::string_view password)
     {
         tcp_ssl_connection conn(ctx, ssl_ctx);
-        conn.connect(
-            get_endpoint<tcp_socket>(er_endpoint::valid),
-            handshake_params(user, password)
-        );
+        conn.connect(get_endpoint<tcp_socket>(), handshake_params(user, password));
         conn.close();
     }
 
@@ -131,7 +128,7 @@ struct caching_sha2_fixture : handshake_fixture
     {
         tcp_ssl_connection conn(ctx, ssl_ctx);
         tcp_ssl_resultset result;
-        conn.connect(get_endpoint<tcp_socket>(er_endpoint::valid), handshake_params("root", ""));
+        conn.connect(get_endpoint<tcp_socket>(), handshake_params("root", ""));
         conn.query("FLUSH PRIVILEGES", result);
         conn.close();
     }

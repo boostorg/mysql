@@ -135,21 +135,18 @@ class sync_errc_connection : public er_connection_base<Stream>
 public:
     using er_connection_base<Stream>::er_connection_base;
 
-    network_result<no_result> physical_connect(er_endpoint kind) override
+    network_result<no_result> physical_connect() override
     {
         return impl([&](error_code& code, error_info& info) {
             info.clear();
-            this->conn_.stream().lowest_layer().connect(get_endpoint<Stream>(kind), code);
+            this->conn_.stream().lowest_layer().connect(get_endpoint<Stream>(), code);
             return no_result();
         });
     }
-    network_result<no_result> connect(
-        er_endpoint kind,
-        const boost::mysql::handshake_params& params
-    ) override
+    network_result<no_result> connect(const handshake_params& params) override
     {
         return impl([&](error_code& code, error_info& info) {
-            this->conn_.connect(get_endpoint<Stream>(kind), params, code, info);
+            this->conn_.connect(get_endpoint<Stream>(), params, code, info);
             return no_result();
         });
     }

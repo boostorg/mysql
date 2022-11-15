@@ -30,7 +30,7 @@ BOOST_FIXTURE_TEST_CASE(move_constructor_connected_connection, network_fixture)
 
     // Connect and use
     tcp_resultset result;
-    first.connect(get_endpoint<tcp::socket>(er_endpoint::valid), params);
+    first.connect(get_endpoint<tcp::socket>(), params);
     first.query("SELECT 1", result);
     result.read_all(use_views);
 
@@ -49,8 +49,8 @@ BOOST_FIXTURE_TEST_CASE(move_assignment_from_connected_connection, network_fixtu
 
     // Connect and use both
     tcp_resultset result;
-    first.connect(get_endpoint<tcp::socket>(er_endpoint::valid), params);
-    second.connect(get_endpoint<tcp::socket>(er_endpoint::valid), params);
+    first.connect(get_endpoint<tcp::socket>(), params);
+    second.connect(get_endpoint<tcp::socket>(), params);
     first.query("SELECT 1", result);
     result.read_all(use_views);
     second.query("SELECT 2", result);
