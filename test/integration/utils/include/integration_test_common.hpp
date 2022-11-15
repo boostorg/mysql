@@ -147,7 +147,10 @@ struct network_sample
         {
             test.add_label("ssl");
         }
-        test.add_label(net->stream_name());
+        if (net->is_unix_socket())
+        {
+            test.add_label("unix");
+        }
         test.add_label(net->variant_name());
     }
 };

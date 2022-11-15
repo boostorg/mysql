@@ -105,7 +105,6 @@ else # Use CMake
         "-DCMAKE_C_COMPILER=cl" `
         "-DCMAKE_CXX_COMPILER=cl" `
         "-DBOOST_MYSQL_INTEGRATION_TESTS=ON" `
-        "-DBOOST_MYSQL_UNIX_SOCKET_EXAMPLE=OFF" `
         ".."
     }
     Check-Call { cmake --build . -j --target install }

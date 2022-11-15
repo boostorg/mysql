@@ -20,6 +20,7 @@ rm -rf *
 wget $BOOST_LINK_WINDOWS -O boost-latest-windows.zip
 unzip -q boost-latest-windows.zip
 rm boost-latest-windows.zip
+mv $BOOST_VERSION_UND/* .
 rmdir $BOOST_VERSION_UND
 git add .
 git commit -m "Updated to version ${BOOST_VERSION_DOT}"

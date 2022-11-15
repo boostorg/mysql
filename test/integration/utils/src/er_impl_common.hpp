@@ -159,6 +159,7 @@ class er_network_variant_base : public er_network_variant
 {
 public:
     bool supports_ssl() const override { return ::boost::mysql::test::supports_ssl<Stream>(); }
+    bool is_unix_socket() const override { return ::boost::mysql::test::is_unix_socket<Stream>(); }
     const char* stream_name() const override
     {
         return ::boost::mysql::test::get_stream_name<Stream>();
@@ -183,7 +184,7 @@ public:
 template <typename R>
 R wait_for_result(std::future<R>& fut)
 {
-    auto status = fut.wait_for(std::chrono::seconds(2));
+    auto status = fut.wait_for(std::chrono::seconds(20));
     if (status == std::future_status::timeout)
         throw std::runtime_error("async_callback wait timeout");
     return fut.get();

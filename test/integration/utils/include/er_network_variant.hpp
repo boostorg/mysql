@@ -26,6 +26,7 @@ class er_network_variant
 public:
     virtual ~er_network_variant() {}
     virtual bool supports_ssl() const = 0;
+    virtual bool is_unix_socket() const = 0;
     virtual const char* stream_name() const = 0;
     virtual const char* variant_name() const = 0;
     std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }

@@ -111,6 +111,26 @@ constexpr bool supports_ssl<unix_ssl_socket>()
 }
 #endif
 
+// is_unix_socket
+template <class Stream>
+constexpr bool is_unix_socket()
+{
+    return false;
+}
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+template <>
+constexpr bool is_unix_socket<unix_socket>()
+{
+    return true;
+}
+template <>
+constexpr bool is_unix_socket<unix_ssl_socket>()
+{
+    return true;
+}
+#endif
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
