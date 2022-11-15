@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <cassert>
 
 #include "buffer_concat.hpp"
 
@@ -24,7 +25,8 @@ namespace test {
 
 inline std::vector<std::uint8_t> create_message(std::uint8_t seqnum, std::vector<std::uint8_t> body)
 {
-    std::uint32_t body_size = body.size();
+    assert(body.size() <= std::numeric_limits<std::uint32_t>::max());
+    auto body_size = static_cast<std::uint32_t>(body.size());
     boost::mysql::detail::packet_header header{boost::mysql::detail::int3{body_size}, seqnum};
     body.resize(body_size + 4);
     std::memmove(body.data() + 4, body.data(), body_size);
