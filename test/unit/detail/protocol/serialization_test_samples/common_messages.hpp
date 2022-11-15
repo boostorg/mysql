@@ -147,7 +147,7 @@ const serialization_test_spec column_definition_spec {
             string_lenenc("child_table"), // physical table
             string_lenenc("field_alias"), // field name
             string_lenenc("field_varchar"), // physical field name
-            collation::utf8mb4_general_ci,
+            collation::utf8_general_ci,
             765, // length
             detail::protocol_field_type::var_string,
             0, // no column flags

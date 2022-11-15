@@ -107,7 +107,7 @@ const serialization_test_spec handshake_response_packet_spec {
         { "without_db", detail::handshake_response_packet{
             handshake_response_caps,
             16777216, // max packet size
-            static_cast<std::uint8_t>(collation::utf8mb4_general_ci),
+            static_cast<std::uint8_t>(collation::utf8_general_ci),
             string_null("root"),
             string_lenenc(makesv(handshake_response_auth_data)),
             string_null(""), // Irrelevant, not using connect with DB
@@ -128,7 +128,7 @@ const serialization_test_spec handshake_response_packet_spec {
         { "with_db", detail::handshake_response_packet {
             handshake_response_caps | detail::CLIENT_CONNECT_WITH_DB,
             16777216, // max packet size
-            static_cast<std::uint8_t>(collation::utf8mb4_general_ci),
+            static_cast<std::uint8_t>(collation::utf8_general_ci),
             string_null("root"),
             string_lenenc(makesv(handshake_response_auth_data)),
             string_null("database"), // database name
