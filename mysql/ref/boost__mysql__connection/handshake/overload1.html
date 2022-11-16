@@ -10,7 +10,7 @@
 <link rel="next" href="overload2.html" title="connection::handshake (2 of 2 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="../handshake.html"><img src="../../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../handshake.html"><img src="../../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../images/next.png" alt="Next"></a>
@@ -21,13 +21,13 @@
           (1 of 2 overloads)</a>
 </h6></div></div></div>
 <p>
-            Performs the MySQL-level handshake (sync with error code version).
+            Performs the MySQL-level handshake.
           </p>
 <h7><a name="mysql.ref.boost__mysql__connection.handshake.overload1.h0"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__connection.handshake.overload1.synopsis"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__connection.handshake.overload1.synopsis">Synopsis</a>
           </h7><pre class="programlisting"><span class="keyword">void</span>
 <span class="identifier">handshake</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">connection_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">,</span>
+    <span class="keyword">const</span> <span class="identifier">handshake_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">,</span>
     <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
     <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">info</span><span class="special">);</span>
 </pre>
@@ -36,10 +36,15 @@
           </h7><p>
             Does not connect the underlying stream. If the <code class="computeroutput"><span class="identifier">Stream</span></code>
             template parameter fulfills the <span class="bold"><strong>SocketConnection</strong></span>
-            requirements, use <a class="link" href="../connect.html" title="connection::connect"><code class="literal">connection::connect</code></a>
-            instead of this function. If using a SSL-capable stream, the SSL handshake
-            will be performed by this function. See <a class="link" href="../../../ssl.html#mysql.ssl.handshake" title="When is the SSL handshake performed?">this
-            section</a> for more info.
+            requirements, use <a class="link" href="../connect.html" title="connection::connect"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">connect</span></code></a> instead of this function.
+          </p>
+<p>
+            If using a SSL-capable stream, the SSL handshake will be performed by
+            this function. See <a class="link" href="../../../ssl.html#mysql.ssl.handshake" title="When is the SSL handshake performed?">this section</a>
+            for more info.
+          </p>
+<p>
+            This operation involves both reads and writes on the underlying stream.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>

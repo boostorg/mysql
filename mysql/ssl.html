@@ -10,7 +10,7 @@
 <link rel="next" href="other_streams.html" title="UNIX sockets and other stream types">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="async.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="other_streams.html"><img src="../images/next.png" alt="Next"></a>
@@ -31,8 +31,8 @@
 <p>
         To use SSL/TLS, you must use a <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
         with a <a class="link" href="ref/boost__mysql__Stream.html" title="Stream concept"><code class="literal">Stream</code></a>
-        that supports SSL. A SSL-enabled stream must inherit from <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__stream_base.html" target="_top"><code class="literal">boost::asio::ssl::stream_base</code></a>.
-        This includes both <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__stream.html" target="_top"><code class="literal">boost::asio::ssl::stream</code></a>
+        that supports SSL. A SSL-enabled stream must inherit from <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/ssl__stream_base.html" target="_top"><code class="literal">boost::asio::ssl::stream_base</code></a>.
+        This includes both <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/ssl__stream.html" target="_top"><code class="literal">boost::asio::ssl::stream</code></a>
         and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">ssl_stream</span></code>.
       </p>
 <p>
@@ -54,7 +54,7 @@
         are implemented in terms of the former, and thus also perform the TLS handshake.
       </p>
 <p>
-        This approach contrasts with libraries like <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/beast/index.html" target="_top">Boost.Beast</a>,
+        This approach contrasts with libraries like <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/beast/index.html" target="_top">Boost.Beast</a>,
         where it's the user resposibility to invoke the SSL handshake on the underlying
         stream before performing any operation.
       </p>
@@ -66,10 +66,10 @@
         feature (see below for more info).
       </p>
 <p>
-        You can set any SSL/TLS parameters on the <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>
+        You can set any SSL/TLS parameters on the <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>
         required to create a <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
         using a SSL-enabled stream type. This context will be passed to the stream's
-        constructor. You can configure any setting allowed by <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>,
+        constructor. You can configure any setting allowed by <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="literal">boost::asio::ssl::context</code></a>,
         including SSL certificate validation. Check <a class="link" href="examples/ssl.html" title="Setting SSL options">this
         example</a> for an example on this topic.
       </p>
@@ -97,7 +97,7 @@
         During the handshake, client and server will negotiate whether to use TLS
         or not. For SSL capable streams, we support using TLS conditionally. This
         is controlled using the <a class="link" href="ref/boost__mysql__ssl_mode.html" title="ssl_mode"><code class="literal">ssl_mode</code></a>
-        parameter in <a class="link" href="ref/boost__mysql__connection_params.html" title="connection_params"><code class="literal">connection_params</code></a>,
+        parameter in <a class="link" href="ref/boost__mysql__handshake_params.html" title="handshake_params"><code class="literal">handshake_params</code></a>,
         which configue the MySQL handshake process.
       </p>
 <p>
@@ -133,8 +133,8 @@
         never be used.
       </p>
 <p>
-        See <a class="link" href="connparams.html" title="Connection parameters">this section</a> for more information
-        on <a class="link" href="ref/boost__mysql__connection_params.html" title="connection_params"><code class="literal">connection_params</code></a>.
+        See <a class="link" href="connparams.html" title="Handshake parameters">this section</a> for more information
+        on <a class="link" href="ref/boost__mysql__handshake_params.html" title="handshake_params"><code class="literal">handshake_params</code></a>.
       </p>
 </div>
 </div>

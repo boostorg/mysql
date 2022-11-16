@@ -8,7 +8,7 @@
 <link rel="next" href="mysql/intro.html" title="Introduction">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav"><a accesskey="n" href="mysql/intro.html"><img src="images/next.png" alt="Next"></a></div>
 <div class="chapter">
@@ -33,35 +33,48 @@
 <dt><span class="section"><a href="mysql/intro.html">Introduction</a></span></dt>
 <dd><dl>
 <dt><span class="section"><a href="mysql/intro.html#mysql.intro.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="mysql/intro.html#mysql.intro.when_to_use">When to use</a></span></dt>
 <dt><span class="section"><a href="mysql/intro.html#mysql.intro.requirements">Requirements</a></span></dt>
 <dt><span class="section"><a href="mysql/intro.html#mysql.intro.acknowledgements">Acknowledgements</a></span></dt>
 </dl></dd>
 <dt><span class="section"><a href="mysql/tutorial.html">Tutorial</a></span></dt>
-<dt><span class="section"><a href="mysql/values.html">MySQL values</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html">Overview</a></span></dt>
 <dd><dl>
-<dt><span class="section"><a href="mysql/values.html#mysql.values.conversions">Conversions</a></span></dt>
-<dt><span class="section"><a href="mysql/values.html#mysql.values.strings">A note on string values</a></span></dt>
-<dt><span class="section"><a href="mysql/values.html#mysql.values.relational">Relational operators</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.connection">Connection objects</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.queries_stmts">Text queries and prepared
+      statements</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.rows_and_fields">Rows and fields</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.read">Reading rows</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.rows_fields">Using rows and fields</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.async">Asynchronous functions and multi-threading</a></span></dt>
+<dt><span class="section"><a href="mysql/overview.html#mysql.overview.encoding">Character sets, collations and
+      time zones</a></span></dt>
 </dl></dd>
 <dt><span class="section"><a href="mysql/queries.html">Text queries</a></span></dt>
 <dt><span class="section"><a href="mysql/prepared_statements.html">Prepared statements</a></span></dt>
 <dt><span class="section"><a href="mysql/resultsets.html">Resultsets</a></span></dt>
 <dd><dl>
-<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.rows">Rows</a></span></dt>
 <dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.read">Reading rows</a></span></dt>
 <dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.complete">Resultsets becoming complete</a></span></dt>
+<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.multifunction">Multi-function operations</a></span></dt>
 <dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.metadata">Metadata</a></span></dt>
-<dt><span class="section"><a href="mysql/resultsets.html#mysql.resultsets.server_send">When does the server send
-      the rows?</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mysql/fields.html">Fields</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mysql/fields.html#mysql.fields.field_accessors">Field accessors</a></span></dt>
+<dt><span class="section"><a href="mysql/fields.html#mysql.fields.mysql_to_c_type_mappings">MySQL to C++ type
+      mappings</a></span></dt>
 </dl></dd>
 <dt><span class="section"><a href="mysql/async.html">Going async</a></span></dt>
 <dd><dl>
+<dt><span class="section"><a href="mysql/async.html#mysql.async.reads_writes">Stream reads and writes</a></span></dt>
+<dt><span class="section"><a href="mysql/async.html#mysql.async.proxy_io">Proxy I/O objects</a></span></dt>
+<dt><span class="section"><a href="mysql/async.html#mysql.async.ops">Protocol operations</a></span></dt>
 <dt><span class="section"><a href="mysql/async.html#mysql.async.completion_tokens">Completion tokens</a></span></dt>
 <dt><span class="section"><a href="mysql/async.html#mysql.async.default_completion_tokens">Default completion
       tokens</a></span></dt>
 <dt><span class="section"><a href="mysql/async.html#mysql.async.cancellations_and_timeouts">Cancellations
       and timeouts</a></span></dt>
-<dt><span class="section"><a href="mysql/async.html#mysql.async.sequencing">Sequencing of operations</a></span></dt>
 </dl></dd>
 <dt><span class="section"><a href="mysql/ssl.html">SSL/TLS</a></span></dt>
 <dd><dl>
@@ -71,12 +84,13 @@
 </dl></dd>
 <dt><span class="section"><a href="mysql/other_streams.html">UNIX sockets and other stream types</a></span></dt>
 <dt><span class="section"><a href="mysql/error_handling.html">Error handling and available overloads</a></span></dt>
-<dt><span class="section"><a href="mysql/connparams.html">Connection parameters</a></span></dt>
+<dt><span class="section"><a href="mysql/connparams.html">Handshake parameters</a></span></dt>
 <dd><dl>
 <dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.auth">Authentication</a></span></dt>
 <dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.database">Connect with database</a></span></dt>
 <dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.collation">Connection encoding and collation</a></span></dt>
 <dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.ssl">SSL/TLS</a></span></dt>
+<dt><span class="section"><a href="mysql/connparams.html#mysql.connparams.buffer_config">Buffer configuration</a></span></dt>
 </dl></dd>
 <dt><span class="section"><a href="mysql/reconnecting.html">Reconnecting a MySQL connection</a></span></dt>
 <dt><span class="section"><a href="mysql/examples.html">Examples</a></span></dt>
@@ -99,14 +113,13 @@
 <dt><span class="section"><a href="mysql/examples/timeouts.html">Timeouts</a></span></dt>
 <dt><span class="section"><a href="mysql/examples/ssl.html">Setting SSL options</a></span></dt>
 </dl></dd>
-<dt><span class="section"><a href="mysql/types.html">MySQL to C++ mapping reference</a></span></dt>
 <dt><span class="section"><a href="mysql/tests.html">Building and running the tests</a></span></dt>
 <dt><span class="section"><a href="mysql/quickref.html">Reference</a></span></dt>
 </dl>
 </div>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
-<td align="left"><p><small>Last revised: March 30, 2022 at 13:56:53 GMT</small></p></td>
+<td align="left"><p><small>Last revised: November 16, 2022 at 14:22:31 GMT</small></p></td>
 <td align="right"><div class="copyright-footer"></div></td>
 </tr></table>
 <hr>

@@ -6,39 +6,51 @@
 <meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../boost__mysql__resultset.html" title="resultset">
-<link rel="prev" href="next_layer/overload2.html" title="resultset::next_layer (2 of 2 overloads)">
-<link rel="next" href="read_one/overload1.html" title="resultset::read_one (1 of 2 overloads)">
+<link rel="prev" href="get_executor.html" title="resultset::get_executor">
+<link rel="next" href="read_one/overload1.html" title="resultset::read_one (1 of 4 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="next_layer/overload2.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__resultset.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="read_one/overload1.html"><img src="../../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="get_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__resultset.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="read_one/overload1.html"><img src="../../../images/next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h5 class="title">
 <a name="mysql.ref.boost__mysql__resultset.read_one"></a><a class="link" href="read_one.html" title="resultset::read_one">resultset::read_one</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idp16518"></a>
+          <a class="indexterm" name="idp26845"></a>
         </p>
 <p>
-          Reads a single row (sync with error code version).
+          Reads a single row.
         </p>
 <pre class="programlisting"><span class="keyword">bool</span>
-<a class="link" href="read_one/overload1.html" title="resultset::read_one (1 of 2 overloads)">read_one</a><span class="special">(</span>
+<a class="link" href="read_one/overload1.html" title="resultset::read_one (1 of 4 overloads)">read_one</a><span class="special">(</span>
     <span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">output</span><span class="special">,</span>
     <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">err</span><span class="special">,</span>
     <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">info</span><span class="special">);</span>
-  <span class="emphasis"><em>» <a class="link" href="read_one/overload1.html" title="resultset::read_one (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
+  <span class="emphasis"><em>» <a class="link" href="read_one/overload1.html" title="resultset::read_one (1 of 4 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
+
+<span class="keyword">bool</span>
+<a class="link" href="read_one/overload2.html" title="resultset::read_one (2 of 4 overloads)">read_one</a><span class="special">(</span>
+    <span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">output</span><span class="special">);</span>
+  <span class="emphasis"><em>» <a class="link" href="read_one/overload2.html" title="resultset::read_one (2 of 4 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
 </pre>
 <p>
-          Reads a single row (sync with exceptions version).
+          Reads a single row as a <a class="link" href="../boost__mysql__row_view.html" title="row_view"><code class="computeroutput"><span class="identifier">row_view</span></code></a>.
         </p>
-<pre class="programlisting"><span class="keyword">bool</span>
-<a class="link" href="read_one/overload2.html" title="resultset::read_one (2 of 2 overloads)">read_one</a><span class="special">(</span>
-    <span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">output</span><span class="special">);</span>
-  <span class="emphasis"><em>» <a class="link" href="read_one/overload2.html" title="resultset::read_one (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
+<pre class="programlisting"><span class="identifier">row_view</span>
+<a class="link" href="read_one/overload3.html" title="resultset::read_one (3 of 4 overloads)">read_one</a><span class="special">(</span>
+    <span class="identifier">use_views_t</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">err</span><span class="special">,</span>
+    <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">info</span><span class="special">);</span>
+  <span class="emphasis"><em>» <a class="link" href="read_one/overload3.html" title="resultset::read_one (3 of 4 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
+
+<span class="identifier">row_view</span>
+<a class="link" href="read_one/overload4.html" title="resultset::read_one (4 of 4 overloads)">read_one</a><span class="special">(</span>
+    <span class="identifier">use_views_t</span><span class="special">);</span>
+  <span class="emphasis"><em>» <a class="link" href="read_one/overload4.html" title="resultset::read_one (4 of 4 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
 </pre>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
@@ -47,7 +59,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="next_layer/overload2.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__resultset.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="read_one/overload1.html"><img src="../../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="get_executor.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__resultset.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="read_one/overload1.html"><img src="../../../images/next.png" alt="Next"></a>
 </div>
 </body>
 </html>

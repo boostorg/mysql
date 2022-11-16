@@ -10,7 +10,7 @@
 <link rel="next" href="timeouts.html" title="Timeouts">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="query_async_coroutinescpp20.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="timeouts.html"><img src="../../images/next.png" alt="Next"></a>
@@ -22,7 +22,7 @@
 </h3></div></div></div>
 <p>
         This example demonstrates how to use Boost.Asio's default completion token
-        functionality with <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>.
+        functionality with <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a>.
         For that purpose, it employs C++20 coroutines. If you are not familiar with
         them, look at <a class="link" href="query_async_coroutinescpp20.html" title="Text query, async with C++20 coroutines">this
         example</a> first.
@@ -31,29 +31,31 @@
         This example assumes you have gone through the <a class="link" href="setup.html" title="Setup">setup</a>.
       </p>
 <pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">/</span><span class="identifier">handshake_params</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">/</span><span class="identifier">row_view</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">awaitable</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">basic_stream_socket</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">co_spawn</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">detached</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ip</span><span class="special">/</span><span class="identifier">tcp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">system</span><span class="special">/</span><span class="identifier">system_error</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">co_spawn</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">use_awaitable</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">awaitable</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">detached</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">use_future</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">system</span><span class="special">/</span><span class="identifier">system_error</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
 
 <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">;</span>
 
-
 <span class="preprocessor">#ifdef</span> <span class="identifier">BOOST_ASIO_HAS_CO_AWAIT</span>
 
-<span class="keyword">void</span> <span class="identifier">print_employee</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">employee</span><span class="special">)</span>
+<span class="keyword">void</span> <span class="identifier">print_employee</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row_view</span> <span class="identifier">employee</span><span class="special">)</span>
 <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee '"</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span>                   <span class="comment">// first_name (type boost::string_view)</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">"' earns "</span>            <span class="comment">// last_name  (type boost::string_view)</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" dollars yearly\n"</span><span class="special">;</span>  <span class="comment">// salary     (type double)</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee '"</span> <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span>   <span class="comment">// first_name (string)</span>
+              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">"' earns "</span>            <span class="comment">// last_name  (string)</span>
+              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" dollars yearly\n"</span><span class="special">;</span>  <span class="comment">// salary     (double)</span>
 <span class="special">}</span>
 
 <span class="comment">/**
@@ -78,24 +80,19 @@
  * associated to them.
  */</span>
 <span class="keyword">using</span> <span class="identifier">base_executor_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">executor_type</span><span class="special">;</span>
-<span class="keyword">using</span> <span class="identifier">coro_executor_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">use_awaitable_t</span><span class="special">&lt;</span>
-    <span class="identifier">base_executor_type</span><span class="special">&gt;::</span><span class="identifier">executor_with_default</span><span class="special">&lt;</span><span class="identifier">base_executor_type</span><span class="special">&gt;;</span>
+<span class="keyword">using</span> <span class="identifier">coro_executor_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">use_awaitable_t</span><span class="special">&lt;</span><span class="identifier">base_executor_type</span><span class="special">&gt;::</span><span class="identifier">executor_with_default</span><span class="special">&lt;</span>
+    <span class="identifier">base_executor_type</span><span class="special">&gt;;</span>
 <span class="keyword">using</span> <span class="identifier">stream_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_stream_socket</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">coro_executor_type</span><span class="special">&gt;</span>
-<span class="special">&gt;;</span>
-<span class="keyword">using</span> <span class="identifier">connection_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection</span><span class="special">&lt;</span>
-    <span class="identifier">stream_type</span>
-<span class="special">&gt;;</span>
-<span class="keyword">using</span> <span class="identifier">resolver_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">basic_resolver</span><span class="special">&lt;</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">coro_executor_type</span>
-<span class="special">&gt;;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_stream_socket</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">coro_executor_type</span><span class="special">&gt;</span> <span class="special">&gt;;</span>
+<span class="keyword">using</span> <span class="identifier">connection_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection</span><span class="special">&lt;</span><span class="identifier">stream_type</span><span class="special">&gt;;</span>
+<span class="keyword">using</span> <span class="identifier">resolver_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">basic_resolver</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">coro_executor_type</span><span class="special">&gt;;</span>
 
 <span class="comment">// Our coroutine</span>
 <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">awaitable</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">,</span> <span class="identifier">base_executor_type</span><span class="special">&gt;</span> <span class="identifier">start_query</span><span class="special">(</span>
     <span class="identifier">connection_type</span><span class="special">&amp;</span> <span class="identifier">conn</span><span class="special">,</span>
     <span class="identifier">resolver_type</span><span class="special">&amp;</span> <span class="identifier">resolver</span><span class="special">,</span>
     <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">hostname</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection_params</span><span class="special">&amp;</span> <span class="identifier">params</span>
+    <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">handshake_params</span><span class="special">&amp;</span> <span class="identifier">params</span>
 <span class="special">)</span>
 <span class="special">{</span>
     <span class="keyword">try</span>
@@ -110,22 +107,18 @@
         <span class="identifier">co_await</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_connect</span><span class="special">(*</span><span class="identifier">endpoints</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">params</span><span class="special">);</span>
 
         <span class="comment">/**
-        * Issue the query to the server. Note that async_query returns a
-        * boost::asio::awaitable&lt;boost::mysql::resultset&lt;stream_type&gt;, base_executor_type&gt;,
-        * where stream_type is the type alias we defined previously.
-        * Calling co_await on this expression will yield a boost::mysql::resultset&lt;stream_type&gt;.
-        * Note that this is not the same type as a boost::mysql::tcp_ssl_resultset because we
-        * used a custom stream type.
-        */</span>
-        <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'"</span><span class="special">;</span>
-        <span class="keyword">auto</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">co_await</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">);</span>
+         * Issue the query to the server. Note that the resultset type won't be
+         * tcp_ssl_resultset, because the stream type we are using is different.
+         */</span>
+        <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span>
+            <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'"</span><span class="special">;</span>
+        <span class="identifier">connection_type</span><span class="special">::</span><span class="identifier">resultset_type</span> <span class="identifier">result</span><span class="special">;</span>
+        <span class="identifier">co_await</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
 
         <span class="comment">/**
-        * Get all rows in the resultset. We will employ resultset::async_read_one(),
-        * which reads a single row at every call. The row is read in-place, preventing
-        * unnecessary copies. resultset::async_read_one() returns true if a row has been
-        * read, false if no more rows are available or an error occurred.
-        */</span>
+         * Get all rows in the resultset. We will employ resultset::async_read_one(),
+         * which reads a single row at every call and returns true if a row was read successfully.
+         */</span>
         <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span> <span class="identifier">row</span><span class="special">;</span>
         <span class="keyword">while</span> <span class="special">(</span><span class="identifier">co_await</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">async_read_one</span><span class="special">(</span><span class="identifier">row</span><span class="special">))</span>
         <span class="special">{</span>
@@ -157,31 +150,34 @@
 
     <span class="comment">// I/O context and connection. We use SSL because MySQL 8+ default settings require it.</span>
     <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
-    <span class="identifier">connection_type</span> <span class="identifier">conn</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
+    <span class="identifier">connection_type</span> <span class="identifier">conn</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
 
     <span class="comment">// Resolver, for hostname resolution</span>
-    <span class="identifier">resolver_type</span> <span class="identifier">resolver</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
+    <span class="identifier">resolver_type</span> <span class="identifier">resolver</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
 
     <span class="comment">// Connection parameters</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection_params</span> <span class="identifier">params</span> <span class="special">(</span>
-        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>               <span class="comment">// username</span>
-        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>               <span class="comment">// password</span>
-        <span class="string">"boost_mysql_examples"</span> <span class="comment">// database to use; leave empty or omit the parameter for no database</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">handshake_params</span> <span class="identifier">params</span><span class="special">(</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>                <span class="comment">// username</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>                <span class="comment">// password</span>
+        <span class="string">"boost_mysql_examples"</span>  <span class="comment">// database to use; leave empty or omit for no database</span>
     <span class="special">);</span>
 
     <span class="comment">/**
      * The entry point. We pass in a function returning
      * a boost::asio::awaitable&lt;void&gt;, as required.
      */</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">co_spawn</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span> <span class="special">[&amp;</span><span class="identifier">conn</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">resolver</span><span class="special">,</span> <span class="identifier">hostname</span><span class="special">,</span> <span class="identifier">params</span><span class="special">]</span> <span class="special">{</span>
-        <span class="keyword">return</span> <span class="identifier">start_query</span><span class="special">(</span><span class="identifier">conn</span><span class="special">,</span> <span class="identifier">resolver</span><span class="special">,</span> <span class="identifier">hostname</span><span class="special">,</span> <span class="identifier">params</span><span class="special">);</span>
-    <span class="special">},</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">detached</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">co_spawn</span><span class="special">(</span>
+        <span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span>
+        <span class="special">[&amp;</span><span class="identifier">conn</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">resolver</span><span class="special">,</span> <span class="identifier">hostname</span><span class="special">,</span> <span class="identifier">params</span><span class="special">]</span> <span class="special">{</span>
+            <span class="keyword">return</span> <span class="identifier">start_query</span><span class="special">(</span><span class="identifier">conn</span><span class="special">,</span> <span class="identifier">resolver</span><span class="special">,</span> <span class="identifier">hostname</span><span class="special">,</span> <span class="identifier">params</span><span class="special">);</span>
+        <span class="special">},</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">detached</span>
+    <span class="special">);</span>
 
     <span class="comment">// Calling run will actually start the requested operations.</span>
     <span class="identifier">ctx</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
 <span class="special">}</span>
-
 
 <span class="preprocessor">#else</span>
 
@@ -191,7 +187,6 @@
 <span class="special">}</span>
 
 <span class="preprocessor">#endif</span>
-
 
 <span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
 <span class="special">{</span>

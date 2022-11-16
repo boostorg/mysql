@@ -10,7 +10,7 @@
 <link rel="next" href="async_prepare_statement/overload1.html" title="connection::async_prepare_statement (1 of 2 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="prepare_statement/overload2.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="async_prepare_statement/overload1.html"><img src="../../../images/next.png" alt="Next"></a>
@@ -20,29 +20,26 @@
 <a name="mysql.ref.boost__mysql__connection.async_prepare_statement"></a><a class="link" href="async_prepare_statement.html" title="connection::async_prepare_statement">connection::async_prepare_statement</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idp11575"></a>
+          <a class="indexterm" name="idp15266"></a>
         </p>
 <p>
-          Prepares a statement (async without <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-          version).
+          Prepares a statement server-side.
         </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
+    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
 <span class="keyword">auto</span>
 <a class="link" href="async_prepare_statement/overload1.html" title="connection::async_prepare_statement (1 of 2 overloads)">async_prepare_statement</a><span class="special">(</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">statement</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">stmt</span><span class="special">,</span>
+    <span class="identifier">statement</span><span class="special">&lt;</span> <span class="identifier">Stream</span> <span class="special">&gt;&amp;</span> <span class="identifier">result</span><span class="special">,</span>
     <span class="identifier">CompletionToken</span><span class="special">&amp;&amp;</span> <span class="identifier">token</span><span class="special">);</span>
   <span class="emphasis"><em>» <a class="link" href="async_prepare_statement/overload1.html" title="connection::async_prepare_statement (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
-</pre>
-<p>
-          Prepares a statement (async with <a class="link" href="../boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-          version).
-        </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
-    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers" target="_top"><span class="emphasis"><em>CompletionToken</em></span></a><span class="special">&gt;</span>
 <span class="keyword">auto</span>
 <a class="link" href="async_prepare_statement/overload2.html" title="connection::async_prepare_statement (2 of 2 overloads)">async_prepare_statement</a><span class="special">(</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">statement</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">stmt</span><span class="special">,</span>
+    <span class="identifier">statement</span><span class="special">&lt;</span> <span class="identifier">Stream</span> <span class="special">&gt;&amp;</span> <span class="identifier">result</span><span class="special">,</span>
     <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">output_info</span><span class="special">,</span>
     <span class="identifier">CompletionToken</span><span class="special">&amp;&amp;</span> <span class="identifier">token</span><span class="special">);</span>
   <span class="emphasis"><em>» <a class="link" href="async_prepare_statement/overload2.html" title="connection::async_prepare_statement (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>

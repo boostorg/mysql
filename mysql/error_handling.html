@@ -7,10 +7,10 @@
 <link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="prev" href="other_streams.html" title="UNIX sockets and other stream types">
-<link rel="next" href="connparams.html" title="Connection parameters">
+<link rel="next" href="connparams.html" title="Handshake parameters">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="other_streams.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="connparams.html"><img src="../images/next.png" alt="Next"></a>
@@ -21,7 +21,7 @@
 </h2></div></div></div>
 <p>
       This section describes the different error handling strategies you may use
-      with <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+      with <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a>,
       as well as the different overloads available for each function involving network
       transfers.
     </p>
@@ -78,7 +78,7 @@
 <li class="listitem">
           <code class="computeroutput"><span class="keyword">void</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">,</span>
           <span class="identifier">T</span><span class="special">)</span></code>.
-          Used in operations that have a result, e.g. <a class="link" href="ref/boost__mysql__connection/async_query.html" title="connection::async_query"><code class="literal">connection::async_query</code></a>.
+          Used in operations that have a result, e.g. <a class="link" href="ref/boost__mysql__resultset/async_read_one.html" title="resultset::async_read_one"><code class="literal">resultset::async_read_one</code></a>.
         </li>
 </ul></div>
 <p>
@@ -97,7 +97,7 @@
       and client-side error codes</a>
     </h4>
 <p>
-      <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a>
       <a class="link" href="ref/boost__mysql__error_code.html" title="error_code"><code class="literal">error_code</code></a>s
       use <a class="link" href="ref/boost__mysql__errc.html" title="errc"><code class="literal">errc</code></a>
       as the underlying error enumeration. This enum combines codes from two different
@@ -112,7 +112,7 @@
         </li>
 <li class="listitem">
           <span class="bold"><strong>Client defined</strong></span> error codes. These are
-          defined by <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>,
+          defined by <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a>,
           and are always greater than 0xffff.
         </li>
 </ul></div>

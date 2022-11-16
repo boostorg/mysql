@@ -10,7 +10,7 @@
 <link rel="next" href="valid.html" title="connection::valid">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="connection/overload2.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="valid.html"><img src="../../../images/next.png" alt="Next"></a>
@@ -20,7 +20,7 @@
 <a name="mysql.ref.boost__mysql__connection.operator_eq_"></a><a class="link" href="operator_eq_.html" title="connection::operator=">connection::operator=</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idp10472"></a>
+          <a class="indexterm" name="idp13944"></a>
         </p>
 <p>
           Move assignment.
@@ -38,8 +38,11 @@
           <span class="phrase"><a name="mysql.ref.boost__mysql__connection.operator_eq_.description"></a></span><a class="link" href="operator_eq_.html#mysql.ref.boost__mysql__connection.operator_eq_.description">Description</a>
         </h6>
 <p>
-          The assigned-to connection will be valid if <code class="computeroutput"><span class="identifier">other</span></code>
-          is valid.
+          <a class="link" href="../boost__mysql__resultset.html" title="resultset"><code class="computeroutput"><span class="identifier">resultset</span></code></a>
+          and <a class="link" href="../boost__mysql__statement.html" title="statement"><code class="computeroutput"><span class="identifier">statement</span></code></a>
+          objects referencing <code class="computeroutput"><span class="identifier">other</span></code>
+          will remain valid. Objects referencing <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> will no longer be valid. They can be
+          re-used in I/O object generting operations like <a class="link" href="query.html" title="connection::query"><code class="computeroutput"><span class="identifier">query</span></code></a> or <a class="link" href="prepare_statement.html" title="connection::prepare_statement"><code class="computeroutput"><span class="identifier">prepare_statement</span></code></a>.
         </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>

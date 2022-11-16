@@ -10,7 +10,7 @@
 <link rel="next" href="prepared_statements.html" title="Prepared statements">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="setup.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="prepared_statements.html"><img src="../../images/next.png" alt="Next"></a>
@@ -29,36 +29,36 @@
 <p>
         This example assumes you have gone through the <a class="link" href="setup.html" title="Setup">setup</a>.
       </p>
-<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">/</span><span class="identifier">handshake_params</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">/</span><span class="identifier">row_view</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">system</span><span class="special">/</span><span class="identifier">system_error</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
 
-<span class="preprocessor">#define</span> <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">expr</span><span class="special">)</span> <span class="special">\</span>
-    <span class="keyword">if</span> <span class="special">(!(</span><span class="identifier">expr</span><span class="special">))</span> <span class="special">\</span>
-    <span class="special">{</span> <span class="special">\</span>
+<span class="preprocessor">#define</span> <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">expr</span><span class="special">)</span>                                          <span class="special">\</span>
+    <span class="keyword">if</span> <span class="special">(!(</span><span class="identifier">expr</span><span class="special">))</span>                                              <span class="special">\</span>
+    <span class="special">{</span>                                                         <span class="special">\</span>
         <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Assertion failed: "</span> <span class="special">#</span><span class="identifier">expr</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="special">\</span>
-        <span class="identifier">exit</span><span class="special">(</span><span class="number">1</span><span class="special">);</span> <span class="special">\</span>
+        <span class="identifier">exit</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>                                              <span class="special">\</span>
     <span class="special">}</span>
 
 <span class="comment">/**
- * Prints an employee to std::cout. An employee here is a boost::mysql::row,
- * which represents a row returned by a SQL query. You can access the values in
- * the row using row::values(), which returns a vector of boost::mysql::value.
+ * Prints an employee to std::cout. An employee here is a boost::mysql::row_view,
+ * which represents a row returned by a SQL query. row_view objects are an ordered
+ * collection of SQL fields, representing each value returned by the query.
  *
- * boost::mysql::value is a variant-like type representing
- * a single value returned by MySQL.
- *
- * row::values() has the same number of elements as fields are in the SQL query,
- * and in the same order.
+ * Indexing a row_view yields a boost::mysql::field_view, which is a variant-like
+ * type representing a single value returned by MySQL.
  */</span>
 <span class="keyword">void</span> <span class="identifier">print_employee</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">employee</span><span class="special">)</span>
 <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee '"</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span>                   <span class="comment">// first_name (type boost::string_view)</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">"' earns "</span>            <span class="comment">// last_name  (type boost::string_view)</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" dollars yearly\n"</span><span class="special">;</span>  <span class="comment">// salary     (type double)</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee '"</span> <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span>   <span class="comment">// first_name (type string)</span>
+              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">"' earns "</span>            <span class="comment">// last_name  (type string)</span>
+              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" dollars yearly\n"</span><span class="special">;</span>  <span class="comment">// salary     (type double)</span>
 <span class="special">}</span>
 
 <span class="keyword">void</span> <span class="identifier">main_impl</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
@@ -76,24 +76,24 @@
      * Connection parameters that tell us how to connect to the MySQL server:
      * database credentials and schema to use.
      */</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection_params</span> <span class="identifier">params</span> <span class="special">(</span>
-        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>               <span class="comment">// username</span>
-        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>               <span class="comment">// password</span>
-        <span class="string">"boost_mysql_examples"</span> <span class="comment">// database to use; leave empty or omit the parameter for no database</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">handshake_params</span> <span class="identifier">params</span><span class="special">(</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>                <span class="comment">// username</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>                <span class="comment">// password</span>
+        <span class="string">"boost_mysql_examples"</span>  <span class="comment">// database to use; leave empty or omit for no database</span>
     <span class="special">);</span>
 
     <span class="comment">/* We will use SSL in all our examples. To enable SSL, use boost::mysql::tcp_ssl_connection.
      * MySQL 8+ default is to use an authentication method that requires SSL, so we encourage
      * you to use SSL connections if you can.
      */</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
 
     <span class="comment">// Represents a single connection over TCP to a MySQL server.</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">,</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">,</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
 
     <span class="comment">// To establish the connection, we need a TCP endpoint. We have a hostname,</span>
     <span class="comment">// so we need to perform hostname resolution. We create a resolver for this.</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
 
     <span class="comment">// Invoke the resolver's appropriate function to perform the resolution.</span>
     <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">hostname</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">3</span><span class="special">];</span>
@@ -109,21 +109,27 @@
 
     <span class="comment">/**
      * To issue a SQL query to the database server, use tcp_ssl_connection::query, which takes
-     * the SQL to be executed as parameter and returns a resultset object.
+     * the SQL to be executed as parameter and returns a resultset object by lvalue reference.
      *
-     * Resultset objects represent the result of a query, in tabular format.
+     * Resultset objects represent the result of a query.
      * They hold metadata describing the fields the resultset holds (in this case, first_name,
-     * last_name and salary). To get the actual data, use read_one, read_many or read_all.
-     * We will use read_all, which returns all the received rows as a std::vector.
+     * last_name and salary). Resultsets don't contain the actual data, but have methods to read it.
      *
      * We will get all employees working for 'High Growth Startup'.
      */</span>
     <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'"</span><span class="special">;</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+    <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
 
-    <span class="comment">// Get all the rows in the resultset</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&gt;</span> <span class="identifier">employees</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">();</span>
-    <span class="keyword">for</span> <span class="special">(</span><span class="keyword">const</span> <span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">employee</span><span class="special">:</span> <span class="identifier">employees</span><span class="special">)</span>
+    <span class="comment">/**
+     * We will use resultset::read_all(), which will read all our rows into
+     * a boost::mysql::rows object. This is a matrix-like object, specialized for
+     * MySQL fields. Indexing a rows object returns a row_view, which represents
+     * an individual row.
+     */</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">rows</span> <span class="identifier">all_rows</span><span class="special">;</span>
+    <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">(</span><span class="identifier">all_rows</span><span class="special">);</span>
+    <span class="keyword">for</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row_view</span> <span class="identifier">employee</span> <span class="special">:</span> <span class="identifier">all_rows</span><span class="special">)</span>
     <span class="special">{</span>
         <span class="identifier">print_employee</span><span class="special">(</span><span class="identifier">employee</span><span class="special">);</span>
     <span class="special">}</span>
@@ -131,14 +137,16 @@
     <span class="comment">// We can issue any SQL statement, not only SELECTs. In this case, the returned</span>
     <span class="comment">// resultset will have no fields and no rows</span>
     <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'"</span><span class="special">;</span>
-    <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">);</span>
-    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">fields</span><span class="special">().</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">0</span><span class="special">);</span> <span class="comment">// fields() returns a vector containing metadata about the query fields</span>
+    <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span>
+        <span class="identifier">result</span><span class="special">.</span><span class="identifier">meta</span><span class="special">().</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">0</span>
+    <span class="special">);</span>  <span class="comment">// meta() returns a collection containing metadata about the query fields</span>
 
     <span class="comment">// Check we have updated our poor intern salary</span>
-    <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="string">"SELECT salary FROM employee WHERE first_name = 'Underpaid'"</span><span class="special">);</span>
-    <span class="keyword">auto</span> <span class="identifier">rows</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">();</span>
-    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">rows</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
-    <span class="keyword">double</span> <span class="identifier">salary</span> <span class="special">=</span> <span class="identifier">rows</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">values</span><span class="special">()[</span><span class="number">0</span><span class="special">].</span><span class="identifier">get</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;();</span>
+    <span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="string">"SELECT salary FROM employee WHERE first_name = 'Underpaid'"</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+    <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">(</span><span class="identifier">all_rows</span><span class="special">);</span>
+    <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">all_rows</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+    <span class="keyword">double</span> <span class="identifier">salary</span> <span class="special">=</span> <span class="identifier">all_rows</span><span class="special">[</span><span class="number">0</span><span class="special">][</span><span class="number">0</span><span class="special">].</span><span class="identifier">as_double</span><span class="special">();</span>
     <span class="identifier">ASSERT</span><span class="special">(</span><span class="identifier">salary</span> <span class="special">==</span> <span class="number">10000</span><span class="special">);</span>
 
     <span class="comment">// Close the connection. This notifies the MySQL we want to log out</span>

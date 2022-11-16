@@ -10,7 +10,7 @@
 <link rel="next" href="overload2.html" title="connection::connection (2 of 2 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="../connection.html"><img src="../../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../connection.html"><img src="../../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../images/next.png" alt="Next"></a>
@@ -27,17 +27,18 @@
             <span class="phrase"><a name="mysql.ref.boost__mysql__connection.connection.overload1.synopsis"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__connection.connection.overload1.synopsis">Synopsis</a>
           </h7><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
     <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">,</span>
-    <span class="keyword">class</span> <span class="identifier">EnableIf</span> <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">Stream</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...&gt;::</span><a class="link" href="../../boost__mysql__value.html" title="value">value</a><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+    <span class="keyword">class</span> <span class="identifier">EnableIf</span> <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">Stream</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...&gt;::</span><span class="identifier">value</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
 <span class="identifier">connection</span><span class="special">(</span>
     <span class="identifier">Args</span><span class="special">&amp;&amp;...</span> <span class="identifier">args</span><span class="special">);</span>
 </pre>
 <h7><a name="mysql.ref.boost__mysql__connection.connection.overload1.h1"></a>
             <span class="phrase"><a name="mysql.ref.boost__mysql__connection.connection.overload1.description"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__connection.connection.overload1.description">Description</a>
           </h7><p>
-            As part of the initialization, a Stream object is created by forwarding
-            any passed in arguments to its constructor. The constructed connection
-            will have <a class="link" href="../valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
-            return <code class="computeroutput"><span class="keyword">true</span></code>.
+            As part of the initialization, a <code class="computeroutput"><span class="identifier">Stream</span></code>
+            object is created by forwarding any passed in arguments to its constructor.
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">valid</span><span class="special">()</span></code>
+            will return <code class="computeroutput"><span class="keyword">true</span></code> for the
+            newly constructed object.
           </p>
 </div>
 <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>

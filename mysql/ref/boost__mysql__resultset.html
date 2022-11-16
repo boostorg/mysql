@@ -6,22 +6,22 @@
 <meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
-<link rel="prev" href="boost__mysql__resultset__rebind_executor/other.html" title="resultset::rebind_executor::other">
+<link rel="prev" href="boost__mysql__metadata_collection_view/size.html" title="metadata_collection_view::size">
 <link rel="next" href="boost__mysql__resultset/executor_type.html" title="resultset::executor_type">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="boost__mysql__resultset__rebind_executor/other.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__resultset/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__metadata_collection_view/size.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__resultset/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
 <a name="mysql.ref.boost__mysql__resultset"></a><a class="link" href="boost__mysql__resultset.html" title="resultset">resultset</a>
 </h4></div></div></div>
 <p>
-        Represents tabular data retrieved from the MySQL server. See <a class="link" href="../resultsets.html" title="Resultsets">this
-        section</a> for more info.
+        Holds state and data about a query or statement execution, and allows reading
+        the produced rows.
       </p>
 <h5>
 <a name="mysql.ref.boost__mysql__resultset.h0"></a>
@@ -32,7 +32,8 @@
       </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
     <span class="keyword">class</span> <a class="link" href="boost__mysql__Stream.html" title="Stream concept"><code class="literal"><span class="emphasis"><em>Stream</em></span></code></a><span class="special">&gt;</span>
-<span class="keyword">class</span> <span class="identifier">resultset</span>
+<span class="keyword">class</span> <span class="identifier">resultset</span> <span class="special">:</span>
+    <span class="keyword">public</span> <span class="identifier">resultset_base</span>
 </pre>
 <h5>
 <a name="mysql.ref.boost__mysql__resultset.h1"></a>
@@ -55,8 +56,7 @@
                 </p>
               </th>
 </tr></thead>
-<tbody>
-<tr>
+<tbody><tr>
 <td>
                 <p>
                   <span class="bold"><strong><a class="link" href="boost__mysql__resultset/executor_type.html" title="resultset::executor_type">executor_type</a></strong></span>
@@ -64,23 +64,10 @@
               </td>
 <td>
                 <p>
-                  The executor type associated to the object.
+                  The executor type associated to this object.
                 </p>
               </td>
-</tr>
-<tr>
-<td>
-                <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset__rebind_executor.html" title="resultset::rebind_executor">rebind_executor</a></strong></span>
-                </p>
-              </td>
-<td>
-                <p>
-                  Rebinds the resultset type to another executor.
-                </p>
-              </td>
-</tr>
-</tbody>
+</tr></tbody>
 </table></div>
 <h5>
 <a name="mysql.ref.boost__mysql__resultset.h2"></a>
@@ -113,7 +100,8 @@
               </td>
 <td>
                 <p>
-                  The number of rows affected by the SQL that generated this resultset.
+                  The number of rows affected by the SQL statement that generated
+                  this resultset.
                 </p>
               </td>
 </tr>
@@ -125,25 +113,7 @@
               </td>
 <td>
                 <p>
-                  Reads all available rows (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Reads
-                  all available rows (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
-                </p>
-              </td>
-</tr>
-<tr>
-<td>
-                <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/async_read_many.html" title="resultset::async_read_many">async_read_many</a></strong></span>
-                </p>
-              </td>
-<td>
-                <p>
-                  Reads several rows, up to a maximum (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Reads
-                  several rows, up to a maximum (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Reads all remaining rows.
                 </p>
               </td>
 </tr>
@@ -155,10 +125,21 @@
               </td>
 <td>
                 <p>
-                  Reads a single row (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Reads
-                  a single row (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Reads a single row. <br> <span class="silver">—</span><br>
+                  Reads a single row as a <a class="link" href="boost__mysql__row_view.html" title="row_view"><code class="computeroutput"><span class="identifier">row_view</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/async_read_some.html" title="resultset::async_read_some">async_read_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reads a batch of rows. <br> <span class="silver">—</span><br>
+                  Reads a batch of rows as a <a class="link" href="boost__mysql__rows_view.html" title="rows_view"><code class="computeroutput"><span class="identifier">rows_view</span></code></a>.
                 </p>
               </td>
 </tr>
@@ -177,25 +158,12 @@
 <tr>
 <td>
                 <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/fields.html" title="resultset::fields">fields</a></strong></span>
-                </p>
-              </td>
-<td>
-                <p>
-                  Returns <a class="link" href="../resultsets.html#mysql.resultsets.metadata" title="Metadata">metadata</a>
-                  about the fields in the query.
-                </p>
-              </td>
-</tr>
-<tr>
-<td>
-                <p>
                   <span class="bold"><strong><a class="link" href="boost__mysql__resultset/get_executor.html" title="resultset::get_executor">get_executor</a></strong></span>
                 </p>
               </td>
 <td>
                 <p>
-                  Retrieves the executor associated to the object.
+                  Retrieves the executor associated to this object.
                 </p>
               </td>
 </tr>
@@ -207,8 +175,8 @@
               </td>
 <td>
                 <p>
-                  Additionat text information about the execution of the SQL that
-                  generated this resultset.
+                  Additionat text information about the execution of the SQL statement
+                  that generated this resultset.
                 </p>
               </td>
 </tr>
@@ -220,19 +188,21 @@
               </td>
 <td>
                 <p>
-                  The last insert ID produced by the SQL that generated this resultset.
+                  The last insert ID produced by the SQL statement that generated
+                  this resultset.
                 </p>
               </td>
 </tr>
 <tr>
 <td>
                 <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/next_layer.html" title="resultset::next_layer">next_layer</a></strong></span>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/meta.html" title="resultset::meta">meta</a></strong></span>
                 </p>
               </td>
 <td>
                 <p>
-                  Retrieves the stream object associated with the underlying connection.
+                  Returns <a class="link" href="../resultsets.html#mysql.resultsets.metadata" title="Metadata">metadata</a>
+                  about the columns in the query.
                 </p>
               </td>
 </tr>
@@ -256,23 +226,7 @@
               </td>
 <td>
                 <p>
-                  Reads all available rows (sync with error code version). <br>
-                  <span class="silver">—</span><br> Reads all available rows
-                  (sync with exceptions version).
-                </p>
-              </td>
-</tr>
-<tr>
-<td>
-                <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/read_many.html" title="resultset::read_many">read_many</a></strong></span>
-                </p>
-              </td>
-<td>
-                <p>
-                  Reads several rows, up to a maximum (sync with error code version).
-                  <br> <span class="silver">—</span><br> Reads several rows,
-                  up to a maximum (sync with exceptions version).
+                  Reads all remaining rows.
                 </p>
               </td>
 </tr>
@@ -284,8 +238,21 @@
               </td>
 <td>
                 <p>
-                  Reads a single row (sync with error code version). <br> <span class="silver">—</span><br> Reads a single row (sync with
-                  exceptions version).
+                  Reads a single row. <br> <span class="silver">—</span><br>
+                  Reads a single row as a <a class="link" href="boost__mysql__row_view.html" title="row_view"><code class="computeroutput"><span class="identifier">row_view</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/read_some.html" title="resultset::read_some">read_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reads a batch of rows. <br> <span class="silver">—</span><br>
+                  Reads a batch of rows as a <a class="link" href="boost__mysql__rows_view.html" title="rows_view"><code class="computeroutput"><span class="identifier">rows_view</span></code></a>.
                 </p>
               </td>
 </tr>
@@ -310,7 +277,8 @@
               </td>
 <td>
                 <p>
-                  Returns whether this object represents a valid resultset.
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  object represents an actual resultset.
                 </p>
               </td>
 </tr>
@@ -322,8 +290,20 @@
               </td>
 <td>
                 <p>
-                  The number of warnings produced by the SQL that generated this
-                  resultset.
+                  The number of warnings produced by the SQL statement that generated
+                  this resultset.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__resultset/_dtor_resultset.html" title="resultset::~resultset">~resultset</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
                 </p>
               </td>
 </tr>
@@ -334,15 +314,35 @@
         <span class="phrase"><a name="mysql.ref.boost__mysql__resultset.description"></a></span><a class="link" href="boost__mysql__resultset.html#mysql.ref.boost__mysql__resultset.description">Description</a>
       </h5>
 <p>
-        Returned as the result of a <a class="link" href="../queries.html" title="Text queries">text query</a>
-        or a <a class="link" href="../prepared_statements.html" title="Prepared statements">statement execution</a>.
-        It is an I/O object that allows reading rows progressively. <a class="link" href="../resultsets.html" title="Resultsets">This
-        section</a> provides an in-depth explanation of the mechanics of this
-        class. Resultsets are default-constructible and movable, but not copyable.
-        <a class="link" href="boost__mysql__resultset/valid.html" title="resultset::valid"><code class="literal">resultset::valid</code></a>
-        returns <code class="computeroutput"><span class="keyword">false</span></code> for default-constructed
-        and moved-from resultsets. Calling any member function on an invalid resultset,
-        other than assignment, results in undefined behavior.
+        Resultsets are obtained as a result of a SQL statement execution, by calling
+        <a class="link" href="boost__mysql__connection/query.html" title="connection::query"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">query</span></code></a>
+        or <a class="link" href="boost__mysql__statement/execute.html" title="statement::execute"><code class="computeroutput"><span class="identifier">statement</span><span class="special">::</span><span class="identifier">execute</span></code></a>. A resultset holds metadata
+        about the operation (<a class="link" href="boost__mysql__resultset/meta.html" title="resultset::meta"><code class="computeroutput"><span class="identifier">meta</span></code></a>), allows you to read the resulting
+        rows ( <a class="link" href="boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="computeroutput"><span class="identifier">read_one</span></code></a>, <a class="link" href="boost__mysql__resultset/read_some.html" title="resultset::read_some"><code class="computeroutput"><span class="identifier">read_some</span></code></a>, <a class="link" href="boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="computeroutput"><span class="identifier">read_all</span></code></a>), and stores additional
+        information about the execution ("EOF packet data", in MySQL slang:
+        <a class="link" href="boost__mysql__resultset/affected_rows.html" title="resultset::affected_rows"><code class="computeroutput"><span class="identifier">affected_rows</span></code></a>, <a class="link" href="boost__mysql__resultset/last_insert_id.html" title="resultset::last_insert_id"><code class="computeroutput"><span class="identifier">last_insert_id</span></code></a>, and so on). Resultsets
+        are the glue that join the different pieces of <a class="link" href="boost__mysql__connection/query.html" title="connection::query"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">query</span></code></a> and <a class="link" href="boost__mysql__statement/execute.html" title="statement::execute"><code class="computeroutput"><span class="identifier">statement</span><span class="special">::</span><span class="identifier">execute</span></code></a> multi-function operations.
+      </p>
+<p>
+        Resultsets are proxy I/O objects, meaning that they hold a reference to the
+        internal state of the <a class="link" href="boost__mysql__connection.html" title="connection"><code class="computeroutput"><span class="identifier">connection</span></code></a> that created them. I/O
+        operations on a resultset result in reads and writes on the connection's
+        stream. A <code class="computeroutput"><span class="identifier">resultset</span></code> is usable
+        for I/O operations as long as the original <a class="link" href="boost__mysql__connection.html" title="connection"><code class="computeroutput"><span class="identifier">connection</span></code></a> is alive and open. Moving
+        the <code class="computeroutput"><span class="identifier">connection</span></code> object doesn't
+        invalidate <code class="computeroutput"><span class="identifier">resultset</span></code>s pointing
+        into it, but destroying or closing it does. The executor object used by a
+        <code class="computeroutput"><span class="identifier">resultset</span></code> is always the underlying
+        stream's.
+      </p>
+<p>
+        Resultsets are default-constructible and movable, but not copyable. A default
+        constructed or closed resultset has <code class="computeroutput"><span class="special">!</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">valid</span><span class="special">()</span></code>.
+        Calling any member function on an invalid resultset, other than assignment,
+        results in undefined behavior.
+      </p>
+<p>
+        See <a class="link" href="../resultsets.html" title="Resultsets">this section</a> for more info.
       </p>
 <p>
         Convenience header <code class="literal">&lt;<a class="ulink" href="https://github.com/anarthal/mysql/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>
@@ -354,7 +354,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="boost__mysql__resultset__rebind_executor/other.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__resultset/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__metadata_collection_view/size.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__resultset/executor_type.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 </body>
 </html>

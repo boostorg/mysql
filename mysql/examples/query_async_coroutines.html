@@ -10,7 +10,7 @@
 <link rel="next" href="query_async_coroutinescpp20.html" title="Text query, async with C++20 coroutines">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="query_async_futures.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../examples.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="query_async_coroutinescpp20.html"><img src="../../images/next.png" alt="Next"></a>
@@ -24,44 +24,40 @@
         This example demonstrates how to connect a <a class="link" href="../ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>,
         how to issue a <a class="link" href="../queries.html" title="Text queries">text query</a>, and how to
         <a class="link" href="../resultsets.html" title="Resultsets">read a resultset</a> using <a class="link" href="../async.html" title="Going async">asynchronous
-        functions</a> with <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
-        coroutines (using <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/yield_context.html" target="_top"><code class="literal">boost::asio::yield_context</code></a>
-        and <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="literal">boost::asio::spawn</code></a>).
+        functions</a> with <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
+        coroutines (using <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/yield_context.html" target="_top"><code class="literal">boost::asio::yield_context</code></a>
+        and <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="literal">boost::asio::spawn</code></a>).
       </p>
 <p>
         This example assumes you have gone through the <a class="link" href="setup.html" title="Setup">setup</a>.
       </p>
-<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ip</span><span class="special">/</span><span class="identifier">tcp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mysql</span><span class="special">/</span><span class="identifier">handshake_params</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
-<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">system</span><span class="special">/</span><span class="identifier">system_error</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ip</span><span class="special">/</span><span class="identifier">tcp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">spawn</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">system</span><span class="special">/</span><span class="identifier">system_error</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
 <span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
 
 <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">;</span>
 <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_info</span><span class="special">;</span>
 
-<span class="keyword">void</span> <span class="identifier">print_employee</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span><span class="special">&amp;</span> <span class="identifier">employee</span><span class="special">)</span>
+<span class="keyword">void</span> <span class="identifier">print_employee</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row_view</span> <span class="identifier">employee</span><span class="special">)</span>
 <span class="special">{</span>
-    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee '"</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span>                   <span class="comment">// first_name (type boost::string_view)</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">"' earns "</span>            <span class="comment">// last_name  (type boost::string_view)</span>
-              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">.</span><span class="identifier">values</span><span class="special">()[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" dollars yearly\n"</span><span class="special">;</span>  <span class="comment">// salary     (type double)</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee '"</span> <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span>   <span class="comment">// first_name (string)</span>
+              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">"' earns "</span>            <span class="comment">// last_name  (string)</span>
+              <span class="special">&lt;&lt;</span> <span class="identifier">employee</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">&lt;&lt;</span> <span class="string">" dollars yearly\n"</span><span class="special">;</span>  <span class="comment">// salary     (double)</span>
 <span class="special">}</span>
 
 <span class="comment">// Throws an exception if an operation failed</span>
-<span class="keyword">void</span> <span class="identifier">check_error</span><span class="special">(</span>
-    <span class="keyword">const</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">err</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">info</span> <span class="special">=</span> <span class="special">{}</span>
-<span class="special">)</span>
+<span class="keyword">void</span> <span class="identifier">check_error</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">err</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">info</span> <span class="special">=</span> <span class="special">{})</span>
 <span class="special">{</span>
     <span class="keyword">if</span> <span class="special">(</span><span class="identifier">err</span><span class="special">)</span>
-    <span class="special">{</span>
         <span class="keyword">throw</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">system_error</span><span class="special">(</span><span class="identifier">err</span><span class="special">,</span> <span class="identifier">info</span><span class="special">.</span><span class="identifier">message</span><span class="special">());</span>
-    <span class="special">}</span>
 <span class="special">}</span>
-
 
 <span class="keyword">void</span> <span class="identifier">main_impl</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
 <span class="special">{</span>
@@ -75,19 +71,18 @@
 
     <span class="comment">// I/O context and connection. We use SSL because MySQL 8+ default settings require it.</span>
     <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">,</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">,</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
 
     <span class="comment">// Connection params</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">connection_params</span> <span class="identifier">params</span> <span class="special">(</span>
-        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>               <span class="comment">// username</span>
-        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>               <span class="comment">// password</span>
-        <span class="string">"boost_mysql_examples"</span> <span class="comment">// database to use; leave empty or omit the parameter for no database</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">handshake_params</span> <span class="identifier">params</span><span class="special">(</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">],</span>                <span class="comment">// username</span>
+        <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">],</span>                <span class="comment">// password</span>
+        <span class="string">"boost_mysql_examples"</span>  <span class="comment">// database to use; leave empty or omit for no database</span>
     <span class="special">);</span>
 
     <span class="comment">// Resolver for hostname resolution</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span> <span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
-
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
 
     <span class="comment">/**
      * The entry point. We spawn a stackful coroutine using boost::asio::spawn.
@@ -96,49 +91,54 @@
      * It will suspend every time we call one of the asynchronous functions, saving
      * all information it needs for resuming. When the asynchronous operation completes,
      * the coroutine will resume in the point it was left.
-     *
-     * The return type of a coroutine is the second argument to the handler signature
-     * for the asynchronous operation. For example, connection::query has a handler
-     * signature of void(error_code, resultset&lt;Stream&gt;), so the coroutine return
-     * type is resultset&lt;Stream&gt;.
-     *
      */</span>
-    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">spawn</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span> <span class="special">[&amp;</span><span class="identifier">conn</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">resolver</span><span class="special">,</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">hostname</span><span class="special">](</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span> <span class="special">{</span>
-        <span class="comment">// This error_code and error_info will be filled if an</span>
-        <span class="comment">// operation fails. We will check them for every operation we perform.</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_info</span> <span class="identifier">additional_info</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">spawn</span><span class="special">(</span>
+        <span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span>
+        <span class="special">[&amp;</span><span class="identifier">conn</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">resolver</span><span class="special">,</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">hostname</span><span class="special">](</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span> <span class="special">{</span>
+            <span class="comment">// This error_code and error_info will be filled if an</span>
+            <span class="comment">// operation fails. We will check them for every operation we perform.</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">error_info</span> <span class="identifier">additional_info</span><span class="special">;</span>
 
-        <span class="comment">// Hostname resolution</span>
-        <span class="keyword">auto</span> <span class="identifier">endpoints</span> <span class="special">=</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">async_resolve</span><span class="special">(</span><span class="identifier">hostname</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">default_port_string</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
-        <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
+            <span class="comment">// Hostname resolution</span>
+            <span class="keyword">auto</span> <span class="identifier">endpoints</span> <span class="special">=</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">async_resolve</span><span class="special">(</span>
+                <span class="identifier">hostname</span><span class="special">,</span>
+                <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">default_port_string</span><span class="special">,</span>
+                <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]</span>
+            <span class="special">);</span>
+            <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
 
-        <span class="comment">// Connect to server</span>
-        <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_connect</span><span class="special">(*</span><span class="identifier">endpoints</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
-        <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
+            <span class="comment">// Connect to server</span>
+            <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_connect</span><span class="special">(*</span><span class="identifier">endpoints</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
+            <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
 
-        <span class="comment">// Issue the query to the server</span>
-        <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'"</span><span class="special">;</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
-        <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">);</span>
-
-        <span class="comment">/**
-          * Get all rows in the resultset. We will employ resultset::async_read_one(),
-          * which reads a single row at every call. The row is read in-place, preventing
-          * unnecessary copies. resultset::async_read_one() returns true if a row has been
-          * read, false if no more rows are available or an error occurred.
-         */</span>
-        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span> <span class="identifier">row</span><span class="special">;</span>
-        <span class="keyword">while</span> <span class="special">(</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">async_read_one</span><span class="special">(</span><span class="identifier">row</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]))</span>
-        <span class="special">{</span>
+            <span class="comment">// Issue the query to the server</span>
+            <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span>
+                <span class="identifier">sql</span> <span class="special">=</span> <span class="string">"SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'"</span><span class="special">;</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+            <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="identifier">sql</span><span class="special">,</span> <span class="identifier">result</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
             <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">);</span>
-            <span class="identifier">print_employee</span><span class="special">(</span><span class="identifier">row</span><span class="special">);</span>
-        <span class="special">}</span>
 
-        <span class="comment">// Notify the MySQL server we want to quit, then close the underlying connection.</span>
-        <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_close</span><span class="special">(</span><span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
-        <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">);</span>
-    <span class="special">});</span>
+            <span class="comment">/**
+             * Get all rows in the resultset. We will employ resultset::async_read_one(),
+             * which reads a single row at every call. resultset::complete() returns true only after
+             * we've read the last row in the resultset.
+             */</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">row</span> <span class="identifier">row</span><span class="special">;</span>
+            <span class="keyword">while</span> <span class="special">(</span><span class="keyword">true</span><span class="special">)</span>
+            <span class="special">{</span>
+                <span class="identifier">result</span><span class="special">.</span><span class="identifier">async_read_one</span><span class="special">(</span><span class="identifier">row</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
+                <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">);</span>
+                <span class="keyword">if</span> <span class="special">(</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">complete</span><span class="special">())</span>
+                    <span class="keyword">break</span><span class="special">;</span>
+                <span class="identifier">print_employee</span><span class="special">(</span><span class="identifier">row</span><span class="special">);</span>
+            <span class="special">}</span>
+
+            <span class="comment">// Notify the MySQL server we want to quit, then close the underlying connection.</span>
+            <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_close</span><span class="special">(</span><span class="identifier">additional_info</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">[</span><span class="identifier">ec</span><span class="special">]);</span>
+            <span class="identifier">check_error</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">additional_info</span><span class="special">);</span>
+        <span class="special">}</span>
+    <span class="special">);</span>
 
     <span class="comment">// Don't forget to call run()! Otherwise, your program</span>
     <span class="comment">// will not spawn the coroutine and will do nothing.</span>

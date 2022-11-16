@@ -10,7 +10,7 @@
 <link rel="next" href="connect/overload1.html" title="connection::connect (1 of 2 overloads)">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="uses_ssl.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__connection.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="connect/overload1.html"><img src="../../../images/next.png" alt="Next"></a>
@@ -20,30 +20,27 @@
 <a name="mysql.ref.boost__mysql__connection.connect"></a><a class="link" href="connect.html" title="connection::connect">connection::connect</a>
 </h5></div></div></div>
 <p>
-          <a class="indexterm" name="idp10617"></a>
+          <a class="indexterm" name="idp14104"></a>
         </p>
 <p>
-          Performs a connection to the MySQL server (sync with error code version).
+          Establishes a connection to a MySQL server.
         </p>
 <pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
     <span class="keyword">typename</span> <span class="identifier">EndpointType</span><span class="special">&gt;</span>
 <span class="keyword">void</span>
 <a class="link" href="connect/overload1.html" title="connection::connect (1 of 2 overloads)">connect</a><span class="special">(</span>
     <span class="keyword">const</span> <span class="identifier">EndpointType</span><span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">connection_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">,</span>
+    <span class="keyword">const</span> <span class="identifier">handshake_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">,</span>
     <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
     <span class="identifier">error_info</span><span class="special">&amp;</span> <span class="identifier">info</span><span class="special">);</span>
   <span class="emphasis"><em>» <a class="link" href="connect/overload1.html" title="connection::connect (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
-</pre>
-<p>
-          Performs a connection to the MySQL server (sync with exceptions version).
-        </p>
-<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span>
     <span class="keyword">typename</span> <span class="identifier">EndpointType</span><span class="special">&gt;</span>
 <span class="keyword">void</span>
 <a class="link" href="connect/overload2.html" title="connection::connect (2 of 2 overloads)">connect</a><span class="special">(</span>
     <span class="keyword">const</span> <span class="identifier">EndpointType</span><span class="special">&amp;</span> <span class="identifier">endpoint</span><span class="special">,</span>
-    <span class="keyword">const</span> <span class="identifier">connection_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">);</span>
+    <span class="keyword">const</span> <span class="identifier">handshake_params</span><span class="special">&amp;</span> <span class="identifier">params</span><span class="special">);</span>
   <span class="emphasis"><em>» <a class="link" href="connect/overload2.html" title="connection::connect (2 of 2 overloads)"><code class="computeroutput"><span class="identifier">more</span><span class="special">...</span></code></a></em></span>
 </pre>
 </div>

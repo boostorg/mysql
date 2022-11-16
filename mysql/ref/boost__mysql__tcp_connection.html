@@ -7,20 +7,20 @@
 <link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
 <link rel="prev" href="boost__mysql__error_code.html" title="error_code">
-<link rel="next" href="boost__mysql__tcp_prepared_statement.html" title="tcp_prepared_statement">
+<link rel="next" href="boost__mysql__tcp_statement.html" title="tcp_statement">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="boost__mysql__error_code.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__tcp_prepared_statement.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__error_code.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__tcp_statement.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
 <a name="mysql.ref.boost__mysql__tcp_connection"></a><a class="link" href="boost__mysql__tcp_connection.html" title="tcp_connection">tcp_connection</a>
 </h4></div></div></div>
 <p>
-        <a class="indexterm" name="idp33232"></a>
+        <a class="indexterm" name="idp55883"></a>
       </p>
 <p>
         A connection to MySQL over a TCP socket.
@@ -71,12 +71,38 @@
 <tr>
 <td>
                 <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__connection__rebind_executor.html" title="connection::rebind_executor">rebind_executor</a></strong></span>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__connection/resultset_type.html" title="connection::resultset_type">resultset_type</a></strong></span>
                 </p>
               </td>
 <td>
                 <p>
-                  Rebinds the connection type to another executor.
+                  The type of resultsets that can be used with this connection type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__connection/statement_type.html" title="connection::statement_type">statement_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of prepared statements that can be used with this connection
+                  type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__connection/stream_type.html" title="connection::stream_type">stream_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The <code class="computeroutput"><span class="identifier">Stream</span></code> type
+                  this connection is using.
                 </p>
               </td>
 </tr>
@@ -113,10 +139,7 @@
               </td>
 <td>
                 <p>
-                  Closes the connection (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Closes
-                  the connection (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Closes the connection with the server.
                 </p>
               </td>
 </tr>
@@ -128,10 +151,7 @@
               </td>
 <td>
                 <p>
-                  Performs a connection to the MySQL server (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Performs
-                  a connection to the MySQL server (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Establishes a connection to a MySQL server.
                 </p>
               </td>
 </tr>
@@ -143,10 +163,7 @@
               </td>
 <td>
                 <p>
-                  Performs the MySQL-level handshake (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Performs
-                  the MySQL-level handshake (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Performs the MySQL-level handshake.
                 </p>
               </td>
 </tr>
@@ -158,10 +175,7 @@
               </td>
 <td>
                 <p>
-                  Prepares a statement (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Prepares
-                  a statement (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Prepares a statement server-side.
                 </p>
               </td>
 </tr>
@@ -173,10 +187,7 @@
               </td>
 <td>
                 <p>
-                  Executes a SQL text query (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Executes
-                  a SQL text query (async with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  Executes a SQL text query.
                 </p>
               </td>
 </tr>
@@ -189,11 +200,7 @@
 <td>
                 <p>
                   Notifies the MySQL server that the client wants to end the session
-                  (async without <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version). <br> <span class="silver">—</span><br> Notifies
-                  the MySQL server that the client wants to end the session (async
-                  with <a class="link" href="boost__mysql__error_info.html" title="error_info"><code class="literal">error_info</code></a>
-                  version).
+                  and shutdowns SSL.
                 </p>
               </td>
 </tr>
@@ -205,8 +212,7 @@
               </td>
 <td>
                 <p>
-                  Closes the connection (sync with error code version). <br> <span class="silver">—</span><br> Closes the connection (sync with
-                  exceptions version).
+                  Closes the connection with the server.
                 </p>
               </td>
 </tr>
@@ -218,9 +224,7 @@
               </td>
 <td>
                 <p>
-                  Performs a connection to the MySQL server (sync with error code
-                  version). <br> <span class="silver">—</span><br> Performs
-                  a connection to the MySQL server (sync with exceptions version).
+                  Establishes a connection to a MySQL server.
                 </p>
               </td>
 </tr>
@@ -257,21 +261,7 @@
               </td>
 <td>
                 <p>
-                  Performs the MySQL-level handshake (sync with error code version).
-                  <br> <span class="silver">—</span><br> Performs the MySQL-level
-                  handshake (sync with exceptions version).
-                </p>
-              </td>
-</tr>
-<tr>
-<td>
-                <p>
-                  <span class="bold"><strong><a class="link" href="boost__mysql__connection/next_layer.html" title="connection::next_layer">next_layer</a></strong></span>
-                </p>
-              </td>
-<td>
-                <p>
-                  Retrieves the underlying Stream object.
+                  Performs the MySQL-level handshake.
                 </p>
               </td>
 </tr>
@@ -295,8 +285,7 @@
               </td>
 <td>
                 <p>
-                  Prepares a statement (sync with error code version). <br> <span class="silver">—</span><br> Prepares a statement (sync with
-                  exceptions version).
+                  Prepares a statement server-side.
                 </p>
               </td>
 </tr>
@@ -308,9 +297,7 @@
               </td>
 <td>
                 <p>
-                  Executes a SQL text query (sync with error code version). <br>
-                  <span class="silver">—</span><br> Executes a SQL text query
-                  (sync with exceptions version).
+                  Executes a SQL text query.
                 </p>
               </td>
 </tr>
@@ -323,9 +310,19 @@
 <td>
                 <p>
                   Notifies the MySQL server that the client wants to end the session
-                  (sync with error code version). <br> <span class="silver">—</span><br>
-                  Notifies the MySQL server that the client wants to end the session
-                  (sync with exceptions version).
+                  and shutdowns SSL.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__mysql__connection/stream.html" title="connection::stream">stream</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Retrieves the underlying Stream object.
                 </p>
               </td>
 </tr>
@@ -357,15 +354,47 @@
 </tbody>
 </table></div>
 <p>
-        Represents a connection to a MySQL server, allowing you to interact with
-        it. Because of how the MySQL protocol works, you must fully perform an operation
-        before starting the next one. More information <a class="link" href="../async.html#mysql.async.sequencing" title="Sequencing of operations">here</a>.
-        Otherwise, the results are undefined. connection is move constructible and
-        move assignable, but not copyable. Moved-from connection objects are left
-        in a state that makes them not usable for most of the operations. The function
-        <a class="link" href="boost__mysql__connection/valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>
-        returns whether an object is in a usable state or not. The only allowed operations
-        on moved-from connections are:
+        Represents a connection to a MySQL server. You can find more info in the
+        following sections:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../queries.html" title="Text queries">Text queries</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="../prepared_statements.html" title="Prepared statements">Prepared statements</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="../overview.html#mysql.overview.async" title="Asynchronous functions and multi-threading">Asynchronous functions and multi-threading</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="../connparams.html" title="Handshake parameters">Connect</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="../other_streams.html#mysql.other_streams.connection">Handshake and quit</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="../reconnecting.html" title="Reconnecting a MySQL connection">Error recovery</a>.
+          </li>
+</ul></div>
+<p>
+        <code class="computeroutput"><span class="identifier">connection</span></code>is the main I/O
+        object that this library implements. It owns a <code class="computeroutput"><span class="identifier">Stream</span></code>
+        object that is accessed by functions involving network operations, as well
+        as session state. You can access the stream using <a class="link" href="boost__mysql__connection/stream.html" title="connection::stream"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">stream</span></code></a>, and its executor via <a class="link" href="boost__mysql__connection/get_executor.html" title="connection::get_executor"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">get_executor</span></code></a>.
+        The executor used by this object is always the same as the underlying stream.
+        Other I/O objects (<code class="computeroutput"><span class="identifier">statement</span></code>
+        and <code class="computeroutput"><span class="identifier">resultset</span></code>) are proxy
+        I/O objects, which means that they pointing to the stream and state owned
+        by <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">connection</span></code>is move constructible
+        and move assignable, but not copyable. Moved-from connection objects are
+        left in a state that makes them not usable for most of the operations. The
+        function <a class="link" href="boost__mysql__connection/valid.html" title="connection::valid"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">valid</span></code></a> returns whether an object
+        is in a usable state or not. The only allowed operations on moved-from connections
+        are:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
@@ -375,13 +404,13 @@
             Participating in other move construction/assignment operations.
           </li>
 <li class="listitem">
-            Calling <a class="link" href="boost__mysql__connection/valid.html" title="connection::valid"><code class="literal">connection::valid</code></a>.
+            Calling <a class="link" href="boost__mysql__connection/valid.html" title="connection::valid"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">valid</span></code></a>.
           </li>
 </ul></div>
 <p>
         In particular, it is <span class="bold"><strong>not</strong></span> allowed to call
-        <a class="link" href="boost__mysql__connection/handshake.html" title="connection::handshake"><code class="literal">connection::handshake</code></a>
-        on a moved-from connection in order to re-open it.
+        <a class="link" href="boost__mysql__connection/handshake.html" title="connection::handshake"><code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">handshake</span></code></a> on a moved-from connection
+        in order to re-open it.
       </p>
 <p>
         Convenience header <code class="literal">&lt;<a class="ulink" href="https://github.com/anarthal/mysql/blob/master/include/boost/mysql.hpp" target="_top">boost/mysql.hpp</a>&gt;</code>
@@ -393,7 +422,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="boost__mysql__error_code.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__tcp_prepared_statement.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__error_code.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__tcp_statement.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 </body>
 </html>

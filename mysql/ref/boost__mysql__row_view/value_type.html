@@ -1,0 +1,768 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>row_view::value_type</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../boost__mysql__row_view.html" title="row_view">
+<link rel="prev" href="const_iterator.html" title="row_view::const_iterator">
+<link rel="next" href="reference.html" title="row_view::reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="const_iterator.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__row_view.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="mysql.ref.boost__mysql__row_view.value_type"></a><a class="link" href="value_type.html" title="row_view::value_type">row_view::value_type</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idp32652"></a>
+        </p>
+<p>
+          A type that can hold elements in this collection with value semantics.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__row_view.value_type.h0"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__row_view.value_type.synopsis"></a></span><a class="link" href="value_type.html#mysql.ref.boost__mysql__row_view.value_type.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">value_type</span> <span class="special">=</span> <span class="identifier">field</span><span class="special">;</span>
+</pre>
+<h6>
+<a name="mysql.ref.boost__mysql__row_view.value_type.h1"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__row_view.value_type.member_functions"></a></span><a class="link" href="value_type.html#mysql.ref.boost__mysql__row_view.value_type.member_functions">Member
+          Functions</a>
+        </h6>
+<div class="informaltable"><table class="informaltable" border="1">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_date.html" title="field::as_date">as_date</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">date</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_datetime.html" title="field::as_datetime">as_datetime</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">datetime</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_double.html" title="field::as_double">as_double</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="keyword">double</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_float.html" title="field::as_float">as_float</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="keyword">float</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_int64.html" title="field::as_int64">as_int64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_string.html" title="field::as_string">as_string</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_time.html" title="field::as_time">as_time</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">time</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/as_uint64.html" title="field::as_uint64">as_uint64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                    value or throws an exception.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_date.html" title="field::emplace_date">emplace_date</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">date</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_datetime.html" title="field::emplace_datetime">emplace_datetime</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">datetime</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_double.html" title="field::emplace_double">emplace_double</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="keyword">double</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_float.html" title="field::emplace_float">emplace_float</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">float_</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_int64.html" title="field::emplace_int64">emplace_int64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">int64</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_null.html" title="field::emplace_null">emplace_null</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with a <code class="computeroutput"><span class="identifier">NULL</span></code>,
+                    changing the kind to <code class="computeroutput"><span class="identifier">null</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_string.html" title="field::emplace_string">emplace_string</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">string</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_time.html" title="field::emplace_time">emplace_time</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">time</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/emplace_uint64.html" title="field::emplace_uint64">emplace_uint64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">uint64</span></code>
+                    and destroying any previous contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/field.html" title="field::field">field</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Constructs a <code class="computeroutput"><span class="identifier">field</span></code>
+                    holding NULL (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span> <span class="special">==</span>
+                    <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">null</span></code>). <br> <span class="silver">—</span><br>
+                    Copy constructor. <br> <span class="silver">—</span><br>
+                    Move constructor. <br> <span class="silver">—</span><br>
+                    Constructs a <code class="computeroutput"><span class="identifier">field</span></code>
+                    holding an <code class="computeroutput"><span class="identifier">int64</span></code>
+                    (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">int64</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a <code class="computeroutput"><span class="identifier">uint64</span></code> (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">uint64</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a string (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">string</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a <code class="computeroutput"><span class="keyword">float</span></code> (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="keyword">float</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a <code class="computeroutput"><span class="keyword">double</span></code> (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="keyword">double</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a <code class="computeroutput"><span class="identifier">date</span></code> (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">date</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a <code class="computeroutput"><span class="identifier">datetime</span></code> (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">datetime</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> holding
+                    a <code class="computeroutput"><span class="identifier">time</span></code> (<code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">kind</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">time</span></code>).
+                    <br> <span class="silver">—</span><br> Constructs a
+                    <code class="computeroutput"><span class="identifier">field</span></code> from a
+                    <a class="link" href="../boost__mysql__field_view.html" title="field_view"><code class="computeroutput"><span class="identifier">field_view</span></code></a>.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_date.html" title="field::get_date">get_date</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">date</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_datetime.html" title="field::get_datetime">get_datetime</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">datetime</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_double.html" title="field::get_double">get_double</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="keyword">double</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_float.html" title="field::get_float">get_float</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="keyword">float</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_int64.html" title="field::get_int64">get_int64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_string.html" title="field::get_string">get_string</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_time.html" title="field::get_time">get_time</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">time</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/get_uint64.html" title="field::get_uint64">get_uint64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                    value (unchecked access).
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_date.html" title="field::is_date">is_date</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a date value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_datetime.html" title="field::is_datetime">is_datetime</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a datetime value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_double.html" title="field::is_double">is_double</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a double value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_float.html" title="field::is_float">is_float</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a float value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_int64.html" title="field::is_int64">is_int64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding an int64 value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_null.html" title="field::is_null">is_null</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a <code class="computeroutput"><span class="identifier">NULL</span></code>
+                    value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_string.html" title="field::is_string">is_string</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a string value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_time.html" title="field::is_time">is_time</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a time value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/is_uint64.html" title="field::is_uint64">is_uint64</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns whether this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding a uint64 value.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/kind.html" title="field::kind">kind</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Returns the type of the value this <code class="computeroutput"><span class="identifier">field</span></code>
+                    is holding.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/operator_field_view.html" title="field::operator field_view">operator
+                    field_view</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Constructs a <a class="link" href="../boost__mysql__field_view.html" title="field_view"><code class="computeroutput"><span class="identifier">field_view</span></code></a> pointing
+                    to <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/operator_eq_.html" title="field::operator=">operator=</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Copy assignment. <br> <span class="silver">—</span><br>
+                    Move assignment. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with a <code class="computeroutput"><span class="identifier">NULL</span></code>,
+                    changing the kind to <code class="computeroutput"><span class="identifier">null</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">int64</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">uint64</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">string</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">float_</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="keyword">double</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">date</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">datetime</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">time</span></code>
+                    and destroying any previous contents. <br> <span class="silver">—</span><br>
+                    Replaces <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                    with <code class="computeroutput"><span class="identifier">v</span></code>, changing
+                    the kind to <code class="computeroutput"><span class="identifier">v</span><span class="special">.</span><span class="identifier">kind</span><span class="special">()</span></code> and destroying any previous
+                    contents.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/_dtor_field.html" title="field::~field">~field</a> <span class="silver">[destructor]</span></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Destructor.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="mysql.ref.boost__mysql__row_view.value_type.h2"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__row_view.value_type.related_functions"></a></span><a class="link" href="value_type.html#mysql.ref.boost__mysql__row_view.value_type.related_functions">Related
+          Functions</a>
+        </h6>
+<div class="informaltable"><table class="informaltable" border="1">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/operator_not__eq_.html" title="field::operator!=">operator!=</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests for inequality.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/operator_lt__lt_.html" title="field::operator&lt;&lt;">operator&lt;&lt;</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Streams a <code class="computeroutput"><span class="identifier">field</span></code>.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <span class="bold"><strong><a class="link" href="../boost__mysql__field/operator_eq__eq_.html" title="field::operator==">operator==</a></strong></span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Tests for equality.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+          For an overview on how to use fields, see <a class="link" href="../../overview.html#mysql.overview.rows_fields.fields">this
+          section</a>. The accessors and type mappings reference is <a class="link" href="../../fields.html" title="Fields">here</a>.
+        </p>
+<p>
+          This is a regular variant-like class that can represent any of the types
+          that MySQL allows. It has value semantics (as opposed to <a class="link" href="../boost__mysql__field_view.html" title="field_view"><code class="literal">field_view</code></a>).
+          Instances of this class are not created by the library. They should be
+          created by the user, when the reference semantics of <a class="link" href="../boost__mysql__field_view.html" title="field_view"><code class="literal">field_view</code></a>
+          are not appropriate.
+        </p>
+<p>
+          Like a variant, at any point, a <code class="computeroutput"><span class="identifier">field</span></code>
+          always contains a value of certain type. You can query the type using
+          <a class="link" href="../boost__mysql__field/kind.html" title="field::kind"><code class="literal">field::kind</code></a>
+          and the <code class="computeroutput"><span class="identifier">is_xxx</span></code> functions
+          like <a class="link" href="../boost__mysql__field/is_int64.html" title="field::is_int64"><code class="literal">field::is_int64</code></a>.
+          Use <code class="computeroutput"><span class="identifier">as_xxx</span></code> and <code class="computeroutput"><span class="identifier">get_xxx</span></code> for checked and unchecked value
+          access, respectively. You can mutate a <code class="computeroutput"><span class="identifier">field</span></code>
+          by calling the <code class="computeroutput"><span class="identifier">emplace_xxx</span></code>
+          functions, by assigning it a different value, or using the lvalue references
+          returned by <code class="computeroutput"><span class="identifier">as_xxx</span></code> and
+          <code class="computeroutput"><span class="identifier">get_xxx</span></code>.
+        </p>
+<h6>
+<a name="mysql.ref.boost__mysql__row_view.value_type.h3"></a>
+          <span class="phrase"><a name="mysql.ref.boost__mysql__row_view.value_type.description"></a></span><a class="link" href="value_type.html#mysql.ref.boost__mysql__row_view.value_type.description">Description</a>
+        </h6>
+<p>
+          Note that element accesors (like <a class="link" href="operator_lb__rb_.html" title="row_view::operator[]"><code class="computeroutput"><span class="identifier">row_view</span><span class="special">::</span><span class="keyword">operator</span><span class="special">[]</span></code></a>)
+          return <a class="link" href="reference.html" title="row_view::reference"><code class="computeroutput"><span class="identifier">reference</span></code></a> objects instead of
+          <code class="computeroutput"><span class="identifier">value_type</span></code> objects. You
+          can use this type if you need an owning class.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="const_iterator.html"><img src="../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__mysql__row_view.html"><img src="../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

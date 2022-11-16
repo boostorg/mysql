@@ -6,21 +6,21 @@
 <meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="../../index.html" title="Chapter 1. Boost.Mysql">
 <link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
-<link rel="prev" href="boost__mysql__ssl_mode.html" title="ssl_mode">
-<link rel="next" href="boost__mysql__field_type.html" title="field_type">
+<link rel="prev" href="boost__mysql__column_type.html" title="column_type">
+<link rel="next" href="boost__mysql__field_kind.html" title="field_kind">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="boost__mysql__ssl_mode.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__field_type.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__column_type.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__field_kind.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 <div class="section">
 <div class="titlepage"><div><div><h4 class="title">
 <a name="mysql.ref.boost__mysql__errc"></a><a class="link" href="boost__mysql__errc.html" title="errc">errc</a>
 </h4></div></div></div>
 <p>
-        <a class="indexterm" name="idp20372"></a>
+        <a class="indexterm" name="idp42726"></a>
       </p>
 <p>
         MySQL-specific error codes.
@@ -7319,18 +7319,6 @@
 <tr>
 <td>
                 <p>
-                  <code class="computeroutput"><span class="identifier">set_password_auth_plugin</span></code>
-                </p>
-              </td>
-<td>
-                <p>
-                  Server error. Error number: 1699, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_set_password_auth_plugin" target="_top">ER_SET_PASSWORD_AUTH_PLUGIN</a>.
-                </p>
-              </td>
-</tr>
-<tr>
-<td>
-                <p>
                   <code class="computeroutput"><span class="identifier">truncate_illegal_fk</span></code>
                 </p>
               </td>
@@ -11669,6 +11657,42 @@
 <td>
                 <p>
                   Server error. Error number: 3231, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_write_set_exceeds_limit" target="_top">ER_WRITE_SET_EXCEEDS_LIMIT</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">aes_invalid_kdf_name</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 3235, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_aes_invalid_kdf_name" target="_top">ER_AES_INVALID_KDF_NAME</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">aes_invalid_kdf_iterations</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 3236, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_aes_invalid_kdf_iterations" target="_top">ER_AES_INVALID_KDF_ITERATIONS</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">aes_invalid_kdf_option_size</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 3238, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_aes_invalid_kdf_option_size" target="_top">ER_AES_INVALID_KDF_OPTION_SIZE</a>.
                 </p>
               </td>
 </tr>
@@ -18695,6 +18719,402 @@
 <tr>
 <td>
                 <p>
+                  <code class="computeroutput"><span class="identifier">xa_temp_table</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4091, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_xa_temp_table" target="_top">ER_XA_TEMP_TABLE</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">innodb_max_row_version</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4092, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_innodb_max_row_version" target="_top">ER_INNODB_MAX_ROW_VERSION</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">innodb_instant_add_not_supported_max_size</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4093, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_innodb_instant_add_not_supported_max_size" target="_top">ER_INNODB_INSTANT_ADD_NOT_SUPPORTED_MAX_SIZE</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">operation_not_allowed_while_primary_change_is_running</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4094, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_operation_not_allowed_while_primary_change_is_running" target="_top">ER_OPERATION_NOT_ALLOWED_WHILE_PRIMARY_CHANGE_IS_RUNNING</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">warn_deprecated_datetime_delimiter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4095, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_warn_deprecated_datetime_delimiter" target="_top">ER_WARN_DEPRECATED_DATETIME_DELIMITER</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">warn_deprecated_superfluous_delimiter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4096, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_warn_deprecated_superfluous_delimiter" target="_top">ER_WARN_DEPRECATED_SUPERFLUOUS_DELIMITER</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">cannot_persist_sensitive_variables</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4097, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_cannot_persist_sensitive_variables" target="_top">ER_CANNOT_PERSIST_SENSITIVE_VARIABLES</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">warn_cannot_securely_persist_sensitive_variables</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4098, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_warn_cannot_securely_persist_sensitive_variables" target="_top">ER_WARN_CANNOT_SECURELY_PERSIST_SENSITIVE_VARIABLES</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">warn_trg_already_exists</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4099, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_warn_trg_already_exists" target="_top">ER_WARN_TRG_ALREADY_EXISTS</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">if_not_exists_unsupported_trg_exists_on_different_table</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4100, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_if_not_exists_unsupported_trg_exists_on_different_table" target="_top">ER_IF_NOT_EXISTS_UNSUPPORTED_TRG_EXISTS_ON_DIFFERENT_TABLE</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">if_not_exists_unsupported_udf_native_fct_name_collision</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4101, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_if_not_exists_unsupported_udf_native_fct_name_collision" target="_top">ER_IF_NOT_EXISTS_UNSUPPORTED_UDF_NATIVE_FCT_NAME_COLLISION</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">set_password_auth_plugin_error</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4102, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_set_password_auth_plugin_error" target="_top">ER_SET_PASSWORD_AUTH_PLUGIN_ERROR</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">reduced_dblwr_file_corrupted</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4103, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_reduced_dblwr_file_corrupted" target="_top">ER_REDUCED_DBLWR_FILE_CORRUPTED</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">reduced_dblwr_page_found</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4104, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_reduced_dblwr_page_found" target="_top">ER_REDUCED_DBLWR_PAGE_FOUND</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">srs_invalid_latitude_of_origin</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4105, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_srs_invalid_latitude_of_origin" target="_top">ER_SRS_INVALID_LATITUDE_OF_ORIGIN</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">srs_invalid_longitude_of_origin</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4106, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_srs_invalid_longitude_of_origin" target="_top">ER_SRS_INVALID_LONGITUDE_OF_ORIGIN</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">srs_unused_proj_parameter_present</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4107, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_srs_unused_proj_parameter_present" target="_top">ER_SRS_UNUSED_PROJ_PARAMETER_PRESENT</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">gipk_column_exists</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4108, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_gipk_column_exists" target="_top">ER_GIPK_COLUMN_EXISTS</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">gipk_failed_autoinc_column_exists</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4109, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_gipk_failed_autoinc_column_exists" target="_top">ER_GIPK_FAILED_AUTOINC_COLUMN_EXISTS</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">gipk_column_alter_not_allowed</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4110, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_gipk_column_alter_not_allowed" target="_top">ER_GIPK_COLUMN_ALTER_NOT_ALLOWED</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">drop_pk_column_to_drop_gipk</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4111, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_drop_pk_column_to_drop_gipk" target="_top">ER_DROP_PK_COLUMN_TO_DROP_GIPK</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">create_select_with_gipk_disallowed_in_sbr</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4112, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_create_select_with_gipk_disallowed_in_sbr" target="_top">ER_CREATE_SELECT_WITH_GIPK_DISALLOWED_IN_SBR</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">da_expire_logs_days_ignored</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4113, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_da_expire_logs_days_ignored" target="_top">ER_DA_EXPIRE_LOGS_DAYS_IGNORED</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">cte_recursive_not_union</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4114, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_cte_recursive_not_union" target="_top">ER_CTE_RECURSIVE_NOT_UNION</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">command_backend_failed_to_fetch_security_ctx</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4115, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_command_backend_failed_to_fetch_security_ctx" target="_top">ER_COMMAND_BACKEND_FAILED_TO_FETCH_SECURITY_CTX</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">command_service_backend_failed</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4116, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_command_service_backend_failed" target="_top">ER_COMMAND_SERVICE_BACKEND_FAILED</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">client_file_privilege_for_replication_checks</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4117, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_client_file_privilege_for_replication_checks" target="_top">ER_CLIENT_FILE_PRIVILEGE_FOR_REPLICATION_CHECKS</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">group_replication_force_members_command_failure</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4118, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_group_replication_force_members_command_failure" target="_top">ER_GROUP_REPLICATION_FORCE_MEMBERS_COMMAND_FAILURE</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">warn_deprecated_ident</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4119, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_warn_deprecated_ident" target="_top">ER_WARN_DEPRECATED_IDENT</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">intersect_all_max_duplicates_exceeded</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4120, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_intersect_all_max_duplicates_exceeded" target="_top">ER_INTERSECT_ALL_MAX_DUPLICATES_EXCEEDED</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">tp_query_thrs_per_grp_exceeds_txn_thr_limit</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4121, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_tp_query_thrs_per_grp_exceeds_txn_thr_limit" target="_top">ER_TP_QUERY_THRS_PER_GRP_EXCEEDS_TXN_THR_LIMIT</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">bad_timestamp_format</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4122, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_bad_timestamp_format" target="_top">ER_BAD_TIMESTAMP_FORMAT</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">shape_pridiction_udf</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Server error. Error number: 4123, symbol: <a class="ulink" href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_shape_pridiction_udf" target="_top">ER_SHAPE_PRIDICTION_UDF</a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
                   <code class="computeroutput"><span class="identifier">incomplete_message</span></code>
                 </p>
               </td>
@@ -18816,7 +19236,7 @@
 </tr></table>
 <hr>
 <div class="spirit-nav">
-<a accesskey="p" href="boost__mysql__ssl_mode.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__field_type.html"><img src="../../images/next.png" alt="Next"></a>
+<a accesskey="p" href="boost__mysql__column_type.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost__mysql__field_kind.html"><img src="../../images/next.png" alt="Next"></a>
 </div>
 </body>
 </html>

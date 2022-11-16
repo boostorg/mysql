@@ -1,0 +1,49 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>field::as_datetime (1 of 2 overloads)</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../as_datetime.html" title="field::as_datetime">
+<link rel="prev" href="../as_datetime.html" title="field::as_datetime">
+<link rel="next" href="overload2.html" title="field::as_datetime (2 of 2 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../as_datetime.html"><img src="../../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../as_datetime.html"><img src="../../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="mysql.ref.boost__mysql__field.as_datetime.overload1"></a><a class="link" href="overload1.html" title="field::as_datetime (1 of 2 overloads)">field::as_datetime
+          (1 of 2 overloads)</a>
+</h6></div></div></div>
+<p>
+            Retrieves a reference to the underlying <code class="computeroutput"><span class="identifier">datetime</span></code>
+            value or throws an exception.
+          </p>
+<h7><a name="mysql.ref.boost__mysql__field.as_datetime.overload1.h0"></a>
+            <span class="phrase"><a name="mysql.ref.boost__mysql__field.as_datetime.overload1.synopsis"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__field.as_datetime.overload1.synopsis">Synopsis</a>
+          </h7><pre class="programlisting"><span class="keyword">const</span> <span class="identifier">datetime</span><span class="special">&amp;</span>
+<span class="identifier">as_datetime</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<h7><a name="mysql.ref.boost__mysql__field.as_datetime.overload1.h1"></a>
+            <span class="phrase"><a name="mysql.ref.boost__mysql__field.as_datetime.overload1.description"></a></span><a class="link" href="overload1.html#mysql.ref.boost__mysql__field.as_datetime.overload1.description">Description</a>
+          </h7><p>
+            If <code class="computeroutput"><span class="special">!</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">is_datetime</span><span class="special">()</span></code>, throws <a class="link" href="../../boost__mysql__bad_field_access.html" title="bad_field_access"><code class="computeroutput"><span class="identifier">bad_field_access</span></code></a>. The returned
+            reference is valid as long as <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> is alive and holding a datetime.
+            Any function that changes the field's kind will invalidate the reference.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../as_datetime.html"><img src="../../../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../as_datetime.html"><img src="../../../../images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

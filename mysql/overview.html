@@ -1,0 +1,954 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Overview</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Mysql">
+<link rel="prev" href="tutorial.html" title="Tutorial">
+<link rel="next" href="queries.html" title="Text queries">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="queries.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mysql.overview"></a><a class="link" href="overview.html" title="Overview">Overview</a>
+</h2></div></div></div>
+<p>
+      This section briefly explains the library main classes and functions, and how
+      to use them. The following diagram shows the interaction between the main classes
+      in the library:
+    </p>
+<p>
+      <span class="inlinemediaobject"><object type="image/svg+xml" data="images/class_hierarchy.svg" align="middle"></object></span>
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.connection"></a><a class="link" href="overview.html#mysql.overview.connection" title="Connection objects">Connection objects</a>
+</h3></div></div></div>
+<p>
+        <a class="link" href="ref/boost__mysql__connection.html" title="connection"><code class="literal">connection</code></a>
+        is the library's "entry point". A connection is an I/O object,
+        templated on a <a class="link" href="ref/boost__mysql__Stream.html" title="Stream concept"><code class="literal">Stream</code></a>
+        type. A <code class="computeroutput"><span class="identifier">connection</span></code> contains
+        an instance of that <code class="computeroutput"><span class="identifier">Stream</span></code>
+        type and additional state required by the protocol. To create a <code class="computeroutput"><span class="identifier">connection</span></code>, pass to its constructor the
+        arguments required to construct a <code class="computeroutput"><span class="identifier">Stream</span></code>.
+      </p>
+<p>
+        The library defines some typedefs to make things less verbose. The most common
+        one is <a class="link" href="ref/boost__mysql__tcp_ssl_connection.html" title="tcp_ssl_connection"><code class="literal">tcp_ssl_connection</code></a>.
+        In this case, <code class="computeroutput"><span class="identifier">Stream</span></code> is
+        <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span></code>, which can be constructed from a <code class="computeroutput"><span class="identifier">io_context</span><span class="special">::</span><span class="identifier">executor_type</span></code> and a <code class="computeroutput"><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span></code>:
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ctx</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ssl_ctx</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tls_client</span><span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">mysql</span><span class="special">::</span><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span> <span class="identifier">ssl_ctx</span><span class="special">);</span>
+</pre>
+<p>
+        Typedefs for other transports are also available. See <a class="link" href="other_streams.html" title="UNIX sockets and other stream types">this
+        section</a> for more info.
+      </p>
+<p>
+        The MySQL client/server protocol is session-oriented. Before anything else,
+        you must perform session establishment, usually by calling <a class="link" href="ref/boost__mysql__connection/connect.html" title="connection::connect"><code class="literal">connection::connect</code></a>.
+        We've already gone through this in the <a class="link" href="tutorial.html" title="Tutorial">tutorial</a>,
+        so we won't repeat it here.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.queries_stmts"></a><a class="link" href="overview.html#mysql.overview.queries_stmts" title="Text queries and prepared statements">Text queries and prepared
+      statements</a>
+</h3></div></div></div>
+<p>
+        The two main ways to use a connection are text queries and prepared statements:
+      </p>
+<div class="informaltable"><table class="informaltable" border="1">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Feature
+                </p>
+              </th>
+<th>
+                <p>
+                  Used for...
+                </p>
+              </th>
+<th>
+                <p>
+                  Code
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  Text queries: <a class="link" href="ref/boost__mysql__connection/query.html" title="connection::query"><code class="literal">connection::query</code></a>.
+                </p>
+              </td>
+<td>
+                <p>
+                  Simple queries, without parameters:
+                </p>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      <code class="computeroutput"><span class="string">"START TRANSACTION"</span></code>
+                    </li>
+<li class="listitem">
+                      <code class="computeroutput"><span class="string">"SET NAMES utf8"</span></code>
+                    </li>
+<li class="listitem">
+                      <code class="computeroutput"><span class="string">"SHOW TABLES"</span></code>
+                    </li>
+</ul></div>
+              </td>
+<td>
+<pre class="programlisting"><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="string">"START TRANSACTION"</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+</pre>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Prepared statements: <a class="link" href="ref/boost__mysql__connection/prepare_statement.html" title="connection::prepare_statement"><code class="literal">connection::prepare_statement</code></a>,
+                  <a class="link" href="ref/boost__mysql__statement/execute.html" title="statement::execute"><code class="literal">statement::execute</code></a>.
+                </p>
+              </td>
+<td>
+                <p>
+                  Queries with parameters unknown at compile-time.
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="identifier">tcp_ssl_connection</span> <span class="identifier">conn</span><span class="special">;</span>
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(/*</span> <span class="identifier">server</span> <span class="identifier">host</span><span class="special">,</span> <span class="identifier">password</span><span class="special">...</span> <span class="special">*/);</span>
+
+<span class="identifier">tcp_ssl_statement</span> <span class="identifier">stmt</span><span class="special">;</span>
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">prepare_statement</span><span class="special">(</span><span class="string">"SELECT first_name FROM employees WHERE company_id = ? AND salary &gt; ?"</span><span class="special">);</span>
+
+<span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="identifier">stmt</span><span class="special">.</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">make_tuple</span><span class="special">(</span><span class="string">"HGS"</span><span class="special">,</span> <span class="number">30000</span><span class="special">),</span> <span class="identifier">result</span><span class="special">);</span>
+</pre>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        <a class="link" href="ref/boost__mysql__tcp_ssl_resultset.html" title="tcp_ssl_resultset"><code class="literal">tcp_ssl_resultset</code></a>
+        is a helper typedef for <a class="link" href="ref/boost__mysql__resultset.html" title="resultset"><code class="literal">resultset</code></a>.
+        Resultset objects represent the result of a query or statement execution.
+        They hold auxiliar information about the operation, but don't contain the
+        actual data generated by the operation. The next sections show how to obtain
+        it.
+      </p>
+<p>
+        <a class="link" href="ref/boost__mysql__tcp_ssl_statement.html" title="tcp_ssl_statement"><code class="literal">tcp_ssl_statement</code></a>
+        is a helper typedef for <a class="link" href="ref/boost__mysql__statement.html" title="statement"><code class="literal">statement</code></a>,
+        which represent server-side prepared statements, as we've seen.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.rows_and_fields"></a><a class="link" href="overview.html#mysql.overview.rows_and_fields" title="Rows and fields">Rows and fields</a>
+</h3></div></div></div>
+<p>
+        Values retrieved from SQL queries are represented as variant-like objects
+        called fields. Fields are organized in rows. This library defines the following
+        types to represent fields and rows:
+      </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><a class="link" href="ref/boost__mysql__field.html" title="field"><code class="literal">field</code></a></span></dt>
+<dd><p>
+              The smallest unit of data. A single "cell" in a MySQL table.
+              This is an owning, variant-like type.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__field_view.html" title="field_view"><code class="literal">field_view</code></a></span></dt>
+<dd><p>
+              Like <code class="computeroutput"><span class="identifier">field</span></code>, but non-owning.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a></span></dt>
+<dd><p>
+              An owning, <code class="computeroutput"><span class="identifier">vector</span></code>-like
+              collection of fields.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__row_view.html" title="row_view"><code class="literal">row_view</code></a></span></dt>
+<dd><p>
+              Like <code class="computeroutput"><span class="identifier">row</span></code>, but non-owning.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__rows.html" title="rows"><code class="literal">rows</code></a></span></dt>
+<dd><p>
+              An owning, matrix-like collection of fields. Represents several rows
+              of the same size in an optimized way.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__rows_view.html" title="rows_view"><code class="literal">rows_view</code></a></span></dt>
+<dd><p>
+              Like <code class="computeroutput"><span class="identifier">rows</span></code>, but non-owning.
+            </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.read"></a><a class="link" href="overview.html#mysql.overview.read" title="Reading rows">Reading rows</a>
+</h3></div></div></div>
+<p>
+        There are three methods to read rows from a <code class="computeroutput"><span class="identifier">resultset</span></code>:
+      </p>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a></span></dt>
+<dd><p>
+              Reads rows one by one.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">resultset::read_all</code></a></span></dt>
+<dd><p>
+              Reads all rows at once.
+            </p></dd>
+<dt><span class="term"><a class="link" href="ref/boost__mysql__resultset/read_some.html" title="resultset::read_some"><code class="literal">resultset::read_some</code></a></span></dt>
+<dd><p>
+              Reads rows in batches of unspecified size.
+            </p></dd>
+</dl>
+</div>
+<p>
+        For each method, there is an "owning" version, which populates
+        <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        or <a class="link" href="ref/boost__mysql__rows.html" title="rows"><code class="literal">rows</code></a>
+        objects by lvalue reference; and a "non-owning" version, which
+        returns <a class="link" href="ref/boost__mysql__row_view.html" title="row_view"><code class="literal">row_view</code></a>
+        or <a class="link" href="ref/boost__mysql__rows_view.html" title="rows_view"><code class="literal">rows_view</code></a>
+        objects, pointing to the <code class="computeroutput"><span class="identifier">connection</span></code>
+        internal buffers. These view objects are valid until you perform the next
+        operation involving network transfers on the connection.
+      </p>
+<p>
+        The following table shows the most used methods. For a full reference, see
+        <a class="link" href="resultsets.html#mysql.resultsets.read" title="Reading rows">this section</a>.
+      </p>
+<div class="informaltable"><table class="informaltable" border="1">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Function
+                </p>
+              </th>
+<th>
+                <p>
+                  Typical use
+                </p>
+              </th>
+<th>
+                <p>
+                  Use when...
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__resultset/read_one.html" title="resultset::read_one"><code class="literal">resultset::read_one</code></a>,
+                  owning
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="identifier">row</span> <span class="identifier">r</span><span class="special">;</span>
+<span class="keyword">while</span> <span class="special">(</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">read_one</span><span class="special">(</span><span class="identifier">r</span><span class="special">))</span>
+<span class="special">{</span>
+    <span class="comment">// Process r as required</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">r</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      <span class="bold"><strong>By default</strong></span>, for resultsets
+                      of arbitrary size.
+                    </li>
+<li class="listitem">
+                      When processing one row at a time is preferred.
+                    </li>
+<li class="listitem">
+                      A good alternative to <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">resultset::read_all</code></a>,
+                      when all rows may not fit in memory.
+                    </li>
+</ul></div>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__resultset/read_all.html" title="resultset::read_all"><code class="literal">resultset::read_all</code></a>,
+                  owning
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="identifier">rows</span> <span class="identifier">all_rows</span><span class="special">;</span>
+<span class="identifier">result</span><span class="special">.</span><span class="identifier">read_all</span><span class="special">(</span><span class="identifier">all_rows</span><span class="special">);</span>
+<span class="keyword">for</span> <span class="special">(</span><span class="identifier">row_view</span> <span class="identifier">r</span><span class="special">:</span> <span class="identifier">all_rows</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Process r as required</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">r</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      <span class="bold"><strong>By default</strong></span>, for small resultsets.
+                    </li>
+<li class="listitem">
+                      When having all rows at the same time in memory is advantageous.
+                    </li>
+</ul></div>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__resultset/read_some.html" title="resultset::read_some"><code class="literal">resultset::read_some</code></a>,
+                  non-owning
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(!</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">complete</span><span class="special">())</span>
+<span class="special">{</span>
+    <span class="identifier">rows_view</span> <span class="identifier">row_batch</span> <span class="special">=</span> <span class="identifier">result</span><span class="special">.</span><span class="identifier">read_some</span><span class="special">(</span><span class="identifier">use_views</span><span class="special">);</span>
+
+    <span class="keyword">for</span> <span class="special">(</span><span class="identifier">row_view</span> <span class="identifier">r</span><span class="special">:</span> <span class="identifier">row_batch</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// Process r as required</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">r</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      <span class="bold"><strong>By default</strong></span>, when efficiency
+                      is key.
+                    </li>
+<li class="listitem">
+                      There will be no server interaction that may invalidate the
+                      view while you process it.
+                    </li>
+</ul></div>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        In the above snippets, we use <a class="link" href="ref/boost__mysql__resultset/complete.html" title="resultset::complete"><code class="literal">resultset::complete</code></a>
+        to check whether there are more rows or not. We say a <code class="computeroutput"><span class="identifier">resultset</span></code>
+        is complete when there are no more rows to read. The server indicates this
+        by sending us a special packet ("EOF packet" in MySQL slang). After
+        a <code class="computeroutput"><span class="identifier">resultset</span></code> is <code class="computeroutput"><span class="identifier">complete</span></code>, you can access some additional
+        information about the query execution, like <a class="link" href="ref/boost__mysql__resultset/last_insert_id.html" title="resultset::last_insert_id"><code class="literal">resultset::last_insert_id</code></a>
+        and <a class="link" href="ref/boost__mysql__resultset/affected_rows.html" title="resultset::affected_rows"><code class="literal">resultset::affected_rows</code></a>.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Once you call <code class="computeroutput"><span class="identifier">connection</span><span class="special">::</span><span class="identifier">query</span></code>
+          or <code class="computeroutput"><span class="identifier">statement</span><span class="special">::</span><span class="identifier">execute</span></code>, the server immediately sends
+          all rows to the client. <span class="bold"><strong>You must read all rows</strong></span>,
+          until the resultset is <code class="computeroutput"><span class="identifier">complete</span></code>,
+          before engaging in further operations. Otherwise, the results are undefined.
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.rows_fields"></a><a class="link" href="overview.html#mysql.overview.rows_fields" title="Using rows and fields">Using rows and fields</a>
+</h3></div></div></div>
+<p>
+        All row types support random access iterators, as well as <code class="computeroutput"><span class="identifier">at</span><span class="special">()</span></code> and <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code> with the usual semantics.
+      </p>
+<p>
+        When iterating or indexing a <a class="link" href="ref/boost__mysql__row.html" title="row"><code class="literal">row</code></a>
+        object, you obtain a <a class="link" href="ref/boost__mysql__field_view.html" title="field_view"><code class="literal">field_view</code></a>,
+        which is an object with reference semantics, pointing into <code class="computeroutput"><span class="identifier">row</span></code>'s storage. You can "persist"
+        a <code class="computeroutput"><span class="identifier">field_view</span></code> by constructing
+        a <a class="link" href="ref/boost__mysql__field.html" title="field"><code class="literal">field</code></a>
+        from it.
+      </p>
+<pre class="programlisting"><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="identifier">row</span> <span class="identifier">r</span><span class="special">;</span>
+
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="string">"SELECT \"abc\", 42"</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+<span class="identifier">result</span><span class="special">.</span><span class="identifier">read_one</span><span class="special">(</span><span class="identifier">r</span><span class="special">);</span>
+<span class="identifier">field_view</span> <span class="identifier">ref</span> <span class="special">=</span> <span class="identifier">r</span><span class="special">[</span><span class="number">0</span><span class="special">];</span> <span class="comment">// ref points to the string "abc", references r</span>
+<span class="identifier">field</span> <span class="identifier">f</span> <span class="special">(</span><span class="identifier">ref</span><span class="special">);</span> <span class="comment">// f contains the string "abc"</span>
+</pre>
+<p>
+        Indexing or iterating a <code class="computeroutput"><span class="identifier">row_view</span></code>
+        also yields <code class="computeroutput"><span class="identifier">field_view</span></code>s.
+        Similarly, indexing or iterating <a class="link" href="ref/boost__mysql__rows.html" title="rows"><code class="literal">rows</code></a>
+        or <a class="link" href="ref/boost__mysql__rows_view.html" title="rows_view"><code class="literal">rows_view</code></a>
+        objects yields a <code class="computeroutput"><span class="identifier">row_view</span></code>.
+      </p>
+<h5>
+<a name="mysql.overview.rows_fields.h0"></a>
+        <span class="phrase"><a name="mysql.overview.rows_fields.fields"></a></span><a class="link" href="overview.html#mysql.overview.rows_fields.fields">Using
+        fields</a>
+      </h5>
+<p>
+        Both <code class="computeroutput"><span class="identifier">field</span></code> and <code class="computeroutput"><span class="identifier">field_view</span></code> are specialized variant-like
+        types that can hold any type you may find in a MySQL table. The following
+        accessor operations are supported:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            You can query a field's type by using <a class="link" href="ref/boost__mysql__field_view/kind.html" title="field_view::kind"><code class="literal">kind</code></a>,
+            which returns a <a class="link" href="ref/boost__mysql__field_kind.html" title="field_kind"><code class="literal">field_kind</code></a>
+            enum. You can query whether a field.
+          </li>
+<li class="listitem">
+            You can query whether a field contains a certain type with <code class="computeroutput"><span class="identifier">field</span><span class="special">::</span><span class="identifier">is_xxx</span></code>.
+          </li>
+<li class="listitem">
+            You can get the underlying value with <code class="computeroutput"><span class="identifier">field</span><span class="special">::</span><span class="identifier">as_xxx</span></code>
+            and <code class="computeroutput"><span class="identifier">field</span><span class="special">::</span><span class="identifier">get_xxx</span></code>. The <code class="computeroutput"><span class="identifier">as_xxx</span></code>
+            functions are checked (they will throw an exception if the actual type
+            doesn't match), while the <code class="computeroutput"><span class="identifier">get_xxx</span></code>
+            are unchecked (they result in undefined behavior on type mismatch).
+          </li>
+<li class="listitem">
+            You can stream and compare fields for equality.
+          </li>
+</ul></div>
+<p>
+        Some examples:
+      </p>
+<pre class="programlisting"><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="identifier">row</span> <span class="identifier">r</span><span class="special">;</span>
+
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="string">"SELECT \"abc\", 42"</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+<span class="identifier">result</span><span class="special">.</span><span class="identifier">read_one</span><span class="special">(</span><span class="identifier">r</span><span class="special">);</span>
+
+<span class="identifier">field_view</span> <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">r</span><span class="special">[</span><span class="number">0</span><span class="special">];</span> <span class="comment">// ref points to the string "abc", references r</span>
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">f</span><span class="special">.</span><span class="identifier">is_string</span><span class="special">())</span>
+<span class="special">{</span>
+    <span class="comment">// we know it's a string, unchecked access</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">s</span> <span class="special">=</span> <span class="identifier">f</span><span class="special">.</span><span class="identifier">get_string</span><span class="special">();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">s</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="keyword">else</span>
+<span class="special">{</span>
+    <span class="comment">// Oops, something went wrong - schema msimatch?</span>
+<span class="special">}</span>
+
+<span class="comment">// Checked access. Throws if f doesn't contain an int</span>
+<span class="identifier">f</span> <span class="special">=</span> <span class="identifier">r</span><span class="special">[</span><span class="number">1</span><span class="special">];</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span> <span class="identifier">value</span> <span class="special">=</span> <span class="identifier">f</span><span class="special">.</span><span class="identifier">as_int64</span><span class="special">();</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">value</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+        The following table shows the mapping from MySQL types to C++ types:
+      </p>
+<div class="informaltable"><table class="informaltable" border="1">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  <code class="computeroutput"><span class="identifier">field_kind</span></code>
+                </p>
+              </th>
+<th>
+                <p>
+                  C++ type
+                </p>
+              </th>
+<th>
+                <p>
+                  MySQL types
+                </p>
+              </th>
+<th>
+                <p>
+                  <code class="computeroutput"><span class="identifier">is</span></code> accessor
+                </p>
+              </th>
+<th>
+                <p>
+                  <code class="computeroutput"><span class="identifier">as</span></code> accessor
+                </p>
+              </th>
+<th>
+                <p>
+                  <code class="computeroutput"><span class="identifier">get</span></code> accessor
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">int64</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Signed <code class="computeroutput"><span class="identifier">TINYINT</span></code>,
+                  <code class="computeroutput"><span class="identifier">SMALLINT</span></code>, <code class="computeroutput"><span class="identifier">MEDIUMINT</span></code>, <code class="computeroutput"><span class="identifier">INT</span></code>,
+                  <code class="computeroutput"><span class="identifier">BIGINT</span></code>, <code class="computeroutput"><span class="identifier">YEAR</span></code>, <code class="computeroutput"><span class="identifier">BIT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_int64.html" title="field_view::is_int64"><code class="literal">is_int64</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_int64.html" title="field_view::as_int64"><code class="literal">as_int64</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_int64.html" title="field_view::get_int64"><code class="literal">get_int64</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">uint64</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Unsigned <code class="computeroutput"><span class="identifier">TINYINT</span></code>,
+                  <code class="computeroutput"><span class="identifier">SMALLINT</span></code>, <code class="computeroutput"><span class="identifier">MEDIUMINT</span></code>, <code class="computeroutput"><span class="identifier">INT</span></code>,
+                  <code class="computeroutput"><span class="identifier">BIGINT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_uint64.html" title="field_view::is_uint64"><code class="literal">is_uint64</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_uint64.html" title="field_view::as_uint64"><code class="literal">as_uint64</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_uint64.html" title="field_view::get_uint64"><code class="literal">get_uint64</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">string</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span></code> for <code class="computeroutput"><span class="identifier">field_view</span></code>
+                </p>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code> for <code class="computeroutput"><span class="identifier">field</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">CHAR</span></code>, <code class="computeroutput"><span class="identifier">VARCHAR</span></code>, <code class="computeroutput"><span class="identifier">BINARY</span></code>,
+                  <code class="computeroutput"><span class="identifier">VARBINARY</span></code>, <code class="computeroutput"><span class="identifier">TEXT</span></code>, <code class="computeroutput"><span class="identifier">BLOB</span></code>...
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_string.html" title="field_view::is_string"><code class="literal">is_string</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_string.html" title="field_view::as_string"><code class="literal">as_string</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_string.html" title="field_view::get_string"><code class="literal">get_string</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">float_</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">float</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">FLOAT</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_float.html" title="field_view::is_float"><code class="literal">is_float</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_float.html" title="field_view::as_float"><code class="literal">as_float</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_float.html" title="field_view::get_float"><code class="literal">get_float</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">double_</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">double</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">DOUBLE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_double.html" title="field_view::is_double"><code class="literal">is_double</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_double.html" title="field_view::as_double"><code class="literal">as_double</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_double.html" title="field_view::get_double"><code class="literal">get_double</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">date</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__date.html" title="date"><code class="literal">date</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">DATE</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_date.html" title="field_view::is_date"><code class="literal">is_date</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_date.html" title="field_view::as_date"><code class="literal">as_date</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_date.html" title="field_view::get_date"><code class="literal">get_date</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">datetime</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__datetime.html" title="datetime"><code class="literal">datetime</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">DATETIME</span></code>, <code class="computeroutput"><span class="identifier">TIMESTAMP</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_datetime.html" title="field_view::is_datetime"><code class="literal">is_datetime</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_datetime.html" title="field_view::as_datetime"><code class="literal">as_datetime</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_datetime.html" title="field_view::get_datetime"><code class="literal">get_datetime</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">time</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__time.html" title="time"><code class="literal">time</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">TIME</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_time.html" title="field_view::is_time"><code class="literal">is_time</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/as_time.html" title="field_view::as_time"><code class="literal">as_time</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/get_time.html" title="field_view::get_time"><code class="literal">get_time</code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">null</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Any of the above, when they're <code class="computeroutput"><span class="identifier">NULL</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="ref/boost__mysql__field_view/is_null.html" title="field_view::is_null"><code class="literal">is_null</code></a>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        <a class="link" href="fields.html" title="Fields">This section</a> contains the full reference
+        of accessors and type mappings.
+      </p>
+<h5>
+<a name="mysql.overview.rows_fields.h1"></a>
+        <span class="phrase"><a name="mysql.overview.rows_fields.handling_null_values"></a></span><a class="link" href="overview.html#mysql.overview.rows_fields.handling_null_values">Handling
+        NULL values</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="identifier">NULL</span></code> values are represented
+        as <code class="computeroutput"><span class="identifier">field</span></code>/<code class="computeroutput"><span class="identifier">field_view</span></code>
+        objects having <code class="computeroutput"><span class="identifier">kind</span><span class="special">()</span>
+        <span class="special">==</span> <span class="identifier">field_kind</span><span class="special">::</span><span class="identifier">null</span></code>.
+        You can check whether a value is <code class="computeroutput"><span class="identifier">NULL</span></code>
+        or not using <a class="link" href="ref/boost__mysql__field_view/is_null.html" title="field_view::is_null"><code class="literal">is_null</code></a>.
+        In the following snippet, the <code class="computeroutput"><span class="identifier">salary</span></code>
+        column was defined as a nullable <code class="computeroutput"><span class="keyword">double</span></code>.
+        This is how <code class="computeroutput"><span class="identifier">NULL</span></code>s are typically
+        handled:
+      </p>
+<pre class="programlisting"><span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="identifier">conn</span><span class="special">.</span><span class="identifier">query</span><span class="special">(</span><span class="string">"SELECT last_name, salary FROM employees"</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+
+<span class="identifier">row</span> <span class="identifier">r</span><span class="special">;</span>
+<span class="keyword">while</span><span class="special">(</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">read_one</span><span class="special">(</span><span class="identifier">r</span><span class="special">))</span>
+<span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">string_view</span> <span class="identifier">last_name</span> <span class="special">=</span> <span class="identifier">r</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">as_string</span><span class="special">();</span>
+    <span class="identifier">field_view</span> <span class="identifier">salary_fv</span> <span class="special">=</span> <span class="identifier">r</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+    <span class="keyword">if</span> <span class="special">(</span><span class="identifier">salary_fv</span><span class="special">.</span><span class="identifier">is_null</span><span class="special">())</span>
+    <span class="special">{</span>
+        <span class="comment">// Handle the NULL value</span>
+        <span class="comment">// Note: salary_fv.is_double() will return false here; NULL is represented as a separate type</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"No salary stored for employee "</span> <span class="special">&lt;&lt;</span> <span class="identifier">last_name</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">else</span>
+    <span class="special">{</span>
+        <span class="comment">// Handle the non-NULL case. Get the underlying value and use it as you want</span>
+        <span class="comment">// If there is any schema mismatch (and salary was not defined as DOUBLE), this will throw</span>
+        <span class="keyword">double</span> <span class="identifier">salary</span> <span class="special">=</span> <span class="identifier">salary_fv</span><span class="special">.</span><span class="identifier">as_double</span><span class="special">();</span>
+
+        <span class="comment">// Use salary as required</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Employee "</span> <span class="special">&lt;&lt;</span> <span class="identifier">last_name</span> <span class="special">&lt;&lt;</span> <span class="string">" earns "</span> <span class="special">&lt;&lt;</span> <span class="identifier">salary</span> <span class="special">&lt;&lt;</span> <span class="string">"dollars yearly"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Even though the column was defined as <code class="computeroutput"><span class="identifier">DOUBLE</span></code>,
+          for a <code class="computeroutput"><span class="identifier">NULL</span></code> field, <code class="computeroutput"><span class="identifier">salary_fv</span><span class="special">.</span><span class="identifier">is_double</span><span class="special">()</span>
+          <span class="special">==</span> <span class="keyword">false</span></code>
+          and <code class="computeroutput"><span class="identifier">salary_fv</span><span class="special">.</span><span class="identifier">as_double</span><span class="special">()</span></code>
+          will throw an exception. At all effects, <code class="computeroutput"><span class="identifier">NULL</span></code>
+          values are not doubles!
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.async"></a><a class="link" href="overview.html#mysql.overview.async" title="Asynchronous functions and multi-threading">Asynchronous functions and multi-threading</a>
+</h3></div></div></div>
+<p>
+        The library offers asynchronous versions of each operation involving network
+        transfers. Following Asio's convention, these are named <code class="computeroutput"><span class="identifier">async_xxx</span></code>
+        (e.g. <a class="link" href="ref/boost__mysql__connection/async_query.html" title="connection::async_query"><code class="literal">connection::async_query</code></a>).
+      </p>
+<p>
+        As mentioned, <code class="computeroutput"><span class="identifier">connection</span></code>
+        holds an internal <code class="computeroutput"><span class="identifier">Stream</span></code>
+        that is used for network transfers. All network operations involve stream
+        <span class="bold"><strong>reads</strong></span>, stream <span class="bold"><strong>writes</strong></span>,
+        or <span class="bold"><strong>both</strong></span>. At any given point in time, for
+        a single connection, <span class="bold"><strong>only one read and one write operation
+        may be outstanding</strong></span>. Invoking several reads or writes in parallel
+        for a single connection results in undefined behavior. All network functions
+        document whether they perform reads, writes or both.
+      </p>
+<p>
+        For example, <a class="link" href="ref/boost__mysql__connection/async_query.html" title="connection::async_query"><code class="literal">connection::async_query</code></a>
+        performs both reads and writes. Doing this is illegal and should be avoided:
+      </p>
+<pre class="programlisting"><span class="comment">// Coroutine body</span>
+<span class="comment">// DO NOT DO THIS!!!!</span>
+<span class="keyword">auto</span> <span class="identifier">q1</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="string">"SELECT 1"</span><span class="special">,</span> <span class="identifier">result1</span><span class="special">,</span> <span class="identifier">use_awaitable</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">q2</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="string">"SELECT 2"</span><span class="special">,</span> <span class="identifier">result2</span><span class="special">,</span> <span class="identifier">use_awaitable</span><span class="special">);</span>
+<span class="identifier">co_await</span> <span class="special">(</span><span class="identifier">q1</span> <span class="special">&amp;&amp;</span> <span class="identifier">q2</span><span class="special">);</span>
+</pre>
+<p>
+        If you need to perform queries in parallel, open more connections to the
+        server.
+      </p>
+<h5>
+<a name="mysql.overview.async.h0"></a>
+        <span class="phrase"><a name="mysql.overview.async.proxy_i_o_objects"></a></span><a class="link" href="overview.html#mysql.overview.async.proxy_i_o_objects">Proxy
+        I/O objects</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="identifier">resultset</span></code> and <code class="computeroutput"><span class="identifier">statement</span></code> are proxy I/O objects: they use
+        the stream created by the <code class="computeroutput"><span class="identifier">connection</span></code>
+        to perform the required I/O. This means that <span class="bold"><strong>read and
+        write operations invoked on resultsets and statements also count toward the
+        <code class="computeroutput"><span class="identifier">connection</span></code> maximum</strong></span>.
+        This is illegal, too:
+      </p>
+<pre class="programlisting"><span class="comment">// Coroutine body</span>
+<span class="comment">// DO NOT DO THIS!!!!</span>
+<span class="identifier">tcp_ssl_resultset</span> <span class="identifier">result1</span><span class="special">,</span> <span class="identifier">result2</span><span class="special">;</span>
+<span class="identifier">rows</span> <span class="identifier">all_rows</span><span class="special">;</span>
+<span class="identifier">co_await</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="string">"SELECT 1"</span><span class="special">,</span> <span class="identifier">result1</span><span class="special">,</span> <span class="identifier">use_awaitable</span><span class="special">);</span>
+
+<span class="comment">// Invokes two read operations in parallel - DO NOT DO THIS!!!</span>
+<span class="keyword">auto</span> <span class="identifier">query_aw</span> <span class="special">=</span> <span class="identifier">conn</span><span class="special">.</span><span class="identifier">async_query</span><span class="special">(</span><span class="string">"SELECT 2"</span><span class="special">,</span> <span class="identifier">result2</span><span class="special">,</span> <span class="identifier">use_awaitable</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">read_all_aw</span> <span class="special">=</span> <span class="identifier">result1</span><span class="special">.</span><span class="identifier">async_read_all</span><span class="special">(</span><span class="identifier">all_rows</span><span class="special">,</span> <span class="identifier">use_awaitable</span><span class="special">);</span>
+<span class="identifier">co_await</span> <span class="special">(</span><span class="identifier">query_aw</span> <span class="special">&amp;&amp;</span> <span class="identifier">read_all_aw</span><span class="special">);</span>
+</pre>
+<p>
+        If you're working in a multi-threading environment, please bear in mind that
+        <span class="bold"><strong>network operations invoked on <code class="computeroutput"><span class="identifier">statement</span></code>
+        and <code class="computeroutput"><span class="identifier">resultset</span></code> also mutate
+        the <code class="computeroutput"><span class="identifier">connection</span></code></strong></span>
+        that created them. Use strands as required to avoid race conditions.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.overview.encoding"></a><a class="link" href="overview.html#mysql.overview.encoding" title="Character sets, collations and time zones">Character sets, collations and
+      time zones</a>
+</h3></div></div></div>
+<p>
+        Encoding: set it on handshake or with SET NAMES and everything you send/receive
+        will be in this encoding. We don't do any handling. TODO.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="queries.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

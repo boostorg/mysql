@@ -10,7 +10,7 @@
 <link rel="next" href="tutorial.html" title="Tutorial">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
-<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../images/proposed_for_boost.svg"></td></tr></table>
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="https://www.boost.org/doc/libs/1_80_0/boost.png"></td></tr></table>
 <hr>
 <div class="spirit-nav">
 <a accesskey="p" href="../index.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../images/next.png" alt="Next"></a>
@@ -20,10 +20,9 @@
 <a name="mysql.intro"></a><a class="link" href="intro.html" title="Introduction">Introduction</a>
 </h2></div></div></div>
 <p>
-      <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
+      <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a>
       is a C++11 client for the <a class="ulink" href="https://www.mysql.com/" target="_top">MySQL</a>
-      database server, based on <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/asio/index.html" target="_top">Boost.Asio</a>.
-      This library is in the process of being proposed for <a class="ulink" href="https://www.boost.org/" target="_top">Boost</a>.
+      database server, based on <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/asio/index.html" target="_top">Boost.Asio</a>.
     </p>
 <div class="section">
 <div class="titlepage"><div><div><h3 class="title">
@@ -32,33 +31,110 @@
 <p>
         <a class="ulink" href="https://www.mysql.com/" target="_top">MySQL</a> is one of the most widespread
         SQL database servers. MySQL clients connect to the server in order to issue
-        SQL queries. For this purpose, MySQL employs a dedicated protocol. <a class="ulink" href="https://anarthal.github.io/boost-mysql/index.html" target="_top">Boost.Mysql</a>
-        is an implementation of the client side of this protocol.
+        SQL queries. For this purpose, MySQL employs a dedicated protocol. <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a> is
+        an implementation of the client side of this protocol.
+      </p>
+<p>
+        This library is a full implementation of the <a class="ulink" href="https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_PROTOCOL.html" target="_top">MySQL
+        client/server protocol</a>. It aims to expose the protocol primitives
+        in an efficient but easy-to-use way. It is similar in scope to the official
+        <a class="ulink" href="https://dev.mysql.com/doc/c-api/8.0/en/" target="_top">libmysqlclient</a>,
+        but interoperable with Asio, safer and more expressive. Note that <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a> <span class="bold"><strong>does not use libmysqlclient</strong></span>: it's a full implementation
+        of the MySQL protocol, which makes it natively compatible with Asio.
+      </p>
+<p>
+        This library is relatively low level. It gives you access to text SQL queries
+        and prepared statements. Don't expect an ORM. <a class="link" href="overview.html" title="Overview">This
+        section</a> presents a quick tour over the main library capabilities.
       </p>
 <p>
         The design goals of this library are:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
-            <span class="bold"><strong>Ease of use</strong></span>: designed to be intuitive
-            and hide the <a class="ulink" href="https://www.mysql.com/" target="_top">MySQL</a> protocol
-            complexities.
-          </li>
-<li class="listitem">
             <span class="bold"><strong>Interoperability with Asio</strong></span>: this library
-            employs the same principles as <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/asio/index.html" target="_top">Boost.Asio</a>
-            and <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/beast/index.html" target="_top">Boost.Beast</a>. Users
+            employs the same principles as <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+            and <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/beast/index.html" target="_top">Boost.Beast</a>. Users
             of any of these libraries will immediately understand Boost.Mysql, and
             will have it easy to integrate it in their programs.
           </li>
 <li class="listitem">
-            <span class="bold"><strong>Basis for further abstraction</strong></span>: this
-            library is focused on doing a single thing and doing it well. For this
-            reason, it can be used easily by higher level components as a building
-            block.
+            <span class="bold"><strong>Basis for further abstraction</strong></span>: it allows
+            efficient access to the MySQL client/server protocol so it can be used
+            by higher level components as a building block. Do a single thing and
+            do it well.
           </li>
 <li class="listitem">
             <span class="bold"><strong>Efficiency</strong></span>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Ease of use</strong></span>: the MySQL protocol is full
+            of pitfalls. We believe in simplicity. While retaining control over the
+            important parts, the library hides as much complexity from the protocol
+            as possible.
+          </li>
+</ul></div>
+<p>
+        Non-goals:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>Being an ORM</strong></span>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Being a SQL query generator</strong></span>. The library
+            doesn't focus on utilities to generate queries. Don't expect syntax sugar
+            like <code class="computeroutput"><span class="identifier">table</span><span class="special">(</span><span class="string">"orders"</span><span class="special">).</span><span class="identifier">select</span><span class="special">([</span><span class="string">"id"</span><span class="special">,</span>
+            <span class="string">"quantity"</span><span class="special">]).</span><span class="identifier">where</span><span class="special">(</span><span class="string">"id"</span><span class="special">,</span>
+            <span class="number">42</span><span class="special">)</span></code>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Portability to other SQL databases</strong></span>.
+            This library focuses on MySQL. It won't work with Postgres or SQLite.
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mysql.intro.when_to_use"></a><a class="link" href="intro.html#mysql.intro.when_to_use" title="When to use">When to use</a>
+</h3></div></div></div>
+<p>
+        If any of the following statements is true, you may consider using <a class="ulink" href="https://anarthal.github.io/boost/index.html" target="_top">Boost.Mysql</a>:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Your application uses <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+            and you need to access a MySQL server.
+          </li>
+<li class="listitem">
+            You need asynchronous access to a MySQL server from a C++ application.
+          </li>
+<li class="listitem">
+            You need efficient access to a MySQL server from a C++ application.
+          </li>
+<li class="listitem">
+            You need a BSL-licensed library to access your MySQL server.
+          </li>
+<li class="listitem">
+            You are writing a higher-level database access library, like an ORM.
+          </li>
+</ul></div>
+<p>
+        Use cases may include web servers, ETL processes and IoT systems.
+      </p>
+<p>
+        It may not be a good fit for you if:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            You only need synchronous access to a MySQL server and efficiency doesn't
+            matter to your application. The official client libraries may be better
+            suited for you, in this case.
+          </li>
+<li class="listitem">
+            You need homogeneous SQL access to different SQL databases (and not only
+            MySQL access). You may find more value in using <a class="ulink" href="https://github.com/rbock/sqlpp11" target="_top">sqlpp11</a>
+            or a similar wrapper library.
           </li>
 </ul></div>
 </div>
@@ -107,7 +183,7 @@
           </li>
 <li class="listitem">
             <span class="bold"><strong>Boost</strong></span>. Boost.Mysql does not work with
-            the standalone version of <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/asio/index.html" target="_top">Boost.Asio</a>.
+            the standalone version of <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/asio/index.html" target="_top">Boost.Asio</a>.
           </li>
 <li class="listitem">
             <span class="bold"><strong>OpenSSL</strong></span>.
@@ -122,8 +198,8 @@
             OpenSSL is always required.
           </li>
 <li class="listitem">
-            <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
-            is required when using coroutines created by <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">spawn</span></code></a>.
+            <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/coroutine/index.html" target="_top">Boost.Coroutine</a>
+            is required when using coroutines created by <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/doc/html/boost_asio/reference/spawn.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">spawn</span></code></a>.
           </li>
 </ul></div>
 <p>
@@ -133,7 +209,7 @@
         target, which will take care of the details for you.
       </p>
 <p>
-        Boost.Mysql has been tested with the following versions of MySQL:
+        Boost.Mysql has been tested with the following RDBMS systems:
       </p>
 <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
 <li class="listitem">
@@ -156,13 +232,13 @@
         Hodges</a> (hodges.r@gmail.com) for his invaluable technical guidance
         during development. Thanks also to Christian Mazakas for his ideas in early
         stages, and to <a class="ulink" href="https://github.com/vinniefalco" target="_top">Vinnie Falco</a>
-        for writing <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/beast/index.html" target="_top">Boost.Beast</a>,
+        for writing <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/beast/index.html" target="_top">Boost.Beast</a>,
         my source of inspiration, and <a class="ulink" href="https://github.com/boostorg/docca" target="_top">docca</a>,
         which is used to generate these pages.
       </p>
 <p>
         Finally, thanks to <a class="ulink" href="https://github.com/chriskohlhoff" target="_top">Christopher
-        Kohlhoff</a> for his awesome <a class="ulink" href="https://www.boost.org/doc/libs/1_78_0/libs/asio/index.html" target="_top">Boost.Asio</a>
+        Kohlhoff</a> for his awesome <a class="ulink" href="https://www.boost.org/doc/libs/1_80_0/libs/asio/index.html" target="_top">Boost.Asio</a>
         library, and to <a class="ulink" href="https://github.com/HowardHinnant" target="_top">Howard Hinnant</a>
         for his date algorithms, shamelessly copied in this lib.
       </p>
