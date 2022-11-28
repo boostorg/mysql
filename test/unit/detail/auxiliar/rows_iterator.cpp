@@ -26,7 +26,7 @@ using boost::mysql::rows_view;
 using boost::mysql::test::make_fv_vector;
 using boost::mysql::test::makerow;
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
 
 namespace {
 

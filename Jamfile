@@ -54,6 +54,16 @@ if [ os.name ] = NT
 }
 else
 {
+    local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
+    if $(OPENSSL_ROOT)
+    {
+        project
+            : requirements
+            <include>$(OPENSSL_ROOT)/include
+            <library-path>$(OPENSSL_ROOT)/lib
+            ;
+
+    }
     lib ssl : : <link>shared ;
     lib crypto : : <link>shared ;
 }

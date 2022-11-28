@@ -73,11 +73,14 @@ if(BOOST_MYSQL_VALGRIND_TESTS)
         message(FATAL_ERROR "Cannot locate valgrind include files")
     endif()
 
+    # Path to suppressions. Don't move inside any function
+    set(_SUPPRESSIONS_FILE "${CMAKE_CURRENT_LIST_DIR}/../tools/valgrind_suppressions.txt")
+
     # Helper to define tests
     function(add_memcheck_test)
         set(options "")
-        set(oneValueArgs NAME)
-        set(multiValueArgs COMMAND)
+        set(oneValueArgs NAME TARGET)
+        set(multiValueArgs ARGUMENTS)
         cmake_parse_arguments(
             AddMemcheckTest
             "${options}"
@@ -92,31 +95,11 @@ if(BOOST_MYSQL_VALGRIND_TESTS)
             ${VALGRIND_EXECUTABLE}
             --leak-check=full
             --error-limit=yes
-            --suppressions=${CMAKE_SOURCE_DIR}/tools/valgrind_suppressions.txt
+            --suppressions=${_SUPPRESSIONS_FILE}
             --error-exitcode=1
             --gen-suppressions=all
-            ${AddMemcheckTest_COMMAND}
+            $<TARGET_FILE:${AddMemcheckTest_TARGET}>
+            ${AddMemcheckTest_ARGUMENTS}
         )
     endfunction()
 endif()
-
-# Asio static library to speed up compilation
-find_package(OpenSSL REQUIRED)
-add_library(
-    asio
-    STATIC
-    ${CMAKE_SOURCE_DIR}/tools/asio.cpp
-)
-set_windows_version(asio)
-target_link_libraries(
-    asio
-    PUBLIC
-    Boost::headers
-    OpenSSL::Crypto
-    OpenSSL::SSL
-)
-target_compile_definitions(
-    asio
-    PUBLIC
-    BOOST_ASIO_SEPARATE_COMPILATION
-)

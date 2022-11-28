@@ -9,36 +9,13 @@
 set -e
 
 # Config
-SOURCE_DIR=$GITHUB_WORKSPACE
+export SOURCE_DIR=$(pwd)
+export BOOST_ROOT="$HOME/boost-root"
+export PATH="$BOOST_ROOT:$PATH"
 
-# Clone Boost
-cd ~/
-git clone -b master --depth 1 https://github.com/boostorg/boost.git boost-root
-cd boost-root
-export BOOST_ROOT=$(pwd)
-export PATH="$(pwd):$PATH"
-
-# Put our library inside boost root
-mkdir -p libs/mysql
-cp -rf $SOURCE_DIR/* $BOOST_ROOT/libs/mysql/
-
-# Install Boost dependencies
-git config submodule.fetchJobs 8 # If supported, this will accelerate depinst
-git submodule update -q --init tools/boostdep
-python tools/boostdep/depinst/depinst.py \
-    --include benchmark \
-    --include example \
-    --include examples \
-    --include tools \
-    mysql
-
-
-# Configure B2
-cp $BOOST_ROOT/libs/mysql/tools/user-config.jam ~/user-config.jam
-
-# Booststrap
-./bootstrap.sh
-./b2 headers
+# Get Boost
+./tools/install_boost.sh
+cd $BOOST_ROOT
 
 # Build
 ./b2 \

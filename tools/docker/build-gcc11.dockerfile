@@ -5,11 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM ubuntu:21.10
-
-ENV PATH="/opt/cmake/bin:${PATH}"
-
-COPY tools/docker/install_cmake_and_boost.sh .
+FROM ubuntu:22.04
 
 # DEBIAN_FRONTEND is needed because lcov pulls the package
 # tzdata, which by default attempts to read interactively from stdin
@@ -24,15 +20,16 @@ RUN \
         libssl-dev \
         wget \
         python3 \
+        python-is-python3 \
         ninja-build \
         valgrind \
         git \
         gpg \
+        cmake \
         gpg-agent && \
     unlink /usr/bin/gcc && \
     ln -s /usr/bin/g++-11 /usr/bin/g++ && \
     ln -s /usr/bin/gcc-11 /usr/bin/gcc && \
-    bash install_cmake_and_boost.sh && \
     wget https://keybase.io/codecovsecurity/pgp_keys.asc && \
     gpg --no-default-keyring --keyring trustedkeys.gpg --import pgp_keys.asc && \
     wget -q https://uploader.codecov.io/latest/linux/codecov && \

@@ -9,7 +9,7 @@ name: Build
 
 on:
   push:
-    branches-ignore: [gh-pages]
+    branches-ignore: [gh-pages, boostification]
 
 
 jobs:
@@ -18,20 +18,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: clang-debug,    image: build-cmake-clang12,  build-type: Debug,   valgrind: 1, coverage: 0, db: mysql8 }
-          - { name: clang-release,  image: build-cmake-clang12,  build-type: Release, valgrind: 0, coverage: 0, db: mysql8 }
-          - { name: coverage,       image: build-cmake-gcc11,    build-type: Debug,   valgrind: 0, coverage: 1, db: mysql8 }
-          - { name: gcc-debug,      image: build-cmake-gcc11,    build-type: Debug,   valgrind: 1, coverage: 0, db: mysql8 }
-          - { name: gcc-release,    image: build-cmake-gcc11,    build-type: Release, valgrind: 0, coverage: 0, db: mysql8 }
-          - { name: mysql5,         image: build-cmake-clang12,  build-type: Debug,   valgrind: 0, coverage: 0, db: mysql5 }
-          - { name: mariadb,        image: build-cmake-clang12,  build-type: Debug,   valgrind: 0, coverage: 0, db: mariadb }
+          - { name: valgrind, image: build-gcc11,    valgrind: 1, coverage: 0, db: mysql8,  build_shared: OFF }
+          - { name: coverage, image: build-gcc11,    valgrind: 0, coverage: 1, db: mysql8,  build_shared: OFF }
+          - { name: mysql5,   image: build-clang14,  valgrind: 0, coverage: 0, db: mysql5,  build_shared: OFF }
+          - { name: mariadb,  image: build-clang14,  valgrind: 0, coverage: 0, db: mariadb, build_shared: ON }
     container:
-      image: ghcr.io/anarthal/${{ matrix.image }}:latest
+      image: ghcr.io/anarthal-containers/${{ matrix.image }}:latest
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal/${{ matrix.db }}:latest
+        image: ghcr.io/anarthal-containers/${{ matrix.db }}:latest
         ports:
           - 3306:3306
         volumes:
@@ -43,15 +40,16 @@ jobs:
           --health-retries 5
     env:
       BOOST_MYSQL_SERVER_HOST: mysql # This should match the service name in this yml
-      BOOST_MYSQL_DATABASE: ${{ matrix.db }}
-      CMAKE_BUILD_TYPE: ${{ matrix.build-type }}
       USE_VALGRIND: ${{ matrix.valgrind }}
       USE_COVERAGE: ${{ matrix.coverage }}
-      CMAKE_CXX_STANDARD: 20
+      BOOST_MYSQL_DATABASE: ${{ matrix.db }}
 
     steps:
-      - uses: actions/checkout@v2
-      - run: bash tools/build_linux_cmake.sh
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build and test
+        run: bash tools/build_unix_cmake.sh
+
 
 
   linux-b2:
@@ -59,22 +57,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: clang-3.6,    image: build-b2-clang3_6, toolset: clang-3.6,  stdlib: native,  cxxstd: '14'  }
-          - { name: clang-7,      image: build-b2-clang7,   toolset: clang-7,    stdlib: native,  cxxstd: '17'  }
-          - { name: clang-11,     image: build-b2-clang11,  toolset: clang-11,   stdlib: native,  cxxstd: '20'  }
-          - { name: clang-12,     image: build-b2-clang12,  toolset: clang-12,   stdlib: native,  cxxstd: '11,14,17,20'  }
-          - { name: clang-libc++, image: build-b2-clang12,  toolset: clang-12,   stdlib: libc++,  cxxstd: '20'  }
-          - { name: gcc-5,        image: build-b2-gcc5,     toolset: gcc-5,      stdlib: native,  cxxstd: '11'  } # gcc-5 C++14 doesn't like my constexpr field_view
-          - { name: gcc-6,        image: build-b2-gcc6,     toolset: gcc-6,      stdlib: native,  cxxstd: '14,17'  }
-          - { name: gcc-10,       image: build-b2-gcc10,    toolset: gcc-10,     stdlib: native,  cxxstd: '20'  }
-          - { name: gcc-11,       image: build-b2-gcc11,    toolset: gcc-11,     stdlib: native,  cxxstd: '11,14,17,20'  }
+          - { name: clang-3.6,    image: build-clang3_6, toolset: clang-3.6,  stdlib: native,  cxxstd: '14'  }
+          - { name: clang-7,      image: build-clang7,   toolset: clang-7,    stdlib: native,  cxxstd: '17'  }
+          - { name: clang-11,     image: build-clang11,  toolset: clang-11,   stdlib: native,  cxxstd: '20'  }
+          - { name: clang-14,     image: build-clang14,  toolset: clang-14,   stdlib: native,  cxxstd: '11,14,17,20'  }
+          - { name: clang-libc++, image: build-clang14,  toolset: clang-14,   stdlib: libc++,  cxxstd: '20'  }
+          - { name: gcc-5,        image: build-gcc5,     toolset: gcc-5,      stdlib: native,  cxxstd: '11'  } # gcc-5 C++14 doesn't like my constexpr field_view
+          - { name: gcc-6,        image: build-gcc6,     toolset: gcc-6,      stdlib: native,  cxxstd: '14,17'  }
+          - { name: gcc-10,       image: build-gcc10,    toolset: gcc-10,     stdlib: native,  cxxstd: '20'  }
+          - { name: gcc-11,       image: build-gcc11,    toolset: gcc-11,     stdlib: native,  cxxstd: '11,14,17,20'  }
     container:
-      image: ghcr.io/anarthal/${{ matrix.image }}:latest
+      image: ghcr.io/anarthal-containers/${{ matrix.image }}:latest
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal/mysql8:latest
+        image: ghcr.io/anarthal-containers/mysql8:latest
         ports:
           - 3306:3306
         volumes:

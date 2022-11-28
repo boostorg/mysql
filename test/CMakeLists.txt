@@ -5,10 +5,10 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-find_package(Boost 1.72 REQUIRED COMPONENTS
-    unit_test_framework
-    coroutine
-)
+# This may be called from add_subdirectory, too
+if (BOOST_MYSQL_USE_FIND_PACKAGE)
+    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS unit_test_framework)
+endif()
 
 # Test common
 add_library(
@@ -20,175 +20,39 @@ target_include_directories(
     INTERFACE
     common
 )
-target_link_libraries(
-    boost_mysql_testing
-    INTERFACE
-    Boost::headers
-    Boost::unit_test_framework
-    Boost::mysql
-    Boost::disable_autolinking
-    asio
-)
-target_compile_definitions(
-    boost_mysql_testing
-    INTERFACE
-    BOOST_ASIO_SEPARATE_COMPILATION
-)
 
-# Unit testing
-add_executable(
-    boost_mysql_unittests
-    unit/detail/channel/read_buffer.cpp
-    unit/detail/channel/message_parser.cpp
-    unit/detail/channel/message_reader.cpp
-    unit/detail/channel/message_writer_processor.cpp
-    unit/detail/channel/message_writer.cpp
-    unit/detail/auth/auth_calculator.cpp
-    unit/detail/auxiliar/static_string.cpp
-    unit/detail/auxiliar/rows_iterator.cpp
-    unit/detail/auxiliar/field_type_traits.cpp
-    unit/detail/network_algorithms/read_one_row.cpp
-    unit/detail/network_algorithms/read_some_rows.cpp
-    unit/detail/network_algorithms/read_all_rows.cpp
-    unit/detail/protocol/capabilities.cpp
-    unit/detail/protocol/date.cpp
-    unit/detail/protocol/null_bitmap_traits.cpp
-    unit/detail/protocol/serialization_test.cpp
-    unit/detail/protocol/deserialize_text_field.cpp
-    unit/detail/protocol/deserialize_binary_field.cpp
-    unit/detail/protocol/deserialize_row.cpp
-    unit/field_view.cpp
-    unit/field.cpp
-    unit/row_view.cpp
-    unit/row.cpp
-    unit/rows_view.cpp
-    unit/rows.cpp
-    unit/metadata.cpp
-    unit/metadata_collection_view.cpp
-    unit/error.cpp
-    unit/statement.cpp
-    unit/resultset.cpp
-    unit/connection.cpp
-    unit/regressions.cpp
-    unit/entry_point.cpp
-)
-target_link_libraries(
-    boost_mysql_unittests
-    PRIVATE
-    boost_mysql_testing
-)
-target_precompile_headers(
-    boost_mysql_unittests
-    PRIVATE
-    unit/pch.hpp
-)
-set_source_files_properties(
-    unit/entry_point.cpp
-    PROPERTIES
-    SKIP_PRECOMPILE_HEADERS ON
-)
-common_target_settings(boost_mysql_unittests)
-
-if (BOOST_MYSQL_VALGRIND_TESTS)
-    add_memcheck_test(
-        NAME boost_mysql_unittests_memcheck
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_unittests
+if (BOOST_MYSQL_USE_FIND_PACKAGE)
+    set(_TEST_LIBRARIES
+        Boost::headers
+        Boost::unit_test_framework
+        Boost::disable_autolinking
     )
 else()
-    add_test(
-        NAME boost_mysql_unittests
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_unittests
+    set(_TEST_LIBRARIES
+        Boost::any
+        Boost::optional
+        Boost::unit_test_framework
+        Boost::type_index
     )
 endif()
 
+target_link_libraries(
+    boost_mysql_testing
+    INTERFACE
+    ${_TEST_LIBRARIES}
+    Boost::mysql
+    asio
+)
+
+# Custom target tests; required by the Boost superproject
+if(NOT TARGET tests)
+    add_custom_target(tests)
+endif()
+
+# Unit testing
+add_subdirectory(unit)
+
 # Integration testing
 if(BOOST_MYSQL_INTEGRATION_TESTS)
-    add_executable(
-        boost_mysql_integrationtests
-
-        # Utilities
-        integration/utils/src/get_endpoint.cpp
-        integration/utils/src/metadata_validator.cpp
-        integration/utils/src/network_result.cpp
-        integration/utils/src/er_network_variant.cpp
-        integration/utils/src/sync_errc.cpp
-        integration/utils/src/sync_exc.cpp
-        integration/utils/src/async_callback.cpp
-        integration/utils/src/async_callback_noerrinfo.cpp
-        integration/utils/src/async_future.cpp
-        integration/utils/src/async_coroutine.cpp
-        integration/utils/src/async_coroutinecpp20.cpp
-        integration/utils/src/default_completion_tokens.cpp
-
-        # Actual tests
-        integration/connection.cpp
-        integration/connect.cpp
-        integration/handshake.cpp
-        integration/query.cpp
-        integration/prepare_statement.cpp
-        integration/execute_statement.cpp
-        integration/close_statement.cpp
-        integration/statement_lifecycle.cpp
-        integration/resultset.cpp
-        integration/quit_connection.cpp
-        integration/close_connection.cpp
-        integration/reconnect.cpp
-        integration/database_types.cpp
-
-        integration/entry_point.cpp
-    )
-    target_include_directories(
-        boost_mysql_integrationtests
-        PRIVATE
-        integration/utils/include
-    )
-    target_link_libraries(
-        boost_mysql_integrationtests
-        PRIVATE
-        boost_mysql_testing
-        Boost::coroutine
-    )
-    common_target_settings(boost_mysql_integrationtests)
-    target_precompile_headers(
-        boost_mysql_integrationtests
-        PRIVATE
-        integration/pch.hpp
-    )
-    set_source_files_properties(
-        integration/entry_point.cpp
-        PROPERTIES
-        SKIP_PRECOMPILE_HEADERS ON
-    )
-
-    # Compose the test filter
-    if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
-        list(APPEND TEST_EXCLUSIONS "!@unix")
-    endif()
-    if (NOT "$ENV{BOOST_MYSQL_NO_SHA256_TESTS}" STREQUAL "")
-        list(APPEND TEST_EXCLUSIONS "!@sha256")
-    endif()
-    string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS})
-
-    if ("${TEST_FILTER}" STREQUAL "")
-        add_test(
-            NAME boost_mysql_integrationtests
-            COMMAND boost_mysql_integrationtests
-        )
-    else()
-        add_test(
-            NAME boost_mysql_integrationtests
-            COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
-        )
-    endif()
-
-    # If we are using memcheck, then run a subset of the integration tests
-    # under valgrind. Coroutine tests don't work well under Valgrind, and
-    # SSL tests are too slow. We do some other exclusions to reduce runtime
-    if (BOOST_MYSQL_VALGRIND_TESTS)
-        string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS} "!@ssl" "!@async_coroutine")
-        add_memcheck_test(
-            NAME boost_mysql_integrationtests_memcheck
-            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/boost_mysql_integrationtests "-t" ${TEST_FILTER}
-        )
-    endif()
+    add_subdirectory(integration)
 endif()

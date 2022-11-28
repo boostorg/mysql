@@ -5,18 +5,22 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 RUN \
     apt-get update && \
     apt-get --no-install-recommends -y install \
         ca-certificates \
-        clang-12 \
-        libc++-12-dev \
-        libc++abi-12-dev \
+        clang-14 \
+        libc++-14-dev \
+        libc++abi-14-dev \
         libssl-dev \
         git \
-        python && \
-    ln -s /usr/bin/clang++-12 /usr/bin/clang++ && \
-    ln -s /usr/bin/clang-12 /usr/bin/clang
+        valgrind \
+        ninja-build \
+        cmake \
+        python3 \
+        python-is-python3 && \
+    ln -s /usr/bin/clang++-14 /usr/bin/clang++ && \
+    ln -s /usr/bin/clang-14 /usr/bin/clang
 

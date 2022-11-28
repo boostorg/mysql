@@ -8,5 +8,5 @@
 
 set -e
 
-docker start docbuilder || docker run -dit --name docbuilder -v ~/workspace/mysql:/opt/boost/libs/mysql anarthal/build-docs
+docker start docbuilder || docker run -dit --name docbuilder -v ~/workspace/mysql:/opt/boost/libs/mysql anarthal-containers/build-docs
 docker exec docbuilder /opt/boost/libs/mysql/tools/scripts/build_docs_local_docker.sh

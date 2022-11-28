@@ -13,3 +13,4 @@ doc/qbk/reference.qbk
 .vscode/
 compile_commands.json
 .cache/
+__build*__/

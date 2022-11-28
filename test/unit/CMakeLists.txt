@@ -1,0 +1,72 @@
+#
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+add_executable(
+    boost_mysql_unittests
+    detail/channel/read_buffer.cpp
+    detail/channel/message_parser.cpp
+    detail/channel/message_reader.cpp
+    detail/channel/message_writer_processor.cpp
+    detail/channel/message_writer.cpp
+    detail/auth/auth_calculator.cpp
+    detail/auxiliar/static_string.cpp
+    detail/auxiliar/rows_iterator.cpp
+    detail/auxiliar/field_type_traits.cpp
+    detail/network_algorithms/read_one_row.cpp
+    detail/network_algorithms/read_some_rows.cpp
+    detail/network_algorithms/read_all_rows.cpp
+    detail/protocol/capabilities.cpp
+    detail/protocol/date.cpp
+    detail/protocol/null_bitmap_traits.cpp
+    detail/protocol/serialization_test.cpp
+    detail/protocol/deserialize_text_field.cpp
+    detail/protocol/deserialize_binary_field.cpp
+    detail/protocol/deserialize_row.cpp
+    field_view.cpp
+    field.cpp
+    row_view.cpp
+    row.cpp
+    rows_view.cpp
+    rows.cpp
+    metadata.cpp
+    metadata_collection_view.cpp
+    error.cpp
+    statement.cpp
+    resultset.cpp
+    connection.cpp
+    regressions.cpp
+    entry_point.cpp
+)
+target_link_libraries(
+    boost_mysql_unittests
+    PRIVATE
+    boost_mysql_testing
+)
+target_precompile_headers(
+    boost_mysql_unittests
+    PRIVATE
+    pch.hpp
+)
+set_source_files_properties(
+    entry_point.cpp
+    PROPERTIES
+    SKIP_PRECOMPILE_HEADERS ON
+)
+common_target_settings(boost_mysql_unittests)
+
+if (BOOST_MYSQL_VALGRIND_TESTS)
+    add_memcheck_test(
+        NAME boost_mysql_unittests_memcheck
+        TARGET boost_mysql_unittests
+    )
+else()
+    add_test(
+        NAME boost_mysql_unittests
+        COMMAND boost_mysql_unittests
+    )
+    add_dependencies(tests boost_mysql_unittests)
+endif()

@@ -23,9 +23,9 @@ with no special args). If you want to run the integration tests and the examples
 
 If you are using `docker`, you can use one of the following images:
 
-* `ghcr.io/anarthal/mysql8`
-* `ghcr.io/anarthal/mysql5`
-* `ghcr.io/anarthal/mariadb`
+* `ghcr.io/anarthal-containers/mysql8`
+* `ghcr.io/anarthal-containers/mysql5`
+* `ghcr.io/anarthal-containers/mariadb`
 
 You can run the containers as follows:
 ```
@@ -34,7 +34,7 @@ You can run the containers as follows:
     > docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d <IMAGE_NAME> # replace by the image you've chosen
 
     # If you're on a system that does not support UNIX sockets
-    > docker run -p 3306:3306 -d ghcr.io/anarthal/mysql8
+    > docker run -p 3306:3306 -d ghcr.io/anarthal-containers/mysql8
 ```
 
 If you are using your own database server, you will need to perform the following steps:

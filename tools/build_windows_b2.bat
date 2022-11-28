@@ -5,31 +5,25 @@ REM Distributed under the Boost Software License, Version 1.0. (See accompanying
 REM file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 REM
 
-call ci\appveyor\install.bat || exit /b 1
+REM Config
+SET SOURCE_DIR="%cd%"
+SET BOOST_ROOT=C:\boost-root
+SET OPENSSL_ROOT=C:\openssl-%B2_ADDRESS_MODEL%
+SET PATH=%BOOST_ROOT%;%PATH%
+SET BOOST_MYSQL_NO_UNIX_SOCKET_TESTS=1
+SET BOOST_MYSQL_SERVER_HOST=localhost
 
-REM Copied from boost-ci to enable argument forwarding
-setlocal enabledelayedexpansion
+REM Get Boost
+call tools\install_boost.bat
+cd "%BOOST_ROOT%" || exit /b 1
 
-IF NOT DEFINED B2_CI_VERSION (
-    echo You need to set B2_CI_VERSION in your CI script
-    exit /B 1
-)
-
-PATH=%ADDPATH%%PATH%
-
-SET B2_TOOLCXX=toolset=%B2_TOOLSET%
-
-IF DEFINED B2_CXXSTD (SET B2_CXXSTD=cxxstd=%B2_CXXSTD%)
-IF DEFINED B2_CXXFLAGS (SET B2_CXXFLAGS=cxxflags=%B2_CXXFLAGS%)
-IF DEFINED B2_DEFINES (SET B2_DEFINES=define=%B2_DEFINES%)
-IF DEFINED B2_ADDRESS_MODEL (SET B2_ADDRESS_MODEL=address-model=%B2_ADDRESS_MODEL%)
-IF DEFINED B2_LINK (SET B2_LINK=link=%B2_LINK%)
-IF DEFINED B2_VARIANT (SET B2_VARIANT=variant=%B2_VARIANT%)
-
-cd %BOOST_ROOT%
-
-b2 --abbreviate-paths ^
+REM Build
+.\b2 --abbreviate-paths ^
+    toolset=%B2_TOOLSET% ^
+    cxxstd=%B2_CXXSTD% ^
+    address-model=%B2_ADDRESS_MODEL% ^
+    variant=%B2_VARIANT% ^
+    -j4 ^
     libs/mysql/test ^
     libs/mysql/test//boost_mysql_integrationtests ^
-    libs/mysql/example//boost_mysql_all_examples ^
-    %B2_TOOLCXX% %B2_CXXSTD% %B2_CXXFLAGS% %B2_DEFINES% %B2_THREADING% %B2_ADDRESS_MODEL% %B2_LINK% %B2_VARIANT% -j4 %*
+    libs/mysql/example//boost_mysql_all_examples || exit /b 1

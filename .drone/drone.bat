@@ -1,34 +1,17 @@
+REM
+REM Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+REM
+REM Distributed under the Boost Software License, Version 1.0. (See accompanying
+REM file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+REM
 
-
-
-
-@ECHO ON
 setlocal enabledelayedexpansion
 
-if "%DRONE_JOB_BUILDTYPE%" == "boost" (
-
-echo '==================================> INSTALL'
-
-git clone https://github.com/boostorg/boost-ci.git boost-ci-cloned --depth 1
-cp -prf boost-ci-cloned/ci .
-rm -rf boost-ci-cloned
-REM source ci/travis/install.sh
-REM The contents of install.sh below:
-
-for /F %%i in ("%DRONE_REPO%") do @set SELF=%%~nxi
-SET BOOST_CI_TARGET_BRANCH=%DRONE_COMMIT_BRANCH%
-SET BOOST_CI_SRC_FOLDER=%cd%
-
-call ci\common_install.bat
-
-echo '==================================> COMPILE'
-
-REM set B2_TARGETS=libs/!SELF!/test libs/!SELF!/example
-set B2_TARGETS=libs/!SELF!/test
-call !BOOST_ROOT!\libs\!SELF!\ci\build.bat
-
-) else if "%DRONE_JOB_BUILDTYPE%" == "standalone-windows" (
-
-REM not used
-
+if "%DRONE_JOB_BUILDTYPE%" == "b2" (
+    call tools\build_windows_b2.bat
+) else if "%DRONE_JOB_BUILDTYPE%" == "cmake" (
+    call tools\build_windows_cmake.bat
+) else (
+    echo "Unknown DRONE_JOB_BUILDTYPE: %DRONE_JOB_BUILDTYPE%"
+    exit /b 1
 )

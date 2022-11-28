@@ -15,8 +15,7 @@ Documentation and examples are [here](https://anarthal.github.io/mysql/index.htm
   library in the Boost.Asio ecosystem (like Boost.Beast).
 - It supports Boost.Asio's universal asynchronous model, which means you can
   go asyncrhonous using callbacks, futures or coroutines (including C++20 coroutines).
-- It is written in modern C++ (C++11) and takes advantage of the latest language
-  features and standard library additions.
+- It is written in C++11 and takes advantage of it.
 - It is header only.
 
 ## Building
