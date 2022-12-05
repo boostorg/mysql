@@ -28,14 +28,7 @@ namespace mysql {
  * \brief A connection to a MySQL server.
  *
  * \details
- * Represents a connection to a MySQL server. You can find more info in the following sections:
- *\n
- *  * [link mysql.queries Text queries].
- *  * [link mysql.prepared_statements Prepared statements].
- *  * [link mysql.overview.async Asynchronous functions and multi-threading].
- *  * [link mysql.connparams Connect].
- *  * [link mysql.other_streams.connection Handshake and quit].
- *  * [link mysql.reconnecting Error recovery].
+ * Represents a connection to a MySQL server.
  *\n
  * `connection` is the main I/O object that this library implements. It owns a `Stream` object that
  * is accessed by functions involving network operations, as well as session state. You can access
@@ -147,24 +140,22 @@ public:
      * for connections that haven't been
      * established yet (handshake not run yet). If the handshake fails,
      * the return value is undefined.
-     *
-     * This function can be used to determine
-     * whether you are using a SSL connection or not when using
-     * SSL negotiation (see [link mysql.ssl.negotiation this section]).
+     *\n
+     * This function can be used to determine whether you are using a SSL
+     * connection or not when using SSL negotiation.
      */
     bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
      * \details This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
+     * `SocketStream` concept.
      *\n
      * Connects the underlying stream and performs the handshake
      * with the server. The underlying stream is closed in case of error. Prefer
      * this function to \ref connection::handshake.
      *\n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
@@ -227,7 +218,6 @@ public:
      * requirements, use \ref connection::connect instead of this function.
      *\n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * See [link mysql.ssl.handshake this section] for more info.
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
@@ -279,8 +269,6 @@ public:
      * communication. Otherwise, the results are undefined.
      *\n
      * This operation involves both reads and writes on the underlying stream.
-     *\n
-     * See [link mysql.queries this section] for more info.
      */
     void query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
 
@@ -331,8 +319,6 @@ public:
      * interaction as long as I/O object references to `*this` are valid.
      *\n
      * This operation involves both reads and writes on the underlying stream.
-     *\n
-     * See [link mysql.prepared_statements this section] for more info.
      */
     void prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
 
@@ -379,8 +365,7 @@ public:
     /**
      * \brief Closes the connection with the server.
      * \details
-     * This function is only available if `Stream` satisfies the
-     * [reflink SocketStream] requirements.
+     * This function is only available if `Stream` satisfies the `SocketStream` concept.
      *\n
      * Sends a quit request, performs the TLS shutdown (if required)
      * and closes the underlying stream. Prefer this function to \ref connection::quit.

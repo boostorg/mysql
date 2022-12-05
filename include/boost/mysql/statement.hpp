@@ -36,8 +36,6 @@ namespace mysql {
  * Statements are default-constructible and movable, but not copyable. A default constructed or
  * closed statement has `!this->valid()`. Calling any member function on an invalid
  * statement, other than assignment, results in undefined behavior.
- *\n
- * See [link mysql.prepared_statements] for more info.
  */
 template <class Stream>
 class statement : public statement_base
@@ -97,11 +95,9 @@ public:
      * communication. Otherwise, the results are undefined.
      *\n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
-     * See the [reflink FieldLikeTuple] concept defition for more info.
+     * See the `FieldLikeTuple` concept defition for more info.
      *\n
      * This operation involves both reads and writes on the underlying stream.
-     *\n
-     * See [link mysql.prepared_statements this section] for more info.
      */
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
@@ -257,12 +253,9 @@ public:
      * The statement actual parameters are passed as an iterator range. There should be
      * __exactly__ as many parameters as required (as given by \ref statement::num_params).
      * Dereferencing the passed iterators should yield a type convertible to \ref field_view.
-     * Both \ref field and \ref field_view satisfy this. See [reflink FieldViewFwdIterator] for
-     * details.
+     * Both \ref field and \ref field_view satisfy this.
      *\n
      * This operation involves both reads and writes on the underlying stream.
-     *\n
-     * See [link mysql.prepared_statements this section] for more info.
      */
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void execute(

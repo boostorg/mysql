@@ -15,7 +15,8 @@ RUN \
         g++-10 \
         libssl-dev \
         git \
-        python && \
+        python3 \
+        python-is-python3 && \
     ln -s /usr/bin/g++-10 /usr/bin/g++ && \
     ln -s /usr/bin/gcc-10 /usr/bin/gcc
 

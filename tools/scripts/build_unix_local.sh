@@ -8,13 +8,24 @@
 
 set -e
 
-IMAGE=build-clang14
-TYPE=cmake
-# TYPE=b2
-
+IMAGE=build-docs
 CONTAINER=builder-$IMAGE
+FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
 
 docker start mysql
-docker start $CONTAINER || docker run -dit --name $CONTAINER -v ~/workspace/mysql:/opt/boost-mysql -v /var/run/mysqld:/var/run/mysqld ghcr.io/anarthal-containers/$IMAGE
+docker start $CONTAINER || docker run -dit \
+    --name $CONTAINER \
+    -v ~/workspace/mysql:/opt/boost-mysql \
+    -v /var/run/mysqld:/var/run/mysqld \
+    $FULL_IMAGE
 docker network connect my-net $CONTAINER || echo "Network already connected"
-docker exec $CONTAINER /opt/boost-mysql/tools/scripts/build_unix_${TYPE}_local_docker.sh
+docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boost-mysql --server-host=mysql \
+    --build-kind=docs \
+    --build-shared-libs=1 \
+    --valgrind=0 \
+    --coverage=0 \
+    --clean=0 \
+    --toolset=clang \
+    --cxxstd=20 \
+    --variant=debug \
+    --stdlib=native

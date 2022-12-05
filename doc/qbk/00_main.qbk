@@ -33,8 +33,6 @@
 [template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^boost::asio::[term]]]]
 [template beastreflink[id term][@boost:/doc/html/boost_beast/reference/[id].html [^boost::beast::[term]]]]
 [template mysqllink[id text][@https://dev.mysql.com/doc/refman/8.0/en/[id] [text]]]
-[template mysqlerrlink[text][@https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html [text]]]
-[template mysqlerrlink2[id text][@https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#[id] [text]]]
 
 [def __Stream__ [reflink2 Stream ['Stream]]]
 [def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]

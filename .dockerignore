@@ -12,3 +12,4 @@ compile_commands.json
 .cache/
 doc/
 include/
+__build*__/

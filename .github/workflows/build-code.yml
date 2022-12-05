@@ -9,101 +9,22 @@ name: Build
 
 on:
   push:
-    branches-ignore: [gh-pages, boostification]
+    branches-ignore: [gh-pages]
 
 
 jobs:
-  linux-cmake:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - { name: valgrind, image: build-gcc11,    valgrind: 1, coverage: 0, db: mysql8,  build_shared: OFF }
-          - { name: coverage, image: build-gcc11,    valgrind: 0, coverage: 1, db: mysql8,  build_shared: OFF }
-          - { name: mysql5,   image: build-clang14,  valgrind: 0, coverage: 0, db: mysql5,  build_shared: OFF }
-          - { name: mariadb,  image: build-clang14,  valgrind: 0, coverage: 0, db: mariadb, build_shared: ON }
-    container:
-      image: ghcr.io/anarthal-containers/${{ matrix.image }}:latest
-      volumes:
-        - /var/run/mysqld:/var/run/mysqld
-    services:
-      mysql:
-        image: ghcr.io/anarthal-containers/${{ matrix.db }}:latest
-        ports:
-          - 3306:3306
-        volumes:
-          - /var/run/mysqld:/var/run/mysqld
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      BOOST_MYSQL_SERVER_HOST: mysql # This should match the service name in this yml
-      USE_VALGRIND: ${{ matrix.valgrind }}
-      USE_COVERAGE: ${{ matrix.coverage }}
-      BOOST_MYSQL_DATABASE: ${{ matrix.db }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Build and test
-        run: bash tools/build_unix_cmake.sh
-
-
-
-  linux-b2:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - { name: clang-3.6,    image: build-clang3_6, toolset: clang-3.6,  stdlib: native,  cxxstd: '14'  }
-          - { name: clang-7,      image: build-clang7,   toolset: clang-7,    stdlib: native,  cxxstd: '17'  }
-          - { name: clang-11,     image: build-clang11,  toolset: clang-11,   stdlib: native,  cxxstd: '20'  }
-          - { name: clang-14,     image: build-clang14,  toolset: clang-14,   stdlib: native,  cxxstd: '11,14,17,20'  }
-          - { name: clang-libc++, image: build-clang14,  toolset: clang-14,   stdlib: libc++,  cxxstd: '20'  }
-          - { name: gcc-5,        image: build-gcc5,     toolset: gcc-5,      stdlib: native,  cxxstd: '11'  } # gcc-5 C++14 doesn't like my constexpr field_view
-          - { name: gcc-6,        image: build-gcc6,     toolset: gcc-6,      stdlib: native,  cxxstd: '14,17'  }
-          - { name: gcc-10,       image: build-gcc10,    toolset: gcc-10,     stdlib: native,  cxxstd: '20'  }
-          - { name: gcc-11,       image: build-gcc11,    toolset: gcc-11,     stdlib: native,  cxxstd: '11,14,17,20'  }
-    container:
-      image: ghcr.io/anarthal-containers/${{ matrix.image }}:latest
-      volumes:
-        - /var/run/mysqld:/var/run/mysqld
-    services:
-      mysql:
-        image: ghcr.io/anarthal-containers/mysql8:latest
-        ports:
-          - 3306:3306
-        volumes:
-          - /var/run/mysqld:/var/run/mysqld
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      BOOST_MYSQL_SERVER_HOST: mysql # This should match the service name in this yml
-      B2_TOOLSET: ${{ matrix.toolset }}
-      B2_VARIANT: debug,release
-      B2_CXXSTD: ${{ matrix.cxxstd }}
-      B2_STDLIB: ${{ matrix.stdlib }}
-    steps:
-      - uses: actions/checkout@v2
-      - run: bash tools/build_unix_b2.sh
-  
-
   osx:
     runs-on: macos-latest
     env:
-      BOOST_MYSQL_SERVER_HOST: 127.0.0.1 # Force use IPv4
       OPENSSL_ROOT: /usr/local/opt/openssl
-      B2_TOOLSET: clang
-      B2_VARIANT: debug,release
-      B2_CXXSTD: 17
-      B2_STDLIB: native
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: bash tools/setup_db_osx.sh
-      - run: bash tools/build_unix_b2.sh
-
+      - run: |
+          python3 tools/ci.py \
+            --build-kind=b2 \
+            --source-dir=$(pwd) \
+            --toolset=clang \
+            --cxxstd=20 \
+            --variant=debug,release \
+            --server-host=127.0.0.1 # Force use IPv4

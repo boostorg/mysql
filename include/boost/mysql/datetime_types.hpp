@@ -31,23 +31,23 @@ using datetime = std::chrono::time_point<std::chrono::system_clock, std::chrono:
 /// Type representing MySQL `__TIME__` data type.
 using time = std::chrono::microseconds;
 
-/// The minimum allowed value for [reflink date] (0000-01-01).
+/// The minimum allowed value for \ref date (0000-01-01).
 BOOST_CXX14_CONSTEXPR const date min_date{days(-719528)};
 
-/// The maximum allowed value for [reflink date] (9999-12-31).
+/// The maximum allowed value for \ref date (9999-12-31).
 BOOST_CXX14_CONSTEXPR const date max_date{days(2932896)};
 
-/// The minimum allowed value for [reflink datetime].
+/// The minimum allowed value for \ref datetime.
 BOOST_CXX14_CONSTEXPR const datetime min_datetime = min_date;
 
-/// The maximum allowed value for [reflink datetime].
-BOOST_CXX14_CONSTEXPR const datetime max_datetime =
-    max_date + std::chrono::hours(24) - std::chrono::microseconds(1);
+/// The maximum allowed value for \ref datetime.
+BOOST_CXX14_CONSTEXPR const datetime max_datetime = max_date + std::chrono::hours(24) -
+                                                    std::chrono::microseconds(1);
 
-/// The minimum allowed value for [reflink time].
+/// The minimum allowed value for \ref time.
 constexpr time min_time = -std::chrono::hours(839);
 
-/// The maximum allowed value for [reflink time].
+/// The maximum allowed value for \ref time.
 constexpr time max_time = std::chrono::hours(839);
 
 }  // namespace mysql

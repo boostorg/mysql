@@ -17,7 +17,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Additional [reflink statement] execution options.
+ * \brief Additional statement execution options.
  * \details Placeholder for now.
  */
 class execute_options

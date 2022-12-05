@@ -1,0 +1,22 @@
+#
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+# This is included in README.md, watch out before changing
+
+cmake_minimum_required(VERSION VERSION 3.13.0)
+
+project(boost_mysql_example)
+
+find_package(Boost REQUIRED COMPONENTS headers)
+find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+add_executable(main main.cpp)
+target_link_libraries(main PRIVATE Boost::headers Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+
+include(CTest)
+add_test(NAME main COMMAND main)

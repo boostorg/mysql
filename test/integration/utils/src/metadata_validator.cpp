@@ -44,7 +44,7 @@ static bool contains(
     return std::find(flagvec.begin(), flagvec.end(), flag) != flagvec.end();
 }
 
-void meta_validator::validate(const metadata& value) const
+void meta_validator::validate(const boost::mysql::metadata& value) const
 {
     // Fixed fields
     BOOST_TEST(value.database() == "boost_mysql_integtests");

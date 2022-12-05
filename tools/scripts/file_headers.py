@@ -132,7 +132,7 @@ sql_processor = NormalProcessor('sql', gen_header('--'))
 cpp_processor = NormalProcessor('cpp', gen_header('//'))
 py_processor = NormalProcessor('py', gen_header('#', shebang='#!/usr/bin/python3'))
 bash_processor = NormalProcessor('bash', gen_header('#', shebang='#!/bin/bash'))
-bat_processor = NormalProcessor('bat', gen_header('REM'))
+bat_processor = NormalProcessor('bat', gen_header('@REM'))
 
 FILE_PROCESSORS = [
     ('docca-base-stage2-noescape.xsl', IgnoreProcessor()),
@@ -197,7 +197,7 @@ namespace mysql {{
  * \\details Some error codes are defined by the client library, and others
  * are returned from the server. For the latter, the numeric value and
  * string descriptions match the ones described in the MySQL documentation.
- * See [mysqlerrlink the MySQL error reference]
+ * See <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">the MySQL error reference</a>
  * for more info on server errors.
  */
 enum class errc : int
@@ -247,7 +247,7 @@ constexpr error_entry all_errors [] = {{
 def generate_errc_entry(err):
     if err.is_server:
         doc = ('Server error. Error number: {}, symbol: ' + \
-              '[mysqlerrlink2 error_er_{} ER_{}].').format(
+              '<a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_{}">ER_{}</a>.').format(
                   err.number, err.symbol, err.symbol.upper())
     else:
         if err.number == 0:

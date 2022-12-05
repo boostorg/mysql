@@ -44,8 +44,6 @@ namespace mysql {
  * Resultsets are default-constructible and movable, but not copyable. A default constructed or
  * closed resultset has `!this->valid()`. Calling any member function on an invalid
  * resultset, other than assignment, results in undefined behavior.
- * \n
- * See [link mysql.resultsets this section] for more info.
  */
 template <class Stream>
 class resultset : public resultset_base

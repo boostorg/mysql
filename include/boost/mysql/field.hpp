@@ -29,17 +29,14 @@ namespace mysql {
 /**
  * \brief Variant-like class that can represent of any of the allowed database types.
  * \details
- * For an overview on how to use fields, see [link mysql.overview.rows_fields.fields this section].
- * The accessors and type mappings reference is [link mysql.fields here].
- * \n
  * This is a regular variant-like class that can represent any of the types that MySQL allows. It
- * has value semantics (as opposed to [reflink field_view]). Instances of this class are not created
+ * has value semantics (as opposed to \ref field_view). Instances of this class are not created
  * by the library. They should be created by the user, when the reference semantics of
- * [reflink field_view] are not appropriate.
+ * \ref field_view are not appropriate.
  * \n
  * Like a variant, at any point, a `field` always contains a value of
- * certain type. You can query the type using [refmem field kind] and the `is_xxx` functions
- * like [refmem field is_int64]. Use `as_xxx` and `get_xxx` for checked and unchecked value
+ * certain type. You can query the type using \ref kind and the `is_xxx` functions
+ * like \ref is_int64. Use `as_xxx` and `get_xxx` for checked and unchecked value
  * access, respectively. You can mutate a `field` by calling the `emplace_xxx` functions, by
  * assigning it a different value, or using the lvalue references returned by `as_xxx` and
  * `get_xxx`.

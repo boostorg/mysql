@@ -9,6 +9,7 @@
 SET NAMES utf8;
 SET global max_connections = 10000;
 SET session sql_mode = ''; -- allow zero and invalid dates
+SET session time_zone = '+02:00'; -- arbitrary, but should match whatever we use in database_types
 
 START TRANSACTION;
 

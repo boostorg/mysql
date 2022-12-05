@@ -5,271 +5,79 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-project /boost/mysql/doc ;
 
-import os ;
-import path ;
+project mysql/doc ;
+
 import boostbook ;
-import quickbook ;
-import xsltproc ;
-import doxygen ;
-import modules ;
-import saxonhe ;
-import common ;
+import os ;
+import ../../../tools/docca/docca.jam ;
 
-local BOOST_ROOT = [ os.environ BOOST_ROOT ] ; #../../.. ;
 
-#-------------------------------------------------------------------------------
-#
-# Build the list of header files that Doxygen will scan. We need
-# this list to inform the build system of the dependencies so the
-# docs can be rebuild if any of the header files change.
-#
-
-local sources = [ path.glob-tree ../include/boost/mysql : *.hpp : detail impl ] ;
-
-# Get the configured paths to doxygen and xsltproc
-
-.doxygen = [ doxygen.name ] ;
-.doxygen ?= doxygen ;
-
-.xsltproc = [ xsltproc.name ] ;
-.xsltproc ?= xsltproc ;
-
-#-------------------------------------------------------------------------------
-#
-# Invoke Doxygen to process the header files and produce the XML
-# containing the description of the C++ declarations and extracted
-# Javadoc comments.
-#
-make index.xml
+docca.reference reference.qbk
     :
-        ./Doxyfile
+        xsl/custom-overrides.xsl
+        [ glob-tree-ex ../include/boost/mysql : *.hpp : detail impl ]
     :
-        @make_doxygen_xml
-    :
-        <dependency>$(sources)
+        <doxygen:param>PROJECT_NAME=MySQL
+        <doxygen:param>PROJECT_BRIEF="C++ MySQL Client Library"
+        <doxygen:param>DISTRIBUTE_GROUP_DOC=YES
+        <doxygen:param>ENABLE_PREPROCESSING=YES
+        <doxygen:param>MACRO_EXPANSION=YES
+        <doxygen:param>EXPAND_ONLY_PREDEF=YES
+        <doxygen:param>SEARCH_INCLUDES=NO
+        <doxygen:param>"PREDEFINED=\\
+            BOOST_MYSQL_DOXYGEN \\
+            \"BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto\" \\
+            \"BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)=class\" \\
+            \"BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(ct,sig)=auto\" \\
+            \"BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(ex)=\" \\
+            \"BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(ex)=\" \\
+            \"protected=private\" \\
+            \"BOOST_CXX14_CONSTEXPR=constexpr\" \\
+            \"BOOST_MYSQL_FIELD_LIKE_TUPLE=class\" \\
+            \"BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR=class\" \\
+            "
+        <doxygen:param>SKIP_FUNCTION_MACROS=NO
+        <doxygen:param>OUTPUT_LANGUAGE=English
+        <doxygen:param>ABBREVIATE_BRIEF=
+        <doxygen:param>INLINE_INHERITED_MEMB=YES
+        <doxygen:param>AUTOLINK_SUPPORT=NO
+        <doxygen:param>EXTRACT_ALL=NO
+        <doxygen:param>EXTRACT_PRIVATE=NO
+        <doxygen:param>EXTRACT_LOCAL_CLASSES=NO
+        <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+        <doxygen:param>HIDE_UNDOC_CLASSES=YES
+        <doxygen:param>HIDE_FRIEND_COMPOUNDS=YES
+        <doxygen:param>CASE_SENSE_NAMES=YES
+        <doxygen:param>SHOW_INCLUDE_FILES=NO
+        <doxygen:param>INLINE_INFO=NO
+        <doxygen:param>SORT_MEMBER_DOCS=NO
+        <doxygen:param>SORT_MEMBERS_CTORS_1ST=YES
+        <doxygen:param>SHOW_USED_FILES=NO
+        <doxygen:param>SHOW_FILES=NO
+        <doxygen:param>SHOW_NAMESPACES=NO
+        <doxygen:param>CLASS_DIAGRAMS=NO
     ;
-
-rule make_doxygen_xml ( targets * : sources * : properties * )
-{
-    LIB_DIR on $(targets) =
-        [ path.native [ path.parent [ path.root
-        [ on $(sources[1]) return $(SEARCH) ] [ path.pwd ] ] ] ] ;
-}
-
-if [ os.name ] = NT
-{
-    actions make_doxygen_xml
-    {
-        SET LIB_DIR=$(LIB_DIR)
-        SET XML_OUTPUT=$(1:D)
-        "$(.doxygen)" $(2)
-    }
-}
-else
-{
-    actions make_doxygen_xml
-    {
-        export LIB_DIR=$(LIB_DIR)
-        export XML_OUTPUT=$(1:D)
-        "$(.doxygen)" $(2)
-    }
-}
-
-#-------------------------------------------------------------------------------
-#
-# Copy all the XSLT modules to the target directory.
-#
-# FIXME: Change this so we can just specify a directory,
-#        rather than every file individually.
-#
-#        Also, somehow force dependencies in a general way
-#        such that the XSLT has to be executed again
-#        if any of the modules change. For example,
-#        if base-extract-xml-pages.xml changes, then
-#        an invocation of extract-xml-pages.xsl (which
-#        imports the former) must be run again.
-#
-path-constant docca : $(BOOST_ROOT)/tools/docca ;
-make extract-xml-pages.xsl      : $(docca)/include/docca/extract-xml-pages.xsl      : @copy_script ;
-make base-extract-xml-pages.xsl : $(docca)/include/docca/base-extract-xml-pages.xsl : @copy_script ;
-make common.xsl                 : $(docca)/include/docca/common.xsl                 : @copy_script ;
-make stage1.xsl                 : $(docca)/include/docca/stage1.xsl                 : @copy_script ;
-make base-stage1.xsl            : $(docca)/include/docca/base-stage1.xsl            : @copy_script ;
-make stage2.xsl                 : $(docca)/include/docca/stage2.xsl                 : @copy_script ;
-# Workaround to prevent docca from escaping quickbook from Doxygen comments
-make base-stage2.xsl            : $(BOOST_ROOT)/libs/mysql/doc/docca-base-stage2-noescape.xsl  : @copy_script ;
-make assemble-quickbook.xsl     : $(docca)/include/docca/assemble-quickbook.xsl                : @copy_script ;
-make emphasized-types.xsl       : $(BOOST_ROOT)/libs/mysql/doc/xsl/emphasized-types.xsl        : @copy_script ;
-make base-config.xsl            : $(docca)/include/docca/base-config.xsl                       : @copy_script ;
-
-# Copy the project-specific config XSLT
-make custom-overrides.xsl : xsl/custom-overrides.xsl : @copy_script ;
-
-# Make a copy of the given file.
-actions copy_script
-{
-    cp $(2[1]) $(1)
-}
-
-
-# This is to initially create the directory as a side effect; I'm sure there's a better way...
-make xml-pages/directory/placeholder : index.xml : @null_action ;
-
-#-------------------------------------------------------------------------------
-#
-# Run index.xml through the first transformation stage
-# (assembling and splitting the XML into page-specific files).
-#
-make xml-pages.xml
-    :
-        index.xml
-        extract-xml-pages.xsl
-
-        # Make bjam aware of additional dependencies
-        base-extract-xml-pages.xsl
-        base-config.xsl
-        custom-overrides.xsl
-        common.xsl
-    :
-        saxonhe.saxonhe
-    ;
-
-# This is just to make the directory eligible as a source
-make xml-pages : index.xml : @null_action ;
-
-# This is to initially create the directory as a side effect; I'm sure there's a better way...
-make stage1/results/directory/placeholder : xml-pages.xml : @null_action ;
-make stage2/results/directory/placeholder : xml-pages.xml : @null_action ;
-
-# TODO: figure out why this (and the following stage) get built every time
-make stage1/results
-    :
-        xml-pages
-        stage1.xsl
-
-        # additional dependencies
-        xml-pages.xml
-        base-stage1.xsl
-        base-config.xsl
-        custom-overrides.xsl
-        common.xsl
-    :
-        saxonhe.saxonhe_dir
-    ;
-
-make stage2/results
-    :
-        stage1/results
-        stage2.xsl
-
-        # additional dependencies
-        emphasized-types.xsl
-        base-stage2.xsl
-        base-config.xsl
-        custom-overrides.xsl
-        common.xsl
-    :
-        saxonhe.saxonhe_dir
-    ;
-
-make reference.qbk
-    :
-        xml-pages.xml
-        assemble-quickbook.xsl
-
-        # TODO: make this input to the XSLT somehow
-        #       rather than relying on it being hard-coded
-        #       in the XSLT (which it is!)
-        stage2/results
-    :
-        saxonhe.saxonhe
-    ;
-
-actions make_dir
-{
-    mkdir $(1)
-}
-
-make combine.xslt : index.xml : @null_action ;
-
-actions touch_file
-{
-    touch $(1) ;
-}
-
-actions null_action
-{
-    touch -c $(1) ;
-}
-
-make reference.xml
-    :
-        combine.xslt
-        index.xml
-    :
-        @call-xsltproc
-    ;
-
-actions call-xsltproc
-{
-    "$(.xsltproc)" $(2) > $(1)
-}
-
-# We have to make a copy of reference.qbk and put it
-# in a place where the static .qbk files can find it
-install qbk : reference.qbk ;
-
-# stylesheets and callouts are for out-of-tree docs on anarthal.github.io
-install stylesheets
-    :
-        $(BOOST_ROOT)/doc/src/boostbook.css
-    :
-        <location>html/
-    ;
-
-explicit stylesheets ;
-
-install callouts
-    :
-        [ glob $(BOOST_ROOT)/doc/src/images/callouts/*.png ]
-    :
-        <location>html/images/callouts
-    ;
-
-explicit callout ;
 
 install images
     :
-        [ glob $(BOOST_ROOT)/doc/src/images/*.png images/*.svg ]
+        [ glob images/*.png images/*.svg ]
     :
         <location>html/mysql/images
     ;
 
 explicit images ;
 
-
-#-------------------------------------------------------------------------------
-#
-# Produce the Boost.Book XML from the QuickBook
-#
-
-
 xml mysql_doc
     :
         qbk/00_main.qbk
     :
-        <dependency>qbk
+        <dependency>reference.qbk
+        <dependency>images
     ;
 
 explicit mysql_doc ;
 
-#-------------------------------------------------------------------------------
-#
-# HTML documentation for $(BOOST_ROOT)/doc/html
-#
-#-------------------------------------------------------------------------------
 
 boostbook mysql
     :
@@ -279,25 +87,22 @@ boostbook mysql
         <xsl:param>"boost.root=https://www.boost.org/doc/libs/1_80_0"
         <xsl:param>boost.graphics.root=images/
         <xsl:param>nav.layout=none
+        # <xsl:param>boost.root=../../../..
         <xsl:param>chapter.autolabel=1
         <xsl:param>chunk.section.depth=8                # Depth to which sections should be chunked
         <xsl:param>chunk.first.sections=1               # Chunk the first top-level section?
         <xsl:param>toc.section.depth=8                  # How deep should recursive sections appear in the TOC?
         <xsl:param>toc.max.depth=8                      # How many levels should be created for each TOC?
-        <xsl:param>generate.section.toc.level=8         # Control depth of TOC generation in sections
-        <xsl:param>generate.toc="chapter toc,title section nop reference nop"
-        <xsl:param>html.stylesheet=boostbook.css
+        #<xsl:param>generate.toc=""
+        <xsl:param>generate.toc="chapter toc,title section nop reference nop part toc"
         <include>../../../tools/boostbook/dtd
     :
-        <dependency>stylesheets
         <dependency>images
     ;
 
-#-------------------------------------------------------------------------------
-#
+
 # These are used to inform the build system of the
 # means to build the integrated and stand-alone docs.
-#
 
 alias boostdoc ;
 explicit boostdoc ;

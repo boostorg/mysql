@@ -17,7 +17,8 @@ apt-get install --no-install-recommends -y \
     wget \
     ca-certificates \
     clang-11 \
-    python \
+    python3 \
+    python-is-python3 \
     rsync
 ln -s /usr/bin/clang++-11 /usr/bin/clang++
 ln -s /usr/bin/clang-11 /usr/bin/clang
@@ -47,16 +48,3 @@ cd $DOCBOOK_DTD_DIR
 wget -q http://www.oasis-open.org/docbook/xml/4.2/docbook-xml-4.2.zip
 unzip -o -qq docbook-xml-4.2.zip
 rm docbook-xml-4.2.zip
-
-# Install and initialize Boost
-git clone --branch boost-1.78.0 https://github.com/boostorg/boost.git /opt/boost --depth 1
-cd /opt/boost
-export BOOST_ROOT=$(pwd)
-git config submodule.fetchJobs 8
-git submodule update --init libs/context
-git submodule update --init tools/boostbook
-git submodule update --init tools/boostdep
-git submodule update --init tools/docca
-git submodule update --init tools/quickbook
-python tools/boostdep/depinst/depinst.py ../tools/quickbook
-./bootstrap.sh

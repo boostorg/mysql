@@ -16,7 +16,7 @@ namespace mysql {
 
 /**
  * \brief Represents the database type of a MySQL column.
- * \details This represents a database type, as opposed to [reflink field_kind], which represents a
+ * \details This represents a database type, as opposed to \ref field_kind, which represents a
  * C++ type.
  *
  * Unless otherwise noted, the names in this enumeration

@@ -14,7 +14,8 @@ RUN \
         clang-7 \
         libssl-dev \
         git \
-        python && \
+        python3 \
+        python-is-python3 && \
     ln -s /usr/bin/clang++-7 /usr/bin/clang++ && \
     ln -s /usr/bin/clang-7 /usr/bin/clang
 

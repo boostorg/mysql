@@ -30,4 +30,13 @@
 
   <xsl:template mode="convenience-header" match="@file[contains(., 'boost/mysql')]">mysql.hpp</xsl:template>
 
+  <xsl:variable name="emphasized-template-parameter-types" select="
+    'CompletionToken',
+    'Stream',
+    'SocketStream',
+    'Executor',
+    'FieldLikeTuple',
+    'FieldViewFwdIterator'
+  "/>
+
 </xsl:stylesheet>

@@ -139,7 +139,7 @@ public:
     bool complete() const noexcept { return ok_packet_.has_value(); }
 
     /**
-     * \brief Returns [link mysql.resultsets.metadata metadata] about the columns in the query.
+     * \brief Returns metadata about the columns in the query.
      * \details
      * The returned collection will have as many \ref metadata objects as columns retrieved by
      * the SQL query, and in the same order.

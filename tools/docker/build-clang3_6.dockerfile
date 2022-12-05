@@ -14,9 +14,9 @@ RUN \
         ca-certificates \
         libssl-dev \
         git \
-        python && \
+        python3 && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get --no-install-recommends -y install clang-3.6 && \
     ln -s /usr/bin/clang++-3.6 /usr/bin/clang++ && \
-    ln -s /usr/bin/clang-3.6 /usr/bin/clang
-
+    ln -s /usr/bin/clang-3.6 /usr/bin/clang && \
+    ln -s /usr/bin/python3 /usr/bin/python

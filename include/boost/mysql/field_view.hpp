@@ -27,9 +27,6 @@ namespace mysql {
 /**
  * \brief Non-owning variant-like class that can represent of any of the allowed database types.
  * \details
- * For an overview on how to use fields, see [link mysql.overview.rows_fields.fields this section].
- * The accessors and type mappings reference is [link mysql.fields here].
- * \n
  * This is a variant-like class, similar to \ref field, but semi-owning and read-only. Values
  * of this type are usually created by the library, not directly by the user. It's cheap to
  * construct and copy, and it's the main library interface when reading values from MySQL.
@@ -178,35 +175,35 @@ public:
     BOOST_CXX14_CONSTEXPR bool is_time() const noexcept { return kind() == field_kind::time; }
 
     /// \brief Retrieves the underlying value as an `int64` or throws an exception.
-    /// \details If `!this->is_int64()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_int64()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline std::int64_t as_int64() const;
 
     /// \brief Retrieves the underlying value as an `uint64` or throws an exception.
-    /// \details If `!this->is_uint64()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_uint64()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline std::uint64_t as_uint64() const;
 
     /// \brief Retrieves the underlying value as a string or throws an exception.
-    /// \details If `!this->is_string()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_string()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline boost::string_view as_string() const;
 
     /// \brief Retrieves the underlying value as a `float` or throws an exception.
-    /// \details If `!this->is_float()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_float()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline float as_float() const;
 
     /// \brief Retrieves the underlying value as a `double` or throws an exception.
-    /// \details If `!this->is_double()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_double()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline double as_double() const;
 
     /// \brief Retrieves the underlying value as a `date` or throws an exception.
-    /// \details If `!this->is_date()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_date()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline date as_date() const;
 
     /// \brief Retrieves the underlying value as a `datetime` or throws an exception.
-    /// \details If `!this->is_datetime()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_datetime()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline datetime as_datetime() const;
 
     /// \brief Retrieves the underlying value as a `time` or throws an exception.
-    /// \details If `!this->is_time()`, throws [reflink bad_field_access].
+    /// \details If `!this->is_time()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline time as_time() const;
 
     /// \brief Retrieves the underlying value as an `int64` (unchecked access).
@@ -354,11 +351,10 @@ private:
  * \relates field_view
  * \brief Streams a `field_view`.
  * \details The value should be in the MySQL valid range of values. Concretely,
- * if the value is a [reflink date], [reflink datetime] or
- * [reflink time], it should be in the
- * \\[[reflink min_date], [reflink max_date]\\],
- * \\[[reflink min_datetime], [reflink max_datetime]\\] or
- * \\[[reflink min_time], [reflink max_time]\\], respectively.
+ * if the value is a \ref date, \ref datetime or \ref time, it should be in the
+ * \\[\ref min_date, \ref max_date\\],
+ * \\[\ref min_datetime, \ref max_datetime\\] or
+ * \\[\ref min_time, \ref max_time\\], respectively.
  * Otherwise, the results are undefined.
  */
 inline std::ostream& operator<<(std::ostream& os, const field_view& v);

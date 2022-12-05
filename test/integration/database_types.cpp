@@ -74,6 +74,14 @@ const flagsvec no_flags{};
 const flagsvec flags_unsigned{&metadata::is_unsigned};
 const flagsvec flags_zerofill{&metadata::is_unsigned, &metadata::is_zerofill};
 
+// Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
+void set_time_zone(boost::mysql::tcp_connection& conn)
+{
+    boost::mysql::tcp_resultset result;
+    conn.query("SET session time_zone = '+02:00'", result);
+    BOOST_TEST_REQUIRE(result.complete());
+}
+
 // clang-format off
 // Int cases
 void add_int_samples_helper(
@@ -612,6 +620,7 @@ std::vector<database_types_sample> all_samples = make_all_samples();
 BOOST_FIXTURE_TEST_CASE(query, tcp_network_fixture)
 {
     connect();
+    set_time_zone(conn);
 
     for (const auto& sample : all_samples)
     {
@@ -647,6 +656,7 @@ BOOST_FIXTURE_TEST_CASE(query, tcp_network_fixture)
 BOOST_FIXTURE_TEST_CASE(statement, tcp_network_fixture)
 {
     connect();
+    set_time_zone(conn);
 
     for (const auto& sample : all_samples)
     {
@@ -701,6 +711,7 @@ std::vector<database_types_sample> make_prepared_stmt_param_samples()
 BOOST_FIXTURE_TEST_CASE(prepared_statement_execute_param, tcp_network_fixture)
 {
     connect();
+    set_time_zone(conn);
 
     for (const auto& sample : make_prepared_stmt_param_samples())
     {
@@ -736,6 +747,8 @@ BOOST_FIXTURE_TEST_CASE(prepared_statement_execute_param, tcp_network_fixture)
 BOOST_FIXTURE_TEST_CASE(aliased_table_metadata, tcp_network_fixture)
 {
     connect();
+    set_time_zone(conn);
+
     boost::mysql::tcp_resultset result;
     conn.query("SELECT field_varchar AS field_alias FROM empty_table table_alias", result);
     std::vector<meta_validator> validators{

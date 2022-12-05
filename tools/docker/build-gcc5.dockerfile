@@ -14,9 +14,9 @@ RUN \
         ca-certificates \
         libssl-dev \
         git \
-        python && \
+        python3 && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get --no-install-recommends -y install gcc-5 g++-5 && \
     ln -s /usr/bin/g++-5 /usr/bin/g++ && \
-    ln -s /usr/bin/gcc-5 /usr/bin/gcc
-
+    ln -s /usr/bin/gcc-5 /usr/bin/gcc && \
+    ln -s /usr/bin/python3 /usr/bin/python

@@ -31,9 +31,7 @@ enum class ssl_mode
 };
 
 /**
- * \brief Parameters defining how to perform the handshake
- * with a MySQL server. See [link mysql.connparams this section]
- * for more information on each parameter.
+ * \brief Parameters defining how to perform the handshake with a MySQL server.
  */
 class handshake_params
 {

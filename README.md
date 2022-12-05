@@ -1,8 +1,9 @@
-# \<Proposed for\> Boost.MySQL (not yet in Boost)
+# Boost.MySQL (to be released in Boost 1.82)
 
- Linux/OSX | Windows | Coverage | Documentation
------------|---------|----------|--------------
-[![Build Status](https://github.com/anarthal/mysql/actions/workflows/build-code.yml/badge.svg)](https://github.com/anarthal/mysql) | [![Build status](https://ci.appveyor.com/api/projects/status/slqnb8mt91v33p1y/branch/master?svg=true)](https://ci.appveyor.com/project/anarthal/mysql/branch/master) | [![codecov](https://codecov.io/gh/anarthal/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/anarthal/mysql-asio/branch/master) | [![Build docs](https://github.com/anarthal/mysql/actions/workflows/build-docs.yml/badge.svg)](https://github.com/anarthal/mysql/actions/workflows/build-docs.yml)
+Branch | Windows/Linux Build | OSX build | Coverage
+-------|---------------------|-----------|---------
+[`master`](https://github.com/boostorg/mysql/tree/master)   | [![Build Status](https://drone.cpp.al/api/badges/boostorg/mysql/status.svg)](https://drone.cpp.al/boostorg/mysql)                        | [![Build Status](https://github.com/boostorg/mysql/actions/workflows/build-code.yml/badge.svg)](https://github.com/boostorg/mysql)                | [![codecov](https://codecov.io/gh/boostorg/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/boostorg/mysql/branch/master)
+[`develop`](https://github.com/boostorg/mysql/tree/develop) | [![Build Status](https://drone.cpp.al/api/badges/boostorg/mysql/status.svg?ref=refs/heads/develop)](https://drone.cpp.al/boostorg/mysql) | [![Build Status](https://github.com/boostorg/mysql/actions/workflows/build-code.yml/badge.svg?branch=develop)](https://github.com/boostorg/mysql) | [![codecov](https://codecov.io/gh/boostorg/mysql/branch/develop/graph/badge.svg)](https://codecov.io/gh/boostorg/mysql/branch/develop)
 
 Boost.Mysql is a C++11 client for the MySQL database server, based on Boost.Asio.
 This library is in the process of being proposed for Boost.
@@ -18,34 +19,43 @@ Documentation and examples are [here](https://anarthal.github.io/mysql/index.htm
 - It is written in C++11 and takes advantage of it.
 - It is header only.
 
-## Building
+## Using the library
 
-As this is a header-only library, you do not need to build it. However, as it
-has a bunch of dependencies, we suggest you use CMake to pull them in as you build
-your application.
+To use this library, you need:
 
-Download Boost.MySQL and make it available to your CMake script (we suggest you use
-CMake's FetchContent module to do this), and then call add_subdirectory() on the
-Boost.MySQL root directory. This will look for all the required dependencies.
-
-Finally, link your target against the **Boost::mysql** interface library, and you will be done!
-
-## Requirements
-
-- C++11 capable compiler (tested with gcc 5 to 11, clang 3.6 to 13 and MSVC 19.25).
-- Boost.
+- A C++11 capable compiler.
+- Boost 1.82 or higher.
 - OpenSSL.
 - CMake 3.13.0 or higher, if using CMake to build against the library (this is the preferred way).
-- Tested with MySQL v5.7.29, MySQL v8.0.19, MariaDB v10.3 and MariaDB v10.5.
+
+The library is header-only, but it depends on other Boost header-only libraries and on OpenSSL.
+To use the library, install Boost the way you would normally do (e.g. via `b2 install`), and create
+a `CMakeLists.txt` like this (replace `main` by your executable name and `main.cpp` by your list of source files):
+
+https://github.com/boostorg/mysql/blob/develop/test/cmake_b2_test/CMakeLists.txt#L10-L19
+
+## Tested with
+
+Boost.MySQL has been tested with the following compilers:
+- gcc 5 to 11.
+- clang 3.6 to 14.
+- msvc 14.1, 14.2 and 14.3.
+
+And with the following databases:
+- MySQL v5.7.29
+- MySQL v8.0.20
+- MariaDB v10.3
 
 ## Versioning and upgrading
 
-The current latest version is 0.1.0. Until Boost.Mysql passes its Boost formal review,
-the library might get non-backwards-compatible changes between minor versions.
-Sorry for that! Any breaking change will be listed here, together with a rationale and
+The current latest version is 0.2.0. Boost.Mysql has officially passed its formal review
+and is now in the process of being integrated into Boost. As part of this process, the library
+will get breaking changes that were deemed required by the formal review. The library will get
+its first stable release when Boost 1.82 is released (scheduled for early 2023).
+Any breaking change from v0.2.0 will be listed here, together with a rationale and
 an upgrade guide. If you encounter any trouble, please open an issue in the repository.
 
-### Breaking changes from 0.0.x to 0.1.x
+### Breaking changes from 0.0.x to 0.2.x
 
 This version has changed the way SSL is handled by the library to
 a more standard approach, similar to what Boost.Beast and Boost.Asio use.

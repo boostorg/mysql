@@ -15,7 +15,6 @@ namespace mysql {
 
 /**
  * \brief Buffer configuration parameters for a connection.
- * \details See [link mysql.connparams the section on handshake parameters] for more info.
  */
 class buffer_params
 {
@@ -25,7 +24,7 @@ public:
     /**
      * \brief Initializing constructor.
      * \param init_read_buffer_size Initial size of the read buffer. A bigger read buffer
-     * can increase the number of rows returned by [refmem resultset read_some].
+     * can increase the number of rows returned by \ref resultset::read_some.
      */
     constexpr buffer_params(std::size_t init_read_buffer_size = 0) noexcept
         : initial_read_buffer_size_(init_read_buffer_size)

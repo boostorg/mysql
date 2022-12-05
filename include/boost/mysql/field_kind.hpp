@@ -14,7 +14,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents the possible C++ types a [reflink field] or [reflink field_view] may have.
+ * \brief Represents the possible C++ types a \ref field or \ref field_view may have.
  */
 enum class field_kind
 {
@@ -39,13 +39,13 @@ enum class field_kind
     /// The field contains a `double`.
     double_,
 
-    /// The field contains a [reflink date].
+    /// The field contains a \ref date.
     date,
 
-    /// The field contains a [reflink datetime].
+    /// The field contains a \ref datetime.
     datetime,
 
-    /// The field contains a [reflink time].
+    /// The field contains a \ref time.
     time
 };
 

@@ -124,7 +124,14 @@ struct com_stmt_execute_param_meta_packet
 // close
 struct com_stmt_close_packet
 {
-    std::uint32_t statement_id;
+    // MSVC 14.1 bug workaround
+    constexpr com_stmt_close_packet() noexcept = default;
+    constexpr com_stmt_close_packet(std::uint32_t statement_id) noexcept
+        : statement_id(statement_id)
+    {
+    }
+
+    std::uint32_t statement_id{};
 
     static constexpr std::uint8_t command_id = 0x19;
 

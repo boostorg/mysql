@@ -5,32 +5,231 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-def main(ctx):
-  return [
-    windows_cxx("MSVC 14.1", "", image="cppalliance/dronevs2017", buildtype="b2", buildscript="drone", environment={
-      "B2_TOOLSET": "msvc-14.1",
-      "B2_CXXSTD": "11,14,17",
-      "B2_VARIANT": "release",
-      "B2_ADDRESS_MODEL": "64"
-    }),
-    windows_cxx("MSVC 14.2", "", image="cppalliance/dronevs2019", buildtype="b2", buildscript="drone", environment={
-      "B2_TOOLSET": "msvc-14.2",
-      "B2_CXXSTD": "14,17",
-      "B2_VARIANT": "release",
-      "B2_ADDRESS_MODEL": "64"
-    }),
-    windows_cxx("MSVC 14.3", "", image="cppalliance/dronevs2022", buildtype="b2", buildscript="drone", environment={
-      "B2_TOOLSET": "msvc-14.3",
-      "B2_CXXSTD": "17,20",
-      "B2_VARIANT": "debug,release",
-      "B2_ADDRESS_MODEL": "64"
-    }),
-    windows_cxx("MSVC 14.3, 32-bit", "", image="cppalliance/dronevs2022", buildtype="b2", buildscript="drone", environment={
-      "B2_TOOLSET": "msvc-14.3",
-      "B2_CXXSTD": "20",
-      "B2_VARIANT": "debug,release",
-      "B2_ADDRESS_MODEL": "32"
-    })
-  ]
+_triggers = { "branch": [ "master", "develop", "drone*", "bugfix/*", "feature/*", "fix/*", "pr/*" ] }
+_container_sha = 'f2ac4ad7d4038c604bad2a2c66893c5c966b869a'
 
-load("@boost_ci//ci/drone/:functions.star", "windows_cxx")
+
+def _image(name):
+    return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _container_sha)
+
+
+def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_model='64', server_host='localhost'):
+    return 'python tools/ci.py ' + \
+                '--build-kind=b2 ' + \
+                '--source-dir="{}" '.format(source_dir) + \
+                '--toolset={} '.format(toolset) + \
+                '--cxxstd={} '.format(cxxstd) + \
+                '--variant={} '.format(variant) + \
+                '--stdlib={} '.format(stdlib) + \
+                '--address-model={} '.format(address_model) + \
+                '--server-host={} '.format(server_host)
+
+
+def _cmake_command(source_dir, build_shared_libs=0, valgrind=0, coverage=0, generator='Ninja', db='mysql8', server_host='localhost'):
+    return 'python tools/ci.py ' + \
+                '--build-kind=cmake ' + \
+                '--generator="{}" '.format(generator) + \
+                '--source-dir="{}" '.format(source_dir) + \
+                '--build-shared-libs={} '.format(build_shared_libs) + \
+                '--valgrind={} '.format(valgrind) + \
+                '--coverage={} '.format(coverage) + \
+                '--is-mysql8={} '.format(1 if db == 'mysql8' else 0) + \
+                '--server-host={} '.format(server_host)
+
+
+def _linux_pipeline(name, image, command, db):
+    return {
+        "name": name,
+        "kind": "pipeline",
+        "type": "docker",
+        "trigger": _triggers,
+        "platform": {
+            "os": "linux",
+            "arch": "amd64"
+        },
+        "clone": {
+            "retries": 5
+        },
+        "node": {},
+        "steps": [{
+            "name": "Everything",
+            "image": image,
+            "pull": "if-not-exists",
+            "volumes": [{
+                "name": "mysql-socket",
+                "path": "/var/run/mysqld"
+            }],
+            "commands": [command],
+            "environment": {
+                "CODECOV_TOKEN": {
+                    "from_secret": "CODECOV_TOKEN"
+                }
+            }
+        }],
+        "services": [{
+            "name": "mysql",
+            "image": _image(db),
+            "volumes": [{
+                "name": "mysql-socket",
+                "path": "/var/run/mysqld"
+            }]
+        }],
+        "volumes": [{
+            "name": "mysql-socket",
+            "temp": {}
+        }]
+    }
+
+
+def _windows_pipeline(name, image, command):
+    return {
+        "name": name,
+        "kind": "pipeline",
+        "type": "docker",
+        "trigger": _triggers,
+        "platform": {
+            "os": "windows",
+            "arch": "amd64"
+        },
+        "clone": {
+            "retries": 5
+        },
+        "node": {},
+        "steps": [{
+            "name": "Everything",
+            "image": image,
+            "pull": "if-not-exists",
+            "commands": [command]
+        }]
+    }
+
+
+def linux_b2(
+    name,
+    image,
+    toolset,
+    cxxstd,
+    variant='debug,release',
+    stdlib='native'
+):
+    command = _b2_command(
+        source_dir='$(pwd)',
+        toolset=toolset,
+        cxxstd=cxxstd,
+        variant=variant,
+        stdlib=stdlib,
+        server_host='mysql'
+    )
+    return _linux_pipeline(name, image, command, db='mysql8')
+
+
+def windows_b2(
+    name,
+    image,
+    toolset,
+    cxxstd,
+    variant,
+    address_model = '64'
+):
+    command = _b2_command(
+        source_dir='$Env:DRONE_WORKSPACE',
+        toolset=toolset,
+        cxxstd=cxxstd,
+        variant=variant,
+        address_model=address_model,
+        server_host='localhost'
+    )
+    return _windows_pipeline(name, image, command)
+
+
+def linux_cmake(
+    name,
+    image,
+    build_shared_libs=0,
+    valgrind=0,
+    coverage=0,
+    db='mysql8'
+):
+    command = _cmake_command(
+        source_dir='$(pwd)',
+        build_shared_libs=build_shared_libs,
+        valgrind=valgrind,
+        coverage=coverage,
+        db=db,
+        server_host='mysql'
+    )
+    return _linux_pipeline(name, image, command, db=db)
+
+
+def windows_cmake(
+    name,
+    build_shared_libs=0
+):
+    command = _cmake_command(
+        source_dir='$Env:DRONE_WORKSPACE',
+        build_shared_libs=build_shared_libs,
+        generator='Visual Studio 17 2022',
+        db='mysql8',
+        server_host='localhost'
+    )
+    return _windows_pipeline(name, _image('build-msvc14_3'), command)
+
+
+def docs():
+    return {
+        "name": "Linux docs",
+        "kind": "pipeline",
+        "type": "docker",
+        "trigger": _triggers,
+        "platform": {
+            "os": "linux",
+            "arch": "amd64"
+        },
+        "clone": {
+            "retries": 5
+        },
+        "node": {},
+        "steps": [{
+            "name": "Everything",
+            "image": _image('build-docs'),
+            "pull": "if-not-exists",
+            "commands": [
+                'python tools/ci.py --build-kind=docs --source-dir=$(pwd)'
+            ]
+        }]
+    }
+
+
+def main(ctx):
+    return [
+        # CMake Linux
+        linux_cmake('Linux CMake valgrind',  _image('build-gcc11'), valgrind=1, build_shared_libs=0),
+        linux_cmake('Linux CMake coverage',  _image('build-gcc11'), coverage=1, build_shared_libs=0),
+        linux_cmake('Linux CMake MySQL 5.x', _image('build-clang14'), db='mysql5', build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',   _image('build-clang14'), db='mariadb', build_shared_libs=1),
+
+        # CMake Windows
+        windows_cmake('Windows CMake static', build_shared_libs=0),
+        windows_cmake('Windows CMake shared', build_shared_libs=1),
+
+        # B2 Linux
+        linux_b2('Linux B2 clang-3.6',    _image('build-clang3_6'), toolset='clang-3.6', cxxstd='14'),
+        linux_b2('Linux B2 clang-7',      _image('build-clang7'),   toolset='clang-7',   cxxstd='17'),
+        linux_b2('Linux B2 clang-11',     _image('build-clang11'),  toolset='clang-11',  cxxstd='20'),
+        linux_b2('Linux B2 clang-14',     _image('build-clang14'),  toolset='clang-14',  cxxstd='11,14,17,20', variant='release'),
+        linux_b2('Linux B2 clang-libc++', _image('build-clang14'),  toolset='clang-14',  cxxstd='20', stdlib='libc++'),
+        linux_b2('Linux B2 gcc-5',        _image('build-gcc5'),     toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
+        linux_b2('Linux B2 gcc-6',        _image('build-gcc6'),     toolset='gcc-6',     cxxstd='14,17'),
+        linux_b2('Linux B2 gcc-10',       _image('build-gcc10'),    toolset='gcc-10',    cxxstd='20'),
+        linux_b2('Linux B2 gcc-11',       _image('build-gcc11'),    toolset='gcc-11',    cxxstd='11,14,17,20', variant='release'),
+
+        # B2 Windows
+        windows_b2('Windows B2 msvc14.1 32-bit', _image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
+        windows_b2('Windows B2 msvc14.1 64-bit', _image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release',       address_model='64'),
+        windows_b2('Windows B2 msvc14.2',        _image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release',       address_model='64'),
+        windows_b2('Windows B2 msvc14.3',        _image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release', address_model='64'),
+
+        # Docs
+        docs()
+    ]
+

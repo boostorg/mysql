@@ -16,8 +16,9 @@ namespace mysql {
 /**
  * \brief A character set and a collation.
  * Names and ids for this enum correspond to the `Collation` and `Id`
- * fields returned by MySQL
- * [mysqllink show-collation.html `SHOW COLLATION`] statement.
+ * fields returned by MySQL <a
+ * href="https://dev.mysql.com/doc/refman/8.0/en/show-collation.html">`SHOW COLLATION`</a>
+ * statement.
  */
 enum class collation : std::uint16_t
 {

@@ -21,7 +21,7 @@ namespace mysql {
 /// An alias for boost::system error codes.
 using error_code = boost::system::error_code;
 
-/// Creates an [reflink error_code] from an [reflink errc].
+/// Creates an \ref error_code from an \ref errc.
 inline error_code make_error_code(errc error);
 
 /**

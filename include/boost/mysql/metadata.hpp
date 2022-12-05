@@ -20,7 +20,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds [link mysql.resultsets.metadata metadata] about a column in a SQL query.
+ * \brief Metadata about a column in a SQL query.
  * \details This is a regular, value type. Instances of this class are not created by the user
  * directly, but by the library.
  */
