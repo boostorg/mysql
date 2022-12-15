@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_PREPARED_STATEMENT_MESSAGES_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_PREPARED_STATEMENT_MESSAGES_HPP
 
-#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/field_view.hpp>
+
+#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
 #include <array>
 #include <forward_list>
@@ -80,6 +81,8 @@ serialization_sample make_stmt_execute_sample(
     );
 }
 
+constexpr std::uint8_t com_stmt_execute_blob_buffer[] = {0x70, 0x00, 0x01, 0xff};
+
 const serialization_test_spec com_stmt_execute_packet_spec {
     serialization_test_type::serialization, {
         make_stmt_execute_sample(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
@@ -104,7 +107,15 @@ const serialization_test_spec com_stmt_execute_packet_spec {
                 0x00, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x04, 0x74,
                 0x65, 0x73, 0x74
             },
-            "string_view"
+            "string"
+        ),
+        make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
+            make_field_views(blob_view(com_stmt_execute_blob_buffer)), {
+                0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+                0x00, 0x00, 0x00, 0x01, 0xfc, 0x00, 0x04, 0x70,
+                0x00, 0x01, 0xff
+            },
+            "blob"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
             make_field_views(3.14e20f), {
@@ -123,7 +134,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "double"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(makedate(2010, 9, 3)), {
+            make_field_views(date(2010u, 9u, 3u)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x0a, 0x00, 0x04, 0xda,
                 0x07, 0x09, 0x03
@@ -131,7 +142,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "date"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(makedt(2010, 9, 3, 10, 30, 59, 231800)), {
+            make_field_views(datetime(2010u, 9u, 3u, 10u, 30u, 59u, 231800u)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x0c, 0x00, 0x0b, 0xda,
                 0x07, 0x09, 0x03, 0x0a, 0x1e, 0x3b, 0x78, 0x89,
@@ -162,8 +173,8 @@ const serialization_test_spec com_stmt_execute_packet_spec {
                 boost::string_view("test"),
                 nullptr,
                 2.1e214,
-                makedate(2010, 9, 3),
-                makedt(2010, 9, 3, 10, 30, 59, 231800),
+                date(2010u, 9u, 3u),
+                datetime(2010u, 9u, 3u, 10u, 30u, 59u, 231800u),
                 maket(230, 30, 59, 231800),
                 nullptr
             ), {

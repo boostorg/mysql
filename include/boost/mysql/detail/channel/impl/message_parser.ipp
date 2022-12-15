@@ -86,7 +86,7 @@ inline void boost::mysql::detail::message_parser::parse_message(
         if (!state_.reading_header)
         {
             // Get the number of bytes belonging to this message
-            std::size_t new_bytes = std::min(buff.pending_size(), state_.remaining_bytes);
+            std::size_t new_bytes = (std::min)(buff.pending_size(), state_.remaining_bytes);
 
             // Mark them as belonging to the current message in the buffer
             buff.move_to_current_message(new_bytes);

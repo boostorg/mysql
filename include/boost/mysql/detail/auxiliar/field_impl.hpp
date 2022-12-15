@@ -9,8 +9,11 @@
 #define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_IMPL_HPP
 
 #include <boost/mysql/bad_field_access.hpp>
-#include <boost/mysql/datetime_types.hpp>
+#include <boost/mysql/blob.hpp>
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_kind.hpp>
+#include <boost/mysql/time.hpp>
 
 #include <boost/mp11.hpp>
 #include <boost/variant2/variant.hpp>
@@ -31,13 +34,14 @@ struct field_impl
         null_t,         // Any of the below when the value is NULL
         std::int64_t,   // signed TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT
         std::uint64_t,  // unsigned TINYINT, SMALLINT, MEDIUMINT, INT, BIGINT, YEAR, BIT
-        std::string,  // CHAR, VARCHAR, BINARY, VARBINARY, TEXT (all sizes), BLOB (all sizes), ENUM,
-                      // SET, DECIMAL, GEOMTRY
-        float,        // FLOAT
-        double,       // DOUBLE
-        date,         // DATE
-        datetime,     // DATETIME, TIMESTAMP
-        time          // TIME
+        std::string,    // CHAR, VARCHAR,  TEXT (all sizes), , ENUM,
+                        // SET, DECIMAL
+        blob,           // BINARY, VARBINARY, BLOB (all sizes), GEOMETRY
+        float,          // FLOAT
+        double,         // DOUBLE
+        date,           // DATE
+        datetime,       // DATETIME, TIMESTAMP
+        time            // TIME
         >;
 
     variant_type data;

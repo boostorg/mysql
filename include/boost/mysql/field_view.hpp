@@ -8,12 +8,16 @@
 #ifndef BOOST_MYSQL_FIELD_VIEW_HPP
 #define BOOST_MYSQL_FIELD_VIEW_HPP
 
-#include <boost/mysql/datetime_types.hpp>
+#include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/datetime.hpp>
+#include <boost/mysql/field_kind.hpp>
+#include <boost/mysql/time.hpp>
+
 #include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
-#include <boost/mysql/field_kind.hpp>
 
-#include <boost/config/detail/suffix.hpp>
+#include <boost/config.hpp>
 #include <boost/utility/string_view.hpp>
 
 #include <array>
@@ -106,6 +110,11 @@ public:
     /// be valid as long as the character buffer the `string_view` points to is valid.
     BOOST_CXX14_CONSTEXPR explicit inline field_view(boost::string_view v) noexcept;
 
+    /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a blob (`this->kind() ==
+    /// field_kind::blob`). \details Results in a `field_view` with reference semantics. It will
+    /// be valid as long as the buffer the `blob_view` points to is valid.
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(blob_view v) noexcept;
+
     /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a float (`this->kind() ==
     /// field_kind::float_`). \details Results in a `field_view` with value semantics (always
     /// valid).
@@ -130,15 +139,14 @@ public:
     BOOST_CXX14_CONSTEXPR explicit inline field_view(const time& v) noexcept;
 
     // TODO: hide this
-    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v) noexcept
-        : ikind_(internal_kind::sv_offset)
+    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v, bool is_blob) noexcept
+        : ikind_(is_blob ? internal_kind::sv_offset_blob : internal_kind::sv_offset_string),
+          repr_(v)
     {
-        repr_.sv_offset = {v.offset(), v.size()};
     }
     BOOST_CXX14_CONSTEXPR explicit field_view(const detail::field_impl* v) noexcept
-        : ikind_(internal_kind::field_ptr)
+        : ikind_(internal_kind::field_ptr), repr_(v)
     {
-        repr_.field_ptr = v;
     }
 
     /// Returns the type of the value this `field_view` is pointing to.
@@ -155,6 +163,9 @@ public:
 
     /// Returns whether this `field_view` points to a string value.
     BOOST_CXX14_CONSTEXPR bool is_string() const noexcept { return kind() == field_kind::string; }
+
+    /// Returns whether this `field_view` points to a binary blob.
+    BOOST_CXX14_CONSTEXPR bool is_blob() const noexcept { return kind() == field_kind::blob; }
 
     /// Returns whether this `field_view` points to a float value.
     BOOST_CXX14_CONSTEXPR bool is_float() const noexcept { return kind() == field_kind::float_; }
@@ -185,6 +196,10 @@ public:
     /// \brief Retrieves the underlying value as a string or throws an exception.
     /// \details If `!this->is_string()`, throws \ref bad_field_access.
     BOOST_CXX14_CONSTEXPR inline boost::string_view as_string() const;
+
+    /// \brief Retrieves the underlying value as a blob or throws an exception.
+    /// \details If `!this->is_blob()`, throws \ref bad_field_access.
+    BOOST_CXX14_CONSTEXPR inline blob_view as_blob() const;
 
     /// \brief Retrieves the underlying value as a `float` or throws an exception.
     /// \details If `!this->is_float()`, throws \ref bad_field_access.
@@ -217,6 +232,10 @@ public:
     /// \brief Retrieves the underlying value as a string (unchecked access).
     /// \details If `!this->is_string()`, results in undefined behavior.
     BOOST_CXX14_CONSTEXPR inline boost::string_view get_string() const noexcept;
+
+    /// \brief Retrieves the underlying value as a blob (unchecked access).
+    /// \details If `!this->is_blob()`, results in undefined behavior.
+    BOOST_CXX14_CONSTEXPR inline blob_view get_blob() const noexcept;
 
     /// \brief Retrieves the underlying value as a `float` (unchecked access).
     /// \details If `!this->is_float()`, results in undefined behavior.
@@ -254,12 +273,20 @@ public:
     // TODO: hide this
     void offset_to_string_view(const std::uint8_t* buffer_first) noexcept
     {
-        if (ikind_ == internal_kind::sv_offset)
+        if (ikind_ == internal_kind::sv_offset_string)
         {
             ikind_ = internal_kind::string;
             repr_.string = {
-                reinterpret_cast<const char*>(buffer_first) + repr_.sv_offset.offset,
-                repr_.sv_offset.size};
+                reinterpret_cast<const char*>(buffer_first) + repr_.sv_offset_.offset(),
+                repr_.sv_offset_.size()};
+        }
+        else if (ikind_ == internal_kind::sv_offset_blob)
+        {
+            ikind_ = internal_kind::blob;
+            repr_.blob = blob_view(
+                buffer_first + repr_.sv_offset_.offset(),
+                repr_.sv_offset_.size()
+            );
         }
     }
 
@@ -270,12 +297,14 @@ private:
         int64,
         uint64,
         string,
+        blob,
         float_,
         double_,
         date,
         datetime,
         time,
-        sv_offset,
+        sv_offset_string,
+        sv_offset_blob,
         field_ptr
     };
 
@@ -283,54 +312,28 @@ private:
     {
         std::int64_t int64;
         std::uint64_t uint64;
-        struct
-        {
-            const char* ptr;
-            std::size_t size;
-        } string;
+        boost::string_view string;
+        blob_view blob;
         float float_;
         double double_;
-        date::rep date_;
-        datetime::rep datetime_;
-        time::rep time_;
-        struct
-        {
-            std::size_t offset;
-            std::size_t size;
-        } sv_offset;
+        date date_;
+        datetime datetime_;
+        time time_;
+        detail::string_view_offset sv_offset_;
         const detail::field_impl* field_ptr;
 
         BOOST_CXX14_CONSTEXPR repr_t() noexcept : int64{} {}
         BOOST_CXX14_CONSTEXPR repr_t(std::int64_t v) noexcept : int64(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(std::uint64_t v) noexcept : uint64(v) {}
-        BOOST_CXX14_CONSTEXPR repr_t(boost::string_view v) noexcept : string{v.data(), v.size()} {}
+        BOOST_CXX14_CONSTEXPR repr_t(boost::string_view v) noexcept : string{v} {}
+        BOOST_CXX14_CONSTEXPR repr_t(blob_view v) noexcept : blob{v} {}
         BOOST_CXX14_CONSTEXPR repr_t(float v) noexcept : float_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(double v) noexcept : double_(v) {}
-        BOOST_CXX14_CONSTEXPR repr_t(date v) noexcept : date_(v.time_since_epoch().count()) {}
-        BOOST_CXX14_CONSTEXPR repr_t(datetime v) noexcept : datetime_(v.time_since_epoch().count())
-        {
-        }
+        BOOST_CXX14_CONSTEXPR repr_t(date v) noexcept : date_(v) {}
+        BOOST_CXX14_CONSTEXPR repr_t(datetime v) noexcept : datetime_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(time v) noexcept : time_(v.count()) {}
-        BOOST_CXX14_CONSTEXPR repr_t(detail::string_view_offset v) noexcept
-            : sv_offset{v.offset(), v.size()}
-        {
-        }
+        BOOST_CXX14_CONSTEXPR repr_t(detail::string_view_offset v) noexcept : sv_offset_{v} {}
         BOOST_CXX14_CONSTEXPR repr_t(const detail::field_impl* v) noexcept : field_ptr(v) {}
-
-        BOOST_CXX14_CONSTEXPR boost::string_view get_string() const noexcept
-        {
-            return boost::string_view(string.ptr, string.size);
-        }
-        BOOST_CXX14_CONSTEXPR date get_date() const noexcept { return date(date::duration(date_)); }
-        BOOST_CXX14_CONSTEXPR datetime get_datetime() const noexcept
-        {
-            return datetime(datetime::duration(datetime_));
-        }
-        BOOST_CXX14_CONSTEXPR time get_time() const noexcept { return time(time_); }
-        BOOST_CXX14_CONSTEXPR detail::string_view_offset get_sv_offset() const noexcept
-        {
-            return detail::string_view_offset(sv_offset.offset, sv_offset.size);
-        }
     };
 
     internal_kind ikind_{internal_kind::null};
@@ -350,12 +353,6 @@ private:
 /**
  * \relates field_view
  * \brief Streams a `field_view`.
- * \details The value should be in the MySQL valid range of values. Concretely,
- * if the value is a \ref date, \ref datetime or \ref time, it should be in the
- * \\[\ref min_date, \ref max_date\\],
- * \\[\ref min_datetime, \ref max_datetime\\] or
- * \\[\ref min_time, \ref max_time\\], respectively.
- * Otherwise, the results are undefined.
  */
 inline std::ostream& operator<<(std::ostream& os, const field_view& v);
 

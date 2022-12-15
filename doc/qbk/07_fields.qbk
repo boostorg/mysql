@@ -9,16 +9,212 @@
 [section:fields Fields]
 [nochunk]
 
+This section delves deeper on how to use [reflink field] and [reflink field_view]
+and its underlying types. Please make sure you've read [link mysql.overview.rows_fields.fields this section]
+before going on.
+
+[section field_view vs field]
+
+This library implements two types representing the concept of a field: [reflink field_view], which is non-owning,
+and [reflink field], which is owning. The relationship between them is similar to the one between
+`std::string_view` and `std::string`.
+
+For efficiency reasons, all library functions return `field_view`s. For example:
+
+```
+    row r;
+    // read it using resultset::read_one or a similar function
+    field_view fv = r.at(0); // fv doesn't own its memory; if r goes out of scope, fv becomes invalid
+    boost::string_view sv = fv.as_string(); // sv also points into r; if r goes out of scope, sv becomes invalid
+```
+
+When dealing with scalars (anything that is neither a string nor a blob), `field_view`'s accessors make
+a copy of the scalar:
+
+```
+    row r;
+    // read it using resultset::read_one or a similar function
+    field_view fv = r.at(0); // fv doesn't own its memory; if r goes out of scope, fv becomes invalid
+    std::int64_t intv = fv.as_int64(); // intv is valid even after r goes out of scope
+```
+
+`field_view`s are cheap to create and to copy, as they are small objects and don't perform
+any memory allocations. They are also immutable. On the other hand, `field`s may be more
+expensive to create and copy, as they may perform memory allocations.
+
+You may create a `field` from a `field_view`, taking ownership of its contents:
+
+```
+    row r;
+    // read it using resultset::read_one or a similar function
+    field_view fv = r.at(0); // fv doesn't own its memory; if r goes out of scope, fv becomes invalid
+    field f (fv); // f takes ownership of fv's contents. f is valid even after r goes out of scope
+```
+
+`field` and `field_view` use the same underlying types for scalars. For strings and blobs,
+`field` uses the owning types `std::string` and [reflink blob], while `field_view` uses the
+reference types `boost::string_view` and [reflink blob_view].
+
+`field` accessors return references, which allow you to mutate the underlying object:
+
+```
+    field f ("my_string"); // constructs a field that owns the string "my_string"
+    std::string& s = f.as_string(); // s points into f's storage
+    s.push_back('2'); // f now holds "my_string2"
+```
+
+You can also mutate a `field` using `emplace_xxx`:
+
+```
+    field f ("my_string"); // constructs a field that owns the string "my_string"
+    f.emplace_int64(42); // destroys "my_string" and stores the value 42 as an int64
+```
+
+Or using the assignment operator:
+
+```
+    field f ("my_string"); // constructs a field that owns the string "my_string"
+    f = 42; // equivalent to f.emplace_int64(42)
+```
+
+[endsect]
+
+[section Arithmetic types]
+
+This library uses `std::int64_t` to represent all MySQL signed integers (`TINYINT`, `SMALLINT`, `MEDIUMINT`...).
+Similarly, unsigned integers use `std::uint64_t`, 32-bit floats use `float` and 64-bit doubles
+use `double`.
+
+[endsect]
+
+[section String types]
+
+String types (`CHAR`, `VARCHAR`, `TEXT`, `SET`...) are represented as string fields, which
+translates into `boost::string_view` for `field_view` and `std::string` for `field`.
+
+This library performs no character set conversion on strings. All strings are provided
+as the server sends them. If you've issued a `"SET NAMES <charset-name>"` statement,
+strings will be encoded according to `<charset-name>`. For details, see [link mysql.charsets this section].
+
+The type `DECIMAL` is also provided as a string, to avoid losing precision.
+
+[endsect]
+
+[section Blob types]
+
+The types `BINARY`, `VARBINARY` and `BLOB` (of any size) are represented as blob fields,
+which are similar to string fields, but represent binary data instead of characters.
+The following types are used:
+
+* [reflink blob_view] is used by `field_view`. It's an alias for [@boost:/doc/html/core/span.html `boost::span<const unsigned char>`]
+  (a C++11 backport of `std::span`).
+* [reflink blob] is used by `field`. It's an alias for `std::vector<unsigned char>`.
+
+If MySQL adds any other type that this library doesn't understand, it is also represented as a blob.
+
+[endsect]
+
+[section The DATE type]
+
+MySQL __DATE__ is represented as [reflink date] in C++. `date` holds the year, month and day components of a date.
+It is a type close to the protocol, rather than a vocabulary type. The main reason for using `date` instead
+of a `std::chrono::time_point` type is that, under certain configurations, MySQL allows storing invalid
+dates, such as `2020-00-01`. These are not representable as a `std::chrono::time_point`.
+
+Unless dealing with these special values, we recommend converting `date`s to a `time_point` before using it.
+The member type [refmem date time_point_type] is a system-clock `time_point` that can represent the entire
+MySQL `DATE` range without problems. You can use [refmem date as_time_point] to perform the cast:
+
+```
+    date d (2020, 2, 19); // d holds "2020-02-19"
+    date::time_point_type tp = d.as_time_point(); // now use tp normally
+```
+
+If the date is not valid, `as_time_point` will throw an exception.
+
+You can query whether a `date` contains a valid date or not using [refmem date valid]:
+
+```
+    date d1 (2020, 2, 19); // regular date
+    bool v1 = d1.valid();  // true
+    date d2 (2020, 0, 19); // invalid date
+    bool v2 = d1.valid();  // false
+```
+
+You can combine it with [refmem date get_time_point], which performs an unchecked
+conversion:
+
+```
+    date d = /* obtain a date somehow */;
+    if (d.valid())
+    {
+        // Same as as_time_point, but doesn't check for validity
+        // Caution: if d is not valid, this will result in undefined behavior
+        date::time_point_type tp = d.get_time_point();
+    }
+    else
+    {
+        // the date is invalid
+    }
+```
+
+You can also construct a `date` from a `time_point`. If the `time_point` is
+out of range, an exception is thrown.
+
+[endsect]
+
+[section The DATETIME and TIMESTAMP types]
+
+Both types are represented as [reflink datetime] in C++. `datetime` represents a broken time point,
+having year, month, day, hour, minute, second and microseconds.
+
+MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`). The same considerations for
+`date` apply also to `datetime`:
+
+```
+    datetime dt1 (2020, 10, 11, 10, 20, 59, 123456); // regular datetime 2020-10-11 10:20:59.123456
+    bool v1 = dt1.valid(); // true
+    datetime dt2 (2020, 0, 11, 10, 20, 59); // invalid datetime 2020-00-10 10:20:59.000000
+    bool v2 = dt1.valid(); // false
+
+    datetime::time_point_type tp = dt1.as_time_point(); // convert to time_point
+```
+
+The `datetime` object doesn't carry any time zone information with it. The time zone semantics
+depend on the actual MySQL type:
+
+* __DATETIME__ is a "naive" time point object. It represents a time point without any time zone
+  information at all. It is up to the user to interpret which time zone the object is in.
+* When a __TIMESTAMP__ object is inserted, it is interpreted  to be in the connection's local time zone,
+  as given by the __time_zone__ variable, and converted to UTC for storage. When retrieved, they are converted back
+  to the time zone indicated by __time_zone__. The retrieved value of a `TIMESTAMP`
+  field is thus a time point in some local time zone, dictated by the current
+  __time_zone__ variable. As this variable can be changed programmatically, without
+  the client knowing it, we represent `TIMESTAMP`'s using the `datetime` object, which doesn't include time zone information.
+
+When working with `TIMESTAMP` values, we recommend setting the __time_zone__ to a known value. For example: 
+
+```
+    tcp_ssl_resultset result;
+    conn.query("SET SESSION time_zone = UTC", result);
+    // All TIMESTAMP values inserted or retrieved after this point will use UTC
+```
+
+[endsect]
+
+[section The TIME type]
+
+The __TIME__ type is a signed duration with a resolution of one microsecond.
+It is represented using the [reflink time] type, an alias for a
+`std::chrono::duration` specialization with microseconds as period.
+
+[endsect]
+
 [section Field accessors]
 
-
-This section is intended as a reference on all the accessors you may use on [reflink field] and
-[reflink field_view]. Please read [link mysql.overview.rows_fields.fields this section] for an overview.
-For `field`s, you can also use the `emplace_xxx` functions to change the type and value that the field contains.
-
+The following table summarizes the available accesors for `field_view` and `field`:
 
 [template table_field_accessor[mem][refmem field [mem]][br][refmem field_view [mem]]]
-
 
 [table
     [
@@ -33,7 +229,7 @@ For `field`s, you can also use the `emplace_xxx` functions to change the type an
     [
         [`int64`]
         [`std::int64_t`]
-        [Signed __TINYINT__, __SMALLINT__, __MEDIUMINT__, __INT__, __BIGINT__, __YEAR__, __BIT__]
+        [Signed __TINYINT__, __SMALLINT__, __MEDIUMINT__, __INT__, __BIGINT__]
         [[table_field_accessor is_int64]]
         [[table_field_accessor as_int64]]
         [[table_field_accessor get_int64]]
@@ -42,7 +238,7 @@ For `field`s, you can also use the `emplace_xxx` functions to change the type an
     [
         [`uint64`]
         [`std::uint64_t`]
-        [Unsigned __TINYINT__, __SMALLINT__, __MEDIUMINT__, __INT__, __BIGINT__]
+        [Unsigned __TINYINT__, __SMALLINT__, __MEDIUMINT__, __INT__, __BIGINT__, __YEAR__, __BIT__]
         [[table_field_accessor is_uint64]]
         [[table_field_accessor as_uint64]]
         [[table_field_accessor get_uint64]]
@@ -56,14 +252,27 @@ For `field`s, you can also use the `emplace_xxx` functions to change the type an
             `std::string` for `field`
         ]
         [
-            __CHAR__, __VARCHAR__, __BINARY__, __VARBINARY__, __TEXT__, __BLOB__, __ENUM__, __SET__
-
-            __DECIMAL__, __NUMERIC__, __GEOMETRY__
+            __CHAR__, __VARCHAR__, __TEXT__ (all sizes), __ENUM__, __SET__, __DECIMAL__, __NUMERIC__
         ]
         [[table_field_accessor is_string]]
         [[table_field_accessor as_string]]
         [[table_field_accessor get_string]]
         [[refmem field emplace_string]]
+    ]
+    [
+        [`blob`]
+        [
+            [reflink blob_view] for `field_view`
+            
+            [reflink blob] for `field`
+        ]
+        [
+            __BINARY__, __VARBINARY__,  __BLOB__  (all sizes), __GEOMETRY__
+        ]
+        [[table_field_accessor is_blob]]
+        [[table_field_accessor as_blob]]
+        [[table_field_accessor get_blob]]
+        [[refmem field emplace_blob]]
     ]
     [
         [`float_`]
@@ -263,40 +472,23 @@ considerations are listed below.
         ]
     ]
     [
-        [__DATE__, valid]
+        [__DATE__]
         [`date`]
         [[reflink date]]
         [
-            \[[reflink min_date], [reflink max_date]\]
+            \[[reflink min_date], [reflink max_date]\] (some MySQL implementations may allow a narrower range),
+            plus invalid and zero dates (see __allow_invalid_dates__ and  __strict_sql__).
         ]
         [`date`]
-        [
-            Time point type with a resolution of one day.
-        ]
-    ]
-    [
-        [__DATE__, invalid]
-        [`null`]
-        [`std::nullptr_t`]
         []
-        [`date`]
-        [
-            If the __allow_invalid_dates__ __sql_mode__ is set, MySQL will accept
-            invalid dates, like `"2010-02-31"`. Furthermore, if __strict_sql__
-            is not enabled, MySQL will accept zero dates, like `"0000-00-00"`, and
-            dates with zero components, like `"2010-00-20"`. These dates are invalid
-            and not representable as a [reflink date]. In this library, they are
-            all represented as NULL values, instead. These values
-            can be retrieved from the database in both text queries and prepared
-            statements, but cannot be specified as parameters of prepared statements.
-        ]
     ]
     [
-        [__DATETIME__, valid]
+        [__DATETIME__]
         [`datetime`]
         [[reflink datetime]]
         [
-            \[[reflink min_datetime], [reflink max_datetime]\]
+            \[[reflink min_datetime], [reflink max_datetime]\] (some MySQL implementations may allow a narrower range),
+            plus invalid and zero datetimes (see __allow_invalid_dates__ and  __strict_sql__).
         ]
         [`datetime`]
         [
@@ -304,58 +496,16 @@ considerations are listed below.
         ]
     ]
     [
-        [__DATETIME__, invalid]
-        [`null`]
-        [`std::nullptr_t`]
-        []
-        [`datetime`]
-        [
-            If __allow_invalid_dates__ __sql_mode__ is set, MySQL will accept
-            datetimes with invalid dates, like `"2010-02-31 10:10:10"`.
-            Furthermore, if __strict_sql__ is not enabled, MySQL will accept
-            zero datetimes, like `"0000-00-00 00:00:00"`, and
-            datetimes with zero date components, like `"2010-00-20 00:00:00"`.
-            These datetimes are invalid because they do not represent any real time point,
-            and are thus not representable as a [reflink datetime]. In this library, they are
-            all represented as NULL values, instead. These values
-            can be retrieved from the database in both text queries and prepared
-            statements, but cannot be specified as parameters of prepared statements.
-        ]
-    ]
-    [
-        [__TIMESTAMP__, valid]
+        [__TIMESTAMP__]
         [`datetime`]
         [[reflink datetime]]
         [
-            \[[reflink min_datetime], [reflink max_datetime]\]
+            \[[reflink min_datetime], [reflink max_datetime]\] (the actual MySQL supported range is usually
+            narrower, but we don't enforce it in the client), plus zero timestamps (see __strict_sql__).
         ]
         [`timestamp`]
         [
-            Like `DATETIME`, it also represents a time point. When inserted,
-            `TIMESTAMP`'s are interpreted as local times, according to the __time_zone__ variable,
-            and converted to UTC for storage. When retrieved, they are converted back
-            to the time zone indicated by __time_zone__. The retrieved value of a `TIMESTAMP`
-            field is thus a time point in some local time zone, dictated by the current
-            __time_zone__ variable. As this variable can be changed programmatically, without
-            the client knowing it, we represent `TIMESTAMP`'s without their time zone.
-
-            Although the range is narrower than `DATETIME`'s, we do not enforce it in the client.
-        ]
-    ]
-    [
-        [__TIMESTAMP__, invalid]
-        [`null`]
-        [`std::nullptr_t`]
-        []
-        [`timestamp`]
-        [
-            If __strict_sql__ is not enabled, MySQL accepts zero `TIMESTAMPs`, like
-            `"0000-00-00 00:00:00"`. These timestamps are invalid because
-            they do not represent any real time point, and are thus not representable
-            as a [reflink datetime]. In this library, they are
-            all represented as NULL values, instead. These values
-            can be retrieved from the database in both text queries and prepared
-            statements, but cannot be specified as parameters of prepared statements.
+            Time point type with a resolution of one microsecond.
         ]
     ]
     [
@@ -391,26 +541,6 @@ considerations are listed below.
         ]
     ]
     [
-        [__BINARY__]
-        [`string`]
-        [`boost::string_view` or `std::string`]
-        []
-        [`binary`]
-        [
-            Fixed-size blob.
-        ]
-    ]
-    [
-        [__VARBINARY__]
-        [`string`]
-        [`boost::string_view` or `std::string`]
-        []
-        [`varbinary`]
-        [
-            Variable size blob with a maximum size.
-        ]
-    ]
-    [
         [__TEXT__ (all sizes)]
         [`string`]
         [`boost::string_view` or `std::string`]
@@ -418,16 +548,6 @@ considerations are listed below.
         [`text`]
         [
             Variable size character string.
-        ]
-    ]
-    [
-        [__BLOB__ (all sizes)]
-        [`string`]
-        [`boost::string_view` or `std::string`]
-        []
-        [`blob`]
-        [
-            Variable size blob.
         ]
     ]
     [
@@ -462,9 +582,39 @@ considerations are listed below.
         ]
     ]
     [
+        [__BINARY__]
+        [`blob`]
+        [[reflink blob_view] or [reflink blob]]
+        []
+        [`binary`]
+        [
+            Fixed-size blob.
+        ]
+    ]
+    [
+        [__VARBINARY__]
+        [`blob`]
+        [[reflink blob_view] or [reflink blob]]
+        []
+        [`varbinary`]
+        [
+            Variable size blob with a maximum size.
+        ]
+    ]
+    [
+        [__BLOB__ (all sizes)]
+        [`blob`]
+        [[reflink blob_view] or [reflink blob]]
+        []
+        [`blob`]
+        [
+            Variable size blob.
+        ]
+    ]
+    [
         [__GEOMETRY__]
-        [`string`]
-        [`boost::string_view` or `std::string`]
+        [`blob`]
+        [[reflink blob_view] or [reflink blob]]
         []
         [`geometry`]
         [
@@ -473,11 +623,80 @@ considerations are listed below.
     ]
 ]
 
-[note
-    Character strings are [*NOT] aware of encoding -
-    they are represented as the string raw bytes. The encoding for each character
-    string column is part of the column metadata, and can be accessed using
-    [refmem metadata column_collation].
+[endsect]
+
+
+[section:cpp_to_mysql C++ to MySQL type mapping reference]
+
+This section shows how a parameter `v` in a expression `stmt.execute(std::make_tuple(v), result)`
+is interpreted by MySQL, depeding on `v`'s type:
+
+[table
+    [
+        [C++ type]
+        [MySQL type]
+        [Compatible with...]
+    ]
+    [
+        [`signed char`, `short`, `int`, `long`, `long long`]
+        [`BIGINT`]
+        [Signed `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`]
+    ]
+    [
+        [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
+        [`UNSIGNED BIGINT`]
+        [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
+    ]
+    [
+        [`std::string`, `boost::string_view`, `std::string_view`, `const char*`]
+        [`VARCHAR`]
+        [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `DECIMAL`, `NUMERIC`]
+    ]
+    [
+        [[reflink blob], [reflink blob_view]]
+        [`BLOB`]
+        [`BINARY`, `VARBINARY`, `BLOB` (all sizes), `GEOMETRY`]
+    ]
+    [
+        [`float`]
+        [`FLOAT`]
+        [`FLOAT`]
+    ]
+    [
+        [`double`]
+        [`DOUBLE`]
+        [`DOUBLE`]
+    ]
+    [
+        [[reflink date]]
+        [`DATE`]
+        [`DATE`]
+    ]
+    [
+        [[reflink datetime]]
+        [`DATETIME`]
+        [`DATETIME`, `TIMESTAMP`]
+    ]
+    [
+        [[reflink time]]
+        [`TIME`]
+        [`TIME`]
+    ]
+    [
+        [`std::nullptr_t`]
+        [`NULL`]
+        [Any of the other types. Used to insert `NULL`s, for example.]
+    ]
+    [
+        [[reflink field_view]]
+        [Depends on the actual type stored by the field]
+        []
+    ]
+    [
+        [[reflink field]]
+        [Depends on the actual type stored by the field]
+        []
+    ]
 ]
 
 [endsect]

@@ -7,16 +7,18 @@
 
 // Tests for both deserialize_binary_row() and deserialize_text_row()
 
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/resultset_base.hpp>
+
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata.hpp>
-#include <boost/mysql/resultset_base.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/test/tools/context.hpp>
@@ -30,6 +32,7 @@
 
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
+using boost::mysql::date;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::error_info;
@@ -88,7 +91,7 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
             "text_several_values",
             resultset_encoding::text,
             {0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30},
-            make_fv_vector(string_view_offset(1, 3), std::int64_t(21), 0.0f),
+            make_fv_vector(make_svoff_fv(1, 3, false), std::int64_t(21), 0.0f),
             make_fv_vector("val", std::int64_t(21), 0.0f),
             make_meta({ protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_ })
         },
@@ -96,9 +99,9 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
             "text_several_values_one_null",
             resultset_encoding::text,
             {0x03, 0x76, 0x61, 0x6c, 0xfb, 0x03, 0x76, 0x61, 0x6c},
-            make_fv_vector(string_view_offset(1, 3), nullptr, string_view_offset(6, 3)),
+            make_fv_vector(make_svoff_fv(1, 3, false), nullptr, make_svoff_fv(6, 3, false)),
             make_fv_vector("val", nullptr, "val"),
-            make_meta({ protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::varchar })
+            make_meta({ protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::var_string })
         },
         {
             "text_several_nulls",
@@ -130,7 +133,7 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
             "binary_two_values",
             resultset_encoding::binary,
             {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07},
-            make_fv_vector(string_view_offset(3, 3), std::int64_t(1901)),
+            make_fv_vector(make_svoff_fv(3, 3, false), std::int64_t(1901)),
             make_fv_vector("min", std::int64_t(1901)),
             make_meta({ protocol_field_type::var_string, protocol_field_type::short_ })
         },
@@ -138,7 +141,7 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
             "binary_one_value_one_null",
             resultset_encoding::binary,
             {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78},
-            make_fv_vector(string_view_offset(3, 3), nullptr),
+            make_fv_vector(make_svoff_fv(3, 3, false), nullptr),
             make_fv_vector("max", nullptr),
             make_meta({ protocol_field_type::var_string, protocol_field_type::tiny })
         },
@@ -177,12 +180,12 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
             },
             make_fv_vector(
                 std::int64_t(-3),
-                string_view_offset(5, 3),
+                make_svoff_fv(5, 3, false),
                 nullptr,
                 3.14f,
-                string_view_offset(13, 2),
+                make_svoff_fv(13, 2, false),
                 nullptr,
-                makedate(2018, 10, 5),
+                date(2018u, 10u, 5u),
                 3.10e-10
             ),
             make_fv_vector(
@@ -192,7 +195,7 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
                 3.14f,
                 "ab",
                 nullptr,
-                makedate(2018, 10, 5),
+                date(2018u, 10u, 5u),
                 3.10e-10
             ),
             make_meta({
@@ -374,7 +377,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
         resultset_encoding::text,
         {protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_}
     );
-    auto expected_fields = make_fv_vector(string_view_offset(1, 3), std::int64_t(21), 0.0f);
+    auto expected_fields = make_fv_vector(make_svoff_fv(1, 3, false), std::int64_t(21), 0.0f);
     std::vector<field_view> fields;
     error_code err;
     error_info info;
@@ -405,7 +408,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
         err,
         info
     );
-    expected_fields.emplace_back(string_view_offset(12, 3));
+    expected_fields.emplace_back(make_svoff_fv(12, 3, false));
     expected_fields.emplace_back(20);
     expected_fields.emplace_back(0.0f);
 
@@ -428,7 +431,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
         resultset_encoding::binary,
         {protocol_field_type::var_string, protocol_field_type::short_}
     );
-    auto expected_fields = make_fv_vector(string_view_offset(3, 3), std::int64_t(1901));
+    auto expected_fields = make_fv_vector(make_svoff_fv(3, 3, false), std::int64_t(1901));
     std::vector<field_view> fields;
     error_code err;
     error_info info;
@@ -459,7 +462,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
         err,
         info
     );
-    expected_fields.emplace_back(string_view_offset(11, 3));
+    expected_fields.emplace_back(make_svoff_fv(11, 3, false));
     expected_fields.emplace_back(nullptr);
 
     BOOST_TEST(err == error_code());

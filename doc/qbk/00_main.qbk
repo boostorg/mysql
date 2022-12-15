@@ -97,7 +97,8 @@
 [include 11_error_handling.qbk]
 [include 12_connparams.qbk]
 [include 13_reconnecting.qbk]
-[include 14_examples.qbk]
+[include 14_charsets.qbk]
+[include 15_examples.qbk]
 [include 16_tests.qbk]
 
 [section:quickref Reference]

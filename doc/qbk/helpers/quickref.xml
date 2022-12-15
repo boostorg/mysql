@@ -18,6 +18,8 @@
           <member><link linkend="mysql.ref.boost__mysql__bad_field_access">bad_field_access</link></member>
           <member><link linkend="mysql.ref.boost__mysql__buffer_params">buffer_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connection">connection</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__date">date</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__datetime">datetime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__execute_options">execute_options</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_info">error_info</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field">field</link></member>
@@ -36,9 +38,9 @@
       <entry valign="top">
         <bridgehead renderas="sect3">Type aliases</bridgehead>
         <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__blob">blob</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__blob_view">blob_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__days">days</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__date">date</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__datetime">datetime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__time">time</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_code">error_code</link></member>
           <member><link linkend="mysql.ref.boost__mysql__tcp_connection">tcp_connection</link></member>

@@ -5,756 +5,725 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-#include <boost/mysql/field_view.hpp>
+/**
+ * These tests try to cover a range of the possible types and values MySQL support.
+ * We list here all the tables that look like types_*, its contents and metadata.
+ * We try reading them using the text and binary protocols, and write them using the binary
+ * protocol. Table definitions must match those in db_setup.sql
+ */
+
+#include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/column_type.hpp>
+#include <boost/mysql/datetime.hpp>
+#include <boost/mysql/execute_options.hpp>
+#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/row.hpp>
+#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/tcp.hpp>
 #include <boost/mysql/use_views.hpp>
 
-#include <boost/asio/io_context.hpp>
-#include <boost/test/tools/context.hpp>
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
+
 #include <boost/test/unit_test.hpp>
 
-#include <bitset>
+#include <cstddef>
 #include <cstdint>
-#include <map>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
 
 #include "metadata_validator.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using namespace boost::unit_test;
+using boost::mysql::blob_view;
 using boost::mysql::column_type;
+using boost::mysql::date;
 using boost::mysql::datetime;
-using boost::mysql::field_view;
-using boost::mysql::make_field_views;
+using boost::mysql::execute_options;
 using boost::mysql::metadata;
 using boost::mysql::use_views;
 using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
 
-/**
- * These tests try to cover a range of the possible types and values MySQL support.
- * Given a table, a single field, and a row_id that will match the "id" field of the table,
- * we validate that we get the expected metadata and the expected value. The cases are
- * defined in SQL in db_setup.sql
- */
-struct database_types_sample
-{
-    std::string table;
-    std::string field;
-    std::string row_id;
-    field_view expected_value;
-    meta_validator mvalid;
-
-    template <class ValueType, class... Args>
-    database_types_sample(
-        std::string table,
-        std::string field,
-        std::string row_id,
-        ValueType&& expected_value,
-        Args&&... args
-    )
-        : table(table),
-          field(field),
-          row_id(std::move(row_id)),
-          expected_value(std::forward<ValueType>(expected_value)),
-          mvalid(std::move(table), std::move(field), std::forward<Args>(args)...)
-    {
-    }
-
-    std::string name() const { return stringize(table, '.', field, '.', row_id); }
-};
-
 // Helpers
 using flagsvec = std::vector<meta_validator::flag_getter>;
 
-const flagsvec no_flags{};
 const flagsvec flags_unsigned{&metadata::is_unsigned};
 const flagsvec flags_zerofill{&metadata::is_unsigned, &metadata::is_zerofill};
+const flagsvec no_flags{};
 
-// Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
-void set_time_zone(boost::mysql::tcp_connection& conn)
+struct database_types_fixture : tcp_network_fixture
 {
-    boost::mysql::tcp_resultset result;
-    conn.query("SET session time_zone = '+02:00'", result);
-    BOOST_TEST_REQUIRE(result.complete());
-}
+    // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
+    void set_time_zone()
+    {
+        boost::mysql::tcp_resultset result;
+        conn.query("SET session time_zone = '+02:00'", result);
+        BOOST_TEST_REQUIRE(result.complete());
+    }
 
-// clang-format off
-// Int cases
-void add_int_samples_helper(
-    const char* table_name,
-    column_type type,
-    std::int64_t signed_min,
-    std::int64_t signed_max,
-    std::uint64_t unsigned_max,
-    std::vector<database_types_sample>& output
-)
-{
-    output.emplace_back(table_name, "field_signed", "regular", std::int64_t(20), type);
-    output.emplace_back(table_name, "field_signed", "negative", std::int64_t(-20), type);
-    output.emplace_back(table_name, "field_signed", "min", signed_min, type);
-    output.emplace_back(table_name, "field_signed", "max", signed_max, type);
+    void set_sql_mode()
+    {
+        boost::mysql::tcp_resultset result;
+        conn.query("SET session sql_mode = 'ALLOW_INVALID_DATES'", result);
+        BOOST_TEST_REQUIRE(result.complete());
+    }
 
-    output.emplace_back(table_name, "field_unsigned", "regular", std::uint64_t(20), type, flags_unsigned);
-    output.emplace_back(table_name, "field_unsigned", "min", std::uint64_t(0), type, flags_unsigned);
-    output.emplace_back(table_name, "field_unsigned", "max", unsigned_max, type, flags_unsigned);
+    void start_transaction()
+    {
+        boost::mysql::tcp_resultset result;
+        conn.query("START TRANSACTION", result);
+        BOOST_TEST_REQUIRE(result.complete());
+    }
 
-    output.emplace_back(table_name, "field_width", "regular", std::int64_t(20), type);
-    output.emplace_back(table_name, "field_width", "negative", std::int64_t(-20), type);
-
-    output.emplace_back(table_name, "field_zerofill", "regular", std::uint64_t(20), type, flags_zerofill);
-    output.emplace_back(table_name, "field_zerofill", "min", std::uint64_t(0), type, flags_zerofill);
-}
-
-void add_int_samples(std::vector<database_types_sample>& output)
-{
-    add_int_samples_helper("types_tinyint", column_type::tinyint,
-        -0x80, 0x7f, 0xff, output);
-    add_int_samples_helper("types_smallint", column_type::smallint,
-        -0x8000, 0x7fff, 0xffff, output);
-    add_int_samples_helper("types_mediumint", column_type::mediumint,
-        -0x800000, 0x7fffff, 0xffffff, output);
-    add_int_samples_helper("types_int", column_type::int_,
-        -0x80000000LL, 0x7fffffff, 0xffffffff, output);
-    add_int_samples_helper("types_bigint", column_type::bigint,
-        -0x7fffffffffffffff - 1, 0x7fffffffffffffff, 0xffffffffffffffff, output);
-}
-
-// BIT cases
-void add_bit_samples_helper(
-    std::vector<database_types_sample>& output,
-    const char* field_name,
-    std::uint64_t regular_value,
-    std::uint64_t max_value
-)
-{
-    output.emplace_back("types_bit", field_name, "min",     std::uint64_t(0), column_type::bit, flags_unsigned);
-    output.emplace_back("types_bit", field_name, "regular", regular_value,    column_type::bit, flags_unsigned);
-    output.emplace_back("types_bit", field_name, "max",     max_value,        column_type::bit, flags_unsigned);
-}
-
-void add_bit_samples(std::vector<database_types_sample>& output)
-{
-    add_bit_samples_helper(output, "field_1",  0x01,               0x01);
-    add_bit_samples_helper(output, "field_8",  0x9e,               0xff);
-    add_bit_samples_helper(output, "field_14", 0x1e2a,             0x3fff);
-    add_bit_samples_helper(output, "field_16", 0x1234,             0xffff);
-    add_bit_samples_helper(output, "field_24", 0x123456,           0xffffff);
-    add_bit_samples_helper(output, "field_25", 0x154abe0,          0x1ffffff);
-    add_bit_samples_helper(output, "field_32", 0x12345678,         0xffffffff);
-    add_bit_samples_helper(output, "field_40", 0x123456789a,       0xffffffffff);
-    add_bit_samples_helper(output, "field_48", 0x123456789abc,     0xffffffffffff);
-    add_bit_samples_helper(output, "field_56", 0x123456789abcde,   0xffffffffffffff);
-    add_bit_samples_helper(output, "field_64", 0x1234567812345678, 0xffffffffffffffff);
-}
-
-// Floating point cases
-void add_float_samples(std::vector<database_types_sample>& output)
-{
-    output.emplace_back("types_float", "field_signed", "zero",
-        0.0f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "int_positive",
-        4.0f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "int_negative",
-        -4.0f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "fractional_positive",
-        4.2f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "fractional_negative",
-        -4.2f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "positive_exp_positive_int",
-        3e20f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "positive_exp_negative_int",
-        -3e20f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "positive_exp_positive_fractional",
-        3.14e20f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "positive_exp_negative_fractional",
-        -3.14e20f, column_type::float_, no_flags, 31);
-    output.emplace_back("types_float", "field_signed", "negative_exp_positive_fractional",
-        3.14e-20f, column_type::float_, no_flags, 31);
-
-    output.emplace_back("types_float", "field_unsigned", "zero",
-        0.0f, column_type::float_, flags_unsigned, 31);
-    output.emplace_back("types_float", "field_unsigned", "fractional_positive",
-        4.2f, column_type::float_, flags_unsigned, 31);
-
-    output.emplace_back("types_float", "field_width", "zero",
-        0.0f, column_type::float_, no_flags, 10);
-    output.emplace_back("types_float", "field_width", "fractional_positive",
-        4.2f, column_type::float_, no_flags, 10);
-    output.emplace_back("types_float", "field_width", "fractional_negative",
-        -4.2f, column_type::float_, no_flags, 10);
-
-    output.emplace_back("types_float", "field_zerofill", "zero",
-        0.0f, column_type::float_, flags_zerofill, 31);
-    output.emplace_back("types_float", "field_zerofill", "fractional_positive",
-        4.2f, column_type::float_, flags_zerofill, 31);
-    output.emplace_back("types_float", "field_zerofill", "positive_exp_positive_fractional",
-        3.14e20f, column_type::float_, flags_zerofill, 31);
-    output.emplace_back("types_float", "field_zerofill", "negative_exp_positive_fractional",
-        3.14e-20f, column_type::float_, flags_zerofill, 31);
-}
-
-void add_double_samples(std::vector<database_types_sample>& output)
-{
-    output.emplace_back("types_double", "field_signed", "zero",
-        0.0, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "int_positive",
-        4.0, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "int_negative",
-        -4.0, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "fractional_positive",
-        4.2, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "fractional_negative",
-        -4.2, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "positive_exp_positive_int",
-        3e200, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "positive_exp_negative_int",
-        -3e200, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "positive_exp_positive_fractional",
-        3.14e200, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "positive_exp_negative_fractional",
-        -3.14e200, column_type::double_, no_flags, 31);
-    output.emplace_back("types_double", "field_signed", "negative_exp_positive_fractional",
-        3.14e-200, column_type::double_, no_flags, 31);
-
-    output.emplace_back("types_double", "field_unsigned", "zero",
-        0.0, column_type::double_, flags_unsigned, 31);
-    output.emplace_back("types_double", "field_unsigned", "fractional_positive",
-        4.2, column_type::double_, flags_unsigned, 31);
-
-    output.emplace_back("types_double", "field_width", "zero",
-        0.0, column_type::double_, no_flags, 10);
-    output.emplace_back("types_double", "field_width", "fractional_positive",
-        4.2, column_type::double_, no_flags, 10);
-    output.emplace_back("types_double", "field_width", "fractional_negative",
-        -4.2, column_type::double_, no_flags, 10);
-
-    output.emplace_back("types_double", "field_zerofill", "zero",
-        0.0, column_type::double_, flags_zerofill, 31);
-    output.emplace_back("types_double", "field_zerofill", "fractional_positive",
-        4.2, column_type::double_, flags_zerofill, 31);
-    output.emplace_back("types_double", "field_zerofill", "positive_exp_positive_fractional",
-        3.14e200, column_type::double_, flags_zerofill, 31);
-    output.emplace_back("types_double", "field_zerofill", "negative_exp_positive_fractional",
-        3.14e-200, column_type::double_, flags_zerofill, 31);
-}
-
-// Date cases
-// MySQL accepts zero and invalid dates. We represent them as NULL
-constexpr const char* invalid_date_cases [] = {
-    "zero",
-    "yzero_mzero_dregular",
-    "yzero_mregular_dzero",
-    "yzero_invalid_date",
-    "yregular_mzero_dzero",
-    "yregular_mzero_dregular",
-    "yregular_mregular_dzero",
-    "yregular_invalid_date",
-    "yregular_invalid_date_leapregular",
-    "yregular_invalid_date_leap100"
+    database_types_fixture()
+    {
+        connect();
+        set_time_zone();
+        set_sql_mode();
+    }
 };
 
-void add_date_samples(std::vector<database_types_sample>& output)
+struct table
 {
-    constexpr auto type = column_type::date;
-    constexpr const char* table = "types_date";
-    constexpr const char* field = "field_date";
-
-    // Regular cases
-    output.emplace_back(table, field, "regular", makedate(2010, 3, 28), type);
-    output.emplace_back(table, field, "leap_regular", makedate(1788, 2, 29), type);
-    output.emplace_back(table, field, "leap_400", makedate(2000, 2, 29), type);
-    output.emplace_back(table, field, "min", makedate(0, 1, 1), type);
-    output.emplace_back(table, field, "max", makedate(9999, 12, 31), type);
-
-    // Invalid DATEs
-    for (const char* invalid_case: invalid_date_cases)
-    {
-        output.emplace_back(table, field, invalid_case, nullptr, type);
-    }
-}
-
-// Datetime and time cases
-
-// Given a number of microseconds, removes the least significant part according to decimals
-int round_micros(int input, int decimals)
-{
-    assert(decimals >= 0 && decimals <= 6);
-    if (decimals == 0) return 0;
-    auto modulus = static_cast<int>(std::pow(10, 6 - decimals));
-    return (input / modulus) * modulus;
-}
-
-std::chrono::microseconds round_micros(std::chrono::microseconds input, int decimals)
-{
-    return std::chrono::microseconds(round_micros(static_cast<int>(input.count()), decimals));
-}
-
-std::pair<std::string, datetime> datetime_from_id(std::bitset<4> id, int decimals)
-{
-    // id represents which components (h, m, s, u) should the test case have
-    constexpr struct
-    {
-        char letter;
-        std::chrono::microseconds offset;
-    } bit_meaning [] = {
-        { 'h', std::chrono::hours(23) }, // bit 0
-        { 'm', std::chrono::minutes(1) },
-        { 's', std::chrono::seconds(50) },
-        { 'u', std::chrono::microseconds(123456) }
-    };
-
     std::string name;
-    datetime dt = makedt(2010, 5, 2); // components all tests have
+    std::vector<meta_validator> metas;
+    std::vector<boost::mysql::row> rws;
 
-    for (std::size_t i = 0; i < id.size(); ++i)
+    table(std::string name) : name(std::move(name))
     {
-        if (id[i]) // component present
-        {
-            char letter = bit_meaning[i].letter;
-            auto offset = bit_meaning[i].offset;
-            name.push_back(letter); // add to name
-            dt += letter == 'u' ? round_micros(offset, decimals) : offset; // add to value
-        }
-    }
-    if (name.empty()) name = "date";
-
-    return {name, dt};
-}
-
-database_types_sample create_datetime_sample(
-    int decimals,
-    std::string id,
-    field_view expected,
-    column_type type
-)
-{
-    static std::map<column_type, const char*> table_map {
-        { column_type::datetime, "types_datetime" },
-        { column_type::timestamp, "types_timestamp" },
-        { column_type::time, "types_time" }
-    };
-    // Inconsistencies between Maria and MySQL in the unsigned flag
-    // we don't really care here about signedness of timestamps
-    return database_types_sample(
-        table_map.at(type),
-        "field_" + std::to_string(decimals),
-        std::move(id),
-        expected,
-        type,
-        no_flags,
-        decimals,
-        flagsvec{ &metadata::is_unsigned }
-    );
-}
-
-std::pair<std::string, boost::mysql::time> time_from_id(std::bitset<6> id, int decimals)
-{
-    // id represents which components (h, m, s, u) should the test case have
-    constexpr struct
-    {
-        char letter;
-        std::chrono::microseconds offset;
-    } bit_meaning [] = {
-        { 'n', std::chrono::hours(0) }, // bit 0: negative bit
-        { 'd', std::chrono::hours(48) }, // bit 1
-        { 'h', std::chrono::hours(23) }, // bit 2
-        { 'm', std::chrono::minutes(1) },
-        { 's', std::chrono::seconds(50) },
-        { 'u', std::chrono::microseconds(123456) }
-    };
-
-    std::string name;
-    boost::mysql::time t {0};
-
-    for (std::size_t i = 1; i < id.size(); ++i)
-    {
-        if (id[i]) // component present
-        {
-            char letter = bit_meaning[i].letter;
-            auto offset = bit_meaning[i].offset;
-            name.push_back(letter); // add to name
-            t += letter == 'u' ? round_micros(offset, decimals) : offset; // add to value
-        }
-    }
-    if (name.empty())
-        name = "zero";
-    if (id[0]) // bit sign
-    {
-        name = "negative_" + name;
-        t = -t;
+        add_meta(
+            "id",
+            column_type::varchar,
+            flagsvec{
+                &metadata::is_primary_key,
+                &metadata::is_not_null,
+                &metadata::has_no_default_value,
+            }
+        );
     }
 
-    return {name, t};
-}
-
-// shared between DATETIME and TIMESTAMP
-void add_common_datetime_samples(
-    column_type type,
-    std::vector<database_types_sample>& output
-)
-{
-    for (int decimals = 0; decimals <= 6; ++decimals)
+    void add_meta(
+        std::string field,
+        column_type type,
+        flagsvec flags = {},
+        unsigned decimals = 0,
+        flagsvec ignore_flags = {}
+    )
     {
-        // Regular values
-        auto max_int_id = static_cast<std::size_t>(std::pow(2, 4)); // 4 components can be varied
-        for (std::size_t int_id = 0; int_id < max_int_id; ++int_id)
-        {
-            std::bitset<4> bitset_id (int_id);
-            if (bitset_id[3] && decimals == 0)
-                continue; // cases with micros don't make sense for fields with no decimals
-            auto dt = datetime_from_id(int_id, decimals);
-            output.push_back(create_datetime_sample(decimals, std::move(dt.first), field_view(dt.second), type));
-        }
-
-        // Tests for leap years (valid dates)
-        output.push_back(create_datetime_sample(
-            decimals, "date_leap4", field_view(makedt(2004, 2, 29)), type));
-        output.push_back(create_datetime_sample(
-            decimals, "date_leap400", field_view(makedt(2000, 2, 29)), type));
+        metas.emplace_back(
+            name,
+            std::move(field),
+            type,
+            std::move(flags),
+            decimals,
+            std::move(ignore_flags)
+        );
     }
-}
 
-void add_datetime_samples(std::vector<database_types_sample>& output)
-{
-    add_common_datetime_samples(column_type::datetime, output);
-
-    for (int decimals = 0; decimals <= 6; ++decimals)
+    template <typename... Args>
+    void add_row(const char* id, Args&&... args)
     {
-        // min and max
-        output.push_back(create_datetime_sample(decimals, "min",
-                field_view(makedt(0, 1, 1)), column_type::datetime));
-        output.push_back(create_datetime_sample(decimals, "max",
-                field_view(makedt(9999, 12, 31, 23, 59, 59,
-                    round_micros(999999, decimals))), column_type::datetime));
+        assert(sizeof...(Args) + 1 == metas.size());
+        rws.emplace_back(makerow(id, std::forward<Args>(args)...));
+    }
 
-        // invalid dates
-        const char* lengths [] = {"date", "hms", decimals ? "hmsu" : nullptr };
-        for (const char* length:  lengths)
+    void validate_rows(boost::mysql::rows_view actual_matrix) const
+    {
+        // The matrix size is correct
+        BOOST_TEST_REQUIRE(metas.size() == actual_matrix.num_columns());
+
+        // Build a map with the received rows, by ID
+        std::unordered_map<std::string, boost::mysql::row_view> actual;
+        for (const auto& row : actual_matrix)
+            actual[std::string(row.at(0).as_string())] = row;
+
+        // Verify that all expected rows are there and match
+        for (const auto& expected_row : rws)
         {
-            if (!length)
-                continue;
-            for (const char* invalid_date_case: invalid_date_cases)
+            auto id = expected_row.at(0).as_string();
+            BOOST_TEST_CONTEXT("row_id=" << id)
             {
-                output.push_back(create_datetime_sample(
-                    decimals,
-                    stringize(length, '_', invalid_date_case),
-                    field_view(),
-                    column_type::datetime
-                ));
+                auto it = actual.find(std::string(id));
+                if (it == actual.end())
+                {
+                    BOOST_TEST(false, "Row not found in the actual table");
+                }
+                else
+                {
+                    BOOST_TEST(
+                        expected_row == it->second,
+                        "\nlhs: " << expected_row << "\nrhs: " << it->second
+                    );
+                    actual.erase(it);
+                }
+            }
+        }
+
+        // Verify that there are no additional rows
+        for (const auto& additional_row : actual)
+        {
+            BOOST_TEST_CONTEXT("row_id=" << additional_row.first)
+            {
+                BOOST_TEST(false, "Row was found in the table but not declared in database_types");
             }
         }
     }
-}
 
-void add_timestamp_samples(std::vector<database_types_sample>& output)
-{
-    add_common_datetime_samples(column_type::timestamp, output);
+    std::string select_sql() const { return stringize("SELECT * FROM ", name, " ORDER BY id"); }
 
-    // Only the full-zero TIMESTAMP is allowed - timestamps with
-    // invalid date parts are converted to the zero TIMESTAMP
-    for (int decimals = 0; decimals <= 6; ++decimals)
+    std::string insert_sql() const
     {
-        output.push_back(create_datetime_sample(decimals,
-            "zero", field_view(), column_type::timestamp));
-    }
-}
-
-void add_time_samples(std::vector<database_types_sample>& output)
-{
-    for (int decimals = 0; decimals <= 6; ++decimals)
-    {
-        // Regular values
-        auto max_int_id = static_cast<std::size_t>(std::pow(2, 6)); // 6 components can be varied
-        for (std::size_t int_id = 0; int_id < max_int_id; ++int_id)
+        std::ostringstream ss;
+        ss << "INSERT INTO " << name << " VALUES (";
+        for (std::size_t i = 0; i < metas.size(); ++i)
         {
-            std::bitset<6> bitset_id (int_id);
-            if (bitset_id[5] && decimals == 0) continue; // cases with micros don't make sense for fields with no decimals
-            if (bitset_id.to_ulong() == 1) continue; // negative zero does not make sense
-            auto t = time_from_id(int_id, decimals);
-            output.push_back(create_datetime_sample(
-                decimals, std::move(t.first), field_view(t.second), column_type::time));
+            if (i == 0)
+                ss << "?";
+            else
+                ss << ", ?";
         }
-
-        // min and max
-        auto max_value = decimals == 0 ? maket(838, 59, 59) : maket(838, 59, 58, round_micros(999999, decimals));
-        output.push_back(create_datetime_sample(
-            decimals, "min", field_view(-max_value), column_type::time));
-        output.push_back(create_datetime_sample(
-            decimals, "max",  field_view(max_value), column_type::time));
+        ss << ")";
+        return ss.str();
     }
-}
 
-// Year
-void add_year_samples(std::vector<database_types_sample>& output)
-{
-    output.emplace_back("types_year", "field_default", "regular",
-        std::uint64_t(2019), column_type::year, flags_zerofill);
-    output.emplace_back("types_year", "field_default", "min",
-        std::uint64_t(1901), column_type::year, flags_zerofill);
-    output.emplace_back("types_year", "field_default", "max",
-        std::uint64_t(2155), column_type::year, flags_zerofill);
-    output.emplace_back("types_year", "field_default", "zero",
-        std::uint64_t(0), column_type::year, flags_zerofill);
-}
-
-// String types
-void add_string_samples(std::vector<database_types_sample>& output)
-{
-    output.emplace_back("types_string", "field_char", "regular", "test_char", column_type::char_);
-    output.emplace_back("types_string", "field_char", "utf8", "\xc3\xb1", column_type::char_);
-    output.emplace_back("types_string", "field_char", "empty", "", column_type::char_);
-
-    output.emplace_back("types_string", "field_varchar", "regular", "test_varchar", column_type::varchar);
-    output.emplace_back("types_string", "field_varchar", "utf8", "\xc3\x91", column_type::varchar);
-    output.emplace_back("types_string", "field_varchar", "empty", "", column_type::varchar);
-
-    output.emplace_back("types_string", "field_tinytext", "regular", "test_tinytext", column_type::text);
-    output.emplace_back("types_string", "field_tinytext", "utf8", "\xc3\xa1", column_type::text);
-    output.emplace_back("types_string", "field_tinytext", "empty", "", column_type::text);
-
-    output.emplace_back("types_string", "field_text", "regular", "test_text", column_type::text);
-    output.emplace_back("types_string", "field_text", "utf8", "\xc3\xa9", column_type::text);
-    output.emplace_back("types_string", "field_text", "empty", "", column_type::text);
-
-    output.emplace_back("types_string", "field_mediumtext", "regular", "test_mediumtext", column_type::text);
-    output.emplace_back("types_string", "field_mediumtext", "utf8", "\xc3\xad", column_type::text);
-    output.emplace_back("types_string", "field_mediumtext", "empty", "", column_type::text);
-
-    output.emplace_back("types_string", "field_longtext", "regular", "test_longtext", column_type::text);
-    output.emplace_back("types_string", "field_longtext", "utf8", "\xc3\xb3", column_type::text);
-    output.emplace_back("types_string", "field_longtext", "empty", "", column_type::text);
-
-    output.emplace_back("types_string", "field_enum", "regular", "red", column_type::enum_);
-
-    output.emplace_back("types_string", "field_set", "regular", "red,green", column_type::set);
-    output.emplace_back("types_string", "field_set", "empty", "", column_type::set);
-}
-
-void add_binary_samples(std::vector<database_types_sample>& output)
-{
-    // BINARY values get padded with zeros to the declared length
-    output.emplace_back("types_binary", "field_binary", "regular", makesv("\0_binary\0\0"), column_type::binary);
-    output.emplace_back("types_binary", "field_binary", "nonascii", makesv("\0\xff" "\0\0\0\0\0\0\0\0"), column_type::binary);
-    output.emplace_back("types_binary", "field_binary", "empty", makesv("\0\0\0\0\0\0\0\0\0\0"), column_type::binary);
-
-    output.emplace_back("types_binary", "field_varbinary", "regular", makesv("\0_varbinary"), column_type::varbinary);
-    output.emplace_back("types_binary", "field_varbinary", "nonascii", makesv("\1\xfe"), column_type::varbinary);
-    output.emplace_back("types_binary", "field_varbinary", "empty", "", column_type::varbinary);
-
-    output.emplace_back("types_binary", "field_tinyblob", "regular", makesv("\0_tinyblob"), column_type::blob);
-    output.emplace_back("types_binary", "field_tinyblob", "nonascii", makesv("\2\xfd"), column_type::blob);
-    output.emplace_back("types_binary", "field_tinyblob", "empty", "", column_type::blob);
-
-    output.emplace_back("types_binary", "field_blob", "regular", makesv("\0_blob"), column_type::blob);
-    output.emplace_back("types_binary", "field_blob", "nonascii", makesv("\3\xfc"), column_type::blob);
-    output.emplace_back("types_binary", "field_blob", "empty", "", column_type::blob);
-
-    output.emplace_back("types_binary", "field_mediumblob", "regular", makesv("\0_mediumblob"), column_type::blob);
-    output.emplace_back("types_binary", "field_mediumblob", "nonascii", makesv("\4\xfb"), column_type::blob);
-    output.emplace_back("types_binary", "field_mediumblob", "empty", "", column_type::blob);
-
-    output.emplace_back("types_binary", "field_longblob", "regular", makesv("\0_longblob"), column_type::blob);
-    output.emplace_back("types_binary", "field_longblob", "nonascii", makesv("\5\xfa"), column_type::blob);
-    output.emplace_back("types_binary", "field_longblob", "empty", "", column_type::blob);
-}
-
-// Tests for not implemented types
-// These types do not have a more concrete representation in the library yet.
-// Check we get them as strings and we get the metadata correctly
-std::uint8_t geometry_value [] = {
-    0x00, 0x00, 0x00,
-    0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x40
+    std::string delete_sql() const { return stringize("DELETE FROM ", name); }
 };
 
-void add_not_implemented_samples(std::vector<database_types_sample>& output)
+// Int helpers
+void int_table_columns(table& output, column_type type)
 {
-    output.emplace_back("types_not_implemented", "field_decimal", "regular",
-        "300", column_type::decimal);
-    output.emplace_back("types_not_implemented", "field_geometry", "regular",
-        makesv(geometry_value), column_type::geometry);
+    output.add_meta("field_signed", type);
+    output.add_meta("field_unsigned", type, flags_unsigned);
+    output.add_meta("field_width", type);
+    output.add_meta("field_zerofill", type, flags_zerofill);
 }
 
-// Tests for certain metadata flags and NULL values
-void add_flags_samples(std::vector<database_types_sample>& output)
+table types_tinyint()
 {
-    output.emplace_back("types_flags", "field_timestamp", "default",
-        nullptr, column_type::timestamp, flagsvec{&metadata::is_set_to_now_on_update}, 0, flagsvec{&metadata::is_unsigned});
-    output.emplace_back("types_flags", "field_primary_key", "default",
-        std::int64_t(50), column_type::int_, flagsvec{&metadata::is_primary_key, &metadata::is_not_null, &metadata::is_auto_increment});
-    output.emplace_back("types_flags", "field_not_null", "default",
-        "char", column_type::char_, flagsvec{&metadata::is_not_null});
-    output.emplace_back("types_flags", "field_unique", "default",
-        std::int64_t(21), column_type::int_, flagsvec{&metadata::is_unique_key});
-    output.emplace_back("types_flags", "field_indexed", "default",
-        std::int64_t(42), column_type::int_, flagsvec{&metadata::is_multiple_key});
-}
-// clang-format on
+    table res("types_tinyint");
+    int_table_columns(res, column_type::tinyint);
 
-std::vector<database_types_sample> make_all_samples()
-{
-    std::vector<database_types_sample> res;
-    add_int_samples(res);
-    add_bit_samples(res);
-    add_float_samples(res);
-    add_double_samples(res);
-    add_date_samples(res);
-    add_datetime_samples(res);
-    add_timestamp_samples(res);
-    add_time_samples(res);
-    add_year_samples(res);
-    add_string_samples(res);
-    add_binary_samples(res);
-    add_not_implemented_samples(res);
-    add_flags_samples(res);
+    res.add_row("regular", 20, 20u, 20, 20u);
+    res.add_row("negative", -20, nullptr, -20, nullptr);
+    res.add_row("min", -0x80, 0u, nullptr, 0u);
+    res.add_row("max", 0x7f, 0xffu, nullptr, nullptr);
     return res;
 }
 
-std::vector<database_types_sample> all_samples = make_all_samples();
-
-BOOST_FIXTURE_TEST_CASE(query, tcp_network_fixture)
+table types_smallint()
 {
-    connect();
-    set_time_zone(conn);
+    table res("types_smallint");
+    int_table_columns(res, column_type::smallint);
 
-    for (const auto& sample : all_samples)
-    {
-        BOOST_TEST_CONTEXT(sample.name())
-        {
-            // Compose the query
-            auto query = stringize(
-                "SELECT ",
-                sample.field,
-                " FROM ",
-                sample.table,
-                " WHERE id = '",
-                sample.row_id,
-                "'"
-            );
-
-            // Execute it
-            boost::mysql::tcp_resultset result;
-            conn.query(query, result);
-            auto rows = result.read_all(use_views);
-
-            // Validate the received metadata
-            validate_meta(result.meta(), {sample.mvalid});
-
-            // Validate the returned value
-            BOOST_TEST_REQUIRE(rows.size() == 1u);
-            BOOST_TEST_REQUIRE(rows[0].size() == 1u);
-            BOOST_TEST(rows[0][0] == sample.expected_value);
-        }
-    }
-}
-
-BOOST_FIXTURE_TEST_CASE(statement, tcp_network_fixture)
-{
-    connect();
-    set_time_zone(conn);
-
-    for (const auto& sample : all_samples)
-    {
-        BOOST_TEST_CONTEXT(sample.name())
-        {
-            // Prepare the statement
-            boost::mysql::tcp_statement stmt;
-            auto stmt_sql = stringize(
-                "SELECT ",
-                sample.field,
-                " FROM ",
-                sample.table,
-                " WHERE id = ?"
-            );
-            conn.prepare_statement(stmt_sql, stmt);
-
-            // Execute it with the provided parameters
-            boost::mysql::tcp_resultset result;
-            stmt.execute(std::make_tuple(sample.row_id), result);
-            auto rows = result.read_all(use_views);
-
-            // Validate the received metadata
-            validate_meta(result.meta(), {sample.mvalid});
-
-            // Validate the returned value
-            BOOST_TEST_REQUIRE(rows.size() == 1u);
-            BOOST_TEST_REQUIRE(rows[0].size() == 1u);
-            BOOST_TEST(rows[0][0] == sample.expected_value);
-        }
-    }
-}
-
-// The prepared statement param tests binary serialization.
-// This test is not applicable (yet) to NULL values.
-// Doing "field = ?" where ? is NULL never matches anything.
-// Filter the cases to remove the ones that
-// are not applicable
-std::vector<database_types_sample> make_prepared_stmt_param_samples()
-{
-    std::vector<database_types_sample> res;
-    res.reserve(all_samples.size());
-    for (const auto& test : all_samples)
-    {
-        if (!test.expected_value.is_null())
-        {
-            res.push_back(test);
-        }
-    }
+    res.add_row("regular", 20, 20u, 20, 20u);
+    res.add_row("negative", -20, nullptr, -20, nullptr);
+    res.add_row("min", -0x8000, 0u, nullptr, 0u);
+    res.add_row("max", 0x7fff, 0xffffu, nullptr, nullptr);
     return res;
 }
 
-BOOST_FIXTURE_TEST_CASE(prepared_statement_execute_param, tcp_network_fixture)
+table types_mediumint()
 {
-    connect();
-    set_time_zone(conn);
+    table res("types_mediumint");
+    int_table_columns(res, column_type::mediumint);
 
-    for (const auto& sample : make_prepared_stmt_param_samples())
+    res.add_row("regular", 20, 20u, 20, 20u);
+    res.add_row("negative", -20, nullptr, -20, nullptr);
+    res.add_row("min", -0x800000, 0u, nullptr, 0u);
+    res.add_row("max", 0x7fffff, 0xffffffu, nullptr, nullptr);
+    return res;
+}
+
+table types_int()
+{
+    table res("types_int");
+    int_table_columns(res, column_type::int_);
+
+    res.add_row("regular", 20, 20u, 20, 20u);
+    res.add_row("negative", -20, nullptr, -20, nullptr);
+    res.add_row("min", -0x80000000LL, 0u, nullptr, 0u);
+    res.add_row("max", 0x7fffffff, 0xffffffffu, nullptr, nullptr);
+    return res;
+}
+
+table types_bigint()
+{
+    table res("types_bigint");
+    int_table_columns(res, column_type::bigint);
+
+    res.add_row("regular", 20, 20u, 20, 20u);
+    res.add_row("negative", -20, nullptr, -20, nullptr);
+    res.add_row("min", -0x7fffffffffffffff - 1, 0u, nullptr, 0u);
+    res.add_row("max", 0x7fffffffffffffff, 0xffffffffffffffffu, nullptr, nullptr);
+    return res;
+}
+
+table types_year()
+{
+    table res("types_year");
+    res.add_meta("field_default", column_type::year, flags_zerofill);
+
+    res.add_row("regular", 2019u);
+    res.add_row("min", 1901u);
+    res.add_row("max", 2155u);
+    res.add_row("zero", 0u);
+    return res;
+}
+
+table types_bit()
+{
+    table res("types_bit");
+    const char* columns[] = {
+        "field_1",
+        "field_8",
+        "field_14",
+        "field_16",
+        "field_24",
+        "field_25",
+        "field_32",
+        "field_40",
+        "field_48",
+        "field_56",
+        "field_64"};
+    for (const char* col : columns)
+        res.add_meta(col, column_type::bit, flags_unsigned);
+
+    // clang-format off
+    res.add_row("min",     0u, 0u,    0u,      0u,      0u,        0u,         0u,          0u,            0u,              0u,                0u);
+    res.add_row("regular", 1u, 0x9eu, 0x1e2au, 0x1234u, 0x123456u, 0x154abe0u, 0x12345678u, 0x123456789au, 0x123456789abcu, 0x123456789abcdeu, 0x1234567812345678u);
+    res.add_row("max",     1u, 0xffu, 0x3fffu, 0xffffu, 0xffffffu, 0x1ffffffu, 0xffffffffu, 0xffffffffffu, 0xffffffffffffu, 0xffffffffffffffu, 0xffffffffffffffffu);
+    // clang-format on
+    return res;
+}
+
+table types_float()
+{
+    table res("types_float");
+    res.add_meta("field_signed", column_type::float_, no_flags, 31);
+    res.add_meta("field_unsigned", column_type::float_, flags_unsigned, 31);
+    res.add_meta("field_width", column_type::float_, no_flags, 10);
+    res.add_meta("field_zerofill", column_type::float_, flags_zerofill, 31);
+
+    res.add_row("zero", 0.f, 0.f, 0.f, 0.f);
+    res.add_row("int_positive", 4.f, nullptr, nullptr, nullptr);
+    res.add_row("int_negative", -4.f, nullptr, nullptr, nullptr);
+    res.add_row("fractional_positive", 4.2f, 4.2f, 4.2f, 4.2f);
+    res.add_row("fractional_negative", -4.2f, nullptr, -4.2f, nullptr);
+    res.add_row("positive_exp_positive_int", 3e20f, nullptr, nullptr, nullptr);
+    res.add_row("positive_exp_negative_int", -3e20f, nullptr, nullptr, nullptr);
+    res.add_row("positive_exp_positive_fractional", 3.14e20f, nullptr, nullptr, 3.14e20f);
+    res.add_row("positive_exp_negative_fractional", -3.14e20f, nullptr, nullptr, nullptr);
+    res.add_row("negative_exp_positive_fractional", 3.14e-20f, nullptr, nullptr, 3.14e-20f);
+    return res;
+}
+
+table types_double()
+{
+    table res("types_double");
+    res.add_meta("field_signed", column_type::double_, no_flags, 31);
+    res.add_meta("field_unsigned", column_type::double_, flags_unsigned, 31);
+    res.add_meta("field_width", column_type::double_, no_flags, 10);
+    res.add_meta("field_zerofill", column_type::double_, flags_zerofill, 31);
+
+    res.add_row("zero", 0., 0., 0., 0.);
+    res.add_row("int_positive", 4., nullptr, nullptr, nullptr);
+    res.add_row("int_negative", -4., nullptr, nullptr, nullptr);
+    res.add_row("fractional_positive", 4.2, 4.2, 4.2, 4.2);
+    res.add_row("fractional_negative", -4.2, nullptr, -4.2, nullptr);
+    res.add_row("positive_exp_positive_int", 3e200, nullptr, nullptr, nullptr);
+    res.add_row("positive_exp_negative_int", -3e200, nullptr, nullptr, nullptr);
+    res.add_row("positive_exp_positive_fractional", 3.14e200, nullptr, nullptr, 3.14e200);
+    res.add_row("positive_exp_negative_fractional", -3.14e200, nullptr, nullptr, nullptr);
+    res.add_row("negative_exp_positive_fractional", 3.14e-200, nullptr, nullptr, 3.14e-200);
+    return res;
+}
+
+table types_date()
+{
+    table res("types_date");
+    res.add_meta("field_date", column_type::date);
+
+    res.add_row("regular", date(2010u, 3u, 28u));
+    res.add_row("leap_regular", date(1788u, 2u, 29u));
+    res.add_row("leap_400", date(2000u, 2u, 29u));
+    res.add_row("min", date(0u, 1u, 01u));
+    res.add_row("max", date(9999u, 12u, 31u));
+    res.add_row("zero", date(0u, 0u, 0u));
+    res.add_row("yzero_mzero_dregular", date(0u, 0u, 20u));
+    res.add_row("yzero_mregular_dzero", date(0u, 11u, 0u));
+    res.add_row("yzero_invalid_date", date(0u, 11u, 31u));
+    res.add_row("yregular_mzero_dzero", date(2020u, 0u, 0u));
+    res.add_row("yregular_mzero_dregular", date(2020u, 0u, 20u));
+    res.add_row("yregular_mregular_dzero", date(2020u, 11u, 0u));
+    res.add_row("yregular_invalid_date", date(2020u, 11u, 31u));
+    res.add_row("yregular_invalid_date_leapregular", date(1999u, 2u, 29u));
+    res.add_row("yregular_invalid_date_leap100", date(1900u, 2u, 29u));
+    return res;
+}
+
+void datetime_timestamp_common_rows(table& res)
+{
+    // clang-format off
+    res.add_row("date",         datetime(2010, 5, 2, 0, 0, 0, 0),      datetime(2010, 5, 2, 0, 0, 0, 0),           datetime(2010, 5, 2, 0, 0, 0, 0),           datetime(2010, 5, 2, 0, 0, 0, 0),           datetime(2010, 5, 2, 0, 0, 0, 0),           datetime(2010, 5, 2, 0, 0, 0, 0),           datetime(2010, 5, 2, 0, 0, 0, 0));
+    res.add_row("date_leap4",   datetime(2004, 2, 29, 0, 0, 0, 0),     datetime(2004, 2, 29, 0, 0, 0, 0),          datetime(2004, 2, 29, 0, 0, 0, 0),          datetime(2004, 2, 29, 0, 0, 0, 0),          datetime(2004, 2, 29, 0, 0, 0, 0),          datetime(2004, 2, 29, 0, 0, 0, 0),          datetime(2004, 2, 29, 0, 0, 0, 0));
+    res.add_row("date_leap400", datetime(2000, 2, 29, 0, 0, 0, 0),     datetime(2000, 2, 29, 0, 0, 0, 0),          datetime(2000, 2, 29, 0, 0, 0, 0),          datetime(2000, 2, 29, 0, 0, 0, 0),          datetime(2000, 2, 29, 0, 0, 0, 0),          datetime(2000, 2, 29, 0, 0, 0, 0),          datetime(2000, 2, 29, 0, 0, 0, 0));
+    res.add_row("u",            nullptr,                               datetime(2010, 5, 2, 0, 0, 0, 100000),      datetime(2010, 5, 2, 0, 0, 0, 120000),      datetime(2010, 5, 2, 0, 0, 0, 123000),      datetime(2010, 5, 2, 0, 0, 0, 123400),      datetime(2010, 5, 2, 0, 0, 0, 123450),      datetime(2010, 5, 2, 0, 0, 0, 123456));
+    res.add_row("s",            datetime(2010, 5, 2, 0, 0, 50, 0),     datetime(2010, 5, 2, 0, 0, 50, 0),          datetime(2010, 5, 2, 0, 0, 50, 0),          datetime(2010, 5, 2, 0, 0, 50, 0),          datetime(2010, 5, 2, 0, 0, 50, 0),          datetime(2010, 5, 2, 0, 0, 50, 0),          datetime(2010, 5, 2, 0, 0, 50, 0)), 
+    res.add_row("m",            datetime(2010, 5, 2, 0, 1, 0, 0),      datetime(2010, 5, 2, 0, 1, 0, 0),           datetime(2010, 5, 2, 0, 1, 0, 0),           datetime(2010, 5, 2, 0, 1, 0, 0),           datetime(2010, 5, 2, 0, 1, 0, 0),           datetime(2010, 5, 2, 0, 1, 0, 0),           datetime(2010, 5, 2, 0, 1, 0, 0));
+    res.add_row("hs",           datetime(2010, 5, 2, 23, 0, 50, 0),    datetime(2010, 5, 2, 23, 0, 50, 0),         datetime(2010, 5, 2, 23, 0, 50, 0),         datetime(2010, 5, 2, 23, 0, 50, 0),         datetime(2010, 5, 2, 23, 0, 50, 0),         datetime(2010, 5, 2, 23, 0, 50, 0),         datetime(2010, 5, 2, 23, 0, 50, 0));
+    res.add_row("ms",           datetime(2010, 5, 2, 0, 1, 50, 0),     datetime(2010, 5, 2, 0, 1, 50, 0),          datetime(2010, 5, 2, 0, 1, 50, 0),          datetime(2010, 5, 2, 0, 1, 50, 0),          datetime(2010, 5, 2, 0, 1, 50, 0),          datetime(2010, 5, 2, 0, 1, 50, 0),          datetime(2010, 5, 2, 0, 1, 50, 0));
+    res.add_row("hu",           nullptr,                               datetime(2010, 5, 2, 23, 0, 0, 100000),     datetime(2010, 5, 2, 23, 0, 0, 120000),     datetime(2010, 5, 2, 23, 0, 0, 123000),     datetime(2010, 5, 2, 23, 0, 0, 123400),     datetime(2010, 5, 2, 23, 0, 0, 123450),     datetime(2010, 5, 2, 23, 0, 0, 123456));
+    res.add_row("mu",           nullptr,                               datetime(2010, 5, 2, 0, 1, 0, 100000),      datetime(2010, 5, 2, 0, 1, 0, 120000),      datetime(2010, 5, 2, 0, 1, 0, 123000),      datetime(2010, 5, 2, 0, 1, 0, 123400),      datetime(2010, 5, 2, 0, 1, 0, 123450),      datetime(2010, 5, 2, 0, 1, 0, 123456));
+    res.add_row("hmu",          nullptr,                               datetime(2010, 5, 2, 23, 1, 0, 100000),     datetime(2010, 5, 2, 23, 1, 0, 120000),     datetime(2010, 5, 2, 23, 1, 0, 123000),     datetime(2010, 5, 2, 23, 1, 0, 123400),     datetime(2010, 5, 2, 23, 1, 0, 123450),     datetime(2010, 5, 2, 23, 1, 0, 123456));
+    res.add_row("su",           nullptr,                               datetime(2010, 5, 2, 0, 0, 50, 100000),     datetime(2010, 5, 2, 0, 0, 50, 120000),     datetime(2010, 5, 2, 0, 0, 50, 123000),     datetime(2010, 5, 2, 0, 0, 50, 123400),     datetime(2010, 5, 2, 0, 0, 50, 123450),     datetime(2010, 5, 2, 0, 0, 50, 123456));
+    res.add_row("hsu",          nullptr,                               datetime(2010, 5, 2, 23, 0, 50, 100000),    datetime(2010, 5, 2, 23, 0, 50, 120000),    datetime(2010, 5, 2, 23, 0, 50, 123000),    datetime(2010, 5, 2, 23, 0, 50, 123400),    datetime(2010, 5, 2, 23, 0, 50, 123450),    datetime(2010, 5, 2, 23, 0, 50, 123456));
+    res.add_row("msu",          nullptr,                               datetime(2010, 5, 2, 0, 1, 50, 100000),     datetime(2010, 5, 2, 0, 1, 50, 120000),     datetime(2010, 5, 2, 0, 1, 50, 123000),     datetime(2010, 5, 2, 0, 1, 50, 123400),     datetime(2010, 5, 2, 0, 1, 50, 123450),     datetime(2010, 5, 2, 0, 1, 50, 123456));
+    res.add_row("h",            datetime(2010, 5, 2, 23, 0, 0, 0),     datetime(2010, 5, 2, 23, 0, 0, 0),          datetime(2010, 5, 2, 23, 0, 0, 0),          datetime(2010, 5, 2, 23, 0, 0, 0),          datetime(2010, 5, 2, 23, 0, 0, 0),          datetime(2010, 5, 2, 23, 0, 0, 0),          datetime(2010, 5, 2, 23, 0, 0, 0));
+    res.add_row("hm",           datetime(2010, 5, 2, 23, 1, 0, 0),     datetime(2010, 5, 2, 23, 1, 0, 0),          datetime(2010, 5, 2, 23, 1, 0, 0),          datetime(2010, 5, 2, 23, 1, 0, 0),          datetime(2010, 5, 2, 23, 1, 0, 0),          datetime(2010, 5, 2, 23, 1, 0, 0),          datetime(2010, 5, 2, 23, 1, 0, 0));
+    res.add_row("hms",          datetime(2010, 5, 2, 23, 1, 50, 0),    datetime(2010, 5, 2, 23, 1, 50, 0),         datetime(2010, 5, 2, 23, 1, 50, 0),         datetime(2010, 5, 2, 23, 1, 50, 0),         datetime(2010, 5, 2, 23, 1, 50, 0),         datetime(2010, 5, 2, 23, 1, 50, 0),         datetime(2010, 5, 2, 23, 1, 50, 0));
+    res.add_row("hmsu",         nullptr,                               datetime(2010, 5, 2, 23, 1, 50, 100000),    datetime(2010, 5, 2, 23, 1, 50, 120000),    datetime(2010, 5, 2, 23, 1, 50, 123000),    datetime(2010, 5, 2, 23, 1, 50, 123400),    datetime(2010, 5, 2, 23, 1, 50, 123450),    datetime(2010, 5, 2, 23, 1, 50, 123456));
+    // clang-format on
+}
+
+table types_datetime()
+{
+    table res("types_datetime");
+    res.add_meta("field_0", column_type::datetime, no_flags, 0, flags_unsigned);
+    res.add_meta("field_1", column_type::datetime, no_flags, 1, flags_unsigned);
+    res.add_meta("field_2", column_type::datetime, no_flags, 2, flags_unsigned);
+    res.add_meta("field_3", column_type::datetime, no_flags, 3, flags_unsigned);
+    res.add_meta("field_4", column_type::datetime, no_flags, 4, flags_unsigned);
+    res.add_meta("field_5", column_type::datetime, no_flags, 5, flags_unsigned);
+    res.add_meta("field_6", column_type::datetime, no_flags, 6, flags_unsigned);
+
+    datetime_timestamp_common_rows(res);
+
+    // clang-format off
+    res.add_row("min",          datetime(0, 1, 1, 0, 0, 0, 0),         datetime(0, 1, 1, 0, 0, 0, 0),              datetime(0, 1, 1, 0, 0, 0, 0),              datetime(0, 1, 1, 0, 0, 0, 0),              datetime(0, 1, 1, 0, 0, 0, 0),              datetime(0, 1, 1, 0, 0, 0, 0),              datetime(0, 1, 1, 0, 0, 0, 0));
+    res.add_row("max",          datetime(9999, 12, 31, 23, 59, 59, 0), datetime(9999, 12, 31, 23, 59, 59, 900000), datetime(9999, 12, 31, 23, 59, 59, 990000), datetime(9999, 12, 31, 23, 59, 59, 999000), datetime(9999, 12, 31, 23, 59, 59, 999900), datetime(9999, 12, 31, 23, 59, 59, 999990), datetime(9999, 12, 31, 23, 59, 59, 999999));
+    
+    res.add_row("date_zero",                               datetime(   0,  0,  0,  0,  0,  0, 0), datetime(   0,  0,  0,  0,  0,  0, 0), datetime(   0,  0,  0,  0,  0,  0,  0), datetime(   0,  0,  0,  0,  0,  0,   0), datetime(   0,  0,  0,  0,  0,  0,    0), datetime(   0,  0,  0,  0,  0,  0,     0), datetime(   0,  0,  0,  0,  0,  0,      0));
+    res.add_row("date_yzero_mzero_dregular",               datetime(   0,  0, 10,  0,  0,  0, 0), datetime(   0,  0, 10,  0,  0,  0, 0), datetime(   0,  0, 10,  0,  0,  0,  0), datetime(   0,  0, 10,  0,  0,  0,   0), datetime(   0,  0, 10,  0,  0,  0,    0), datetime(   0,  0, 10,  0,  0,  0,     0), datetime(   0,  0, 10,  0,  0,  0,      0));
+    res.add_row("date_yzero_mregular_dzero",               datetime(   0, 10,  0,  0,  0,  0, 0), datetime(   0, 10,  0,  0,  0,  0, 0), datetime(   0, 10,  0,  0,  0,  0,  0), datetime(   0, 10,  0,  0,  0,  0,   0), datetime(   0, 10,  0,  0,  0,  0,    0), datetime(   0, 10,  0,  0,  0,  0,     0), datetime(   0, 10,  0,  0,  0,  0,      0));
+    res.add_row("date_yzero_invalid_date",                 datetime(   0, 11, 31,  0,  0,  0, 0), datetime(   0, 11, 31,  0,  0,  0, 0), datetime(   0, 11, 31,  0,  0,  0,  0), datetime(   0, 11, 31,  0,  0,  0,   0), datetime(   0, 11, 31,  0,  0,  0,    0), datetime(   0, 11, 31,  0,  0,  0,     0), datetime(   0, 11, 31,  0,  0,  0,      0));
+    res.add_row("date_yregular_mzero_dzero",               datetime(2020,  0,  0,  0,  0,  0, 0), datetime(2020,  0,  0,  0,  0,  0, 0), datetime(2020,  0,  0,  0,  0,  0,  0), datetime(2020,  0,  0,  0,  0,  0,   0), datetime(2020,  0,  0,  0,  0,  0,    0), datetime(2020,  0,  0,  0,  0,  0,     0), datetime(2020,  0,  0,  0,  0,  0,      0));
+    res.add_row("date_yregular_mzero_dregular",            datetime(2020,  0, 10,  0,  0,  0, 0), datetime(2020,  0, 10,  0,  0,  0, 0), datetime(2020,  0, 10,  0,  0,  0,  0), datetime(2020,  0, 10,  0,  0,  0,   0), datetime(2020,  0, 10,  0,  0,  0,    0), datetime(2020,  0, 10,  0,  0,  0,     0), datetime(2020,  0, 10,  0,  0,  0,      0));
+    res.add_row("date_yregular_mregular_dzero",            datetime(2020, 10,  0,  0,  0,  0, 0), datetime(2020, 10,  0,  0,  0,  0, 0), datetime(2020, 10,  0,  0,  0,  0,  0), datetime(2020, 10,  0,  0,  0,  0,   0), datetime(2020, 10,  0,  0,  0,  0,    0), datetime(2020, 10,  0,  0,  0,  0,     0), datetime(2020, 10,  0,  0,  0,  0,      0));
+    res.add_row("date_yregular_invalid_date",              datetime(2020, 11, 31,  0,  0,  0, 0), datetime(2020, 11, 31,  0,  0,  0, 0), datetime(2020, 11, 31,  0,  0,  0,  0), datetime(2020, 11, 31,  0,  0,  0,   0), datetime(2020, 11, 31,  0,  0,  0,    0), datetime(2020, 11, 31,  0,  0,  0,     0), datetime(2020, 11, 31,  0,  0,  0,      0));
+    res.add_row("date_yregular_invalid_date_leapregular",  datetime(1999,  2, 29,  0,  0,  0, 0), datetime(1999,  2, 29,  0,  0,  0, 0), datetime(1999,  2, 29,  0,  0,  0,  0), datetime(1999,  2, 29,  0,  0,  0,   0), datetime(1999,  2, 29,  0,  0,  0,    0), datetime(1999,  2, 29,  0,  0,  0,     0), datetime(1999,  2, 29,  0,  0,  0,      0));
+    res.add_row("date_yregular_invalid_date_leap100",      datetime(1900,  2, 29,  0,  0,  0, 0), datetime(1900,  2, 29,  0,  0,  0, 0), datetime(1900,  2, 29,  0,  0,  0,  0), datetime(1900,  2, 29,  0,  0,  0,   0), datetime(1900,  2, 29,  0,  0,  0,    0), datetime(1900,  2, 29,  0,  0,  0,     0), datetime(1900,  2, 29,  0,  0,  0,      0)),
+    
+    res.add_row("hms_zero",                              datetime(   0,  0,  0, 10, 20, 30, 0), datetime(   0,  0,  0, 10, 20, 30, 0), datetime(   0,  0,  0, 10, 20, 30,  0), datetime(   0,  0,  0, 10, 20, 30,   0), datetime(   0,  0,  0, 10, 20, 30,    0), datetime(   0,  0,  0, 10, 20, 30,     0), datetime(   0,  0,  0, 10, 20, 30,      0));
+    res.add_row("hms_yzero_mzero_dregular",              datetime(   0,  0, 10, 10, 20, 30, 0), datetime(   0,  0, 10, 10, 20, 30, 0), datetime(   0,  0, 10, 10, 20, 30,  0), datetime(   0,  0, 10, 10, 20, 30,   0), datetime(   0,  0, 10, 10, 20, 30,    0), datetime(   0,  0, 10, 10, 20, 30,     0), datetime(   0,  0, 10, 10, 20, 30,      0));
+    res.add_row("hms_yzero_mregular_dzero",              datetime(   0, 10,  0, 10, 20, 30, 0), datetime(   0, 10,  0, 10, 20, 30, 0), datetime(   0, 10,  0, 10, 20, 30,  0), datetime(   0, 10,  0, 10, 20, 30,   0), datetime(   0, 10,  0, 10, 20, 30,    0), datetime(   0, 10,  0, 10, 20, 30,     0), datetime(   0, 10,  0, 10, 20, 30,      0));
+    res.add_row("hms_yzero_invalid_date",                datetime(   0, 11, 31, 10, 20, 30, 0), datetime(   0, 11, 31, 10, 20, 30, 0), datetime(   0, 11, 31, 10, 20, 30,  0), datetime(   0, 11, 31, 10, 20, 30,   0), datetime(   0, 11, 31, 10, 20, 30,    0), datetime(   0, 11, 31, 10, 20, 30,     0), datetime(   0, 11, 31, 10, 20, 30,      0));
+    res.add_row("hms_yregular_mzero_dzero",              datetime(2020,  0,  0, 10, 20, 30, 0), datetime(2020,  0,  0, 10, 20, 30, 0), datetime(2020,  0,  0, 10, 20, 30,  0), datetime(2020,  0,  0, 10, 20, 30,   0), datetime(2020,  0,  0, 10, 20, 30,    0), datetime(2020,  0,  0, 10, 20, 30,     0), datetime(2020,  0,  0, 10, 20, 30,      0));
+    res.add_row("hms_yregular_mzero_dregular",           datetime(2020,  0, 10, 10, 20, 30, 0), datetime(2020,  0, 10, 10, 20, 30, 0), datetime(2020,  0, 10, 10, 20, 30,  0), datetime(2020,  0, 10, 10, 20, 30,   0), datetime(2020,  0, 10, 10, 20, 30,    0), datetime(2020,  0, 10, 10, 20, 30,     0), datetime(2020,  0, 10, 10, 20, 30,      0));
+    res.add_row("hms_yregular_mregular_dzero",           datetime(2020, 10,  0, 10, 20, 30, 0), datetime(2020, 10,  0, 10, 20, 30, 0), datetime(2020, 10,  0, 10, 20, 30,  0), datetime(2020, 10,  0, 10, 20, 30,   0), datetime(2020, 10,  0, 10, 20, 30,    0), datetime(2020, 10,  0, 10, 20, 30,     0), datetime(2020, 10,  0, 10, 20, 30,      0));
+    res.add_row("hms_yregular_invalid_date",             datetime(2020, 11, 31, 10, 20, 30, 0), datetime(2020, 11, 31, 10, 20, 30, 0), datetime(2020, 11, 31, 10, 20, 30,  0), datetime(2020, 11, 31, 10, 20, 30,   0), datetime(2020, 11, 31, 10, 20, 30,    0), datetime(2020, 11, 31, 10, 20, 30,     0), datetime(2020, 11, 31, 10, 20, 30,      0));
+    res.add_row("hms_yregular_invalid_date_leapregular", datetime(1999,  2, 29, 10, 20, 30, 0), datetime(1999,  2, 29, 10, 20, 30, 0), datetime(1999,  2, 29, 10, 20, 30,  0), datetime(1999,  2, 29, 10, 20, 30,   0), datetime(1999,  2, 29, 10, 20, 30,    0), datetime(1999,  2, 29, 10, 20, 30,     0), datetime(1999,  2, 29, 10, 20, 30,      0));
+    res.add_row("hms_yregular_invalid_date_leap100",     datetime(1900,  2, 29, 10, 20, 30, 0), datetime(1900,  2, 29, 10, 20, 30, 0), datetime(1900,  2, 29, 10, 20, 30,  0), datetime(1900,  2, 29, 10, 20, 30,   0), datetime(1900,  2, 29, 10, 20, 30,    0), datetime(1900,  2, 29, 10, 20, 30,     0), datetime(1900,  2, 29, 10, 20, 30,      0)),
+    
+    
+    res.add_row("hmsu_zero",                              datetime(   0,  0,  0, 10, 20, 30, 0), datetime(   0,  0,  0, 10, 20, 30, 900000), datetime(   0,  0,  0, 10, 20, 30, 990000), datetime(   0,  0,  0, 10, 20, 30, 999000), datetime(   0,  0,  0, 10, 20, 30, 999900), datetime(   0,  0,  0, 10, 20, 30, 999990), datetime(   0,  0,  0, 10, 20, 30, 999999));
+    res.add_row("hmsu_yzero_mzero_dregular",              datetime(   0,  0, 10, 10, 20, 30, 0), datetime(   0,  0, 10, 10, 20, 30, 900000), datetime(   0,  0, 10, 10, 20, 30, 990000), datetime(   0,  0, 10, 10, 20, 30, 999000), datetime(   0,  0, 10, 10, 20, 30, 999900), datetime(   0,  0, 10, 10, 20, 30, 999990), datetime(   0,  0, 10, 10, 20, 30, 999999));
+    res.add_row("hmsu_yzero_mregular_dzero",              datetime(   0, 10,  0, 10, 20, 30, 0), datetime(   0, 10,  0, 10, 20, 30, 900000), datetime(   0, 10,  0, 10, 20, 30, 990000), datetime(   0, 10,  0, 10, 20, 30, 999000), datetime(   0, 10,  0, 10, 20, 30, 999900), datetime(   0, 10,  0, 10, 20, 30, 999990), datetime(   0, 10,  0, 10, 20, 30, 999999));
+    res.add_row("hmsu_yzero_invalid_date",                datetime(   0, 11, 31, 10, 20, 30, 0), datetime(   0, 11, 31, 10, 20, 30, 900000), datetime(   0, 11, 31, 10, 20, 30, 990000), datetime(   0, 11, 31, 10, 20, 30, 999000), datetime(   0, 11, 31, 10, 20, 30, 999900), datetime(   0, 11, 31, 10, 20, 30, 999990), datetime(   0, 11, 31, 10, 20, 30, 999999));
+    res.add_row("hmsu_yregular_mzero_dzero",              datetime(2020,  0,  0, 10, 20, 30, 0), datetime(2020,  0,  0, 10, 20, 30, 900000), datetime(2020,  0,  0, 10, 20, 30, 990000), datetime(2020,  0,  0, 10, 20, 30, 999000), datetime(2020,  0,  0, 10, 20, 30, 999900), datetime(2020,  0,  0, 10, 20, 30, 999990), datetime(2020,  0,  0, 10, 20, 30, 999999));
+    res.add_row("hmsu_yregular_mzero_dregular",           datetime(2020,  0, 10, 10, 20, 30, 0), datetime(2020,  0, 10, 10, 20, 30, 900000), datetime(2020,  0, 10, 10, 20, 30, 990000), datetime(2020,  0, 10, 10, 20, 30, 999000), datetime(2020,  0, 10, 10, 20, 30, 999900), datetime(2020,  0, 10, 10, 20, 30, 999990), datetime(2020,  0, 10, 10, 20, 30, 999999));
+    res.add_row("hmsu_yregular_mregular_dzero",           datetime(2020, 10,  0, 10, 20, 30, 0), datetime(2020, 10,  0, 10, 20, 30, 900000), datetime(2020, 10,  0, 10, 20, 30, 990000), datetime(2020, 10,  0, 10, 20, 30, 999000), datetime(2020, 10,  0, 10, 20, 30, 999900), datetime(2020, 10,  0, 10, 20, 30, 999990), datetime(2020, 10,  0, 10, 20, 30, 999999));
+    res.add_row("hmsu_yregular_invalid_date",             datetime(2020, 11, 31, 10, 20, 30, 0), datetime(2020, 11, 31, 10, 20, 30, 900000), datetime(2020, 11, 31, 10, 20, 30, 990000), datetime(2020, 11, 31, 10, 20, 30, 999000), datetime(2020, 11, 31, 10, 20, 30, 999900), datetime(2020, 11, 31, 10, 20, 30, 999990), datetime(2020, 11, 31, 10, 20, 30, 999999));
+    res.add_row("hmsu_yregular_invalid_date_leapregular", datetime(1999,  2, 29, 10, 20, 30, 0), datetime(1999,  2, 29, 10, 20, 30, 900000), datetime(1999,  2, 29, 10, 20, 30, 990000), datetime(1999,  2, 29, 10, 20, 30, 999000), datetime(1999,  2, 29, 10, 20, 30, 999900), datetime(1999,  2, 29, 10, 20, 30, 999990), datetime(1999,  2, 29, 10, 20, 30, 999999));
+    res.add_row("hmsu_yregular_invalid_date_leap100",     datetime(1900,  2, 29, 10, 20, 30, 0), datetime(1900,  2, 29, 10, 20, 30, 900000), datetime(1900,  2, 29, 10, 20, 30, 990000), datetime(1900,  2, 29, 10, 20, 30, 999000), datetime(1900,  2, 29, 10, 20, 30, 999900), datetime(1900,  2, 29, 10, 20, 30, 999990), datetime(1900,  2, 29, 10, 20, 30, 999999));
+    // clang-format on
+    return res;
+}
+
+table types_timestamp()
+{
+    table res("types_timestamp");
+    res.add_meta("field_0", column_type::timestamp, no_flags, 0, flags_unsigned);
+    res.add_meta("field_1", column_type::timestamp, no_flags, 1, flags_unsigned);
+    res.add_meta("field_2", column_type::timestamp, no_flags, 2, flags_unsigned);
+    res.add_meta("field_3", column_type::timestamp, no_flags, 3, flags_unsigned);
+    res.add_meta("field_4", column_type::timestamp, no_flags, 4, flags_unsigned);
+    res.add_meta("field_5", column_type::timestamp, no_flags, 5, flags_unsigned);
+    res.add_meta("field_6", column_type::timestamp, no_flags, 6, flags_unsigned);
+
+    datetime_timestamp_common_rows(res);
+
+    // clang-format off
+    res.add_row("zero", datetime(),                            datetime(),                                 datetime(),                                 datetime(),                                 datetime(),                                 datetime(),                                 datetime());
+    res.add_row("min",  datetime(1970,  1,  1,  2,  0,  1, 0), datetime(1970,  1,  1,  2,  0,  1, 0),      datetime(1970,  1,  1,  2,  0,  1,  0),     datetime(1970,  1,  1,  2,  0,  1,   0),    datetime(1970,  1,  1,  2,  0,  1,    0),   datetime(1970,  1,  1,  2,  0,  1,     0),  datetime(1970,  1,  1,  2,  0,  1,      0));
+    res.add_row("max",  datetime(2038,  1, 19,  5, 14,  7, 0), datetime(2038,  1, 19,  5, 14,  7, 900000), datetime(2038,  1, 19,  5, 14,  7, 990000), datetime(2038,  1, 19,  5, 14,  7, 999000), datetime(2038,  1, 19,  5, 14,  7, 999900), datetime(2038,  1, 19,  5, 14,  7, 999990), datetime(2038,  1, 19,  5, 14,  7, 999999));
+    // clang-format on
+    return res;
+}
+
+table types_time()
+{
+    table res("types_time");
+    res.add_meta("field_0", column_type::time, no_flags, 0, flags_unsigned);
+    res.add_meta("field_1", column_type::time, no_flags, 1, flags_unsigned);
+    res.add_meta("field_2", column_type::time, no_flags, 2, flags_unsigned);
+    res.add_meta("field_3", column_type::time, no_flags, 3, flags_unsigned);
+    res.add_meta("field_4", column_type::time, no_flags, 4, flags_unsigned);
+    res.add_meta("field_5", column_type::time, no_flags, 5, flags_unsigned);
+    res.add_meta("field_6", column_type::time, no_flags, 6, flags_unsigned);
+
+    // clang-format off
+    res.add_row("zero",            maket( 0,  0,  0),  maket( 0,  0,  0),          maket( 0,  0,  0),          maket( 0,  0,  0),          maket( 0,  0,  0),          maket( 0,  0,  0),          maket( 0,  0,  0));
+    res.add_row("d",               maket(48,  0,  0),  maket(48,  0,  0),          maket(48,  0,  0),          maket(48,  0,  0),          maket(48,  0,  0),          maket(48,  0,  0),          maket(48,  0,  0));
+    res.add_row("negative_d",     -maket(48,  0,  0), -maket(48,  0,  0),         -maket(48,  0,  0),         -maket(48,  0,  0),         -maket(48,  0,  0),         -maket(48,  0,  0),         -maket(48,  0,  0));
+    res.add_row("h",               maket(23,  0,  0),  maket(23,  0,  0),          maket(23,  0,  0),          maket(23,  0,  0),          maket(23,  0,  0),          maket(23,  0,  0),          maket(23,  0,  0));
+    res.add_row("negative_h",     -maket(23,  0,  0), -maket(23,  0,  0),         -maket(23,  0,  0),         -maket(23,  0,  0),         -maket(23,  0,  0),         -maket(23,  0,  0),         -maket(23,  0,  0));
+    res.add_row("dh",              maket(71,  0,  0),  maket(71,  0,  0),          maket(71,  0,  0),          maket(71,  0,  0),          maket(71,  0,  0),          maket(71,  0,  0),          maket(71,  0,  0));
+    res.add_row("negative_dh",    -maket(71,  0,  0), -maket(71,  0,  0),         -maket(71,  0,  0),         -maket(71,  0,  0),         -maket(71,  0,  0),         -maket(71,  0,  0),         -maket(71,  0,  0));
+    res.add_row("m",               maket( 0,  1,  0),  maket( 0,  1,  0),          maket( 0,  1,  0),          maket( 0,  1,  0),          maket( 0,  1,  0),          maket( 0,  1,  0),          maket( 0,  1,  0));
+    res.add_row("negative_m",     -maket( 0,  1,  0), -maket( 0,  1,  0),         -maket( 0,  1,  0),         -maket( 0,  1,  0),         -maket( 0,  1,  0),         -maket( 0,  1,  0),         -maket( 0,  1,  0));
+    res.add_row("dm",              maket(48,  1,  0),  maket(48,  1,  0),          maket(48,  1,  0),          maket(48,  1,  0),          maket(48,  1,  0),          maket(48,  1,  0),          maket(48,  1,  0));
+    res.add_row("negative_dm",    -maket(48,  1,  0), -maket(48,  1,  0),         -maket(48,  1,  0),         -maket(48,  1,  0),         -maket(48,  1,  0),         -maket(48,  1,  0),         -maket(48,  1,  0));
+    res.add_row("hm",              maket(23,  1,  0),  maket(23,  1,  0),          maket(23,  1,  0),          maket(23,  1,  0),          maket(23,  1,  0),          maket(23,  1,  0),          maket(23,  1,  0));
+    res.add_row("negative_hm",    -maket(23,  1,  0), -maket(23,  1,  0),         -maket(23,  1,  0),         -maket(23,  1,  0),         -maket(23,  1,  0),         -maket(23,  1,  0),         -maket(23,  1,  0));
+    res.add_row("dhm",             maket(71,  1,  0),  maket(71,  1,  0),          maket(71,  1,  0),          maket(71,  1,  0),          maket(71,  1,  0),          maket(71,  1,  0),          maket(71,  1,  0));
+    res.add_row("negative_dhm",   -maket(71,  1,  0), -maket(71,  1,  0),         -maket(71,  1,  0),         -maket(71,  1,  0),         -maket(71,  1,  0),         -maket(71,  1,  0),         -maket(71,  1,  0));
+    res.add_row("s",               maket( 0,  0, 50),  maket( 0,  0, 50),          maket( 0,  0, 50),          maket( 0,  0, 50),          maket( 0,  0, 50),          maket( 0,  0, 50),          maket( 0,  0, 50));
+    res.add_row("negative_s",     -maket( 0,  0, 50), -maket( 0,  0, 50),         -maket( 0,  0, 50),         -maket( 0,  0, 50),         -maket( 0,  0, 50),         -maket( 0,  0, 50),         -maket( 0,  0, 50));
+    res.add_row("ds",              maket(48,  0, 50),  maket(48,  0, 50),          maket(48,  0, 50),          maket(48,  0, 50),          maket(48,  0, 50),          maket(48,  0, 50),          maket(48,  0, 50));
+    res.add_row("negative_ds",    -maket(48,  0, 50), -maket(48,  0, 50),         -maket(48,  0, 50),         -maket(48,  0, 50),         -maket(48,  0, 50),         -maket(48,  0, 50),         -maket(48,  0, 50));
+    res.add_row("hs",              maket(23,  0, 50),  maket(23,  0, 50),          maket(23,  0, 50),          maket(23,  0, 50),          maket(23,  0, 50),          maket(23,  0, 50),          maket(23,  0, 50));
+    res.add_row("negative_hs",    -maket(23,  0, 50), -maket(23,  0, 50),         -maket(23,  0, 50),         -maket(23,  0, 50),         -maket(23,  0, 50),         -maket(23,  0, 50),         -maket(23,  0, 50));
+    res.add_row("dhs",             maket(71,  0, 50),  maket(71,  0, 50),          maket(71,  0, 50),          maket(71,  0, 50),          maket(71,  0, 50),          maket(71,  0, 50),          maket(71,  0, 50));
+    res.add_row("negative_dhs",   -maket(71,  0, 50), -maket(71,  0, 50),         -maket(71,  0, 50),         -maket(71,  0, 50),         -maket(71,  0, 50),         -maket(71,  0, 50),         -maket(71,  0, 50));
+    res.add_row("ms",              maket( 0,  1, 50),  maket( 0,  1, 50),          maket( 0,  1, 50),          maket( 0,  1, 50),          maket( 0,  1, 50),          maket( 0,  1, 50),          maket( 0,  1, 50));
+    res.add_row("negative_ms",    -maket( 0,  1, 50), -maket( 0,  1, 50),         -maket( 0,  1, 50),         -maket( 0,  1, 50),         -maket( 0,  1, 50),         -maket( 0,  1, 50),         -maket( 0,  1, 50));
+    res.add_row("dms",             maket(48,  1, 50),  maket(48,  1, 50),          maket(48,  1, 50),          maket(48,  1, 50),          maket(48,  1, 50),          maket(48,  1, 50),          maket(48,  1, 50));
+    res.add_row("negative_dms",   -maket(48,  1, 50), -maket(48,  1, 50),         -maket(48,  1, 50),         -maket(48,  1, 50),         -maket(48,  1, 50),         -maket(48,  1, 50),         -maket(48,  1, 50));
+    res.add_row("hms",             maket(23,  1, 50),  maket(23,  1, 50),          maket(23,  1, 50),          maket(23,  1, 50),          maket(23,  1, 50),          maket(23,  1, 50),          maket(23,  1, 50));
+    res.add_row("negative_hms",   -maket(23,  1, 50), -maket(23,  1, 50),         -maket(23,  1, 50),         -maket(23,  1, 50),         -maket(23,  1, 50),         -maket(23,  1, 50),         -maket(23,  1, 50));
+    res.add_row("dhms",            maket(71,  1, 50),  maket(71,  1, 50),          maket(71,  1, 50),          maket(71,  1, 50),          maket(71,  1, 50),          maket(71,  1, 50),          maket(71,  1, 50));
+    res.add_row("negative_dhms",  -maket(71,  1, 50), -maket(71,  1, 50),         -maket(71,  1, 50),         -maket(71,  1, 50),         -maket(71,  1, 50),         -maket(71,  1, 50),         -maket(71,  1, 50));
+    res.add_row("u",              nullptr,             maket( 0,  0,  0, 100000),  maket( 0,  0,  0, 120000),  maket( 0,  0,  0, 123000),  maket( 0,  0,  0, 123400),  maket( 0,  0,  0, 123450),  maket( 0,  0,  0,  123456));
+    res.add_row("negative_u",     nullptr,            -maket( 0,  0,  0, 100000), -maket( 0,  0,  0, 120000), -maket( 0,  0,  0, 123000), -maket( 0,  0,  0, 123400), -maket( 0,  0,  0, 123450), -maket( 0,  0,  0,  123456));
+    res.add_row("du",             nullptr,             maket(48,  0,  0, 100000),  maket(48,  0,  0, 120000),  maket(48,  0,  0, 123000),  maket(48,  0,  0, 123400),  maket(48,  0,  0, 123450),  maket(48,  0,  0,  123456));
+    res.add_row("negative_du",    nullptr,            -maket(48,  0,  0, 100000), -maket(48,  0,  0, 120000), -maket(48,  0,  0, 123000), -maket(48,  0,  0, 123400), -maket(48,  0,  0, 123450), -maket(48,  0,  0,  123456));
+    res.add_row("hu",             nullptr,             maket(23,  0,  0, 100000),  maket(23,  0,  0, 120000),  maket(23,  0,  0, 123000),  maket(23,  0,  0, 123400),  maket(23,  0,  0, 123450),  maket(23,  0,  0,  123456));
+    res.add_row("negative_hu",    nullptr,            -maket(23,  0,  0, 100000), -maket(23,  0,  0, 120000), -maket(23,  0,  0, 123000), -maket(23,  0,  0, 123400), -maket(23,  0,  0, 123450), -maket(23,  0,  0,  123456));
+    res.add_row("dhu",            nullptr,             maket(71,  0,  0, 100000),  maket(71,  0,  0, 120000),  maket(71,  0,  0, 123000),  maket(71,  0,  0, 123400),  maket(71,  0,  0, 123450),  maket(71,  0,  0,  123456));
+    res.add_row("negative_dhu",   nullptr,            -maket(71,  0,  0, 100000), -maket(71,  0,  0, 120000), -maket(71,  0,  0, 123000), -maket(71,  0,  0, 123400), -maket(71,  0,  0, 123450), -maket(71,  0,  0,  123456));
+    res.add_row("mu",             nullptr,             maket( 0,  1,  0, 100000),  maket( 0,  1,  0, 120000),  maket( 0,  1,  0, 123000),  maket( 0,  1,  0, 123400),  maket( 0,  1,  0, 123450),  maket( 0,  1,  0,  123456));
+    res.add_row("negative_mu",    nullptr,            -maket( 0,  1,  0, 100000), -maket( 0,  1,  0, 120000), -maket( 0,  1,  0, 123000), -maket( 0,  1,  0, 123400), -maket( 0,  1,  0, 123450), -maket( 0,  1,  0,  123456));
+    res.add_row("dmu",            nullptr,             maket(48,  1,  0, 100000),  maket(48,  1,  0, 120000),  maket(48,  1,  0, 123000),  maket(48,  1,  0, 123400),  maket(48,  1,  0, 123450),  maket(48,  1,  0,  123456));
+    res.add_row("negative_dmu",   nullptr,            -maket(48,  1,  0, 100000), -maket(48,  1,  0, 120000), -maket(48,  1,  0, 123000), -maket(48,  1,  0, 123400), -maket(48,  1,  0, 123450), -maket(48,  1,  0,  123456));
+    res.add_row("hmu",            nullptr,             maket(23,  1,  0, 100000),  maket(23,  1,  0, 120000),  maket(23,  1,  0, 123000),  maket(23,  1,  0, 123400),  maket(23,  1,  0, 123450),  maket(23,  1,  0,  123456));
+    res.add_row("negative_hmu",   nullptr,            -maket(23,  1,  0, 100000), -maket(23,  1,  0, 120000), -maket(23,  1,  0, 123000), -maket(23,  1,  0, 123400), -maket(23,  1,  0, 123450), -maket(23,  1,  0,  123456));
+    res.add_row("dhmu",           nullptr,             maket(71,  1,  0, 100000),  maket(71,  1,  0, 120000),  maket(71,  1,  0, 123000),  maket(71,  1,  0, 123400),  maket(71,  1,  0, 123450),  maket(71,  1,  0,  123456));
+    res.add_row("negative_dhmu",  nullptr,            -maket(71,  1,  0, 100000), -maket(71,  1,  0, 120000), -maket(71,  1,  0, 123000), -maket(71,  1,  0, 123400), -maket(71,  1,  0, 123450), -maket(71,  1,  0,  123456));
+    res.add_row("su",             nullptr,             maket( 0,  0, 50, 100000),  maket( 0,  0, 50, 120000),  maket( 0,  0, 50, 123000),  maket( 0,  0, 50, 123400),  maket( 0,  0, 50, 123450),  maket( 0,  0, 50,  123456));
+    res.add_row("negative_su",    nullptr,            -maket( 0,  0, 50, 100000), -maket( 0,  0, 50, 120000), -maket( 0,  0, 50, 123000), -maket( 0,  0, 50, 123400), -maket( 0,  0, 50, 123450), -maket( 0,  0, 50,  123456));
+    res.add_row("dsu",            nullptr,             maket(48,  0, 50, 100000),  maket(48,  0, 50, 120000),  maket(48,  0, 50, 123000),  maket(48,  0, 50, 123400),  maket(48,  0, 50, 123450),  maket(48,  0, 50,  123456));
+    res.add_row("negative_dsu",   nullptr,            -maket(48,  0, 50, 100000), -maket(48,  0, 50, 120000), -maket(48,  0, 50, 123000), -maket(48,  0, 50, 123400), -maket(48,  0, 50, 123450), -maket(48,  0, 50,  123456));
+    res.add_row("hsu",            nullptr,             maket(23,  0, 50, 100000),  maket(23,  0, 50, 120000),  maket(23,  0, 50, 123000),  maket(23,  0, 50, 123400),  maket(23,  0, 50, 123450),  maket(23,  0, 50,  123456));
+    res.add_row("negative_hsu",   nullptr,            -maket(23,  0, 50, 100000), -maket(23,  0, 50, 120000), -maket(23,  0, 50, 123000), -maket(23,  0, 50, 123400), -maket(23,  0, 50, 123450), -maket(23,  0, 50,  123456));
+    res.add_row("dhsu",           nullptr,             maket(71,  0, 50, 100000),  maket(71,  0, 50, 120000),  maket(71,  0, 50, 123000),  maket(71,  0, 50, 123400),  maket(71,  0, 50, 123450),  maket(71,  0, 50,  123456));
+    res.add_row("negative_dhsu",  nullptr,            -maket(71,  0, 50, 100000), -maket(71,  0, 50, 120000), -maket(71,  0, 50, 123000), -maket(71,  0, 50, 123400), -maket(71,  0, 50, 123450), -maket(71,  0, 50,  123456));
+    res.add_row("msu",            nullptr,             maket( 0,  1, 50, 100000),  maket( 0,  1, 50, 120000),  maket( 0,  1, 50, 123000),  maket( 0,  1, 50, 123400),  maket( 0,  1, 50, 123450),  maket( 0,  1, 50,  123456));
+    res.add_row("negative_msu",   nullptr,            -maket( 0,  1, 50, 100000), -maket( 0,  1, 50, 120000), -maket( 0,  1, 50, 123000), -maket( 0,  1, 50, 123400), -maket( 0,  1, 50, 123450), -maket( 0,  1, 50,  123456));
+    res.add_row("dmsu",           nullptr,             maket(48,  1, 50, 100000),  maket(48,  1, 50, 120000),  maket(48,  1, 50, 123000),  maket(48,  1, 50, 123400),  maket(48,  1, 50, 123450),  maket(48,  1, 50,  123456));
+    res.add_row("negative_dmsu",  nullptr,            -maket(48,  1, 50, 100000), -maket(48,  1, 50, 120000), -maket(48,  1, 50, 123000), -maket(48,  1, 50, 123400), -maket(48,  1, 50, 123450), -maket(48,  1, 50,  123456));
+    res.add_row("hmsu",           nullptr,             maket(23,  1, 50, 100000),  maket(23,  1, 50, 120000),  maket(23,  1, 50, 123000),  maket(23,  1, 50, 123400),  maket(23,  1, 50, 123450),  maket(23,  1, 50,  123456));
+    res.add_row("negative_hmsu",  nullptr,            -maket(23,  1, 50, 100000), -maket(23,  1, 50, 120000), -maket(23,  1, 50, 123000), -maket(23,  1, 50, 123400), -maket(23,  1, 50, 123450), -maket(23,  1, 50,  123456));
+    res.add_row("dhmsu",          nullptr,             maket(71,  1, 50, 100000),  maket(71,  1, 50, 120000),  maket(71,  1, 50, 123000),  maket(71,  1, 50, 123400),  maket(71,  1, 50, 123450),  maket(71,  1, 50,  123456));
+    res.add_row("negative_dhmsu", nullptr,            -maket(71,  1, 50, 100000), -maket(71,  1, 50, 120000), -maket(71,  1, 50, 123000), -maket(71,  1, 50, 123400), -maket(71,  1, 50, 123450), -maket(71,  1, 50,  123456));
+    res.add_row("min",            -maket(838, 59, 59),-maket(838,59, 58, 900000), -maket(838, 59, 58, 990000),-maket(838, 59, 58, 999000),-maket(838, 59, 58, 999900),-maket(838,59, 58, 999990), -maket(838,59, 58,  999999));
+    res.add_row("max",             maket(838, 59, 59), maket(838,59, 58, 900000),  maket(838, 59, 58, 990000), maket(838, 59, 58, 999000), maket(838, 59, 58, 999900), maket(838,59, 58, 999990),  maket(838,59, 58,  999999));
+    // clang-format on
+    return res;
+}
+
+table types_string()
+{
+    table res("types_string");
+    res.add_meta("field_char", column_type::char_);
+    res.add_meta("field_varchar", column_type::varchar);
+    res.add_meta("field_tinytext", column_type::text);
+    res.add_meta("field_text", column_type::text);
+    res.add_meta("field_mediumtext", column_type::text);
+    res.add_meta("field_longtext", column_type::text);
+    res.add_meta("field_enum", column_type::enum_);
+    res.add_meta("field_set", column_type::set);
+
+    // clang-format off
+    res.add_row("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "red",    "red,green");
+    res.add_row("utf8",    "\xc3\xb1",  "\xc3\x91",     "\xc3\xa1",      "\xc3\xa9",  "\xc3\xad",        "\xc3\xb3",      nullptr,  nullptr);
+    res.add_row("empty",   "",          "",             "",              "",          "",                "",              nullptr,  "");
+    // clang-format on
+    return res;
+}
+
+table types_binary()
+{
+    table res("types_binary");
+    res.add_meta("field_binary", column_type::binary);
+    res.add_meta("field_varbinary", column_type::varbinary);
+    res.add_meta("field_tinyblob", column_type::blob);
+    res.add_meta("field_blob", column_type::blob);
+    res.add_meta("field_mediumblob", column_type::blob);
+    res.add_meta("field_longblob", column_type::blob);
+
+    // clang-format off
+    res.add_row("regular",  makebv("\0_binary\0\0"),          makebv("\0_varbinary"),  makebv("\0_tinyblob"),  makebv("\0_blob"),  makebv("\0_mediumblob"), makebv("\0_longblob"));
+    res.add_row("nonascii", makebv("\0\xff\0\0\0\0\0\0\0\0"), makebv("\1\xfe"),        makebv("\2\xfd"),       makebv("\3\xfc"),   makebv("\4\xfb"),        makebv("\5\xfa"));
+    res.add_row("empty",    makebv("\0\0\0\0\0\0\0\0\0\0"),   blob_view(),             blob_view(),            blob_view(),        blob_view(),             blob_view());
+    // clang-format on
+    return res;
+}
+
+// These types don't have a better representation, and we represent
+// them as strings or binary
+table types_not_implemented()
+{
+    table res("types_not_implemented");
+    res.add_meta("field_decimal", column_type::decimal);
+    res.add_meta("field_geometry", column_type::geometry);
+
+    static constexpr std::uint8_t geometry_value[] = {
+        0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0xf0, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40};
+
+    res.add_row("regular", "300", blob_view(geometry_value));
+    return res;
+}
+
+// Tests for certain metadata flags
+table types_flags()
+{
+    table res("types_flags");
+    res.add_meta(
+        "field_timestamp",
+        column_type::timestamp,
+        flagsvec{&metadata::is_set_to_now_on_update},
+        0,
+        flags_unsigned
+    );
+    res.add_meta(
+        "field_primary_key",
+        column_type::int_,
+        flagsvec{&metadata::is_primary_key, &metadata::is_not_null, &metadata::is_auto_increment}
+    );
+    res.add_meta("field_not_null", column_type::char_, flagsvec{&metadata::is_not_null});
+    res.add_meta("field_unique", column_type::int_, flagsvec{&metadata::is_unique_key});
+    res.add_meta("field_indexed", column_type::int_, flagsvec{&metadata::is_multiple_key});
+
+    res.add_row("default", nullptr, 50, "char", 21, 42);
+    return res;
+}
+
+std::vector<table> make_all_tables()
+{
+    std::vector<table> res;
+    res.push_back(types_tinyint());
+    res.push_back(types_smallint());
+    res.push_back(types_mediumint());
+    res.push_back(types_int());
+    res.push_back(types_bigint());
+    res.push_back(types_year());
+    res.push_back(types_bit());
+    res.push_back(types_float());
+    res.push_back(types_double());
+    res.push_back(types_date());
+    res.push_back(types_datetime());
+    res.push_back(types_timestamp());
+    res.push_back(types_time());
+    res.push_back(types_string());
+    res.push_back(types_binary());
+    res.push_back(types_not_implemented());
+    res.push_back(types_flags());
+    return res;
+}
+
+const std::vector<table>& all_tables()
+{
+    static std::vector<table> res = make_all_tables();
+    return res;
+}
+
+BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
+{
+    for (const auto& table : all_tables())
     {
-        BOOST_TEST_CONTEXT(sample.name())
+        BOOST_TEST_CONTEXT(table.name)
         {
-            // Prepare the statement
-            auto stmt_sql = stringize(
-                "SELECT ",
-                sample.field,
-                " FROM ",
-                sample.table,
-                " WHERE id = ? AND ",
-                sample.field,
-                " = ?"
-            );
-            boost::mysql::tcp_statement stmt;
-            conn.prepare_statement(stmt_sql, stmt);
-
-            // Execute it with the provided parameters
+            // Execute the query
             boost::mysql::tcp_resultset result;
-            stmt.execute(std::make_tuple(sample.row_id, sample.expected_value), result);
+            conn.query(table.select_sql(), result);
             auto rows = result.read_all(use_views);
 
-            // Validate the returned value
-            BOOST_TEST_REQUIRE(rows.size() == 1u);
-            BOOST_TEST_REQUIRE(rows[0].size() == 1u);
-            BOOST_TEST(rows[0][0] == sample.expected_value);
+            // Validate the received contents
+            validate_meta(result.meta(), table.metas);
+            table.validate_rows(rows);
         }
     }
 }
 
-// Validate that the metadata we retrieve with certain queries is correct
-BOOST_FIXTURE_TEST_CASE(aliased_table_metadata, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
 {
-    connect();
-    set_time_zone(conn);
+    for (const auto& table : all_tables())
+    {
+        BOOST_TEST_CONTEXT(table.name)
+        {
+            // Prepare the statement
+            boost::mysql::tcp_statement stmt;
+            conn.prepare_statement(table.select_sql(), stmt);
 
-    boost::mysql::tcp_resultset result;
-    conn.query("SELECT field_varchar AS field_alias FROM empty_table table_alias", result);
-    std::vector<meta_validator> validators{
-        {"table_alias", "empty_table", "field_alias", "field_varchar", column_type::varchar}
-    };
-    validate_meta(result.meta(), validators);
+            // Execute it with the provided parameters
+            boost::mysql::tcp_resultset result;
+            stmt.execute(boost::mysql::no_statement_params, result);
+            auto rows = result.read_all(use_views);
+
+            // Validate the received contents
+            validate_meta(result.meta(), table.metas);
+            table.validate_rows(rows);
+        }
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
+{
+    start_transaction();
+
+    for (const auto& table : all_tables())
+    {
+        BOOST_TEST_CONTEXT(table.name)
+        {
+            // Prepare the statements
+            boost::mysql::tcp_statement insert_stmt, query_stmt;
+            conn.prepare_statement(table.insert_sql(), insert_stmt);
+            conn.prepare_statement(table.select_sql(), query_stmt);
+
+            // Remove all contents from the table
+            boost::mysql::tcp_resultset result;
+            conn.query(table.delete_sql(), result);
+            BOOST_TEST_REQUIRE(result.complete());
+
+            // Insert all the contents again
+            for (const auto& row : table.rws)
+            {
+                insert_stmt.execute(row.begin(), row.end(), execute_options(), result);
+                BOOST_TEST_REQUIRE(result.complete());
+            }
+
+            // Query them again and verify the insertion was okay
+            query_stmt.execute(boost::mysql::no_statement_params, result);
+            auto rows = result.read_all(use_views);
+            validate_meta(result.meta(), table.metas);
+            table.validate_rows(rows);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_database_types

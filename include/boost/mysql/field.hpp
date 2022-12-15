@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_FIELD_HPP
 #define BOOST_MYSQL_FIELD_HPP
 
-#include <boost/mysql/datetime_types.hpp>
-#include <boost/mysql/detail/auxiliar/field_impl.hpp>
+#include <boost/mysql/blob.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/field_impl.hpp>
 
 #include <boost/utility/string_view.hpp>
 #include <boost/variant2/variant.hpp>
@@ -53,10 +54,16 @@ public:
     /// Move constructor.
     field(field&&) = default;
 
-    /// Copy assignment.
+    /**
+     * \brief Copy assignment.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     field& operator=(const field&) = default;
 
-    /// Move assignment.
+    /**
+     * \brief Move assignment.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     field& operator=(field&&) = default;
 
     /// Destructor.
@@ -120,10 +127,14 @@ public:
 #if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
 
     /// \copydoc field(boost::string_view)
-    explicit field(std::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v)
+    explicit field(std::string_view v) noexcept
+        : repr_(boost::variant2::in_place_type_t<std::string>(), v)
     {
     }
 #endif
+    /// Constructs a `field` holding a `blob` (`this->kind() == field_kind::blob`).
+    explicit field(blob v) noexcept : repr_(std::move(v)) {}
+
     /// Constructs a `field` holding a `float` (`this->kind() == field_kind::float`).
     explicit field(float v) noexcept : repr_(v) {}
 
@@ -149,7 +160,9 @@ public:
     /**
      * \brief Replaces `*this` with a `NULL`, changing the kind to `null` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_null.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_null.
      */
     field& operator=(std::nullptr_t) noexcept
     {
@@ -160,7 +173,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `int64` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_int64.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_int64.
      */
     field& operator=(signed char v) noexcept
     {
@@ -199,7 +214,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `uint64` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_uint64.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_uint64.
      */
     field& operator=(unsigned char v) noexcept
     {
@@ -238,8 +255,8 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `string` and destroying any previous
      * contents.
-     * \details An internal `std::string` is constructed by copying `v`.
-     *
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
      * Equivalent to \ref field::emplace_string.
      */
     field& operator=(const std::string& v)
@@ -250,8 +267,8 @@ public:
 
     /**
      * \copybrief operator=(const std::string&)
-     * \details An internal `std::string` is constructed by moving `v`.
-     *
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
      * Equivalent to \ref field::emplace_string.
      */
     field& operator=(std::string&& v)
@@ -262,8 +279,8 @@ public:
 
     /**
      * \copybrief operator=(const std::string&)
-     * \details An internal `std::string` is constructed from `v`.
-     *
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
      * Equivalent to \ref field::emplace_string.
      */
     field& operator=(const char* v)
@@ -289,9 +306,24 @@ public:
 #endif
 
     /**
+     * \brief Replaces `*this` with `v`, changing the kind to `blob` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_blob.
+     */
+    field& operator=(blob v)
+    {
+        emplace_blob(std::move(v));
+        return *this;
+    }
+
+    /**
      * \brief Replaces `*this` with `v`, changing the kind to `float_` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_float.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_float.
      */
     field& operator=(float v) noexcept
     {
@@ -302,7 +334,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `double` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_double.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_double.
      */
     field& operator=(double v) noexcept
     {
@@ -313,7 +347,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `date` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_date.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_date.
      */
     field& operator=(const date& v) noexcept
     {
@@ -324,7 +360,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `datetime` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_datetime.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_datetime.
      */
     field& operator=(const datetime& v) noexcept
     {
@@ -335,7 +373,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `time` and destroying any
      * previous contents.
-     * \details Equivalent to \ref field::emplace_time.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * Equivalent to \ref field::emplace_time.
      */
     field& operator=(const time& v) noexcept
     {
@@ -346,7 +386,9 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `v.kind()` and destroying any previous
      * contents.
-     * \details `*this` is guaranteed to be valid even after `v` becomes invalid.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     *\n
+     * `*this` is guaranteed to be valid even after `v` becomes invalid.
      */
     field& operator=(const field_view& v)
     {
@@ -369,6 +411,9 @@ public:
     /// Returns whether this `field` is holding a string value.
     bool is_string() const noexcept { return kind() == field_kind::string; }
 
+    /// Returns whether this `field` is holding a blob value.
+    bool is_blob() const noexcept { return kind() == field_kind::blob; }
+
     /// Returns whether this `field` is holding a float value.
     bool is_float() const noexcept { return kind() == field_kind::float_; }
 
@@ -388,8 +433,8 @@ public:
      * \brief Retrieves a reference to the underlying `std::int64_t` value or throws an exception.
      * \details If `!this->is_int64()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `int64`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const std::int64_t& as_int64() const { return repr_.as<std::int64_t>(); }
 
@@ -397,8 +442,8 @@ public:
      * \brief Retrieves a reference to the underlying `std::uint64_t` value or throws an exception.
      * \details If `!this->is_uint64()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `uint64`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const std::uint64_t& as_uint64() const { return repr_.as<std::uint64_t>(); }
 
@@ -406,17 +451,26 @@ public:
      * \brief Retrieves a reference to the underlying `std::string` value or throws an exception.
      * \details If `!this->is_string()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a string. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const std::string& as_string() const { return repr_.as<std::string>(); }
+
+    /**
+     * \brief Retrieves a reference to the underlying `blob` value or throws an exception.
+     * \details If `!this->is_blob()`, throws \ref bad_field_access.
+     *
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
+     */
+    const blob& as_blob() const { return repr_.as<blob>(); }
 
     /**
      * \brief Retrieves a reference to the underlying `float` value or throws an exception.
      * \details If `!this->is_float()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a float. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const float& as_float() const { return repr_.as<float>(); }
 
@@ -424,8 +478,8 @@ public:
      * \brief Retrieves a reference to the underlying `double` value or throws an exception.
      * \details If `!this->is_double()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a double. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const double& as_double() const { return repr_.as<double>(); }
 
@@ -433,8 +487,8 @@ public:
      * \brief Retrieves a reference to the underlying `date` value or throws an exception.
      * \details If `!this->is_date()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a date. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const date& as_date() const { return repr_.as<date>(); }
 
@@ -442,8 +496,8 @@ public:
      * \brief Retrieves a reference to the underlying `datetime` value or throws an exception.
      * \details If `!this->is_datetime()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a datetime. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const datetime& as_datetime() const { return repr_.as<datetime>(); }
 
@@ -451,8 +505,8 @@ public:
      * \brief Retrieves a reference to the underlying `time` value or throws an exception.
      * \details If `!this->is_time()`, throws \ref bad_field_access.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a time. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const time& as_time() const { return repr_.as<time>(); }
 
@@ -464,6 +518,9 @@ public:
 
     /// \copydoc as_string
     std::string& as_string() { return repr_.as<std::string>(); }
+
+    /// \copydoc as_blob
+    blob& as_blob() { return repr_.as<blob>(); }
 
     /// \copydoc as_float
     float& as_float() { return repr_.as<float>(); }
@@ -484,8 +541,8 @@ public:
      * \brief Retrieves a reference to the underlying `std::int64_t` value (unchecked access).
      * \details If `!this->is_int64()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `int64`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const std::int64_t& get_int64() const noexcept { return repr_.get<std::int64_t>(); }
 
@@ -493,8 +550,8 @@ public:
      * \brief Retrieves a reference to the underlying `std::uint64_t` value (unchecked access).
      * \details If `!this->is_uint64()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `uint64`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const std::uint64_t& get_uint64() const noexcept { return repr_.get<std::uint64_t>(); }
 
@@ -502,17 +559,26 @@ public:
      * \brief Retrieves a reference to the underlying `std::string` value (unchecked access).
      * \details If `!this->is_string()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `string`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const std::string& get_string() const noexcept { return repr_.get<std::string>(); }
+
+    /**
+     * \brief Retrieves a reference to the underlying `blob` value (unchecked access).
+     * \details If `!this->is_blob()`, results in undefined behavior.
+     *
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
+     */
+    const blob& get_blob() const noexcept { return repr_.get<blob>(); }
 
     /**
      * \brief Retrieves a reference to the underlying `float` value (unchecked access).
      * \details If `!this->is_float()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `float`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const float& get_float() const noexcept { return repr_.get<float>(); }
 
@@ -520,8 +586,8 @@ public:
      * \brief Retrieves a reference to the underlying `double` value (unchecked access).
      * \details If `!this->is_double()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `double`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const double& get_double() const noexcept { return repr_.get<double>(); }
 
@@ -529,8 +595,8 @@ public:
      * \brief Retrieves a reference to the underlying `date` value (unchecked access).
      * \details If `!this->is_date()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `date`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const date& get_date() const noexcept { return repr_.get<date>(); }
 
@@ -538,8 +604,8 @@ public:
      * \brief Retrieves a reference to the underlying `datetime` value (unchecked access).
      * \details If `!this->is_datetime()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `datetime`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const datetime& get_datetime() const noexcept { return repr_.get<datetime>(); }
 
@@ -547,8 +613,8 @@ public:
      * \brief Retrieves a reference to the underlying `time` value (unchecked access).
      * \details If `!this->is_time()`, results in undefined behavior.
      *
-     * The returned reference is valid as long as `*this` is alive and holding a `time`. Any
-     * function that changes the field's kind will invalidate the reference.
+     * The returned reference is valid as long as `*this` is alive and no function that invalidates
+     * references is called on `*this`.
      */
     const time& get_time() const noexcept { return repr_.get<time>(); }
 
@@ -560,6 +626,9 @@ public:
 
     /// \copydoc get_string
     std::string& get_string() noexcept { return repr_.get<std::string>(); }
+
+    /// \copydoc get_blob
+    blob& get_blob() noexcept { return repr_.get<blob>(); }
 
     /// \copydoc get_float
     float& get_float() noexcept { return repr_.get<float>(); }
@@ -576,54 +645,78 @@ public:
     /// \copydoc get_time
     time& get_time() noexcept { return repr_.get<time>(); }
 
-    /// \copybrief operator=(std::nullptr_t)
+    /**
+     * \copybrief operator=(std::nullptr_t)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_null() noexcept { repr_.data.emplace<detail::field_impl::null_t>(); }
 
-    /// \copybrief operator=(long long)
+    /**
+     * \copybrief operator=(long long)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_int64(std::int64_t v) noexcept { repr_.data.emplace<std::int64_t>(v); }
 
-    /// \copybrief operator=(unsigned long long)
+    /**
+     * \copybrief operator=(unsigned long long)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_uint64(std::uint64_t v) noexcept { repr_.data.emplace<std::uint64_t>(v); }
 
     /**
      * \copybrief operator=(const std::string&)
-     * \details An internal `std::string` is constructed by copying `v`.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
      */
-    void emplace_string(const std::string& v) noexcept { repr_.data.emplace<std::string>(v); }
+    void emplace_string(const std::string& v) { repr_.data.emplace<std::string>(v); }
 
-    /**
-     * \copybrief operator=(std::string&&)
-     * \details An internal `std::string` is constructed by moving `v`.
-     */
-    void emplace_string(std::string&& v) noexcept { repr_.data.emplace<std::string>(std::move(v)); }
+    /// \copydoc emplace_string(const std::string&)
+    void emplace_string(std::string&& v) { repr_.data.emplace<std::string>(std::move(v)); }
 
-    /**
-     * \copybrief operator=(const char*)
-     * \details An internal `std::string` is constructed from `v`.
-     */
-    void emplace_string(const char* v) noexcept { repr_.data.emplace<std::string>(v); }
+    /// \copydoc emplace_string(const std::string&)
+    void emplace_string(const char* v) { repr_.data.emplace<std::string>(v); }
 
-    /// \copydoc emplace_string(const char*)
-    void emplace_string(boost::string_view v) noexcept { repr_.data.emplace<std::string>(v); }
+    /// \copydoc emplace_string(const std::string&)
+    void emplace_string(boost::string_view v) { repr_.data.emplace<std::string>(v); }
 
 #if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
-    /// \copydoc emplace_string(const char*)
-    void emplace_string(std::string_view v) noexcept { repr_.data.emplace<std::string>(v); }
+    /// \copydoc emplace_string(const std::string&)
+    void emplace_string(std::string_view v) { repr_.data.emplace<std::string>(v); }
 #endif
 
-    /// \copybrief operator=(float)
+    /**
+     * \copybrief operator=(blob)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
+    void emplace_blob(blob v) { repr_.data.emplace<blob>(std::move(v)); }
+
+    /**
+     * \copybrief operator=(float)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_float(float v) noexcept { repr_.data.emplace<float>(v); }
 
-    /// \copybrief operator=(double)
+    /**
+     * \copybrief operator=(double)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_double(double v) noexcept { repr_.data.emplace<double>(v); }
 
-    /// \copybrief operator=(const date&)
+    /**
+     * \copybrief operator=(const date&)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_date(const date& v) noexcept { repr_.data.emplace<date>(v); }
 
-    /// \copybrief operator=(const datetime&)
+    /**
+     * \copybrief operator=(const datetime&)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_datetime(const datetime& v) noexcept { repr_.data.emplace<datetime>(v); }
 
-    /// \copybrief operator=(const time&)
+    /**
+     * \copybrief operator=(const time&)
+     * \details Invalidates references obtained by as_xxx and get_xxx functions.
+     */
     void emplace_time(const time& v) noexcept { repr_.data.emplace<time>(v); }
 
     /**

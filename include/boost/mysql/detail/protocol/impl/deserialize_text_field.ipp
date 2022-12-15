@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/detail/auxiliar/datetime.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 
 #include <boost/config.hpp>
@@ -45,8 +45,11 @@ errc deserialize_text_value_int_impl(boost::string_view from, field_view& to) no
     return errc::ok;
 }
 
-inline errc
-deserialize_text_value_int(boost::string_view from, field_view& to, const metadata& meta) noexcept
+inline errc deserialize_text_value_int(
+    boost::string_view from,
+    field_view& to,
+    const metadata& meta
+) noexcept
 {
     return meta.is_unsigned() ? deserialize_text_value_int_impl<std::uint64_t>(from, to)
                               : deserialize_text_value_int_impl<std::int64_t>(from, to);
@@ -68,17 +71,18 @@ errc deserialize_text_value_float(boost::string_view from, field_view& to) noexc
 inline errc deserialize_text_value_string(
     boost::string_view from,
     field_view& to,
-    const std::uint8_t* buffer_first
+    const std::uint8_t* buffer_first,
+    bool is_blob
 ) noexcept
 {
-    to = field_view(string_view_offset::from_sv(from, buffer_first));
+    to = field_view(string_view_offset::from_sv(from, buffer_first), is_blob);
     return errc::ok;
 }
 
 // Date/time types
 inline unsigned sanitize_decimals(unsigned decimals) noexcept
 {
-    return std::min(decimals, textc::max_decimals);
+    return (std::min)(decimals, textc::max_decimals);
 }
 
 // Computes the meaning of the parsed microsecond number, taking into
@@ -88,7 +92,7 @@ inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexce
     return parsed_micros * static_cast<unsigned>(std::pow(10, textc::max_decimals - decimals));
 }
 
-inline errc deserialize_text_ymd(boost::string_view from, year_month_day& to)
+inline errc deserialize_text_ymd(boost::string_view from, date& to)
 {
     using namespace textc;
 
@@ -107,32 +111,26 @@ inline errc deserialize_text_ymd(boost::string_view from, year_month_day& to)
     if (parsed != 3)
         return errc::protocol_value_error;
 
-    // Range check for individual components
+    // Range check for individual components. MySQL doesn't allow invidiual components
+    // to be out of range, although they may be zero or representing an invalid date
     if (year > max_year || month > max_month || day > max_day)
         return errc::protocol_value_error;
 
-    to = year_month_day{static_cast<int>(year), month, day};
+    to = date(
+        static_cast<std::uint16_t>(year),
+        static_cast<std::uint8_t>(month),
+        static_cast<std::uint8_t>(day)
+    );
     return errc::ok;
 }
 
 inline errc deserialize_text_value_date(boost::string_view from, field_view& to) noexcept
 {
-    // Deserialize ymd
-    year_month_day ymd{};
-    auto err = deserialize_text_ymd(from, ymd);
+    date d;
+    auto err = deserialize_text_ymd(from, d);
     if (err != errc::ok)
         return err;
-
-    // Verify date validity. MySQL allows zero and invalid dates, which
-    // we represent in C++ as NULL
-    if (!is_valid(ymd))
-    {
-        to = field_view(nullptr);
-        return errc::ok;
-    }
-
-    // Done
-    to = field_view(date(days(ymd_to_days(ymd))));
+    to = field_view(d);
     return errc::ok;
 }
 
@@ -153,8 +151,8 @@ inline errc deserialize_text_value_datetime(
         return errc::protocol_value_error;
 
     // Deserialize date part
-    year_month_day ymd{};
-    auto err = deserialize_text_ymd(from.substr(0, date_sz), ymd);
+    date d;
+    auto err = deserialize_text_ymd(from.substr(0, date_sz), d);
     if (err != errc::ok)
         return err;
 
@@ -169,8 +167,15 @@ inline errc deserialize_text_value_datetime(
     char extra_char;
     if (decimals)
     {
-        int parsed =
-            sscanf(buffer, "%2u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
+        int parsed = sscanf(
+            buffer,
+            "%2u:%2u:%2u.%6u%c",
+            &hours,
+            &minutes,
+            &seconds,
+            &micros,
+            &extra_char
+        );
         if (parsed != 4)
             return errc::protocol_value_error;
         micros = compute_micros(micros, decimals);
@@ -182,32 +187,31 @@ inline errc deserialize_text_value_datetime(
             return errc::protocol_value_error;
     }
 
-    // Validity check. We make this check before
-    // the invalid date check to make invalid dates with incorrect
-    // hours/mins/secs/micros fail
+    // Validity check. Although MySQL allows invalid and zero datetimes, it doesn't allow
+    // individual components to be out of range.
     if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
     {
         return errc::protocol_value_error;
     }
 
-    // Date validity. MySQL allows DATETIMEs with invalid dates, which
-    // we represent here as NULL
-    if (!is_valid(ymd))
-    {
-        to = field_view(nullptr);
-        return errc::ok;
-    }
-
-    // Sum it up. Doing time of day independently to prevent overflow
-    date d(days(ymd_to_days(ymd)));
-    auto time_of_day = std::chrono::hours(hours) + std::chrono::minutes(minutes) +
-                       std::chrono::seconds(seconds) + std::chrono::microseconds(micros);
-    to = field_view(d + time_of_day);
+    datetime dt(
+        d.year(),
+        d.month(),
+        d.day(),
+        static_cast<std::uint8_t>(hours),
+        static_cast<std::uint8_t>(minutes),
+        static_cast<std::uint8_t>(seconds),
+        static_cast<std::uint32_t>(micros)
+    );
+    to = field_view(dt);
     return errc::ok;
 }
 
-inline errc
-deserialize_text_value_time(boost::string_view from, field_view& to, const metadata& meta) noexcept
+inline errc deserialize_text_value_time(
+    boost::string_view from,
+    field_view& to,
+    const metadata& meta
+) noexcept
 {
     using namespace textc;
 
@@ -235,8 +239,15 @@ deserialize_text_value_time(boost::string_view from, field_view& to, const metad
     char extra_char;
     if (decimals)
     {
-        int parsed =
-            sscanf(first, "%3u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
+        int parsed = sscanf(
+            first,
+            "%3u:%2u:%2u.%6u%c",
+            &hours,
+            &minutes,
+            &seconds,
+            &micros,
+            &extra_char
+        );
         if (parsed != 4)
             return errc::protocol_value_error;
         micros = compute_micros(micros, decimals);
@@ -278,36 +289,35 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_text_field(
     field_view& output
 )
 {
-    switch (meta.protocol_type())
+    switch (meta.type())
     {
-    case protocol_field_type::tiny:
-    case protocol_field_type::short_:
-    case protocol_field_type::int24:
-    case protocol_field_type::long_:
-    case protocol_field_type::year:
-    case protocol_field_type::longlong: return deserialize_text_value_int(from, output, meta);
-    case protocol_field_type::bit: return deserialize_bit(from, output);
-    case protocol_field_type::float_: return deserialize_text_value_float<float>(from, output);
-    case protocol_field_type::double_: return deserialize_text_value_float<double>(from, output);
-    case protocol_field_type::timestamp:
-    case protocol_field_type::datetime: return deserialize_text_value_datetime(from, output, meta);
-    case protocol_field_type::date: return deserialize_text_value_date(from, output);
-    case protocol_field_type::time: return deserialize_text_value_time(from, output, meta);
+    case column_type::tinyint:
+    case column_type::smallint:
+    case column_type::mediumint:
+    case column_type::int_:
+    case column_type::bigint:
+    case column_type::year: return deserialize_text_value_int(from, output, meta);
+    case column_type::bit: return deserialize_bit(from, output);
+    case column_type::float_: return deserialize_text_value_float<float>(from, output);
+    case column_type::double_: return deserialize_text_value_float<double>(from, output);
+    case column_type::timestamp:
+    case column_type::datetime: return deserialize_text_value_datetime(from, output, meta);
+    case column_type::date: return deserialize_text_value_date(from, output);
+    case column_type::time: return deserialize_text_value_time(from, output, meta);
     // True string types
-    case protocol_field_type::varchar:
-    case protocol_field_type::var_string:
-    case protocol_field_type::string:
-    case protocol_field_type::tiny_blob:
-    case protocol_field_type::medium_blob:
-    case protocol_field_type::long_blob:
-    case protocol_field_type::blob:
-    case protocol_field_type::enum_:
-    case protocol_field_type::set:
-    // Anything else that we do not know how to interpret, we return as a binary string
-    case protocol_field_type::decimal:
-    case protocol_field_type::newdecimal:
-    case protocol_field_type::geometry:
-    default: return deserialize_text_value_string(from, output, buffer_first);
+    case column_type::char_:
+    case column_type::varchar:
+    case column_type::text:
+    case column_type::enum_:
+    case column_type::set:
+    case column_type::decimal:
+        return deserialize_text_value_string(from, output, buffer_first, false);
+    // Blobs and anything else
+    case column_type::binary:
+    case column_type::varbinary:
+    case column_type::blob:
+    case column_type::geometry:
+    default: return deserialize_text_value_string(from, output, buffer_first, true);
     }
 }
 

@@ -33,9 +33,8 @@ class message_writer_processor
 
     inline std::uint32_t compute_size_to_write() const
     {
-        return static_cast<std::uint32_t>(
-            std::min(max_frame_size_, buffer_to_write_.size() - bytes_written_)
-        );
+        return static_cast<std::uint32_t>((std::min
+        )(max_frame_size_, buffer_to_write_.size() - bytes_written_));
     }
 
     inline void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum)

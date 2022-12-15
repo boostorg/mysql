@@ -8,12 +8,17 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_COMMON_HPP
 
+#include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 
 #include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
@@ -31,7 +36,12 @@ namespace test {
 template <class... Types>
 std::vector<field_view> make_fv_vector(Types&&... args)
 {
-    return std::vector<field_view>{mysql::field_view(std::forward<Types>(args))...};
+    return std::vector<field_view>{field_view(std::forward<Types>(args))...};
+}
+
+inline field_view make_svoff_fv(std::size_t offset, std::size_t size, bool is_blob)
+{
+    return field_view(detail::string_view_offset(offset, size), is_blob);
 }
 
 template <class... Types>
@@ -46,26 +56,6 @@ rows makerows(std::size_t num_columns, Types&&... args)
 {
     auto fields = make_field_views(std::forward<Types>(args)...);
     return rows(rows_view(fields.data(), fields.size(), num_columns));
-}
-
-BOOST_CXX14_CONSTEXPR inline date makedate(int num_years, unsigned num_months, unsigned num_days)
-{
-    return date(days(detail::ymd_to_days(detail::year_month_day{num_years, num_months, num_days})));
-}
-
-BOOST_CXX14_CONSTEXPR inline datetime makedt(
-    int years,
-    unsigned months,
-    unsigned days,
-    int hours = 0,
-    int mins = 0,
-    int secs = 0,
-    int micros = 0
-)
-{
-    return datetime(makedate(years, months, days)) + std::chrono::hours(hours) +
-           std::chrono::minutes(mins) + std::chrono::seconds(secs) +
-           std::chrono::microseconds(micros);
 }
 
 BOOST_CXX14_CONSTEXPR inline time maket(int hours, int mins, int secs, int micros = 0)
@@ -89,6 +79,16 @@ inline boost::string_view makesv(const std::uint8_t (&value)[N])
 inline boost::string_view makesv(const std::uint8_t* value, std::size_t size)
 {
     return boost::string_view(reinterpret_cast<const char*>(value), size);
+}
+
+template <std::size_t N>
+inline blob_view makebv(const char (&value)[N])
+{
+    static_assert(N >= 1, "Expected a C-array literal");
+    return blob_view(
+        reinterpret_cast<const unsigned char*>(value),
+        N - 1
+    );  // discard null terminator
 }
 
 inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)

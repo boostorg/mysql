@@ -7,10 +7,14 @@
 
 // Test deserialize_text_value(), just positive cases
 
+#include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/datetime.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
-#include <boost/mysql/field_view.hpp>
 
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -21,6 +25,9 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
+using boost::mysql::blob_view;
+using boost::mysql::date;
+using boost::mysql::datetime;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
@@ -45,8 +52,8 @@ struct success_sample
 
     template <class T>
     success_sample(
-        std::string&& name,
-        std::string&& from,
+        std::string name,
+        std::string from,
         T&& expected_value,
         protocol_field_type type,
         std::uint16_t flags=0,
@@ -75,19 +82,29 @@ void add_string_samples(std::vector<success_sample>& output)
     output.emplace_back("varchar_non_empty", "string", "string", protocol_field_type::var_string);
     output.emplace_back("varchar_empty", "", "", protocol_field_type::var_string);
     output.emplace_back("char", "", "", protocol_field_type::string);
-    output.emplace_back("varbinary", "value", "value", protocol_field_type::var_string, column_flags::binary);
-    output.emplace_back("binary", "value", "value", protocol_field_type::string, column_flags::binary);
-    output.emplace_back("text_blob", "value", "value", protocol_field_type::blob, column_flags::blob);
+    output.emplace_back("text", "value", "value", protocol_field_type::blob);
     output.emplace_back("enum", "value", "value", protocol_field_type::string, column_flags::enum_);
     output.emplace_back("set", "value1,value2", "value1,value2", protocol_field_type::string, column_flags::set);
+    output.emplace_back("decimal", "1", "1", protocol_field_type::newdecimal);
+}
 
-    output.emplace_back("decimal", "\1", "\1", protocol_field_type::newdecimal);
-    output.emplace_back("geometry", "\1", "\1", protocol_field_type::geometry,
+
+
+void add_blob_samples(std::vector<success_sample>& output)
+{
+    static constexpr std::uint8_t buff [] = { 0x00, 0x01, 0x02, 0x03 };
+    std::string from { 0x00, 0x01, 0x02, 0x03 };
+
+    output.emplace_back("varbinary_non_empty", from, blob_view(buff), protocol_field_type::var_string, column_flags::binary);
+    output.emplace_back("varbinary_empty", "", blob_view(), protocol_field_type::var_string, column_flags::binary);
+    output.emplace_back("binary", from, blob_view(buff), protocol_field_type::string, column_flags::binary);
+    output.emplace_back("blob", from, blob_view(buff), protocol_field_type::blob, column_flags::binary);
+    output.emplace_back("geometry", from, blob_view(buff), protocol_field_type::geometry,
             column_flags::binary | column_flags::blob);
 
-    // Anything we don't know what it is, we interpret as a string
-    output.emplace_back("unknown_protocol_type", "test",
-            "test", static_cast<protocol_field_type>(0x23));
+    // Anything we don't know what it is, we interpret as a blob
+    output.emplace_back("unknown_protocol_type", from,
+            blob_view(buff), static_cast<protocol_field_type>(0x23));
 }
 
 void add_int_samples_helper(
@@ -217,15 +234,15 @@ void add_float_samples(
 
 void add_date_samples(std::vector<success_sample>& output)
 {
-    output.emplace_back("regular_date", "2019-02-28", makedate(2019, 2, 28), protocol_field_type::date);
-    output.emplace_back("leap_year", "1788-02-29", makedate(1788, 2, 29), protocol_field_type::date);
-    output.emplace_back("min", "0000-01-01", makedate(0, 1, 1), protocol_field_type::date);
-    output.emplace_back("max", "9999-12-31", makedate(9999, 12, 31), protocol_field_type::date);
-    output.emplace_back("zero", "0000-00-00", nullptr, protocol_field_type::date);
-    output.emplace_back("zero_month", "0000-00-01", nullptr, protocol_field_type::date);
-    output.emplace_back("zero_day", "0000-01-00", nullptr, protocol_field_type::date);
-    output.emplace_back("zero_month_day_nonzero_year", "2010-00-00", nullptr, protocol_field_type::date);
-    output.emplace_back("invalid_date", "2010-11-31", nullptr, protocol_field_type::date);
+    output.emplace_back("regular_date", "2019-02-28", date(2019u, 2u, 28u), protocol_field_type::date);
+    output.emplace_back("leap_year", "1788-02-29", date(1788u, 2u, 29u), protocol_field_type::date);
+    output.emplace_back("min", "0000-01-01", date(0u, 1u, 1u), protocol_field_type::date);
+    output.emplace_back("max", "9999-12-31", date(9999u, 12u, 31u), protocol_field_type::date);
+    output.emplace_back("zero", "0000-00-00", date(), protocol_field_type::date);
+    output.emplace_back("zero_month", "0000-00-01", date(0u, 0u, 1u), protocol_field_type::date);
+    output.emplace_back("zero_day", "0000-01-00", date(0u, 1u, 0u), protocol_field_type::date);
+    output.emplace_back("zero_month_day_nonzero_year", "2010-00-00", date(2010u, 0u, 0u), protocol_field_type::date);
+    output.emplace_back("invalid_date", "2010-11-31", date(2010u, 11u, 31u), protocol_field_type::date);
 }
 
 void add_datetime_samples(
@@ -233,78 +250,91 @@ void add_datetime_samples(
     std::vector<success_sample>& output
 )
 {
-    output.emplace_back("0_decimals_date", "2010-02-15 00:00:00", makedt(2010, 2, 15), type);
-    output.emplace_back("0_decimals_h", "2010-02-15 02:00:00", makedt(2010, 2, 15, 2), type);
-    output.emplace_back("0_decimals_hm", "2010-02-15 02:05:00", makedt(2010, 2, 15, 2, 5), type);
-    output.emplace_back("0_decimals_hms", "2010-02-15 02:05:30", makedt(2010, 2, 15, 2, 5, 30), type);
-    output.emplace_back("0_decimals_min", "0000-01-01 00:00:00", makedt(0, 1, 1), type);
-    output.emplace_back("0_decimals_max", "9999-12-31 23:59:59", makedt(9999, 12, 31, 23, 59, 59), type);
+    output.emplace_back("0_decimals_date", "2010-02-15 00:00:00", datetime(2010u, 2u, 15u), type);
+    output.emplace_back("0_decimals_h", "2010-02-15 02:00:00", datetime(2010u, 2u, 15u, 2u), type);
+    output.emplace_back("0_decimals_hm", "2010-02-15 02:05:00", datetime(2010u, 2u, 15u, 2u, 5u), type);
+    output.emplace_back("0_decimals_hms", "2010-02-15 02:05:30", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type);
+    output.emplace_back("0_decimals_min", "0000-01-01 00:00:00", datetime(0u, 1u, 1u), type);
+    output.emplace_back("0_decimals_max", "9999-12-31 23:59:59", datetime(9999u, 12u, 31u, 23u, 59u, 59u), type);
 
-    output.emplace_back("1_decimals_date", "2010-02-15 00:00:00.0", makedt(2010, 2, 15), type, 0, 1);
-    output.emplace_back("1_decimals_h", "2010-02-15 02:00:00.0", makedt(2010, 2, 15, 2), type, 0, 1);
-    output.emplace_back("1_decimals_hm", "2010-02-15 02:05:00.0", makedt(2010, 2, 15, 2, 5), type, 0, 1);
-    output.emplace_back("1_decimals_hms", "2010-02-15 02:05:30.0", makedt(2010, 2, 15, 2, 5, 30), type, 0, 1);
-    output.emplace_back("1_decimals_hmsu", "2010-02-15 02:05:30.5", makedt(2010, 2, 15, 2, 5, 30, 500000), type, 0, 1);
-    output.emplace_back("1_decimals_min", "0000-01-01 00:00:00.0", makedt(0, 1, 1), type, 0, 1);
-    output.emplace_back("1_decimals_max", "9999-12-31 23:59:59.9", makedt(9999, 12, 31, 23, 59, 59, 900000), type, 0, 1);
+    output.emplace_back("1_decimals_date", "2010-02-15 00:00:00.0", datetime(2010u, 2u, 15u), type, 0, 1);
+    output.emplace_back("1_decimals_h", "2010-02-15 02:00:00.0", datetime(2010u, 2u, 15u, 2u), type, 0, 1);
+    output.emplace_back("1_decimals_hm", "2010-02-15 02:05:00.0", datetime(2010u, 2u, 15u, 2u, 5u), type, 0, 1);
+    output.emplace_back("1_decimals_hms", "2010-02-15 02:05:30.0", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type, 0, 1);
+    output.emplace_back("1_decimals_hmsu", "2010-02-15 02:05:30.5", datetime(2010u, 2u, 15u, 2u, 5u, 30u, 500000u), type, 0, 1);
+    output.emplace_back("1_decimals_min", "0000-01-01 00:00:00.0", datetime(0u, 1u, 1u), type, 0, 1);
+    output.emplace_back("1_decimals_max", "9999-12-31 23:59:59.9", datetime(9999u, 12u, 31u, 23u, 59u, 59u, 900000u), type, 0, 1);
 
-    output.emplace_back("2_decimals_hms", "2010-02-15 02:05:30.00", makedt(2010, 2, 15, 2, 5, 30), type, 0, 2);
-    output.emplace_back("2_decimals_hmsu", "2010-02-15 02:05:30.05", makedt(2010, 2, 15, 2, 5, 30, 50000), type, 0, 2);
-    output.emplace_back("2_decimals_min", "0000-01-01 00:00:00.00", makedt(0, 1, 1), type, 0, 2);
-    output.emplace_back("2_decimals_max", "9999-12-31 23:59:59.99", makedt(9999, 12, 31, 23, 59, 59, 990000), type, 0, 2);
+    output.emplace_back("2_decimals_hms", "2010-02-15 02:05:30.00", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type, 0, 2);
+    output.emplace_back("2_decimals_hmsu", "2010-02-15 02:05:30.05", datetime(2010u, 2u, 15u, 2u, 5u, 30u, 50000u), type, 0, 2);
+    output.emplace_back("2_decimals_min", "0000-01-01 00:00:00.00", datetime(0u, 1u, 1u), type, 0, 2);
+    output.emplace_back("2_decimals_max", "9999-12-31 23:59:59.99", datetime(9999u, 12u, 31u, 23u, 59u, 59u, 990000u), type, 0, 2);
 
-    output.emplace_back("3_decimals_hms", "2010-02-15 02:05:30.000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 3);
-    output.emplace_back("3_decimals_hmsu", "2010-02-15 02:05:30.420", makedt(2010, 2, 15, 2, 5, 30, 420000), type, 0, 3);
-    output.emplace_back("3_decimals_min", "0000-01-01 00:00:00.000", makedt(0, 1, 1), type, 0, 3);
-    output.emplace_back("3_decimals_max", "9999-12-31 23:59:59.999", makedt(9999, 12, 31, 23, 59, 59, 999000), type, 0, 3);
+    output.emplace_back("3_decimals_hms", "2010-02-15 02:05:30.000", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type, 0, 3);
+    output.emplace_back("3_decimals_hmsu", "2010-02-15 02:05:30.420", datetime(2010u, 2u, 15u, 2u, 5u, 30u, 420000u), type, 0, 3);
+    output.emplace_back("3_decimals_min", "0000-01-01 00:00:00.000", datetime(0u, 1u, 1u), type, 0, 3);
+    output.emplace_back("3_decimals_max", "9999-12-31 23:59:59.999", datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999000u), type, 0, 3);
 
-    output.emplace_back("4_decimals_hms", "2010-02-15 02:05:30.0000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 4);
-    output.emplace_back("4_decimals_hmsu", "2010-02-15 02:05:30.4267", makedt(2010, 2, 15, 2, 5, 30, 426700), type, 0, 4);
-    output.emplace_back("4_decimals_min", "0000-01-01 00:00:00.0000", makedt(0, 1, 1), type, 0, 4);
-    output.emplace_back("4_decimals_max", "9999-12-31 23:59:59.9999", makedt(9999, 12, 31, 23, 59, 59, 999900), type, 0, 4);
+    output.emplace_back("4_decimals_hms", "2010-02-15 02:05:30.0000", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type, 0, 4);
+    output.emplace_back("4_decimals_hmsu", "2010-02-15 02:05:30.4267", datetime(2010u, 2u, 15u, 2u, 5u, 30u, 426700u), type, 0, 4);
+    output.emplace_back("4_decimals_min", "0000-01-01 00:00:00.0000", datetime(0u, 1u, 1u), type, 0, 4);
+    output.emplace_back("4_decimals_max", "9999-12-31 23:59:59.9999", datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999900u), type, 0, 4);
 
-    output.emplace_back("5_decimals_hms", "2010-02-15 02:05:30.00000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 5);
-    output.emplace_back("5_decimals_hmsu", "2010-02-15 02:05:30.00239", makedt(2010, 2, 15, 2, 5, 30, 2390), type, 0, 5);
-    output.emplace_back("5_decimals_min", "0000-01-01 00:00:00.00000", makedt(0, 1, 1), type, 0, 5);
-    output.emplace_back("5_decimals_max", "9999-12-31 23:59:59.99999", makedt(9999, 12, 31, 23, 59, 59, 999990), type, 0, 5);
+    output.emplace_back("5_decimals_hms", "2010-02-15 02:05:30.00000", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type, 0, 5);
+    output.emplace_back("5_decimals_hmsu", "2010-02-15 02:05:30.00239", datetime(2010u, 2u, 15u, 2u, 5u, 30u, 2390u), type, 0, 5);
+    output.emplace_back("5_decimals_min", "0000-01-01 00:00:00.00000", datetime(0u, 1u, 1u), type, 0, 5);
+    output.emplace_back("5_decimals_max", "9999-12-31 23:59:59.99999", datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999990u), type, 0, 5);
 
-    output.emplace_back("6_decimals_hms", "2010-02-15 02:05:30.000000", makedt(2010, 2, 15, 2, 5, 30), type, 0, 6);
-    output.emplace_back("6_decimals_hmsu", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), type, 0, 6);
-    output.emplace_back("6_decimals_min", "0000-01-01 00:00:00.000000", makedt(0, 1, 1), type, 0, 6);
-    output.emplace_back("6_decimals_max", "9999-12-31 23:59:59.999999", makedt(9999, 12, 31, 23, 59, 59, 999999), type, 0, 6);
+    output.emplace_back("6_decimals_hms", "2010-02-15 02:05:30.000000", datetime(2010u, 2u, 15u, 2u, 5u, 30u), type, 0, 6);
+    output.emplace_back("6_decimals_hmsu", "2010-02-15 02:05:30.002395", datetime(2010u, 2u, 15u, 2u, 5u, 30u, 2395u), type, 0, 6);
+    output.emplace_back("6_decimals_min", "0000-01-01 00:00:00.000000", datetime(0u, 1u, 1u), type, 0, 6);
+    output.emplace_back("6_decimals_max", "9999-12-31 23:59:59.999999", datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999999u), type, 0, 6);
 
     // not a real case, we cap decimals to 6
-    output.emplace_back("7_decimals", "2010-02-15 02:05:30.002395", makedt(2010, 2, 15, 2, 5, 30, 2395), type, 0, 7);
+    output.emplace_back("7_decimals", "2010-02-15 02:05:30.002395", datetime(2010, 2, 15, 2, 5, 30, 2395), type, 0, 7);
 
-    // Generate all invalid date casuistic for all decimals.
-    // These are accepted by MySQL depending on the configuration
-    constexpr struct
-    {
-        const char* name;
-        const char* base_value;
-    } why_is_invalid [] = {
-        { "zero", "0000-00-00 00:00:00" },
-        { "invalid_date", "2010-11-31 01:10:59" },
-        { "zero_month",  "2010-00-31 01:10:59" },
-        { "zero_day", "2010-11-00 01:10:59" },
-        { "zero_month_day", "2010-00-00 01:10:59" }
-    };
+    // Invalid datetimes (because their date is invalid)
+    output.emplace_back("0_decimals_zero", "0000-00-00 00:00:00", datetime(), type);
+    output.emplace_back("0_decimals_invalid_date", "2010-11-31 01:10:59", datetime(2010u, 11u, 31u, 1u, 10u, 59u), type);
+    output.emplace_back("0_decimals_zero_month", "2010-00-31 01:10:59", datetime(2010u, 0u, 31u, 1u, 10u, 59u), type);
+    output.emplace_back("0_decimals_zero_day", "2010-11-00 01:10:59", datetime(2010u, 11u, 0u, 1u, 10u, 59u), type);
+    output.emplace_back("0_decimals_zero_month_day", "2010-00-00 01:10:59", datetime(2010u, 0u, 0u, 1u, 10u, 59u), type);
 
-    for (const auto& why: why_is_invalid)
-    {
-        for (unsigned decimals = 0; decimals <= 6; ++decimals)
-        {
-            std::string name = stringize(decimals, "_decimals_", why.name);
-            std::string value = why.base_value;
-            if (decimals > 0)
-            {
-                value.push_back('.');
-                for (unsigned i = 0; i < decimals; ++i)
-                    value.push_back('0');
-            }
-            output.emplace_back(std::move(name), std::move(value), nullptr, type, 0, decimals);
-        }
-    }
+    output.emplace_back("1_decimals_zero", "0000-00-00 00:00:00.0", datetime(), type, 0, 1);
+    output.emplace_back("1_decimals_invalid_date", "2010-11-31 01:10:59.9", datetime(2010u, 11u, 31u, 1u, 10u, 59u, 900000u), type, 0, 1);
+    output.emplace_back("1_decimals_zero_month", "2010-00-31 01:10:59.9", datetime(2010u, 0u, 31u, 1u, 10u, 59u, 900000u), type, 0, 1);
+    output.emplace_back("1_decimals_zero_day", "2010-11-00 01:10:59.9", datetime(2010u, 11u, 0u, 1u, 10u, 59u, 900000u), type, 0, 1);
+    output.emplace_back("1_decimals_zero_month_day", "2010-00-00 01:10:59.9", datetime(2010u, 0u, 0u, 1u, 10u, 59u, 900000u), type, 0, 1);
+
+    output.emplace_back("2_decimals_zero", "0000-00-00 00:00:00.00", datetime(), type, 0, 2);
+    output.emplace_back("2_decimals_invalid_date", "2010-11-31 01:10:59.98", datetime(2010u, 11u, 31u, 1u, 10u, 59u, 980000u), type, 0, 2);
+    output.emplace_back("2_decimals_zero_month", "2010-00-31 01:10:59.98", datetime(2010u, 0u, 31u, 1u, 10u, 59u, 980000u), type, 0, 2);
+    output.emplace_back("2_decimals_zero_day", "2010-11-00 01:10:59.98", datetime(2010u, 11u, 0u, 1u, 10u, 59u, 980000u), type, 0, 2);
+    output.emplace_back("2_decimals_zero_month_day", "2010-00-00 01:10:59.98", datetime(2010u, 0u, 0u, 1u, 10u, 59u, 980000u), type, 0, 2);
+
+    output.emplace_back("3_decimals_zero", "0000-00-00 00:00:00.000", datetime(), type, 0, 3);
+    output.emplace_back("3_decimals_invalid_date", "2010-11-31 01:10:59.987", datetime(2010u, 11u, 31u, 1u, 10u, 59u, 987000u), type, 0, 3);
+    output.emplace_back("3_decimals_zero_month", "2010-00-31 01:10:59.987", datetime(2010u, 0u, 31u, 1u, 10u, 59u, 987000u), type, 0, 3);
+    output.emplace_back("3_decimals_zero_day", "2010-11-00 01:10:59.987", datetime(2010u, 11u, 0u, 1u, 10u, 59u, 987000u), type, 0, 3);
+    output.emplace_back("3_decimals_zero_month_day", "2010-00-00 01:10:59.987", datetime(2010u, 0u, 0u, 1u, 10u, 59u, 987000u), type, 0, 3);
+
+    output.emplace_back("4_decimals_zero", "0000-00-00 00:00:00.0000", datetime(), type, 0, 4);
+    output.emplace_back("4_decimals_invalid_date", "2010-11-31 01:10:59.9876", datetime(2010u, 11u, 31u, 1u, 10u, 59u, 987600u), type, 0, 4);
+    output.emplace_back("4_decimals_zero_month", "2010-00-31 01:10:59.9876", datetime(2010u, 0u, 31u, 1u, 10u, 59u, 987600u), type, 0, 4);
+    output.emplace_back("4_decimals_zero_day", "2010-11-00 01:10:59.9876", datetime(2010u, 11u, 0u, 1u, 10u, 59u, 987600u), type, 0, 4);
+    output.emplace_back("4_decimals_zero_month_day", "2010-00-00 01:10:59.9876", datetime(2010u, 0u, 0u, 1u, 10u, 59u, 987600u), type, 0, 4);
+
+    output.emplace_back("5_decimals_zero", "0000-00-00 00:00:00.00000", datetime(), type, 0, 5);
+    output.emplace_back("5_decimals_invalid_date", "2010-11-31 01:10:59.98765", datetime(2010u, 11u, 31u, 1u, 10u, 59u, 987650u), type, 0, 5);
+    output.emplace_back("5_decimals_zero_month", "2010-00-31 01:10:59.98765", datetime(2010u, 0u, 31u, 1u, 10u, 59u, 987650u), type, 0, 5);
+    output.emplace_back("5_decimals_zero_day", "2010-11-00 01:10:59.98765", datetime(2010u, 11u, 0u, 1u, 10u, 59u, 987650u), type, 0, 5);
+    output.emplace_back("5_decimals_zero_month_day", "2010-00-00 01:10:59.98765", datetime(2010u, 0u, 0u, 1u, 10u, 59u, 987650u), type, 0, 5);
+
+    output.emplace_back("6_decimals_zero", "0000-00-00 00:00:00.000000", datetime(), type, 0, 6);
+    output.emplace_back("6_decimals_invalid_date", "2010-11-31 01:10:59.987654", datetime(2010u, 11u, 31u, 1u, 10u, 59u, 987654u), type, 0, 6);
+    output.emplace_back("6_decimals_zero_month", "2010-00-31 01:10:59.987654", datetime(2010u, 0u, 31u, 1u, 10u, 59u, 987654u), type, 0, 6);
+    output.emplace_back("6_decimals_zero_day", "2010-11-00 01:10:59.987654", datetime(2010u, 11u, 0u, 1u, 10u, 59u, 987654u), type, 0, 6);
+    output.emplace_back("6_decimals_zero_month_day", "2010-00-00 01:10:59.987654", datetime(2010u, 0u, 0u, 1u, 10u, 59u, 987654u), type, 0, 6);
 }
 
 void add_time_samples(std::vector<success_sample>& output)
@@ -382,6 +412,7 @@ std::vector<success_sample> make_all_samples()
 {
     std::vector<success_sample> res;
     add_string_samples(res);
+    add_blob_samples(res);
     add_int_samples(res);
     add_bit_types(res);
     add_float_samples<float>(protocol_field_type::float_, res);
@@ -412,10 +443,11 @@ BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
     BOOST_TEST(err == errc::ok);
 
     // Strings are representd as string view offsets
-    if (sample.expected.is_string())
+    if (sample.expected.is_string() || sample.expected.is_blob())
     {
-        field_view expected_offset (string_view_offset(0, sample.expected.get_string().size()));
-        BOOST_TEST(actual_value == expected_offset);
+        std::size_t expected_offset = sample.expected.is_string() ? sample.expected.get_string().size() : sample.expected.get_blob().size();
+        field_view expected_offset_fv = make_svoff_fv(0, expected_offset, sample.expected.is_blob());
+        BOOST_TEST(actual_value == expected_offset_fv);
         actual_value.offset_to_string_view(buffer_first);
     }
 

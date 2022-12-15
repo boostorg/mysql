@@ -33,6 +33,10 @@ enum class field_kind
     /// `field_view`).
     string,
 
+    /// The field contains a binary string (\ref blob for `field` and \ref blob_view for
+    /// `field_view`).
+    blob,
+
     /// The field contains a `float`.
     float_,
 

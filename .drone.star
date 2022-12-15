@@ -6,7 +6,7 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "bugfix/*", "feature/*", "fix/*", "pr/*" ] }
-_container_sha = 'f2ac4ad7d4038c604bad2a2c66893c5c966b869a'
+_container_sha = 'ab0415ecdf14729ebe3676d043abbb1e151b49c2'
 
 
 def _image(name):

@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/datetime.hpp>
+
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 
@@ -18,6 +22,9 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
+using boost::mysql::blob_view;
+using boost::mysql::date;
+using boost::mysql::datetime;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
@@ -70,21 +77,7 @@ void add_string_samples(std::vector<success_sample>& output)
         success_sample("char", {0x04, 0x74, 0x65, 0x73, 0x74}, "test", protocol_field_type::string)
     );
     output.push_back(success_sample(
-        "varbinary",
-        {0x04, 0x74, 0x65, 0x73, 0x74},
-        "test",
-        protocol_field_type::var_string,
-        column_flags::binary
-    ));
-    output.push_back(success_sample(
-        "binary",
-        {0x04, 0x74, 0x65, 0x73, 0x74},
-        "test",
-        protocol_field_type::string,
-        column_flags::binary
-    ));
-    output.push_back(success_sample(
-        "text_blob",
+        "text",
         {0x04, 0x74, 0x65, 0x73, 0x74},
         "test",
         protocol_field_type::blob,
@@ -107,18 +100,45 @@ void add_string_samples(std::vector<success_sample>& output)
     output.push_back(
         success_sample("decimal", {0x02, 0x31, 0x30}, "10", protocol_field_type::newdecimal)
     );
+}
+
+void add_blob_samples(std::vector<success_sample>& output)
+{
+    static constexpr std::uint8_t buff[] = {0x01, 0x00, 0x73, 0x74};
+
     output.push_back(success_sample(
-        "geomtry",
-        {0x04, 0x74, 0x65, 0x73, 0x74},
-        "test",
+        "varbinary",
+        {0x04, 0x01, 0x00, 0x73, 0x74},
+        blob_view(buff),
+        protocol_field_type::var_string,
+        column_flags::binary
+    ));
+    output.push_back(success_sample(
+        "binary",
+        {0x04, 0x01, 0x00, 0x73, 0x74},
+        blob_view(buff),
+        protocol_field_type::string,
+        column_flags::binary
+    ));
+    output.push_back(success_sample(
+        "blob",
+        {0x04, 0x01, 0x00, 0x73, 0x74},
+        blob_view(buff),
+        protocol_field_type::blob,
+        column_flags::binary
+    ));
+    output.push_back(success_sample(
+        "geometry",
+        {0x04, 0x01, 0x00, 0x73, 0x74},
+        blob_view(buff),
         protocol_field_type::geometry
     ));
 
     // Anything we don't know what it is, we interpret as a string
     output.push_back(success_sample(
         "unknown_protocol_type",
-        {0x04, 0x74, 0x65, 0x73, 0x74},
-        "test",
+        {0x04, 0x01, 0x00, 0x73, 0x74},
+        blob_view(buff),
         static_cast<protocol_field_type>(0x23)
     ));
 }
@@ -322,50 +342,47 @@ void add_date_samples(std::vector<success_sample>& output)
     output.push_back(success_sample(
         "regular",
         {0x04, 0xda, 0x07, 0x03, 0x1c},
-        makedate(2010, 3, 28),
+        date(2010u, 3u, 28u),
         protocol_field_type::date
     ));
     output.push_back(success_sample(
         "min",
         {0x04, 0x00, 0x00, 0x01, 0x01},
-        makedate(0, 1, 1),
+        date(0u, 1u, 1u),
         protocol_field_type::date
     ));
     output.push_back(success_sample(
         "max",
         {0x04, 0x0f, 0x27, 0x0c, 0x1f},
-        makedate(9999, 12, 31),
+        date(9999u, 12u, 31u),
         protocol_field_type::date
     ));
-    output.push_back(success_sample("zero", {0x00}, nullptr, protocol_field_type::date));
-    output.push_back(success_sample(
-        "zero_full_length",
-        {0x04, 0x00, 0x00, 0x00, 0x00},
-        nullptr,
-        protocol_field_type::date
-    ));
+    output.push_back(success_sample("empty", {0x00}, date(), protocol_field_type::date));
+    output.push_back(
+        success_sample("zero", {0x04, 0x00, 0x00, 0x00, 0x00}, date(), protocol_field_type::date)
+    );
     output.push_back(success_sample(
         "zero_month",
-        {0x04, 0x00, 0x00, 0x00, 0x01},
-        nullptr,
+        {0x04, 0xda, 0x07, 0x00, 0x01},
+        date(2010u, 0u, 1u),
         protocol_field_type::date
     ));
     output.push_back(success_sample(
         "zero_day",
-        {0x04, 0x00, 0x00, 0x01, 0x00},
-        nullptr,
+        {0x04, 0xda, 0x07, 0x01, 0x00},
+        date(2010u, 1u, 0u),
         protocol_field_type::date
     ));
     output.push_back(success_sample(
-        "zero_month_day_nonzero_year",
-        {0x04, 0x01, 0x00, 0x00, 0x00},
-        nullptr,
+        "zero_month_day",
+        {0x04, 0xda, 0x07, 0x00, 0x00},
+        date(2010u, 0u, 0u),
         protocol_field_type::date
     ));
     output.push_back(success_sample(
         "invalid_date",
-        {0x04, 0x00, 0x00, 11, 31},
-        nullptr,
+        {0x04, 0xda, 0x07, 0x0b, 0x1f},
+        date(2010u, 11u, 31u),
         protocol_field_type::date
     ));
 }
@@ -373,143 +390,190 @@ void add_date_samples(std::vector<success_sample>& output)
 void add_datetime_samples(protocol_field_type type, std::vector<success_sample>& output)
 {
     output.push_back(
-        success_sample("only_date", {0x04, 0xda, 0x07, 0x01, 0x01}, makedt(2010, 1, 1), type)
+        success_sample("only_date", {0x04, 0xda, 0x07, 0x01, 0x01}, datetime(2010u, 1u, 1u), type)
     );
     output.push_back(success_sample(
         "date_h",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x14, 0x00, 0x00},
-        makedt(2010, 1, 1, 20, 0, 0, 0),
+        datetime(2010u, 1u, 1u, 20u, 0u, 0u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_m",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x00, 0x01, 0x00},
-        makedt(2010, 1, 1, 0, 1, 0, 0),
+        datetime(2010u, 1u, 1u, 0u, 1u, 0u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_hm",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x03, 0x02, 0x00},
-        makedt(2010, 1, 1, 3, 2, 0, 0),
+        datetime(2010u, 1u, 1u, 3u, 2u, 0u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_s",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x00, 0x00, 0x01},
-        makedt(2010, 1, 1, 0, 0, 1, 0),
+        datetime(2010u, 1u, 1u, 0u, 0u, 1u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_ms",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x00, 0x3b, 0x01},
-        makedt(2010, 1, 1, 0, 59, 1, 0),
+        datetime(2010u, 1u, 1u, 0u, 59u, 1u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_hs",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x05, 0x00, 0x01},
-        makedt(2010, 1, 1, 5, 0, 1, 0),
+        datetime(2010u, 1u, 1u, 5u, 0u, 1u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_hms",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b},
-        makedt(2010, 1, 1, 23, 1, 59, 0),
+        datetime(2010u, 1u, 1u, 23u, 1u, 59u, 0u),
         type
     ));
     output.push_back(success_sample(
         "date_u",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x00, 0x00, 0x00, 0x78, 0xd4, 0x03, 0x00},
-        makedt(2010, 1, 1, 0, 0, 0, 251000),
+        datetime(2010u, 1u, 1u, 0u, 0u, 0u, 251000u),
         type
     ));
     output.push_back(success_sample(
         "date_hu",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x00, 0x00, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 23, 0, 0, 967510),
+        datetime(2010u, 1u, 1u, 23u, 0u, 0u, 967510u),
         type
     ));
     output.push_back(success_sample(
         "date_mu",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x00, 0x01, 0x00, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 0, 1, 0, 967510),
+        datetime(2010u, 1u, 1u, 0u, 1u, 0u, 967510u),
         type
     ));
     output.push_back(success_sample(
         "date_hmu",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x00, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 23, 1, 0, 967510),
+        datetime(2010u, 1u, 1u, 23u, 1u, 0u, 967510u),
         type
     ));
     output.push_back(success_sample(
         "date_su",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x00, 0x00, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 0, 0, 59, 967510),
+        datetime(2010u, 1u, 1u, 0u, 0u, 59u, 967510u),
         type
     ));
     output.push_back(success_sample(
         "date_msu",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x00, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 0, 1, 59, 967510),
+        datetime(2010u, 1u, 1u, 0u, 1u, 59u, 967510u),
         type
     ));
     output.push_back(success_sample(
         "date_hsu",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x00, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 23, 0, 59, 967510),
+        datetime(2010u, 1u, 1u, 23u, 0u, 59u, 967510u),
         type
     ));
     output.push_back(success_sample(
         "date_hmsu",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
-        makedt(2010, 1, 1, 23, 1, 59, 967510),
+        datetime(2010u, 1u, 1u, 23u, 1u, 59u, 967510u),
         type
     ));
-    output.push_back(success_sample("zeros", {0x00}, nullptr, type));
 
-    // Create all the casuistic for datetimes with invalid dates. For all possible lengths,
-    // try invalid date, zero month, zero day, zero date
-    constexpr struct
-    {
-        const char* name;
-        std::uint8_t length;
-    } lengths[] = {
-        {"d",    4 },
-        {"hms",  7 },
-        {"hmsu", 11}
-    };
+    // Invalid datetimes (because their date is invalid)
+    output.push_back(success_sample("empty", {0x00}, datetime(), type));
+    output.push_back(
+        success_sample("only_date_zeros", {0x04, 0x00, 0x00, 0x00, 0x00}, datetime(), type)
+    );
+    output.push_back(success_sample(
+        "only_date_invalid_date",
+        {0x04, 0xda, 0x07, 0x0b, 0x1f},
+        datetime(2010u, 11u, 31u),
+        type
+    ));
+    output.push_back(success_sample(
+        "only_date_zero_month",
+        {0x04, 0xda, 0x07, 0x00, 0x01},
+        datetime(2010u, 0u, 1u),
+        type
+    ));
+    output.push_back(success_sample(
+        "only_date_zero_day",
+        {0x04, 0xda, 0x07, 0x01, 0x00},
+        datetime(2010u, 1u, 0u),
+        type
+    ));
+    output.push_back(success_sample(
+        "only_date_zero_month_day",
+        {0x04, 0xda, 0x07, 0x00, 0x00},
+        datetime(2010u, 0u, 0u),
+        type
+    ));
 
-    const struct
-    {
-        const char* name;
-        void (*invalidator)(bytestring&);
-    } why_is_invalid[] = {
-        {"zeros",          [](bytestring& b) { std::memset(b.data() + 1, 0, b.size() - 1); }},
-        {"invalid_date",
-         [](bytestring& b) {
-             b[3] = 11;
-             b[4] = 31;
-         }                                                                                  },
-        {"zero_month",     [](bytestring& b) { b[3] = 0; }                                  },
-        {"zero_day",       [](bytestring& b) { b[4] = 0; }                                  },
-        {"zero_month_day", [](bytestring& b) { std::memset(b.data() + 1, 0, 4); }           },
-    };
+    output.push_back(success_sample(
+        "date_hms_zeros",
+        {0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+        datetime(),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hms_invalid_date",
+        {0x07, 0xda, 0x07, 0x0b, 0x1f, 0x17, 0x01, 0x3b},
+        datetime(2010u, 11u, 31u, 23u, 1u, 59u),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hms_zero_month",
+        {0x07, 0xda, 0x07, 0x00, 0x01, 0x17, 0x01, 0x3b},
+        datetime(2010u, 0u, 1u, 23u, 1u, 59u),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hms_zero_day",
+        {0x07, 0xda, 0x07, 0x01, 0x00, 0x17, 0x01, 0x3b},
+        datetime(2010u, 1u, 0u, 23u, 1u, 59u),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hms_zero_month_day",
+        {0x07, 0xda, 0x07, 0x00, 0x00, 0x17, 0x01, 0x3b},
+        datetime(2010u, 0u, 0u, 23u, 1u, 59u),
+        type
+    ));
 
-    // Template datetime
-    bytestring regular{0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00};
-
-    for (const auto& why : why_is_invalid)
-    {
-        for (const auto& len : lengths)
-        {
-            std::string name = stringize(why.name, "_", len.name);
-            bytestring buffer(regular);
-            buffer[0] = std::uint8_t(len.length);
-            buffer.resize(len.length + 1);
-            why.invalidator(buffer);
-            output.emplace_back(std::move(name), std::move(buffer), nullptr, type);
-        }
-    }
+    output.push_back(success_sample(
+        "date_hmsu_zeros",
+        {0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+        datetime(),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hmsu_invalid_date",
+        {0x0b, 0xda, 0x07, 0x0b, 0x1f, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
+        datetime(2010u, 11u, 31u, 23u, 1u, 59u, 967510u),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hmsu_zero_month",
+        {0x0b, 0xda, 0x07, 0x00, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
+        datetime(2010u, 0u, 1u, 23u, 1u, 59u, 967510u),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hmsu_zero_day",
+        {0x0b, 0xda, 0x07, 0x01, 0x00, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
+        datetime(2010u, 1u, 0u, 23u, 1u, 59u, 967510u),
+        type
+    ));
+    output.push_back(success_sample(
+        "date_hmsu_zero_month_day",
+        {0x0b, 0xda, 0x07, 0x00, 0x00, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00},
+        datetime(2010u, 0u, 0u, 23u, 1u, 59u, 967510u),
+        type
+    ));
 }
 
 void add_time_samples(std::vector<success_sample>& output)
@@ -599,6 +663,7 @@ std::vector<success_sample> make_all_samples()
 {
     std::vector<success_sample> res;
     add_string_samples(res);
+    add_blob_samples(res);
     add_int_samples(res);
     add_bit_types(res);
     add_float_samples(res);
@@ -625,10 +690,15 @@ BOOST_DATA_TEST_CASE(test_deserialize_binary_value_ok, data::make(make_all_sampl
 
     // Strings are representd as string view offsets. Strings are prefixed
     // by their length, so they don't start at offset 0
-    if (sample.expected.is_string())
+    if (sample.expected.is_string() || sample.expected.is_blob())
     {
-        std::size_t expected_size = sample.expected.get_string().size();
-        field_view expected_offset(string_view_offset(buffer.size() - expected_size, expected_size)
+        std::size_t expected_size = sample.expected.is_string()
+                                        ? sample.expected.get_string().size()
+                                        : sample.expected.get_blob().size();
+        field_view expected_offset = make_svoff_fv(
+            buffer.size() - expected_size,
+            expected_size,
+            sample.expected.is_blob()
         );
         BOOST_TEST(actual_value == expected_offset);
         actual_value.offset_to_string_view(buffer.data());

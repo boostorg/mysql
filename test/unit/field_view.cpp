@@ -5,9 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/blob.hpp>
+#include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test_suite.hpp>
@@ -17,6 +22,7 @@
 #include <sstream>
 #include <vector>
 
+#include "assert_buffer_equals.hpp"
 #include "test_common.hpp"
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
@@ -24,6 +30,10 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 using namespace boost::mysql::test;
+using boost::mysql::blob;
+using boost::mysql::blob_view;
+using boost::mysql::date;
+using boost::mysql::datetime;
 using boost::mysql::field;
 using boost::mysql::field_kind;
 using boost::mysql::field_view;
@@ -128,6 +138,13 @@ BOOST_AUTO_TEST_CASE(from_string_view)
     BOOST_TEST(v.as_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(from_blob_view)
+{
+    std::uint8_t buff[] = {0x00, 0x01, 0x02};
+    field_view v{blob_view(buff)};
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), buff);
+}
+
 BOOST_AUTO_TEST_CASE(from_float)
 {
     field_view v(4.2f);
@@ -142,14 +159,14 @@ BOOST_AUTO_TEST_CASE(from_double)
 
 BOOST_AUTO_TEST_CASE(from_date)
 {
-    auto d = makedate(2022, 4, 1);
+    date d(2022, 4, 1);
     field_view v(d);
     BOOST_TEST(v.as_date() == d);
 }
 
 BOOST_AUTO_TEST_CASE(from_datetime)
 {
-    auto d = makedt(2022, 4, 1, 21);
+    datetime d(2022u, 4u, 1u, 21u);
     field_view v(d);
     BOOST_TEST(v.as_datetime() == d);
 }
@@ -170,10 +187,11 @@ field f_null;
 field f_int64(50);
 field f_uint64(50u);
 field f_string("long_test_string");
+field f_blob(blob{0x00, 0x01, 0x02, 0x03});
 field f_float(4.2f);
 field f_double(5.0);
-field f_date(makedate(2020, 1, 1));
-field f_datetime(makedt(2019, 1, 1));
+field f_date(date(2020u, 1u, 1u));
+field f_datetime(datetime(2019u, 1u, 1u));
 field f_time(maket(9, 1, 0));
 
 // clang-format off
@@ -182,27 +200,29 @@ struct
     const char* name;
     field_view field;
     field_kind expected_kind;
-    bool is_null, is_int64, is_uint64, is_string, is_float, is_double, is_date, is_datetime, is_time;
+    bool is_null, is_int64, is_uint64, is_string, is_blob, is_float, is_double, is_date, is_datetime, is_time;
 } test_cases [] = {
-    // name           field                             kind                  null,  i64    u64    str    float  double date   dt    time 
-    { "null",         field_view(),                     field_kind::null,     true,  false, false, false, false, false, false, false, false },
-    { "int64",        field_view(42),                   field_kind::int64,    false, true,  false, false, false, false, false, false, false },
-    { "uint64",       field_view(42u),                  field_kind::uint64,   false, false, true,  false, false, false, false, false, false },
-    { "string",       field_view("test"),               field_kind::string,   false, false, false, true,  false, false, false, false, false },
-    { "float",        field_view(4.2f),                 field_kind::float_,   false, false, false, false, true,  false, false, false, false },
-    { "double",       field_view(4.2),                  field_kind::double_,  false, false, false, false, false, true,  false, false, false },
-    { "date",         field_view(makedate(2020, 1, 1)), field_kind::date,     false, false, false, false, false, false, true,  false, false },
-    { "datetime",     field_view(makedt(2020, 1, 1)),   field_kind::datetime, false, false, false, false, false, false, false, true,  false },
-    { "time",         field_view(maket(20, 1, 1)),      field_kind::time,     false, false, false, false, false, false, false, false, true },
-    { "ref_null",     field_view(f_null),               field_kind::null,     true,  false, false, false, false, false, false, false, false },
-    { "ref_int64",    field_view(f_int64),              field_kind::int64,    false, true,  false, false, false, false, false, false, false },
-    { "ref_uint64",   field_view(f_uint64),             field_kind::uint64,   false, false, true,  false, false, false, false, false, false },
-    { "ref_string",   field_view(f_string),             field_kind::string,   false, false, false, true,  false, false, false, false, false },
-    { "ref_float",    field_view(f_float),              field_kind::float_,   false, false, false, false, true,  false, false, false, false },
-    { "ref_double",   field_view(f_double),             field_kind::double_,  false, false, false, false, false, true,  false, false, false },
-    { "ref_date",     field_view(f_date),               field_kind::date,     false, false, false, false, false, false, true,  false, false },
-    { "ref_datetime", field_view(f_datetime),           field_kind::datetime, false, false, false, false, false, false, false, true,  false },
-    { "ref_time",     field_view(f_time),               field_kind::time,     false, false, false, false, false, false, false, false, true },
+    // name           field                                kind                  null,  i64    u64    str    blob   float  double date   dt     time 
+    { "null",         field_view(),                        field_kind::null,     true,  false, false, false, false, false, false, false, false, false },
+    { "int64",        field_view(42),                      field_kind::int64,    false, true,  false, false, false, false, false, false, false, false },
+    { "uint64",       field_view(42u),                     field_kind::uint64,   false, false, true,  false, false, false, false, false, false, false },
+    { "string",       field_view("test"),                  field_kind::string,   false, false, false, true,  false, false, false, false, false, false },
+    { "blob",         field_view(makebv("\0\1\xff")),      field_kind::blob,     false, false, false, false, true,  false, false, false, false, false },
+    { "float",        field_view(4.2f),                    field_kind::float_,   false, false, false, false, false, true,  false, false, false, false },
+    { "double",       field_view(4.2),                     field_kind::double_,  false, false, false, false, false, false, true,  false, false, false },
+    { "date",         field_view(date(2020u, 1u, 1u)),     field_kind::date,     false, false, false, false, false, false, false, true,  false, false },
+    { "datetime",     field_view(datetime(2020u, 1u, 1u)), field_kind::datetime, false, false, false, false, false, false, false, false, true,  false },
+    { "time",         field_view(maket(20u, 1u, 1u)),      field_kind::time,     false, false, false, false, false, false, false, false, false, true },
+    { "ref_null",     field_view(f_null),                  field_kind::null,     true,  false, false, false, false, false, false, false, false, false },
+    { "ref_int64",    field_view(f_int64),                 field_kind::int64,    false, true,  false, false, false, false, false, false, false, false },
+    { "ref_uint64",   field_view(f_uint64),                field_kind::uint64,   false, false, true,  false, false, false, false, false, false, false },
+    { "ref_string",   field_view(f_string),                field_kind::string,   false, false, false, true,  false, false, false, false, false, false },
+    { "ref_blob",     field_view(f_blob),                  field_kind::blob,     false, false, false, false, true,  false, false, false, false, false },
+    { "ref_float",    field_view(f_float),                 field_kind::float_,   false, false, false, false, false, true,  false, false, false, false },
+    { "ref_double",   field_view(f_double),                field_kind::double_,  false, false, false, false, false, false, true,  false, false, false },
+    { "ref_date",     field_view(f_date),                  field_kind::date,     false, false, false, false, false, false, false, true,  false, false },
+    { "ref_datetime", field_view(f_datetime),              field_kind::datetime, false, false, false, false, false, false, false, false, true,  false },
+    { "ref_time",     field_view(f_time),                  field_kind::time,     false, false, false, false, false, false, false, false, false, true },
 };
 // clang-format on
 
@@ -224,6 +244,7 @@ BOOST_AUTO_TEST_CASE(is)
             BOOST_TEST(tc.field.is_int64() == tc.is_int64);
             BOOST_TEST(tc.field.is_uint64() == tc.is_uint64);
             BOOST_TEST(tc.field.is_string() == tc.is_string);
+            BOOST_TEST(tc.field.is_blob() == tc.is_blob);
             BOOST_TEST(tc.field.is_float() == tc.is_float);
             BOOST_TEST(tc.field.is_double() == tc.is_double);
             BOOST_TEST(tc.field.is_date() == tc.is_date);
@@ -253,6 +274,11 @@ BOOST_AUTO_TEST_CASE(as_exceptions)
                 BOOST_CHECK_NO_THROW(tc.field.as_string());
             else
                 BOOST_CHECK_THROW(tc.field.as_string(), boost::mysql::bad_field_access);
+
+            if (tc.is_blob)
+                BOOST_CHECK_NO_THROW(tc.field.as_blob());
+            else
+                BOOST_CHECK_THROW(tc.field.as_blob(), boost::mysql::bad_field_access);
 
             if (tc.is_float)
                 BOOST_CHECK_NO_THROW(tc.field.as_float());
@@ -304,6 +330,14 @@ BOOST_AUTO_TEST_CASE(string)
     BOOST_TEST(f.get_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(blob_)
+{
+    std::uint8_t buff[] = {0x00, 0x0f, 0x01};
+    field_view f{blob_view(buff)};
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), buff);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.get_blob(), buff);
+}
+
 BOOST_AUTO_TEST_CASE(float_)
 {
     field_view f(4.2f);
@@ -318,17 +352,17 @@ BOOST_AUTO_TEST_CASE(double_)
     BOOST_TEST(f.get_double() == 4.2);
 }
 
-BOOST_AUTO_TEST_CASE(date)
+BOOST_AUTO_TEST_CASE(date_)
 {
-    auto d = makedate(2020, 1, 2);
+    date d(2020u, 1u, 2u);
     field_view f(d);
     BOOST_TEST(f.as_date() == d);
     BOOST_TEST(f.get_date() == d);
 }
 
-BOOST_AUTO_TEST_CASE(datetime)
+BOOST_AUTO_TEST_CASE(datetime_)
 {
-    auto dt = makedt(2020, 1, 2);
+    datetime dt(2020u, 1u, 2u);
     field_view f(dt);
     BOOST_TEST(f.as_datetime() == dt);
     BOOST_TEST(f.get_datetime() == dt);
@@ -366,6 +400,15 @@ BOOST_AUTO_TEST_CASE(ref_string)
     BOOST_TEST(fv.get_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(ref_blob)
+{
+    std::uint8_t buff[] = {0x00, 0x01, 0x02};
+    field f{blob(std::begin(buff), std::end(buff))};
+    field_view fv(f);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(fv.as_blob(), buff);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(fv.get_blob(), buff);
+}
+
 BOOST_AUTO_TEST_CASE(ref_float)
 {
     field f(4.2f);
@@ -384,7 +427,7 @@ BOOST_AUTO_TEST_CASE(ref_double)
 
 BOOST_AUTO_TEST_CASE(ref_date)
 {
-    auto d = makedate(2020, 1, 2);
+    date d(2020u, 1u, 2u);
     field f(d);
     field_view fv(f);
     BOOST_TEST(fv.as_date() == d);
@@ -393,7 +436,7 @@ BOOST_AUTO_TEST_CASE(ref_date)
 
 BOOST_AUTO_TEST_CASE(ref_datetime)
 {
-    auto dt = makedt(2020, 1, 2);
+    datetime dt(2020u, 1u, 2u);
     field f(dt);
     field_view fv(f);
     BOOST_TEST(fv.as_datetime() == dt);
@@ -425,10 +468,11 @@ BOOST_AUTO_TEST_CASE(operator_equals)
         { "null_int64", field_view(), field_view(-1), false },
         { "null_uint64", field_view(), field_view(42), false },
         { "null_string", field_view(), field_view("<NULL>"), false },
+        { "null_blob", field_view(), field_view(blob_view()), false },
         { "null_float", field_view(), field_view(4.2f), false },
         { "null_double", field_view(), field_view(4.3), false },
-        { "null_date", field_view(), field_view(makedate(2020, 1, 2)), false },
-        { "null_datetime", field_view(), field_view(makedt(2020, 1, 1)), false },
+        { "null_date", field_view(), field_view(date(2020u, 1u, 2u)), false },
+        { "null_datetime", field_view(), field_view(datetime(2020u, 1u, 1u)), false },
         { "null_time", field_view(), field_view(maket(23, 1, 1)), false },
 
         { "int64_int64_same", field_view(42), field_view(42), true },
@@ -440,50 +484,64 @@ BOOST_AUTO_TEST_CASE(operator_equals)
         { "int64_uint64_gtmax", field_view(42), field_view(0xffffffffffffffffu), false },
         { "int64_uint64_lt0gtmax", field_view(-1), field_view(0xffffffffffffffffu), false },
         { "int64_string", field_view(42), field_view("42"), false },
+        { "int64_blob", field_view(42), field_view(makebv("42")), false },
         { "int64_float", field_view(42), field_view(42.0f), false },
         { "int64_double", field_view(42), field_view(42.0), false },
-        { "int64_date", field_view(42), field_view(makedate(2020, 1, 1)), false },
-        { "int64_datetime", field_view(42), field_view(makedt(2020, 1, 1)), false },
+        { "int64_date", field_view(42), field_view(date(2020u, 1u, 1u)), false },
+        { "int64_datetime", field_view(42), field_view(datetime(2020u, 1u, 1u)), false },
         { "int64_time", field_view(42), field_view(maket(20, 1, 1)), false },
 
         { "uint64_uint64_same", field_view(0xffffffffffffffffu), field_view(0xffffffffffffffffu), true },
         { "uint64_uint64_different", field_view(42u), field_view(31u), false },
         { "uint64_string", field_view(42u), field_view("42"), false },
+        { "uint64_blob", field_view(42u), field_view(makebv("42")), false },
         { "uint64_float", field_view(42u), field_view(42.0f), false },
         { "uint64_double", field_view(42u), field_view(42.0), false },
-        { "uint64_date", field_view(42u), field_view(makedate(2020, 1, 1)), false },
-        { "uint64_datetime", field_view(42u), field_view(makedt(2020, 1, 1)), false },
+        { "uint64_date", field_view(42u), field_view(date(2020u, 1u, 1u)), false },
+        { "uint64_datetime", field_view(42u), field_view(datetime(2020u, 1u, 1u)), false },
         { "uint64_time", field_view(42u), field_view(maket(20, 1, 1)), false },
 
         { "string_string_same", field_view("test"), field_view("test"), true },
         { "string_string_different", field_view("test"), field_view("test2"), false },
+        { "string_blob", field_view("test"), field_view(makebv("test")), false },
         { "string_float", field_view("4.2"), field_view(4.2f), false },
         { "string_double", field_view("4.2"), field_view(4.2), false },
-        { "string_date", field_view("2020-01-01"), field_view(makedate(2020, 1, 1)), false },
-        { "string_datetime", field_view("test"), field_view(makedt(2020, 1, 1)), false },
+        { "string_date", field_view("2020-01-01"), field_view(date(2020u, 1u, 1u)), false },
+        { "string_datetime", field_view("test"), field_view(datetime(2020u, 1u, 1u)), false },
         { "string_time", field_view("test"), field_view(maket(8, 1, 1)), false },
+        
+        { "blob_blob_same", field_view(makebv("\0test")), field_view(makebv("\0test")), true },
+        { "blob_blob_different", field_view(makebv("\0test")), field_view(makebv("\0test2")), false },
+        { "blob_blob_different_same_size", field_view(makebv("\0test")), field_view(makebv("\1test")), false },
+        { "blob_blob_same_empty", field_view(blob_view()), field_view(blob_view()), true },
+        { "blob_blob_different_empty", field_view(blob_view()), field_view(makebv("\0test")), false },
+        { "blob_float", field_view(makebv("\x40\x86\x66\x66")), field_view(4.2f), false },
+        { "blob_double", field_view(makebv("4.2")), field_view(4.2), false },
+        { "blob_date", field_view(makebv("2020-01-01")), field_view(date(2020u, 1u, 1u)), false },
+        { "blob_datetime", field_view(makebv("test")), field_view(datetime(2020u, 1u, 1u)), false },
+        { "blob_time", field_view(makebv("test")), field_view(maket(8, 1, 1)), false },
 
         { "float_float_same", field_view(4.2f), field_view(4.2f), true },
         { "float_float_different", field_view(4.2f), field_view(0.0f), false },
         { "float_double", field_view(4.2f), field_view(4.2), false },
-        { "float_date", field_view(4.2f), field_view(makedate(2020, 1, 2)), false },
-        { "float_datetime", field_view(4.2f), field_view(makedt(2020, 1, 2)), false },
+        { "float_date", field_view(4.2f), field_view(date(2020u, 1u, 2u)), false },
+        { "float_datetime", field_view(4.2f), field_view(datetime(2020u, 1u, 2u)), false },
         { "float_time", field_view(4.2f), field_view(maket(20, 1, 2)), false },
 
         { "double_double_same", field_view(4.2), field_view(4.2), true },
         { "double_double_different", field_view(4.2), field_view(-1.0), false },
-        { "double_date", field_view(4.2), field_view(makedate(2020, 1, 1)), false },
-        { "double_datetime", field_view(4.2), field_view(makedt(2020, 1, 1)), false },
+        { "double_date", field_view(4.2), field_view(date(2020u, 1u, 1u)), false },
+        { "double_datetime", field_view(4.2), field_view(datetime(2020u, 1u, 1u)), false },
         { "double_time", field_view(4.2), field_view(maket(9, 1, 1)), false },
 
-        { "date_date_same", field_view(makedate(2020, 1, 1)), field_view(makedate(2020, 1, 1)), true },
-        { "date_date_different", field_view(makedate(2020, 1, 1)), field_view(makedate(2019, 1, 1)), false },
-        { "date_datetime", field_view(makedate(2020, 1, 1)), field_view(makedt(2020, 1, 1)), false },
-        { "date_time", field_view(makedate(2020, 1, 1)), field_view(maket(9, 1, 1)), false },
+        { "date_date_same", field_view(date(2020u, 1u, 1u)), field_view(date(2020u, 1u, 1u)), true },
+        { "date_date_different", field_view(date(2020u, 1u, 1u)), field_view(date(2019u, 1u, 1u)), false },
+        { "date_datetime", field_view(date(2020u, 1u, 1u)), field_view(datetime(2020u, 1u, 1u)), false },
+        { "date_time", field_view(date(2020u, 1u, 1u)), field_view(maket(9, 1, 1)), false },
 
-        { "datetime_datetime_same", field_view(makedt(2020, 1, 1, 10)), field_view(makedt(2020, 1, 1, 10)), true },
-        { "datetime_datetime_different", field_view(makedt(2020, 1, 1, 10)), field_view(makedt(2020, 1, 1, 9)), false },
-        { "datetime_time", field_view(makedt(2020, 1, 1)), field_view(maket(20, 1, 1)), false },
+        { "datetime_datetime_same", field_view(datetime(2020u, 1u, 1u, 10u)), field_view(datetime(2020u, 1u, 1u, 10u)), true },
+        { "datetime_datetime_different", field_view(datetime(2020u, 1u, 1u, 10u)), field_view(datetime(2020u, 1u, 1u, 9u)), false },
+        { "datetime_time", field_view(datetime(2020u, 1u, 1u)), field_view(maket(20, 1, 1)), false },
 
         { "time_time_same", field_view(maket(20, 1, 1)), field_view(maket(20, 1, 1)), true },
         { "time_time_different", field_view(maket(20, 1, 1)), field_view(maket(20, 1, 1, 10)), false },
@@ -544,10 +602,11 @@ BOOST_AUTO_TEST_CASE(operator_equals_self_compare)
         { "int64", field_view(40), },
         { "uint64", field_view(42u) },
         { "string", field_view("test") },
+        { "blob", field_view(makebv("\0\0ab\1")) },
         { "float", field_view(4.2f) },
         { "double", field_view(5.0) },
-        { "date", field_view(makedate(2020, 1, 1)) },
-        { "datetime", field_view(makedt(2020, 1, 1)) },
+        { "date", field_view(date(2020u, 1u, 1u)) },
+        { "datetime", field_view(datetime(2020u, 1u, 1u)) },
         { "time", field_view(maket(8, 1, 1)) }
     };
     // clang-format on
@@ -578,171 +637,18 @@ struct stream_sample
     }
 };
 
-// Helper struct to define stream operations for date, datetime and time
-// We will list the possibilities for each component (hours, minutes, days...) and will
-// take the Cartessian product of all them
-struct component_value
-{
-    const char* name;
-    int v;
-    const char* repr;
-};
-
-void add_date_samples(std::vector<stream_sample>& output)
-{
-    constexpr component_value year_values[] = {
-        {"min",      0,    "0000"},
-        {"onedig",   1,    "0001"},
-        {"twodig",   98,   "0098"},
-        {"threedig", 789,  "0789"},
-        {"regular",  1999, "1999"},
-        {"max",      9999, "9999"}
-    };
-
-    constexpr component_value month_values[] = {
-        {"min", 1,  "01"},
-        {"max", 12, "12"}
-    };
-
-    constexpr component_value day_values[] = {
-        {"min", 1,  "01"},
-        {"max", 31, "31"}
-    };
-
-    for (const auto& year : year_values)
-    {
-        for (const auto& month : month_values)
-        {
-            for (const auto& day : day_values)
-            {
-                std::string name = stringize(
-                    "date_year",
-                    year.name,
-                    "_month",
-                    month.name,
-                    "_day",
-                    day.name
-                );
-                std::string str_val = stringize(year.repr, '-', month.repr, '-', day.repr);
-                field_view val(
-                    makedate(year.v, static_cast<unsigned>(month.v), static_cast<unsigned>(day.v))
-                );
-                output.emplace_back(std::move(name), val, std::move(str_val));
-            }
-        }
-    }
-}
-
-void add_datetime_samples(std::vector<stream_sample>& output)
-{
-    constexpr component_value year_values[] = {
-        {"min",      0,    "0000"},
-        {"onedig",   1,    "0001"},
-        {"twodig",   98,   "0098"},
-        {"threedig", 789,  "0789"},
-        {"regular",  1999, "1999"},
-        {"max",      9999, "9999"}
-    };
-
-    constexpr component_value month_values[] = {
-        {"min", 1,  "01"},
-        {"max", 12, "12"}
-    };
-
-    constexpr component_value day_values[] = {
-        {"min", 1,  "01"},
-        {"max", 31, "31"}
-    };
-
-    constexpr component_value hours_values[] = {
-        {"zero",     0,  "00"},
-        {"onedigit", 5,  "05"},
-        {"max",      23, "23"}
-    };
-
-    constexpr component_value mins_secs_values[] = {
-        {"zero",      0,  "00"},
-        {"onedigit",  5,  "05"},
-        {"twodigits", 59, "59"}
-    };
-
-    constexpr component_value micros_values[] = {
-        {"zero",      0,      "000000"},
-        {"onedigit",  5,      "000005"},
-        {"twodigits", 50,     "000050"},
-        {"max",       999999, "999999"},
-    };
-
-    for (const auto& year : year_values)
-    {
-        for (const auto& month : month_values)
-        {
-            for (const auto& day : day_values)
-            {
-                for (const auto& hours : hours_values)
-                {
-                    for (const auto& mins : mins_secs_values)
-                    {
-                        for (const auto& secs : mins_secs_values)
-                        {
-                            for (const auto& micros : micros_values)
-                            {
-                                std::string name = stringize(
-                                    "datetime_year",
-                                    year.name,
-                                    "_month",
-                                    month.name,
-                                    "_day",
-                                    day.name,
-                                    "_h",
-                                    hours.name,
-                                    "_m",
-                                    mins.name,
-                                    "_s",
-                                    secs.name,
-                                    "_u",
-                                    micros.name
-                                );
-                                std::string str_val = stringize(
-                                    year.repr,
-                                    '-',
-                                    month.repr,
-                                    '-',
-                                    day.repr,
-                                    ' ',
-                                    hours.repr,
-                                    ':',
-                                    mins.repr,
-                                    ':',
-                                    secs.repr,
-                                    '.',
-                                    micros.repr
-                                );
-                                auto val = makedt(
-                                    year.v,
-                                    static_cast<unsigned>(month.v),
-                                    static_cast<unsigned>(day.v),
-                                    hours.v,
-                                    mins.v,
-                                    secs.v,
-                                    micros.v
-                                );
-                                output.emplace_back(
-                                    std::move(name),
-                                    field_view(val),
-                                    std::move(str_val)
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 void add_time_samples(std::vector<stream_sample>& output)
 {
+    // Helper struct to define stream operations for date, datetime and time
+    // We will list the possibilities for each component (hours, minutes, days...) and will
+    // take the Cartessian product of all them
+    struct component_value
+    {
+        const char* name;
+        int v;
+        const char* repr;
+    };
+
     constexpr component_value sign_values[] = {
         {"positive", 1,  "" },
         {"negative", -1, "-"}
@@ -821,10 +727,13 @@ void add_ref_samples(std::vector<stream_sample>& output)
         field f_int64{-1};
         field f_uint64{50u};
         field f_string{"long_test_string"};
+        field f_blob{
+            blob{0x00, 0x32, 0x01}
+        };
         field f_float{4.2f};
         field f_double{5.1};
-        field f_date{makedate(2020, 1, 1)};
-        field f_datetime{makedt(2019, 1, 1, 21, 19, 1, 9)};
+        field f_date{date(2020u, 1u, 1u)};
+        field f_datetime{datetime(2019u, 1u, 1u, 21u, 19u, 1u, 9u)};
         field f_time{maket(9, 1, 0, 210)};
     };
     static owning_fields_t owning_fields;
@@ -833,6 +742,7 @@ void add_ref_samples(std::vector<stream_sample>& output)
     output.emplace_back("ref_int64", owning_fields.f_int64, "-1");
     output.emplace_back("ref_uint64", owning_fields.f_uint64, "50");
     output.emplace_back("ref_string", owning_fields.f_string, "long_test_string");
+    output.emplace_back("ref_blob", owning_fields.f_blob, "{ 0x00, 0x32, 0x01 }");
     output.emplace_back("ref_float", owning_fields.f_float, "4.2");
     output.emplace_back("ref_double", owning_fields.f_double, "5.1");
     output.emplace_back("ref_date", owning_fields.f_date, "2020-01-01");
@@ -843,18 +753,21 @@ void add_ref_samples(std::vector<stream_sample>& output)
 std::vector<stream_sample> make_stream_samples()
 {
     std::vector<stream_sample> res{
-        {"null",         nullptr,           "<NULL>"  },
-        {"i64_positive", std::int64_t(42),  "42"      },
-        {"i64_negative", std::int64_t(-90), "-90"     },
-        {"i64_zero",     std::int64_t(0),   "0"       },
-        {"u64_positive", std::uint64_t(42), "42"      },
-        {"u64_zero",     std::uint64_t(0),  "0"       },
-        {"string_view",  "a_string",        "a_string"},
-        {"float",        2.43f,             "2.43"    },
-        {"double",       8.12,              "8.12"    },
+        {"null", nullptr, "<NULL>"},
+        {"i64_positive", std::int64_t(42), "42"},
+        {"i64_negative", std::int64_t(-90), "-90"},
+        {"i64_zero", std::int64_t(0), "0"},
+        {"u64_positive", std::uint64_t(42), "42"},
+        {"u64_zero", std::uint64_t(0), "0"},
+        {"string_view", "a_string", "a_string"},
+        {"blob_empty", blob_view(), "{}"},
+        {"blob_one_elm", makebv("\4"), "{ 0x04 }"},
+        {"blob_several_elms", makebv("\0\x0a\x2f\xff"), "{ 0x00, 0x0a, 0x2f, 0xff }"},
+        {"float", 2.43f, "2.43"},
+        {"double", 8.12, "8.12"},
+        {"date", date(2020, 1, 19), "2020-01-19"},
+        {"datetime", datetime(2020, 1, 19, 11, 30, 21, 98765), "2020-01-19 11:30:21.098765"},
     };
-    add_date_samples(res);
-    add_datetime_samples(res);
     add_time_samples(res);
     add_ref_samples(res);
     return res;
@@ -911,7 +824,18 @@ BOOST_AUTO_TEST_CASE(string)
 {
     constexpr field_view v(makesv("test"));
     static_assert(v.is_string(), "");
-    // Comparisons are not constexpr
+    static_assert(v.as_string()[0] == 't', "");
+    static_assert(v.get_string()[0] == 't', "");
+    // string_view comparison uses char_traits::compare, which is not constexpr in C++14
+}
+
+BOOST_AUTO_TEST_CASE(blob)
+{
+    constexpr field_view v{blob_view()};
+    static_assert(v.is_blob(), "");
+    static_assert(v.as_blob().empty(), "");
+    static_assert(v.get_blob().empty(), "");
+    // blob comparison is not constexpr
 }
 
 BOOST_AUTO_TEST_CASE(float_)
@@ -932,9 +856,9 @@ BOOST_AUTO_TEST_CASE(double_)
     static_assert(v == field_view(4.2), "");
 }
 
-BOOST_AUTO_TEST_CASE(date)
+BOOST_AUTO_TEST_CASE(date_)
 {
-    constexpr auto d = makedate(2020, 1, 1);
+    constexpr date d(2020, 1, 1);
     constexpr field_view v(d);
     static_assert(v.is_date(), "");
     static_assert(v.as_date() == d, "");
@@ -942,9 +866,9 @@ BOOST_AUTO_TEST_CASE(date)
     static_assert(v == field_view(d), "");
 }
 
-BOOST_AUTO_TEST_CASE(datetime)
+BOOST_AUTO_TEST_CASE(datetime_)
 {
-    constexpr auto d = makedt(2020, 1, 1);
+    constexpr datetime d(2020u, 1u, 1u);
     constexpr field_view v(d);
     static_assert(v.is_datetime(), "");
     static_assert(v.as_datetime() == d, "");

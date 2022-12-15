@@ -5,9 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 
 #include <boost/test/tools/context.hpp>
 #include <boost/test/tools/interface.hpp>
@@ -17,6 +19,7 @@
 #include <cstdint>
 #include <sstream>
 
+#include "assert_buffer_equals.hpp"
 #include "test_common.hpp"
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
@@ -24,6 +27,9 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 using namespace boost::mysql::test;
+using boost::mysql::blob;
+using boost::mysql::date;
+using boost::mysql::datetime;
 using boost::mysql::field;
 using boost::mysql::field_kind;
 using boost::mysql::field_view;
@@ -58,6 +64,18 @@ BOOST_AUTO_TEST_CASE(copy_string)
     // Changing the value of v doesn't affect v2
     v = "other";
     BOOST_TEST(v2.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(copy_blob)
+{
+    blob b({0xff, 0x01, 0x02});
+    field v(blob{b});
+    field v2(v);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v2.as_blob(), b);
+
+    // Changing the value of v doesn't affect v2
+    v = "other";
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v2.as_blob(), b);
 }
 
 BOOST_AUTO_TEST_CASE(move)
@@ -162,6 +180,19 @@ BOOST_AUTO_TEST_CASE(from_string_lvalue)
     BOOST_TEST(v.as_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(from_blob_rvalue)
+{
+    field v(blob{0x02, 0x03});
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x02, 0x03}));
+}
+
+BOOST_AUTO_TEST_CASE(from_blob_lvalue)
+{
+    blob b{0x02, 0x03};
+    field v(b);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x02, 0x03}));
+}
+
 BOOST_AUTO_TEST_CASE(from_float)
 {
     field v(4.2f);
@@ -176,14 +207,14 @@ BOOST_AUTO_TEST_CASE(from_double)
 
 BOOST_AUTO_TEST_CASE(from_date)
 {
-    auto d = makedate(2022, 4, 1);
+    date d(2022u, 4u, 1u);
     field v(d);
     BOOST_TEST(v.as_date() == d);
 }
 
 BOOST_AUTO_TEST_CASE(from_datetime)
 {
-    auto d = makedt(2022, 4, 1, 21);
+    datetime d(2022u, 4u, 1u, 21u);
     field v(d);
     BOOST_TEST(v.as_datetime() == d);
 }
@@ -225,6 +256,15 @@ BOOST_AUTO_TEST_CASE(from_field_view_string)
     BOOST_TEST(f.as_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(from_field_view_blob)
+{
+    blob b{0x02, 0x00, 0x01};
+    field_view fv(b);
+    field f(fv);
+    b[0] = 0xff;  // changing the source string shouldn't modify the value
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x02, 0x00, 0x01}));
+}
+
 BOOST_AUTO_TEST_CASE(from_field_view_float)
 {
     field_view fv(4.2f);
@@ -241,7 +281,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_double)
 
 BOOST_AUTO_TEST_CASE(from_field_view_date)
 {
-    auto d = makedate(2020, 1, 2);
+    date d(2020u, 1u, 2u);
     field_view fv(d);
     field f(fv);
     BOOST_TEST(f.as_date() == d);
@@ -249,7 +289,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_date)
 
 BOOST_AUTO_TEST_CASE(from_field_view_datetime)
 {
-    auto d = makedt(2020, 1, 2);
+    datetime d(2020u, 1u, 2u);
     field_view fv(d);
     field f(fv);
     BOOST_TEST(f.as_datetime() == d);
@@ -285,6 +325,18 @@ BOOST_AUTO_TEST_CASE(copy_string)
     // Changing the value of v2 doesn't affect v
     v2.as_string() = "other";
     BOOST_TEST(v.as_string() == "test");
+}
+
+BOOST_AUTO_TEST_CASE(copy_blob)
+{
+    field v(42);
+    field v2(blob{0x00, 0x02});
+    v = v2;
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+
+    // Changing the value of v2 doesn't affect v
+    v2.as_blob()[0] = 0xff;
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
 }
 
 BOOST_AUTO_TEST_CASE(self_copy)
@@ -422,6 +474,21 @@ BOOST_AUTO_TEST_CASE(from_string_lvalue)
     BOOST_TEST(v.as_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(from_blob_rvalue)
+{
+    field v(9.2f);
+    v = blob{0x00, 0x02};
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+}
+
+BOOST_AUTO_TEST_CASE(from_blob_lvalue)
+{
+    blob b{0x00, 0x02};
+    field v(9.2f);
+    v = b;
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+}
+
 BOOST_AUTO_TEST_CASE(from_float)
 {
     field v("test");
@@ -438,7 +505,7 @@ BOOST_AUTO_TEST_CASE(from_double)
 
 BOOST_AUTO_TEST_CASE(from_date)
 {
-    auto d = makedate(2022, 4, 1);
+    date d(2022u, 4u, 1u);
     field v("test");
     v = d;
     BOOST_TEST(v.as_date() == d);
@@ -446,7 +513,7 @@ BOOST_AUTO_TEST_CASE(from_date)
 
 BOOST_AUTO_TEST_CASE(from_datetime)
 {
-    auto d = makedt(2022, 4, 1, 21);
+    datetime d(2022u, 4u, 1u, 21u);
     field v("test");
     v = d;
     BOOST_TEST(v.as_datetime() == d);
@@ -492,6 +559,14 @@ BOOST_AUTO_TEST_CASE(from_field_view_string)
     BOOST_TEST(f.as_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(from_field_view_blob)
+{
+    field_view fv(makebv("\0\1\0"));
+    field f(1);
+    f = fv;
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x01, 0x00}));
+}
+
 BOOST_AUTO_TEST_CASE(from_field_view_float)
 {
     field_view fv(4.2f);
@@ -510,7 +585,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_double)
 
 BOOST_AUTO_TEST_CASE(from_field_view_date)
 {
-    auto d = makedate(2020, 1, 2);
+    date d(2020u, 1u, 2u);
     field_view fv(d);
     field f("test");
     f = fv;
@@ -519,7 +594,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_date)
 
 BOOST_AUTO_TEST_CASE(from_field_view_datetime)
 {
-    auto d = makedt(2020, 1, 2);
+    datetime d(2020u, 1u, 2u);
     field_view fv(d);
     field f("test");
     f = fv;
@@ -545,18 +620,19 @@ struct
     const char* name;
     const field f;
     field_kind expected_kind;
-    bool is_null, is_int64, is_uint64, is_string, is_float, is_double, is_date, is_datetime, is_time;
+    bool is_null, is_int64, is_uint64, is_string, is_blob, is_float, is_double, is_date, is_datetime, is_time;
 } test_cases [] = {
-    // name       field                             kind                  null,  i64    u64    str    float  double date   dt    time 
-    { "null",     field(),                     field_kind::null,     true,  false, false, false, false, false, false, false, false },
-    { "int64",    field(42),                   field_kind::int64,    false, true,  false, false, false, false, false, false, false },
-    { "uint64",   field(42u),                  field_kind::uint64,   false, false, true,  false, false, false, false, false, false },
-    { "string",   field("test"),               field_kind::string,   false, false, false, true,  false, false, false, false, false },
-    { "float",    field(4.2f),                 field_kind::float_,   false, false, false, false, true,  false, false, false, false },
-    { "double",   field(4.2),                  field_kind::double_,  false, false, false, false, false, true,  false, false, false },
-    { "date",     field(makedate(2020, 1, 1)), field_kind::date,     false, false, false, false, false, false, true,  false, false },
-    { "datetime", field(makedt(2020, 1, 1)),   field_kind::datetime, false, false, false, false, false, false, false, true,  false },
-    { "time",     field(maket(20, 1, 1)),      field_kind::time,     false, false, false, false, false, false, false, false, true },
+    // name       field                           kind                  null,  i64    u64    str    blob   float  double date   dt    time 
+    { "null",     field(),                        field_kind::null,     true,  false, false, false, false, false, false, false, false, false },
+    { "int64",    field(42),                      field_kind::int64,    false, true,  false, false, false, false, false, false, false, false },
+    { "uint64",   field(42u),                     field_kind::uint64,   false, false, true,  false, false, false, false, false, false, false },
+    { "string",   field("test"),                  field_kind::string,   false, false, false, true,  false, false, false, false, false, false },
+    { "blob",     field(blob{0x00, 0x01}),        field_kind::blob,     false, false, false, false, true,  false, false, false, false, false },
+    { "float",    field(4.2f),                    field_kind::float_,   false, false, false, false, false, true,  false, false, false, false },
+    { "double",   field(4.2),                     field_kind::double_,  false, false, false, false, false, false, true,  false, false, false },
+    { "date",     field(date(2020u, 1u, 1u)),     field_kind::date,     false, false, false, false, false, false, false, true,  false, false },
+    { "datetime", field(datetime(2020u, 1u, 1u)), field_kind::datetime, false, false, false, false, false, false, false, false, true,  false },
+    { "time",     field(maket(20, 1, 1)),         field_kind::time,     false, false, false, false, false, false, false, false, false, true },
 };
 // clang-format on
 
@@ -578,6 +654,7 @@ BOOST_AUTO_TEST_CASE(is)
             BOOST_TEST(tc.f.is_int64() == tc.is_int64);
             BOOST_TEST(tc.f.is_uint64() == tc.is_uint64);
             BOOST_TEST(tc.f.is_string() == tc.is_string);
+            BOOST_TEST(tc.f.is_blob() == tc.is_blob);
             BOOST_TEST(tc.f.is_float() == tc.is_float);
             BOOST_TEST(tc.f.is_double() == tc.is_double);
             BOOST_TEST(tc.f.is_date() == tc.is_date);
@@ -625,6 +702,17 @@ BOOST_AUTO_TEST_CASE(as_exceptions)
             {
                 BOOST_CHECK_THROW(tc.f.as_string(), boost::mysql::bad_field_access);
                 BOOST_CHECK_THROW(field(tc.f).as_string(), boost::mysql::bad_field_access);
+            }
+
+            if (tc.is_blob)
+            {
+                BOOST_CHECK_NO_THROW(tc.f.as_blob());
+                BOOST_CHECK_NO_THROW(field(tc.f).as_blob());
+            }
+            else
+            {
+                BOOST_CHECK_THROW(tc.f.as_blob(), boost::mysql::bad_field_access);
+                BOOST_CHECK_THROW(field(tc.f).as_blob(), boost::mysql::bad_field_access);
             }
 
             if (tc.is_float)
@@ -737,6 +825,23 @@ BOOST_AUTO_TEST_CASE(string)
     BOOST_TEST(f2.get_string() == "test");
 }
 
+BOOST_AUTO_TEST_CASE(blob_)
+{
+    field f(blob{0x00, 0x01});
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x01}));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.get_blob(), (blob{0x00, 0x01}));
+
+    f.as_blob() = blob{0x00, 0x07};
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x07}));
+
+    f.get_blob().push_back(0xff);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x07, 0xff}));
+
+    const field f2(blob{0xff, 0xfe});
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f2.as_blob(), (blob{0xff, 0xfe}));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f2.get_blob(), (blob{0xff, 0xfe}));
+}
+
 BOOST_AUTO_TEST_CASE(float_)
 {
     field f(4.2f);
@@ -771,11 +876,11 @@ BOOST_AUTO_TEST_CASE(double_)
     BOOST_TEST(f2.get_double() == 4.2);
 }
 
-BOOST_AUTO_TEST_CASE(date)
+BOOST_AUTO_TEST_CASE(date_)
 {
-    auto d1 = makedate(2020, 1, 1);
-    auto d2 = makedate(2020, 3, 3);
-    auto d3 = makedate(2020, 4, 4);
+    date d1(2020u, 1u, 1u);
+    date d2(2020u, 3u, 3u);
+    date d3(2020u, 4u, 4u);
 
     field f(d1);
     BOOST_TEST(f.as_date() == d1);
@@ -792,11 +897,11 @@ BOOST_AUTO_TEST_CASE(date)
     BOOST_TEST(f2.get_date() == d1);
 }
 
-BOOST_AUTO_TEST_CASE(datetime)
+BOOST_AUTO_TEST_CASE(datetime_)
 {
-    auto d1 = makedt(2020, 1, 1);
-    auto d2 = makedt(2020, 3, 3);
-    auto d3 = makedt(2020, 4, 4);
+    datetime d1(2020u, 1u, 1u);
+    datetime d2(2020u, 3u, 3u);
+    datetime d3(2020u, 4u, 4u);
 
     field f(d1);
     BOOST_TEST(f.as_datetime() == d1);
@@ -905,6 +1010,21 @@ BOOST_AUTO_TEST_CASE(string_std_string_view)
 }
 #endif
 
+BOOST_AUTO_TEST_CASE(blob_rvalue)
+{
+    field f;
+    f.emplace_blob(blob{0x00, 0x01});
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x01}));
+}
+
+BOOST_AUTO_TEST_CASE(blob_lvalue)
+{
+    blob b{0x00, 0x01};
+    field f;
+    f.emplace_blob(b);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x01}));
+}
+
 BOOST_AUTO_TEST_CASE(float_)
 {
     field f("test");
@@ -919,17 +1039,17 @@ BOOST_AUTO_TEST_CASE(double_)
     BOOST_TEST(f.as_double() == 4.2);
 }
 
-BOOST_AUTO_TEST_CASE(date)
+BOOST_AUTO_TEST_CASE(date_)
 {
-    auto d = makedate(2020, 1, 1);
+    date d(2020u, 1u, 1u);
     field f("test");
     f.emplace_date(d);
     BOOST_TEST(f.as_date() == d);
 }
 
-BOOST_AUTO_TEST_CASE(datetime)
+BOOST_AUTO_TEST_CASE(datetime_)
 {
-    auto d = makedt(2020, 1, 1);
+    datetime d(2020u, 1u, 1u);
     field f("test");
     f.emplace_datetime(d);
     BOOST_TEST(f.as_datetime() == d);

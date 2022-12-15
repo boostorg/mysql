@@ -16,16 +16,18 @@ add_executable(
     detail/auxiliar/static_string.cpp
     detail/auxiliar/rows_iterator.cpp
     detail/auxiliar/field_type_traits.cpp
+    detail/auxiliar/datetime.cpp
     detail/network_algorithms/read_one_row.cpp
     detail/network_algorithms/read_some_rows.cpp
     detail/network_algorithms/read_all_rows.cpp
     detail/protocol/capabilities.cpp
-    detail/protocol/date.cpp
     detail/protocol/null_bitmap_traits.cpp
     detail/protocol/serialization_test.cpp
     detail/protocol/deserialize_text_field.cpp
     detail/protocol/deserialize_binary_field.cpp
     detail/protocol/deserialize_row.cpp
+    date.cpp
+    datetime.cpp
     field_view.cpp
     field.cpp
     row_view.cpp

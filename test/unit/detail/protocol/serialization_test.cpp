@@ -5,12 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/asio/buffer.hpp>
 #include <boost/test/data/monomorphic.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <functional>
 
+#include "assert_buffer_equals.hpp"
 #include "serialization_test.hpp"
 #include "serialization_test_samples/basic_types.hpp"
 #include "serialization_test_samples/binary_serialization.hpp"
@@ -25,31 +27,6 @@ using namespace boost::unit_test;
 using boost::mysql::errc;
 
 BOOST_AUTO_TEST_SUITE(test_serialization)
-
-std::string buffer_diff(boost::string_view s0, boost::string_view s1)
-{
-    std::ostringstream ss;
-    ss << std::hex;
-    for (std::size_t i = 0; i < std::min(s0.size(), s1.size()); ++i)
-    {
-        unsigned b0 = reinterpret_cast<const std::uint8_t*>(s0.data())[i];
-        unsigned b1 = reinterpret_cast<const std::uint8_t*>(s1.data())[i];
-        if (b0 != b1)
-        {
-            ss << "i=" << i << ": " << b0 << " != " << b1 << "\n";
-        }
-    }
-    if (s0.size() != s1.size())
-    {
-        ss << "sizes: " << s0.size() << " != " << s1.size() << "\n";
-    }
-    return ss.str();
-}
-
-void compare_buffers(boost::string_view s0, boost::string_view s1, const char* msg = "")
-{
-    BOOST_TEST(s0 == s1, msg << ":\n" << buffer_diff(s0, s1));
-}
 
 struct samples_by_type
 {
@@ -147,14 +124,14 @@ BOOST_DATA_TEST_CASE(serialize, data::make(all_samples.serialization_samples))
     BOOST_TEST(ctx.first() == buffer.data() + expected_size, "Iterator not updated correctly");
 
     // Buffer
-    boost::string_view expected_populated = makesv(sample.expected_buffer.data(), expected_size);
-    boost::string_view actual_populated = makesv(buffer.data(), expected_size);
-    compare_buffers(expected_populated, actual_populated, "Buffer contents incorrect");
+    boost::asio::const_buffer expected_populated(sample.expected_buffer.data(), expected_size);
+    boost::asio::const_buffer actual_populated(buffer.data(), expected_size);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected_populated, actual_populated);
 
     // Check for buffer overruns
-    std::string expected_clean(8, 0x7a);
-    boost::string_view actual_clean = makesv(buffer.data() + expected_size, 8);
-    compare_buffers(expected_clean, actual_clean, "Buffer overrun");
+    std::vector<std::uint8_t> expected_clean(8, 0x7a);
+    boost::asio::const_buffer actual_clean(buffer.data() + expected_size, 8);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(boost::asio::buffer(expected_clean), actual_clean);
 }
 
 BOOST_DATA_TEST_CASE(deserialize, data::make(all_samples.deserialization_samples))

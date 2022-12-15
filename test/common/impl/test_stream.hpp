@@ -151,7 +151,7 @@ std::size_t boost::mysql::test::test_stream::get_size_to_read(std::size_t buffer
     auto it = read_break_offsets_.upper_bound(num_bytes_read_);
     std::size_t max_bytes_by_break = it == read_break_offsets_.end() ? std::size_t(-1)
                                                                      : *it - num_bytes_read_;
-    return std::min({num_unread_bytes(), buffer_size, max_bytes_by_break});
+    return (std::min)({num_unread_bytes(), buffer_size, max_bytes_by_break});
 }
 
 template <class MutableBufferSequence>
@@ -222,10 +222,8 @@ std::size_t boost::mysql::test::test_stream::do_write(
     for (auto it = first; it != last && num_bytes_written < write_break_size_; ++it)
     {
         boost::asio::const_buffer buff = *it;
-        std::size_t num_bytes_to_transfer = std::min(
-            buff.size(),
-            write_break_size_ - num_bytes_written
-        );
+        std::size_t num_bytes_to_transfer = (std::min
+        )(buff.size(), write_break_size_ - num_bytes_written);
         concat(bytes_written_, buff.data(), num_bytes_to_transfer);
         num_bytes_written += num_bytes_to_transfer;
     }

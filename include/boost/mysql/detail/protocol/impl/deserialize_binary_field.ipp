@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/detail/auxiliar/datetime.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/date.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
@@ -27,14 +27,15 @@ namespace detail {
 inline errc deserialize_binary_field_string(
     deserialization_context& ctx,
     field_view& output,
-    const std::uint8_t* buffer_first
+    const std::uint8_t* buffer_first,
+    bool is_blob
 ) noexcept
 {
     string_lenenc deser;
     auto err = deserialize(ctx, deser);
     if (err != errc::ok)
         return err;
-    output = field_view(detail::string_view_offset::from_sv(deser.value, buffer_first));
+    output = field_view(detail::string_view_offset::from_sv(deser.value, buffer_first), is_blob);
     return errc::ok;
 }
 
@@ -101,7 +102,7 @@ errc deserialize_binary_field_float(deserialization_context& ctx, field_view& ou
 }
 
 // Time types
-inline errc deserialize_binary_ymd(deserialization_context& ctx, year_month_day& output)
+inline errc deserialize_binary_ymd(deserialization_context& ctx, date& output)
 {
     std::uint16_t year;
     std::uint8_t month;
@@ -118,7 +119,7 @@ inline errc deserialize_binary_ymd(deserialization_context& ctx, year_month_day&
         return errc::protocol_value_error;
     }
 
-    output = year_month_day{year, month, day};
+    output = date(year, month, day);
 
     return errc::ok;
 }
@@ -131,33 +132,26 @@ inline errc deserialize_binary_field_date(deserialization_context& ctx, field_vi
     if (err != errc::ok)
         return err;
 
-    // Check for zero dates, represented in C++ as a NULL
+    // Check for zero dates
     if (length < binc::date_sz)
     {
-        output = field_view(nullptr);
+        output = field_view(date());
         return errc::ok;
     }
 
     // Deserialize rest of fields
-    year_month_day ymd;
-    err = deserialize_binary_ymd(ctx, ymd);
+    date d;
+    err = deserialize_binary_ymd(ctx, d);
     if (err != errc::ok)
         return err;
-
-    // Check for invalid dates, represented as NULL in C++
-    if (!is_valid(ymd))
-    {
-        output = field_view(nullptr);
-        return errc::ok;
-    }
-
-    // Convert to value
-    output = field_view(date(days(ymd_to_days(ymd))));
+    output = field_view(d);
     return errc::ok;
 }
 
-inline errc
-deserialize_binary_field_datetime(deserialization_context& ctx, field_view& output) noexcept
+inline errc deserialize_binary_field_datetime(
+    deserialization_context& ctx,
+    field_view& output
+) noexcept
 {
     using namespace binc;
 
@@ -167,21 +161,21 @@ deserialize_binary_field_datetime(deserialization_context& ctx, field_view& outp
     if (err != errc::ok)
         return err;
 
-    // Deserialize date. If the DATETIME does not contain these values,
-    // they are supposed to be zero (invalid date)
-    year_month_day ymd{};
-    if (length >= datetime_d_sz)
-    {
-        err = deserialize_binary_ymd(ctx, ymd);
-        if (err != errc::ok)
-            return err;
-    }
-
-    // If the DATETIME contains no value for these fields, they are zero
+    // If the DATETIME does not contain some of the values below,
+    // they are supposed to be zero
+    date d{};
     std::uint8_t hours = 0;
     std::uint8_t minutes = 0;
     std::uint8_t seconds = 0;
     std::uint32_t micros = 0;
+
+    // Date part
+    if (length >= datetime_d_sz)
+    {
+        err = deserialize_binary_ymd(ctx, d);
+        if (err != errc::ok)
+            return err;
+    }
 
     // Hours, minutes, seconds
     if (length >= datetime_dhms_sz)
@@ -199,28 +193,15 @@ deserialize_binary_field_datetime(deserialization_context& ctx, field_view& outp
             return err;
     }
 
-    // Validity check. We make this check before
-    // the invalid date check to make invalid dates with incorrect
-    // hours/mins/secs/micros fail
+    // Validity check. deserialize_binary_ymd already does it for date
     if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
     {
         return errc::protocol_value_error;
     }
 
-    // Check for invalid dates, represented in C++ as NULL.
-    // Note: we do the check here to ensure we consume all the bytes
-    // associated to this datetime
-    if (!is_valid(ymd))
-    {
-        output = field_view(nullptr);
-        return errc::ok;
-    }
-
-    // Compose the final datetime. Doing time of day and date separately to avoid overflow
-    date d(days(ymd_to_days(ymd)));
-    auto time_of_day = std::chrono::hours(hours) + std::chrono::minutes(minutes) +
-                       std::chrono::seconds(seconds) + std::chrono::microseconds(micros);
-    output = field_view(d + time_of_day);
+    // Compose the final datetime
+    datetime dt(d.year(), d.month(), d.day(), hours, minutes, seconds, micros);
+    output = field_view(dt);
     return errc::ok;
 }
 
@@ -285,40 +266,39 @@ inline boost::mysql::errc boost::mysql::detail::deserialize_binary_field(
     field_view& output
 )
 {
-    switch (meta.protocol_type())
+    switch (meta.type())
     {
-    case protocol_field_type::tiny:
+    case column_type::tinyint:
         return deserialize_binary_field_int<std::uint8_t, std::int8_t>(meta, ctx, output);
-    case protocol_field_type::short_:
-    case protocol_field_type::year:
+    case column_type::smallint:
+    case column_type::year:
         return deserialize_binary_field_int<std::uint16_t, std::int16_t>(meta, ctx, output);
-    case protocol_field_type::int24:
-    case protocol_field_type::long_:
+    case column_type::mediumint:
+    case column_type::int_:
         return deserialize_binary_field_int<std::uint32_t, std::int32_t>(meta, ctx, output);
-    case protocol_field_type::longlong:
+    case column_type::bigint:
         return deserialize_binary_field_int<std::uint64_t, std::int64_t>(meta, ctx, output);
-    case protocol_field_type::bit: return deserialize_binary_field_bit(ctx, output);
-    case protocol_field_type::float_: return deserialize_binary_field_float<float>(ctx, output);
-    case protocol_field_type::double_: return deserialize_binary_field_float<double>(ctx, output);
-    case protocol_field_type::timestamp:
-    case protocol_field_type::datetime: return deserialize_binary_field_datetime(ctx, output);
-    case protocol_field_type::date: return deserialize_binary_field_date(ctx, output);
-    case protocol_field_type::time: return deserialize_binary_field_time(ctx, output);
+    case column_type::bit: return deserialize_binary_field_bit(ctx, output);
+    case column_type::float_: return deserialize_binary_field_float<float>(ctx, output);
+    case column_type::double_: return deserialize_binary_field_float<double>(ctx, output);
+    case column_type::timestamp:
+    case column_type::datetime: return deserialize_binary_field_datetime(ctx, output);
+    case column_type::date: return deserialize_binary_field_date(ctx, output);
+    case column_type::time: return deserialize_binary_field_time(ctx, output);
     // True string types
-    case protocol_field_type::varchar:
-    case protocol_field_type::var_string:
-    case protocol_field_type::string:
-    case protocol_field_type::tiny_blob:
-    case protocol_field_type::medium_blob:
-    case protocol_field_type::long_blob:
-    case protocol_field_type::blob:
-    case protocol_field_type::enum_:
-    case protocol_field_type::set:
-    // Anything else that we do not know how to interpret, we return as a binary string
-    case protocol_field_type::decimal:
-    case protocol_field_type::newdecimal:
-    case protocol_field_type::geometry:
-    default: return deserialize_binary_field_string(ctx, output, buffer_first);
+    case column_type::char_:
+    case column_type::varchar:
+    case column_type::text:
+    case column_type::enum_:
+    case column_type::set:
+    case column_type::decimal:
+        return deserialize_binary_field_string(ctx, output, buffer_first, false);
+    // Blobs and anything else
+    case column_type::binary:
+    case column_type::varbinary:
+    case column_type::blob:
+    case column_type::geometry:
+    default: return deserialize_binary_field_string(ctx, output, buffer_first, true);
     }
 }
 

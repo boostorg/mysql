@@ -27,7 +27,8 @@ You can find the full source code for this tutorial [link mysql.tutorial.listing
 
 The first step is to create a connection object, which 
 represents a single connection over TCP to the MySQL server.
-We will be using [reflink tcp_ssl_connection], which supports TLS.
+We will connect to the server using TCP over TLS, using port 3306, so
+we will use [reflink tcp_ssl_connection].
 If you're using the latest MySQL version with its default configuration,
 you will need to use TLS to successfully establish a connection.
 
@@ -47,7 +48,7 @@ which accepts two parameters:
   As we are using TCP, this is a [asioreflink ip__tcp/endpoint ip::tcp::endpoint],
   identifying the host and port to connect to.
 * The second one is a collection of MySQL handshake parameters, including
-  username and password. The parameter must be an instance of
+  username and password. This parameter must be an instance of
   [reflink handshake_params]. You may also set other options like
   the database name to use by default or whether to use SSL or not.
   

@@ -26,6 +26,9 @@ AlignAfterOpenBracket: BlockIndent
 PointerAlignment: Left
 IncludeBlocks: Regroup
 IncludeCategories:
+  - Regex: '^<boost/mysql/[a-zA-Z0-9_]*\.hpp>'
+    Priority: -9
+    SortPriority: 0
   - Regex: '^<boost/mysql.*\.hpp>'
     Priority: -8
     SortPriority: 0

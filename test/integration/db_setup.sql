@@ -8,7 +8,7 @@
 -- System variables
 SET NAMES utf8;
 SET global max_connections = 10000;
-SET session sql_mode = ''; -- allow zero and invalid dates
+SET session sql_mode = 'ALLOW_INVALID_DATES'; -- allow zero and invalid dates
 SET session time_zone = '+02:00'; -- arbitrary, but should match whatever we use in database_types
 
 START TRANSACTION;
@@ -131,6 +131,37 @@ INSERT INTO types_bigint VALUES
     ("max",       0x7fffffffffffffff, 0xffffffffffffffff, NULL,    NULL)
 ;
 
+CREATE TABLE types_year(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_default YEAR
+);
+INSERT INTO types_year VALUES
+    ("regular", 2019),
+    ("min",     1901),
+    ("max",     2155),
+    ("zero",    0)
+;
+
+CREATE TABLE types_bit(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_1 BIT(1),
+    field_8 BIT(8),
+    field_14 BIT(14),
+    field_16 BIT(16),
+    field_24 BIT(24),
+    field_25 BIT(25),
+    field_32 BIT(32),
+    field_40 BIT(40),
+    field_48 BIT(48),
+    field_56 BIT(56),
+    field_64 BIT(64)
+);
+INSERT INTO types_bit VALUES
+    ("min",     0, 0x00, 0x0000, 0x0000, 0x000000, 0x0000000, 0x00000000, 0x0000000000, 0x000000000000, 0x00000000000000, 0x0000000000000000),
+    ("regular", 1, 0x9e, 0x1e2a, 0x1234, 0x123456, 0x154abe0, 0x12345678, 0x123456789a, 0x123456789abc, 0x123456789abcde, 0x1234567812345678),
+    ("max",     1, 0xff, 0x3fff, 0xffff, 0xffffff, 0x1ffffff, 0xffffffff, 0xffffffffff, 0xffffffffffff, 0xffffffffffffff, 0xffffffffffffffff)
+;
+
 --   Floating point types
 CREATE TABLE types_float(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -205,6 +236,8 @@ CREATE TABLE types_datetime(
     field_5 DATETIME(5),
     field_6 DATETIME(6)
 );
+
+-- Values common to both datetime and timestamp
 INSERT INTO types_datetime VALUES
     ("date",         "2010-05-02 00:00:00", "2010-05-02 00:00:00",   "2010-05-02 00:00:00",    "2010-05-02 00:00:00",     "2010-05-02 00:00:00",      "2010-05-02 00:00:00",       "2010-05-02 00:00:00"),
     ("date_leap4",   "2004-02-29 00:00:00", "2004-02-29 00:00:00",   "2004-02-29 00:00:00",    "2004-02-29 00:00:00",     "2004-02-29 00:00:00",      "2004-02-29 00:00:00",       "2004-02-29 00:00:00"),
@@ -223,9 +256,7 @@ INSERT INTO types_datetime VALUES
     ("h",            "2010-05-02 23:00:00", "2010-05-02 23:00:00",   "2010-05-02 23:00:00",    "2010-05-02 23:00:00",     "2010-05-02 23:00:00",      "2010-05-02 23:00:00",       "2010-05-02 23:00:00"),
     ("hm",           "2010-05-02 23:01:00", "2010-05-02 23:01:00",   "2010-05-02 23:01:00",    "2010-05-02 23:01:00",     "2010-05-02 23:01:00",      "2010-05-02 23:01:00",       "2010-05-02 23:01:00"),
     ("hms",          "2010-05-02 23:01:50", "2010-05-02 23:01:50",   "2010-05-02 23:01:50",    "2010-05-02 23:01:50",     "2010-05-02 23:01:50",      "2010-05-02 23:01:50",       "2010-05-02 23:01:50"),
-    ("hmsu",         NULL,                  "2010-05-02 23:01:50.1", "2010-05-02 23:01:50.12", "2010-05-02 23:01:50.123", "2010-05-02 23:01:50.1234", "2010-05-02 23:01:50.12345", "2010-05-02 23:01:50.123456"),
-    ("min",          "0000-01-01",          "0000-01-01",            "0000-01-01",             "0000-01-01",              "0000-01-01",               "0000-01-01",                "0000-01-01"),
-    ("max",          "9999-12-31 23:59:59", "9999-12-31 23:59:59.9", "9999-12-31 23:59:59.99", "9999-12-31 23:59:59.999", "9999-12-31 23:59:59.9999", "9999-12-31 23:59:59.99999", "9999-12-31 23:59:59.999999")
+    ("hmsu",         NULL,                  "2010-05-02 23:01:50.1", "2010-05-02 23:01:50.12", "2010-05-02 23:01:50.123", "2010-05-02 23:01:50.1234", "2010-05-02 23:01:50.12345", "2010-05-02 23:01:50.123456")
 ;
 
 CREATE TABLE types_timestamp(
@@ -238,13 +269,14 @@ CREATE TABLE types_timestamp(
     field_5 TIMESTAMP(5) NULL DEFAULT NULL,
     field_6 TIMESTAMP(6) NULL DEFAULT NULL
 );
--- TODO: min and max not reproducible due to time zones. Find a programmatic way of determining the values here
 INSERT INTO types_timestamp
-SELECT * FROM types_datetime
-WHERE id NOT IN ('min', 'max');
+SELECT * FROM types_datetime;
 
--- DATETIMEs and TIMESTAMPs with invalid dates
+-- Values specific to datetimes
 INSERT INTO types_datetime VALUES
+    ("min",          "0000-01-01",          "0000-01-01",            "0000-01-01",             "0000-01-01",              "0000-01-01",               "0000-01-01",                "0000-01-01"),
+    ("max",          "9999-12-31 23:59:59", "9999-12-31 23:59:59.9", "9999-12-31 23:59:59.99", "9999-12-31 23:59:59.999", "9999-12-31 23:59:59.9999", "9999-12-31 23:59:59.99999", "9999-12-31 23:59:59.999999"),
+    
     ("date_zero",                               "0000-00-00 00:00:00", "0000-00-00 00:00:00.0", "0000-00-00 00:00:00.00", "0000-00-00 00:00:00.000", "0000-00-00 00:00:00.0000", "0000-00-00 00:00:00.00000", "0000-00-00 00:00:00.000000"),
     ("date_yzero_mzero_dregular",               "0000-00-10 00:00:00", "0000-00-10 00:00:00.0", "0000-00-10 00:00:00.00", "0000-00-10 00:00:00.000", "0000-00-10 00:00:00.0000", "0000-00-10 00:00:00.00000", "0000-00-10 00:00:00.000000"),
     ("date_yzero_mregular_dzero",               "0000-10-00 00:00:00", "0000-10-00 00:00:00.0", "0000-10-00 00:00:00.00", "0000-10-00 00:00:00.000", "0000-10-00 00:00:00.0000", "0000-10-00 00:00:00.00000", "0000-10-00 00:00:00.000000"),
@@ -280,8 +312,11 @@ INSERT INTO types_datetime VALUES
     ("hmsu_yregular_invalid_date_leap100",     "1900-02-29 10:20:30", "1900-02-29 10:20:30.9", "1900-02-29 10:20:30.99", "1900-02-29 10:20:30.999", "1900-02-29 10:20:30.9999", "1900-02-29 10:20:30.99999", "1900-02-29 10:20:30.999999")
 ;
 
+-- Values specific to timestamps
 INSERT INTO types_timestamp VALUES
-    ("zero", "0000-00-00", "0000-00-00", "0000-00-00", "0000-00-00", "0000-00-00", "0000-00-00", "0000-00-00")
+    ("zero", "0000-00-00",          "0000-00-00",            "0000-00-00",             "0000-00-00",              "0000-00-00",               "0000-00-00",                "0000-00-00"),
+    ("min",  "1970-01-01 02:00:01", "1970-01-01 02:00:01.0", "1970-01-01 02:00:01.00", "1970-01-01 02:00:01.000", "1970-01-01 02:00:01.0000", "1970-01-01 02:00:01.00000", "1970-01-01 02:00:01.000000"),
+    ("max",  "2038-01-19 05:14:07", "2038-01-19 05:14:07.9", "2038-01-19 05:14:07.99", "2038-01-19 05:14:07.999", "2038-01-19 05:14:07.9999", "2038-01-19 05:14:07.99999", "2038-01-19 05:14:07.999999")
 ;
 
 CREATE TABLE types_time(
@@ -362,16 +397,6 @@ INSERT INTO types_time VALUES
     ("max",           "838:59:59",  "838:59:58.9",  "838:59:58.99",  "838:59:58.999",  "838:59:58.9999",  "838:59:58.99999",  "838:59:58.999999")
 ;
 
-CREATE TABLE types_year(
-    id VARCHAR(50) NOT NULL PRIMARY KEY,
-    field_default YEAR
-);
-INSERT INTO types_year VALUES
-    ("regular", 2019),
-    ("min",     1901),
-    ("max",     2155),
-    ("zero",    0)
-;
 
 CREATE TABLE types_string(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -403,26 +428,6 @@ INSERT INTO types_binary VALUES
     ("regular",  "\0_binary", "\0_varbinary", "\0_tinyblob", "\0_blob", "\0_mediumblob", "\0_longblob"),
     ("nonascii", X'00FF',     X'01FE',        X'02FD',       X'03FC',   X'04FB',         X'05FA'),
     ("empty",   "",          "",             "",            "",        "",              "")
-;
-
-CREATE TABLE types_bit(
-    id VARCHAR(50) NOT NULL PRIMARY KEY,
-    field_1 BIT(1),
-    field_8 BIT(8),
-    field_14 BIT(14),
-    field_16 BIT(16),
-    field_24 BIT(24),
-    field_25 BIT(25),
-    field_32 BIT(32),
-    field_40 BIT(40),
-    field_48 BIT(48),
-    field_56 BIT(56),
-    field_64 BIT(64)
-);
-INSERT INTO types_bit VALUES
-    ("min",     0, 0x00, 0x0000, 0x0000, 0x000000, 0x0000000, 0x00000000, 0x0000000000, 0x000000000000, 0x00000000000000, 0x0000000000000000),
-    ("regular", 1, 0x9e, 0x1e2a, 0x1234, 0x123456, 0x154abe0, 0x12345678, 0x123456789a, 0x123456789abc, 0x123456789abcde, 0x1234567812345678),
-    ("max",     1, 0xff, 0x3fff, 0xffff, 0xffffff, 0x1ffffff, 0xffffffff, 0xffffffffff, 0xffffffffffff, 0xffffffffffffff, 0xffffffffffffffff)
 ;
 
 CREATE TABLE types_not_implemented(

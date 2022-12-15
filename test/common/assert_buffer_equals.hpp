@@ -49,11 +49,14 @@ inline bool buffer_equals(boost::asio::const_buffer b1, boost::asio::const_buffe
 }  // namespace mysql
 }  // namespace boost
 
-#define BOOST_MYSQL_ASSERT_BUFFER_EQUALS(b1, b2)                                  \
-    BOOST_TEST(                                                                   \
-        ::boost::mysql::test::buffer_equals(b1, b2),                              \
-        #b1 " != " #b2 ": " << ::boost::mysql::test::buffer_printer{b1}           \
-                            << " != " << ::boost::mysql::test::buffer_printer{b2} \
+#define BOOST_MYSQL_ASSERT_BUFFER_EQUALS(b1, b2)                                            \
+    BOOST_TEST(                                                                             \
+        ::boost::mysql::test::buffer_equals(b1, b2),                                        \
+        #b1 " != " #b2 ": \nlhs: " << ::boost::mysql::test::buffer_printer{b1}              \
+                                   << "\nrhs: " << ::boost::mysql::test::buffer_printer{b2} \
     )
+
+#define BOOST_MYSQL_ASSERT_BLOB_EQUALS(b1, b2) \
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(::boost::asio::buffer(b1), ::boost::asio::buffer(b2))
 
 #endif

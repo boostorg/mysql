@@ -27,6 +27,7 @@ inline protocol_field_type get_protocol_field_type(const field_view& input) noex
     case field_kind::int64: return protocol_field_type::longlong;
     case field_kind::uint64: return protocol_field_type::longlong;
     case field_kind::string: return protocol_field_type::varchar;
+    case field_kind::blob: return protocol_field_type::blob;
     case field_kind::float_: return protocol_field_type::float_;
     case field_kind::double_: return protocol_field_type::double_;
     case field_kind::date: return protocol_field_type::date;

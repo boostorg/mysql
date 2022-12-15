@@ -71,17 +71,12 @@ the connection.
 [section:collation Connection encoding and collation]
 
 When establishing a connection, you specify a [reflink collation]
-parameter ([refmem handshake_params connection_collation]).
-This parameter defines the expected encoding of the SQL query strings
-you issue. When you establish a connection, you specify a 
-[reflink collation], which is a character set plus a 
-defined order for the characters. [mysqllink charset-general.html
-This section of the MySQL documentation] provides more details
-on collations.
-
+parameter ([refmem handshake_params connection_collation]), which will
+determine the connection's character set and collation. This determines
+the encoding of the strings sent to and received from the server.
 If left unspecified, `utf8mb4_general_ci` will be used.
-You can change it at any time issuing a __SET_NAMES__ statement 
-(e.g. using [refmem connection query]).
+Please refer to [link mysql.charsets this section] for more info
+about character sets.
 
 [warning
     If you specify a `collation` that is unknown to the server (an old server

@@ -57,6 +57,7 @@ docca.reference reference.qbk
         <doxygen:param>SHOW_FILES=NO
         <doxygen:param>SHOW_NAMESPACES=NO
         <doxygen:param>CLASS_DIAGRAMS=NO
+        <doxygen:param>QUIET=YES
     ;
 
 install images

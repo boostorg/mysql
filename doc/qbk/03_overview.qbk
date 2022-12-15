@@ -321,7 +321,7 @@ The following table shows the mapping from MySQL types to C++ types:
     [
         [`int64`]
         [`std::int64_t`]
-        [Signed `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
+        [Signed `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`]
         [[refmemunq field_view is_int64]]
         [[refmemunq field_view as_int64]]
         [[refmemunq field_view get_int64]]
@@ -329,7 +329,7 @@ The following table shows the mapping from MySQL types to C++ types:
     [
         [`uint64`]
         [`std::uint64_t`]
-        [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`]
+        [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
         [[refmemunq field_view is_uint64]]
         [[refmemunq field_view as_uint64]]
         [[refmemunq field_view get_uint64]]
@@ -341,10 +341,22 @@ The following table shows the mapping from MySQL types to C++ types:
             
             `std::string` for `field`
         ]
-        [`CHAR`, `VARCHAR`, `BINARY`, `VARBINARY`, `TEXT`, `BLOB`...]
+        [`CHAR`, `VARCHAR`, `TEXT`, `ENUM`, `SET`, `DECIMAL`]
         [[refmemunq field_view is_string]]
         [[refmemunq field_view as_string]]
         [[refmemunq field_view get_string]]
+    ]
+    [
+        [`blob`]
+        [
+            [reflink blob_view] for `field_view`
+            
+            [reflink blob] for `field`
+        ]
+        [`BINARY`, `VARBINARY`, `BLOB`, `GEOMETRY`]
+        [[refmemunq field_view is_blob]]
+        [[refmemunq field_view as_blob]]
+        [[refmemunq field_view get_blob]]
     ]
     [
         [`float_`]
@@ -396,7 +408,8 @@ The following table shows the mapping from MySQL types to C++ types:
     ]
 ]
 
-[link mysql.fields This section] contains the full reference of accessors and type mappings.
+[link mysql.fields This section] contains more information about how the library maps
+MySQL types to C++ types.
 
 [h4 Handling NULL values]
 

@@ -61,14 +61,38 @@ with the expected results. You can use `nullptr` objects to represent `NULL`
 parameters. If your statement doesn't have any parameters, use the
 [reflink no_statement_params] variable.
 
-TODO: check this. Values should be in the MySQL range of validity. In particular,
-[reflink date]s, [reflink datetime]s and [reflink time]s should
-be in their validity range; otherwise the results are undefined.
-
 The following executes the statement we prepared in the previous
 section, binding the `first_name` parameter to `"Efficient"`:
 
 [prepared_statements_execute]
+
+Note that MySQL is pretty flexible and will perform casting to try to match
+the supplied value to the required type, depending on the context.
+
+In particular, for integer types, conversions to narrower integer types
+will take place as long as the supplied value is in range. For example:
+
+```
+    // Table created using: CREATE TABLE my_table (field_int TINYINT)
+    tcp_ssl_statement stmt;
+    conn.prepare_statement("INSERT INTO my_table (field_int) VALUES (?)", stmt);
+
+    tcp_ssl_resultset result;
+    std::int64_t value = 42; // OK, in range
+    stmt.execute(std::make_tuple(value), result);
+
+    value = 0xffff; // Oops, out of range
+    stmt.execute(std::make_tuple(value), result); // will throw
+```
+
+To insert a `NULL` value, use the following:
+
+```
+    stmt.execute(std::make_tuple(nullptr), result);
+```
+
+For a full reference on the types you can pass as parameters when
+executing a statement, see [link mysql.fields.cpp_to_mysql this section].
 
 [heading Multi-function operation]
 

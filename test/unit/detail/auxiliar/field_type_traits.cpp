@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/datetime_types.hpp>
-#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 
 #include <boost/utility/string_view_fwd.hpp>
 

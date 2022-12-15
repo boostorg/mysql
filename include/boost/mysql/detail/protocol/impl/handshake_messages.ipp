@@ -56,8 +56,8 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
         return err;
 
     // Auth plugin data, second part
-    auto auth2_length =
-        static_cast<std::uint8_t>(std::max(13, auth_plugin_data_len - auth1_length));
+    auto auth2_length = static_cast<std::uint8_t>((std::max
+    )(13, auth_plugin_data_len - auth1_length));
     const void* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
         return errc::incomplete_message;

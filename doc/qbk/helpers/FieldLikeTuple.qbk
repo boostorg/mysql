@@ -17,8 +17,8 @@ However, the following types are guaranteed to satisfy `FieldLike`:
 
 * Built-in integer types, `float`, `double`, `date`, `datetime`, `time`
   and `std::nullptr_t`, and references to them.
-* `std::string` and references to it.
-* `boost::string_view` and `std::string_view`.
+* `std::string`, `boost::string_view`, `std::string_view`, `const char*` and references to them.
+* `blob`, `blob_view` and references to them.
 * `field`, `field_view` and references to them.
 
 [endsect]
