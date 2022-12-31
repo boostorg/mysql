@@ -115,7 +115,7 @@ boost::mysql::connection<Stream>::async_handshake(
 
 template <class Stream>
 void boost::mysql::connection<Stream>::start_query(
-    boost::string_view query_string,
+    string_view query_string,
     execution_state& result,
     error_code& err,
     error_info& info
@@ -127,7 +127,7 @@ void boost::mysql::connection<Stream>::start_query(
 
 template <class Stream>
 void boost::mysql::connection<Stream>::start_query(
-    boost::string_view query_string,
+    string_view query_string,
     execution_state& result
 )
 {
@@ -140,7 +140,7 @@ template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_start_query(
-    boost::string_view query_string,
+    string_view query_string,
     execution_state& result,
     error_info& output_info,
     CompletionToken&& token
@@ -157,7 +157,7 @@ boost::mysql::connection<Stream>::async_start_query(
 
 template <class Stream>
 void boost::mysql::connection<Stream>::query(
-    boost::string_view query_string,
+    string_view query_string,
     resultset& result,
     error_code& err,
     error_info& info
@@ -168,7 +168,7 @@ void boost::mysql::connection<Stream>::query(
 }
 
 template <class Stream>
-void boost::mysql::connection<Stream>::query(boost::string_view query_string, resultset& result)
+void boost::mysql::connection<Stream>::query(string_view query_string, resultset& result)
 {
     detail::error_block blk;
     detail::query(get_channel(), query_string, result, blk.err, blk.info);
@@ -179,7 +179,7 @@ template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_query(
-    boost::string_view query_string,
+    string_view query_string,
     resultset& result,
     error_info& output_info,
     CompletionToken&& token
@@ -197,7 +197,7 @@ boost::mysql::connection<Stream>::async_query(
 // Prepare statement
 template <class Stream>
 void boost::mysql::connection<Stream>::prepare_statement(
-    boost::string_view stmt,
+    string_view stmt,
     statement<Stream>& output,
     error_code& err,
     error_info& info
@@ -209,7 +209,7 @@ void boost::mysql::connection<Stream>::prepare_statement(
 
 template <class Stream>
 void boost::mysql::connection<Stream>::prepare_statement(
-    boost::string_view stmt,
+    string_view stmt,
     statement<Stream>& output
 )
 {
@@ -222,7 +222,7 @@ template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_prepare_statement(
-    boost::string_view stmt,
+    string_view stmt,
     statement<Stream>& output,
     error_info& output_info,
     CompletionToken&& token

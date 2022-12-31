@@ -77,7 +77,7 @@ struct network_fixture : network_fixture_base
         connect(m);
     }
 
-    void set_credentials(boost::string_view user, boost::string_view password)
+    void set_credentials(string_view user, string_view password)
     {
         params.set_username(user);
         params.set_password(password);
@@ -180,7 +180,7 @@ inline void validate_eof(
     unsigned affected_rows = 0,
     unsigned warnings = 0,
     unsigned last_insert = 0,
-    boost::string_view info = ""
+    string_view info = ""
 )
 {
     BOOST_TEST_REQUIRE(st.complete());

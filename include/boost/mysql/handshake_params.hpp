@@ -10,8 +10,7 @@
 
 #include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/collation.hpp>
-
-#include <boost/utility/string_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -35,9 +34,9 @@ enum class ssl_mode
  */
 class handshake_params
 {
-    boost::string_view username_;
-    boost::string_view password_;
-    boost::string_view database_;
+    string_view username_;
+    string_view password_;
+    string_view database_;
     collation connection_collation_;
     ssl_mode ssl_;
     buffer_params buffer_config_;
@@ -56,9 +55,9 @@ public:
      * \param buffer_config Configuration about internal buffers.
      */
     handshake_params(
-        boost::string_view username,
-        boost::string_view password,
-        boost::string_view db = "",
+        string_view username,
+        string_view password,
+        string_view db = "",
         collation connection_col = collation::utf8mb4_general_ci,
         ssl_mode mode = ssl_mode::require,
         const buffer_params& buffer_config = {}
@@ -73,22 +72,22 @@ public:
     }
 
     /// Retrieves the username.
-    boost::string_view username() const noexcept { return username_; }
+    string_view username() const noexcept { return username_; }
 
     /// Sets the username.
-    void set_username(boost::string_view value) noexcept { username_ = value; }
+    void set_username(string_view value) noexcept { username_ = value; }
 
     /// Retrieves the password.
-    boost::string_view password() const noexcept { return password_; }
+    string_view password() const noexcept { return password_; }
 
     /// Sets the password
-    void set_password(boost::string_view value) noexcept { password_ = value; }
+    void set_password(string_view value) noexcept { password_ = value; }
 
     /// Retrieves the database.
-    boost::string_view database() const noexcept { return database_; }
+    string_view database() const noexcept { return database_; }
 
     /// Sets the database
-    void set_database(boost::string_view value) noexcept { database_ = value; }
+    void set_database(string_view value) noexcept { database_ = value; }
 
     /// Retrieves the connection collation.
     collation connection_collation() const noexcept { return connection_collation_; }

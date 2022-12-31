@@ -49,7 +49,6 @@ struct connect_op : boost::asio::coroutine
             if (code)
             {
                 chan_.close();
-                output_info_.set_message("Physical connect failed");
                 self.complete(code);
                 BOOST_ASIO_CORO_YIELD break;
             }
@@ -82,7 +81,6 @@ void boost::mysql::detail::connect(
     if (err)
     {
         chan.close();
-        info.set_message("Physical connect failed");
         return;
     }
     handshake(chan, params, err, info);

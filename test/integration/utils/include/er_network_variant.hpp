@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_NETWORK_VARIANT_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_NETWORK_VARIANT_HPP
 
+#include <boost/mysql/string_view.hpp>
+
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/core/span.hpp>
-#include <boost/utility/string_view.hpp>
 
 #include <functional>
 
@@ -35,7 +36,7 @@ public:
 };
 
 boost::span<er_network_variant*> all_variants();
-er_network_variant* get_variant(boost::string_view name);
+er_network_variant* get_variant(string_view name);
 
 }  // namespace test
 }  // namespace mysql

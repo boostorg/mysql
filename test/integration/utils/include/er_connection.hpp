@@ -36,13 +36,10 @@ public:
     virtual network_result<no_result> physical_connect() = 0;
     virtual network_result<no_result> connect(const handshake_params&) = 0;
     virtual network_result<no_result> handshake(const handshake_params&) = 0;
-    virtual network_result<no_result> query(boost::string_view query, resultset& result) = 0;
-    virtual network_result<no_result> start_query(
-        boost::string_view query,
-        execution_state& result
-    ) = 0;
+    virtual network_result<no_result> query(string_view query, resultset& result) = 0;
+    virtual network_result<no_result> start_query(string_view query, execution_state& result) = 0;
     virtual network_result<no_result> prepare_statement(
-        boost::string_view statement,
+        string_view statement,
         er_statement& stmt
     ) = 0;
     virtual network_result<row_view> read_one_row(execution_state& st) = 0;

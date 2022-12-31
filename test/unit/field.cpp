@@ -33,6 +33,7 @@ using boost::mysql::datetime;
 using boost::mysql::field;
 using boost::mysql::field_kind;
 using boost::mysql::field_view;
+using boost::mysql::string_view;
 using boost::mysql::detail::stringize;
 
 namespace {
@@ -154,7 +155,7 @@ BOOST_AUTO_TEST_CASE(from_c_str)
 
 BOOST_AUTO_TEST_CASE(from_boost_string_view)
 {
-    boost::string_view sv("test123", 4);
+    string_view sv("test123", 4);
     field v(sv);
     BOOST_TEST(v.as_string() == "test");
 }
@@ -444,7 +445,7 @@ BOOST_AUTO_TEST_CASE(from_c_str)
 
 BOOST_AUTO_TEST_CASE(from_boost_string_view)
 {
-    boost::string_view sv("test123", 4);
+    string_view sv("test123", 4);
     field v(9.2f);
     v = sv;
     BOOST_TEST(v.as_string() == "test");
@@ -998,7 +999,7 @@ BOOST_AUTO_TEST_CASE(string_std_string_lvalue)
 BOOST_AUTO_TEST_CASE(string_boost_string_view)
 {
     field f;
-    f.emplace_string(boost::string_view("test"));
+    f.emplace_string(string_view("test"));
     BOOST_TEST(f.as_string() == "test");
 }
 

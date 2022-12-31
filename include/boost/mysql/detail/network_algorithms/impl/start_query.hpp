@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/string_view.hpp>
+
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
 #include <boost/mysql/detail/network_algorithms/start_query.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -18,18 +20,16 @@
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
-#include <boost/utility/string_view_fwd.hpp>
-
 namespace boost {
 namespace mysql {
 namespace detail {
 
 class query_serialize_fn
 {
-    boost::string_view query_;
+    string_view query_;
 
 public:
-    query_serialize_fn(boost::string_view query) noexcept : query_(query) {}
+    query_serialize_fn(string_view query) noexcept : query_(query) {}
     void operator()(capabilities caps, std::vector<std::uint8_t>& buffer) const
     {
         com_query_packet request{string_eof(query_)};
@@ -44,7 +44,7 @@ public:
 template <class Stream>
 void boost::mysql::detail::start_query(
     channel<Stream>& channel,
-    boost::string_view query,
+    string_view query,
     execution_state& output,
     error_code& err,
     error_info& info
@@ -66,7 +66,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_start_query(
     channel<Stream>& chan,
-    boost::string_view query,
+    string_view query,
     execution_state& output,
     error_info& info,
     CompletionToken&& token

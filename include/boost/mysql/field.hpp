@@ -11,10 +11,10 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_impl.hpp>
 
-#include <boost/utility/string_view.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
@@ -81,7 +81,7 @@ public:
      * \copybrief field()
      * \details
      * Caution: `field(NULL)` will __NOT__ match this overload. It will try to construct
-     * a `boost::string_view` from a NULL C string, causing undefined behavior.
+     * a `string_view` from a NULL C string, causing undefined behavior.
      */
     explicit field(std::nullptr_t) noexcept {}
 
@@ -129,12 +129,10 @@ public:
 
     /// \copybrief field(const std::string&)
     /// \details A `std::string` is constructed internally from `v`.
-    explicit field(boost::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v)
-    {
-    }
+    explicit field(string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 #if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
 
-    /// \copydoc field(boost::string_view)
+    /// \copydoc field(string_view)
     explicit field(std::string_view v) noexcept
         : repr_(boost::variant2::in_place_type_t<std::string>(), v)
     {
@@ -276,7 +274,7 @@ public:
     }
 
     /// \copydoc operator=(const std::string&)
-    field& operator=(boost::string_view v)
+    field& operator=(string_view v)
     {
         emplace_string(v);
         return *this;
@@ -653,7 +651,7 @@ public:
     void emplace_string(const char* v) { repr_.data.emplace<std::string>(v); }
 
     /// \copydoc emplace_string(const std::string&)
-    void emplace_string(boost::string_view v) { repr_.data.emplace<std::string>(v); }
+    void emplace_string(string_view v) { repr_.data.emplace<std::string>(v); }
 
 #if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
     /// \copydoc emplace_string(const std::string&)

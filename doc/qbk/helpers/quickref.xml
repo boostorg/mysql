@@ -44,6 +44,7 @@
           <member><link linkend="mysql.ref.boost__mysql__days">days</link></member>
           <member><link linkend="mysql.ref.boost__mysql__time">time</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_code">error_code</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__string_view">string_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__tcp_connection">tcp_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__tcp_statement">tcp_statement</link></member>
           <member><link linkend="mysql.ref.boost__mysql__tcp_ssl_connection">tcp_ssl_connection</link></member>

@@ -24,11 +24,11 @@ namespace caching_sha2_password {
 
 constexpr std::size_t challenge_length = 20;
 constexpr std::size_t response_length = 32;
-constexpr boost::string_view perform_full_auth = make_string_view("\4");
+constexpr string_view perform_full_auth = make_string_view("\4");
 
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
-inline void compute_auth_string(boost::string_view password, const void* challenge, void* output)
+inline void compute_auth_string(string_view password, const void* challenge, void* output)
 {
     static_assert(response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
 
@@ -60,8 +60,8 @@ inline void compute_auth_string(boost::string_view password, const void* challen
 }  // namespace boost
 
 inline boost::mysql::error_code boost::mysql::detail::caching_sha2_password::compute_response(
-    boost::string_view password,
-    boost::string_view challenge,
+    string_view password,
+    string_view challenge,
     bool use_ssl,
     bytestring& output
 )

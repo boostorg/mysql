@@ -29,7 +29,7 @@ enum class field_kind
     /// The field contains a `std::uint64_t`.
     uint64,
 
-    /// The field contains a string (`std::string` for `field` and `boost::string_view` for
+    /// The field contains a string (`std::string` for `field` and `string_view` for
     /// `field_view`).
     string,
 

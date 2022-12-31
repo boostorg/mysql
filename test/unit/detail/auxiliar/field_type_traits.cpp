@@ -9,10 +9,9 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
-
-#include <boost/utility/string_view_fwd.hpp>
 
 #include <array>
 #include <cstddef>
@@ -28,6 +27,7 @@ using boost::mysql::field;
 using boost::mysql::field_view;
 using boost::mysql::row;
 using boost::mysql::row_view;
+using boost::mysql::string_view;
 using boost::mysql::detail::is_field_like;
 using boost::mysql::detail::is_field_like_tuple;
 using boost::mysql::detail::is_field_view_forward_iterator;
@@ -77,7 +77,7 @@ static_assert(is_field_like<std::string>::value, "");
 static_assert(is_field_like<std::string&>::value, "");
 static_assert(is_field_like<const std::string&>::value, "");
 static_assert(is_field_like<std::string&&>::value, "");
-static_assert(is_field_like<boost::string_view>::value, "");
+static_assert(is_field_like<string_view>::value, "");
 
 // other stuff not accepted
 static_assert(!is_field_like<field*>::value, "");
@@ -94,7 +94,7 @@ static_assert(is_field_like_tuple<tuple<>&&>::value, "");
 
 // Tuples of field likes accepted
 static_assert(is_field_like_tuple<tuple<int, std::string&, const char*>>::value, "");
-static_assert(is_field_like_tuple<tuple<field_view, boost::string_view, int&&>>::value, "");
+static_assert(is_field_like_tuple<tuple<field_view, string_view, int&&>>::value, "");
 
 // References accepted
 static_assert(is_field_like_tuple<tuple<int, float&, std::string&&>&>::value, "");

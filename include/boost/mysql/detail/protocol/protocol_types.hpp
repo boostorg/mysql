@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_PROTOCOL_TYPES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_PROTOCOL_TYPES_HPP
 
-#include <boost/utility/string_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <array>
 #include <cstdint>
@@ -54,17 +54,17 @@ struct int_lenenc : value_holder<std::uint64_t>
     using value_holder::value_holder;
 };
 
-struct string_null : value_holder<boost::string_view>
+struct string_null : value_holder<string_view>
 {
     using value_holder::value_holder;
 };
 
-struct string_eof : value_holder<boost::string_view>
+struct string_eof : value_holder<string_view>
 {
     using value_holder::value_holder;
 };
 
-struct string_lenenc : value_holder<boost::string_view>
+struct string_lenenc : value_holder<string_view>
 {
     using value_holder::value_holder;
 };

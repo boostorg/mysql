@@ -17,6 +17,7 @@
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
@@ -244,10 +245,10 @@ public:
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
-    void query(boost::string_view query_string, resultset& result, error_code&, error_info&);
+    void query(string_view query_string, resultset& result, error_code&, error_info&);
 
     /// \copydoc query
-    void query(boost::string_view query_string, resultset& result);
+    void query(string_view query_string, resultset& result);
 
     /**
      * \copydoc query
@@ -262,7 +263,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
-        boost::string_view query_string,
+        string_view query_string,
         resultset& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
@@ -280,7 +281,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
-        boost::string_view query_string,
+        string_view query_string,
         resultset& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -301,10 +302,10 @@ public:
      *\n
      * `query_string` should be encoded using the connection's character set.
      */
-    void start_query(boost::string_view query_string, execution_state& st, error_code&, error_info&);
+    void start_query(string_view query_string, execution_state& st, error_code&, error_info&);
 
     /// \copydoc start_query
-    void start_query(boost::string_view query_string, execution_state& st);
+    void start_query(string_view query_string, execution_state& st);
 
     /**
      * \copydoc start_query
@@ -319,7 +320,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_start_query(
-        boost::string_view query_string,
+        string_view query_string,
         execution_state& st,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
@@ -337,7 +338,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_start_query(
-        boost::string_view query_string,
+        string_view query_string,
         execution_state& st,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -352,10 +353,10 @@ public:
      *\n
      * `stmt` should be encoded using the connection's character set.
      */
-    void prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
+    void prepare_statement(string_view stmt, statement<Stream>& result, error_code&, error_info&);
 
     /// \copydoc prepare_statement
-    void prepare_statement(boost::string_view stmt, statement<Stream>& result);
+    void prepare_statement(string_view stmt, statement<Stream>& result);
 
     /**
      * \copydoc prepare_statement
@@ -370,7 +371,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_prepare_statement(
-        boost::string_view stmt,
+        string_view stmt,
         statement<Stream>& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
@@ -388,7 +389,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_prepare_statement(
-        boost::string_view stmt,
+        string_view stmt,
         statement<Stream>& result,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)

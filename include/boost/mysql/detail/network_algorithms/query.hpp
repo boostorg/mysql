@@ -10,11 +10,11 @@
 
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 
 #include <boost/asio/async_result.hpp>
-#include <boost/utility/string_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -23,7 +23,7 @@ namespace detail {
 template <class Stream>
 void query(
     channel<Stream>& channel,
-    boost::string_view query,
+    string_view query,
     resultset& output,
     error_code& err,
     error_info& info
@@ -35,7 +35,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_query(
     channel<Stream>& chan,
-    boost::string_view query,
+    string_view query,
     resultset& output,
     error_info& info,
     CompletionToken&& token

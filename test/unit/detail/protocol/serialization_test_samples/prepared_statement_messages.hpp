@@ -102,7 +102,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "int64_t"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(boost::string_view("test")), {
+            make_field_views(string_view("test")), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0xfe, 0x00, 0x04, 0x74,
                 0x65, 0x73, 0x74
@@ -170,7 +170,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             make_field_views(
                 std::uint64_t(0xabffffabacadae),
                 std::int64_t(-0xabffffabacadae),
-                boost::string_view("test"),
+                string_view("test"),
                 nullptr,
                 2.1e214,
                 date(2010u, 9u, 3u),

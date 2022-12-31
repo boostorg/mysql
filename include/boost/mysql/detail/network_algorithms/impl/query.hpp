@@ -23,13 +23,13 @@ struct query_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     error_info& output_info_;
-    boost::string_view query_;
+    string_view query_;
     resultset& output_;
 
     query_op(
         channel<Stream>& chan,
         error_info& output_info,
-        boost::string_view q,
+        string_view q,
         resultset& output
     ) noexcept
         : chan_(chan), output_info_(output_info), query_(q), output_(output)
@@ -72,7 +72,7 @@ struct query_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::query(
     channel<Stream>& channel,
-    boost::string_view query,
+    string_view query,
     resultset& output,
     error_code& err,
     error_info& info
@@ -91,7 +91,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_query(
     channel<Stream>& chan,
-    boost::string_view query,
+    string_view query,
     resultset& output,
     error_info& info,
     CompletionToken&& token

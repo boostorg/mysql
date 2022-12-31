@@ -10,7 +10,7 @@
 
 // A very simplified variable-length string with fixed max-size
 
-#include <boost/utility/string_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <array>
 #include <cassert>
@@ -29,14 +29,14 @@ class static_string
 
 public:
     static_string() noexcept : size_(0) {}
-    static_string(boost::string_view value) noexcept : size_(value.size())
+    static_string(string_view value) noexcept : size_(value.size())
     {
         assert(value.size() <= max_size);
         size_ = value.size();
         std::memcpy(buffer_.data(), value.data(), value.size());
     }
     std::size_t size() const noexcept { return size_; }
-    boost::string_view value() const noexcept { return boost::string_view(buffer_.data(), size_); }
+    string_view value() const noexcept { return string_view(buffer_.data(), size_); }
     void append(const void* arr, std::size_t sz) noexcept
     {
         std::size_t new_size = size_ + sz;

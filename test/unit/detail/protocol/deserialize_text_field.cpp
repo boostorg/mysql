@@ -31,6 +31,7 @@ using boost::mysql::datetime;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
+using boost::mysql::string_view;
 
 namespace {
 
@@ -465,13 +466,13 @@ BOOST_AUTO_TEST_SUITE(errors)
 struct error_sample
 {
     std::string name;
-    boost::string_view from;
+    string_view from;
     protocol_field_type type;
     std::uint16_t flags;
     unsigned decimals;
     errc expected_err;
 
-    error_sample(std::string&& name, boost::string_view from, protocol_field_type type,
+    error_sample(std::string&& name, string_view from, protocol_field_type type,
             std::uint16_t flags=0, unsigned decimals=0, errc expected_err=errc::protocol_value_error) :
         name(std::move(name)),
         from(from),
@@ -522,8 +523,8 @@ void add_bit_samples(
 
 void add_float_samples(
     protocol_field_type t,
-    boost::string_view lt_min,
-    boost::string_view gt_max,
+    string_view lt_min,
+    string_view gt_max,
     std::vector<error_sample>& output
 )
 {

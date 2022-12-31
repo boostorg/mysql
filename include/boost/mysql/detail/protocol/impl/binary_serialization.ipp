@@ -80,7 +80,7 @@ inline void serialize_binary_time(serialization_context& ctx, const time& input)
 // Helper for blobs
 inline string_lenenc to_string_lenenc(blob_view v)
 {
-    return string_lenenc(boost::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
+    return string_lenenc(string_view(reinterpret_cast<const char*>(v.data()), v.size()));
 }
 
 }  // namespace detail

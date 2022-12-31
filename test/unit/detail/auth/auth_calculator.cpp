@@ -13,6 +13,7 @@ using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using boost::mysql::errc;
 using boost::mysql::error_code;
+using boost::mysql::string_view;
 
 BOOST_AUTO_TEST_SUITE(test_auth_calculator)
 
@@ -31,8 +32,8 @@ struct mysql_native_password
         0xeb, 0xa8, 0x12, 0x6a, 0xd1, 0x0f, 0xe9, 0xb1,
         0x10, 0x50, 0xd4, 0x28
     };
-    boost::string_view challenge = makesv(challenge_buffer);
-    boost::string_view expected = makesv(expected_buffer);
+    string_view challenge = makesv(challenge_buffer);
+    string_view expected = makesv(expected_buffer);
 };
 // clang-format on
 
@@ -96,9 +97,9 @@ struct caching_sha2_password_test
         0x6, 0xca, 0x7, 0x2, 0x98, 0xac, 0xd1, 0x6,
         0x18, 0xc6, 0x90, 0x38, 0x9d, 0x88, 0xe1, 0x20
     };
-    boost::string_view challenge = makesv(challenge_buffer);
-    boost::string_view expected = makesv(expected_buffer);
-    boost::string_view cleartext_challenge{"\4"};
+    string_view challenge = makesv(challenge_buffer);
+    string_view expected = makesv(expected_buffer);
+    string_view cleartext_challenge{"\4"};
 };
 // clang-format on
 

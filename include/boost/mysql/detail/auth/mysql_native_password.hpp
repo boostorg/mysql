@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_MYSQL_NATIVE_PASSWORD_HPP
 #define BOOST_MYSQL_DETAIL_AUTH_MYSQL_NATIVE_PASSWORD_HPP
 
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/string_view.hpp>
 
-#include <boost/utility/string_view.hpp>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 
 #include <cstdint>
 
@@ -23,8 +23,8 @@ namespace mysql_native_password {
 // Authorization for this plugin is always challenge (nonce) -> response
 // (hashed password).
 inline error_code compute_response(
-    boost::string_view password,
-    boost::string_view challenge,
+    string_view password,
+    string_view challenge,
     bool use_ssl,
     bytestring& output
 );

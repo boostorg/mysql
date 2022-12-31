@@ -46,7 +46,7 @@ boost::span<er_network_variant*> boost::mysql::test::all_variants()
     return res;
 }
 
-er_network_variant* boost::mysql::test::get_variant(boost::string_view name)
+er_network_variant* boost::mysql::test::get_variant(string_view name)
 {
     static auto by_name = make_variants_map();
     std::string name_str(name);

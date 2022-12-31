@@ -24,6 +24,7 @@ using boost::mysql::blob;
 using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::resultset;
+using boost::mysql::string_view;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
@@ -32,7 +33,7 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding);
 
 namespace {
 
-using netfun_maker = netfun_maker_mem<void, test_connection, boost::string_view, resultset&>;
+using netfun_maker = netfun_maker_mem<void, test_connection, string_view, resultset&>;
 
 struct
 {

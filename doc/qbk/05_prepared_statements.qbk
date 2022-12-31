@@ -57,7 +57,7 @@ For example:
     // have been read from a file or an HTTP endpoint
     void insert_product(
         tcp_ssl_statement& stmt,
-        boost::string_view description,
+        string_view description,
         int price,
         bool show_in_store
     )
@@ -89,7 +89,7 @@ to insert `NULL` values:
     // have been read from a file or an HTTP endpoint
     void insert_product(
         tcp_ssl_statement& stmt,
-        std::optional<boost::string_view> description,
+        std::optional<string_view> description,
         int price,
         bool show_in_store
     )

@@ -37,6 +37,7 @@ using boost::mysql::datetime;
 using boost::mysql::field;
 using boost::mysql::field_kind;
 using boost::mysql::field_view;
+using boost::mysql::string_view;
 using boost::mysql::detail::stringize;
 
 namespace {
@@ -133,7 +134,7 @@ BOOST_AUTO_TEST_CASE(from_c_str)
 
 BOOST_AUTO_TEST_CASE(from_string_view)
 {
-    boost::string_view sv("test123", 4);
+    string_view sv("test123", 4);
     field_view v(sv);
     BOOST_TEST(v.as_string() == "test");
 }

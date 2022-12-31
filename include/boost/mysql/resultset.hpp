@@ -12,6 +12,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <cassert>
 
@@ -144,7 +145,7 @@ public:
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
      */
-    boost::string_view info() const noexcept
+    string_view info() const noexcept
     {
         assert(has_value());
         return st_.info();

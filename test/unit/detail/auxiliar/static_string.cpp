@@ -9,7 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-using boost::string_view;
+using boost::mysql::string_view;
 using boost::mysql::detail::static_string;
 
 namespace {

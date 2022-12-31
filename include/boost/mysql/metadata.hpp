@@ -9,11 +9,10 @@
 #define BOOST_MYSQL_METADATA_HPP
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
-
-#include <boost/utility/string_view_fwd.hpp>
 
 #include <string>
 
@@ -79,11 +78,11 @@ public:
     // Private, do not use.
     // TODO: hide this
     metadata(const detail::column_definition_packet& msg, bool copy_strings)
-        : schema_(copy_strings ? msg.schema.value : boost::string_view()),
-          table_(copy_strings ? msg.table.value : boost::string_view()),
-          org_table_(copy_strings ? msg.org_table.value : boost::string_view()),
-          name_(copy_strings ? msg.name.value : boost::string_view()),
-          org_name_(copy_strings ? msg.org_name.value : boost::string_view()),
+        : schema_(copy_strings ? msg.schema.value : string_view()),
+          table_(copy_strings ? msg.table.value : string_view()),
+          org_table_(copy_strings ? msg.org_table.value : string_view()),
+          name_(copy_strings ? msg.name.value : string_view()),
+          org_name_(copy_strings ? msg.org_name.value : string_view()),
           character_set_(msg.character_set),
           column_length_(msg.column_length),
           type_(msg.type),
@@ -94,21 +93,21 @@ public:
 #endif
 
     /// Returns the name of the database (schema) the column belongs to.
-    boost::string_view database() const noexcept { return schema_; }
+    string_view database() const noexcept { return schema_; }
 
     /**
      * \brief Returns the name of the virtual table the column belongs to.
      * \details If the table was aliased, this will be the name of the alias
      * (e.g. in `"SELECT * FROM employees emp"`, `table()` will be `"emp"`).
      */
-    boost::string_view table() const noexcept { return table_; }
+    string_view table() const noexcept { return table_; }
 
     /**
      * \brief Returns the name of the physical table the column belongs to.
      * \details E.g. in `"SELECT * FROM employees emp"`,
      * `original_table()` will be `"employees"`.
      */
-    boost::string_view original_table() const noexcept { return org_table_; }
+    string_view original_table() const noexcept { return org_table_; }
 
     /**
      * \brief Returns the actual name of the column.
@@ -116,14 +115,14 @@ public:
      * (e.g. in `"SELECT id AS employee_id FROM employees"`,
      * `column_name()` will be `"employee_id"`).
      */
-    boost::string_view column_name() const noexcept { return name_; }
+    string_view column_name() const noexcept { return name_; }
 
     /**
      * \brief Returns the original (physical) name of the column.
      * \details E.g. in `"SELECT id AS employee_id FROM employees"`,
      * `original_column_name()` will be `"id"`.
      */
-    boost::string_view original_column_name() const noexcept { return org_name_; }
+    string_view original_column_name() const noexcept { return org_name_; }
 
     /**
      * \brief Returns the collation that fields belonging to this column use.

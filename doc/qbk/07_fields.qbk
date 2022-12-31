@@ -25,7 +25,7 @@ For efficiency reasons, all library functions return `field_view`s. For example:
     resultset result;
     conn.query("SELECT 'Hello world!'", result);
     field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-    boost::string_view sv = fv.as_string(); // sv also points into result; if result goes out of scope, sv becomes invalid
+    string_view sv = fv.as_string(); // sv also points into result; if result goes out of scope, sv becomes invalid
 ```
 
 When dealing with scalars (anything that is neither a string nor a blob), `field_view`'s accessors make
@@ -53,7 +53,7 @@ You may create a `field` from a `field_view`, taking ownership of its contents:
 
 `field` and `field_view` use the same underlying types for scalars. For strings and blobs,
 `field` uses the owning types `std::string` and [reflink blob], while `field_view` uses the
-reference types `boost::string_view` and [reflink blob_view].
+reference types [reflink string_view] and [reflink blob_view].
 
 `field` accessors return references, which allow you to mutate the underlying object:
 
@@ -90,7 +90,7 @@ use `double`.
 [section String types]
 
 String types (`CHAR`, `VARCHAR`, `TEXT`, `SET`...) are represented as string fields, which
-translates into `boost::string_view` for `field_view` and `std::string` for `field`.
+translates into [ref string_view] for `field_view` and `std::string` for `field`.
 
 This library performs no character set conversion on strings. All strings are provided
 as the server sends them. If you've issued a `"SET NAMES <charset-name>"` statement,
@@ -247,7 +247,7 @@ The following table summarizes the available accesors for `field_view` and `fiel
     [
         [`string`]
         [
-            `boost::string_view` for `field_view`
+            [reflink string_view] for `field_view`
             
             `std::string` for `field`
         ]
@@ -523,7 +523,7 @@ considerations are listed below.
     [
         [__CHAR__]
         [`string`]
-        [`boost::string_view` or `std::string`]
+        [[reflink string_view] or `std::string`]
         []
         [`char_`]
         [
@@ -533,7 +533,7 @@ considerations are listed below.
     [
         [__VARCHAR__]
         [`string`]
-        [`boost::string_view` or `std::string`]
+        [[reflink string_view] or `std::string`]
         []
         [`varchar`]
         [
@@ -543,7 +543,7 @@ considerations are listed below.
     [
         [__TEXT__ (all sizes)]
         [`string`]
-        [`boost::string_view` or `std::string`]
+        [[reflink string_view] or `std::string`]
         []
         [`text`]
         [
@@ -553,7 +553,7 @@ considerations are listed below.
     [
         [__ENUM__]
         [`string`]
-        [`boost::string_view` or `std::string`]
+        [[reflink string_view] or `std::string`]
         []
         [`enum_`]
         [
@@ -563,7 +563,7 @@ considerations are listed below.
     [
         [__SET__]
         [`string`]
-        [`boost::string_view` or `std::string`]
+        [[reflink string_view] or `std::string`]
         []
         [`set`]
         [
@@ -573,7 +573,7 @@ considerations are listed below.
     [
         [__DECIMAL__/__NUMERIC__]
         [`string`]
-        [`boost::string_view` or `std::string`]
+        [[reflink string_view] or `std::string`]
         [Depends on the column definition]
         [`decimal`]
         [
@@ -648,7 +648,7 @@ is interpreted by MySQL, depeding on `v`'s type:
         [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
     ]
     [
-        [`std::string`, `boost::string_view`, `std::string_view`, `const char*`]
+        [`std::string`, [reflink string_view], `std::string_view`, `const char*`]
         [`VARCHAR`]
         [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `DECIMAL`, `NUMERIC`]
     ]

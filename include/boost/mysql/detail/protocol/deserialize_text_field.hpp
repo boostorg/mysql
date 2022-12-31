@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_TEXT_FIELD_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_TEXT_FIELD_HPP
 
-#include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+
+#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <cstdint>
 #include <vector>
@@ -21,7 +22,7 @@ namespace mysql {
 namespace detail {
 
 inline errc deserialize_text_field(
-    boost::string_view from,
+    string_view from,
     const metadata& meta,
     const std::uint8_t* buffer_first,
     field_view& output

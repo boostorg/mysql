@@ -29,6 +29,7 @@ using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::handshake_params;
 using boost::mysql::ssl_mode;
+using boost::mysql::string_view;
 using boost::mysql::tcp_ssl_connection;
 
 namespace {
@@ -110,7 +111,7 @@ BOOST_AUTO_TEST_SUITE(caching_sha2_password)
 
 struct caching_sha2_fixture : handshake_fixture
 {
-    void load_sha256_cache(boost::string_view user, boost::string_view password)
+    void load_sha256_cache(string_view user, string_view password)
     {
         tcp_ssl_connection conn(ctx, ssl_ctx);
         conn.connect(get_endpoint<tcp_socket>(), handshake_params(user, password));

@@ -49,7 +49,7 @@ inline void boost::mysql::detail::row_base::rebase_strings(const char* old_buffe
             if (!sv.empty())
             {
                 std::size_t offset = sv.data() - old_buffer_base;
-                f = field_view(boost::string_view(new_buffer_base + offset, sv.size()));
+                f = field_view(string_view(new_buffer_base + offset, sv.size()));
             }
         }
     }
@@ -80,7 +80,7 @@ inline void boost::mysql::detail::row_base::copy_strings()
             if (!str.empty())
             {
                 std::memcpy(string_buffer_.data() + offset, str.data(), str.size());
-                f = field_view(boost::string_view(string_buffer_.data() + offset, str.size()));
+                f = field_view(string_view(string_buffer_.data() + offset, str.size()));
                 offset += str.size();
             }
         }

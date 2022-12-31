@@ -35,8 +35,8 @@ constexpr const authentication_plugin* all_authentication_plugins[] = {
 }  // namespace mysql
 }  // namespace boost
 
-inline const boost::mysql::detail::authentication_plugin*
-boost::mysql::detail::auth_calculator::find_plugin(boost::string_view name)
+inline const boost::mysql::detail::authentication_plugin* boost::mysql::detail::auth_calculator::
+    find_plugin(string_view name)
 {
     auto it = std::find_if(
         std::begin(all_authentication_plugins),
@@ -47,9 +47,9 @@ boost::mysql::detail::auth_calculator::find_plugin(boost::string_view name)
 }
 
 inline boost::mysql::error_code boost::mysql::detail::auth_calculator::calculate(
-    boost::string_view plugin_name,
-    boost::string_view password,
-    boost::string_view challenge,
+    string_view plugin_name,
+    string_view password,
+    string_view challenge,
     bool use_ssl
 )
 {

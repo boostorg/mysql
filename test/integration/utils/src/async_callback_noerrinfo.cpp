@@ -35,6 +35,7 @@ using boost::mysql::handshake_params;
 using boost::mysql::resultset;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::string_view;
 
 namespace {
 
@@ -138,20 +139,19 @@ public:
             return this->conn_.async_handshake(params, std::move(h));
         });
     }
-    network_result<no_result> query(boost::string_view query, resultset& result) override
+    network_result<no_result> query(string_view query, resultset& result) override
     {
         return impl<no_result>([&](handler<no_result> h) {
             return this->conn_.async_query(query, result, std::move(h));
         });
     }
-    network_result<no_result> start_query(boost::string_view query, execution_state& st) override
+    network_result<no_result> start_query(string_view query, execution_state& st) override
     {
         return impl<no_result>([&](handler<no_result> h) {
             return this->conn_.async_start_query(query, st, std::move(h));
         });
     }
-    network_result<no_result> prepare_statement(boost::string_view statement, er_statement& stmt)
-        override
+    network_result<no_result> prepare_statement(string_view statement, er_statement& stmt) override
     {
         return impl<no_result>([&](handler<no_result> h) {
             return this->conn_.async_prepare_statement(statement, this->cast(stmt), std::move(h));

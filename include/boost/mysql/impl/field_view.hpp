@@ -133,7 +133,7 @@ BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(unsigned long long v)
 {
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(boost::string_view v) noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::field_view::field_view(string_view v) noexcept
     : ikind_(internal_kind::string), repr_(v)
 {
 }
@@ -205,7 +205,7 @@ BOOST_CXX14_CONSTEXPR std::uint64_t boost::mysql::field_view::as_uint64() const
     return repr_.uint64;
 }
 
-BOOST_CXX14_CONSTEXPR boost::string_view boost::mysql::field_view::as_string() const
+BOOST_CXX14_CONSTEXPR boost::mysql::string_view boost::mysql::field_view::as_string() const
 {
     if (is_field_ptr())
         return repr_.field_ptr->as<std::string>();
@@ -271,9 +271,10 @@ BOOST_CXX14_CONSTEXPR std::uint64_t boost::mysql::field_view::get_uint64() const
     return is_field_ptr() ? repr_.field_ptr->get<std::uint64_t>() : repr_.uint64;
 }
 
-BOOST_CXX14_CONSTEXPR boost::string_view boost::mysql::field_view::get_string() const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::string_view boost::mysql::field_view::get_string(
+) const noexcept
 {
-    return is_field_ptr() ? boost::string_view(repr_.field_ptr->get<std::string>()) : repr_.string;
+    return is_field_ptr() ? string_view(repr_.field_ptr->get<std::string>()) : repr_.string;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::blob_view boost::mysql::field_view::get_blob() const noexcept

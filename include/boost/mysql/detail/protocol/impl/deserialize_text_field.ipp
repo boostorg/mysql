@@ -35,7 +35,7 @@ namespace detail {
 
 // Integers
 template <class T>
-errc deserialize_text_value_int_impl(boost::string_view from, field_view& to) noexcept
+errc deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
 {
     T v;
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), v);
@@ -46,7 +46,7 @@ errc deserialize_text_value_int_impl(boost::string_view from, field_view& to) no
 }
 
 inline errc deserialize_text_value_int(
-    boost::string_view from,
+    string_view from,
     field_view& to,
     const metadata& meta
 ) noexcept
@@ -57,7 +57,7 @@ inline errc deserialize_text_value_int(
 
 // Floating points
 template <class T>
-errc deserialize_text_value_float(boost::string_view from, field_view& to) noexcept
+errc deserialize_text_value_float(string_view from, field_view& to) noexcept
 {
     T val;
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), val);
@@ -69,7 +69,7 @@ errc deserialize_text_value_float(boost::string_view from, field_view& to) noexc
 
 // Strings
 inline errc deserialize_text_value_string(
-    boost::string_view from,
+    string_view from,
     field_view& to,
     const std::uint8_t* buffer_first,
     bool is_blob
@@ -92,7 +92,7 @@ inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexce
     return parsed_micros * static_cast<unsigned>(std::pow(10, textc::max_decimals - decimals));
 }
 
-inline errc deserialize_text_ymd(boost::string_view from, date& to)
+inline errc deserialize_text_ymd(string_view from, date& to)
 {
     using namespace textc;
 
@@ -124,7 +124,7 @@ inline errc deserialize_text_ymd(boost::string_view from, date& to)
     return errc::ok;
 }
 
-inline errc deserialize_text_value_date(boost::string_view from, field_view& to) noexcept
+inline errc deserialize_text_value_date(string_view from, field_view& to) noexcept
 {
     date d;
     auto err = deserialize_text_ymd(from, d);
@@ -135,7 +135,7 @@ inline errc deserialize_text_value_date(boost::string_view from, field_view& to)
 }
 
 inline errc deserialize_text_value_datetime(
-    boost::string_view from,
+    string_view from,
     field_view& to,
     const metadata& meta
 ) noexcept
@@ -208,7 +208,7 @@ inline errc deserialize_text_value_datetime(
 }
 
 inline errc deserialize_text_value_time(
-    boost::string_view from,
+    string_view from,
     field_view& to,
     const metadata& meta
 ) noexcept
@@ -283,7 +283,7 @@ inline errc deserialize_text_value_time(
 }  // namespace boost
 
 inline boost::mysql::errc boost::mysql::detail::deserialize_text_field(
-    boost::string_view from,
+    string_view from,
     const metadata& meta,
     const std::uint8_t* buffer_first,
     field_view& output

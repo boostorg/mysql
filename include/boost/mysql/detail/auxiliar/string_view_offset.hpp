@@ -8,8 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_STRING_VIEW_OFFSET_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_STRING_VIEW_OFFSET_HPP
 
-#include <boost/utility/string_view.hpp>
-#include <boost/utility/string_view_fwd.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -39,8 +38,7 @@ public:
     }
     constexpr bool operator!=(string_view_offset rhs) const noexcept { return !(*this == rhs); }
 
-    static string_view_offset
-    from_sv(boost::string_view from, const std::uint8_t* buffer_first) noexcept
+    static string_view_offset from_sv(string_view from, const std::uint8_t* buffer_first) noexcept
     {
         return string_view_offset(
             from.data() - reinterpret_cast<const char*>(buffer_first),

@@ -228,7 +228,7 @@ For example:
     if (f.is_string())
     {
         // we know it's a string, unchecked access
-        boost::string_view s = f.get_string();
+        string_view s = f.get_string();
         std::cout << s << std::endl; // Use the string as required
     }
     else
@@ -268,7 +268,7 @@ This is how `NULL`s are typically handled:
         {
             // Handle the non-NULL case. Get the underlying value and use it as you want
             // If there is any schema mismatch (and description was not defined as VARCHAR), this will throw
-            boost::string_view description = description_fv.as_string();
+            string_view description = description_fv.as_string();
 
             // Use description as required
             std::cout << "product_id " << r.at(0) << ": " << description << std::endl;
@@ -306,7 +306,7 @@ Every MySQL type is mapped to a single C++ type. The following table shows these
     [
         [`string`]
         [
-            `boost::string_view` for `field_view`
+            [reflink string_view] for `field_view`
             
             `std::string` for `field`
         ]

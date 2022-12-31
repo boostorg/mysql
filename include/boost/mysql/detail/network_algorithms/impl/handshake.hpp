@@ -229,7 +229,7 @@ public:
             if (err)
                 return err;
 
-            boost::string_view challenge = more_data.auth_plugin_data.value;
+            string_view challenge = more_data.auth_plugin_data.value;
             if (challenge == fast_auth_complete_challenge)
             {
                 result = auth_result::wait_for_ok;

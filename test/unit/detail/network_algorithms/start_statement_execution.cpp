@@ -38,6 +38,7 @@ using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
+using boost::mysql::string_view;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
@@ -185,7 +186,7 @@ BOOST_AUTO_TEST_CASE(tuple_parameter_types)
     auto params = std::make_tuple(
         std::uint8_t(42),
         std::int16_t(-1),
-        boost::string_view("test"),
+        string_view("test"),
         blob({0x00, 0x01, 0x02}),
         4.2f,
         nullptr,

@@ -28,7 +28,7 @@ namespace detail {
 
 class prepare_statement_processor
 {
-    boost::string_view statement_;
+    string_view statement_;
     capabilities caps_;
     bytestring& write_buffer_;
     statement_base& output_;
@@ -39,7 +39,7 @@ public:
     template <class Stream>
     prepare_statement_processor(
         channel<Stream>& chan,
-        boost::string_view statement,
+        string_view statement,
         statement_base& output,
         error_info& output_info
     ) noexcept
@@ -170,7 +170,7 @@ struct prepare_statement_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::prepare_statement(
     channel<Stream>& channel,
-    boost::string_view statement,
+    string_view statement,
     statement_base& output,
     error_code& err,
     error_info& info
@@ -224,7 +224,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,
-    boost::string_view statement,
+    string_view statement,
     statement_base& output,
     error_info& info,
     CompletionToken&& token

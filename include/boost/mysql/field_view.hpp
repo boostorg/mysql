@@ -12,13 +12,13 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_kind.hpp>
+#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 
 #include <boost/config.hpp>
-#include <boost/utility/string_view.hpp>
 
 #include <array>
 #include <cstddef>
@@ -68,7 +68,7 @@ public:
      * field_kind::null`). \details Results in a `field_view` with value semantics (always valid).
      *
      * Caution: `field_view(NULL)` will __NOT__ match this overload. It will try to construct
-     * a `boost::string_view` from a NULL C string, causing undefined behavior.
+     * a `string_view` from a NULL C string, causing undefined behavior.
      */
     BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}
 
@@ -108,7 +108,7 @@ public:
     /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a string (`this->kind() ==
     /// field_kind::string`). \details Results in a `field_view` with reference semantics. It will
     /// be valid as long as the character buffer the `string_view` points to is valid.
-    BOOST_CXX14_CONSTEXPR explicit inline field_view(boost::string_view v) noexcept;
+    BOOST_CXX14_CONSTEXPR explicit inline field_view(string_view v) noexcept;
 
     /// \brief (EXPERIMENTAL) Constructs a `field_view` holding a blob (`this->kind() ==
     /// field_kind::blob`). \details Results in a `field_view` with reference semantics. It will
@@ -195,7 +195,7 @@ public:
 
     /// \brief Retrieves the underlying value as a string or throws an exception.
     /// \details If `!this->is_string()`, throws \ref bad_field_access.
-    BOOST_CXX14_CONSTEXPR inline boost::string_view as_string() const;
+    BOOST_CXX14_CONSTEXPR inline string_view as_string() const;
 
     /// \brief Retrieves the underlying value as a blob or throws an exception.
     /// \details If `!this->is_blob()`, throws \ref bad_field_access.
@@ -231,7 +231,7 @@ public:
 
     /// \brief Retrieves the underlying value as a string (unchecked access).
     /// \details If `!this->is_string()`, results in undefined behavior.
-    BOOST_CXX14_CONSTEXPR inline boost::string_view get_string() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline string_view get_string() const noexcept;
 
     /// \brief Retrieves the underlying value as a blob (unchecked access).
     /// \details If `!this->is_blob()`, results in undefined behavior.
@@ -312,7 +312,7 @@ private:
     {
         std::int64_t int64;
         std::uint64_t uint64;
-        boost::string_view string;
+        string_view string;
         blob_view blob;
         float float_;
         double double_;
@@ -325,7 +325,7 @@ private:
         BOOST_CXX14_CONSTEXPR repr_t() noexcept : int64{} {}
         BOOST_CXX14_CONSTEXPR repr_t(std::int64_t v) noexcept : int64(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(std::uint64_t v) noexcept : uint64(v) {}
-        BOOST_CXX14_CONSTEXPR repr_t(boost::string_view v) noexcept : string{v} {}
+        BOOST_CXX14_CONSTEXPR repr_t(string_view v) noexcept : string{v} {}
         BOOST_CXX14_CONSTEXPR repr_t(blob_view v) noexcept : blob{v} {}
         BOOST_CXX14_CONSTEXPR repr_t(float v) noexcept : float_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(double v) noexcept : double_(v) {}

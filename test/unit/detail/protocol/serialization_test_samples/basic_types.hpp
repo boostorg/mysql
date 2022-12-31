@@ -127,7 +127,7 @@ const serialization_test_spec string_lenenc_spec {
 const serialization_test_spec string_eof_spec {
     serialization_test_type::full_no_space, {
         { "regular_characters", string_eof("abc"), {0x61, 0x62, 0x63} },
-        { "null_characters", string_eof(boost::string_view("a\0b", 3)), {0x61, 0x00, 0x62} },
+        { "null_characters", string_eof(string_view("a\0b", 3)), {0x61, 0x00, 0x62} },
         { "empty", string_eof(""), {} }
     }
 };

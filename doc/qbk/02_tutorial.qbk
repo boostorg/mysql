@@ -57,7 +57,7 @@ which accepts two parameters:
 
 [note
     Read-only strings, like the ones used in [reflink handshake_params]'s
-    constructor, are represented as `boost::string_view`s, which are similar
+    constructor, are represented as [reflink string_view]`s, which are similar
     to `std::string_view`s but do not require C++17 to work.
 ]
 

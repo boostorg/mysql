@@ -58,14 +58,17 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     );
 }
 
-inline boost::mysql::error_code
-boost::mysql::detail::process_error_packet(deserialization_context& ctx, error_info& info)
+inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
+    deserialization_context& ctx,
+    error_info& info
+)
 {
     err_packet error_packet{};
     auto code = deserialize_message(ctx, error_packet);
     if (code)
         return code;
-    info.set_message(error_packet.error_message.value.to_string());
+    string_view sv = error_packet.error_message.value;
+    info.message().assign(sv.begin(), sv.end());
     return make_error_code(static_cast<errc>(error_packet.error_code));
 }
 

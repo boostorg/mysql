@@ -49,7 +49,7 @@ public:
     const std::string& message() const noexcept { return msg_; }
 
     // TODO: hide this
-    void set_message(std::string&& err) { msg_ = std::move(err); }
+    std::string& message() noexcept { return msg_; }
 
     /// Restores the object to its initial state.
     void clear() noexcept { msg_.clear(); }

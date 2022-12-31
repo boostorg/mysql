@@ -8,13 +8,13 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 
+#include <boost/mysql/string_view.hpp>
+
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
-
-#include <boost/utility/string_view_fwd.hpp>
 
 #include <cassert>
 #include <cstdint>
@@ -87,7 +87,7 @@ inline detail::ok_packet create_ok_packet(
     std::uint64_t last_insert_id = 0,
     std::uint16_t status_flags = 0,
     std::uint16_t warnings = 0,
-    boost::string_view info = ""
+    string_view info = ""
 )
 {
     return detail::ok_packet{
@@ -105,7 +105,7 @@ inline std::vector<std::uint8_t> create_ok_packet_message(
     std::uint64_t last_insert_id = 0,
     std::uint16_t status_flags = 0,
     std::uint16_t warnings = 0,
-    boost::string_view info = "",
+    string_view info = "",
     std::uint8_t header = 0xfe
 )
 {
@@ -129,7 +129,7 @@ inline std::vector<std::uint8_t> create_ok_packet_message_execute(
     std::uint64_t last_insert_id = 0,
     std::uint16_t status_flags = 0,
     std::uint16_t warnings = 0,
-    boost::string_view info = ""
+    string_view info = ""
 )
 {
     return create_ok_packet_message(
@@ -146,7 +146,7 @@ inline std::vector<std::uint8_t> create_ok_packet_message_execute(
 inline std::vector<std::uint8_t> create_err_packet_message(
     std::uint8_t seqnum,
     errc code,
-    boost::string_view message = ""
+    string_view message = ""
 )
 {
     detail::err_packet pack{
@@ -170,7 +170,7 @@ inline std::vector<std::uint8_t> create_err_packet_message(
 inline std::vector<std::uint8_t> create_coldef_message(
     std::uint8_t seqnum,
     detail::protocol_field_type type,
-    boost::string_view name = "mycol"
+    string_view name = "mycol"
 )
 {
     boost::mysql::detail::column_definition_packet pack{

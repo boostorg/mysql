@@ -15,11 +15,12 @@
 #include "test_connection.hpp"
 
 using boost::mysql::resultset;
+using boost::mysql::string_view;
 using namespace boost::mysql::test;
 
 namespace {
 
-using query_netfun_maker = netfun_maker_mem<void, test_connection, boost::string_view, resultset&>;
+using query_netfun_maker = netfun_maker_mem<void, test_connection, string_view, resultset&>;
 
 struct
 {

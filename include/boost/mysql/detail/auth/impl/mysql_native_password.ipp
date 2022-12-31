@@ -26,7 +26,7 @@ constexpr std::size_t response_length = 20;
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-inline void compute_auth_string(boost::string_view password, const void* challenge, void* output)
+inline void compute_auth_string(string_view password, const void* challenge, void* output)
 {
     // SHA1 (password)
     using sha1_buffer = unsigned char[SHA_DIGEST_LENGTH];
@@ -54,8 +54,8 @@ inline void compute_auth_string(boost::string_view password, const void* challen
 }  // namespace boost
 
 inline boost::mysql::error_code boost::mysql::detail::mysql_native_password::compute_response(
-    boost::string_view password,
-    boost::string_view challenge,
+    string_view password,
+    string_view challenge,
     bool,  // use_ssl
     bytestring& output
 )

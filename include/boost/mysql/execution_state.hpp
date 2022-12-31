@@ -10,11 +10,10 @@
 
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-
-#include <boost/utility/string_view.hpp>
 
 #include <cassert>
 #include <cstddef>
@@ -143,10 +142,10 @@ public:
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
      */
-    boost::string_view info() const noexcept
+    string_view info() const noexcept
     {
         assert(complete());
-        return boost::string_view(info_.data(), info_.size());
+        return string_view(info_.data(), info_.size());
     }
 };
 

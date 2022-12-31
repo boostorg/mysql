@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP
 #define BOOST_MYSQL_DETAIL_AUTH_AUTH_CALCULATOR_HPP
 
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/string_view.hpp>
 
-#include <boost/utility/string_view.hpp>
+#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 
 #include <array>
 #include <vector>
@@ -23,13 +23,13 @@ namespace detail {
 struct authentication_plugin
 {
     using calculator_signature = error_code (*)(
-        boost::string_view password,
-        boost::string_view challenge,
+        string_view password,
+        string_view challenge,
         bool use_ssl,
         bytestring& output
     );
 
-    boost::string_view name;
+    string_view name;
     calculator_signature calculator;
 };
 
@@ -38,23 +38,20 @@ class auth_calculator
     const authentication_plugin* plugin_{nullptr};
     bytestring response_;
 
-    inline static const authentication_plugin* find_plugin(boost::string_view name);
+    inline static const authentication_plugin* find_plugin(string_view name);
 
 public:
     inline error_code calculate(
-        boost::string_view plugin_name,
-        boost::string_view password,
-        boost::string_view challenge,
+        string_view plugin_name,
+        string_view password,
+        string_view challenge,
         bool use_ssl
     );
-    boost::string_view response() const noexcept
+    string_view response() const noexcept
     {
-        return boost::string_view(
-            reinterpret_cast<const char*>(response_.data()),
-            response_.size()
-        );
+        return string_view(reinterpret_cast<const char*>(response_.data()), response_.size());
     }
-    boost::string_view plugin_name() const noexcept
+    string_view plugin_name() const noexcept
     {
         assert(plugin_);
         return plugin_->name;

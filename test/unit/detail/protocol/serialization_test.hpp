@@ -63,7 +63,7 @@ using detail::string_null;
 template <std::size_t N>
 std::ostream& operator<<(std::ostream& os, const std::array<char, N>& v)
 {
-    return os << boost::string_view(v.data(), N);
+    return os << string_view(v.data(), N);
 }
 
 inline std::ostream& operator<<(std::ostream& os, std::uint8_t value) { return os << +value; }
