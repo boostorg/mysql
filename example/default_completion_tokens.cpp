@@ -6,9 +6,8 @@
 //
 
 //[example_default_completion_tokens]
+
 #include <boost/mysql.hpp>
-#include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/row_view.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/basic_stream_socket.hpp>
@@ -29,9 +28,9 @@ using boost::mysql::error_code;
 
 void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
-              << employee[1] << "' earns "            // last_name  (string)
-              << employee[2] << " dollars yearly\n";  // salary     (double)
+    std::cout << "Employee '" << employee.at(0) << " "   // first_name (string)
+              << employee.at(1) << "' earns "            // last_name  (string)
+              << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
 
 /**
@@ -68,7 +67,8 @@ boost::asio::awaitable<void, base_executor_type> start_query(
     connection_type& conn,
     resolver_type& resolver,
     const char* hostname,
-    const boost::mysql::handshake_params& params
+    const boost::mysql::handshake_params& params,
+    const char* company_id
 )
 {
     try
@@ -82,26 +82,25 @@ boost::asio::awaitable<void, base_executor_type> start_query(
         // Connect to server
         co_await conn.async_connect(*endpoints.begin(), params);
 
-        /**
-         * Issue the query to the server. Note that the resultset type won't be
-         * tcp_ssl_resultset, because the stream type we are using is different.
-         */
-        const char*
-            sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        connection_type::resultset_type result;
-        co_await conn.async_query(sql, result);
+        // Prepare an statement. Note that the statement type won't be
+        // tcp_ssl_statement, because the stream type we are using is different.
+        // We can use connection::statement_type to help
+        connection_type::statement_type stmt;
+        co_await conn.async_prepare_statement(
+            "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
+            stmt
+        );
 
-        /**
-         * Get all rows in the resultset. We will employ resultset::async_read_one(),
-         * which reads a single row at every call and returns true if a row was read successfully.
-         */
-        boost::mysql::row row;
-        while (co_await result.async_read_one(row))
+        // Execute it
+        boost::mysql::resultset result;
+        co_await stmt.async_execute(std::make_tuple(company_id), result);
+        for (boost::mysql::row_view employee : result.rows())
         {
-            print_employee(row);
+            print_employee(employee);
         }
 
         // Notify the MySQL server we want to quit, then close the underlying connection.
+        // This will also deallocate the statement from the server.
         co_await conn.async_close();
     }
     catch (const boost::system::system_error& err)
@@ -116,13 +115,15 @@ boost::asio::awaitable<void, base_executor_type> start_query(
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 4)
+    if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
+        std::cerr << "Usage: " << argv[0]
+                  << " <username> <password> <server-hostname> [company-id]\n";
         exit(1);
     }
 
     const char* hostname = argv[3];
+    const char* company_id = argc == 5 ? argv[4] : "HGS";
 
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
@@ -145,8 +146,8 @@ void main_impl(int argc, char** argv)
      */
     boost::asio::co_spawn(
         ctx.get_executor(),
-        [&conn, &resolver, hostname, params] {
-            return start_query(conn, resolver, hostname, params);
+        [&conn, &resolver, hostname, params, company_id] {
+            return start_query(conn, resolver, hostname, params, company_id);
         },
         boost::asio::detached
     );

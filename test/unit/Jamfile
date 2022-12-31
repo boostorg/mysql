@@ -1,0 +1,71 @@
+#
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+lib unittests_entry_point
+    :
+        entry_point.cpp
+        /boost/mysql/test//test_common
+    :
+        <link>static
+    ;
+
+cpp-pch unittests_pch
+    :
+        pch.hpp
+        unittests_entry_point
+    :
+        <include>unit
+    ;
+
+unit-test boost_mysql_unittests
+    :
+        unittests_pch
+        unittests_entry_point
+
+        detail/channel/read_buffer.cpp
+        detail/channel/message_parser.cpp
+        detail/channel/message_reader.cpp
+        detail/channel/message_writer_processor.cpp
+        detail/channel/message_writer.cpp
+        detail/auth/auth_calculator.cpp
+        detail/auxiliar/static_string.cpp
+        detail/auxiliar/rows_iterator.cpp
+        detail/auxiliar/field_type_traits.cpp
+        detail/auxiliar/datetime.cpp
+        detail/network_algorithms/start_execution_generic.cpp
+        detail/network_algorithms/start_query.cpp
+        detail/network_algorithms/start_statement_execution.cpp
+        detail/network_algorithms/read_one_row.cpp
+        detail/network_algorithms/read_some_rows.cpp
+        detail/network_algorithms/read_all_rows.cpp
+        detail/network_algorithms/query.cpp
+        detail/network_algorithms/execute_statement.cpp
+        detail/protocol/capabilities.cpp
+        detail/protocol/null_bitmap_traits.cpp
+        detail/protocol/serialization_test.cpp
+        detail/protocol/deserialize_text_field.cpp
+        detail/protocol/deserialize_binary_field.cpp
+        detail/protocol/deserialize_row.cpp
+        date.cpp
+        datetime.cpp
+        field_view.cpp
+        field.cpp
+        row_view.cpp
+        row.cpp
+        rows_view.cpp
+        rows.cpp
+        metadata.cpp
+        metadata_collection_view.cpp
+        error.cpp
+        statement.cpp
+        execution_state.cpp
+        resultset.cpp
+        regressions.cpp
+        connection.cpp
+    :
+        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+    ;

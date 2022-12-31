@@ -1622,7 +1622,6 @@ enum class errc : int
 };
 
 /**
-  * \relates errc
   * \brief Streams an error code.
   */
 inline std::ostream& operator<<(std::ostream&, errc);

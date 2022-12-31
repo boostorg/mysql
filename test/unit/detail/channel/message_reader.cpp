@@ -5,16 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/channel/message_reader.hpp>
 #include <boost/mysql/errc.hpp>
 #include <boost/mysql/error.hpp>
+
+#include <boost/mysql/detail/channel/message_reader.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/system_executor.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
@@ -88,13 +88,13 @@ public:
         bool keep_messages = false
     ) final override
     {
-        boost::asio::io_context ctx_;
+        boost::asio::io_context ctx;
         reader.async_read_some(
             stream,
-            boost::asio::bind_executor(ctx_.get_executor(), [&](error_code ec) { err = ec; }),
+            boost::asio::bind_executor(ctx.get_executor(), [&](error_code ec) { err = ec; }),
             keep_messages
         );
-        ctx_.run();
+        ctx.run();
     }
     boost::asio::const_buffer read_one(
         message_reader& reader,
@@ -104,13 +104,13 @@ public:
         bool keep_messages = false
     ) final override
     {
-        boost::asio::io_context ctx_;
+        boost::asio::io_context ctx;
         boost::asio::const_buffer res;
         reader.async_read_one(
             stream,
             seqnum,
             boost::asio::bind_executor(
-                ctx_.get_executor(),
+                ctx.get_executor(),
                 [&](error_code ec, boost::asio::const_buffer b) {
                     err = ec;
                     res = b;
@@ -118,7 +118,7 @@ public:
             ),
             keep_messages
         );
-        ctx_.run();
+        ctx.run();
         return res;
     }
     const char* name() const noexcept final override { return "async"; };

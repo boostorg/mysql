@@ -7,116 +7,114 @@
 
 [section:prepared_statements Prepared statements]
 
-[import ../../example/prepared_statements.cpp]
-
 This section covers using [mysqllink sql-prepared-statements.html
-server-side prepared statements]. The functionality is broadly
-similar to the `PREPARE`, `EXECUTE` and `DEALLOCATE`
-SQL commands. However, note that the functions and classes
-here described are [*not based on SQL query composition],
-but make use of dedicated protocol functionality.
-This makes using this API preferable to using query composition
-in terms of security and efficiency.
-
-The rest of this section contains a detailed explanation of
-prepared statement mechanics, together with some code
-snippets. You can find the full code listing
-[link mysql.examples.prepared_statements here].
+server-side prepared statements]. You should use them whenever a query
+contains parameters not known at compile-time.
 
 [heading Preparing a statement]
 
 To prepare a statement, call [refmem connection prepare_statement]
-or [refmem connection async_prepare_statement]. You must pass in
-a string containing the text of the SQL statement (similar
-to how [link mysql.queries text queries] work). These functions
-return a [reflink statement] object.
+or [refmem connection async_prepare_statement], passing your statement
+as a string. This yields a [reflink statement] object, which is templated
+on the `Stream` type:
 
-In addition to regular SQL, you can also use 
-question mark characters (`?`) to represent parameters 
+```
+    // Table setup
+    resultset result;
+    conn.query(R"%(
+        CREATE TEMPORARY TABLE products (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            description VARCHAR(256),
+            price INT NOT NULL,
+            show_in_store TINYINT
+        )
+    )%", result);
+
+    // Prepare a statement to insert into this table
+    tcp_ssl_statement stmt;
+    conn.prepare_statement("INSERT INTO products (description, price, show_in_store) VALUES (?, ?, ?)", stmt);
+```
+
+The question mark characters (`?`) represent parameters 
 (as described [mysqllink prepare.html here]).
 When you execute the statement (next section), you
-provide values for each of the parameters you declared.
-You don't need to escape or sanitize these values anyhow,
-thus avoiding the possibility of SQL injection attacks.
-
-The following prepares a statement with one
-parameter (`conn` is a [reflink tcp_ssl_connection]):
-
-[prepared_statements_prepare]
-
-[include helpers/query_strings_encoding.qbk]
+provide values for each of the parameters you declared, and the server
+will use these values to run the statement.
 
 [heading Executing a statement]
 
-To execute a statement, use [refmem statement execute] or [refmem statement async_execute].
-Executing a statement yields a [reflink resultset].
+To execute a statement, use any of the following functions:
 
-When executing a statement, you must pass in [*exactly as many parameters
-as the statement has]. Failing to do so will result in an error.
-Parameters are passed as a `std::tuple`, and in the same order as they
-appear in the statement text. You can pass in built-in integers,
-`float`, `double`, [reflink date], [reflink datetime], [reflink time],
-[reflink field_view] and [reflink field] objects as parameters,
-with the expected results. You can use `nullptr` objects to represent `NULL`
-parameters. If your statement doesn't have any parameters, use the
-[reflink no_statement_params] variable.
+* [refmem statement execute] or [refmem statement async_execute], which execute the statement and
+  read the generated results.
+* [refmem statement start_execution] and [refmem statement async_start_execution], which initiate a
+  statement execution as a multi-function operation.
 
-The following executes the statement we prepared in the previous
-section, binding the `first_name` parameter to `"Efficient"`:
-
-[prepared_statements_execute]
-
-Note that MySQL is pretty flexible and will perform casting to try to match
-the supplied value to the required type, depending on the context.
-
-In particular, for integer types, conversions to narrower integer types
-will take place as long as the supplied value is in range. For example:
+For example:
 
 ```
-    // Table created using: CREATE TABLE my_table (field_int TINYINT)
-    tcp_ssl_statement stmt;
-    conn.prepare_statement("INSERT INTO my_table (field_int) VALUES (?)", stmt);
-
-    tcp_ssl_resultset result;
-    std::int64_t value = 42; // OK, in range
-    stmt.execute(std::make_tuple(value), result);
-
-    value = 0xffff; // Oops, out of range
-    stmt.execute(std::make_tuple(value), result); // will throw
+    // description, price and show_in_store are not trusted, since they may
+    // have been read from a file or an HTTP endpoint
+    void insert_product(
+        tcp_ssl_statement& stmt,
+        boost::string_view description,
+        int price,
+        bool show_in_store
+    )
+    {
+        resultset result;
+        stmt.execute(std::make_tuple(description, price, int(show_in_store)), result);
+    }
 ```
 
-To insert a `NULL` value, use the following:
+Some observations:
+
+* You must pass in [*exactly as many parameters
+  as the statement has]. Failing to do so will result in an error.
+* You don't need to sanitize the parameters anyhow. The server takes care of it.
+* Actual parameters are matched to `?` placeholders by order. 
+* Parameters are passed as a `std::tuple`. You can pass in built-in integers,
+  `float`, `double`, [reflink date], [reflink datetime], [reflink time],
+  [reflink field_view] and [reflink field] objects as parameters.
+* `show_in_store` is passed as an `int` to `execute()`, but is defined as a `TINYINT`
+  (1 byte integer) in the table. As long as the passed integer is in range, MySQL
+  will perform the required conversions. Otherwise, `execute()` will fail with an error
+  (no undefined behavior is invoked).
+
+You can also pass [reflink field_view]s and [reflink field]s as parameters. This is handy
+to insert `NULL` values:
 
 ```
-    stmt.execute(std::make_tuple(nullptr), result);
+    // description, price and show_in_store are not trusted, since they may
+    // have been read from a file or an HTTP endpoint
+    void insert_product(
+        tcp_ssl_statement& stmt,
+        std::optional<boost::string_view> description,
+        int price,
+        bool show_in_store
+    )
+    {
+        // if description has a value, description_param will have kind() == field_kind::string
+        // and will point to it. Otherwise, description_param.kind() == field_kind::null
+        auto description_param = description ? field_view(*description) : field_view();
+
+        // Execute the insert
+        resultset result;
+        stmt.execute(std::make_tuple(description_param, price, int(show_in_store)), result);
+    }
 ```
 
 For a full reference on the types you can pass as parameters when
 executing a statement, see [link mysql.fields.cpp_to_mysql this section].
 
-[heading Multi-function operation]
-
-When you call [refmem statement execute], you start a "multi-function" operation.
-`execute()` will send the execute request to the server. The server then sends an initial response
-and all the generated rows. `execute()` will just read the initial response, and not the rows.
-
-After a successful `execute()`, [*you must read all the generated rows] by calling any of the `read_xxx`
-functions on `resultset`. If you start any other operation involving a read before doing this,
-you will get undefined results.
-
 [heading Closing a statement]
 
-Prepared statements are created server-side, and
-thus consume server resources. If you don't need a 
-[reflink statement] anymore, you can call
-[refmem statement close] or
-[refmem statement async_close] to instruct
-the server to deallocate it.
+Prepared statements are created server-side, and thus consume server resources. If you don't need a 
+[reflink statement] anymore, you can call [refmem statement close] or
+[refmem statement async_close] to instruct the server to deallocate it.
 
-Prepared statements are managed by the server on a
-per-connection basis. Once you close your connection
-with the server, all prepared statements you have
-created using this connection will be automatically
+Prepared statements are managed by the server on a per-connection basis. Once you close your connection
+with the server, all prepared statements you have created using this connection will be automatically
 deallocated.
 
 If you are creating your prepared statements at the beginning

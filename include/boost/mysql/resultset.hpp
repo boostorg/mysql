@@ -8,14 +8,10 @@
 #ifndef BOOST_MYSQL_RESULTSET_HPP
 #define BOOST_MYSQL_RESULTSET_HPP
 
-#include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/resultset_base.hpp>
-#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/use_views.hpp>
-
-#include <boost/asio/async_result.hpp>
 
 #include <cassert>
 
@@ -23,378 +19,143 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds state and data about a query or statement execution, and allows reading the produced
- *        rows.
- * \details
- * Resultsets are obtained as a result of a SQL statement execution, by calling \ref
- * connection::query or \ref statement::execute. A resultset holds metadata about the operation
- * (\ref meta), allows you to read the resulting rows ( \ref read_one, \ref read_some, \ref
- * read_all), and stores additional information about the execution ("EOF packet data", in MySQL
- * slang: \ref affected_rows, \ref last_insert_id, and so on). Resultsets are the glue that join
- * the different pieces of \ref connection::query and \ref statement::execute multi-function
- * operations.
- * \n
- * Resultsets are proxy I/O objects, meaning that they hold a reference to the internal state of the
- * \ref connection that created them. I/O operations on a resultset result in reads and writes on
- * the connection's stream. A `resultset` is usable for I/O operations as long as the original \ref
- * connection is alive and open. Moving the `connection` object doesn't invalidate `resultset`s
- * pointing into it, but destroying or closing it does. The executor object used by a `resultset` is
- * always the underlying stream's.
- * \n
- * Resultsets are default-constructible and movable, but not copyable. A default constructed or
- * closed resultset has `!this->valid()`. Calling any member function on an invalid
- * resultset, other than assignment, results in undefined behavior.
+ * \brief Holds the results of a SQL query.
  */
-template <class Stream>
-class resultset : public resultset_base
+class resultset
 {
 public:
+    // TODO: hide these
+    execution_state& state() noexcept { return st_; }
+    ::boost::mysql::rows& mutable_rows() noexcept { return rows_; }
+
     /**
      * \brief Default constructor.
-     * \details Default constructed resultsets have `!this->valid()`.
+     * \details Constructs an empty resultset, with `this->has_value() == false`.
      */
     resultset() = default;
 
-#ifndef BOOST_MYSQL_DOXYGEN
-    resultset(const resultset&) = delete;
-    resultset& operator=(const resultset&) = delete;
-#endif
+    /**
+     * \brief Copy constructor.
+     */
+    resultset(const resultset& other) = default;
 
     /**
      * \brief Move constructor.
-     * \details Views obtained from `other.meta()` and `other.info()` remain valid.
+     * \details View objects referencing `other` remain valid.
      */
-    resultset(resultset&& other) noexcept : resultset_base(std::move(other)) { other.reset(); }
+    resultset(resultset&& other) = default;
+
+    /**
+     * \brief Copy assignment.
+     * \details View objects referencing `*this` are invalidated.
+     */
+    resultset& operator=(const resultset& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details Views obtained from `other.meta()` and `other.info()` remain valid. Views obtained
-     * from `this->meta()` and `this->info()` are invalidated.
+     * \details View objects referencing `other` remain valid. View objects
+     * referencing `*this` are invalidated.
      */
-    resultset& operator=(resultset&& other) noexcept
-    {
-        swap(other);
-        other.reset();
-        return *this;
-    }
+    resultset& operator=(resultset&& other) = default;
 
-    /**
-     * \brief Destructor.
-     * \details Views obtained from `this->meta()` and `this->info()` are invalidated.
-     */
+    /// Destructor
     ~resultset() = default;
 
-    /// The executor type associated to this object.
-    using executor_type = typename Stream::executor_type;
-
-    /// Retrieves the executor associated to this object.
-    executor_type get_executor() { return get_channel().get_executor(); }
+    /**
+     * \brief Returns whether the object holds a valid result.
+     * \details Having `this->has_value()` is a precondition to call all data accessors.
+     * Objects populated by \ref connection::query, \ref statement::execute or their async
+     * counterparts are guaranteed to have `this->has_value()`.
+     */
+    bool has_value() const noexcept { return st_.complete(); }
 
     /**
-     * \brief Reads a single row.
-     * \details
-     * Returns `true` if a row was read successfully. If there were no more rows to read,
-     * it returns `false` and sets `output` to an empty row.
+     * \brief Returns the rows retrieved by the SQL query.
+     * \details Precondition: `this->has_value()`.
      *\n
-     * Use this operation to read large resultsets that may not entirely fit in memory, or when
-     * individual row processing is preferred.
+     * This function returns a view object, with reference semantics. The returned view points into
+     * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
+     * from `*this` are alive.
      */
-    bool read_one(row& output, error_code& err, error_info& info);
-
-    /// \copydoc read_one(row&,error_code&,error_info&)
-    bool read_one(row& output);
-
-    /**
-     * \copydoc read_one(row&,error_code&,error_info&)
-     * \details
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, bool)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
-    async_read_one(
-        row& output,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    rows_view rows() const noexcept
     {
-        return async_read_one(
-            output,
-            get_channel().shared_info(),
-            std::forward<CompletionToken>(token)
-        );
+        assert(has_value());
+        return rows_;
     }
 
-    /// \copydoc async_read_one(row&,CompletionToken&&)
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, bool))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, bool))
-    async_read_one(
-        row& output,
-        error_info& output_info,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
     /**
-     * \brief Reads a single row as a \ref row_view.
+     * \brief Returns metadata about the columns in the query.
      * \details
-     * If a row was read successfully, returns a non-empty \ref row_view.
-     * If there were no more rows to read, returns an empty `row_view`.
+     * Precondition: `this->has_value()`.
      *\n
-     * The returned view points into the \ref connection that `*this` references.
-     * It will be valid until the `connection` performs any other read operation
-     * or is destroyed.
+     * The returned collection will have as many \ref metadata objects as columns retrieved by
+     * the SQL query, and in the same order.
+     *\n
+     * This function returns a view object, with reference semantics. The returned view points into
+     * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
+     * from `*this` are alive.
      */
-    row_view read_one(use_views_t, error_code& err, error_info& info);
-
-    /// \copydoc read_one(use_views_t,error_code&,error_info&)
-    row_view read_one(use_views_t);
-
-    /**
-     * \copydoc read_one(use_views_t,error_code&,error_info&)
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::row_view)`.
-     */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
-    async_read_one(
-        use_views_t,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    metadata_collection_view meta() const noexcept
     {
-        return async_read_one(
-            use_views,
-            get_channel().shared_info(),
-            std::forward<CompletionToken>(token)
-        );
+        assert(has_value());
+        return st_.meta();
     }
 
-    /// \copydoc async_read_one(use_views_t,CompletionToken&&)
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
-    async_read_one(
-        use_views_t,
-        error_info& output_info,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
     /**
-     * \brief Reads a batch of rows.
-     * \details
-     * The number of rows that will be read is unspecified. The contents of `output` will be
-     * replaced by the read rows, so you can obtain the number of read rows using `output.size()`.
-     * If this resultset has still rows to read, at least one will be read. If there are no more
-     * rows to be read, `output` will be `empty()`.
-     * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in \ref
-     * connection::connect, using \ref buffer_params::initial_read_buffer_size. The buffer may be
-     * grown bigger if required by other read operations.
-     * \n
-     * This is the most complex but most performant way of reading rows. You may consider
-     * the overload returning a \ref rows_view object, too, which performs less copying.
+     * \brief Returns the number of rows affected by the executed SQL statement.
+     * \details Precondition: `this->has_value() == true`.
      */
-    void read_some(rows& output, error_code& err, error_info& info);
-
-    /// \copydoc read_some(rows&,error_code&,error_info&)
-    void read_some(rows& output);
-
-    /**
-     * \copydoc read_some(rows&,error_code&,error_info&)
-     * \details
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_some(
-        rows& output,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    std::uint64_t affected_rows() const noexcept
     {
-        return async_read_some(
-            output,
-            get_channel().shared_info(),
-            std::forward<CompletionToken>(token)
-        );
+        assert(has_value());
+        return st_.affected_rows();
     }
 
-    /// \copydoc async_read_some(rows&,CompletionToken&&)
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_some(
-        rows& output,
-        error_info& output_info,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
     /**
-     * \brief Reads a batch of rows as a \ref rows_view.
-     * \details
-     * The number of rows that will be read is unspecified. The contents of `output` will be
-     * replaced by the read rows, so you can obtain the number of read rows using `output.size()`.
-     * If this resultset has still rows to read, at least one will be read. If there are no more
-     * rows to be read, `output` will be `empty()`.
-     * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in \ref
-     * connection::connect, using \ref buffer_params::initial_read_buffer_size. The buffer may be
-     * grown bigger if required by other read operations.
-     * \n
-     * The returned view points into the \ref connection that `*this` references.
-     * It will be valid until the `connection` performs any other read operation
-     * or is destroyed.
-     * \n
-     * This is the most complex but most performant way of reading rows.
+     * \brief Returns the last insert ID produced by the executed SQL statement.
+     * \details Precondition: `this->has_value() == true`.
      */
-    rows_view read_some(use_views_t, error_code& err, error_info& info);
-
-    /// \copydoc read_some(use_views_t,error_code&,error_info&)
-    rows_view read_some(use_views_t);
-
-    /**
-     * \copydoc read_some(use_views_t,error_code&,error_info&)
-     * \details
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
-     */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-    async_read_some(
-        use_views_t,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    std::uint64_t last_insert_id() const noexcept
     {
-        return async_read_some(
-            use_views,
-            get_channel().shared_info(),
-            std::forward<CompletionToken>(token)
-        );
+        assert(has_value());
+        return st_.last_insert_id();
     }
 
-    /// \copydoc async_read_some(use_views_t,CompletionToken&&)
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-    async_read_some(
-        use_views_t,
-        error_info& output_info,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
     /**
-     * \brief Reads all remaining rows.
-     * \details
-     * The contents of `output` will be replaced by the read rows, so you can obtain the number of
-     * read rows using `output.size()`. After this operation succeeds, `this->complete() == true`.
-     * \n
-     * This function requires fitting all the rows in the resultset into memory. It is a good choice
-     * for small resultsets.
+     * \brief Returns the number of warnings produced by the executed SQL statement.
+     * \details Precondition: `this->has_value() == true`.
      */
-    void read_all(rows& output, error_code& err, error_info& info);
-
-    /// \copydoc read_all(rows&,error_code&,error_info&)
-    void read_all(rows& output);
-
-    /**
-     * \copydoc read_all(rows&,error_code&,error_info&)
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_all(
-        rows& output,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    unsigned warning_count() const noexcept
     {
-        return async_read_all(
-            output,
-            get_channel().shared_info(),
-            std::forward<CompletionToken>(token)
-        );
+        assert(has_value());
+        return st_.warning_count();
     }
 
-    /// \copydoc async_read_all(rows&,CompletionToken&&)
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_all(
-        rows& output,
-        error_info& output_info,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
     /**
-     * \brief Reads all remaining rows.
-     * \details
-     * The contents of `output` will be replaced by the read rows, so you can obtain the number of
-     * read rows using `output.size()`. After this operation succeeds, `this->complete() == true`.
-     * \n
-     * This function requires fitting all the rows in the resultset into memory. It is a good choice
-     * for small resultsets.
-     * \n
-     * The returned view points into the \ref connection that `*this` references.
-     * It will be valid until the `connection` performs any other read operation
-     * or is destroyed.
+     * \brief Returns additionat text information about the execution of the SQL statement.
+     * \details Precondition: `this->has_value() == true`.
+     *\n
+     * The format of this information is documented by MySQL <a
+     * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
+     *\n
+     * The returned string always uses ASCII encoding, regardless of the connection's character set.
+     *\n
+     * This function returns a view object, with reference semantics. The returned view points into
+     * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
+     * from `*this` are alive.
      */
-    rows_view read_all(use_views_t, error_code& err, error_info& info);
-
-    /// \copydoc read_all(use_views_t,error_code&,error_info&)
-    rows_view read_all(use_views_t);
-
-    /**
-     * \copydoc read_all(use_views_t,error_code&,error_info&)
-     * \details
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-    async_read_all(
-        use_views_t,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
+    boost::string_view info() const noexcept
     {
-        return async_read_all(
-            use_views,
-            get_channel().shared_info(),
-            std::forward<CompletionToken>(token)
-        );
+        assert(has_value());
+        return st_.info();
     }
-
-    /// \copydoc async_read_all(use_views_t,CompletionToken&&)
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-    async_read_all(
-        use_views_t,
-        error_info& output_info,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
 
 private:
-    detail::channel<Stream>& get_channel() noexcept
-    {
-        assert(valid());
-        return *static_cast<detail::channel<Stream>*>(channel_ptr());
-    }
+    execution_state st_;
+    ::boost::mysql::rows rows_;
 };
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/resultset.hpp>
 
 #endif

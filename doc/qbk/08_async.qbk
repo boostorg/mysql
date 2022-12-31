@@ -23,8 +23,8 @@ type always has one of the two folling forms:
 # `void(error_code)`. Used in operations that do
    not have a proper result, e.g. [refmem connection async_connect].
 # `void(error_code, T)`. Used in operations that
-   have a result, e.g. [refmem resultset async_read_one]
-   (in this case, `T` is `bool` for the "owning" version).
+   have a result, e.g. [refmem connection async_read_one_row]
+   (in this case, `T` is `row_view`).
    
 As noted [link mysql.error_handling here], all asynchronous
 are overloaded to accept an optional [reflink error_info]
@@ -38,39 +38,10 @@ As mentioned in [link mysql.overview.async this section], only a single read and
 write operation per connection can be outstanding at a given point in time.
 If you need to perform queries in parallel, open more connections to the server.
 
-[endsect]
-
-[section:proxy_io Proxy I/O objects]
-
-[reflink resultset] and [reflink statement] are proxy I/O objects. This means
-that they don't own a separate `Stream` object, but rather rely on an underlying
-[reflink connection] to perform I/O. This has the following implications:
-
-* To use a `resultset` or a `statement` for operations that involve I/O, the
-  `connection` object that created them must be alive and open.
-* Read and write operations on these objects count towards the limit of
-  one concurrent read and write operation per connection.
-* I/O operations on these objects end up mutating the underlying `connection`'s
-  state. In a multi-threaded environment, appropriate guards must be in place
-  to avoid race conditions. This applies among all proxy I/O objects for a single connection;
-  different connections share no state.
+Recall also that [reflink statement] objects are proxy I/O objects. All I/O operations
+on statements end up using the underlying connection's stream.
 
 [endsect]
-
-[section:ops Protocol operations]
-
-The MySQL protocol is a half-duplex request/reply protocol that has the concept of "operations".
-This library models some operations as single functions (e.g. [refmem connection prepare_statement]),
-and splits other operations into several calls (e.g. [refmem connection query] +
-[refmem resultset read_all]), to provide more flexibility.
-
-Once you engage in a multi-function operation, you must
-complete it (e.g. by calling `resultset::read_xxx` until all rows have been read) before engaging
-into the next one. Failing to do so will produce network packet mismatches, resulting in
-undefined behavior.
-
-[endsect]
-
 
 [section:completion_tokens Completion tokens]
 
@@ -83,7 +54,7 @@ with this library. Here are some of the most common:
   will be called when the operation completes. The initiating
   function will return `void`.
   
-  [link mysql.examples.query_async_callbacks This example]
+  [link mysql.examples.async_callbacks This example]
   demonstrates asynchronous text queries with callbacks.
 * [*Futures]. In this case, you pass in the constant
   [asioreflink use_future use_future] as completion token.
@@ -98,7 +69,7 @@ with this library. Here are some of the most common:
   Note that the exception will [*not] contain the extra information
   stored in the [reflink error_info].
   
-  [link mysql.examples.query_async_futures This example]
+  [link mysql.examples.async_futures This example]
   demonstrates using futures with async queries.
 * [*__Coroutine__ coroutines]. In this case, you pass in
   a [asioreflink yield_context yield_context]. To obtain one
@@ -116,7 +87,7 @@ with this library. Here are some of the most common:
   will not contain the extra information stored in the
   [reflink error_info].
   
-  [link mysql.examples.query_async_coroutines This example]
+  [link mysql.examples.async_coroutines This example]
   uses __Coroutine__ coroutines with async queries.
 * [*C++20 coroutines]. In this case, you pass in the constant
   [asioreflink use_awaitable use_awaitable] as completion token.
@@ -131,7 +102,7 @@ with this library. Here are some of the most common:
   Note that this exception will not contain the extra
   information stored in the [reflink error_info].
   
-  [link mysql.examples.query_async_coroutinescpp20 This example]
+  [link mysql.examples.async_coroutinescpp20 This example]
   demonstrates using C++20 coroutines to perform text
   queries.
 * Any other type that satisfies the __CompletionToken__ type requirements.

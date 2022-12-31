@@ -22,9 +22,6 @@ using tcp_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::ip::
 /// The statement type to use with \ref tcp_ssl_connection.
 using tcp_ssl_statement = typename tcp_ssl_connection::statement_type;
 
-/// The resultset type to use with \ref tcp_ssl_connection.
-using tcp_ssl_resultset = typename tcp_ssl_connection::resultset_type;
-
 }  // namespace mysql
 }  // namespace boost
 

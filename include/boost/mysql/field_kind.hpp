@@ -14,7 +14,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Represents the possible C++ types a \ref field or \ref field_view may have.
+ * \brief Represents the possible C++ types a `field` or `field_view` may have.
  */
 enum class field_kind
 {
@@ -54,7 +54,6 @@ enum class field_kind
 };
 
 /**
- * \relates field_kind
  * \brief Streams a field_kind.
  */
 inline std::ostream& operator<<(std::ostream& os, field_kind v);

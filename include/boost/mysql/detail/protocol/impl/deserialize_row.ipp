@@ -136,14 +136,13 @@ void boost::mysql::detail::deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     const std::uint8_t* buffer_first,  // to store strings as offsets and allow buffer reallocation
-    resultset_base& result,
+    execution_state& st,
     std::vector<field_view>& output,
     error_code& err,
     error_info& info
 )
 {
-    assert(result.valid());
-    assert(!result.complete());
+    assert(!st.complete());
 
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
@@ -158,7 +157,7 @@ void boost::mysql::detail::deserialize_row(
         err = deserialize_message(ctx, ok_pack);
         if (err)
             return;
-        result.complete(ok_pack);
+        st.complete(ok_pack);
     }
     else if (msg_type == error_packet_header)
     {
@@ -169,7 +168,7 @@ void boost::mysql::detail::deserialize_row(
     {
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        deserialize_row(result.encoding(), ctx, result.fields(), buffer_first, output, err);
+        deserialize_row(st.encoding(), ctx, st.fields(), buffer_first, output, err);
     }
 }
 

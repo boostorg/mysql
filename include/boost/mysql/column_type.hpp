@@ -18,7 +18,7 @@ namespace mysql {
  * \brief Represents the database type of a MySQL column.
  * \details This represents a database type, as opposed to \ref field_kind, which represents a
  * C++ type.
- *
+ *\n
  * Unless otherwise noted, the names in this enumeration
  * directly correspond to the names of the types you would use in
  * a `CREATE TABLE` statement to create a column of this type
@@ -53,7 +53,6 @@ enum class column_type
 };
 
 /**
- * \relates column_type
  * \brief Streams a `column_type`.
  */
 inline std::ostream& operator<<(std::ostream& os, column_type t)

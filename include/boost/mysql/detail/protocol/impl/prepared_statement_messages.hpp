@@ -26,7 +26,7 @@ inline protocol_field_type get_protocol_field_type(const field_view& input) noex
     case field_kind::null: return protocol_field_type::null;
     case field_kind::int64: return protocol_field_type::longlong;
     case field_kind::uint64: return protocol_field_type::longlong;
-    case field_kind::string: return protocol_field_type::varchar;
+    case field_kind::string: return protocol_field_type::string;
     case field_kind::blob: return protocol_field_type::blob;
     case field_kind::float_: return protocol_field_type::float_;
     case field_kind::double_: return protocol_field_type::double_;
@@ -74,13 +74,18 @@ inline std::size_t boost::mysql::detail::serialization_traits<
                       get_size(ctx, value.statement_id, value.flags, value.iteration_count);
     auto num_params = std::distance(value.params_begin, value.params_end);
     assert(num_params >= 0 && num_params <= 255);
-    res += null_bitmap_traits(stmt_execute_null_bitmap_offset, num_params).byte_count();
-    res += get_size(ctx, value.new_params_bind_flag);
-    res += get_size(ctx, com_stmt_execute_param_meta_packet{}) * num_params;
-    for (auto it = value.params_begin; it != value.params_end; ++it)
+
+    if (num_params > 0u)
     {
-        res += get_size(ctx, *it);
+        res += null_bitmap_traits(stmt_execute_null_bitmap_offset, num_params).byte_count();
+        res += get_size(ctx, value.new_params_bind_flag);
+        res += get_size(ctx, com_stmt_execute_param_meta_packet{}) * num_params;
+        for (auto it = value.params_begin; it != value.params_end; ++it)
+        {
+            res += get_size(ctx, *it);
+        }
     }
+
     return res;
 }
 
@@ -100,35 +105,38 @@ inline void boost::mysql::detail::serialization_traits<
     auto num_params = std::distance(input.params_begin, input.params_end);
     assert(num_params >= 0 && num_params <= 255);
 
-    // NULL bitmap (already size zero if num_params == 0)
-    null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
-    std::size_t i = 0;
-    std::memset(ctx.first(), 0, traits.byte_count());  // Initialize to zeroes
-    for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
+    if (num_params > 0)
     {
-        if (it->is_null())
+        // NULL bitmap
+        null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
+        std::size_t i = 0;
+        std::memset(ctx.first(), 0, traits.byte_count());  // Initialize to zeroes
+        for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
         {
-            traits.set_null(ctx.first(), i);
+            if (it->is_null())
+            {
+                traits.set_null(ctx.first(), i);
+            }
         }
-    }
-    ctx.advance(traits.byte_count());
+        ctx.advance(traits.byte_count());
 
-    // new parameters bind flag
-    serialize(ctx, input.new_params_bind_flag);
+        // new parameters bind flag
+        serialize(ctx, input.new_params_bind_flag);
 
-    // value metadata
-    com_stmt_execute_param_meta_packet meta;
-    for (auto it = input.params_begin; it != input.params_end; ++it)
-    {
-        meta.type = get_protocol_field_type(*it);
-        meta.unsigned_flag = is_unsigned(*it) ? 0x80 : 0;
-        serialize(ctx, meta);
-    }
+        // value metadata
+        com_stmt_execute_param_meta_packet meta;
+        for (auto it = input.params_begin; it != input.params_end; ++it)
+        {
+            meta.type = get_protocol_field_type(*it);
+            meta.unsigned_flag = is_unsigned(*it) ? 0x80 : 0;
+            serialize(ctx, meta);
+        }
 
-    // actual values
-    for (auto it = input.params_begin; it != input.params_end; ++it)
-    {
-        serialize(ctx, *it);
+        // actual values
+        for (auto it = input.params_begin; it != input.params_end; ++it)
+        {
+            serialize(ctx, *it);
+        }
     }
 }
 

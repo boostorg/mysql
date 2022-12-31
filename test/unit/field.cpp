@@ -80,7 +80,8 @@ BOOST_AUTO_TEST_CASE(copy_blob)
 
 BOOST_AUTO_TEST_CASE(move)
 {
-    field v(field("test"));
+    field f("test");
+    field v(std::move(f));
     BOOST_TEST(v.as_string() == "test");
 }
 

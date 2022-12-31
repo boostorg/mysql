@@ -30,7 +30,6 @@ using boost::mysql::error_code;
 using boost::mysql::handshake_params;
 using boost::mysql::ssl_mode;
 using boost::mysql::tcp_ssl_connection;
-using boost::mysql::tcp_ssl_resultset;
 
 namespace {
 
@@ -55,12 +54,6 @@ BOOST_AUTO_TEST_SUITE(test_handshake)
 
 struct handshake_fixture : network_fixture
 {
-    void setup_and_physical_connect(er_network_variant* net)
-    {
-        setup(net);
-        conn->physical_connect().validate_no_error();
-    }
-
     void do_handshake_ok()
     {
         conn->handshake(params).validate_no_error();
@@ -127,7 +120,7 @@ struct caching_sha2_fixture : handshake_fixture
     void clear_sha256_cache()
     {
         tcp_ssl_connection conn(ctx, ssl_ctx);
-        tcp_ssl_resultset result;
+        boost::mysql::resultset result;
         conn.connect(get_endpoint<tcp_socket>(), handshake_params("root", ""));
         conn.query("FLUSH PRIVILEGES", result);
         conn.close();
@@ -365,23 +358,6 @@ BOOST_MYSQL_NETWORK_TEST(ssl_require_ssl_streams, handshake_fixture, net_samples
     params.set_ssl(ssl_mode::require);
     conn->handshake(params).validate_no_error();
     BOOST_TEST(conn->uses_ssl());
-}
-
-// Tests run across all network samples
-BOOST_MYSQL_NETWORK_TEST(success, handshake_fixture, all_network_samples())
-{
-    setup_and_physical_connect(sample.net);
-    do_handshake_ok();
-}
-
-BOOST_MYSQL_NETWORK_TEST(error, handshake_fixture, all_network_samples())
-{
-    setup_and_physical_connect(sample.net);
-    params.set_database("bad_database");
-    conn->handshake(params).validate_error(
-        errc::dbaccess_denied_error,
-        {"database", "bad_database"}
-    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_handshake

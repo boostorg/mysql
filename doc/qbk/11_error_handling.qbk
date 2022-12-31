@@ -8,7 +8,7 @@
 [section:error_handling Error handling and available overloads]
 
 This section describes the different error handling strategies
-you may use with __Self__, as well as the different overloads
+you may use with this library, as well as the different overloads
 available for each function involving network transfers.
 
 The different overloads differ in how they deal with errors.
@@ -38,23 +38,14 @@ There are two overloads for each synchronous network function:
   
 [heading Asynchronous functions]
 
-The associated handler signature of all asynchronous functions
-has one of the following two forms:
+There are two overloads for each asynchronous network function:
 
-* `void(error_code)`. Used in operations that do
-  not have a proper result, e.g. [refmem connection async_connect].
-* `void(error_code, T)`. Used in operations that
-  have a result, e.g. [refmem resultset async_read_one].
+* Without `error_info`, having the `CompletionToken` as last parameter.
+  When they fail, they call the completion handler with a non-empty `error_code`.
+* With `error_info`, having an `error_info&` and `CompletionToken` as the last
+  two parameters. When they fail, they set the `error_info` parameter to any server-provided
+  diagnostic information, if available, and then call the completion handler with a non-empty `error_code`.
   
-When asynchronous operations fail, they communicate it
-by calling the handler with a non-zero [reflink error_code].
-
-If you are interested in also obtaining an [reflink error_info]
-when using asynchronous functions, there is an extra overload
-of each asynchronous function taking an additional output lvalue reference
-[reflink error_info] parameter. This parameter is set before
-calling the handler.
-
 [heading Server-side and client-side error codes]
 
 __Self__ [reflink error_code]s use [reflink errc] as the

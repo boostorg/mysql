@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_METADATA_HPP
 
 #include <boost/mysql/column_type.hpp>
+
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
@@ -50,7 +51,7 @@ public:
 
     /**
      * \brief Move constructor.
-     * \details Any `string_view`s obtained by calling accessor functions on `other` remain valid.
+     * \details `string_view`s obtained by calling accessor functions on `other` are invalidated.
      */
     metadata(metadata&& other) = default;
 
@@ -59,15 +60,15 @@ public:
 
     /**
      * \brief Move assignment.
-     * \details Any `string_view`s obtained by calling accessor functions on `other` remain valid.
-     * Any `string_view`s pointing into `*this` are invalidated.
+     * \details `string_view`s obtained by calling accessor functions on both `*this` and `other`
+     * are invalidated.
      */
     metadata& operator=(metadata&& other) = default;
 
     /**
      * \brief Copy assignment.
-     * \details Any `string_view`s obtained by calling accessor functions on `*this` are
-     * invalidated.
+     * \details `string_view`s obtained by calling accessor functions on `*this`
+     * are invalidated.
      */
     metadata& operator=(const metadata& other) = default;
 
@@ -124,7 +125,12 @@ public:
      */
     boost::string_view original_column_name() const noexcept { return org_name_; }
 
-    /// Returns the \ref collation of the column.
+    /**
+     * \brief Returns the collation that fields belonging to this column use.
+     * \details This collation matches the character set and collation that
+     * fields belonging to this column use, rather than the collation used to
+     * define the column. It will almost always match the connection's collation.
+     */
     collation column_collation() const noexcept { return character_set_; }
 
     /// Returns the maximum length of the column.

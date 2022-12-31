@@ -90,7 +90,9 @@ void boost::mysql::detail::
     stmt.reset();
 }
 
-template <class Stream, class CompletionToken>
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_close_statement(
     channel<Stream>& chan,

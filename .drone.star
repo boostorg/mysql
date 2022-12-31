@@ -15,6 +15,7 @@ def _image(name):
 
 def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_model='64', server_host='localhost'):
     return 'python tools/ci.py ' + \
+                '--clean=1 ' + \
                 '--build-kind=b2 ' + \
                 '--source-dir="{}" '.format(source_dir) + \
                 '--toolset={} '.format(toolset) + \
@@ -28,6 +29,7 @@ def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_m
 def _cmake_command(source_dir, build_shared_libs=0, valgrind=0, coverage=0, generator='Ninja', db='mysql8', server_host='localhost'):
     return 'python tools/ci.py ' + \
                 '--build-kind=cmake ' + \
+                '--clean=1 ' + \
                 '--generator="{}" '.format(generator) + \
                 '--source-dir="{}" '.format(source_dir) + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
@@ -194,7 +196,7 @@ def docs():
             "image": _image('build-docs'),
             "pull": "if-not-exists",
             "commands": [
-                'python tools/ci.py --build-kind=docs --source-dir=$(pwd)'
+                'python tools/ci.py --build-kind=docs --clean=1 --source-dir=$(pwd)'
             ]
         }]
     }

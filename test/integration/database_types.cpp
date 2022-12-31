@@ -15,12 +15,12 @@
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/datetime.hpp>
-#include <boost/mysql/execute_options.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/tcp.hpp>
-#include <boost/mysql/use_views.hpp>
 
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 
@@ -41,9 +41,8 @@ using boost::mysql::blob_view;
 using boost::mysql::column_type;
 using boost::mysql::date;
 using boost::mysql::datetime;
-using boost::mysql::execute_options;
 using boost::mysql::metadata;
-using boost::mysql::use_views;
+using boost::mysql::resultset;
 using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
@@ -60,23 +59,14 @@ struct database_types_fixture : tcp_network_fixture
     // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
     void set_time_zone()
     {
-        boost::mysql::tcp_resultset result;
+        resultset result;
         conn.query("SET session time_zone = '+02:00'", result);
-        BOOST_TEST_REQUIRE(result.complete());
     }
 
     void set_sql_mode()
     {
-        boost::mysql::tcp_resultset result;
+        resultset result;
         conn.query("SET session sql_mode = 'ALLOW_INVALID_DATES'", result);
-        BOOST_TEST_REQUIRE(result.complete());
-    }
-
-    void start_transaction()
-    {
-        boost::mysql::tcp_resultset result;
-        conn.query("START TRANSACTION", result);
-        BOOST_TEST_REQUIRE(result.complete());
     }
 
     database_types_fixture()
@@ -659,13 +649,12 @@ BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
         BOOST_TEST_CONTEXT(table.name)
         {
             // Execute the query
-            boost::mysql::tcp_resultset result;
+            resultset result;
             conn.query(table.select_sql(), result);
-            auto rows = result.read_all(use_views);
 
             // Validate the received contents
             validate_meta(result.meta(), table.metas);
-            table.validate_rows(rows);
+            table.validate_rows(result.rows());
         }
     }
 }
@@ -681,13 +670,12 @@ BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
             conn.prepare_statement(table.select_sql(), stmt);
 
             // Execute it with the provided parameters
-            boost::mysql::tcp_resultset result;
-            stmt.execute(boost::mysql::no_statement_params, result);
-            auto rows = result.read_all(use_views);
+            resultset result;
+            stmt.execute(std::make_tuple(), result);
 
             // Validate the received contents
             validate_meta(result.meta(), table.metas);
-            table.validate_rows(rows);
+            table.validate_rows(result.rows());
         }
     }
 }
@@ -706,22 +694,21 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
             conn.prepare_statement(table.select_sql(), query_stmt);
 
             // Remove all contents from the table
-            boost::mysql::tcp_resultset result;
+            resultset result;
             conn.query(table.delete_sql(), result);
-            BOOST_TEST_REQUIRE(result.complete());
 
             // Insert all the contents again
+            boost::mysql::execution_state st;
             for (const auto& row : table.rws)
             {
-                insert_stmt.execute(row.begin(), row.end(), execute_options(), result);
-                BOOST_TEST_REQUIRE(result.complete());
+                insert_stmt.start_execution(row.begin(), row.end(), st);
+                BOOST_TEST_REQUIRE(st.complete());
             }
 
             // Query them again and verify the insertion was okay
-            query_stmt.execute(boost::mysql::no_statement_params, result);
-            auto rows = result.read_all(use_views);
+            query_stmt.execute(std::make_tuple(), result);
             validate_meta(result.meta(), table.metas);
-            table.validate_rows(rows);
+            table.validate_rows(result.rows());
         }
     }
 }

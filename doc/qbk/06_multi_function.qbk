@@ -1,0 +1,222 @@
+[/
+    Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:multi_function Multi-function operations]
+[nochunk]
+
+Multi-function operations allow running operations as a set of separate
+steps, which gives you better control over execution. They work by splitting
+some of the reads and writes into several function calls.
+You can use multi-function operations to execute text queries and prepared statements.
+
+[heading Protocol primer]
+
+To make a good use of multi-function operations, you should have a basic understanding
+of the underlying protocol.
+
+The protocol uses ['messages] to communicate. These are delimited by headers containing the message length.
+All operations are initiated by the client, by sending a single ['request message], to which
+the server responds with a set of ['response messages].
+
+The diagram below shows the message exchange between client and server for text queries and statement
+executions. Each arrow represents a message.
+
+[$mysql/images/protocol.svg [align center]]
+
+
+The message exchange is similar for text queries and prepared statements. The wire format varies, but the semantics
+are the same.
+
+There are two separate cases:
+
+* If your query retrieved at least one column (even if no rows were generated), we're in ['case 1]. The server sends:
+    * An initial packet informing that the query executed correctly, and that we're in ['case 1].
+    * Some matadata packets describing the columns that the query retrieved. These become available
+      under [refmem resultset meta] and [refmem execution_state meta], and are necessary to parse the rows.
+    * The actual rows.
+    * An OK packet, which marks the end of the resultset and contains information like `last_insert_id` and
+      `affected_rows`.
+* If your query didn't retrieve any column, we're in ['case 2]. The server will just send an OK packet,
+  with the same information as in ['case 1].
+
+[refmem connection query] and [refmem statement execute] handle the full message exchange. In contrast,
+[refmem connection start_query] and [refmem statement start_execution] will not read the rows, if any.
+
+Some takeaways:
+
+* The distinction between single-function and multi-function operations exists only
+  in the client. The wire messages exchanged by both are the same.
+* There is no way to tell how many rows a resultset has upfront. You need to read row by row until
+  you find the OK packet marking the end of the resultset.
+* When the server processes the request message, [*it sends all the response messages immediately].
+  These responses will be waiting in the client to be read. If you don't read [*all] of them,
+  subsequent operations will mistakenly read them as their response, causing packet mismatches.
+  Be careful and don't let this happen!
+
+[heading Starting a multi-function operation]
+
+Given the following setup:
+
+```
+    // TODO: this is repeated from the overview section
+    resultset result;
+    conn.query(R"%(
+        CREATE TEMPORARY TABLE posts (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            title VARCHAR (256),
+            body TEXT
+        )
+    )%", result);
+    conn.query(R"%(
+        INSERT INTO posts (title, body) VALUES
+            ('Post 1', 'A very long post body'),
+            ('Post 2', 'An even longer post body')
+    )%", result);
+
+
+    // This is not repeated
+    tcp_ssl_statement stmt;
+    conn.prepare_statement("SELECT title, body FROM posts", stmt);
+```
+
+You can start a multi-function operation using [refmem connection start_query] or [refmem statement start_execution]:
+
+[table
+    [
+        [Text queries]
+        [Prepared statements]
+    ]
+    [
+        [
+            ```
+                execution_state st;
+                conn.start_query("SELECT title, body FROM posts", st);
+            ```
+        ]
+        [
+            ```
+                execution_state st;
+                stmt.start_execution(std::make_tuple(), st); // The statement has no params, so an empty tuple is passed
+            ```
+        ]
+    ]
+]
+
+[heading Reading rows]
+
+Once the operation has been started, you can read rows in two ways:
+
+* [refmem connection read_one_row] reads a single row per call.
+* [refmem connection read_some_rows] reads a batch of an unspecified size.
+
+The following table shows examples on how to use each method (where `st` is the [reflink execution_state]
+you passed to the `start_query()` or `start_execution()` function):
+
+[table
+    [
+        [Function]
+        [Typical use]
+        [Remarks]
+    ]
+    [
+        [
+            [refmem connection read_one_row], non-owning
+        ]
+        [
+            ```
+            while (true)
+            {
+                // post will be valid until conn performs any other network operation
+                // when the OK packet is read, post will be an empty view
+                row_view post = conn.read_one_row(st);
+
+                // st.complete() returns true once the OK packet is received
+                if (st.complete())
+                    break;
+
+                // Process post as required
+                std::cout << post << std::endl;
+            }
+            ```
+        ]
+        [
+            * When the final OK packet is found, `read_one_row` returns an empty view and `st.complete() == true`.
+            * May be slower than `read_some_rows`, but it may consume less memory.
+            * Calling `read_one_row` after reading the final OK packet returns an empty view.
+        ]
+    ]
+    [
+        [
+            [refmem connection read_some_rows], non-owning
+        ]
+        [
+            ```
+            // st.complete() returns true once the OK packet is received
+            while (!st.complete())
+            {
+                // row_batch will be valid until conn performs any other network operation
+                rows_view row_batch = conn.read_some_rows(st);
+
+                for (row_view post : row_batch)
+                {
+                    // Process post as required
+                    std::cout << post << std::endl;
+                }
+            }
+            ```
+        ]
+        [
+            * The final `row_batch` may or may not be empty, depending on the number of rows and their size.
+            * Usually the fastest alternative.
+            * Calling `read_some_rows` after reading the final OK packet returns an empty batch.
+        ]
+    ]
+]
+
+Both functions return view objects pointing into the connection's internal buffers. These views are valid
+until the connection performs any other operation involving a network transfer. 
+
+[refmem execution_state complete] returns `true` after we've read the final OK packet for this resultset.
+We use it to exit our read loop.
+
+You can take ownserhip of the views using the [reflink row] and [reflink rows] classes. Note however that these
+are immutable types (in that they don't have mutating functions other than assignment), designed to maximize memory reuse.
+If you need to mutate a row, you can use [refmem row_view as_vector] to obtain a `std::vector<field>`.
+
+Note that there is no need to distinguish between ['case 1] and ['case 2] in code, as reading rows for
+a complete operation is well defined.
+
+[heading Accessing metadata and OK packet data]
+
+You can access metadata at any point, using [refmem execution_state meta]. This function returns a collection of [reflink metadata]
+objects. There is one object for each column retrieved by the SQL query, and in the same order as in the query. You can find a bunch
+of useful information in this object, like the column name, its type, whether it's a key or not, and so on.
+
+You can access OK packet data using functions like [refmem execution_state last_insert_id]
+and [refmem execution_state affected_rows]. As this information is contained in the OK packet,
+[*these functions have `st.complete() == true` as precondition].
+
+
+[heading:read_some_rows More on read_some_rows]
+
+To properly understand `read_some_rows`, we need to know that every [reflink connection]
+owns an internal *read buffer*, where packets sent by the server are stored.
+It is a single, flat buffer, and you can configure its initial size using
+[refmem handshake_params buffer_config] when establishing the connection.
+The read buffer may be grown under certain circumstances to accomodate large messages.
+
+`read_some_rows` gets the maximum number of rows that fit in the read buffer (without growing it)
+performing a single `read_some_rows` operation on the stream (or using cached data).
+If there are rows to read, `read_some_rows` guarantees to read at least one. This means that,
+if doing what we described yields no rows (e.g. because of a large row that doesn't fit
+into the read buffer), `read_some_rows` will grow the buffer or perform more reads until at least
+one row has been read.
+
+If you want to get the most of `read_some_rows`, customize the initial read buffer size
+to maximize the number of rows that each batch retrieves.
+
+[endsect]

@@ -7,13 +7,12 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/resultset.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/buffer.hpp>
-#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/use_awaitable.hpp>
-#include <boost/asio/use_future.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
@@ -21,12 +20,14 @@
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
 #include "create_message.hpp"
+#include "run_coroutine.hpp"
 #include "test_connection.hpp"
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 using namespace boost::mysql::test;
 using boost::asio::buffer;
+using boost::mysql::resultset;
 
 namespace {
 
@@ -38,33 +39,24 @@ BOOST_AUTO_TEST_CASE(side_effects_in_initiation)
 {
     boost::asio::io_context ctx;
     test_connection conn;
-    test_resultset result1, result2;
+    resultset result1, result2;
 
     // Resultsets will be complete as soon as a message is read
-    auto ok_packet_1 = create_message(
-        1,
-        {0x00, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62}
-    );
-    auto ok_packet_2 = create_message(1, {0x00, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00});
+    auto ok_packet_1 = create_ok_packet_message(1, 1, 6, 0, 9, "ab", 0x00);
+    auto ok_packet_2 = create_ok_packet_message(1, 2, 0, 0, 0, "uv", 0x00);
     conn.stream().add_message(ok_packet_2);
     conn.stream().add_message(ok_packet_1);
 
     // Launch coroutine and wait for completion
-    auto fut = boost::asio::co_spawn(
-        ctx.get_executor(),
-        [&]() -> boost::asio::awaitable<void> {
-            // Call both queries but don't wait on them yet, so they don't initiate
-            auto aw1 = conn.async_query("Q1", result1, boost::asio::use_awaitable);
-            auto aw2 = conn.async_query("Q2", result2, boost::asio::use_awaitable);
+    run_coroutine([&]() -> boost::asio::awaitable<void> {
+        // Call both queries but don't wait on them yet, so they don't initiate
+        auto aw1 = conn.async_query("Q1", result1, boost::asio::use_awaitable);
+        auto aw2 = conn.async_query("Q2", result2, boost::asio::use_awaitable);
 
-            // Run them in reverse order
-            co_await std::move(aw2);
-            co_await std::move(aw1);
-        },
-        boost::asio::use_future
-    );
-    ctx.run();
-    fut.get();
+        // Run them in reverse order
+        co_await std::move(aw2);
+        co_await std::move(aw1);
+    });
 
     // Check that we wrote Q2's message first, then Q1's
     auto expected = concat_copy(
@@ -74,10 +66,7 @@ BOOST_AUTO_TEST_CASE(side_effects_in_initiation)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffer(conn.stream().bytes_written()), buffer(expected));
 
     // Check that the results got the right ok_packets
-    BOOST_TEST_REQUIRE(result1.complete());
     BOOST_TEST(result1.affected_rows() == 1u);
-
-    BOOST_TEST_REQUIRE(result2.complete());
     BOOST_TEST(result2.affected_rows() == 2u);
 }
 

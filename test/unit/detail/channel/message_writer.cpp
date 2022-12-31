@@ -5,15 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/channel/message_writer.hpp>
 #include <boost/mysql/errc.hpp>
 #include <boost/mysql/error.hpp>
+
+#include <boost/mysql/detail/channel/message_writer.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <vector>
 

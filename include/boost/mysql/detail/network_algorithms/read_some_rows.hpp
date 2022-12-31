@@ -8,11 +8,12 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/channel/channel.hpp>
 
 namespace boost {
 namespace mysql {
@@ -21,44 +22,19 @@ namespace detail {
 template <class Stream>
 rows_view read_some_rows(
     channel<Stream>& channel,
-    resultset_base& result,
+    execution_state& st,
     error_code& err,
     error_info& info
 );
 
-template <class Stream, class CompletionToken>
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+        CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
 async_read_some_rows(
     channel<Stream>& channel,
-    resultset_base& result,
-    error_info& output_info,
-    CompletionToken&& token
-);
-
-template <class Stream>
-void read_some_rows(
-    channel<Stream>& channel,
-    resultset_base& result,
-    rows& output,
-    error_code& err,
-    error_info& info
-);
-
-template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-async_read_some_rows(
-    channel<Stream>& channel,
-    resultset_base& result,
-    error_info& output_info,
-    CompletionToken&& token
-);
-
-template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_read_some_rows(
-    channel<Stream>& channel,
-    resultset_base& result,
-    rows& output,
+    execution_state& result,
     error_info& output_info,
     CompletionToken&& token
 );

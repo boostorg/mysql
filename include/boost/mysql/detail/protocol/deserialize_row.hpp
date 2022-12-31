@@ -8,12 +8,13 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_ROW_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_ROW_HPP
 
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/resultset_base.hpp>
 
 #include <boost/asio/buffer.hpp>
 
@@ -37,7 +38,7 @@ inline void deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     const std::uint8_t* buffer_first,  // to store strings as offsets and allow buffer reallocation
-    resultset_base& result,            // should be valid() and !complete()
+    execution_state& st,               // should be !complete()
     std::vector<field_view>& output,
     error_code& err,
     error_info& info

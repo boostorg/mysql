@@ -10,9 +10,10 @@
 
 #pragma once
 
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 #include <cassert>
 #include <cstddef>
@@ -30,13 +31,12 @@ boost::mysql::rows& boost::mysql::rows::operator=(const rows_view& rhs)
     if (rhs.fields_ == fields_.data())
     {
         assert(rhs.num_fields_ == fields_.size());
-        assert(rhs.num_columns() == num_columns());
     }
     else
     {
         assign(rhs.fields_, rhs.num_fields_);
-        num_columns_ = rhs.num_columns_;
     }
+    num_columns_ = rhs.num_columns_;
     return *this;
 }
 

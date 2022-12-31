@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_CONNECTION_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_CONNECTION_HPP
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/error.hpp>
+
+#include <boost/mysql/detail/channel/channel.hpp>
 
 namespace boost {
 namespace mysql {
@@ -18,7 +19,9 @@ namespace detail {
 template <class SocketStream>
 void close_connection(channel<SocketStream>& chan, error_code& code, error_info& info);
 
-template <class SocketStream, class CompletionToken>
+template <
+    class SocketStream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_close_connection(channel<SocketStream>& chan, CompletionToken&& token, error_info& info);
 

@@ -47,7 +47,7 @@ character set and collation. You can specify them in two ways:
   You can use [refmem connection query] to issue the statement:
 
 ```
-    tcp_ssl_resultset result;
+    resultset result;
     conn.query("SET NAMES utf8mb4", result);
     // Further operations can assume utf8mb4 as conn's charset
 ```

@@ -14,12 +14,13 @@
 #include <boost/system/system_error.hpp>
 
 #include <iostream>
+#include <tuple>
 
 void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
-              << employee[1] << "' earns "            // last_name  (string)
-              << employee[2] << " dollars yearly\n";  // salary     (double)
+    std::cout << "Employee '" << employee.at(0) << " "   // first_name (string)
+              << employee.at(1) << "' earns "            // last_name  (string)
+              << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
 
 #define ASSERT(expr)                                          \
@@ -29,7 +30,8 @@ void print_employee(boost::mysql::row_view employee)
         exit(1);                                              \
     }
 
-/* UNIX sockets are only available in, er, UNIX systems. Typedefs for
+/**
+ * UNIX sockets are only available on, er, UNIX systems. Typedefs for
  * UNIX socket-based connections are only available in UNIX systems.
  * Check for BOOST_ASIO_HAS_LOCAL_SOCKETS to know if UNIX socket
  * typedefs are available in your system.
@@ -40,15 +42,16 @@ void main_impl(int argc, char** argv)
 {
     if (argc != 3 && argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> [<socket-path>]\n";
+        std::cerr << "Usage: " << argv[0]
+                  << " <username> <password> [<socket-path>] [<company-id>]\n";
         exit(1);
     }
 
-    const char* socket_path = "/var/run/mysqld/mysqld.sock";
-    if (argc == 4)
-    {
-        socket_path = argv[3];
-    }
+    const char* socket_path = argc >= 4 ? argv[3] : "/var/run/mysqld/mysqld.sock";
+
+    // The company_id whose employees we will be listing. This
+    // is user-supplied input, and should be treated as untrusted.
+    const char* company_id = argc == 5 ? argv[4] : "HGS";
 
     /**
      * Connection parameters that tell us where and how to connect to the MySQL server.
@@ -71,29 +74,23 @@ void main_impl(int argc, char** argv)
     boost::mysql::unix_ssl_connection conn(ctx, ssl_ctx);
     conn.connect(ep, params);  // UNIX socket connect and MySQL handshake
 
-    const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::unix_ssl_resultset result;
-    conn.query(sql, result);
+    // We will be using company_id, which is untrusted user input, so we will use a prepared
+    // statement.
+    boost::mysql::unix_ssl_statement stmt;
+    conn.prepare_statement(
+        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
+        stmt
+    );
 
-    // Get all the rows in the resultset
-    boost::mysql::rows all_rows;
-    result.read_all(all_rows);
-    for (const auto& employee : all_rows)
+    // Execute the statement
+    boost::mysql::resultset result;
+    stmt.execute(std::make_tuple(company_id), result);
+
+    // Print employees
+    for (boost::mysql::row_view employee : result.rows())
     {
         print_employee(employee);
     }
-
-    // We can issue any SQL statement, not only SELECTs. In this case, the returned
-    // resultset will have no fields and no rows
-    sql = "UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'";
-    conn.query(sql, result);
-    ASSERT(result.complete());  // UPDATE queries never return rows
-
-    // Check we have updated our poor intern salary
-    conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'", result);
-    result.read_all(all_rows);
-    double salary = all_rows.at(0).at(0).as_double();
-    ASSERT(salary == 10000);
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
     conn.close();

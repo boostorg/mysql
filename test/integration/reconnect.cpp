@@ -8,6 +8,7 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/resultset.hpp>
 
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/test/unit_test.hpp>
@@ -15,6 +16,7 @@
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;
+using boost::mysql::resultset;
 
 namespace {
 
@@ -23,22 +25,15 @@ auto net_samples_nossl = create_network_samples({
     "tcp_async_callback",
 });
 
-auto net_samples_all = create_network_samples({
-    "tcp_sync_errc",
-    "tcp_async_callback",
-    "tcp_ssl_sync_errc",
-    "tcp_ssl_async_callback",
-});
-
 BOOST_AUTO_TEST_SUITE(test_reconnect)
 
 struct reconnect_fixture : network_fixture
 {
     void do_query_ok()
     {
-        conn->query("SELECT * FROM empty_table", *result).get();
-        auto rows = result->read_all().get();
-        BOOST_TEST(rows.empty());
+        resultset result;
+        conn->query("SELECT * FROM empty_table", result).get();
+        BOOST_TEST(result.rows().empty());
     }
 };
 

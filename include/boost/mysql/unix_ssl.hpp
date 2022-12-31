@@ -25,9 +25,6 @@ using unix_ssl_connection = connection<
 /// The statement type to use with \ref unix_ssl_connection.
 using unix_ssl_statement = typename unix_ssl_connection::statement_type;
 
-/// The resultset type to use with \ref unix_ssl_connection.
-using unix_ssl_resultset = typename unix_ssl_connection::resultset_type;
-
 #endif
 
 }  // namespace mysql

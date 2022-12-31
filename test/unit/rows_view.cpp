@@ -28,6 +28,55 @@ BOOST_AUTO_TEST_CASE(default_ctor)
     BOOST_TEST(v.empty());
 }
 
+// Regression checks. The cases below caused segfaults in debug builds
+BOOST_AUTO_TEST_SUITE(init_ctor)
+BOOST_AUTO_TEST_CASE(fieldsnonnull_nfieldszero_ncolsnonzero)
+{
+    boost::mysql::field_view fv;
+    rows_view v(&fv, 0, 3);
+    BOOST_TEST(v.empty());
+    BOOST_TEST(v.size() == 0u);
+    BOOST_TEST(v.num_columns() == 3u);
+    BOOST_CHECK_THROW(v.at(0), std::out_of_range);
+    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    BOOST_TEST(vec.empty());
+}
+
+BOOST_AUTO_TEST_CASE(fieldsnonnull_nfieldszero_ncolszero)
+{
+    boost::mysql::field_view fv;
+    rows_view v(&fv, 0, 0);
+    BOOST_TEST(v.empty());
+    BOOST_TEST(v.size() == 0u);
+    BOOST_TEST(v.num_columns() == 0u);
+    BOOST_CHECK_THROW(v.at(0), std::out_of_range);
+    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    BOOST_TEST(vec.empty());
+}
+
+BOOST_AUTO_TEST_CASE(fieldsnull_nfieldszero_ncolsnonzero)
+{
+    rows_view v(nullptr, 0, 2);
+    BOOST_TEST(v.empty());
+    BOOST_TEST(v.size() == 0u);
+    BOOST_TEST(v.num_columns() == 2u);
+    BOOST_CHECK_THROW(v.at(0), std::out_of_range);
+    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    BOOST_TEST(vec.empty());
+}
+
+BOOST_AUTO_TEST_CASE(fieldsnull_nfieldszero_ncolszero)
+{
+    rows_view v(nullptr, 0, 0);
+    BOOST_TEST(v.empty());
+    BOOST_TEST(v.size() == 0u);
+    BOOST_TEST(v.num_columns() == 0u);
+    BOOST_CHECK_THROW(v.at(0), std::out_of_range);
+    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    BOOST_TEST(vec.empty());
+}
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE(at)
 BOOST_AUTO_TEST_CASE(empty)
 {

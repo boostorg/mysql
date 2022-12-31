@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 
 #include <boost/mysql/collation.hpp>
+
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
@@ -86,8 +87,6 @@ struct err_packet
         // clang-format on
     }
 };
-
-static_assert(is_struct_with_fields<err_packet>(), "Bad!");
 
 // col def
 struct column_definition_packet

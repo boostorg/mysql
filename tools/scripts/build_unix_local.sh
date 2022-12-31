@@ -8,6 +8,7 @@
 
 set -e
 
+BK=docs
 IMAGE=build-docs
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
@@ -20,7 +21,7 @@ docker start $CONTAINER || docker run -dit \
     $FULL_IMAGE
 docker network connect my-net $CONTAINER || echo "Network already connected"
 docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boost-mysql --server-host=mysql \
-    --build-kind=docs \
+    --build-kind=$BK \
     --build-shared-libs=1 \
     --valgrind=0 \
     --coverage=0 \
@@ -29,3 +30,9 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --cxxstd=20 \
     --variant=debug \
     --stdlib=native
+
+if [ "$BK" == "docs" ]; then
+    usr=$(whoami)
+    sudo chown "$usr" -R ~/workspace/mysql/doc/html
+    sudo chgrp "$usr" -R ~/workspace/mysql/doc/html
+fi

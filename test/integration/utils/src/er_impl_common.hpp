@@ -10,7 +10,7 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -22,7 +22,6 @@
 
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
-#include "er_resultset.hpp"
 #include "er_statement.hpp"
 #include "streams.hpp"
 
@@ -76,18 +75,6 @@ connection<Stream> create_connection(
 
 // Bases to help implement the variants
 template <class Stream>
-class er_resultset_base : public er_resultset
-{
-    resultset<Stream> r_;
-
-public:
-    er_resultset_base() = default;
-    const resultset_base& base() const noexcept override { return r_; }
-    resultset<Stream>& obj() noexcept { return r_; }
-    const resultset<Stream>& obj() const noexcept { return r_; }
-};
-
-template <class Stream>
 class er_statement_base : public er_statement
 {
     statement<Stream> stmt_;
@@ -97,10 +84,6 @@ public:
     const statement_base& base() const noexcept override { return stmt_; }
     statement<Stream>& obj() noexcept { return stmt_; }
     const statement<Stream>& obj() const noexcept { return stmt_; }
-    static resultset<Stream>& cast(er_resultset& r) noexcept
-    {
-        return static_cast<er_resultset_base<Stream>&>(r).obj();
-    }
 };
 
 template <class Stream>
@@ -123,7 +106,6 @@ public:
         : conn_(create_connection<Stream>(executor, ssl_ctx)), var_(var)
     {
     }
-    bool valid() const override { return conn_.valid(); }
     bool uses_ssl() const override { return conn_.uses_ssl(); }
     bool is_open() const override { return conn_.stream().lowest_layer().is_open(); }
     void sync_close() noexcept override
@@ -137,10 +119,6 @@ public:
         }
     }
     er_network_variant& variant() const override { return var_; }
-    static resultset<Stream>& cast(er_resultset& r) noexcept
-    {
-        return static_cast<er_resultset_base<Stream>&>(r).obj();
-    }
     static statement<Stream>& cast(er_statement& stmt) noexcept
     {
         return static_cast<er_statement_base<Stream>&>(stmt).obj();
@@ -152,9 +130,7 @@ template <
     template <typename>
     class ConnectionImpl,
     template <typename>
-    class StatementImpl,
-    template <typename>
-    class ResultsetImpl>
+    class StatementImpl>
 class er_network_variant_base : public er_network_variant
 {
 public:
@@ -174,10 +150,6 @@ public:
     er_statement_ptr create_statement() override
     {
         return er_statement_ptr(new StatementImpl<Stream>());
-    }
-    er_resultset_ptr create_resultset() override
-    {
-        return er_resultset_ptr(new ResultsetImpl<Stream>());
     }
 };
 

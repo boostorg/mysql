@@ -18,7 +18,7 @@ import enum
 
 _is_windows = os.name == 'nt'
 _boost_root = Path(os.path.expanduser('~')).joinpath('boost-root')
-
+_supports_dir_exist_ok = sys.version_info.minor >= 8
 
 def _run(args: List[str]) -> None:
     print('+ ', args, flush=True)
@@ -83,13 +83,13 @@ def _install_boost(
     os.chdir(str(boost_root))
 
     # Put our library inside boost root
-    if lib_dir.exists() and clean:
+    if lib_dir.exists() and (clean or not _supports_dir_exist_ok):
         rmtree(str(lib_dir), onerror=_remove_readonly)
     copytree(
         str(source_dir),
         str(lib_dir),
         ignore=ignore_patterns('__build*__'),
-        **({ 'dirs_exist_ok': True } if sys.version_info.minor >= 8 else {})
+        **({ 'dirs_exist_ok': True } if _supports_dir_exist_ok else {})
     )
 
     # Install Boost dependencies
@@ -122,12 +122,14 @@ def _install_boost(
 
 
 def _doc_build(
-    source_dir: Path
+    source_dir: Path,
+    clean: bool = False
 ):
     # Get Boost. This leaves us inside boost root
     _install_boost(
         _boost_root,
         source_dir=source_dir,
+        clean=clean,
         install_type=_BoostInstallType.docs
     )
 
@@ -175,9 +177,10 @@ def _b2_build(
         'address-model={}'.format(address_model),
         'variant={}'.format(variant),
         'stdlib={}'.format(stdlib),
+        'warnings-as-errors=on',
         '-j4',
         'libs/mysql/test',
-        'libs/mysql/test//boost_mysql_integrationtests',
+        'libs/mysql/test/integration//boost_mysql_integrationtests',
         'libs/mysql/example//boost_mysql_all_examples'
     ])
 
@@ -410,7 +413,10 @@ def main():
             standalone_tests=args.cmake_standalone_tests
         )
     else:
-        _doc_build(source_dir=args.source_dir)
+        _doc_build(
+            source_dir=args.source_dir,
+            clean=args.clean
+        )
 
 
 if __name__ == '__main__':

@@ -8,12 +8,18 @@
 #ifndef BOOST_MYSQL_CONNECTION_HPP
 #define BOOST_MYSQL_CONNECTION_HPP
 
-#include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows.hpp>
+#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
+
+#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/protocol_types.hpp>
 
 #include <type_traits>
 #include <utility>
@@ -33,48 +39,33 @@ namespace mysql {
  * `connection` is the main I/O object that this library implements. It owns a `Stream` object that
  * is accessed by functions involving network operations, as well as session state. You can access
  * the stream using \ref connection::stream, and its executor via \ref connection::get_executor. The
- * executor used by this object is always the same as the underlying stream. Other I/O objects
- * (`statement` and `resultset`) are proxy I/O objects, which means that they pointing to the stream
- * and state owned by `*this`.
- *\n
- * `connection` is move constructible and move assignable, but not copyable.
- * Moved-from connection objects are left in a state that makes them not
- * usable for most of the operations. The function \ref connection::valid
- * returns whether an object is in a usable state or not. The only allowed
- * operations on moved-from connections are:
- *\n
- *  * Destroying them.
- *  * Participating in other move construction/assignment operations.
- *  * Calling \ref connection::valid.
- *\n
- * In particular, it is __not__ allowed to call \ref connection::handshake
- * on a moved-from connection in order to re-open it.
+ * executor used by this object is always the same as the underlying stream.
  */
 template <class Stream>
 class connection
 {
     std::unique_ptr<detail::channel<Stream>> channel_;
 
-    detail::channel<Stream>& get_channel() noexcept
-    {
-        assert(valid());
-        return *channel_;
-    }
     const detail::channel<Stream>& get_channel() const noexcept
     {
-        assert(valid());
+        assert(channel_ != nullptr);
         return *channel_;
     }
     error_info& shared_info() noexcept { return get_channel().shared_info(); }
 
 public:
+    // TODO: hide this
+    detail::channel<Stream>& get_channel() noexcept
+    {
+        assert(channel_ != nullptr);
+        return *channel_;
+    }
+
     /**
      * \brief Initializing constructor.
      * \details
      * As part of the initialization, a `Stream` object is created
      * by forwarding any passed in arguments to its constructor.
-     *
-     * `this->valid()` will return `true` for the newly constructed object.
      */
     template <
         class... Args,
@@ -87,15 +78,14 @@ public:
 
     /**
      * \brief Move constructor.
-     * \details \ref resultset and \ref statement objects referencing `other` will remain valid.
+     * \details \ref statement objects referencing `other` remain usable for I/O operations.
      */
     connection(connection&& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details \ref resultset and \ref statement objects referencing `other` will remain valid.
-     * Objects referencing `*this` will no longer be valid. They can be re-used
-     * in I/O object generting operations like \ref query or \ref prepare_statement.
+     * \details \ref statement objects referencing `other` remain usable for I/O operations.
+     * Statements referencing `*this` will no longer be usable.
      */
     connection& operator=(connection&& rhs) = default;
 
@@ -103,14 +93,6 @@ public:
     connection(const connection&) = delete;
     connection& operator=(const connection&) = delete;
 #endif
-
-    /**
-     * \brief Returns `true` if the object is in a valid state.
-     * \details This function always returns `true` except for moved-from
-     * connections. Being `valid()` is a precondition for all network
-     * operations in this class.
-     */
-    bool valid() const noexcept { return channel_ != nullptr; }
 
     /// The executor type associated to this object.
     using executor_type = typename Stream::executor_type;
@@ -129,9 +111,6 @@ public:
 
     /// The type of prepared statements that can be used with this connection type.
     using statement_type = statement<Stream>;
-
-    /// The type of resultsets that can be used with this connection type.
-    using resultset_type = resultset<Stream>;
 
     /**
      * \brief Returns whether the connection uses SSL or not.
@@ -214,7 +193,7 @@ public:
     /**
      * \brief Performs the MySQL-level handshake.
      * \details Does not connect the underlying stream.
-     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * If the `Stream` template parameter fulfills the `SocketConnection`
      * requirements, use \ref connection::connect instead of this function.
      *\n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
@@ -257,23 +236,18 @@ public:
 
     /**
      * \brief Executes a SQL text query.
-     * \details Starts a multi-function operation. This function will write the query request to the
-     * server and read the initial server response, but won't read the generated rows, if any. After
-     * this operation completes, `result` will have \ref resultset::meta populated, and may become
-     * \ref resultset::complete, if the operation did not generate any rows (e.g. it was an
-     * `UPDATE`). `result` will reference `*this`, and will be usable for server interaction as long
-     * as I/O object references to `*this` are valid.
+     * \details
+     * Sends `query_string` to the server for execution and reads the response into `result`.
+     * `query_string` should be encoded using the connection's character set.
      *\n
-     * If the operation generated any rows, these __must__ be read (by using any of the
-     * `resultset::read_xxx` functions) before engaging in any further operation involving server
-     * communication. Otherwise, the results are undefined.
+     * After this operation completes successfully, `result.has_value() == true`.
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
-    void query(boost::string_view query_string, resultset<Stream>& result, error_code&, error_info&);
+    void query(boost::string_view query_string, resultset& result, error_code&, error_info&);
 
     /// \copydoc query
-    void query(boost::string_view query_string, resultset<Stream>& result);
+    void query(boost::string_view query_string, resultset& result);
 
     /**
      * \copydoc query
@@ -281,7 +255,7 @@ public:
      * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
      * pointed to by `query_string` __must be kept alive by the caller until the operation is
      * initiated__.
-     *
+     *\n
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -289,7 +263,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         boost::string_view query_string,
-        resultset<Stream>& result,
+        resultset& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -307,7 +281,64 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         boost::string_view query_string,
-        resultset<Stream>& result,
+        resultset& result,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Starts a text query as a multi-function operation.
+     * \details Writes the query request and reads the initial server response and the column
+     * metadata, but not the generated rows, if any. After this operation completes, `st` will have
+     * \ref execution_state::meta populated, and may become \ref execution_state::complete
+     * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     *\n
+     * If the operation generated any rows, these <b>must</b> be read (by using \ref read_one_row or
+     * \ref read_some_rows) before engaging in any further operation involving network reads.
+     * Otherwise, the results are undefined.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     *\n
+     * `query_string` should be encoded using the connection's character set.
+     */
+    void start_query(boost::string_view query_string, execution_state& st, error_code&, error_info&);
+
+    /// \copydoc start_query
+    void start_query(boost::string_view query_string, execution_state& st);
+
+    /**
+     * \copydoc start_query
+     * \details
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
+     * pointed to by `query_string` <b>must be kept alive by the caller until the operation is
+     * initiated</b>.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_query(
+        boost::string_view query_string,
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_start_query(
+            query_string,
+            st,
+            shared_info(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_start_query
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_query(
+        boost::string_view query_string,
+        execution_state& st,
         error_info& output_info,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
@@ -315,10 +346,11 @@ public:
     /**
      * \brief Prepares a statement server-side.
      * \details
-     * After this operation completes, `result` will reference `*this`. It will be usable for server
-     * interaction as long as I/O object references to `*this` are valid.
+     * After this operation completes, `result` will reference `*this`.
      *\n
      * This operation involves both reads and writes on the underlying stream.
+     *\n
+     * `stmt` should be encoded using the connection's character set.
      */
     void prepare_statement(boost::string_view stmt, statement<Stream>& result, error_code&, error_info&);
 
@@ -329,8 +361,8 @@ public:
      * \copydoc prepare_statement
      * \details
      * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `stmt` __must be kept alive by the caller until the operation is
-     * initiated__.
+     * pointed to by `stmt` <b>must be kept alive by the caller until the operation is
+     * initiated</b>.
      *\n
      * The handler signature for this operation is `void(boost::mysql::error_code)`
      */
@@ -363,14 +395,118 @@ public:
     );
 
     /**
-     * \brief Closes the connection with the server.
+     * \brief Reads a single row.
+     * \details
+     * If a row was read successfully, returns a non-empty \ref row_view.
+     * If there were no more rows to read, returns an empty `row_view`.
+     *\n
+     * The returned view points into memory owned by `*this`. It will be valid until the
+     * underlying stream performs any other read operation or is destroyed.
+     *\n
+     * `st` must have previously been populated by a function starting the multifunction
+     * operation, like \ref start_query or \ref statement::start_execution. Otherwise, the results
+     * are undefined.
+     */
+    row_view read_one_row(execution_state& st, error_code& err, error_info& info);
+
+    /// \copydoc read_one_row
+    row_view read_one_row(execution_state& st);
+
+    /**
+     * \copydoc read_one_row
+     *
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::row_view)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
+    async_read_one_row(
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_read_one_row(
+            st,
+            get_channel().shared_info(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_read_one_row
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
+    async_read_one_row(
+        execution_state& st,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Reads a batch of rows.
+     * \details
+     * The number of rows that will be read is unspecified. If the resultset being read
+     * has still rows to read, at least one will be read. If there are no more
+     * rows to be read, returns an empty `rows_view`.
+     * \n
+     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in \ref
+     * connection::connect, using \ref buffer_params::initial_read_buffer_size. The buffer may be
+     * grown bigger by other read operations, if required.
+     * \n
+     * The returned view points into memory owned by `*this`. It will be valid until the
+     * underlying stream performs any other read operation or is destroyed.
+     */
+    rows_view read_some_rows(execution_state& st, error_code& err, error_info& info);
+
+    /// \copydoc read_some_rows
+    rows_view read_some_rows(execution_state& st);
+
+    /**
+     * \copydoc read_some_rows
+     * \details
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
+     */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
+    async_read_some_rows(
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_read_some_rows(
+            st,
+            get_channel().shared_info(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_read_some_rows
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
+    async_read_some_rows(
+        execution_state& st,
+        error_info& output_info,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Closes the connection to the server.
      * \details
      * This function is only available if `Stream` satisfies the `SocketStream` concept.
      *\n
      * Sends a quit request, performs the TLS shutdown (if required)
      * and closes the underlying stream. Prefer this function to \ref connection::quit.
      *\n
-     * After calling this function, any \ref statement and \ref resultset referencing `*this` will
+     * After calling this function, any \ref statement referencing `*this` will
      * no longer be usable for server interaction.
      *\n
      */
@@ -407,7 +543,10 @@ public:
      * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
      *\n
-     * If the `Stream` template parameter fulfills the __SocketConnection__
+     * After calling this function, any \ref statement referencing `*this` will
+     * no longer be usable for server interaction.
+     *\n
+     * If the `Stream` template parameter fulfills the `SocketConnection`
      * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.
      */

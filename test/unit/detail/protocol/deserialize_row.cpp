@@ -9,9 +9,9 @@
 
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
-#include <boost/mysql/resultset_base.hpp>
 
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -27,7 +27,7 @@
 #include <cstdint>
 
 #include "buffer_concat.hpp"
-#include "create_resultset.hpp"
+#include "create_execution_state.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
@@ -38,13 +38,12 @@ using boost::mysql::error_code;
 using boost::mysql::error_info;
 using boost::mysql::field_view;
 using boost::mysql::metadata;
-using boost::mysql::resultset_base;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_deserialize_row)
 
-BOOST_AUTO_TEST_SUITE(without_resultset)
+BOOST_AUTO_TEST_SUITE(without_state)
 
 std::vector<metadata> make_meta(const std::vector<protocol_field_type>& types)
 {
@@ -58,7 +57,7 @@ std::vector<metadata> make_meta(const std::vector<protocol_field_type>& types)
     return res;
 }
 
-BOOST_AUTO_TEST_CASE(no_resultset_success)
+BOOST_AUTO_TEST_CASE(success)
 {
     // clang-format off
     struct
@@ -235,7 +234,7 @@ BOOST_AUTO_TEST_CASE(no_resultset_success)
     }
 }
 
-BOOST_AUTO_TEST_CASE(no_resultset_error)
+BOOST_AUTO_TEST_CASE(error)
 {
     // clang-format off
     struct
@@ -296,6 +295,13 @@ BOOST_AUTO_TEST_CASE(no_resultset_error)
             errc::protocol_value_error,
             make_meta({ protocol_field_type::date, protocol_field_type::date, protocol_field_type::date })
         },
+        {
+            "text_row_for_empty_meta",
+            resultset_encoding::text,
+            {0xfb, 0x01, 0x00, 0xfb},
+            errc::extra_bytes,
+            make_meta({})
+        },
 
         // binary
         {
@@ -339,7 +345,14 @@ BOOST_AUTO_TEST_CASE(no_resultset_error)
             {0x00, 0x00, 0x01, 0x02},
             errc::extra_bytes,
             make_meta({ protocol_field_type::tiny })
-        }
+        },
+        {
+            "binary_row_for_empty_meta",
+            resultset_encoding::binary,
+            {0xfb, 0x01, 0x00, 0xfb},
+            errc::extra_bytes,
+            make_meta({})
+        },
     };
     // clang-format on
 
@@ -364,7 +377,7 @@ BOOST_AUTO_TEST_CASE(no_resultset_error)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE(with_resultset)
+BOOST_AUTO_TEST_SUITE(with_execution_state)
 
 BOOST_AUTO_TEST_CASE(text_rows)
 {
@@ -373,7 +386,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     std::vector<std::uint8_t>
         row2{0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30};
     auto buff = concat_copy(row1, row2);
-    resultset_base result = create_resultset(
+    auto st = create_execution_state(
         resultset_encoding::text,
         {protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_}
     );
@@ -387,7 +400,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
         boost::asio::const_buffer(buff.data(), row1.size()),
         capabilities(),
         buff.data(),
-        result,
+        st,
         fields,
         err,
         info
@@ -395,7 +408,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
-    BOOST_TEST(!result.complete());
+    BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
     // Second row (fields get appended to existing ones)
@@ -403,7 +416,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
         boost::asio::const_buffer(buff.data() + row1.size(), row2.size()),
         capabilities(),
         buff.data(),
-        result,
+        st,
         fields,
         err,
         info
@@ -414,7 +427,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
-    BOOST_TEST(!result.complete());
+    BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
     // Convert offsets to string views
@@ -427,7 +440,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     std::vector<std::uint8_t> row1{0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07};
     std::vector<std::uint8_t> row2{0x00, 0x08, 0x03, 0x6d, 0x61, 0x78};
     auto buff = concat_copy(row1, row2);
-    resultset_base result = create_resultset(
+    auto st = create_execution_state(
         resultset_encoding::binary,
         {protocol_field_type::var_string, protocol_field_type::short_}
     );
@@ -441,7 +454,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
         boost::asio::const_buffer(buff.data(), row1.size()),
         capabilities(),
         buff.data(),
-        result,
+        st,
         fields,
         err,
         info
@@ -449,7 +462,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
-    BOOST_TEST(!result.complete());
+    BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
     // Second row (fields get appended to existing ones)
@@ -457,7 +470,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
         boost::asio::const_buffer(buff.data() + row1.size(), row2.size()),
         capabilities(),
         buff.data(),
-        result,
+        st,
         fields,
         err,
         info
@@ -467,7 +480,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
-    BOOST_TEST(!result.complete());
+    BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
     // Convert offsets to string views
@@ -478,7 +491,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
     std::vector<std::uint8_t> buff{0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62};
-    resultset_base result = create_resultset(
+    auto st = create_execution_state(
         resultset_encoding::binary,
         {protocol_field_type::var_string, protocol_field_type::short_}
     );
@@ -488,23 +501,15 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     error_info info;
 
     // First row
-    deserialize_row(
-        boost::asio::buffer(buff),
-        capabilities(),
-        buff.data(),
-        result,
-        fields,
-        err,
-        info
-    );
+    deserialize_row(boost::asio::buffer(buff), capabilities(), buff.data(), st, fields, err, info);
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(info.message() == "");
-    BOOST_TEST(result.complete());
-    BOOST_TEST(result.affected_rows() == 1u);
-    BOOST_TEST(result.last_insert_id() == 6u);
-    BOOST_TEST(result.warning_count() == 9u);
-    BOOST_TEST(result.info() == "ab");
+    BOOST_TEST(st.complete());
+    BOOST_TEST(st.affected_rows() == 1u);
+    BOOST_TEST(st.last_insert_id() == 6u);
+    BOOST_TEST(st.warning_count() == 9u);
+    BOOST_TEST(st.info() == "ab");
     BOOST_TEST(fields == fields_before);  // they didn't change
 }
 
@@ -559,7 +564,7 @@ BOOST_AUTO_TEST_CASE(error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            resultset_base result = create_resultset(
+            auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_}
             );
@@ -572,7 +577,7 @@ BOOST_AUTO_TEST_CASE(error)
                 boost::asio::buffer(tc.buffer),
                 capabilities(),
                 tc.buffer.data(),
-                result,
+                st,
                 fields,
                 err,
                 info

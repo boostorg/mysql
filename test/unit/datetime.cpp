@@ -34,13 +34,13 @@ BOOST_AUTO_TEST_SUITE(test_datetime_class)
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
     datetime d;
-    BOOST_TEST(d.year() == 0);
-    BOOST_TEST(d.month() == 0);
-    BOOST_TEST(d.day() == 0);
-    BOOST_TEST(d.hour() == 0);
-    BOOST_TEST(d.minute() == 0);
-    BOOST_TEST(d.second() == 0);
-    BOOST_TEST(d.microsecond() == 0);
+    BOOST_TEST(d.year() == 0u);
+    BOOST_TEST(d.month() == 0u);
+    BOOST_TEST(d.day() == 0u);
+    BOOST_TEST(d.hour() == 0u);
+    BOOST_TEST(d.minute() == 0u);
+    BOOST_TEST(d.second() == 0u);
+    BOOST_TEST(d.microsecond() == 0u);
     BOOST_TEST(!d.valid());
 }
 

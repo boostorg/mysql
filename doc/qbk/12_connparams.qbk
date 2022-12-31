@@ -101,8 +101,8 @@ underlying stream does not support SSL.
 
 [refmem handshake_params buffer_config], of type [reflink buffer_params], lets you
 specify some defaults for internal buffer sizes. You can currently set the initial
-size of the read buffer, which can impact the performance of [refmem resultset read_some],
-as explained [link mysql.resultsets.read.read_some in this section].
+size of the read buffer, which can impact the performance of [refmem connection read_some_rows],
+as explained [link mysql.multi_function.read_some_rows in this section].
 
 [endsect]
 

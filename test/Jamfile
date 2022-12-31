@@ -6,11 +6,114 @@
 #
 
 import os ;
-import sequence ;
+import path ;
+
+project /boost/mysql/test ;
+
+# System libraries
+if [ os.name ] = NT
+{
+    local OPENSSL_ROOT_ENV = [ os.environ OPENSSL_ROOT ] ;
+    local OPENSSL_ROOT = "" ;
+    if $(OPENSSL_ROOT_ENV)
+    {
+        OPENSSL_ROOT = $(OPENSSL_ROOT_ENV) ;
+    }
+    else 
+    {
+        OPENSSL_ROOT = "C:/OpenSSL" ;
+    }
+    local openssl_requirements =
+        <include>$(OPENSSL_ROOT)/include
+        <library-path>$(OPENSSL_ROOT)/lib
+    ; 
+
+    if [ path.exists $(OPENSSL_ROOT)/lib/libssl.lib ]
+    {
+        echo "OpenSSL > 1.1.0. Including libssl" ;
+        lib ssl : : <target-os>windows <name>libssl : : $(openssl_requirements) ;
+    }
+    else if [ path.exists $(OPENSSL_ROOT)/lib/ssleay32.lib ] 
+    {
+        echo "OpenSSL < 1.1.0. Including ssleay32" ;
+        lib ssl : : <target-os>windows <name>ssleay32 : : $(openssl_requirements) ;
+    }
+    else
+    {
+        lib ssl : : <link>shared : : $(openssl_requirements) ;
+    }
+
+    if [ path.exists $(OPENSSL_ROOT)/lib/libcrypto.lib ]
+    {
+        echo "OpenSSL > 1.1.0. Including libcrypto" ;
+        lib crypto : : <target-os>windows <name>libcrypto : : $(openssl_requirements) ;
+    }
+    else if [ path.exists $(OPENSSL_ROOT)/lib/libeay32.lib ]
+    {
+        echo "OpenSSL < 1.1.0. Including libeay32" ;
+        lib crypto : : <target-os>windows <name>libeay32 : : $(openssl_requirements) ;
+    }
+    else
+    {
+        lib crypto : : <link>shared : : $(openssl_requirements) ;
+    }
+}
+else
+{
+    local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
+    local openssl_requirements =
+        <include>$(OPENSSL_ROOT)/include
+        <library-path>$(OPENSSL_ROOT)/lib
+    ; 
+    lib ssl : : <link>shared : : $(openssl_requirements) ;
+    lib crypto : : <link>shared : : $(openssl_requirements) ;
+}
+
+# Requirements to use across targets
+local requirements = 
+        <include>../include
+        <define>BOOST_ALL_NO_LIB=1
+        <define>BOOST_ASIO_NO_DEPRECATED=1
+        <define>BOOST_ASIO_DISABLE_BOOST_ARRAY=1
+        <define>BOOST_ASIO_DISABLE_BOOST_BIND=1
+        <define>BOOST_ASIO_DISABLE_BOOST_DATE_TIME=1
+        <define>BOOST_ASIO_DISABLE_BOOST_REGEX=1
+        <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
+        <define>BOOST_COROUTINES_NO_DEPRECATION_WARNING=1
+        <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
+        <toolset>msvc:<cxxflags>"/bigobj /Zc:__cplusplus"
+        <toolset>msvc-14.1:<cxxflags>"/permissive-"
+        <toolset>msvc-14.2:<cxxflags>"/permissive-"
+        <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS=1
+        <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
+        <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
+        <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+        <target-os>linux:<define>_XOPEN_SOURCE=600
+        <target-os>linux:<define>_GNU_SOURCE=1
+        <target-os>windows:<define>_WIN32_WINNT=0x0601
+    ;
+
+# A static Asio library to speed up builds
+lib asio_separate_build
+    :
+        ../tools/asio.cpp
+        ssl
+        crypto
+    :
+        <link>static
+        $(requirements)
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+    :
+    :
+        $(requirements)
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+    ;
+
+alias mysql : asio_separate_build ;
 
 alias test_common
     :
-        /boost/mysql//mysql
+        mysql
         /boost/test//boost_unit_test_framework
     :
         <link>static
@@ -18,139 +121,3 @@ alias test_common
     :
         <include>common
     ;
-
-
-# Unit tests
-lib unittests_entry_point
-    :
-        unit/entry_point.cpp
-        test_common
-    :
-        <link>static
-    ;
-
-cpp-pch unittests_pch
-    :
-        unit/pch.hpp
-        unittests_entry_point
-    :
-        <include>unit
-    ;
-unit-test boost_mysql_unittests
-    :
-        unittests_pch
-        unittests_entry_point
-
-        unit/detail/channel/read_buffer.cpp
-        unit/detail/channel/message_parser.cpp
-        unit/detail/channel/message_reader.cpp
-        unit/detail/channel/message_writer_processor.cpp
-        unit/detail/channel/message_writer.cpp
-        unit/detail/auth/auth_calculator.cpp
-        unit/detail/auxiliar/static_string.cpp
-        unit/detail/auxiliar/rows_iterator.cpp
-        unit/detail/auxiliar/field_type_traits.cpp
-        unit/detail/auxiliar/datetime.cpp
-        unit/detail/network_algorithms/read_one_row.cpp
-        unit/detail/network_algorithms/read_some_rows.cpp
-        unit/detail/network_algorithms/read_all_rows.cpp
-        unit/detail/protocol/capabilities.cpp
-        unit/detail/protocol/null_bitmap_traits.cpp
-        unit/detail/protocol/serialization_test.cpp
-        unit/detail/protocol/deserialize_text_field.cpp
-        unit/detail/protocol/deserialize_binary_field.cpp
-        unit/detail/protocol/deserialize_row.cpp
-        unit/date.cpp
-        unit/datetime.cpp
-        unit/field_view.cpp
-        unit/field.cpp
-        unit/row_view.cpp
-        unit/row.cpp
-        unit/rows_view.cpp
-        unit/rows.cpp
-        unit/metadata.cpp
-        unit/metadata_collection_view.cpp
-        unit/error.cpp
-        unit/statement.cpp
-        unit/resultset.cpp
-        unit/regressions.cpp
-        unit/connection.cpp
-    :
-        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
-    ;
-
-
-# Integration test filtering
-local test_exclusions = "" ;
-if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] != "" {
-    test_exclusions += "!@unix" ;
-}
-if [ os.environ BOOST_MYSQL_NO_SHA256_TESTS ] != "" {
-    test_exclusions += "!@sha256" ;
-}
-
-local test_filter = [ sequence.join $(test_exclusions) : ":" ] ;
-
-local test_command = "" ;
-if $(test_filter) != "" {
-    test_command = "-t $(test_filter)" ;
-}
-
-# Integration tests
-lib integrationtests_entry_point :
-        integration/entry_point.cpp
-        test_common
-    :
-        <link>static
-    ;
-
-cpp-pch integrationtests_pch
-    :
-        integration/pch.hpp
-        /boost/coroutine//boost_coroutine
-        integrationtests_entry_point
-    :
-        <include>integration
-    ;
-
-unit-test boost_mysql_integrationtests
-    :
-        integrationtests_pch
-        /boost/coroutine//boost_coroutine
-        integrationtests_entry_point
-
-        # Utilities
-        integration/utils/src/get_endpoint.cpp
-        integration/utils/src/metadata_validator.cpp
-        integration/utils/src/network_result.cpp
-        integration/utils/src/er_network_variant.cpp
-        integration/utils/src/sync_errc.cpp
-        integration/utils/src/sync_exc.cpp
-        integration/utils/src/async_callback.cpp
-        integration/utils/src/async_callback_noerrinfo.cpp
-        integration/utils/src/async_future.cpp
-        integration/utils/src/async_coroutine.cpp
-        integration/utils/src/async_coroutinecpp20.cpp
-        integration/utils/src/default_completion_tokens.cpp
-
-        # Actual tests
-        integration/connection.cpp
-        integration/connect.cpp
-        integration/handshake.cpp
-        integration/query.cpp
-        integration/prepare_statement.cpp
-        integration/execute_statement.cpp
-        integration/close_statement.cpp
-        integration/statement_lifecycle.cpp
-        integration/resultset.cpp
-        integration/quit_connection.cpp
-        integration/close_connection.cpp
-        integration/reconnect.cpp
-        integration/database_types.cpp
-    :
-        <testing.arg>$(test_command)
-        <include>integration/utils/include
-        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
-    ;
-
-explicit boost_mysql_integrationtests ;

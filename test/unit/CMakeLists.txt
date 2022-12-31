@@ -17,9 +17,14 @@ add_executable(
     detail/auxiliar/rows_iterator.cpp
     detail/auxiliar/field_type_traits.cpp
     detail/auxiliar/datetime.cpp
+    detail/network_algorithms/start_execution_generic.cpp
+    detail/network_algorithms/start_query.cpp
+    detail/network_algorithms/start_statement_execution.cpp
     detail/network_algorithms/read_one_row.cpp
     detail/network_algorithms/read_some_rows.cpp
     detail/network_algorithms/read_all_rows.cpp
+    detail/network_algorithms/query.cpp
+    detail/network_algorithms/execute_statement.cpp
     detail/protocol/capabilities.cpp
     detail/protocol/null_bitmap_traits.cpp
     detail/protocol/serialization_test.cpp
@@ -38,6 +43,7 @@ add_executable(
     metadata_collection_view.cpp
     error.cpp
     statement.cpp
+    execution_state.cpp
     resultset.cpp
     connection.cpp
     regressions.cpp
@@ -48,11 +54,11 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
-target_precompile_headers(
-    boost_mysql_unittests
-    PRIVATE
-    pch.hpp
-)
+# target_precompile_headers(
+#     boost_mysql_unittests
+#     PRIVATE
+#     pch.hpp
+# )
 set_source_files_properties(
     entry_point.cpp
     PROPERTIES

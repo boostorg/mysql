@@ -11,9 +11,12 @@ import re
 from os import path
 from collections import namedtuple
 from typing import List
+import glob
 
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
+
+VERBOSE = False
 
 REPO_BASE = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..', '..'))
 BASE_FOLDERS = [
@@ -164,7 +167,8 @@ FILE_PROCESSORS = [
 def process_file(fpath):
     for ext, processor in FILE_PROCESSORS:
         if fpath.endswith(ext):
-            print('Processing file {} with processor {}'.format(fpath, processor.name))
+            if VERBOSE:
+                print('Processing file {} with processor {}'.format(fpath, processor.name))
             processor.process(fpath)
             break
     else:
@@ -176,7 +180,8 @@ def process_all_files():
         base_folder_abs = path.join(REPO_BASE, base_folder)
         for curdir, _, files in os.walk(base_folder_abs):
             if curdir.startswith(HTML_GEN_PATH):
-                print('Ignored directory {}'.format(curdir))
+                if VERBOSE:
+                    print('Ignored directory {}'.format(curdir))
                 continue
             for fname in files:
                 process_file(path.join(curdir, fname))
@@ -206,7 +211,6 @@ enum class errc : int
 }};
 
 /**
-  * \\relates errc
   * \\brief Streams an error code.
   */
 inline std::ostream& operator<<(std::ostream&, errc);
@@ -290,11 +294,30 @@ def generate_error_enums():
     with open(path.join(REPO_BASE, 'include', 'boost', 'mysql', 
                         'impl', 'error_descriptions.hpp'), 'wt') as f:
         f.write(descr_content)
-    
+
+
+
+# Check that cmake and b2 test source files are equal
+def verify_test_consistency():
+    for test_type in ('unit', 'integration'):
+        for ftocheck in ('Jamfile', 'CMakeLists.txt'):
+            base_path = path.join(REPO_BASE, 'test', test_type)
+            tests = glob.glob(base_path + '/**/*.cpp', recursive=True)
+            tests = [elm.replace(base_path + '/', '') for elm in tests]
+
+            with open(path.join(REPO_BASE, 'test', test_type, ftocheck), 'rt') as f:
+                contents = f.readlines()
+                contents = ''.join(elm for elm in contents if not '#' in elm)
+
+            for t in tests:
+                if ' ' + t not in contents:
+                    print(f'File {t} not in {test_type}/{ftocheck}')
+
             
 def main():
     generate_error_enums()
     process_all_files()
+    verify_test_consistency()
             
             
 if __name__ == '__main__':

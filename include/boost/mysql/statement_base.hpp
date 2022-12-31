@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_STATEMENT_BASE_HPP
 #define BOOST_MYSQL_STATEMENT_BASE_HPP
 
-#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/field_view.hpp>
+
+#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
 #include <array>
 #include <cstdint>
@@ -17,9 +18,6 @@
 
 namespace boost {
 namespace mysql {
-
-/// Convenience constant to use when executing a statement without parameters.
-constexpr std::tuple<> no_statement_params{};
 
 /**
  * \brief The base class for prepared statements.
@@ -47,11 +45,11 @@ public:
      * \brief Returns `true` if the object represents an actual server statement.
      * \details Calling any function other than assignment on a statement for which
      * this function returns `false` results in undefined behavior.
-     *
+     *\n
      * To be usable for server communication, the \ref connection referenced by this object must be
      * alive and open, too.
-     *
-     * Returns `false` for default-constructed, moved-from and closed statements.
+     *\n
+     * Returns `false` for default-constructed and closed statements.
      */
     bool valid() const noexcept { return channel_ != nullptr; }
 

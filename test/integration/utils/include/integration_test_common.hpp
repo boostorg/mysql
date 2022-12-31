@@ -8,9 +8,10 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_INTEGRATION_TEST_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_INTEGRATION_TEST_COMMON_HPP
 
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/resultset.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -21,7 +22,6 @@
 
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
-#include "er_resultset.hpp"
 #include "er_statement.hpp"
 #include "metadata_validator.hpp"
 #include "network_test.hpp"
@@ -43,7 +43,6 @@ struct network_fixture : network_fixture_base
     er_network_variant* var{};
     er_connection_ptr conn;
     er_statement_ptr stmt;
-    er_resultset_ptr result;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard;
     std::thread runner;
 
@@ -64,7 +63,12 @@ struct network_fixture : network_fixture_base
         var = variant;
         conn = var->create_connection(ctx.get_executor(), ssl_ctx);
         stmt = var->create_statement();
-        result = var->create_resultset();
+    }
+
+    void setup_and_physical_connect(er_network_variant* net)
+    {
+        setup(net);
+        conn->physical_connect().validate_no_error();
     }
 
     void setup_and_connect(er_network_variant* variant, ssl_mode m = ssl_mode::require)
@@ -102,34 +106,13 @@ struct network_fixture : network_fixture_base
         validate_ssl(m);
     }
 
-    void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)
-        const
-    {
-        validate_meta(
-            fields,
-            {meta_validator(table, "id", column_type::int_),
-             meta_validator(table, "field_varchar", column_type::varchar)}
-        );
-    }
-
-    void validate_2fields_meta(const resultset_base& result, const std::string& table) const
-    {
-        validate_2fields_meta(result.meta(), table);
-    }
-
     // Call this in the fixture setup of any test invoking write
     // operations on the database, to prevent race conditions,
     // make the testing environment more stable and speed up the tests
     void start_transaction()
     {
-        conn->query("START TRANSACTION", *result).get();
-        result->read_all().get();
-    }
-
-    std::int64_t get_table_size(const std::string& table)
-    {
-        conn->query("SELECT COUNT(*) FROM " + table, *result).get();
-        return result->read_all().get().at(0).at(0).as_int64();
+        resultset result;
+        conn->query("START TRANSACTION", result).get();
     }
 };
 
@@ -180,6 +163,31 @@ inline const std::vector<network_sample>& all_network_samples()
 {
     static std::vector<network_sample> res = create_all_network_samples();
     return res;
+}
+
+inline void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)
+
+{
+    validate_meta(
+        fields,
+        {meta_validator(table, "id", column_type::int_),
+         meta_validator(table, "field_varchar", column_type::varchar)}
+    );
+}
+
+inline void validate_eof(
+    const execution_state& st,
+    unsigned affected_rows = 0,
+    unsigned warnings = 0,
+    unsigned last_insert = 0,
+    boost::string_view info = ""
+)
+{
+    BOOST_TEST_REQUIRE(st.complete());
+    BOOST_TEST(st.affected_rows() == affected_rows);
+    BOOST_TEST(st.warning_count() == warnings);
+    BOOST_TEST(st.last_insert_id() == last_insert);
+    BOOST_TEST(st.info() == info);
 }
 
 }  // namespace test

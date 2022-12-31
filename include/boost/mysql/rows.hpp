@@ -8,12 +8,13 @@
 #ifndef BOOST_MYSQL_ROWS_HPP
 #define BOOST_MYSQL_ROWS_HPP
 
-#include <boost/mysql/detail/auxiliar/row_base.hpp>
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/row_base.hpp>
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 namespace boost {
 namespace mysql {
@@ -24,19 +25,14 @@ namespace mysql {
  * Models an owning, matrix-like container. Indexing a `rows` object (by using iterators,
  * \ref rows::at or \ref rows::operator[]) returns a \ref row_view object, representing a
  * single row. All rows in the collection are the same size (as given by \ref num_columns).
- *
+ *\n
  * A `rows` object owns a chunk of memory in which it stores its elements. The \ref rows_view
  * objects obtained on element access point into the `rows`' internal storage. These views (and any
  * \ref row_view and \ref field_view obtained from the former) behave
  * like references, and are valid as long as pointers, iterators and references into the `rows`
  * object remain valid.
  \n
- * Objects of this type can be populated by the \ref resultset::read_some and \ref
- * resultset::read_all function family. You may create a `rows` object directly to persist \ref
- * rows_view objects, too.
- \n
- * Although owning, `rows` is read-only. It's optimized for memory re-use in \ref
- * resultset::read_some and \ref resultset::read_all loops.
+ * Although owning, `rows` is read-only. It's optimized for memory re-use.
  */
 class rows : private detail::row_base
 {

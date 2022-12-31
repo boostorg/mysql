@@ -8,8 +8,6 @@
 //[example_timeouts
 
 #include <boost/mysql.hpp>
-#include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -37,9 +35,9 @@ constexpr std::chrono::milliseconds TIMEOUT(2000);
 
 void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
-              << employee[1] << "' earns "            // last_name  (string)
-              << employee[2] << " dollars yearly\n";  // salary     (double)
+    std::cout << "Employee '" << employee.at(0) << " "   // first_name (string)
+              << employee.at(1) << "' earns "            // last_name  (string)
+              << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
 
 /**
@@ -81,7 +79,8 @@ boost::asio::awaitable<void> start_query(
     boost::asio::ip::tcp::resolver& resolver,
     boost::asio::steady_timer& timer,
     const boost::mysql::handshake_params& params,
-    const char* hostname
+    const char* hostname,
+    const char* company_id
 )
 {
     try
@@ -100,26 +99,30 @@ boost::asio::awaitable<void> start_query(
             conn.async_connect(*endpoints.begin(), params, use_awaitable)
         ));
 
-        // Issue the query to the server
-        const char*
-            sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-        boost::mysql::tcp_ssl_resultset result;
-        timer.expires_after(TIMEOUT);
+        // We will be using company_id, which is untrusted user input, so we will use a prepared
+        // statement.
+        boost::mysql::tcp_ssl_statement stmt;
         check_timeout(co_await (
-            timer.async_wait(use_awaitable) || conn.async_query(sql, result, use_awaitable)
+            timer.async_wait(use_awaitable) ||
+            conn.async_prepare_statement(
+                "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
+                stmt,
+                use_awaitable
+            )
         ));
 
-        // Read all rows
-        boost::mysql::row row;
-        while (true)
+        // Execute the statement
+        boost::mysql::resultset result;
+        timer.expires_after(TIMEOUT);
+        check_timeout(co_await (
+            timer.async_wait(use_awaitable) ||
+            stmt.async_execute(std::make_tuple(company_id), result, use_awaitable)
+        ));
+
+        // Print all the obtained rows
+        for (boost::mysql::row_view employee : result.rows())
         {
-            timer.expires_after(TIMEOUT);
-            check_timeout(co_await (
-                timer.async_wait(use_awaitable) || result.async_read_one(row, use_awaitable)
-            ));
-            if (result.complete())
-                break;
-            print_employee(row);
+            print_employee(employee);
         }
 
         // Notify the MySQL server we want to quit, then close the underlying connection.
@@ -138,13 +141,18 @@ boost::asio::awaitable<void> start_query(
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 4)
+    if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
+        std::cerr << "Usage: " << argv[0]
+                  << " <username> <password> <server-hostname> [company-id]\n";
         exit(1);
     }
 
     const char* hostname = argv[3];
+
+    // The company_id whose employees we will be listing. This
+    // is user-supplied input, and should be treated as untrusted.
+    const char* company_id = argc == 5 ? argv[4] : "HGS";
 
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
@@ -162,14 +170,11 @@ void main_impl(int argc, char** argv)
     // Resolver for hostname resolution
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
-    /**
-     * The entry point. We pass in a function returning
-     * a boost::asio::awaitable<void>, as required.
-     */
+    // The entry point. We pass in a function returning a boost::asio::awaitable<void>, as required.
     boost::asio::co_spawn(
         ctx.get_executor(),
-        [&conn, &resolver, &timer, params, hostname] {
-            return start_query(conn, resolver, timer, params, hostname);
+        [&conn, &resolver, &timer, params, hostname, company_id] {
+            return start_query(conn, resolver, timer, params, hostname, company_id);
         },
         boost::asio::detached
     );

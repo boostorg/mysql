@@ -8,9 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/error.hpp>
 #include <boost/mysql/statement_base.hpp>
+
+#include <boost/mysql/detail/channel/channel.hpp>
 
 #include <boost/utility/string_view.hpp>
 
@@ -27,7 +28,9 @@ void prepare_statement(
     error_info& info
 );
 
-template <class Stream, class CompletionToken>
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_prepare_statement(
     channel<Stream>& chan,

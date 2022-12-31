@@ -10,35 +10,31 @@
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/close_statement.hpp>
-#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/statement.hpp>
 
-// Execute statement, with tuple
+#include <boost/mysql/detail/network_algorithms/close_statement.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
+#include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
+
 template <class Stream>
 template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
 void boost::mysql::statement<Stream>::execute(
     const FieldLikeTuple& params,
-    const execute_options& opts,
-    resultset<Stream>& result,
+    resultset& result,
     error_code& err,
     error_info& info
 )
 {
     detail::clear_errors(err, info);
-    detail::execute_statement(get_channel(), *this, params, opts, result, err, info);
+    detail::execute_statement(get_channel(), *this, params, result, err, info);
 }
 
 template <class Stream>
 template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
-void boost::mysql::statement<Stream>::execute(
-    const FieldLikeTuple& params,
-    const execute_options& opts,
-    resultset<Stream>& result
-)
+void boost::mysql::statement<Stream>::execute(const FieldLikeTuple& params, resultset& result)
 {
     detail::error_block blk;
-    detail::execute_statement(get_channel(), *this, params, opts, result, blk.err, blk.info);
+    detail::execute_statement(get_channel(), *this, params, result, blk.err, blk.info);
     blk.check();
 }
 
@@ -50,8 +46,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::statement<Stream>::async_execute(
     FieldLikeTuple&& params,
-    const execute_options& opts,
-    resultset<Stream>& result,
+    resultset& result,
     error_info& output_info,
     CompletionToken&& token
 )
@@ -60,7 +55,54 @@ boost::mysql::statement<Stream>::async_execute(
         get_channel(),
         *this,
         std::forward<FieldLikeTuple>(params),
-        opts,
+        result,
+        output_info,
+        std::forward<CompletionToken>(token)
+    );
+}
+
+template <class Stream>
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+void boost::mysql::statement<Stream>::start_execution(
+    const FieldLikeTuple& params,
+    execution_state& result,
+    error_code& err,
+    error_info& info
+)
+{
+    detail::clear_errors(err, info);
+    detail::start_statement_execution(get_channel(), *this, params, result, err, info);
+}
+
+template <class Stream>
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+void boost::mysql::statement<Stream>::start_execution(
+    const FieldLikeTuple& params,
+    execution_state& result
+)
+{
+    detail::error_block blk;
+    detail::start_statement_execution(get_channel(), *this, params, result, blk.err, blk.info);
+    blk.check();
+}
+
+template <class Stream>
+template <
+    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken,
+    class>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::statement<Stream>::async_start_execution(
+    FieldLikeTuple&& params,
+    execution_state& result,
+    error_info& output_info,
+    CompletionToken&& token
+)
+{
+    return detail::async_start_statement_execution(
+        get_channel(),
+        *this,
+        std::forward<FieldLikeTuple>(params),
         result,
         output_info,
         std::forward<CompletionToken>(token)
@@ -70,22 +112,20 @@ boost::mysql::statement<Stream>::async_execute(
 // Execute statement, with iterators
 template <class Stream>
 template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
-void boost::mysql::statement<Stream>::execute(
+void boost::mysql::statement<Stream>::start_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
-    const execute_options& opts,
-    resultset<Stream>& result,
+    execution_state& result,
     error_code& err,
     error_info& info
 )
 {
     detail::clear_errors(err, info);
-    detail::execute_statement(
+    detail::start_statement_execution(
         get_channel(),
         *this,
         params_first,
         params_last,
-        opts,
         result,
         err,
         info
@@ -94,20 +134,18 @@ void boost::mysql::statement<Stream>::execute(
 
 template <class Stream>
 template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
-void boost::mysql::statement<Stream>::execute(
+void boost::mysql::statement<Stream>::start_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
-    const execute_options& opts,
-    resultset<Stream>& result
+    execution_state& result
 )
 {
     detail::error_block blk;
-    detail::execute_statement(
+    detail::start_statement_execution(
         get_channel(),
         *this,
         params_first,
         params_last,
-        opts,
         result,
         blk.err,
         blk.info
@@ -120,21 +158,19 @@ template <
     BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::statement<Stream>::async_execute(
+boost::mysql::statement<Stream>::async_start_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
-    const execute_options& opts,
-    resultset<Stream>& result,
+    execution_state& result,
     error_info& output_info,
     CompletionToken&& token
 )
 {
-    return detail::async_execute_statement(
+    return detail::async_start_statement_execution(
         get_channel(),
         *this,
         params_first,
         params_last,
-        opts,
         result,
         output_info,
         std::forward<CompletionToken>(token)

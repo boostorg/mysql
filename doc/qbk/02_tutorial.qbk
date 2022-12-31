@@ -13,7 +13,7 @@ Welcome to Boost.Mysql's tutorial. We will go through the simplest
 possible piece of code using Boost.Mysql: a program that connects
 to the MySQL server and issues the query `SELECT "Hello World!"`.
 
-This tutorial assumes you have a running MySQL server listening
+To run this tutorial, you need a running MySQL server listening
 in localhost on port 3306 (the default one). You should have
 the credentials of a valid MySQL user (username and password).
 No further setup is needed.
@@ -46,7 +46,8 @@ which accepts two parameters:
 
 * The first one specifies the network address of the MySQL server.
   As we are using TCP, this is a [asioreflink ip__tcp/endpoint ip::tcp::endpoint],
-  identifying the host and port to connect to.
+  identifying the host and port to connect to. We will use a `boost::asio::ip::tcp::resolver`
+  to convert the string hostname into a `boost::asio::ip::tcp::endpoint`.
 * The second one is a collection of MySQL handshake parameters, including
   username and password. This parameter must be an instance of
   [reflink handshake_params]. You may also set other options like
@@ -65,33 +66,25 @@ which accepts two parameters:
 The next step is to issue the query to the server. We will use
 [reflink2 connection.query tcp_ssl_connection::query],
 which accepts a string containing a single SQL query and instructs
-the server to run it. It returns a [reflink tcp_ssl_resultset] 
-object, which allows to read the query results:
+the server to run it. It returns a [reflink resultset] 
+object, containing the rows returned by the query:
 
 [tutorial_query]
 
-[heading Reading the results]
+[heading Obtaining the results]
 
-A [reflink resultset] is an object that represents the result of a query.
-Resultsets are not containers, but I/O objects:
-they do not contain by themselves the entire result of the query, but allow
-the user to read it using several methods. We will use
-[reflink2 resultset.read_all tcp_ssl_resultset::read_all], which
-reads all the rows in the resultset and places them in a [reflink rows]
-object:
+A [reflink resultset] is an object that holds the result of a query in memory.
+To obtain the value we selected, we can write:
 
-[tutorial_read]
+[tutorial_resultset]
 
-A [reflink rows] object is a matrix-like container of MySQL fields.
-Each field is represented as a [reflink field_view], a variant-like class that
-can hold any type allowed in MySQL.
-
-[tutorial_fields]
-
-The operation `all_rows.at(0)` returns the first row from the `all_rows`
-container. From that row, we select the first field using `.at(0)` again.
-We finally stream the returned `field_view`
-to `std::cout`, which prints the expected phrase to the console.
+Let's break this into steps:
+* [refmem resultset rows] returns all the rows that this resultset contains.
+  It returns a [reflink rows_view], which is a matrix-like structure.
+* `result.rows().at(0)` returns the first row in the resultset, represented as a [reflink row_view].
+* `result.rows().at(0).at(0)` returns the first field in the first row. This is a
+  [reflink field_view], a variant-like class that can hold any type allowed in MySQL.
+* The obtained `field_view` is streamed to `std::cout`.
 
 [heading Closing the connection]
 
@@ -104,7 +97,7 @@ we are closing the connection, and thus may fail.
 
 [heading Final notes]
 
-This concludes our __Self__ tutorial! You can now learn more about the
+This concludes our tutorial! You can now learn more about the
 core functionality of this library in the [link mysql.overview overview section].
 You can also look at more complex [link mysql.examples examples].
 

@@ -5,10 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/stringize.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -107,15 +108,18 @@ BOOST_AUTO_TEST_SUITE(move_ctor)
 BOOST_AUTO_TEST_CASE(empty)
 {
     row r1;
+    row_view rv(r1);
     row r2(std::move(r1));
     r1 = makerow(42, "test");  // r2 should be independent of r1
 
     BOOST_TEST(r2.empty());
+    BOOST_TEST(rv.empty());  // references still valid
 }
 
 BOOST_AUTO_TEST_CASE(non_strings)
 {
     row r1 = makerow(42, 5.0f);
+    row_view rv(r1);
     const field_view* begin_before = r1.begin();  // iterators are not invalidated by move
     row r2(std::move(r1));
     r1 = makerow(42, "test");  // r2 should be independent of r1
@@ -124,11 +128,13 @@ BOOST_AUTO_TEST_CASE(non_strings)
     BOOST_TEST(r2[0] == field_view(42));
     BOOST_TEST(r2[1] == field_view(5.0f));
     BOOST_TEST(r2.begin() == begin_before);
+    BOOST_TEST(rv == r2);  // references still valid
 }
 
 BOOST_AUTO_TEST_CASE(strings)
 {
     row r1 = makerow("", 42, "test");
+    row_view rv(r1);
     const char* str_begin_before = r1[2].as_string().data();  // ptrs to strs not invalidated
     row r2(std::move(r1));
     r1 = makerow("another_string", 4.2f, "");  // r2 should be independent of r1
@@ -137,6 +143,7 @@ BOOST_AUTO_TEST_CASE(strings)
     BOOST_TEST(r2[0] == field_view(""));
     BOOST_TEST(r2[1] == field_view(42));
     BOOST_TEST(r2[2] == field_view("test"));
+    BOOST_TEST(rv == r2);  // references still valid
 
     // Check that pointers to strings are not invalidated.
     // Cast them to void* so that UTF doesn't try to print them and
@@ -223,15 +230,18 @@ BOOST_AUTO_TEST_CASE(empty)
 {
     row r1 = makerow(42, "abcdef");
     row r2;
+    row_view rv(r2);
     r1 = std::move(r2);
     r2 = makerow(90, nullptr);  // r1 is independent of r2
     BOOST_TEST(r1.empty());
+    BOOST_TEST(rv == r1);
 }
 
 BOOST_AUTO_TEST_CASE(non_strings)
 {
     row r1 = makerow(42, "abcdef");
     row r2 = makerow(50.0f, nullptr, 80u);
+    row_view rv(r2);
     r1 = std::move(r2);
     r2 = makerow("abc", 80, nullptr);  // r1 is independent of r2
 
@@ -239,12 +249,14 @@ BOOST_AUTO_TEST_CASE(non_strings)
     BOOST_TEST(r1[0] == field_view(50.0f));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view(80u));
+    BOOST_TEST(rv == r1);
 }
 
 BOOST_AUTO_TEST_CASE(strings)
 {
     row r1 = makerow(42, "abcdef");
     row r2 = makerow("a_very_long_string", nullptr, "");
+    row_view rv(r2);
     r1 = std::move(r2);
     r2 = makerow("another_string", 90, "yet_another");  // r1 is independent of r2
 
@@ -252,18 +264,21 @@ BOOST_AUTO_TEST_CASE(strings)
     BOOST_TEST(r1[0] == field_view("a_very_long_string"));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view(""));
+    BOOST_TEST(rv == r1);
 }
 
 BOOST_AUTO_TEST_CASE(strings_empty_to)
 {
     row r1;
     row r2 = makerow("abc", nullptr, "bcd");
+    row_view rv(r2);
     r1 = std::move(r2);
 
     BOOST_TEST(r1.size() == 3u);
     BOOST_TEST(r1[0] == field_view("abc"));
     BOOST_TEST(r1[1] == field_view());
     BOOST_TEST(r1[2] == field_view("bcd"));
+    BOOST_TEST(rv == r1);
 }
 
 BOOST_AUTO_TEST_CASE(self_assignment_empty)

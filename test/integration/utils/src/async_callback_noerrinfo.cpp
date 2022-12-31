@@ -8,21 +8,19 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/errc.hpp>
 #include <boost/mysql/error.hpp>
-#include <boost/mysql/execute_options.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/resultset_base.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement_base.hpp>
-#include <boost/mysql/use_views.hpp>
 
 #include <memory>
 
 #include "er_connection.hpp"
 #include "er_impl_common.hpp"
 #include "er_network_variant.hpp"
-#include "er_resultset.hpp"
 #include "er_statement.hpp"
 #include "get_endpoint.hpp"
 #include "handler_call_tracker.hpp"
@@ -31,12 +29,12 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-using boost::mysql::execute_options;
+using boost::mysql::execution_state;
 using boost::mysql::field_view;
 using boost::mysql::handshake_params;
+using boost::mysql::resultset;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
-using boost::mysql::use_views;
 
 namespace {
 
@@ -71,65 +69,38 @@ network_result<R> impl(Callable&& cb)
 }
 
 template <class Stream>
-class async_callback_noerrinfo_resultset : public er_resultset_base<Stream>
-{
-public:
-    network_result<row_view> read_one() override
-    {
-        return impl<row_view>([&](handler<row_view> h) {
-            return this->obj().async_read_one(use_views, std::move(h));
-        });
-    }
-    network_result<rows_view> read_some() override
-    {
-        return impl<rows_view>([&](handler<rows_view> h) {
-            return this->obj().async_read_some(use_views, std::move(h));
-        });
-    }
-    network_result<rows_view> read_all() override
-    {
-        return impl<rows_view>([&](handler<rows_view> h) {
-            return this->obj().async_read_all(use_views, std::move(h));
-        });
-    }
-};
-
-template <class Stream>
 class async_callback_noerrinfo_statement : public er_statement_base<Stream>
 {
 public:
-    network_result<no_result> execute_tuple_1(
-        field_view param,
-        const execute_options& opts,
-        er_resultset& result
-    ) override
-    {
-        return impl<no_result>([&](handler<no_result> h) {
-            return this->obj()
-                .async_execute(std::make_tuple(param), opts, this->cast(result), std::move(h));
-        });
-    }
-    network_result<no_result> execute_tuple_2(
+    network_result<no_result> execute_tuple2(
         field_view param1,
         field_view param2,
-        er_resultset& result
+        resultset& result
     ) override
     {
         return impl<no_result>([&](handler<no_result> h) {
-            return this->obj()
-                .async_execute(std::make_tuple(param1, param2), this->cast(result), std::move(h));
+            return this->obj().async_execute(std::make_tuple(param1, param2), result, std::move(h));
         });
     }
-    network_result<no_result> execute_it(
-        value_list_it params_first,
-        value_list_it params_last,
-        const execute_options& opts,
-        er_resultset& result
+    network_result<no_result> start_execution_tuple2(
+        field_view param1,
+        field_view param2,
+        execution_state& st
     ) override
     {
         return impl<no_result>([&](handler<no_result> h) {
             return this->obj()
-                .async_execute(params_first, params_last, opts, this->cast(result), std::move(h));
+                .async_start_execution(std::make_tuple(param1, param2), st, std::move(h));
+        });
+    }
+    network_result<no_result> start_execution_it(
+        value_list_it params_first,
+        value_list_it params_last,
+        execution_state& st
+    ) override
+    {
+        return impl<no_result>([&](handler<no_result> h) {
+            return this->obj().async_start_execution(params_first, params_last, st, std::move(h));
         });
     }
     network_result<no_result> close() override
@@ -167,10 +138,16 @@ public:
             return this->conn_.async_handshake(params, std::move(h));
         });
     }
-    network_result<no_result> query(boost::string_view query, er_resultset& result) override
+    network_result<no_result> query(boost::string_view query, resultset& result) override
     {
         return impl<no_result>([&](handler<no_result> h) {
-            return this->conn_.async_query(query, this->cast(result), std::move(h));
+            return this->conn_.async_query(query, result, std::move(h));
+        });
+    }
+    network_result<no_result> start_query(boost::string_view query, execution_state& st) override
+    {
+        return impl<no_result>([&](handler<no_result> h) {
+            return this->conn_.async_start_query(query, st, std::move(h));
         });
     }
     network_result<no_result> prepare_statement(boost::string_view statement, er_statement& stmt)
@@ -178,6 +155,18 @@ public:
     {
         return impl<no_result>([&](handler<no_result> h) {
             return this->conn_.async_prepare_statement(statement, this->cast(stmt), std::move(h));
+        });
+    }
+    network_result<row_view> read_one_row(execution_state& st) override
+    {
+        return impl<row_view>([&](handler<row_view> h) {
+            return this->conn_.async_read_one_row(st, std::move(h));
+        });
+    }
+    network_result<rows_view> read_some_rows(execution_state& st) override
+    {
+        return impl<rows_view>([&](handler<rows_view> h) {
+            return this->conn_.async_read_some_rows(st, std::move(h));
         });
     }
     network_result<no_result> quit() override
@@ -198,8 +187,7 @@ template <class Stream>
 class async_callback_noerrinfo_variant : public er_network_variant_base<
                                              Stream,
                                              async_callback_noerrinfo_connection,
-                                             async_callback_noerrinfo_statement,
-                                             async_callback_noerrinfo_resultset>
+                                             async_callback_noerrinfo_statement>
 {
 public:
     const char* variant_name() const override { return "async_callback_noerrinfo"; }

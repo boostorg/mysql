@@ -23,9 +23,6 @@ using unix_connection = connection<boost::asio::local::stream_protocol::socket>;
 /// The statement type to use with \ref unix_connection.
 using unix_statement = typename unix_connection::statement_type;
 
-/// The resultset type to use with \ref unix_connection.
-using unix_resultset = typename unix_connection::resultset_type;
-
 #endif
 
 }  // namespace mysql

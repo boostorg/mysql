@@ -26,9 +26,13 @@ inline error_code make_error_code(errc error);
 
 /**
  * \brief Additional information about error conditions
- * \details Contains an error message describing what happened. Not all error
+ * \details
+ * Contains an error message describing what happened. Not all error
  * conditions are able to generate this extended information - those that
  * can't have an empty error message.
+ *\n
+ * \ref message is encoded using the connection's character set. It's generated
+ * by the server, and may potentially contain user input.
  */
 class error_info
 {
@@ -44,7 +48,7 @@ public:
     /// Gets the error message.
     const std::string& message() const noexcept { return msg_; }
 
-    /// Sets the error message.
+    // TODO: hide this
     void set_message(std::string&& err) { msg_ = std::move(err); }
 
     /// Restores the object to its initial state.

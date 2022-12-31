@@ -25,15 +25,14 @@ namespace mysql {
  * A `row_view` points to memory owned by an external entity (like `string_view` does). The validity
  * of a `row_view` depends on how it was obtained:
  * \n
- *  - If it was constructed from a \ref row object (by calling \ref row::operator row_view()), the
- *    view acts as a reference to the row's allocated memory, and is valid as long as references
- *    to that row element's are valid.
- *  - If it was obtained by indexing a \ref rows object, the same applies.
- *  - If it was obtained by indexing a \ref rows_view object, it's valid as long as the
+ * \li If it was constructed from a \ref row object (by calling \ref row::operator row_view()), the
+ *     view acts as a reference to the row's allocated memory, and is valid as long as references
+ *     to that row element's are valid.
+ * \li If it was obtained by indexing a \ref rows object, the same applies.
+ * \li If it was obtained by indexing a \ref rows_view object, it's valid as long as the
  *    `rows_view` is valid.
- *  - If it was obtained by a call to `resultset::read_xxx` or similar functions taking a \ref
- *    use_views_t parameter, it's valid until the underlying \ref connection performs the next
- *    network call or is destroyed.
+ * \li If it was obtained by a call to \ref connection::read_one_row, it's valid until the
+ *     `connection` performs the next network call or is destroyed.
  * \n
  * Calling any member function on an invalid view results in undefined behavior.
  * \n

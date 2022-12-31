@@ -10,12 +10,13 @@
 
 #pragma once
 
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/statement_base.hpp>
+
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/statement_base.hpp>
 
 #include <boost/asio/buffer.hpp>
 
@@ -217,7 +218,9 @@ void boost::mysql::detail::prepare_statement(
     }
 }
 
-template <class Stream, class CompletionToken>
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,

@@ -7,9 +7,8 @@
 
 [section:other_streams UNIX sockets and other stream types]
 
-All I/O objects ([reflink connection], [reflink statement]
-and [reflink resultset]) are templatized on the stream type.
-Any object fulfilling the __Stream__ concept may be used
+I/O objects ([reflink connection] and [reflink statement])
+are templatized on the stream type. Any object fulfilling the __Stream__ concept may be used
 as template argument.
 
 [heading Convenience type aliases]
@@ -26,44 +25,32 @@ This library provides helper type aliases for the most common cases:
         [SSL over TCP]
         [`boost::asio::ssl::stream<boost::asio::ip::tcp::socket>`]
         [
-            [reflink tcp_ssl_connection]
-
+            [reflink tcp_ssl_connection][br]
             [reflink tcp_ssl_statement]
-
-            [reflink tcp_ssl_resultset]
         ]
     ]
     [
         [Plaintext TCP]
         [`boost::asio::ip::tcp::socket`]
         [
-            [reflink tcp_connection]
-
+            [reflink tcp_connection][br]
             [reflink tcp_statement]
-
-            [reflink tcp_resultset]
         ]
     ]
     [
         [SSL over UNIX sockets]
         [`boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>`]
         [
-            [reflink unix_ssl_connection]
-
+            [reflink unix_ssl_connection][br]
             [reflink unix_ssl_statement]
-
-            [reflink unix_ssl_resultset]
         ]
     ]
     [
         [Plaintext UNIX sockets]
         [`boost::asio::local::stream_protocol::socket`]
         [
-            [reflink unix_connection]
-
+            [reflink unix_connection][br]
             [reflink unix_statement]
-
-            [reflink unix_resultset]
         ]
     ]
 ]
@@ -75,7 +62,7 @@ Note that the UNIX socket type aliases only exist when the macro
 [link mysql.examples.unix_socket This example] employs a UNIX
 domain socket to establish a connection to a MySQL server.
 
-[heading:connection Streams that are not sockets]
+[heading:non_sockets Streams that are not sockets]
 
 When the `Stream` template argument for your `connection` fulfills
 the __SocketStream__ type requirements, you can use the member functions

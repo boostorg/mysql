@@ -10,11 +10,12 @@
 
 #pragma once
 
+#include <boost/mysql/error.hpp>
+#include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/row.hpp>
+
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/resultset_base.hpp>
-#include <boost/mysql/row.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/post.hpp>
@@ -28,7 +29,7 @@ namespace detail {
 template <class Stream>
 inline rows_view process_some_rows(
     channel<Stream>& channel,
-    resultset_base& result,
+    execution_state& st,
     error_code& err,
     error_info& info
 )
@@ -40,7 +41,7 @@ inline rows_view process_some_rows(
     while (channel.has_read_messages())
     {
         // Get the row message
-        auto message = channel.next_read_message(result.sequence_number(), err);
+        auto message = channel.next_read_message(st.sequence_number(), err);
         if (err)
             return rows_view();
 
@@ -49,7 +50,7 @@ inline rows_view process_some_rows(
             message,
             channel.current_capabilities(),
             channel.buffer_first(),
-            result,
+            st,
             channel.shared_fields(),
             err,
             info
@@ -61,7 +62,7 @@ inline rows_view process_some_rows(
         // will point into the channel's internal buffer
 
         // If we received an EOF, we're done
-        if (result.complete())
+        if (st.complete())
             break;
         ++num_rows;
     }
@@ -69,8 +70,8 @@ inline rows_view process_some_rows(
 
     return rows_view(
         channel.shared_fields().data(),
-        num_rows * result.fields().size(),
-        result.fields().size()
+        num_rows * st.fields().size(),
+        st.fields().size()
     );
 }
 
@@ -79,14 +80,10 @@ struct read_some_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     error_info& output_info_;
-    resultset_base& resultset_;
+    execution_state& st_;
 
-    read_some_rows_op(
-        channel<Stream>& chan,
-        error_info& output_info,
-        resultset_base& result
-    ) noexcept
-        : chan_(chan), output_info_(output_info), resultset_(result)
+    read_some_rows_op(channel<Stream>& chan, error_info& output_info, execution_state& st) noexcept
+        : chan_(chan), output_info_(output_info), st_(st)
     {
     }
 
@@ -107,7 +104,7 @@ struct read_some_rows_op : boost::asio::coroutine
             output_info_.clear();
 
             // If the resultset is already complete, we don't need to read anything
-            if (resultset_.complete())
+            if (st_.complete())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code(), rows_view());
@@ -118,52 +115,9 @@ struct read_some_rows_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            output = process_some_rows(chan_, resultset_, err, output_info_);
+            output = process_some_rows(chan_, st_, err, output_info_);
 
             self.complete(err, output);
-        }
-    }
-};
-
-template <class Stream>
-struct read_some_rows_op_rows : boost::asio::coroutine
-{
-    channel<Stream>& chan_;
-    error_info& output_info_;
-    resultset_base& resultset_;
-    rows& output_;
-
-    read_some_rows_op_rows(
-        channel<Stream>& chan,
-        error_info& output_info,
-        resultset_base& result,
-        rows& output
-    ) noexcept
-        : chan_(chan), output_info_(output_info), resultset_(result), output_(output)
-    {
-    }
-
-    template <class Self>
-    void operator()(Self& self, error_code err = {}, rows_view rv = {})
-    {
-        // Error checking
-        if (err)
-        {
-            self.complete(err);
-            return;
-        }
-
-        // Normal path
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            // output_info already cleared by child ops
-            output_.clear();
-
-            BOOST_ASIO_CORO_YIELD
-            async_read_some_rows(chan_, resultset_, output_info_, std::move(self));
-
-            output_ = rv;
-            self.complete(err);
         }
     }
 };
@@ -175,13 +129,13 @@ struct read_some_rows_op_rows : boost::asio::coroutine
 template <class Stream>
 boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     channel<Stream>& channel,
-    resultset_base& result,
+    execution_state& st,
     error_code& err,
     error_info& info
 )
 {
     // If the resultset is already complete, we don't need to read anything
-    if (result.complete())
+    if (st.complete())
     {
         return rows_view();
     }
@@ -192,53 +146,26 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
         return rows_view();
 
     // Process read messages
-    return process_some_rows(channel, result, err, info);
+    return process_some_rows(channel, st, err, info);
 }
 
-template <class Stream>
-void boost::mysql::detail::read_some_rows(
-    channel<Stream>& channel,
-    resultset_base& result,
-    rows& output,
-    error_code& err,
-    error_info& info
-)
-{
-    // TODO: this can be optimized
-    output = read_some_rows(channel, result, err, info);
-}
-
-template <class Stream, class CompletionToken>
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+        CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
     void(boost::mysql::error_code, boost::mysql::rows_view)
 )
 boost::mysql::detail::async_read_some_rows(
     channel<Stream>& channel,
-    resultset_base& result,
+    execution_state& st,
     error_info& output_info,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
-        read_some_rows_op<Stream>(channel, output_info, result),
-        token,
-        channel
-    );
-}
-
-template <class Stream, class CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_read_some_rows(
-    channel<Stream>& channel,
-    resultset_base& result,
-    rows& output,
-    error_info& output_info,
-    CompletionToken&& token
-)
-{
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        read_some_rows_op_rows<Stream>(channel, output_info, result, output),
+        read_some_rows_op<Stream>(channel, output_info, st),
         token,
         channel
     );

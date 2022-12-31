@@ -62,22 +62,17 @@ void main_impl(int argc, char** argv)
     //[tutorial_query
     // Issue the SQL query to the server
     const char* sql = "SELECT \"Hello world!\"";
-    boost::mysql::tcp_ssl_resultset result;
+    boost::mysql::resultset result;
     conn.query(sql, result);
     //]
 
-    //[tutorial_read
-    // Read the query results into memory
-    boost::mysql::rows all_rows;
-    result.read_all(all_rows);
-    //]
-
-    //[tutorial_fields
+    //[tutorial_resultset
     // Print the first field in the first row
-    std::cout << all_rows.at(0).at(0) << std::endl;
+    std::cout << result.rows().at(0).at(0) << std::endl;
     //]
 
     //[tutorial_close
+    // Close the connection
     conn.close();
     //]
 }

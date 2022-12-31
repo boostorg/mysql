@@ -6,8 +6,8 @@
 //
 
 //[example_ssl
+
 #include <boost/mysql.hpp>
-#include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -49,9 +49,9 @@ OzBrmpfHEhF6NDU=
 
 void print_employee(boost::mysql::row_view employee)
 {
-    std::cout << "Employee '" << employee[0] << " "   // first_name (string)
-              << employee[1] << "' earns "            // last_name  (string)
-              << employee[2] << " dollars yearly\n";  // salary     (double)
+    std::cout << "Employee '" << employee.at(0) << " "   // first_name (string)
+              << employee.at(1) << "' earns "            // last_name  (string)
+              << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
 
 void main_impl(int argc, char** argv)
@@ -108,13 +108,11 @@ void main_impl(int argc, char** argv)
     conn.connect(*endpoints.begin(), params);
 
     // We can now use the connection as we would normally do.
-    const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::tcp_ssl_resultset result;
+    const char* sql = "SELECT first_name, last_name, salary FROM employee";
+    boost::mysql::resultset result;
     conn.query(sql, result);
 
-    boost::mysql::rows employees;
-    result.read_all(employees);
-    for (const auto& employee : employees)
+    for (auto employee : result.rows())
     {
         print_employee(employee);
     }

@@ -16,7 +16,6 @@ add_executable(
     # Utilities
     utils/src/get_endpoint.cpp
     utils/src/metadata_validator.cpp
-    utils/src/network_result.cpp
     utils/src/er_network_variant.cpp
     utils/src/sync_errc.cpp
     utils/src/sync_exc.cpp
@@ -28,17 +27,10 @@ add_executable(
     utils/src/default_completion_tokens.cpp
 
     # Actual tests
-    connection.cpp
-    connect.cpp
+    spotchecks.cpp
+    crud.cpp
     handshake.cpp
-    query.cpp
-    prepare_statement.cpp
-    execute_statement.cpp
-    close_statement.cpp
-    statement_lifecycle.cpp
-    resultset.cpp
-    quit_connection.cpp
-    close_connection.cpp
+    prepared_statements.cpp
     reconnect.cpp
     database_types.cpp
 

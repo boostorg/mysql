@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_ROWS_VIEW_HPP
 #define BOOST_MYSQL_ROWS_VIEW_HPP
 
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 #include <cstddef>
 
@@ -26,13 +27,12 @@ namespace mysql {
  * single row. All rows in the collection are the same size (as given by \ref num_columns).
  * \n
  * A `rows_view` object points to memory owned by an external entity (like `string_view` does). The
- * validity of a `rows_view` object depends on how it was obtained: \n
- *  - If it was constructed from a \ref rows object (by calling \ref rows::operator rows_view()),
- * the view acts as a reference to the `rows`' allocated memory, and is valid as long as references
- *    to that `rows` element's are valid.
- *  - If it was obtained by a call to `resultset::read_xxx` or similar functions taking a \ref
- *    use_views_t parameter, it's valid until the underlying \ref connection performs the next
- *    network call or is destroyed.
+ * validity of a `rows_view` object depends on how it was obtained:
+ * \li If it was constructed from a \ref rows object (by calling \ref rows::operator rows_view()),
+ *     the view acts as a reference to the `rows`' allocated memory, and is valid as long as
+ *     references to that `rows` element's are valid.
+ * \li If it was obtained by calling \ref connection::read_some_rows it's valid until the
+ *     `connection` performs the next network call or is destroyed.
  * \n
  * \ref row_view's and \ref field_view's obtained by using a `rows_view` object are valid as long as
  * the underlying storage that `*this` points to is valid. Destroying `*this` doesn't invalidate
@@ -150,10 +150,12 @@ public:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     // TODO: hide this
-    rows_view(const field_view* fields, std::size_t num_values, std::size_t num_columns) noexcept
-        : fields_(fields), num_fields_(num_values), num_columns_(num_columns)
+    rows_view(const field_view* fields, std::size_t num_fields, std::size_t num_columns) noexcept
+        : fields_(fields), num_fields_(num_fields), num_columns_(num_columns)
     {
-        assert(num_values % num_columns == 0);
+        assert(fields != nullptr || num_fields == 0);  // fields null => num_fields 0
+        assert(num_fields == 0 || num_columns != 0);   // num_fields != 0 => num_columns != 0
+        assert(num_columns == 0 || (num_fields % num_columns == 0));
     }
 #endif
 

@@ -10,9 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/error.hpp>
+
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
-#include <boost/mysql/error.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
@@ -85,7 +86,9 @@ void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& er
     }
 }
 
-template <class Stream, class CompletionToken>
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_quit_connection(
     channel<Stream>& chan,

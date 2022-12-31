@@ -9,10 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_TEST_CONNECTION_HPP
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/statement.hpp>
-
-#include <cstddef>
 
 #include "test_stream.hpp"
 
@@ -21,8 +18,6 @@ namespace mysql {
 namespace test {
 
 using test_connection = connection<test_stream>;
-using test_statement = statement<test_stream>;
-using test_resultset = resultset<test_stream>;
 
 }  // namespace test
 }  // namespace mysql

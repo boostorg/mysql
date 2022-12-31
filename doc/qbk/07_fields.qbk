@@ -10,7 +10,7 @@
 [nochunk]
 
 This section delves deeper on how to use [reflink field] and [reflink field_view]
-and its underlying types. Please make sure you've read [link mysql.overview.rows_fields.fields this section]
+and its underlying types. Please make sure you've read [link mysql.overview.fields this section]
 before going on.
 
 [section field_view vs field]
@@ -22,20 +22,20 @@ and [reflink field], which is owning. The relationship between them is similar t
 For efficiency reasons, all library functions return `field_view`s. For example:
 
 ```
-    row r;
-    // read it using resultset::read_one or a similar function
-    field_view fv = r.at(0); // fv doesn't own its memory; if r goes out of scope, fv becomes invalid
-    boost::string_view sv = fv.as_string(); // sv also points into r; if r goes out of scope, sv becomes invalid
+    resultset result;
+    conn.query("SELECT 'Hello world!'", result);
+    field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
+    boost::string_view sv = fv.as_string(); // sv also points into result; if result goes out of scope, sv becomes invalid
 ```
 
 When dealing with scalars (anything that is neither a string nor a blob), `field_view`'s accessors make
 a copy of the scalar:
 
 ```
-    row r;
-    // read it using resultset::read_one or a similar function
-    field_view fv = r.at(0); // fv doesn't own its memory; if r goes out of scope, fv becomes invalid
-    std::int64_t intv = fv.as_int64(); // intv is valid even after r goes out of scope
+    resultset result;
+    conn.query("SELECT 42", result);
+    field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
+    std::int64_t intv = fv.as_int64(); // intv is valid even after result goes out of scope
 ```
 
 `field_view`s are cheap to create and to copy, as they are small objects and don't perform
@@ -45,10 +45,10 @@ expensive to create and copy, as they may perform memory allocations.
 You may create a `field` from a `field_view`, taking ownership of its contents:
 
 ```
-    row r;
-    // read it using resultset::read_one or a similar function
-    field_view fv = r.at(0); // fv doesn't own its memory; if r goes out of scope, fv becomes invalid
-    field f (fv); // f takes ownership of fv's contents. f is valid even after r goes out of scope
+    resultset result;
+    conn.query("SELECT 'Hello world!'", result);
+    field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
+    field f (fv); // f takes ownership of fv's contents. f is valid even after result goes out of scope
 ```
 
 `field` and `field_view` use the same underlying types for scalars. For strings and blobs,

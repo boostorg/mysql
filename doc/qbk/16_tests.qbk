@@ -53,7 +53,7 @@ Next, define the following environment variables:
 * If you are using MySQL 5.x or MariaDB, define `BOOST_MYSQL_NO_SHA256_TESTS=1`. These servers don't support part of the functionality we test.
 
 If you are using `b2`, you can build the targets `boost/mysql/example//boost_mysql_all_examples`,
-`boost/mysql/test//boost_mysql_integrationtests` and `boost/mysql/test` to build and run the tests.
+`boost/mysql/test/integration//boost_mysql_integrationtests` and `boost/mysql/test` to build and run the tests.
 
 If you are using `cmake`, add `-DBOOST_MYSQL_INTEGRATION_TESTS=ON` to enable building and running integration tests
 and examples, and then test regularly with `ctest`.

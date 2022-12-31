@@ -8,14 +8,13 @@
 //[example_prepared_statements
 
 #include <boost/mysql.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <iostream>
+#include <random>
 #include <tuple>
 
 #define ASSERT(expr)                                          \
@@ -25,13 +24,26 @@
         exit(1);                                              \
     }
 
+double generate_random_payrise()
+{
+    std::random_device dev;
+    std::default_random_engine eng(dev());
+    std::uniform_real_distribution<> dist(500.0, 3000.0);
+    return dist(eng);
+}
+
 void main_impl(int argc, char** argv)
 {
-    if (argc != 4)
+    if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
+        std::cerr << "Usage: " << argv[0]
+                  << " <username> <password> <server-hostname> [employee-first-name]\n";
         exit(1);
     }
+
+    // The first_name of the employee we will be working with. This
+    // is user-supplied input, and should be treated as untrusted.
+    const char* first_name = argc == 5 ? argv[4] : "Efficient";
 
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
@@ -70,66 +82,51 @@ void main_impl(int argc, char** argv)
      * We prepare two statements, a SELECT and an UPDATE.
      */
     //[prepared_statements_prepare
-    const char* salary_getter_sql = "SELECT salary FROM employee WHERE first_name = ?";
     boost::mysql::tcp_ssl_statement salary_getter;
-    conn.prepare_statement(salary_getter_sql, salary_getter);
+    conn.prepare_statement("SELECT salary FROM employee WHERE first_name = ?", salary_getter);
     //]
 
     // num_params() returns the number of parameters (question marks)
     ASSERT(salary_getter.num_params() == 1);
 
-    const char* salary_updater_sql = "UPDATE employee SET salary = ? WHERE first_name = ?";
     boost::mysql::tcp_ssl_statement salary_updater;
-    conn.prepare_statement(salary_updater_sql, salary_updater);
+    conn.prepare_statement(
+        "UPDATE employee SET salary = salary + ? WHERE first_name = ?",
+        salary_updater
+    );
     ASSERT(salary_updater.num_params() == 2);
 
-    // TODO: update this
     /*
      * Once a statement has been prepared, it can be executed as many times as
-     * desired, by calling statement::execute(). execute takes as input a
-     * (possibly empty) collection of boost::mysql::value's and returns a resultset (by lvalue
-     * reference). The returned resultset works the same as the one returned by connection::query().
-     *
-     * The parameters passed to execute() are replaced in the order of declaration:
-     * the first question mark will be replaced by the first passed parameter,
-     * the second question mark by the second parameter and so on. The number
-     * of passed parameters must match exactly the number of parameters for
-     * the prepared statement.
-     *
-     * Any collection providing member functions begin() and end() returning
-     * forward iterators to boost::mysql::field_view's is acceptable. We use
-     * boost::mysql::make_field_views(), which creates a std::array with the passed in values
-     * converted to boost::mysql::field_view's.
+     * desired, by calling statement::execute(). Parameter actual values are provided
+     * as a std::tuple. Executing a statement yields a resultset.
      */
     //[prepared_statements_execute
-    boost::mysql::tcp_ssl_resultset result;
-    salary_getter.execute(std::make_tuple("Efficient"), result);
-
-    boost::mysql::rows salaries;
-    result.read_all(salaries);  // Get all the results
+    boost::mysql::resultset select_result, update_result;
+    salary_getter.execute(std::make_tuple(first_name), select_result);
     //]
-    ASSERT(salaries.size() == 1);
-    double salary = salaries[0].at(0).as_double();  // First row, first column, cast to double
-    std::cout << "The salary before the payrise was: " << salary << std::endl;
+
+    // First row, first column, cast to double
+    double old_salary = select_result.rows().at(0).at(0).as_double();
+    std::cout << "The salary before the payrise was: " << old_salary << std::endl;
 
     // Run the update. In this case, we must pass in two parameters.
-    salary_updater.execute(std::make_tuple(35000.0, "Efficient"), result);
-    ASSERT(result.complete());  // an UPDATE never returns rows
+    double payrise = generate_random_payrise();
+    salary_updater.execute(std::make_tuple(payrise, first_name), update_result);
+    ASSERT(update_result.rows().empty());  // an UPDATE never returns rows
 
     /**
      * Execute the select again. We can execute a prepared statement
      * as many times as we want. We do NOT need to call
      * connection::prepare_statement() again.
      */
-    salary_getter.execute(std::make_tuple("Efficient"), result);
-    result.read_all(salaries);
-    salary = salaries.at(0).at(0).as_double();
-    ASSERT(salary == 35000);  // Our update took place, and the dev got his pay rise
-    std::cout << "The salary after the payrise was: " << salary << std::endl;
+    salary_getter.execute(std::make_tuple(first_name), select_result);
+    double new_salary = select_result.rows().at(0).at(0).as_double();
+    ASSERT(new_salary > old_salary);  // Our update took place
+    std::cout << "The salary after the payrise was: " << new_salary << std::endl;
 
     /**
      * Close the statements. Closing a statement deallocates it from the server.
-     * Once a statement is closed, trying to execute it will return an error.
      *
      * Closing statements implies communicating with the server and can thus fail.
      *

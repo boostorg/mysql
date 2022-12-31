@@ -31,7 +31,6 @@ public:
     virtual const char* variant_name() const = 0;
     std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }
     virtual er_connection_ptr create_connection(boost::asio::io_context::executor_type, boost::asio::ssl::context&) = 0;
-    virtual er_resultset_ptr create_resultset() = 0;
     virtual er_statement_ptr create_statement() = 0;
 };
 

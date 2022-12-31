@@ -10,12 +10,15 @@
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
 
+#include <boost/utility/string_view_fwd.hpp>
+
+#include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <cassert>
 
 #include "buffer_concat.hpp"
 
@@ -64,6 +67,142 @@ inline std::vector<std::uint8_t> create_message(
         create_message(seqnum1, std::move(body1)),
         create_message(seqnum2, std::move(body2)),
         create_message(seqnum3, std::move(body3))
+    );
+}
+
+template <class... Args>
+std::vector<std::uint8_t> serialize_to_vector(const Args&... args)
+{
+    std::vector<std::uint8_t> res;
+    detail::serialization_context ctx(detail::capabilities(0));
+    std::size_t size = detail::get_size(ctx, args...);
+    res.resize(size);
+    ctx.set_first(res.data());
+    detail::serialize(ctx, args...);
+    return res;
+}
+
+inline detail::ok_packet create_ok_packet(
+    std::uint64_t affected_rows = 0,
+    std::uint64_t last_insert_id = 0,
+    std::uint16_t status_flags = 0,
+    std::uint16_t warnings = 0,
+    boost::string_view info = ""
+)
+{
+    return detail::ok_packet{
+        detail::int_lenenc{affected_rows},
+        detail::int_lenenc{last_insert_id},
+        status_flags,
+        warnings,
+        detail::string_lenenc{info},
+    };
+}
+
+inline std::vector<std::uint8_t> create_ok_packet_message(
+    std::uint8_t seqnum,
+    std::uint64_t affected_rows = 0,
+    std::uint64_t last_insert_id = 0,
+    std::uint16_t status_flags = 0,
+    std::uint16_t warnings = 0,
+    boost::string_view info = "",
+    std::uint8_t header = 0xfe
+)
+{
+    auto pack = create_ok_packet(affected_rows, last_insert_id, status_flags, warnings, info);
+    return create_message(
+        seqnum,
+        serialize_to_vector(
+            std::uint8_t(header),
+            pack.affected_rows,
+            pack.last_insert_id,
+            pack.status_flags,
+            pack.warnings,
+            pack.info
+        )
+    );
+}
+
+inline std::vector<std::uint8_t> create_ok_packet_message_execute(
+    std::uint8_t seqnum,
+    std::uint64_t affected_rows = 0,
+    std::uint64_t last_insert_id = 0,
+    std::uint16_t status_flags = 0,
+    std::uint16_t warnings = 0,
+    boost::string_view info = ""
+)
+{
+    return create_ok_packet_message(
+        seqnum,
+        affected_rows,
+        last_insert_id,
+        status_flags,
+        warnings,
+        info,
+        0x00
+    );
+}
+
+inline std::vector<std::uint8_t> create_err_packet_message(
+    std::uint8_t seqnum,
+    errc code,
+    boost::string_view message = ""
+)
+{
+    detail::err_packet pack{
+        static_cast<std::uint16_t>(code),
+        detail::string_fixed<1>{},
+        detail::string_fixed<5>{},
+        detail::string_eof{message}};
+
+    return create_message(
+        seqnum,
+        serialize_to_vector(
+            std::uint8_t(0xff),
+            pack.error_code,
+            pack.sql_state_marker,
+            pack.sql_state,
+            pack.error_message
+        )
+    );
+}
+
+inline std::vector<std::uint8_t> create_coldef_message(
+    std::uint8_t seqnum,
+    detail::protocol_field_type type,
+    boost::string_view name = "mycol"
+)
+{
+    boost::mysql::detail::column_definition_packet pack{
+        detail::string_lenenc("def"),
+        detail::string_lenenc("mydb"),
+        detail::string_lenenc("mytable"),
+        detail::string_lenenc("mytable"),
+        detail::string_lenenc(name),
+        detail::string_lenenc(name),
+        boost::mysql::collation::utf8_general_ci,
+        10,  // column_length
+        type,
+        0,  // flags
+        0,  // decimals
+    };
+    return create_message(
+        seqnum,
+        serialize_to_vector(
+            pack.catalog,
+            pack.schema,
+            pack.table,
+            pack.org_table,
+            pack.name,
+            pack.org_name,
+            boost::mysql::detail::int_lenenc(0x0c),  // length of fixed fields
+            pack.character_set,
+            pack.column_length,
+            pack.type,
+            pack.flags,
+            pack.decimals,
+            std::uint16_t(0)  // padding
+        )
     );
 }
 

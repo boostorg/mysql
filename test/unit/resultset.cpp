@@ -6,111 +6,109 @@
 //
 
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/resultset.hpp>
+
+#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/protocol_types.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-#include "create_resultset.hpp"
-#include "test_channel.hpp"
-#include "test_stream.hpp"
+#include "create_execution_state.hpp"
+#include "create_message.hpp"
+#include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using resultset_t = boost::mysql::resultset<boost::mysql::test::test_stream>;
 using boost::mysql::column_type;
-using boost::mysql::detail::column_definition_packet;
+using boost::mysql::resultset;
+using boost::mysql::detail::int_lenenc;
 using boost::mysql::detail::ok_packet;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
+using boost::mysql::detail::string_lenenc;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_resultset)
 
-test_channel chan = create_channel();
-
-BOOST_AUTO_TEST_CASE(default_ctor)
+BOOST_AUTO_TEST_CASE(has_value)
 {
-    resultset_t r;
-    BOOST_TEST(!r.valid());
+    // Default construction
+    resultset result;
+    BOOST_TEST_REQUIRE(!result.has_value());
+
+    // Populate it
+    result.state().complete(create_ok_packet(4, 1, 0, 3, "info"));
+
+    // It's now valid
+    BOOST_TEST_REQUIRE(result.has_value());
+    BOOST_TEST(result.meta().size() == 0u);
+    BOOST_TEST(result.rows().size() == 0u);
+    BOOST_TEST(result.affected_rows() == 4u);
+    BOOST_TEST(result.last_insert_id() == 1u);
+    BOOST_TEST(result.warning_count() == 3u);
+    BOOST_TEST(result.info() == "info");
 }
 
-BOOST_AUTO_TEST_CASE(member_fns)
+BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construction
-    resultset_t r;
-    test_channel chan = create_channel();
-    BOOST_TEST(!r.valid());
+    // Construct a resultset with value
+    resultset result;
+    result.mutable_rows() = makerows(1, "abc", nullptr);
+    result.state(
+    ) = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
+    result.state().complete(create_ok_packet(2, 3, 0, 4, "small"));
 
-    // Reset
-    r.reset(&chan, resultset_encoding::binary);
-    BOOST_TEST(r.valid());
-    BOOST_TEST(!r.complete());
-    BOOST_TEST(r.meta().size() == 0u);
+    // Obtain references
+    auto rws = result.rows();
+    auto meta = result.meta();
+    auto info = result.info();
 
-    // Add meta
-    column_definition_packet pack{};
-    pack.type = protocol_field_type::var_string;
-    r.add_meta(pack);
-    pack.type = protocol_field_type::bit;
-    r.add_meta(pack);
+    // Move construct
+    resultset result2(std::move(result));
+    result = resultset();  // Regression check - std::string impl SBO buffer
 
-    BOOST_TEST(!r.complete());
-    BOOST_TEST(r.meta().size() == 2u);
-    BOOST_TEST(r.meta()[0].type() == column_type::varchar);
-    BOOST_TEST(r.meta()[1].type() == column_type::bit);
+    // Make sure that views are still valid
+    BOOST_TEST(rws == makerows(1, "abc", nullptr));
+    BOOST_TEST(meta.at(0).type() == column_type::varchar);
+    BOOST_TEST(info == "small");
 
-    // Complete the resultset
-    r.complete(ok_packet{});
-    BOOST_TEST(r.complete());
-
-    // Reset
-    r.reset(&chan, resultset_encoding::binary);
-    BOOST_TEST(r.valid());
-    BOOST_TEST(!r.complete());
-    BOOST_TEST(r.meta().size() == 0u);
+    // The new object holds the same data
+    BOOST_TEST_REQUIRE(result2.has_value());
+    BOOST_TEST(result2.rows() == makerows(1, "abc", nullptr));
+    BOOST_TEST(result2.meta().at(0).type() == column_type::varchar);
+    BOOST_TEST(result2.info() == "small");
 }
 
-BOOST_AUTO_TEST_CASE(move_ctor_from_invalid)
+BOOST_AUTO_TEST_CASE(move_assignment)
 {
-    resultset_t r1;
-    resultset_t r2(std::move(r1));
-    BOOST_TEST(!r2.valid());
-}
+    // Construct a resultset with value
+    resultset result;
+    result.mutable_rows() = makerows(1, "abc", nullptr);
+    result.state(
+    ) = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
+    result.state().complete(create_ok_packet(2, 3, 0, 4, "small"));
 
-BOOST_AUTO_TEST_CASE(move_ctor_from_valid)
-{
-    auto r1 = create_resultset<resultset_t>(
-        resultset_encoding::binary,
-        {protocol_field_type::varchar}
-    );
-    resultset_t r2(std::move(r1));
-    BOOST_TEST(r2.valid());
-    BOOST_TEST(!r2.complete());
-    BOOST_TEST(r2.meta().size() == 1u);
-}
+    // Obtain references
+    auto rws = result.rows();
+    auto meta = result.meta();
+    auto info = result.info();
 
-BOOST_AUTO_TEST_CASE(move_assign_from_invalid)
-{
-    resultset_t r1;
-    auto r2 = create_resultset<resultset_t>(resultset_encoding::text, {protocol_field_type::bit});
-    r2 = std::move(r1);
-    BOOST_TEST(!r2.valid());
-}
+    // Move construct
+    resultset result2;
+    result2 = std::move(result);
+    result = resultset();  // Regression check - std::string impl SBO buffer
 
-BOOST_AUTO_TEST_CASE(move_assign_from_valid)
-{
-    auto r1 = create_resultset<resultset_t>(
-        resultset_encoding::binary,
-        {protocol_field_type::varchar}
-    );
-    auto r2 = create_resultset<resultset_t>(resultset_encoding::text, {protocol_field_type::bit});
-    r2 = std::move(r1);
-    BOOST_TEST(r2.valid());
-    BOOST_TEST(!r2.complete());
-    BOOST_TEST(r2.meta().size() == 1u);
+    // Make sure that views are still valid
+    BOOST_TEST(rws == makerows(1, "abc", nullptr));
+    BOOST_TEST(meta.at(0).type() == column_type::varchar);
+    BOOST_TEST(info == "small");
+
+    // The new object holds the same data
+    BOOST_TEST_REQUIRE(result2.has_value());
+    BOOST_TEST(result2.rows() == makerows(1, "abc", nullptr));
+    BOOST_TEST(result2.meta().at(0).type() == column_type::varchar);
+    BOOST_TEST(result2.info() == "small");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

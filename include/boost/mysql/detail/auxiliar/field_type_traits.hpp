@@ -8,9 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_TYPE_TRAITS_HPP
 
+#include <boost/mysql/field_view.hpp>
+
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/field_view.hpp>
 
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/list.hpp>

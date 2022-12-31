@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_ROW_HPP
 #define BOOST_MYSQL_ROW_HPP
 
-#include <boost/mysql/detail/auxiliar/row_base.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/row_base.hpp>
 
 #include <cstddef>
 #include <iosfwd>
@@ -28,12 +29,9 @@ namespace mysql {
  * `row`'s internal storage. These views behave like references, and are valid as long as pointers,
  * iterators and references into the `row` remain valid.
  * \n
- * Objects of this type can be populated by the \ref resultset::read_one function family. You may
- * create a `row` directly to persist a \ref row_view, too.
- * \n
- * Although owning, `row` is read-only.
- * It's optimized for memory re-use in \ref resultset::read_one loops. If you need to mutate fields,
- * use a `std::vector<field>` instead (see \ref row_view::as_vector and \ref row::as_vector).
+ * Although owning, `row` is read-only. It's optimized for memory re-use. If you need to mutate
+ * fields, use a `std::vector<field>` instead (see \ref row_view::as_vector and \ref
+ * row::as_vector).
  */
 class row : private detail::row_base
 {

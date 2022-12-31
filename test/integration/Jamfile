@@ -1,0 +1,80 @@
+#
+# Copyright (c) 2019-2022 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import os ;
+import sequence ;
+
+# Integration test filtering
+local test_exclusions = "" ;
+if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] != "" {
+    test_exclusions += "!@unix" ;
+}
+if [ os.environ BOOST_MYSQL_NO_SHA256_TESTS ] != "" {
+    test_exclusions += "!@sha256" ;
+}
+
+local test_filter = [ sequence.join $(test_exclusions) : ":" ] ;
+
+local test_command = "" ;
+if $(test_filter) != "" {
+    test_command = "-t $(test_filter)" ;
+}
+
+# Coroutine's dependency Boost.Context causes failures with warnings-as-errors
+# under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
+local coroutine_lib = /boost/coroutine//boost_coroutine/<warnings-as-errors>off ;
+
+# Integration tests
+lib integrationtests_entry_point :
+        entry_point.cpp
+        /boost/mysql/test//test_common
+    :
+        <link>static
+    ;
+
+cpp-pch integrationtests_pch
+    :
+        pch.hpp
+        $(coroutine_lib)
+        integrationtests_entry_point
+    :
+        <include>integration
+    ;
+
+unit-test boost_mysql_integrationtests
+    :
+        integrationtests_pch
+        $(coroutine_lib)
+        integrationtests_entry_point
+
+        # Utilities
+        utils/src/get_endpoint.cpp
+        utils/src/metadata_validator.cpp
+        utils/src/er_network_variant.cpp
+        utils/src/sync_errc.cpp
+        utils/src/sync_exc.cpp
+        utils/src/async_callback.cpp
+        utils/src/async_callback_noerrinfo.cpp
+        utils/src/async_future.cpp
+        utils/src/async_coroutine.cpp
+        utils/src/async_coroutinecpp20.cpp
+        utils/src/default_completion_tokens.cpp
+
+        # Actual tests
+        spotchecks.cpp
+        crud.cpp
+        handshake.cpp
+        prepared_statements.cpp
+        reconnect.cpp
+        database_types.cpp
+    :
+        <testing.arg>$(test_command)
+        <include>utils/include
+        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+    ;
+
+explicit boost_mysql_integrationtests ;

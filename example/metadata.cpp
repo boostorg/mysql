@@ -8,8 +8,6 @@
 //[example_metadata
 
 #include <boost/mysql.hpp>
-#include <boost/mysql/connection.hpp>
-#include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -56,7 +54,7 @@ void main_impl(int argc, char** argv)
         FROM employee emp
         JOIN company comp ON (comp.id = emp.company_id)
     )";
-    boost::mysql::tcp_ssl_resultset result;
+    boost::mysql::resultset result;
     conn.query(sql, result);
 
     /**

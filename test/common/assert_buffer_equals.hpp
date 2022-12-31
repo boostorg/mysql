@@ -12,6 +12,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cstring>
+#include <iomanip>
 
 namespace boost {
 namespace mysql {
@@ -24,10 +25,11 @@ struct buffer_printer
 
 inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
 {
-    os << "{ ";
+    os << std::setfill('0') << std::hex << "{ ";
     for (std::size_t i = 0; i < buff.buff.size(); ++i)
     {
-        os << static_cast<int>(static_cast<const std::uint8_t*>(buff.buff.data())[i]) << ", ";
+        os << "0x" << std::setw(2)
+           << static_cast<int>(static_cast<const std::uint8_t*>(buff.buff.data())[i]) << ", ";
     }
     return os << "}";
 }

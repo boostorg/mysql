@@ -9,13 +9,15 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_ER_CONNECTION_HPP
 
 #include <boost/mysql/error.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
 #include <memory>
 
-#include "er_resultset.hpp"
 #include "er_statement.hpp"
 #include "network_result.hpp"
 
@@ -29,17 +31,22 @@ class er_connection
 {
 public:
     virtual ~er_connection() {}
-    virtual bool valid() const = 0;
     virtual bool uses_ssl() const = 0;
     virtual bool is_open() const = 0;
     virtual network_result<no_result> physical_connect() = 0;
     virtual network_result<no_result> connect(const handshake_params&) = 0;
     virtual network_result<no_result> handshake(const handshake_params&) = 0;
-    virtual network_result<no_result> query(boost::string_view query, er_resultset& result) = 0;
+    virtual network_result<no_result> query(boost::string_view query, resultset& result) = 0;
+    virtual network_result<no_result> start_query(
+        boost::string_view query,
+        execution_state& result
+    ) = 0;
     virtual network_result<no_result> prepare_statement(
         boost::string_view statement,
         er_statement& stmt
     ) = 0;
+    virtual network_result<row_view> read_one_row(execution_state& st) = 0;
+    virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;
     virtual network_result<no_result> quit() = 0;
     virtual network_result<no_result> close() = 0;
     virtual void sync_close() noexcept = 0;  // used by fixture cleanup functions

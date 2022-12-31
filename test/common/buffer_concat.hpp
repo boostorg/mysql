@@ -48,6 +48,19 @@ inline std::vector<std::uint8_t> concat_copy(
     return lhs;
 }
 
+inline std::vector<std::uint8_t> concat_copy(
+    std::vector<uint8_t> lhs,
+    const std::vector<uint8_t>& rhs,
+    const std::vector<uint8_t>& rhs2,
+    const std::vector<uint8_t>& rhs3
+)
+{
+    concat(lhs, rhs);
+    concat(lhs, rhs2);
+    concat(lhs, rhs3);
+    return lhs;
+}
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost

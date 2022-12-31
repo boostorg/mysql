@@ -17,15 +17,14 @@ if $(hostname) = ""
 # Example list
 local examples_no_unix =
     tutorial
-    field
-    query_sync
-    query_async_callbacks
-    query_async_coroutines
-    query_async_coroutinescpp20
-    query_async_futures
-    metadata
+    text_queries
     prepared_statements
+    async_callbacks
+    async_coroutines
+    async_coroutinescpp20
+    async_futures
     default_completion_tokens
+    metadata
     ssl
     timeouts
 ;
@@ -39,7 +38,7 @@ for local example in $(examples_no_unix)
     unit-test $(example_name)
         :
             "$(example).cpp"
-            /boost/mysql//mysql
+            /boost/mysql/test//mysql
             /boost/coroutine//boost_coroutine
         :
             <testing.arg>"example_user example_password $(hostname)"
@@ -53,7 +52,7 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     unit-test boost_mysql_example_unix_socket
         :
             unix_socket.cpp
-            /boost/mysql//mysql
+            /boost/mysql/test//mysql
         :
             <testing.arg>"example_user example_password"
         ;

@@ -120,13 +120,13 @@ BOOST_DATA_TEST_CASE(serialize, data::make(all_samples.serialization_samples))
     serialization_context ctx(sample.caps, buffer.data());
     sample.value->serialize(ctx);
 
-    // Iterator
-    BOOST_TEST(ctx.first() == buffer.data() + expected_size, "Iterator not updated correctly");
-
     // Buffer
     boost::asio::const_buffer expected_populated(sample.expected_buffer.data(), expected_size);
-    boost::asio::const_buffer actual_populated(buffer.data(), expected_size);
+    boost::asio::const_buffer actual_populated(buffer.data(), sample.value->get_size(ctx));
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected_populated, actual_populated);
+
+    // Iterator
+    BOOST_TEST(ctx.first() == buffer.data() + expected_size, "Iterator not updated correctly");
 
     // Check for buffer overruns
     std::vector<std::uint8_t> expected_clean(8, 0x7a);

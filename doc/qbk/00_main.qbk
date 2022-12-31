@@ -89,7 +89,7 @@
 [include 03_overview.qbk]
 [include 04_queries.qbk]
 [include 05_prepared_statements.qbk]
-[include 06_resultsets.qbk]
+[include 06_multi_function.qbk]
 [include 07_fields.qbk]
 [include 08_async.qbk]
 [include 09_ssl.qbk]
