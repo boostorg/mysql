@@ -29,6 +29,9 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --toolset=clang \
     --cxxstd=20 \
     --variant=debug \
+    --cmake-standalone-tests=1 \
+    --cmake-add-subdir-tests=1 \
+    --cmake-install-tests=1 \
     --stdlib=native
 
 if [ "$BK" == "docs" ]; then

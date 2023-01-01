@@ -41,7 +41,7 @@ target_link_libraries(
     INTERFACE
     ${_TEST_LIBRARIES}
     Boost::mysql
-    asio
+    boost_mysql_asio
 )
 
 # Custom target tests; required by the Boost superproject

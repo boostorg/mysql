@@ -51,8 +51,8 @@ using boost::mysql::detail::resultset_encoding;
 using boost::mysql::detail::start_execution_generic;
 using namespace boost::mysql::test;
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(execute_response::type_t);
-BOOST_TEST_DONT_PRINT_LOG_VALUE(resultset_encoding);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(execute_response::type_t)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(resultset_encoding)
 
 namespace {
 

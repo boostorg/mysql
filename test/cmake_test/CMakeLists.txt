@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-cmake_minimum_required(VERSION VERSION 3.13.0)
+cmake_minimum_required(VERSION 3.5.0)
 
 project(cmake_subdir_test LANGUAGES CXX)
 

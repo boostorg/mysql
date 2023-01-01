@@ -6,11 +6,11 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "bugfix/*", "feature/*", "fix/*", "pr/*" ] }
-_container_sha = 'ab0415ecdf14729ebe3676d043abbb1e151b49c2'
+_container_tag = 'c92c394adae4188af7750890ae17bea35cbc3c31'
 
 
 def _image(name):
-    return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _container_sha)
+    return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _container_tag)
 
 
 def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_model='64', server_host='localhost'):
@@ -26,15 +26,31 @@ def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_m
                 '--server-host={} '.format(server_host)
 
 
-def _cmake_command(source_dir, build_shared_libs=0, valgrind=0, coverage=0, generator='Ninja', db='mysql8', server_host='localhost'):
+def _cmake_command(
+    source_dir,
+    build_shared_libs=0,
+    cxxstd='20',
+    valgrind=0,
+    coverage=0,
+    standalone_tests=1,
+    add_subdir_tests=1,
+    install_tests=1,
+    generator='Ninja',
+    db='mysql8',
+    server_host='localhost'
+):
     return 'python tools/ci.py ' + \
                 '--build-kind=cmake ' + \
                 '--clean=1 ' + \
                 '--generator="{}" '.format(generator) + \
                 '--source-dir="{}" '.format(source_dir) + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
+                '--cxxstd={} '.format(cxxstd) + \
                 '--valgrind={} '.format(valgrind) + \
                 '--coverage={} '.format(coverage) + \
+                '--cmake-standalone-tests={} '.format(standalone_tests) + \
+                '--cmake-add-subdir-tests={} '.format(add_subdir_tests) + \
+                '--cmake-install-tests={} '.format(install_tests) + \
                 '--is-mysql8={} '.format(1 if db == 'mysql8' else 0) + \
                 '--server-host={} '.format(server_host)
 
@@ -148,15 +164,23 @@ def linux_cmake(
     name,
     image,
     build_shared_libs=0,
+    cxxstd='20',
     valgrind=0,
     coverage=0,
+    standalone_tests=1,
+    add_subdir_tests=1,
+    install_tests=1,
     db='mysql8'
 ):
     command = _cmake_command(
         source_dir='$(pwd)',
         build_shared_libs=build_shared_libs,
+        cxxstd=cxxstd,
         valgrind=valgrind,
         coverage=coverage,
+        standalone_tests=standalone_tests,
+        add_subdir_tests=add_subdir_tests,
+        install_tests=install_tests,
         db=db,
         server_host='mysql'
     )
@@ -205,10 +229,12 @@ def docs():
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake valgrind',  _image('build-gcc11'), valgrind=1, build_shared_libs=0),
-        linux_cmake('Linux CMake coverage',  _image('build-gcc11'), coverage=1, build_shared_libs=0),
-        linux_cmake('Linux CMake MySQL 5.x', _image('build-clang14'), db='mysql5', build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',   _image('build-clang14'), db='mariadb', build_shared_libs=1),
+        linux_cmake('Linux CMake valgrind',   _image('build-gcc11'), valgrind=1, build_shared_libs=0),
+        linux_cmake('Linux CMake coverage',   _image('build-gcc11'), coverage=1, build_shared_libs=0),
+        linux_cmake('Linux CMake MySQL 5.x',  _image('build-clang14'), db='mysql5', build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',    _image('build-clang14'), db='mariadb', build_shared_libs=1),
+        linux_cmake('Linux CMake cmake 3.8',  _image('build-cmake3_8'), cxxstd='11', standalone_tests=0, install_tests=0),
+        linux_cmake('Linux CMake no OpenSSL', _image('build-noopenssl'), standalone_tests=0, add_subdir_tests=0, install_tests=0),
 
         # CMake Windows
         windows_cmake('Windows CMake static', build_shared_libs=0),

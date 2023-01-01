@@ -31,7 +31,7 @@ def _add_to_path(path: Path) -> None:
 
 
 def _mkdir_and_cd(path: Path) -> None:
-    os.makedirs(path, exist_ok=True)
+    os.makedirs(str(path), exist_ok=True)
     os.chdir(str(path))
 
 
@@ -196,15 +196,18 @@ def _cmake_build(
     valgrind: bool = False,
     coverage: bool = False,
     clean: bool = False,
-    standalone_tests: bool = True
+    standalone_tests: bool = True,
+    add_subdir_tests: bool = True,
+    install_tests: bool = True,
+    cxxstd: str = '20'
 ) -> None:
     # Config
     home = Path(os.path.expanduser('~'))
     b2_distro = home.joinpath('b2-distro')
     cmake_distro = home.joinpath('cmake-distro')
-    cxxstd = '20'
     build_type = 'Debug'
     test_folder = _boost_root.joinpath('libs', 'mysql', 'test', 'cmake_test')
+    os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '4'
     if _is_windows:
         cmake_prefix_path = ['C:\\openssl-64']
     else:
@@ -253,7 +256,7 @@ def _cmake_build(
         '-DBoost_VERBOSE=ON',
         '..'
     ])
-    _run(['cmake', '--build', '.', '--target', 'tests', '--config', build_type, '-j4'])
+    _run(['cmake', '--build', '.', '--target', 'tests', '--config', build_type])
     _run(['ctest', '--output-on-failure', '--build-config', build_type])
 
     # Library tests, using the b2 Boost distribution generated before
@@ -271,57 +274,60 @@ def _cmake_build(
             generator,
             '..'
         ])
-        _run(['cmake', '--build', '.', '-j4'])
+        _run(['cmake', '--build', '.'])
         _run(['ctest', '--output-on-failure', '--build-config', build_type])
     
 
     # Subdir tests, using add_subdirectory()
-    _mkdir_and_cd(test_folder.joinpath('__build_cmake_subdir_test__'))
-    _run([
-        'cmake',
-        '-G',
-        generator,
-        '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path)),
-        '-DBOOST_CI_INSTALL_TEST=OFF',
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-        '..'
-    ])
-    _run(['cmake', '--build', '.', '--config', build_type, '-j4'])
-    _run(['ctest', '--output-on-failure', '--build-config', build_type])
+    if add_subdir_tests:
+        _mkdir_and_cd(test_folder.joinpath('__build_cmake_subdir_test__'))
+        _run([
+            'cmake',
+            '-G',
+            generator,
+            '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path)),
+            '-DBOOST_CI_INSTALL_TEST=OFF',
+            '-DCMAKE_BUILD_TYPE={}'.format(build_type),
+            '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
+            '..'
+        ])
+        _run(['cmake', '--build', '.', '--config', build_type])
+        _run(['ctest', '--output-on-failure', '--build-config', build_type])
 
     # Install the library
-    _mkdir_and_cd(_boost_root.joinpath('__build_cmake_install_test__'))
-    _run([
-        'cmake',
-        '-G',
-        generator,
-        '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path)),
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBOOST_INCLUDE_LIBRARIES=mysql',
-        '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-        '-DCMAKE_INSTALL_PREFIX={}'.format(cmake_distro),
-        '-DBoost_VERBOSE=ON',
-        '-DBoost_DEBUG=ON',
-        '-DCMAKE_INSTALL_MESSAGE=NEVER',
-        '..'
-    ])
-    _run(['cmake', '--build', '.', '--target', 'install', '--config', build_type, '-j4'])
+    if install_tests:
+        _mkdir_and_cd(_boost_root.joinpath('__build_cmake_install_test__'))
+        _run([
+            'cmake',
+            '-G',
+            generator,
+            '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path)),
+            '-DCMAKE_BUILD_TYPE={}'.format(build_type),
+            '-DBOOST_INCLUDE_LIBRARIES=mysql',
+            '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
+            '-DCMAKE_INSTALL_PREFIX={}'.format(cmake_distro),
+            '-DBoost_VERBOSE=ON',
+            '-DBoost_DEBUG=ON',
+            '-DCMAKE_INSTALL_MESSAGE=NEVER',
+            '..'
+        ])
+        _run(['cmake', '--build', '.', '--target', 'install', '--config', build_type])
 
     # TODO: re-enable this when we get openssl support in the superproject generated install files
-    # _mkdir_and_cd(test_folder.joinpath('__build_cmake_install_test__'))
-    # _run([
-    #     'cmake',
-    #     '-G',
-    #     generator,
-    #     '-DBOOST_CI_INSTALL_TEST=ON',
-    #     '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-    #     '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-    #     '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(cmake_distro, *cmake_prefix_path)),
-    #     '..'
-    # ])
-    # _run(['cmake', '--build', '.', '--config', build_type, '-j4'])
-    # _run(['ctest', '--output-on-failure', '--build-config', build_type])
+    # if install_tests:
+    #     _mkdir_and_cd(test_folder.joinpath('__build_cmake_install_test__'))
+    #     _run([
+    #         'cmake',
+    #         '-G',
+    #         generator,
+    #         '-DBOOST_CI_INSTALL_TEST=ON',
+    #         '-DCMAKE_BUILD_TYPE={}'.format(build_type),
+    #         '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
+    #         '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(cmake_distro, *cmake_prefix_path)),
+    #         '..'
+    #     ])
+    #     _run(['cmake', '--build', '.', '--config', build_type])
+    #     _run(['ctest', '--output-on-failure', '--build-config', build_type])
 
     # Subdir tests, using find_package with the b2 distribution.
     # These are incompatible with coverage builds (we rmtree include/boost/mysql)
@@ -336,7 +342,7 @@ def _cmake_build(
             '-DBUILD_TESTING=ON',
             '..'
         ])
-        _run(['cmake', '--build', '.', '--config', build_type, '-j4'])
+        _run(['cmake', '--build', '.', '--config', build_type])
         _run(['ctest', '--output-on-failure', '--build-config', build_type])
 
     # Gather coverage data, if available
@@ -382,6 +388,8 @@ def main():
     parser.add_argument('--clean', type=_str2bool, default=False)
     parser.add_argument('--is-mysql8', type=_str2bool, default=True)
     parser.add_argument('--cmake-standalone-tests', type=_str2bool, default=True)
+    parser.add_argument('--cmake-add-subdir-tests', type=_str2bool, default=True)
+    parser.add_argument('--cmake-install-tests', type=_str2bool, default=True)
     parser.add_argument('--toolset', default='clang')
     parser.add_argument('--cxxstd', default='20')
     parser.add_argument('--variant', default='release')
@@ -410,7 +418,10 @@ def main():
             valgrind=args.valgrind,
             coverage=args.coverage,
             clean=args.clean,
-            standalone_tests=args.cmake_standalone_tests
+            standalone_tests=args.cmake_standalone_tests,
+            add_subdir_tests=args.cmake_add_subdir_tests,
+            install_tests=args.cmake_install_tests,
+            cxxstd=args.cxxstd
         )
     else:
         _doc_build(

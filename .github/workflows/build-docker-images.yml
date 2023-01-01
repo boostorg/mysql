@@ -15,21 +15,23 @@ jobs:
     strategy:
       matrix:
         include:
-          - { image: build-msvc14_1, dockerfile: build-msvc,      os: windows-2019, base-image: "cppalliance/dronevs2017:1" }
-          - { image: build-msvc14_2, dockerfile: build-msvc,      os: windows-2019, base-image: "cppalliance/dronevs2019:1" }
-          - { image: build-msvc14_3, dockerfile: build-msvc,      os: windows-2019, base-image: "cppalliance/dronevs2022:1" }
-          - { image: build-clang3_6, dockerfile: build-clang3_6,  os: ubuntu-latest }
-          - { image: build-clang7,   dockerfile: build-clang7,    os: ubuntu-latest }
-          - { image: build-clang11,  dockerfile: build-clang11,   os: ubuntu-latest }
-          - { image: build-clang14,  dockerfile: build-clang14,   os: ubuntu-latest }
-          - { image: build-gcc5,     dockerfile: build-gcc5,      os: ubuntu-latest }
-          - { image: build-gcc6,     dockerfile: build-gcc6,      os: ubuntu-latest }
-          - { image: build-gcc10,    dockerfile: build-gcc10,     os: ubuntu-latest }
-          - { image: build-gcc11,    dockerfile: build-gcc11,     os: ubuntu-latest }
-          - { image: build-docs,     dockerfile: build-docs,      os: ubuntu-latest }
-          - { image: mysql5,         dockerfile: mysql5,          os: ubuntu-latest }
-          - { image: mysql8,         dockerfile: mysql8,          os: ubuntu-latest }
-          - { image: mariadb,        dockerfile: mariadb,         os: ubuntu-latest }
+          - { image: build-msvc14_1,  dockerfile: build-msvc,      os: windows-2019, base-image: "cppalliance/dronevs2017:1" }
+          - { image: build-msvc14_2,  dockerfile: build-msvc,      os: windows-2019, base-image: "cppalliance/dronevs2019:1" }
+          - { image: build-msvc14_3,  dockerfile: build-msvc,      os: windows-2019, base-image: "cppalliance/dronevs2022:1" }
+          - { image: build-clang3_6,  dockerfile: build-clang3_6,  os: ubuntu-latest }
+          - { image: build-clang7,    dockerfile: build-clang7,    os: ubuntu-latest }
+          - { image: build-clang11,   dockerfile: build-clang11,   os: ubuntu-latest }
+          - { image: build-clang14,   dockerfile: build-clang14,   os: ubuntu-latest }
+          - { image: build-gcc5,      dockerfile: build-gcc5,      os: ubuntu-latest }
+          - { image: build-gcc6,      dockerfile: build-gcc6,      os: ubuntu-latest }
+          - { image: build-gcc10,     dockerfile: build-gcc10,     os: ubuntu-latest }
+          - { image: build-gcc11,     dockerfile: build-gcc11,     os: ubuntu-latest }
+          - { image: build-cmake3_8,  dockerfile: build-cmake3_8,  os: ubuntu-latest }
+          - { image: build-noopenssl, dockerfile: build-noopenssl, os: ubuntu-latest }
+          - { image: build-docs,      dockerfile: build-docs,      os: ubuntu-latest }
+          - { image: mysql5,          dockerfile: mysql5,          os: ubuntu-latest }
+          - { image: mysql8,          dockerfile: mysql8,          os: ubuntu-latest }
+          - { image: mariadb,         dockerfile: mariadb,         os: ubuntu-latest }
     permissions:
       contents: read
       packages: write

@@ -7,7 +7,7 @@
 
 # This is included in README.md, watch out before changing
 
-cmake_minimum_required(VERSION VERSION 3.13.0)
+cmake_minimum_required(VERSION 3.5.0)
 
 project(boost_mysql_example)
 

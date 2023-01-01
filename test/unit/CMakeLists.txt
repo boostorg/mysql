@@ -54,11 +54,13 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
-# target_precompile_headers(
-#     boost_mysql_unittests
-#     PRIVATE
-#     pch.hpp
-# )
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
+    target_precompile_headers(
+        boost_mysql_unittests
+        PRIVATE
+        pch.hpp
+    )
+endif()
 set_source_files_properties(
     entry_point.cpp
     PROPERTIES

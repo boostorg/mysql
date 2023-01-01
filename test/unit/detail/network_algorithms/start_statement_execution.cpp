@@ -43,7 +43,7 @@ using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding)
 
 namespace {
 

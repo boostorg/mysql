@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-cmake_minimum_required(VERSION 3.13.0)
+cmake_minimum_required(VERSION 3.5.0)
 
 # Boost version
 if (DEFINED BOOST_SUPERPROJECT_VERSION)
@@ -69,9 +69,22 @@ else()
         Boost::variant2
     )
 endif()
-    
-find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
+
+if(_IS_ROOT)
+    find_package(Threads REQUIRED)
+    find_package(OpenSSL REQUIRED)
+else()
+    find_package(Threads)
+    if(NOT Threads_FOUND)
+        message(STATUS "Boost.MySQL has been disabled, because the required package Threads hasn't been found")
+        return()
+    endif()
+    find_package(OpenSSL)
+    if(NOT OpenSSL_FOUND)
+        message(STATUS "Boost.MySQL has been disabled, because the required package OpenSSL hasn't been found")
+        return()
+    endif()
+endif()
 
 #
 # Interface library (header-only)
@@ -121,20 +134,20 @@ if(BUILD_TESTING)
 
     find_package(OpenSSL REQUIRED)
     add_library(
-        asio
+        boost_mysql_asio
         STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/tools/asio.cpp
     )
-    set_windows_version(asio)
+    set_windows_version(boost_mysql_asio)
     target_link_libraries(
-        asio
+        boost_mysql_asio
         PUBLIC
         ${_ASIO_HEADERS}
         OpenSSL::Crypto
         OpenSSL::SSL
     )
     target_compile_definitions(
-        asio
+        boost_mysql_asio
         PUBLIC
         BOOST_ASIO_SEPARATE_COMPILATION
     )
