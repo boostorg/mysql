@@ -8,7 +8,7 @@
 # This is only processed when we're the main project and
 # BOOST_MYSQL_INTEGRATION_TESTS is on
 
-cmake_minimum_required(VERSION 3.12.0) # string JOIN
+cmake_minimum_required(VERSION 3.12...3.22) # string JOIN
 find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS coroutine)
 
 add_executable(

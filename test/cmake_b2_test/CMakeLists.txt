@@ -7,9 +7,9 @@
 
 # This is included in README.md, watch out before changing
 
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.5...3.22)
 
-project(boost_mysql_example)
+project(boost_mysql_example LANGUAGES CXX)
 
 find_package(Boost REQUIRED COMPONENTS headers)
 find_package(Threads REQUIRED)

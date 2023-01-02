@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.8...3.22)
 
 # Boost version
 if (DEFINED BOOST_SUPERPROJECT_VERSION)
@@ -15,7 +15,7 @@ else()
 endif()
 
 # Project
-project(boost_mysql VERSION ${BOOST_MYSQL_VERSION})
+project(boost_mysql VERSION ${BOOST_MYSQL_VERSION} LANGUAGES CXX)
 
 # Determine if we're the top-level project 
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
