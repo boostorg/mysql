@@ -66,7 +66,8 @@ def _install_boost(
     boost_root: Path,
     source_dir: Path,
     clean: bool = False,
-    install_type: _BoostInstallType = _BoostInstallType.mysql
+    install_type: _BoostInstallType = _BoostInstallType.mysql,
+    branch: str = 'develop'
 ) -> None:
     assert boost_root.is_absolute()
     assert source_dir.is_absolute()
@@ -79,7 +80,7 @@ def _install_boost(
     # Clone Boost
     is_clean = not boost_root.exists()
     if is_clean:
-        _run(['git', 'clone', '-b', 'master', '--depth', '1', 'https://github.com/boostorg/boost.git', str(boost_root)])
+        _run(['git', 'clone', '-b', branch, '--depth', '1', 'https://github.com/boostorg/boost.git', str(boost_root)])
     os.chdir(str(boost_root))
 
     # Put our library inside boost root
@@ -123,14 +124,16 @@ def _install_boost(
 
 def _doc_build(
     source_dir: Path,
-    clean: bool = False
+    clean: bool = False,
+    boost_branch: str = 'develop'
 ):
     # Get Boost. This leaves us inside boost root
     _install_boost(
         _boost_root,
         source_dir=source_dir,
         clean=clean,
-        install_type=_BoostInstallType.docs
+        install_type=_BoostInstallType.docs,
+        branch=boost_branch
     )
 
     # Write the config file
@@ -155,7 +158,8 @@ def _b2_build(
     variant: str,
     stdlib: str = 'native',
     address_model: str = '64',
-    clean: bool = False
+    clean: bool = False,
+    boost_branch: str = 'develop'
 ) -> None:
     # Config
     if _is_windows:
@@ -165,7 +169,8 @@ def _b2_build(
     _install_boost(
         _boost_root,
         source_dir=source_dir,
-        clean=clean
+        clean=clean,
+        branch=boost_branch
     )
 
     # Invoke b2
@@ -199,7 +204,8 @@ def _cmake_build(
     standalone_tests: bool = True,
     add_subdir_tests: bool = True,
     install_tests: bool = True,
-    cxxstd: str = '20'
+    cxxstd: str = '20',
+    boost_branch: str = 'develop'
 ) -> None:
     # Config
     home = Path(os.path.expanduser('~'))
@@ -219,7 +225,8 @@ def _cmake_build(
     _install_boost(
         _boost_root,
         source_dir,
-        clean=clean
+        clean=clean,
+        branch=boost_branch
     )
 
     # Generate "pre-built" b2 distro
@@ -313,21 +320,21 @@ def _cmake_build(
         ])
         _run(['cmake', '--build', '.', '--target', 'install', '--config', build_type])
 
-    # TODO: re-enable this when we get openssl support in the superproject generated install files
-    # if install_tests:
-    #     _mkdir_and_cd(test_folder.joinpath('__build_cmake_install_test__'))
-    #     _run([
-    #         'cmake',
-    #         '-G',
-    #         generator,
-    #         '-DBOOST_CI_INSTALL_TEST=ON',
-    #         '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-    #         '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-    #         '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(cmake_distro, *cmake_prefix_path)),
-    #         '..'
-    #     ])
-    #     _run(['cmake', '--build', '.', '--config', build_type])
-    #     _run(['ctest', '--output-on-failure', '--build-config', build_type])
+    # Subdir tests, using find_package with the library installed in the previous step
+    if install_tests:
+        _mkdir_and_cd(test_folder.joinpath('__build_cmake_install_test__'))
+        _run([
+            'cmake',
+            '-G',
+            generator,
+            '-DBOOST_CI_INSTALL_TEST=ON',
+            '-DCMAKE_BUILD_TYPE={}'.format(build_type),
+            '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
+            '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(cmake_distro, *cmake_prefix_path)),
+            '..'
+        ])
+        _run(['cmake', '--build', '.', '--config', build_type])
+        _run(['ctest', '--output-on-failure', '--build-config', build_type])
 
     # Subdir tests, using find_package with the b2 distribution.
     # These are incompatible with coverage builds (we rmtree include/boost/mysql)
@@ -377,10 +384,31 @@ def _str2bool(v: Union[bool, str]) -> bool:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
+def _deduce_boost_branch() -> str:
+    # Are we in GitHub Actions?
+    if os.environ.get('GITHUB_ACTIONS') is not None:
+        ci = 'GitHub Actions'
+        ref = os.environ.get('GITHUB_BASE_REF', '') or os.environ.get('GITHUB_REF', '')
+        res = 'master' if ref == 'master' or ref.endswith('/master') else 'develop'
+    elif os.environ.get('DRONE') is not None:
+        ref = os.environ.get('DRONE_BRANCH', '')
+        ci = 'Drone'
+        res = 'master' if ref == 'master' else 'develop'
+    else:
+        ci = 'Unknown'
+        ref = ''
+        res = 'develop'
+    
+    print('+  Found CI {}, ref={}, deduced branch {}'.format(ci, ref, res))
+
+    return res
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--build-kind', choices=['b2', 'cmake', 'docs'], required=True)
     parser.add_argument('--source-dir', type=Path, required=True)
+    parser.add_argument('--boost-branch', default=None) # None means "let this script deduce it"
     parser.add_argument('--generator', default='Ninja')
     parser.add_argument('--build-shared-libs', type=_str2bool, default=True)
     parser.add_argument('--valgrind', type=_str2bool, default=False)
@@ -400,6 +428,8 @@ def main():
     args = parser.parse_args()
 
     _common_settings(_boost_root, args.server_host, is_mysql8=args.is_mysql8)
+    boost_branch = _deduce_boost_branch() if args.boost_branch is None else args.boost_branch
+
     if args.build_kind == 'b2':
         _b2_build(
             source_dir=args.source_dir,
@@ -408,7 +438,8 @@ def main():
             variant=args.variant,
             stdlib=args.stdlib,
             address_model=args.address_model,
-            clean=args.clean
+            clean=args.clean,
+            boost_branch=boost_branch
         )
     elif args.build_kind == 'cmake':
         _cmake_build(
@@ -421,12 +452,14 @@ def main():
             standalone_tests=args.cmake_standalone_tests,
             add_subdir_tests=args.cmake_add_subdir_tests,
             install_tests=args.cmake_install_tests,
-            cxxstd=args.cxxstd
+            cxxstd=args.cxxstd,
+            boost_branch=boost_branch
         )
     else:
         _doc_build(
             source_dir=args.source_dir,
-            clean=args.clean
+            clean=args.clean,
+            boost_branch=boost_branch
         )
 
 
