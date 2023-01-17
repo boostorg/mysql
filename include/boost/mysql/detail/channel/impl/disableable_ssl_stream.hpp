@@ -10,8 +10,9 @@
 
 #pragma once
 
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
-#include <boost/mysql/error.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/compose.hpp>

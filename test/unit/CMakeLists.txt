@@ -27,6 +27,7 @@ add_executable(
     detail/network_algorithms/execute_statement.cpp
     detail/protocol/capabilities.cpp
     detail/protocol/null_bitmap_traits.cpp
+    detail/protocol/deserialize_errc.cpp
     detail/protocol/serialization_test.cpp
     detail/protocol/deserialize_text_field.cpp
     detail/protocol/deserialize_binary_field.cpp
@@ -41,12 +42,15 @@ add_executable(
     rows.cpp
     metadata.cpp
     metadata_collection_view.cpp
-    error.cpp
+    client_errc.cpp
+    server_errc.cpp
+    server_diagnostics.cpp
     statement.cpp
     execution_state.cpp
     resultset.cpp
     connection.cpp
     regressions.cpp
+    throw_on_error.cpp
     entry_point.cpp
 )
 target_link_libraries(
@@ -55,11 +59,11 @@ target_link_libraries(
     boost_mysql_testing
 )
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
-    target_precompile_headers(
-        boost_mysql_unittests
-        PRIVATE
-        pch.hpp
-    )
+    # target_precompile_headers(
+    #     boost_mysql_unittests
+    #     PRIVATE
+    #     pch.hpp
+    # )
 endif()
 set_source_files_properties(
     entry_point.cpp

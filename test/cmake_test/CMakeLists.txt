@@ -18,19 +18,19 @@ else()
     set(_DEPENDENCIES
         # Primary dependencies
         asio
+        assert
         config
         core
         endian
         lexical_cast
         mp11
         system
-        utility
+        throw_exception
         variant2
 
         # Secondary dependencies
         align
         array
-        assert
         bind
         chrono
         context
@@ -40,16 +40,14 @@ else()
         "function"
         regex
         smart_ptr
-        throw_exception
         type_traits
+        utility
         static_assert
         container
         integer
         numeric/conversion
         range
         winapi
-        io
-        preprocessor
         move
         mpl
         predef
@@ -58,8 +56,10 @@ else()
         intrusive
         pool
         algorithm
+        io
         tokenizer
         tuple
+        preprocessor
         type_index
         conversion
         concept_check

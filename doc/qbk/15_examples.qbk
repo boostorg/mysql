@@ -19,7 +19,7 @@ Here is a list of available examples:
 # [link mysql.examples.unix_socket UNIX sockets]
 # [link mysql.examples.async_callbacks Async functions using callbacks]
 # [link mysql.examples.async_futures Async functions using futures]
-# [link mysql.examples.async_coroutines Async functions using Boost.Coroutine]
+# [link mysql.examples.async_coroutines Async functions using stackful coroutines]
 # [link mysql.examples.async_coroutinescpp20 Async functions using C++20 coroutines]
 # [link mysql.examples.default_completion_tokens Async functions using default completion tokens]
 # [link mysql.examples.timeouts Settings timeouts]
@@ -128,9 +128,9 @@ __assume_setup__
 
 [endsect]
 
-[section:async_coroutines Async functions using Boost.Coroutine]
+[section:async_coroutines Async functions using stackful coroutines]
 
-This example demonstrates how use the asynchronous functions using __Coroutine__
+This example demonstrates how use the asynchronous functions using stackful coroutines
 (using [asioreflink yield_context yield_context] and
 [asioreflink spawn spawn]).
 

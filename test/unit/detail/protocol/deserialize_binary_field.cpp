@@ -11,12 +11,14 @@
 
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
+#include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <cstddef>
 
+#include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
@@ -25,7 +27,6 @@ using namespace boost::unit_test;
 using boost::mysql::blob_view;
 using boost::mysql::date;
 using boost::mysql::datetime;
-using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
 
@@ -62,7 +63,7 @@ struct success_sample
 
 std::ostream& operator<<(std::ostream& os, const success_sample& input)
 {
-    return os << "(type=" << to_string(input.type) << ", name=" << input.name << ")";
+    return os << "(type=" << input.type << ", name=" << input.name << ")";
 }
 
 void add_string_samples(std::vector<success_sample>& output)
@@ -686,7 +687,7 @@ BOOST_DATA_TEST_CASE(test_deserialize_binary_value_ok, data::make(make_all_sampl
     deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
 
     auto err = deserialize_binary_field(ctx, meta, buffer.data(), actual_value);
-    BOOST_TEST(err == errc::ok);
+    BOOST_TEST(err == deserialize_errc::ok);
 
     // Strings are representd as string view offsets. Strings are prefixed
     // by their length, so they don't start at offset 0
@@ -718,14 +719,14 @@ struct error_sample
     bytestring from;
     protocol_field_type type;
     std::uint16_t flags;
-    errc expected_err;
+    deserialize_errc expected_err;
 
     error_sample(
         std::string&& name,
         bytestring&& from,
         protocol_field_type type,
         std::uint16_t flags = 0,
-        errc expected_err = errc::protocol_value_error
+        deserialize_errc expected_err = deserialize_errc::protocol_value_error
     )
         : name(std::move(name)),
           from(std::move(from)),
@@ -735,7 +736,12 @@ struct error_sample
     {
     }
 
-    error_sample(std::string&& name, bytestring&& from, protocol_field_type type, errc expected_err)
+    error_sample(
+        std::string&& name,
+        bytestring&& from,
+        protocol_field_type type,
+        deserialize_errc expected_err
+    )
         : name(std::move(name)),
           from(std::move(from)),
           type(type),
@@ -747,7 +753,7 @@ struct error_sample
 
 std::ostream& operator<<(std::ostream& os, const error_sample& input)
 {
-    return os << "(type=" << to_string(input.type) << ", name=" << input.name << ")";
+    return os << "(type=" << input.type << ", name=" << input.name << ")";
 }
 
 void add_int_samples(
@@ -760,14 +766,14 @@ void add_int_samples(
         "signed_not_enough_space",
         bytestring(num_bytes, 0x0a),
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.emplace_back(error_sample(
         "unsigned_not_enough_space",
         bytestring(num_bytes, 0x0a),
         type,
         column_flags::unsigned_,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
 }
 
@@ -778,7 +784,7 @@ void add_bit_samples(std::vector<error_sample>& output)
         {0x01},
         protocol_field_type::bit,
         column_flags::unsigned_,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.emplace_back(error_sample(
         "bit_string_view_too_short",
@@ -800,7 +806,7 @@ void add_float_samples(std::vector<error_sample>& output)
         "not_enough_space",
         {0x01, 0x02, 0x03},
         protocol_field_type::float_,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample("inf", {0x00, 0x00, 0x80, 0x7f}, protocol_field_type::float_));
     output.push_back(
@@ -818,7 +824,7 @@ void add_double_samples(std::vector<error_sample>& output)
         "not_enough_space",
         {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
         protocol_field_type::double_,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "inf",
@@ -845,25 +851,26 @@ void add_double_samples(std::vector<error_sample>& output)
 // Based on correct, regular date {0x04, 0xda, 0x07, 0x03, 0x1c}
 void add_date_samples(std::vector<error_sample>& output)
 {
-    output.push_back(error_sample("empty", {}, protocol_field_type::date, errc::incomplete_message)
+    output.push_back(
+        error_sample("empty", {}, protocol_field_type::date, deserialize_errc::incomplete_message)
     );
     output.push_back(error_sample(
         "incomplete_year",
         {0x04, 0xda},
         protocol_field_type::date,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_month_day",
         {0x04, 0xda, 0x07},
         protocol_field_type::date,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_day",
         {0x04, 0xda, 0x07, 0x03},
         protocol_field_type::date,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "invalid_year",
@@ -894,33 +901,36 @@ void add_date_samples(std::vector<error_sample>& output)
 // 0x00}
 void add_datetime_samples(protocol_field_type type, std::vector<error_sample>& output)
 {
-    output.push_back(error_sample("empty", {}, type, errc::incomplete_message));
-    output.push_back(
-        error_sample("incomplete_date", {0x04, 0xda, 0x07, 0x01}, type, errc::incomplete_message)
-    );
+    output.push_back(error_sample("empty", {}, type, deserialize_errc::incomplete_message));
+    output.push_back(error_sample(
+        "incomplete_date",
+        {0x04, 0xda, 0x07, 0x01},
+        type,
+        deserialize_errc::incomplete_message
+    ));
     output.push_back(error_sample(
         "no_hours_mins_secs",
         {0x07, 0xda, 0x07, 0x01, 0x01},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_mins_secs",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x17},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_secs",
         {0x07, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "incomplete_micros",
         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample("invalid_year_d", {0x04, 0x10, 0x27, 0x01, 0x01}, type)
     );  // year 10000
@@ -1016,36 +1026,42 @@ void add_datetime_samples(protocol_field_type type, std::vector<error_sample>& o
 void add_time_samples(std::vector<error_sample>& output)
 {
     constexpr auto type = protocol_field_type::time;
-    output.push_back(error_sample("empty", {}, type, errc::incomplete_message));
-    output.push_back(
-        error_sample("no_sign_days_hours_mins_secs", {0x08}, type, errc::incomplete_message)
-    );
-    output.push_back(
-        error_sample("no_days_hours_mins_secs", {0x08, 0x01}, type, errc::incomplete_message)
-    );
+    output.push_back(error_sample("empty", {}, type, deserialize_errc::incomplete_message));
+    output.push_back(error_sample(
+        "no_sign_days_hours_mins_secs",
+        {0x08},
+        type,
+        deserialize_errc::incomplete_message
+    ));
+    output.push_back(error_sample(
+        "no_days_hours_mins_secs",
+        {0x08, 0x01},
+        type,
+        deserialize_errc::incomplete_message
+    ));
     output.push_back(error_sample(
         "no_hours_mins_secs",
         {0x08, 0x01, 0x22, 0x00, 0x00, 0x00},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_mins_secs",
         {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_secs",
         {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
     output.push_back(error_sample(
         "no_micros",
         {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a},
         type,
-        errc::incomplete_message
+        deserialize_errc::incomplete_message
     ));
 
     std::pair<const char*, std::vector<std::uint8_t>> out_of_range_cases[]{

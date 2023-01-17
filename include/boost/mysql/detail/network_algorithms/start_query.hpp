@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_QUERY_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_QUERY_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -26,7 +27,7 @@ void start_query(
     string_view query,
     execution_state& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 template <
@@ -37,7 +38,7 @@ async_start_query(
     channel<Stream>& chan,
     string_view query,
     execution_state& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

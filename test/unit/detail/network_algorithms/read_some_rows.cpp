@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row_view.hpp>
 
@@ -21,7 +21,7 @@
 #include "test_common.hpp"
 #include "test_connection.hpp"
 
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::rows_view;
@@ -214,9 +214,9 @@ BOOST_AUTO_TEST_CASE(error_reading_row)
         {
             auto st = create_execution_state(resultset_encoding::text, {});
             test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, errc::no));
+            conn.stream().set_fail_count(fail_count(0, client_errc::server_unsupported));
 
-            fns.read_some_rows(conn, st).validate_error_exact(error_code(errc::no), "");
+            fns.read_some_rows(conn, st).validate_error_exact(client_errc::server_unsupported);
             BOOST_TEST(!st.complete());
         }
     }
@@ -237,10 +237,7 @@ BOOST_AUTO_TEST_CASE(error_deserializing_row)
             conn.stream().add_message(r);
 
             // deserialize row error
-            fns.read_some_rows(conn, st).validate_error_exact(
-                error_code(errc::incomplete_message),
-                ""
-            );
+            fns.read_some_rows(conn, st).validate_error_exact(client_errc::incomplete_message);
             BOOST_TEST(!st.complete());
         }
     }

@@ -1,6 +1,6 @@
 ---
 Language: Cpp
-ColumnLimit: 100
+ColumnLimit: 110
 IndentWidth: 4
 BreakBeforeBraces: Custom
 BraceWrapping:

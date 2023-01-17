@@ -8,7 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement_base.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -24,7 +25,7 @@ void prepare_statement(
     string_view statement,
     statement_base& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 template <
@@ -35,7 +36,7 @@ async_prepare_statement(
     channel<Stream>& chan,
     string_view statement,
     statement_base& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

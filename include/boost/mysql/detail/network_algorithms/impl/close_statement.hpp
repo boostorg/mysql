@@ -22,14 +22,14 @@ struct close_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     statement_base& stmt_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
 
     close_statement_op(
         channel<Stream>& chan,
         statement_base& stmt,
-        error_info& output_info
+        server_diagnostics& diag
     ) noexcept
-        : chan_(chan), stmt_(stmt), output_info_(output_info)
+        : chan_(chan), stmt_(stmt), diag_(diag)
     {
     }
 
@@ -46,7 +46,7 @@ struct close_statement_op : boost::asio::coroutine
         // Regular coroutine body; if there has been an error, we don't get here
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            output_info_.clear();
+            diag_.clear();
 
             // Serialize the close message
             serialize_message(
@@ -74,7 +74,7 @@ struct close_statement_op : boost::asio::coroutine
 
 template <class Stream>
 void boost::mysql::detail::
-    close_statement(channel<Stream>& chan, statement_base& stmt, error_code& code, error_info&)
+    close_statement(channel<Stream>& chan, statement_base& stmt, error_code& code, server_diagnostics&)
 {
     // Serialize the close message
     serialize_message(
@@ -98,11 +98,11 @@ boost::mysql::detail::async_close_statement(
     channel<Stream>& chan,
     statement_base& stmt,
     CompletionToken&& token,
-    error_info& output_info
+    server_diagnostics& diag
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        close_statement_op<Stream>(chan, stmt, output_info),
+        close_statement_op<Stream>(chan, stmt, diag),
         token,
         chan
     );

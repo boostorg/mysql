@@ -8,13 +8,14 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
+
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
 #include <boost/mysql/detail/channel/message_writer.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/error.hpp>
-#include <boost/mysql/field_view.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
@@ -38,7 +39,7 @@ class channel
 
     std::uint8_t shared_sequence_number_{};  // for async ops
     bytestring shared_buff_;                 // for async ops
-    error_info shared_info_;                 // for async ops
+    server_diagnostics shared_diag_;         // for async ops
     std::vector<field_view> shared_fields_;  // for read_some ops
 public:
     // TODO: use this arg
@@ -156,10 +157,10 @@ public:
         reader_.buffer().grow_to_fit(read_buffer_size);
     }
 
-    // Internal buffer, error_info and sequence_number to help async ops
+    // Internal buffer, server_diagnostics and sequence_number to help async ops
     const bytestring& shared_buffer() const noexcept { return shared_buff_; }
     bytestring& shared_buffer() noexcept { return shared_buff_; }
-    error_info& shared_info() noexcept { return shared_info_; }
+    server_diagnostics& shared_diag() noexcept { return shared_diag_; }
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
     std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
     std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }

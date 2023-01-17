@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CONNECT_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 
@@ -23,7 +24,7 @@ void connect(
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const handshake_params& params,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 template <
@@ -34,7 +35,7 @@ async_connect(
     channel<Stream>& chan,
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const handshake_params& params,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

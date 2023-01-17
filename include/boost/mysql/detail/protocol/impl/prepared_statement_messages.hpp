@@ -45,7 +45,7 @@ inline bool is_unsigned(const field_view& input) noexcept { return input.is_uint
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::com_stmt_prepare_ok_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields>::
     deserialize_(deserialization_context& ctx, com_stmt_prepare_ok_packet& output) noexcept

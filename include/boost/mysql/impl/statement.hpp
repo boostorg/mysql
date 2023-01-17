@@ -12,9 +12,12 @@
 
 #include <boost/mysql/statement.hpp>
 
+#include <boost/mysql/detail/auxiliar/error_helpers.hpp>
 #include <boost/mysql/detail/network_algorithms/close_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
+
+#include <boost/assert/source_location.hpp>
 
 template <class Stream>
 template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
@@ -22,11 +25,11 @@ void boost::mysql::statement<Stream>::execute(
     const FieldLikeTuple& params,
     resultset& result,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
-    detail::clear_errors(err, info);
-    detail::execute_statement(get_channel(), *this, params, result, err, info);
+    detail::clear_errors(err, diag);
+    detail::execute_statement(get_channel(), *this, params, result, err, diag);
 }
 
 template <class Stream>
@@ -34,8 +37,8 @@ template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
 void boost::mysql::statement<Stream>::execute(const FieldLikeTuple& params, resultset& result)
 {
     detail::error_block blk;
-    detail::execute_statement(get_channel(), *this, params, result, blk.err, blk.info);
-    blk.check();
+    detail::execute_statement(get_channel(), *this, params, result, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
@@ -47,7 +50,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::statement<Stream>::async_execute(
     FieldLikeTuple&& params,
     resultset& result,
-    error_info& output_info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -56,7 +59,7 @@ boost::mysql::statement<Stream>::async_execute(
         *this,
         std::forward<FieldLikeTuple>(params),
         result,
-        output_info,
+        diag,
         std::forward<CompletionToken>(token)
     );
 }
@@ -67,11 +70,11 @@ void boost::mysql::statement<Stream>::start_execution(
     const FieldLikeTuple& params,
     execution_state& result,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
-    detail::clear_errors(err, info);
-    detail::start_statement_execution(get_channel(), *this, params, result, err, info);
+    detail::clear_errors(err, diag);
+    detail::start_statement_execution(get_channel(), *this, params, result, err, diag);
 }
 
 template <class Stream>
@@ -82,8 +85,8 @@ void boost::mysql::statement<Stream>::start_execution(
 )
 {
     detail::error_block blk;
-    detail::start_statement_execution(get_channel(), *this, params, result, blk.err, blk.info);
-    blk.check();
+    detail::start_statement_execution(get_channel(), *this, params, result, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
@@ -95,7 +98,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::statement<Stream>::async_start_execution(
     FieldLikeTuple&& params,
     execution_state& result,
-    error_info& output_info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -104,7 +107,7 @@ boost::mysql::statement<Stream>::async_start_execution(
         *this,
         std::forward<FieldLikeTuple>(params),
         result,
-        output_info,
+        diag,
         std::forward<CompletionToken>(token)
     );
 }
@@ -117,10 +120,10 @@ void boost::mysql::statement<Stream>::start_execution(
     FieldViewFwdIterator params_last,
     execution_state& result,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
-    detail::clear_errors(err, info);
+    detail::clear_errors(err, diag);
     detail::start_statement_execution(
         get_channel(),
         *this,
@@ -128,7 +131,7 @@ void boost::mysql::statement<Stream>::start_execution(
         params_last,
         result,
         err,
-        info
+        diag
     );
 }
 
@@ -148,9 +151,9 @@ void boost::mysql::statement<Stream>::start_execution(
         params_last,
         result,
         blk.err,
-        blk.info
+        blk.diag
     );
-    blk.check();
+    blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
@@ -162,7 +165,7 @@ boost::mysql::statement<Stream>::async_start_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& result,
-    error_info& output_info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -172,37 +175,37 @@ boost::mysql::statement<Stream>::async_start_execution(
         params_first,
         params_last,
         result,
-        output_info,
+        diag,
         std::forward<CompletionToken>(token)
     );
 }
 
 // Close statement
 template <class Stream>
-void boost::mysql::statement<Stream>::close(error_code& code, error_info& info)
+void boost::mysql::statement<Stream>::close(error_code& code, server_diagnostics& diag)
 {
-    detail::clear_errors(code, info);
-    detail::close_statement(get_channel(), *this, code, info);
+    detail::clear_errors(code, diag);
+    detail::close_statement(get_channel(), *this, code, diag);
 }
 
 template <class Stream>
 void boost::mysql::statement<Stream>::close()
 {
     detail::error_block blk;
-    detail::close_statement(get_channel(), *this, blk.err, blk.info);
-    blk.check();
+    detail::close_statement(get_channel(), *this, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::statement<Stream>::async_close(error_info& output_info, CompletionToken&& token)
+boost::mysql::statement<Stream>::async_close(server_diagnostics& diag, CompletionToken&& token)
 {
     return detail::async_close_statement(
         get_channel(),
         *this,
         std::forward<CompletionToken>(token),
-        output_info
+        diag
     );
 }
 

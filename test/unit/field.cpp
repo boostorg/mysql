@@ -20,11 +20,8 @@
 #include <sstream>
 
 #include "assert_buffer_equals.hpp"
+#include "printing.hpp"
 #include "test_common.hpp"
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::date)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::datetime)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 using namespace boost::mysql::test;
 using boost::mysql::blob;

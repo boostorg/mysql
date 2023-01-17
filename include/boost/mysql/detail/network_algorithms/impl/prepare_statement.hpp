@@ -10,13 +10,15 @@
 
 #pragma once
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
 
@@ -32,7 +34,7 @@ class prepare_statement_processor
     capabilities caps_;
     bytestring& write_buffer_;
     statement_base& output_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
     unsigned remaining_meta_{};
 
 public:
@@ -41,17 +43,17 @@ public:
         channel<Stream>& chan,
         string_view statement,
         statement_base& output,
-        error_info& output_info
+        server_diagnostics& output_info
     ) noexcept
         : statement_(statement),
           caps_(chan.current_capabilities()),
           write_buffer_(chan.shared_buffer()),
           output_(output),
-          output_info_(output_info)
+          diag_(output_info)
     {
     }
 
-    void clear_output_info() noexcept { output_info_.clear(); }
+    void clear_output_info() noexcept { diag_.clear(); }
 
     void process_request()
     {
@@ -63,17 +65,17 @@ public:
     {
         deserialization_context ctx(message, caps_);
         std::uint8_t msg_type = 0;
-        err = make_error_code(deserialize(ctx, msg_type));
+        err = deserialize_message_part(ctx, msg_type);
         if (err)
             return;
 
         if (msg_type == error_packet_header)
         {
-            err = process_error_packet(ctx, output_info_);
+            err = process_error_packet(ctx, diag_);
         }
         else if (msg_type != 0)
         {
-            err = make_error_code(errc::protocol_value_error);
+            err = make_error_code(client_errc::protocol_value_error);
         }
         else
         {
@@ -173,10 +175,10 @@ void boost::mysql::detail::prepare_statement(
     string_view statement,
     statement_base& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
-    prepare_statement_processor processor(channel, statement, output, info);
+    prepare_statement_processor processor(channel, statement, output, diag);
 
     // Prepare message
     processor.process_request();
@@ -226,14 +228,14 @@ boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,
     string_view statement,
     statement_base& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         prepare_statement_op<Stream>(
             chan,
-            prepare_statement_processor(chan, statement, output, info)
+            prepare_statement_processor(chan, statement, output, diag)
         ),
         token,
         chan

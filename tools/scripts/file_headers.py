@@ -9,9 +9,10 @@
 import os
 import re
 from os import path
-from collections import namedtuple
-from typing import List
+from typing import List, NamedTuple, Tuple
 import glob
+from abc import abstractmethod, ABCMeta
+import argparse
 
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
@@ -75,27 +76,32 @@ def gen_header(linesym, opensym=None, closesym=None, shebang=None, include_guard
         end = closesym + '\n\n#ifndef {0}\n#define {0}'.format(include_guard)
     return text_to_lines(HEADER_TEMPLATE.format(begin=begin, end=end, linesym=linesym))
 
-class NormalProcessor(object):
+class BaseProcessor(metaclass=ABCMeta):
+    @abstractmethod
+    def process(self, lines: List[str], fpath: str) -> List[str]:
+        return lines
+    
+    name = ''
+
+class NormalProcessor(BaseProcessor):
     def __init__(self, name, header):
         self.header = header
         self.name = name
         
-    def process(self, fpath):
-        lines = read_file(fpath)
+    def process(self, lines: List[str], _: str) -> List[str]:
         first_blank = find_first_blank(line.replace('\n', '') for line in lines)
         lines = self.header + normalize_includes(lines[first_blank:])
-        write_file(fpath, lines)
+        return lines
         
-class HppProcessor(object):
+class HppProcessor(BaseProcessor):
     name = 'hpp'
     
-    def process(self, fpath):
-        lines = read_file(fpath)
+    def process(self, lines: List[str], fpath: str) -> List[str]:
         first_content = [i for i, line in enumerate(lines) if line.startswith('#define')][0] + 1
         iguard = self._gen_include_guard(fpath)
         header = gen_header('//', include_guard=iguard)
         lines = header + normalize_includes(lines[first_content:])
-        write_file(fpath, lines)
+        return lines
         
         
     @staticmethod
@@ -107,27 +113,27 @@ class HppProcessor(object):
             relpath = path.join('boost', 'mysql', path.relpath(fpath, REPO_BASE))
         return relpath.replace('/', '_').replace('.', '_').upper()
         
-class XmlProcessor(object):
+class XmlProcessor(BaseProcessor):
     name = 'xml'
     header = gen_header('   ', '<!--', '-->')
     
-    def process(self, fpath):
-        lines = read_file(fpath)
+    def process(self, lines: List[str], fpath: str) -> List[str]:
         if lines[0].startswith('<?'):
             first_blank = [i for i, line in enumerate(lines) if line.strip() == ''][0]
             first_content = [i for i, line in enumerate(lines[first_blank:]) \
                              if line.startswith('<') and not line.startswith('<!--')][0] + first_blank
             lines = lines[0:first_blank] + ['\n'] + self.header + ['\n'] + lines[first_content:]
-            write_file(fpath, lines)
         else:
-            NormalProcessor('xml', self.header).process(fpath)
+            lines = NormalProcessor('xml', self.header).process(lines, fpath)
+        
+        return lines
         
         
-class IgnoreProcessor(object):
+class IgnoreProcessor(BaseProcessor):
     name = 'ignore'
     
-    def process(self, fpath):
-        pass
+    def process(self, lines: List[str], _: str) -> List[str]:
+        return lines
         
 hash_processor = NormalProcessor('hash', gen_header('#'))
 qbk_processor = NormalProcessor('qbk', gen_header('   ', opensym='[/', closesym=']'))
@@ -137,7 +143,7 @@ py_processor = NormalProcessor('py', gen_header('#', shebang='#!/usr/bin/python3
 bash_processor = NormalProcessor('bash', gen_header('#', shebang='#!/bin/bash'))
 bat_processor = NormalProcessor('bat', gen_header('@REM'))
 
-FILE_PROCESSORS = [
+FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('docca-base-stage2-noescape.xsl', IgnoreProcessor()),
     ('CMakeLists.txt', hash_processor),
     ('.cmake', hash_processor),
@@ -164,18 +170,20 @@ FILE_PROCESSORS = [
     ('.pem', IgnoreProcessor()),
 ]
 
-def process_file(fpath):
+def process_file(fpath: str):
     for ext, processor in FILE_PROCESSORS:
         if fpath.endswith(ext):
             if VERBOSE:
                 print('Processing file {} with processor {}'.format(fpath, processor.name))
-            processor.process(fpath)
+            lines = read_file(fpath)
+            output_lines = processor.process(lines, fpath)
+            if output_lines != lines:
+                write_file(fpath, output_lines)
             break
     else:
         raise ValueError('Could not find a suitable processor for file: ' + fpath)
     
 def process_all_files():
-    res = list(BASE_FILES)
     for base_folder in BASE_FOLDERS:
         base_folder_abs = path.join(REPO_BASE, base_folder)
         for curdir, _, files in os.walk(base_folder_abs):
@@ -185,116 +193,113 @@ def process_all_files():
                 continue
             for fname in files:
                 process_file(path.join(curdir, fname))
-                
-Error = namedtuple('Error', ('symbol', 'number', 'descr', 'is_server'))
 
-ERRC_TEMPLATE = '''
-#ifndef BOOST_MYSQL_ERRC_HPP
-#define BOOST_MYSQL_ERRC_HPP
 
-#include <iosfwd>
+class Error(NamedTuple):
+    symbol: str
+    number: int
+    descr: str
+
+
+SERVER_ERRC_TEMPLATE = '''
+#ifndef BOOST_MYSQL_SERVER_ERRC_HPP
+#define BOOST_MYSQL_SERVER_ERRC_HPP
+
+#include <boost/mysql/error_code.hpp>
+
+#include <ostream>
 
 namespace boost {{
 namespace mysql {{
 
 /**
- * \\brief MySQL-specific error codes.
- * \\details Some error codes are defined by the client library, and others
- * are returned from the server. For the latter, the numeric value and
- * string descriptions match the ones described in the MySQL documentation.
+ * \\brief MySQL server-defined error codes.
+ * \\details The numeric value and semantics match the ones described in the MySQL documentation.
  * See <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">the MySQL error reference</a>
- * for more info on server errors.
+ * for more info.
  */
-enum class errc : int
+enum class server_errc : int
 {{
 {}
 }};
 
 /**
-  * \\brief Streams an error code.
-  */
-inline std::ostream& operator<<(std::ostream&, errc);
+ * \\brief Returns the error_category associated to \\ref server_errc.
+ */
+inline const boost::system::error_category& get_server_category() noexcept;
 
-}} // mysql
-}} // boost
+/// Creates an \\ref error_code from a \\ref server_errc.
+inline error_code make_error_code(server_errc error);
+
+/**
+ * \\brief Streams an error code.
+ */
+inline std::ostream& operator<<(std::ostream&, server_errc);
+
+}}  // namespace mysql
+}}  // namespace boost
+
+#include <boost/mysql/impl/server_errc.hpp>
 
 #endif
 '''
 
-DESCRIPTIONS_TEMPLATE='''
-#ifndef BOOST_MYSQL_IMPL_ERROR_DESCRIPTIONS_HPP
-#define BOOST_MYSQL_IMPL_ERROR_DESCRIPTIONS_HPP
+SERVER_STRINGS_TEMPLATE='''
+#ifndef BOOST_MYSQL_IMPL_SERVER_ERRC_STRINGS_HPP
+#define BOOST_MYSQL_IMPL_SERVER_ERRC_STRINGS_HPP
 
-#include <boost/mysql/errc.hpp>
+#pragma once
+
+#include <boost/mysql/server_errc.hpp>
 
 namespace boost {{
 namespace mysql {{
 namespace detail {{
 
-struct error_entry
+inline const char* error_to_string(server_errc error) noexcept
 {{
-    errc value;
-    const char* message;
-}};
-
-constexpr error_entry all_errors [] = {{
+    switch (error)
+    {{
 {}
-}};
+    default: return "<unknown MySQL server error>";
+    }}
+}}
 
-}} // detail
-}} // mysql
-}} // boost
+}}  // namespace detail
+}}  // namespace mysql
+}}  // namespace boost
 
 #endif
 '''
 
-def generate_errc_entry(err):
-    if err.is_server:
-        doc = ('Server error. Error number: {}, symbol: ' + \
-              '<a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_{}">ER_{}</a>.').format(
-                  err.number, err.symbol, err.symbol.upper())
-    else:
-        if err.number == 0:
-            doc = err.descr
-        else:
-            doc = 'Client error. ' + err.descr
-    return '    {} = {}, ///< {}'.format(err.symbol, err.number, doc)
+def generate_errc_entry(err: Error) -> str:
+    doc = ('Server error. Error number: {}, symbol: ' + \
+            '<a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_{}">ER_{}</a>.').format(
+                err.number, err.symbol, err.symbol.upper())
+    return f'    {err.symbol} = {err.number}, ///< {doc}'
 
-def generate_description_entry(err):
-    return '    {{ errc::{}, "{}" }},'.format(err.symbol, err.descr)
+def generate_description_entry(err: Error) -> str:
+    return f'    case server_errc::{err.symbol}: return "{err.descr}";'
                 
-def generate_error_enums():
+def generate_errc_headers() -> None:
     # Get the error list
     with open(MYSQL_ERROR_HEADER, 'rt') as f:
         content = f.read()
     pat = r'#define ER_([A-Z0-9_]*) ([0-9]*)'
-    server_errors = [(symbol.lower(), int(number)) for symbol, number in re.findall(pat, content) if int(number) < 5000]
-    client_errors = [
-        ('incomplete_message', 65536, 'An incomplete message was received from the server'),
-        ('extra_bytes', 65537, 'Unexpected extra bytes at the end of a message were received'),
-        ('sequence_number_mismatch', 65538, 'Mismatched sequence numbers'),
-        ('server_unsupported', 65539, 'The server does not support the minimum required capabilities to establish the connection'),
-        ('protocol_value_error', 65540, 'An unexpected value was found in a server-received message'),
-        ('unknown_auth_plugin', 65541, 'The user employs an authentication plugin not known to this library'),
-        ('auth_plugin_requires_ssl', 65542, 'The authentication plugin requires the connection to use SSL'),
-        ('wrong_num_params', 65543, 'The number of parameters passed to the prepared statement does not match the number of actual parameters'),
-    ]
-    errors = [Error('ok', 0, 'No error', False)] + \
-        [Error(sym, num, sym, True) for (sym, num) in server_errors] + \
-        [Error(sym, num, descr, False) for (sym, num, descr) in client_errors]
+    parsed_header = [(symbol.lower(), int(number)) for symbol, number in re.findall(pat, content) if int(number) < 5000]
+    errors = [Error(sym, num, sym) for (sym, num) in parsed_header]
     
-    # Generate errc header
-    errc_content = ERRC_TEMPLATE.format('\n'.join(generate_errc_entry(err) for err in errors))
-    with open(path.join(REPO_BASE, 'include', 'boost', 'mysql', 'errc.hpp'), 'wt') as f:
+    # Generate server_errc.hpp header
+    errc_content = SERVER_ERRC_TEMPLATE.format('\n'.join(generate_errc_entry(err) for err in errors))
+    with open(path.join(REPO_BASE, 'include', 'boost', 'mysql', 'server_errc.hpp'), 'wt') as f:
         f.write(errc_content)
         
     # Generate error descriptions header
-    descr_content = DESCRIPTIONS_TEMPLATE.format('\n'.join(generate_description_entry(err) 
+    descr_content = SERVER_STRINGS_TEMPLATE.format('\n'.join(generate_description_entry(err) 
                                                            for err in errors))
     with open(path.join(REPO_BASE, 'include', 'boost', 'mysql', 
-                        'impl', 'error_descriptions.hpp'), 'wt') as f:
+                        'impl', 'server_errc_strings.hpp'), 'wt') as f:
         f.write(descr_content)
-
 
 
 # Check that cmake and b2 test source files are equal
@@ -315,7 +320,13 @@ def verify_test_consistency():
 
             
 def main():
-    generate_error_enums()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--errc', action='store_true')
+    args = parser.parse_args()
+
+    if args.errc:
+        generate_errc_headers()
+    
     process_all_files()
     verify_test_consistency()
             

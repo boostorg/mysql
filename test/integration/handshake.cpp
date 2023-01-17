@@ -5,8 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/errc.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/server_errc.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/ssl/host_name_verification.hpp>
@@ -25,9 +26,10 @@
 
 using namespace boost::mysql::test;
 
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::handshake_params;
+using boost::mysql::server_errc;
 using boost::mysql::ssl_mode;
 using boost::mysql::string_view;
 using boost::mysql::tcp_ssl_connection;
@@ -98,7 +100,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, net_samples_both)
     setup_and_physical_connect(sample.net);
     set_credentials("mysqlnp_user", "bad_password");
     conn->handshake(params).validate_error(
-        errc::access_denied_error,
+        server_errc::access_denied_error,
         {"access denied", "mysqlnp_user"}
     );
 }
@@ -161,7 +163,7 @@ BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture, net_samples_b
     set_credentials("csha2p_user", "csha2p_password");
     clear_sha256_cache();
     params.set_ssl(ssl_mode::disable);
-    conn->handshake(params).validate_error(errc::auth_plugin_requires_ssl, {});
+    conn->handshake(params).validate_error(client_errc::auth_plugin_requires_ssl, {});
 }
 
 BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
@@ -205,7 +207,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_hit, caching_sha2_fixture, ne
     set_credentials("csha2p_user", "bad_password");
     load_sha256_cache("csha2p_user", "csha2p_password");
     conn->handshake(params).validate_error(
-        errc::access_denied_error,
+        server_errc::access_denied_error,
         {"access denied", "csha2p_user"}
     );
 }
@@ -217,7 +219,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, n
     set_credentials("csha2p_user", "bad_password");
     clear_sha256_cache();
     conn->handshake(params).validate_error(
-        errc::access_denied_error,
+        server_errc::access_denied_error,
         {"access denied", "csha2p_user"}
     );
 }
@@ -303,7 +305,7 @@ BOOST_MYSQL_NETWORK_TEST(unknown_auth_plugin, handshake_fixture, net_samples_ssl
     // Note: sha256_password is not supported, so it's an unknown plugin to us
     setup_and_physical_connect(sample.net);
     set_credentials("sha2p_user", "sha2p_password");
-    conn->handshake(params).validate_error(errc::unknown_auth_plugin, {});
+    conn->handshake(params).validate_error(client_errc::unknown_auth_plugin, {});
 }
 
 BOOST_MYSQL_NETWORK_TEST(bad_user, handshake_fixture, net_samples_nossl)

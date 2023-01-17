@@ -115,7 +115,7 @@ The table below summarizes the encoding used by each piece of functionality in t
         [`character_set_results`]
     ]
     [
-        [Server-generated error messages: [refmem error_info message]]
+        [Server-generated error messages: [refmem server_diagnostics message]]
         [`character_set_results`]
     ]
     [

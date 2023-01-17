@@ -6,14 +6,15 @@
 //
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/errc.hpp>
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
+#include <boost/mysql/server_error.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <memory>
@@ -28,13 +29,13 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-using boost::mysql::error_info;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::resultset;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::server_diagnostics;
 using boost::mysql::string_view;
 
 namespace {
@@ -50,10 +51,14 @@ static network_result<impl_result_type<Callable>> impl(Callable&& cb)
     {
         res.value = cb();
     }
+    catch (const boost::mysql::server_error& err)
+    {
+        res.err = err.code();
+        res.diag = err.diagnostics();
+    }
     catch (const boost::system::system_error& err)
     {
         res.err = err.code();
-        res.info = error_info(err.what());
     }
     return res;
 }

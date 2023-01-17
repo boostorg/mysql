@@ -11,58 +11,63 @@ This section describes the different error handling strategies
 you may use with this library, as well as the different overloads
 available for each function involving network transfers.
 
-The different overloads differ in how they deal with errors.
-Most of them use a strategy based on [reflink error_code]'s
-(which is an alias for `boost::system::error_code`).
-Additionally, some of them use the [reflink error_info]
-class. This is used as a container for additional
-information about the error, if available.
-For example, if you issue a query using [refmem connection query]
-and one of the referenced fields does not exist, the function
-will fail. The [reflink error_code] will acknowledge this fact,
-and the [reflink error_info] will contain information about which
-field caused the problem.
+This library uses Boost.System error codes and exceptions,
+like Asio and Beast. Some server-reported errors may include additional
+diagnostics information. For example, if you issue a query 
+and one of the referenced fields does not exist, the server will return
+an error message indicating which was the offending field. This library
+makes this diagnostics available through the following classes and
+functions:
 
-[heading Synchronous functions]
+* [reflink server_diagnostics]: an object containing this extra information
+  returned by the server.
+* [reflink server_error]: an exception that inherits from `boost::system::system_error`
+  that contains a `server_diagnostics` object.
+* [reflink throw_on_error]: a utility function to throw either `boost::system::system_error`
+  or `server_error` given an `error_code` and a `server_diagnostics` object.
 
-There are two overloads for each synchronous network function:
+Every piece of functionality involving network transfers is offered in four versions:
 
-* Synchronous with exceptions. These are the easier to use,
-  and the ones employed in the [link mysql.tutorial tutorial].
-  When they fail, they throw a `boost::system::system_error`
-  exception, which contains an `error_code` and a diagnostic
-  message.
-* Synchronous with [reflink error_code] and [reflink error_info].
-  These functions output an [reflink error_code] and an [reflink error_info]
-  by lvalue reference when they fail.
-  
-[heading Asynchronous functions]
-
-There are two overloads for each asynchronous network function:
-
-* Without `error_info`, having the `CompletionToken` as last parameter.
+* Synchronous with exceptions.
+  When they fail, they throw an exception. Exceptions will be of type
+  `boost::system::system_error`, or [reflink server_error], if the error
+  was reported by the server (you may access additional diagnostics using
+  [refmem server_error diagnostics]).
+* Synchronous with [reflink error_code] and [reflink server_diagnostics].
+  These functions output an [reflink error_code] and a [reflink server_diagnostics]
+  object by lvalue reference to report failures.
+* Asynchronous, without `server_diagnostics`, having the `CompletionToken` as last parameter.
   When they fail, they call the completion handler with a non-empty `error_code`.
-* With `error_info`, having an `error_info&` and `CompletionToken` as the last
-  two parameters. When they fail, they set the `error_info` parameter to any server-provided
+* Asynchronous, with `server_diagnostics`, having a `server_diagnostics&` and `CompletionToken` as the last
+  two parameters. When they fail, they set the `server_diagnostics` parameter to any server-provided
   diagnostic information, if available, and then call the completion handler with a non-empty `error_code`.
   
-[heading Server-side and client-side error codes]
+[heading Types of errors]
 
-__Self__ [reflink error_code]s use [reflink errc] as the
-underlying error enumeration. This enum combines codes from
-two different origins:
+This library emits three different types of errors. They are all treated as `error_code`s, but
+with different `error_category`s:
 
-* [*Server defined] error codes. These codes are defined by the MySQL
-  server. They range between 1 and 0xffff. They are described
+* Network errors are produced by the underlying Boost.Asio library.
+* Server errors appear when the server can't execute the requested operation.
+  For example, when a query contains invalid SQL or when authentication fails.
+  These use the [reflink server_errc] enumeration. They are described
   in detail [@https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html in the MySQL error reference].
-* [*Client defined] error codes. These are defined by __Self__,
-  and are always greater than 0xffff.
-  
+* Client errors indicate failures detected by Boost.MySQL. For instance, when 
+  a corrupted message is received. These use the [reflink client_errc] enumeration.
+
 [note
     No validation is in place to guarantee that the error
-    codes sent by the server are the ones defined in [reflink errc].
+    codes sent by the server are the ones defined in [reflink server_errc].
     The server may define additional error codes, and that should
     not make operations fail. 
 ]
+
+[heading Security notes on server_diagnostics]
+
+The diagnostic message given by [refmem server_diagnostics message] [*may contain user-provided input,
+and should be treated as untrusted]. For certain errors, the MySQL server will include the offending
+field names and values, which may contain arbitrary input. Please use with caution.
+
+This message may contain non-ASCII characters. It's encoded using the connection's character set.
 
 [endsect]

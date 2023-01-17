@@ -10,7 +10,6 @@
 
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
@@ -20,13 +19,9 @@
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 
-#include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <algorithm>
-#include <cassert>
 #include <cstddef>
-#include <ostream>
 #include <vector>
 
 namespace boost {
@@ -58,7 +53,7 @@ rows makerows(std::size_t num_columns, Types&&... args)
     return rows(rows_view(fields.data(), fields.size(), num_columns));
 }
 
-BOOST_CXX14_CONSTEXPR inline time maket(int hours, int mins, int secs, int micros = 0)
+constexpr time maket(int hours, int mins, int secs, int micros = 0)
 {
     return std::chrono::hours(hours) + std::chrono::minutes(mins) + std::chrono::seconds(secs) +
            std::chrono::microseconds(micros);
@@ -91,6 +86,15 @@ inline blob_view makebv(const char (&value)[N])
     );  // discard null terminator
 }
 
+template <std::size_t N>
+detail::string_fixed<N> makesfixed(const char (&value)[N + 1])
+{
+    static_assert(N >= 1, "Expected a C-array literal");
+    detail::string_fixed<N> res;
+    std::memcpy(res.data(), value, N);
+    return res;
+}
+
 inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
 {
     std::transform(value.begin(), value.end(), value.begin(), &tolower);
@@ -103,63 +107,7 @@ inline void validate_string_contains(std::string value, const std::vector<std::s
     }
 }
 
-inline const char* to_string(ssl_mode m)
-{
-    switch (m)
-    {
-    case ssl_mode::disable: return "ssldisable";
-    case ssl_mode::enable: return "sslenable";
-    case ssl_mode::require: return "sslrequire";
-    default: assert(false); return "";
-    }
-}
-
-inline const char* to_string(detail::protocol_field_type t) noexcept
-{
-    switch (t)
-    {
-    case detail::protocol_field_type::decimal: return "decimal";
-    case detail::protocol_field_type::tiny: return "tiny";
-    case detail::protocol_field_type::short_: return "short_";
-    case detail::protocol_field_type::long_: return "long_";
-    case detail::protocol_field_type::float_: return "float_";
-    case detail::protocol_field_type::double_: return "double_";
-    case detail::protocol_field_type::null: return "null";
-    case detail::protocol_field_type::timestamp: return "timestamp";
-    case detail::protocol_field_type::longlong: return "longlong";
-    case detail::protocol_field_type::int24: return "int24";
-    case detail::protocol_field_type::date: return "date";
-    case detail::protocol_field_type::time: return "time";
-    case detail::protocol_field_type::datetime: return "datetime";
-    case detail::protocol_field_type::year: return "year";
-    case detail::protocol_field_type::varchar: return "varchar";
-    case detail::protocol_field_type::bit: return "bit";
-    case detail::protocol_field_type::newdecimal: return "newdecimal";
-    case detail::protocol_field_type::enum_: return "enum_";
-    case detail::protocol_field_type::set: return "set";
-    case detail::protocol_field_type::tiny_blob: return "tiny_blob";
-    case detail::protocol_field_type::medium_blob: return "medium_blob";
-    case detail::protocol_field_type::long_blob: return "long_blob";
-    case detail::protocol_field_type::blob: return "blob";
-    case detail::protocol_field_type::var_string: return "var_string";
-    case detail::protocol_field_type::string: return "string";
-    case detail::protocol_field_type::geometry: return "geometry";
-    default: return "unknown";
-    }
-}
-
 }  // namespace test
-
-// make protocol_field_type streamable
-namespace detail {
-
-inline std::ostream& operator<<(std::ostream& os, protocol_field_type t)
-{
-    return os << test::to_string(t);
-}
-
-}  // namespace detail
-
 }  // namespace mysql
 }  // namespace boost
 

@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row.hpp>
 
@@ -21,7 +21,7 @@
 #include "test_channel.hpp"
 #include "test_common.hpp"
 
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::rows;
@@ -251,9 +251,9 @@ BOOST_AUTO_TEST_CASE(error_reading_row)
             auto st = create_execution_state(resultset_encoding::text, {});
             test_channel chan = create_channel();
             rows rws = make_initial_rows();
-            chan.lowest_layer().set_fail_count(fail_count(0, errc::no));
+            chan.lowest_layer().set_fail_count(fail_count(0, client_errc::server_unsupported));
 
-            fns.read_all_rows(chan, st, rws).validate_error_exact(error_code(errc::no), "");
+            fns.read_all_rows(chan, st, rws).validate_error_exact(client_errc::server_unsupported);
             BOOST_TEST(rws.empty());
             BOOST_TEST(!st.complete());
         }
@@ -276,8 +276,7 @@ BOOST_AUTO_TEST_CASE(error_deserializing_row)
             chan.lowest_layer().add_message(r);
 
             // deserialize row error
-            fns.read_all_rows(chan, st, rws)
-                .validate_error_exact(error_code(errc::incomplete_message), "");
+            fns.read_all_rows(chan, st, rws).validate_error_exact(client_errc::incomplete_message);
             BOOST_TEST(rws.empty());
             BOOST_TEST(!st.complete());
         }

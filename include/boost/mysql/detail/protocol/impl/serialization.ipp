@@ -27,14 +27,14 @@ inline string_view get_string(const std::uint8_t* from, std::size_t size)
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::int_lenenc,
     boost::mysql::detail::serialization_tag::none>::
     deserialize_(deserialization_context& ctx, int_lenenc& output) noexcept
 {
     std::uint8_t first_byte = 0;
-    errc err = deserialize(ctx, first_byte);
-    if (err != errc::ok)
+    auto err = deserialize(ctx, first_byte);
+    if (err != deserialize_errc::ok)
     {
         return err;
     }
@@ -59,7 +59,7 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     }
     else
     {
-        err = errc::ok;
+        err = deserialize_errc::ok;
         output.value = first_byte;
     }
     return err;
@@ -106,7 +106,7 @@ inline std::size_t boost::mysql::detail::serialization_traits<
         return 9;
 }
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_null,
     boost::mysql::detail::serialization_tag::none>::
     deserialize_(deserialization_context& ctx, string_null& output) noexcept
@@ -114,47 +114,47 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     auto string_end = std::find(ctx.first(), ctx.last(), 0);
     if (string_end == ctx.last())
     {
-        return errc::incomplete_message;
+        return deserialize_errc::incomplete_message;
     }
     output.value = get_string(ctx.first(), string_end - ctx.first());
     ctx.set_first(string_end + 1);  // skip the null terminator
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_eof,
     boost::mysql::detail::serialization_tag::none>::
     deserialize_(deserialization_context& ctx, string_eof& output) noexcept
 {
     output.value = get_string(ctx.first(), ctx.last() - ctx.first());
     ctx.set_first(ctx.last());
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::string_lenenc,
     boost::mysql::detail::serialization_tag::none>::
     deserialize_(deserialization_context& ctx, string_lenenc& output) noexcept
 {
     int_lenenc length;
-    errc err = deserialize(ctx, length);
-    if (err != errc::ok)
+    auto err = deserialize(ctx, length);
+    if (err != deserialize_errc::ok)
     {
         return err;
     }
     if (length.value > std::numeric_limits<std::size_t>::max())
     {
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     }
     auto len = static_cast<std::size_t>(length.value);
     if (!ctx.enough_size(len))
     {
-        return errc::incomplete_message;
+        return deserialize_errc::incomplete_message;
     }
 
     output.value = get_string(ctx.first(), len);
     ctx.advance(len);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_SERIALIZATION_IPP_ */

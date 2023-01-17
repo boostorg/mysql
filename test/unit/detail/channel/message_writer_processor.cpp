@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/mysql/detail/channel/message_writer_processor.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -23,6 +25,7 @@
 #include "create_message.hpp"
 
 using boost::asio::buffer;
+using boost::mysql::error_code;
 using boost::mysql::detail::message_writer_processor;
 using boost::mysql::test::concat_copy;
 
@@ -34,11 +37,11 @@ void check_header(
     std::size_t expected_size
 )
 {
-    BOOST_TEST(buff.size() == 4u);
+    BOOST_TEST_REQUIRE(buff.size() == 4u);
     boost::mysql::detail::deserialization_context ctx(buff, boost::mysql::detail::capabilities());
     boost::mysql::detail::packet_header header;
-    auto err = boost::mysql::detail::deserialize(ctx, header);
-    BOOST_TEST(err == boost::mysql::errc::ok);
+    auto err = boost::mysql::detail::deserialize_message(ctx, header);
+    BOOST_TEST(err == error_code());
     BOOST_TEST(header.sequence_number == expected_seqnum);
     BOOST_TEST(header.packet_size.value == expected_size);
 }

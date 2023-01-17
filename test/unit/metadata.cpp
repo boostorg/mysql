@@ -7,6 +7,7 @@
 
 #include <boost/mysql/metadata.hpp>
 
+#include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;

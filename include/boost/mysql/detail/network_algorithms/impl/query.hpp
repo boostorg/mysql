@@ -22,17 +22,17 @@ template <class Stream>
 struct query_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
     string_view query_;
     resultset& output_;
 
     query_op(
         channel<Stream>& chan,
-        error_info& output_info,
+        server_diagnostics& diag,
         string_view q,
         resultset& output
     ) noexcept
-        : chan_(chan), output_info_(output_info), query_(q), output_(output)
+        : chan_(chan), diag_(diag), query_(q), output_(output)
     {
     }
 
@@ -50,13 +50,13 @@ struct query_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD
-            async_start_query(chan_, query_, output_.state(), output_info_, std::move(self));
+            async_start_query(chan_, query_, output_.state(), diag_, std::move(self));
 
             BOOST_ASIO_CORO_YIELD async_read_all_rows(
                 chan_,
                 output_.state(),
                 output_.mutable_rows(),
-                output_info_,
+                diag_,
                 std::move(self)
             );
 
@@ -75,14 +75,14 @@ void boost::mysql::detail::query(
     string_view query,
     resultset& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
-    start_query(channel, query, output.state(), err, info);
+    start_query(channel, query, output.state(), err, diag);
     if (err)
         return;
 
-    read_all_rows(channel, output.state(), output.mutable_rows(), err, info);
+    read_all_rows(channel, output.state(), output.mutable_rows(), err, diag);
 }
 
 template <
@@ -93,12 +93,12 @@ boost::mysql::detail::async_query(
     channel<Stream>& chan,
     string_view query,
     resultset& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        query_op<Stream>(chan, info, query, output),
+        query_op<Stream>(chan, diag, query, output),
         token,
         chan
     );

@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZATION_CONTEXT_HPP
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 
 #include <boost/asio/buffer.hpp>
 
@@ -60,13 +60,13 @@ public:
     bool empty() const noexcept { return last_ == first_; }
     bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
     capabilities get_capabilities() const noexcept { return capabilities_; }
-    errc copy(void* to, std::size_t sz) noexcept
+    deserialize_errc copy(void* to, std::size_t sz) noexcept
     {
         if (!enough_size(sz))
-            return errc::incomplete_message;
+            return deserialize_errc::incomplete_message;
         memcpy(to, first_, sz);
         advance(sz);
-        return errc::ok;
+        return deserialize_errc::ok;
     }
 };
 

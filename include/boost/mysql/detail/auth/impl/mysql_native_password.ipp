@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/client_errc.hpp>
+
 #include <boost/mysql/detail/auth/mysql_native_password.hpp>
 
 #include <cstring>
@@ -63,7 +65,7 @@ inline boost::mysql::error_code boost::mysql::detail::mysql_native_password::com
     // Check challenge size
     if (challenge.size() != challenge_length)
     {
-        return make_error_code(errc::protocol_value_error);
+        return make_error_code(client_errc::protocol_value_error);
     }
 
     // Do the calculation

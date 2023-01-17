@@ -10,14 +10,16 @@
 
 #pragma once
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
 
@@ -33,7 +35,7 @@ class start_execution_processor
 {
     resultset_encoding encoding_;
     execution_state& st_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
     bytestring& write_buffer_;
     capabilities caps_;
     std::size_t num_fields_{};
@@ -43,17 +45,13 @@ public:
     start_execution_processor(
         resultset_encoding encoding,
         execution_state& st,
-        error_info& output_info,
+        server_diagnostics& diag,
         bytestring& write_buffer,
         capabilities caps
     ) noexcept
-        : encoding_(encoding),
-          st_(st),
-          output_info_(output_info),
-          write_buffer_(write_buffer),
-          caps_(caps){};
+        : encoding_(encoding), st_(st), diag_(diag), write_buffer_(write_buffer), caps_(caps){};
 
-    void clear_output_info() noexcept { output_info_.clear(); }
+    void clear_output_info() noexcept { diag_.clear(); }
 
     template <BOOST_MYSQL_SERIALIZE_FN SerializeFn>
     void process_request(SerializeFn&& request)
@@ -65,7 +63,7 @@ public:
 
     void process_response(boost::asio::const_buffer msg, error_code& err)
     {
-        auto response = deserialize_execute_response(msg, caps_, output_info_);
+        auto response = deserialize_execute_response(msg, caps_, diag_);
         switch (response.type)
         {
         case execute_response::type_t::error: err = response.data.err; break;
@@ -193,7 +191,7 @@ struct start_execution_generic_op : boost::asio::coroutine
 inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute_response(
     boost::asio::const_buffer msg,
     capabilities caps,
-    error_info& info
+    server_diagnostics& diag
 ) noexcept
 {
     // Response may be: ok_packet, err_packet, local infile request (not implemented)
@@ -201,9 +199,10 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
     // a length-encoded int containing the field count
     deserialization_context ctx(msg, caps);
     std::uint8_t msg_type = 0;
-    error_code err = make_error_code(deserialize(ctx, msg_type));
+    auto err = deserialize_message_part(ctx, msg_type);
     if (err)
         return err;
+
     if (msg_type == ok_packet_header)
     {
         ok_packet ok_pack;
@@ -214,7 +213,7 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
     }
     else if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, info);
+        return process_error_packet(ctx, diag);
     }
     else
     {
@@ -232,7 +231,7 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
         // we accept anything less than 0xffff
         if (num_fields.value == 0 || num_fields.value > 0xffffu)
         {
-            return make_error_code(errc::protocol_value_error);
+            return make_error_code(client_errc::protocol_value_error);
         }
 
         return static_cast<std::size_t>(num_fields.value);
@@ -246,15 +245,15 @@ void boost::mysql::detail::start_execution_generic(
     const SerializeFn& fn,
     execution_state& st,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     // Clear info
-    info.clear();
+    diag.clear();
 
     // Serialize the request
     start_execution_processor
-        processor(encoding, st, info, channel.shared_buffer(), channel.current_capabilities());
+        processor(encoding, st, diag, channel.shared_buffer(), channel.current_capabilities());
     processor.process_request(fn);
 
     // Send it
@@ -306,7 +305,7 @@ boost::mysql::detail::async_start_execution_generic(
     channel<Stream>& channel,
     SerializeFn&& fn,
     execution_state& st,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -317,7 +316,7 @@ boost::mysql::detail::async_start_execution_generic(
             start_execution_processor(
                 encoding,
                 st,
-                info,
+                diag,
                 channel.shared_buffer(),
                 channel.current_capabilities()
             )

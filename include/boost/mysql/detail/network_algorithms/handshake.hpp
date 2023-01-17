@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_HANDSHAKE_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_HANDSHAKE_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 
@@ -22,7 +23,7 @@ void handshake(
     channel<Stream>& channel,
     const handshake_params& params,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 template <
@@ -32,7 +33,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_handshake(
     channel<Stream>& channel,
     const handshake_params& params,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

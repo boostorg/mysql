@@ -46,6 +46,7 @@ unit-test boost_mysql_unittests
         detail/network_algorithms/execute_statement.cpp
         detail/protocol/capabilities.cpp
         detail/protocol/null_bitmap_traits.cpp
+        detail/protocol/deserialize_errc.cpp
         detail/protocol/serialization_test.cpp
         detail/protocol/deserialize_text_field.cpp
         detail/protocol/deserialize_binary_field.cpp
@@ -60,12 +61,15 @@ unit-test boost_mysql_unittests
         rows.cpp
         metadata.cpp
         metadata_collection_view.cpp
-        error.cpp
+        client_errc.cpp
+        server_errc.cpp
+        server_diagnostics.cpp
         statement.cpp
         execution_state.cpp
         resultset.cpp
         regressions.cpp
         connection.cpp
+        throw_on_error.cpp
     :
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
     ;

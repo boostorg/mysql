@@ -15,6 +15,7 @@
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
+#include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <cstddef>
@@ -24,7 +25,7 @@ namespace mysql {
 namespace detail {
 
 // strings
-inline errc deserialize_binary_field_string(
+inline deserialize_errc deserialize_binary_field_string(
     deserialization_context& ctx,
     field_view& output,
     const std::uint8_t* buffer_first,
@@ -33,26 +34,29 @@ inline errc deserialize_binary_field_string(
 {
     string_lenenc deser;
     auto err = deserialize(ctx, deser);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
     output = field_view(detail::string_view_offset::from_sv(deser.value, buffer_first), is_blob);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 // ints
 template <class TargetType, class DeserializableType>
-errc deserialize_binary_field_int_impl(deserialization_context& ctx, field_view& output) noexcept
+deserialize_errc deserialize_binary_field_int_impl(
+    deserialization_context& ctx,
+    field_view& output
+) noexcept
 {
     DeserializableType deser;
     auto err = deserialize(ctx, deser);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
     output = field_view(static_cast<TargetType>(deser));
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 template <class DeserializableTypeUnsigned, class DeserializableTypeSigned>
-errc deserialize_binary_field_int(
+deserialize_errc deserialize_binary_field_int(
     const metadata& meta,
     deserialization_context& ctx,
     field_view& output
@@ -71,38 +75,44 @@ errc deserialize_binary_field_int(
 
 // Bits. These come as a binary value between 1 and 8 bytes,
 // packed in a string
-inline errc deserialize_binary_field_bit(deserialization_context& ctx, field_view& output) noexcept
+inline deserialize_errc deserialize_binary_field_bit(
+    deserialization_context& ctx,
+    field_view& output
+) noexcept
 {
     string_lenenc buffer;
     auto err = deserialize(ctx, buffer);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
     return deserialize_bit(buffer.value, output);
 }
 
 // Floats
 template <class T>
-errc deserialize_binary_field_float(deserialization_context& ctx, field_view& output) noexcept
+deserialize_errc deserialize_binary_field_float(
+    deserialization_context& ctx,
+    field_view& output
+) noexcept
 {
     // Size check
     if (!ctx.enough_size(sizeof(T)))
-        return errc::incomplete_message;
+        return deserialize_errc::incomplete_message;
 
     // Endianness conversion. Boost.Endian support for floats start at 1.71
     T v = boost::endian::endian_load<T, sizeof(T), boost::endian::order::little>(ctx.first());
 
     // Nans and infs not allowed in SQL
     if (std::isnan(v) || std::isinf(v))
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
 
     // Done
     ctx.advance(sizeof(T));
     output = field_view(v);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 // Time types
-inline errc deserialize_binary_ymd(deserialization_context& ctx, date& output)
+inline deserialize_errc deserialize_binary_ymd(deserialization_context& ctx, date& output)
 {
     std::uint16_t year;
     std::uint8_t month;
@@ -110,45 +120,48 @@ inline errc deserialize_binary_ymd(deserialization_context& ctx, date& output)
 
     // Deserialize
     auto err = deserialize(ctx, year, month, day);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // Range check
     if (year > max_year || month > max_month || day > max_day)
     {
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     }
 
     output = date(year, month, day);
 
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_binary_field_date(deserialization_context& ctx, field_view& output) noexcept
+inline deserialize_errc deserialize_binary_field_date(
+    deserialization_context& ctx,
+    field_view& output
+) noexcept
 {
     // Deserialize length
     std::uint8_t length;
     auto err = deserialize(ctx, length);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // Check for zero dates
     if (length < binc::date_sz)
     {
         output = field_view(date());
-        return errc::ok;
+        return deserialize_errc::ok;
     }
 
     // Deserialize rest of fields
     date d;
     err = deserialize_binary_ymd(ctx, d);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
     output = field_view(d);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_binary_field_datetime(
+inline deserialize_errc deserialize_binary_field_datetime(
     deserialization_context& ctx,
     field_view& output
 ) noexcept
@@ -158,7 +171,7 @@ inline errc deserialize_binary_field_datetime(
     // Deserialize length
     std::uint8_t length;
     auto err = deserialize(ctx, length);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // If the DATETIME does not contain some of the values below,
@@ -173,7 +186,7 @@ inline errc deserialize_binary_field_datetime(
     if (length >= datetime_d_sz)
     {
         err = deserialize_binary_ymd(ctx, d);
-        if (err != errc::ok)
+        if (err != deserialize_errc::ok)
             return err;
     }
 
@@ -181,7 +194,7 @@ inline errc deserialize_binary_field_datetime(
     if (length >= datetime_dhms_sz)
     {
         err = deserialize(ctx, hours, minutes, seconds);
-        if (err != errc::ok)
+        if (err != deserialize_errc::ok)
             return err;
     }
 
@@ -189,30 +202,33 @@ inline errc deserialize_binary_field_datetime(
     if (length >= datetime_dhmsu_sz)
     {
         err = deserialize(ctx, micros);
-        if (err != errc::ok)
+        if (err != deserialize_errc::ok)
             return err;
     }
 
     // Validity check. deserialize_binary_ymd already does it for date
     if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
     {
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     }
 
     // Compose the final datetime
     datetime dt(d.year(), d.month(), d.day(), hours, minutes, seconds, micros);
     output = field_view(dt);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_binary_field_time(deserialization_context& ctx, field_view& output) noexcept
+inline deserialize_errc deserialize_binary_field_time(
+    deserialization_context& ctx,
+    field_view& output
+) noexcept
 {
     using namespace binc;
 
     // Deserialize length
     std::uint8_t length;
     auto err = deserialize(ctx, length);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // If the TIME contains no value for these fields, they are zero
@@ -227,7 +243,7 @@ inline errc deserialize_binary_field_time(deserialization_context& ctx, field_vi
     if (length >= time_dhms_sz)
     {
         err = deserialize(ctx, is_negative, num_days, hours, minutes, seconds);
-        if (err != errc::ok)
+        if (err != deserialize_errc::ok)
             return err;
     }
 
@@ -235,7 +251,7 @@ inline errc deserialize_binary_field_time(deserialization_context& ctx, field_vi
     if (length >= time_dhmsu_sz)
     {
         err = deserialize(ctx, microseconds);
-        if (err != errc::ok)
+        if (err != deserialize_errc::ok)
             return err;
     }
 
@@ -243,7 +259,7 @@ inline errc deserialize_binary_field_time(deserialization_context& ctx, field_vi
     if (num_days > time_max_days || hours > max_hour || minutes > max_min || seconds > max_sec ||
         microseconds > max_micro)
     {
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     }
 
     // Compose the final time
@@ -252,14 +268,14 @@ inline errc deserialize_binary_field_time(deserialization_context& ctx, field_vi
         (days(num_days) + std::chrono::hours(hours) + std::chrono::minutes(minutes) +
          std::chrono::seconds(seconds) + std::chrono::microseconds(microseconds))
     ));
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::errc boost::mysql::detail::deserialize_binary_field(
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_binary_field(
     deserialization_context& ctx,
     const metadata& meta,
     const std::uint8_t* buffer_first,

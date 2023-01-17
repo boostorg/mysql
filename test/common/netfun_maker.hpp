@@ -8,8 +8,12 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_NETFUN_MAKER_HPP
 #define BOOST_MYSQL_TEST_COMMON_NETFUN_MAKER_HPP
 
+#include <boost/mysql/server_errc.hpp>
+#include <boost/mysql/server_error.hpp>
+
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/system/system_error.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -161,10 +165,10 @@ struct netfun_maker_impl
     {
         return [fn](Args... args) {
             network_result<R> res(
-                boost::mysql::make_error_code(errc::no),
-                error_info("error_info not cleared properly")
+                boost::mysql::make_error_code(server_errc::no),
+                server_diagnostics("server_diagnostics not cleared properly")
             );
-            invoke_and_assign(res, fn, std::forward<Args>(args)..., res.err, *res.info);
+            invoke_and_assign(res, fn, std::forward<Args>(args)..., res.err, *res.diag);
             return res;
         };
     }
@@ -178,10 +182,14 @@ struct netfun_maker_impl
             {
                 invoke_and_assign(res, fn, std::forward<Args>(args)...);
             }
+            catch (const boost::mysql::server_error& err)
+            {
+                res.err = err.code();
+                res.diag = err.diagnostics();
+            }
             catch (const boost::system::system_error& err)
             {
                 res.err = err.code();
-                // TODO: we are managing err in an insecure way
             }
             return res;
         };
@@ -194,13 +202,13 @@ struct netfun_maker_impl
             boost::asio::io_context ctx;
             std::size_t num_posts = 0;
             network_result<R> res(
-                boost::mysql::make_error_code(errc::no),
-                error_info("error_info not cleared properly")
+                boost::mysql::make_error_code(server_errc::no),
+                server_diagnostics("server_diagnostics not cleared properly")
             );
             my_invoke(
                 fn,
                 std::forward<Args>(args)...,
-                *res.info,
+                *res.diag,
                 create_tracker_token(ctx, num_posts, res)
             );
             ctx.run();
@@ -215,7 +223,7 @@ struct netfun_maker_impl
         return [fn](Args... args) {
             boost::asio::io_context ctx;
             std::size_t num_posts = 0;
-            network_result<R> res(boost::mysql::make_error_code(errc::no));
+            network_result<R> res(boost::mysql::make_error_code(server_errc::no));
             my_invoke(fn, std::forward<Args>(args)..., create_tracker_token(ctx, num_posts, res));
             ctx.run();
             BOOST_TEST(num_posts > 0u);
@@ -233,10 +241,10 @@ class netfun_maker_mem
 
 public:
     using signature = std::function<network_result<R>(Obj&, Args...)>;
-    using isig_sync_errc = R (Obj::*)(Args..., error_code&, error_info&);
+    using isig_sync_errc = R (Obj::*)(Args..., error_code&, server_diagnostics&);
     using isig_sync_exc = R (Obj::*)(Args...);
     using isig_async_errinfo =
-        void (Obj::*)(Args..., error_info&, test_detail::tracker_token_t<R>&&);
+        void (Obj::*)(Args..., server_diagnostics&, test_detail::tracker_token_t<R>&&);
     using isig_async_noerrinfo = void (Obj::*)(Args..., test_detail::tracker_token_t<R>&&);
 
     static signature sync_errc(isig_sync_errc pfn) { return impl::sync_errc(pfn); }
@@ -255,9 +263,10 @@ class netfun_maker_fn
 
 public:
     using signature = std::function<network_result<R>(Args...)>;
-    using isig_sync_errc = R (*)(Args..., error_code&, error_info&);
+    using isig_sync_errc = R (*)(Args..., error_code&, server_diagnostics&);
     using isig_sync_exc = R (*)(Args...);
-    using isig_async_errinfo = void (*)(Args..., error_info&, test_detail::tracker_token_t<R>&&);
+    using isig_async_errinfo =
+        void (*)(Args..., server_diagnostics&, test_detail::tracker_token_t<R>&&);
     using isig_async_noerrinfo = void (*)(Args..., test_detail::tracker_token_t<R>&&);
 
     static signature sync_errc(isig_sync_errc pfn) { return impl::sync_errc(pfn); }

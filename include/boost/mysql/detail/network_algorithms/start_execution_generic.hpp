@@ -8,8 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_GENERIC_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_GENERIC_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -61,7 +62,7 @@ struct execute_response
 inline execute_response deserialize_execute_response(
     boost::asio::const_buffer msg,
     capabilities caps,
-    error_info& info
+    server_diagnostics& diag
 ) noexcept;
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -86,7 +87,7 @@ void start_execution_generic(
     const SerializeFn& fn,
     execution_state& st,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 // The async version gets passed a request maker, holding enough data to create
@@ -102,7 +103,7 @@ async_start_execution_generic(
     channel<Stream>& chan,
     SerializeFn&& fn,
     execution_state& st,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

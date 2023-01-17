@@ -7,10 +7,6 @@
 
 //[example_async_futures
 
-#include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/tcp_ssl.hpp>
-
 #include <boost/mysql.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -136,11 +132,6 @@ int main(int argc, char** argv)
     try
     {
         main_impl(argc, argv);
-    }
-    catch (const boost::system::system_error& err)
-    {
-        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
-        return 1;
     }
     catch (const std::exception& err)
     {

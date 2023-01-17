@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_DISABLEABLE_SSL_STREAM_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_DISABLEABLE_SSL_STREAM_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/async_result.hpp>
 

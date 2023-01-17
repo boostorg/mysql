@@ -5,8 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/errc.hpp>
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/client_errc.hpp>
 
 #include <boost/mysql/detail/channel/message_writer.hpp>
 
@@ -23,7 +22,7 @@
 #include "test_stream.hpp"
 
 using boost::asio::buffer;
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::detail::message_writer;
 using boost::mysql::test::concat_copy;
@@ -105,7 +104,7 @@ BOOST_AUTO_TEST_CASE(success)
             std::vector<std::uint8_t> msg{0x01, 0x02, 0x03};
             std::uint8_t seqnum = 4;
             auto expected_msg = create_message(seqnum, msg);
-            error_code err(errc::no);
+            error_code err(client_errc::wrong_num_params);
 
             fns->write(writer, stream, buffer(msg), seqnum, err);
 
@@ -127,7 +126,7 @@ BOOST_AUTO_TEST_CASE(empty_message)
             std::vector<std::uint8_t> msg{};
             std::uint8_t seqnum = 4;
             auto expected_msg = create_message(seqnum, msg);
-            error_code err(errc::no);
+            error_code err(client_errc::wrong_num_params);
 
             fns->write(writer, stream, buffer(msg), seqnum, err);
 
@@ -150,7 +149,7 @@ BOOST_AUTO_TEST_CASE(short_writes)
             std::vector<std::uint8_t> msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
             std::uint8_t seqnum = 4;
             auto expected_msg = create_message(seqnum, msg);
-            error_code err(errc::no);
+            error_code err(client_errc::wrong_num_params);
 
             fns->write(writer, stream, buffer(msg), seqnum, err);
 
@@ -174,7 +173,7 @@ BOOST_AUTO_TEST_CASE(multi_frame)
             auto msg = concat_copy(msg_frame_1, msg_frame_2);
             std::uint8_t seqnum = 4;
             auto expected_msg = create_message(seqnum, msg_frame_1, seqnum + 1, msg_frame_2);
-            error_code err(errc::no);
+            error_code err(client_errc::wrong_num_params);
 
             fns->write(writer, stream, buffer(msg), seqnum, err);
 
@@ -192,15 +191,15 @@ BOOST_AUTO_TEST_CASE(error)
         BOOST_TEST_CONTEXT(fns->name())
         {
             message_writer writer(8);
-            test_stream stream(fail_count(0, error_code(errc::base64_decode_error)));
+            test_stream stream(fail_count(0, error_code(client_errc::server_unsupported)));
             std::vector<std::uint8_t> msg{0x01, 0x02, 0x03};
             std::uint8_t seqnum = 4;
             auto expected_msg = create_message(seqnum, msg);
-            error_code err(errc::no);
+            error_code err(client_errc::wrong_num_params);
 
             fns->write(writer, stream, buffer(msg), seqnum, err);
 
-            BOOST_TEST(err == error_code(errc::base64_decode_error));
+            BOOST_TEST(err == error_code(client_errc::server_unsupported));
         }
     }
 }

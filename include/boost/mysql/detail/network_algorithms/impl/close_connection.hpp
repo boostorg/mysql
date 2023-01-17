@@ -25,10 +25,10 @@ template <class SocketStream>
 struct close_connection_op : boost::asio::coroutine
 {
     channel<SocketStream>& chan_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
 
-    close_connection_op(channel<SocketStream>& chan, error_info& output_info)
-        : chan_(chan), output_info_(output_info)
+    close_connection_op(channel<SocketStream>& chan, server_diagnostics& diag)
+        : chan_(chan), diag_(diag)
     {
     }
 
@@ -38,7 +38,7 @@ struct close_connection_op : boost::asio::coroutine
         error_code close_err;
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            output_info_.clear();
+            diag_.clear();
 
             if (!chan_.lowest_layer().is_open())
             {
@@ -47,7 +47,7 @@ struct close_connection_op : boost::asio::coroutine
                 BOOST_ASIO_CORO_YIELD break;
             }
 
-            BOOST_ASIO_CORO_YIELD async_quit_connection(chan_, std::move(self), output_info_);
+            BOOST_ASIO_CORO_YIELD async_quit_connection(chan_, std::move(self), diag_);
 
             // We call close regardless of the quit outcome
             close_err = chan_.close();
@@ -64,14 +64,14 @@ template <class SocketStream>
 void boost::mysql::detail::close_connection(
     channel<SocketStream>& chan,
     error_code& code,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     // Close = quit + close stream. We close the stream regardless of the quit failing or not
     if (chan.lowest_layer().is_open())
     {
         // MySQL quit notification
-        quit_connection(chan, code, info);
+        quit_connection(chan, code, diag);
 
         auto err = chan.close();
         if (!code)
@@ -88,11 +88,11 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_close_connection(
     channel<SocketStream>& chan,
     CompletionToken&& token,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        close_connection_op<SocketStream>{chan, info},
+        close_connection_op<SocketStream>{chan, diag},
         token,
         chan
     );

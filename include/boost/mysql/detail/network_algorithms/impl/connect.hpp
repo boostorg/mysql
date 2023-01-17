@@ -23,17 +23,17 @@ struct connect_op : boost::asio::coroutine
     using endpoint_type = typename Stream::lowest_layer_type::endpoint_type;
 
     channel<Stream>& chan_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
     endpoint_type ep_;
     handshake_params params_;
 
     connect_op(
         channel<Stream>& chan,
-        error_info& output_info,
+        server_diagnostics& diag,
         const endpoint_type& ep,
         const handshake_params& params
     )
-        : chan_(chan), output_info_(output_info), ep_(ep), params_(params)
+        : chan_(chan), diag_(diag), ep_(ep), params_(params)
     {
     }
 
@@ -42,7 +42,7 @@ struct connect_op : boost::asio::coroutine
     {
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            output_info_.clear();
+            diag_.clear();
 
             // Physical connect
             BOOST_ASIO_CORO_YIELD chan_.lowest_layer().async_connect(ep_, std::move(self));
@@ -54,7 +54,7 @@ struct connect_op : boost::asio::coroutine
             }
 
             // Handshake
-            BOOST_ASIO_CORO_YIELD async_handshake(chan_, params_, output_info_, std::move(self));
+            BOOST_ASIO_CORO_YIELD async_handshake(chan_, params_, diag_, std::move(self));
             if (code)
             {
                 chan_.close();
@@ -74,7 +74,7 @@ void boost::mysql::detail::connect(
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const handshake_params& params,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     chan.lowest_layer().connect(endpoint, err);
@@ -83,7 +83,7 @@ void boost::mysql::detail::connect(
         chan.close();
         return;
     }
-    handshake(chan, params, err, info);
+    handshake(chan, params, err, diag);
     if (err)
     {
         chan.close();
@@ -98,12 +98,12 @@ boost::mysql::detail::async_connect(
     channel<Stream>& chan,
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const handshake_params& params,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        connect_op<Stream>{chan, info, endpoint, params},
+        connect_op<Stream>{chan, diag, endpoint, params},
         token,
         chan
     );

@@ -96,7 +96,7 @@ public:
         const FieldLikeTuple& params,
         resultset& result,
         error_code& err,
-        error_info& info
+        server_diagnostics& diag
     );
 
     /// \copydoc execute
@@ -129,7 +129,7 @@ public:
         return async_execute(
             std::forward<FieldLikeTuple>(params),
             result,
-            get_channel().shared_info(),
+            get_channel().shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -144,7 +144,7 @@ public:
     async_execute(
         FieldLikeTuple&& params,
         resultset& result,
-        error_info& output_info,
+        server_diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -174,17 +174,17 @@ public:
         const FieldLikeTuple& params,
         execution_state& ex,
         error_code& err,
-        error_info& info
+        server_diagnostics& diag
     );
 
-    /// \copydoc start_execution(const FieldLikeTuple&,execution_state&,error_code&,error_info&)
+    /// \copydoc start_execution(const FieldLikeTuple&,execution_state&,error_code&,server_diagnostics&)
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
     void start_execution(const FieldLikeTuple& params, execution_state& st);
 
     /**
-     * \copydoc start_execution(const FieldLikeTuple&,execution_state&,error_code&,error_info&)
+     * \copydoc start_execution(const FieldLikeTuple&,execution_state&,error_code&,server_diagnostics&)
      * \details
      * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
      * type (like `string_view`), the caller must keep the values pointed by these references alive
@@ -208,7 +208,7 @@ public:
         return async_start_execution(
             std::forward<FieldLikeTuple>(params),
             st,
-            get_channel().shared_info(),
+            get_channel().shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -223,7 +223,7 @@ public:
     async_start_execution(
         FieldLikeTuple&& params,
         execution_state& st,
-        error_info& output_info,
+        server_diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -255,10 +255,10 @@ public:
         FieldViewFwdIterator params_last,
         execution_state& st,
         error_code& ec,
-        error_info& info
+        server_diagnostics& diag
     );
 
-    /// \copydoc start_execution(FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,error_info&)
+    /// \copydoc start_execution(FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,server_diagnostics&)
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void start_execution(
         FieldViewFwdIterator params_first,
@@ -267,7 +267,7 @@ public:
     );
 
     /**
-     * \copydoc start_execution(FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,error_info&)
+     * \copydoc start_execution(FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,server_diagnostics&)
      * \details
      * If `CompletionToken` is deferred (like `use_awaitable`), the caller must keep objects in
      * the iterator range alive until the  operation is initiated.
@@ -290,7 +290,7 @@ public:
             params_first,
             params_last,
             st,
-            get_channel().shared_info(),
+            get_channel().shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -305,7 +305,7 @@ public:
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last,
         execution_state& st,
-        error_info& output_info,
+        server_diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -317,7 +317,7 @@ public:
      *\n
      * This operation involves only writes on the underlying stream.
      */
-    void close(error_code&, error_info&);
+    void close(error_code&, server_diagnostics&);
 
     /// \copydoc close
     void close();
@@ -332,7 +332,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return async_close(get_channel().shared_info(), std::forward<CompletionToken>(token));
+        return async_close(get_channel().shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_close
@@ -340,7 +340,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(
-        error_info& output_info,
+        server_diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 

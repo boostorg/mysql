@@ -10,7 +10,8 @@
 
 #pragma once
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
@@ -31,10 +32,10 @@ template <class Stream>
 struct quit_connection_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
 
-    quit_connection_op(channel<Stream>& chan, error_info& output_info) noexcept
-        : chan_(chan), output_info_(output_info)
+    quit_connection_op(channel<Stream>& chan, server_diagnostics& diag) noexcept
+        : chan_(chan), diag_(diag)
     {
     }
 
@@ -43,7 +44,7 @@ struct quit_connection_op : boost::asio::coroutine
     {
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            output_info_.clear();
+            diag_.clear();
 
             // Quit message
             compose_quit(chan_);
@@ -71,7 +72,8 @@ struct quit_connection_op : boost::asio::coroutine
 }  // namespace boost
 
 template <class Stream>
-void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& err, error_info&)
+void boost::mysql::detail::
+    quit_connection(channel<Stream>& chan, error_code& err, server_diagnostics&)
 {
     compose_quit(chan);
     chan.write(chan.shared_buffer(), chan.reset_sequence_number(), err);
@@ -93,11 +95,11 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_quit_connection(
     channel<Stream>& chan,
     CompletionToken&& token,
-    error_info& output_info
+    server_diagnostics& diag
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        quit_connection_op<Stream>(chan, output_info),
+        quit_connection_op<Stream>(chan, diag),
         token,
         chan
     );

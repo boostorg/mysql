@@ -9,14 +9,12 @@
 
 #include <boost/mysql.hpp>
 
+#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/use_awaitable.hpp>
-#include <boost/asio/use_future.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <exception>
 #include <iostream>
@@ -25,14 +23,20 @@ using boost::mysql::error_code;
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
-using boost::asio::use_awaitable;
-
 void print_employee(boost::mysql::row_view employee)
 {
     std::cout << "Employee '" << employee.at(0) << " "   // first_name (string)
               << employee.at(1) << "' earns "            // last_name  (string)
               << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
+
+// Using this completion token instead of plain use_awaitable prevents
+// co_await from throwing exceptions. Instead, co_await will return a std::tuple<error_code>
+// with a non-zero code on error. We will then use boost::mysql::throw_on_error
+// to throw exceptions with embedded server_diagnostics, if available. If you
+// employ plain use_awaitable, you will get boost::system::system_error exceptions
+// instead of boost::mysql::server_error exceptions. This is a limitation of use_awaitable.
+constexpr auto tuple_awaitable = boost::asio::as_tuple(boost::asio::use_awaitable);
 
 /**
  * Our coroutine. It must have a return type of boost::asio::awaitable<T>.
@@ -52,7 +56,7 @@ void print_employee(boost::mysql::row_view employee)
  * If any of the asynchronous operations fail, an exception will be raised
  * within the coroutine.
  */
-boost::asio::awaitable<void> start_query(
+boost::asio::awaitable<void> coro_main(
     boost::mysql::tcp_ssl_connection& conn,
     boost::asio::ip::tcp::resolver& resolver,
     const boost::mysql::handshake_params& params,
@@ -60,56 +64,53 @@ boost::asio::awaitable<void> start_query(
     const char* company_id
 )
 {
-    try
+    error_code ec;
+    boost::mysql::server_diagnostics diag;
+
+    // Resolve hostname. We may use use_awaitable here, as hostname resolution
+    // never produces any server_diagnostics.
+    auto endpoints = co_await resolver.async_resolve(
+        hostname,
+        boost::mysql::default_port_string,
+        boost::asio::use_awaitable
+    );
+
+    // Connect to server
+    std::tie(ec) = co_await conn.async_connect(*endpoints.begin(), params, diag, tuple_awaitable);
+    boost::mysql::throw_on_error(ec, diag);
+
+    // We will be using company_id, which is untrusted user input, so we will use a prepared
+    // statement.
+    boost::mysql::tcp_ssl_statement stmt;
+    std::tie(ec) = co_await conn.async_prepare_statement(
+        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
+        stmt,
+        diag,
+        tuple_awaitable
+    );
+    boost::mysql::throw_on_error(ec, diag);
+
+    // Execute the statement
+    boost::mysql::resultset result;
+    std::tie(ec) = co_await stmt.async_execute(std::make_tuple(company_id), result, diag, tuple_awaitable);
+    boost::mysql::throw_on_error(ec, diag);
+
+    // Print all employees
+    for (boost::mysql::row_view employee : result.rows())
     {
-        // Resolve hostname
-        auto endpoints = co_await resolver.async_resolve(
-            hostname,
-            boost::mysql::default_port_string,
-            use_awaitable
-        );
-
-        // Connect to server
-        co_await conn.async_connect(*endpoints.begin(), params, use_awaitable);
-
-        // We will be using company_id, which is untrusted user input, so we will use a prepared
-        // statement.
-        boost::mysql::tcp_ssl_statement stmt;
-        co_await conn.async_prepare_statement(
-            "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-            stmt,
-            use_awaitable
-        );
-
-        // Execute the statement
-        boost::mysql::resultset result;
-        co_await stmt.async_execute(std::make_tuple(company_id), result, use_awaitable);
-
-        // Print all employees
-        for (boost::mysql::row_view employee : result.rows())
-        {
-            print_employee(employee);
-        }
-
-        // Notify the MySQL server we want to quit, then close the underlying connection.
-        co_await conn.async_close(use_awaitable);
+        print_employee(employee);
     }
-    catch (const boost::system::system_error& err)
-    {
-        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
-    }
-    catch (const std::exception& err)
-    {
-        std::cerr << "Error: " << err.what() << std::endl;
-    }
+
+    // Notify the MySQL server we want to quit, then close the underlying connection.
+    std::tie(ec) = co_await conn.async_close(diag, tuple_awaitable);
+    boost::mysql::throw_on_error(ec, diag);
 }
 
 void main_impl(int argc, char** argv)
 {
     if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0]
-                  << " <username> <password> <server-hostname> [company-id]\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> [company-id]\n";
         exit(1);
     }
 
@@ -135,16 +136,20 @@ void main_impl(int argc, char** argv)
     // Resolver for hostname resolution
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
-    /**
-     * The entry point. We pass in a function returning
-     * a boost::asio::awaitable<void>, as required.
-     */
+    // The entry point. We pass in a function returning
+    // boost::asio::awaitable<void>, as required.
     boost::asio::co_spawn(
         ctx.get_executor(),
         [&conn, &resolver, params, hostname, company_id] {
-            return start_query(conn, resolver, params, hostname, company_id);
+            return coro_main(conn, resolver, params, hostname, company_id);
         },
-        boost::asio::detached
+        // If any exception is thrown in the coroutine body, rethrow it.
+        [](std::exception_ptr ptr) {
+            if (ptr)
+            {
+                std::rethrow_exception(ptr);
+            }
+        }
     );
 
     // Calling run will execute the requested operations.
@@ -165,6 +170,17 @@ int main(int argc, char** argv)
     try
     {
         main_impl(argc, argv);
+    }
+    catch (const boost::mysql::server_error& err)
+    {
+        // Server errors include additional diagnostics provided by the server.
+        // You will only get this type of exceptions if you use throw_on_error.
+        // Security note: server_diagnostics::message may contain user-supplied values (e.g. the
+        // field value that caused the error) and is encoded using to the connection's encoding
+        // (UTF-8 by default). Treat is as untrusted input.
+        std::cerr << "Error: " << err.what() << '\n'
+                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
+        return 1;
     }
     catch (const std::exception& err)
     {

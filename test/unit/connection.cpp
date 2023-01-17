@@ -7,16 +7,25 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/tcp.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/basic_stream_socket.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "create_message.hpp"
 #include "netfun_maker.hpp"
 #include "test_connection.hpp"
 
+using boost::mysql::connection;
 using boost::mysql::resultset;
 using boost::mysql::string_view;
+using boost::mysql::tcp_connection;
+using boost::mysql::tcp_ssl_connection;
 using namespace boost::mysql::test;
+namespace net = boost::asio;
 
 namespace {
 
@@ -118,6 +127,21 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
         }
     }
 }
+
+// rebind_executor
+using other_exec = net::strand<net::any_io_executor>;
+static_assert(
+    std::is_same<
+        typename tcp_connection::rebind_executor<other_exec>::other,
+        connection<net::basic_stream_socket<net::ip::tcp, other_exec>>>::value,
+    ""
+);
+static_assert(
+    std::is_same<
+        typename tcp_ssl_connection::rebind_executor<other_exec>::other,
+        connection<net::ssl::stream<net::basic_stream_socket<net::ip::tcp, other_exec>>>>::value,
+    ""
+);
 
 BOOST_AUTO_TEST_SUITE_END()  // test_connection
 

@@ -7,11 +7,13 @@
 
 // Tests for both deserialize_binary_row() and deserialize_text_row()
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/date.hpp>
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -32,12 +34,13 @@
 
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
+using boost::mysql::client_errc;
 using boost::mysql::date;
-using boost::mysql::errc;
 using boost::mysql::error_code;
-using boost::mysql::error_info;
 using boost::mysql::field_view;
 using boost::mysql::metadata;
+using boost::mysql::server_diagnostics;
+using boost::mysql::server_errc;
 
 namespace {
 
@@ -242,7 +245,7 @@ BOOST_AUTO_TEST_CASE(error)
         const char* name;
         resultset_encoding encoding;
         std::vector<std::uint8_t> from;
-        errc expected;
+        client_errc expected;
         std::vector<metadata> meta;
     } test_cases [] = {
         // text
@@ -250,56 +253,56 @@ BOOST_AUTO_TEST_CASE(error)
             "text_no_space_string_single",
             resultset_encoding::text,
             {0x02, 0x00},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta({ protocol_field_type::short_} )
         },
         {
             "text_no_space_string_final",
             resultset_encoding::text,
             {0x01, 0x35, 0x02, 0x35},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta({ protocol_field_type::tiny, protocol_field_type::short_ }),
         },
         {
             "text_no_space_null_single",
             resultset_encoding::text,
             {},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta({ protocol_field_type::tiny })
         },
         {
             "text_no_space_null_final",
             resultset_encoding::text,
             {0xfb},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta({protocol_field_type::tiny, protocol_field_type::tiny}),
         },
         {
             "text_extra_bytes",
             resultset_encoding::text,
             {0x01, 0x35, 0xfb, 0x00},
-            errc::extra_bytes,
+            client_errc::extra_bytes,
             make_meta({ protocol_field_type::tiny, protocol_field_type::tiny })
         },
         {
             "text_contained_value_error_single",
             resultset_encoding::text,
             {0x01, 0x00},
-            errc::protocol_value_error,
+            client_errc::protocol_value_error,
             make_meta({ protocol_field_type::date })
         },
         {
             "text_contained_value_error_middle",
             resultset_encoding::text,
             {0xfb, 0x01, 0x00, 0xfb},
-            errc::protocol_value_error,
+            client_errc::protocol_value_error,
             make_meta({ protocol_field_type::date, protocol_field_type::date, protocol_field_type::date })
         },
         {
             "text_row_for_empty_meta",
             resultset_encoding::text,
             {0xfb, 0x01, 0x00, 0xfb},
-            errc::extra_bytes,
+            client_errc::extra_bytes,
             make_meta({})
         },
 
@@ -308,49 +311,49 @@ BOOST_AUTO_TEST_CASE(error)
             "binary_no_space_null_bitmap_1",
             resultset_encoding::binary,
             {0x00},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta({ protocol_field_type::tiny })
         },
         {
             "binary_no_space_null_bitmap_2",
             resultset_encoding::binary,
             {0x00, 0xfc},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta(std::vector<protocol_field_type>(7, protocol_field_type::tiny))
         },
         {
             "binary_no_space_value_single",
             resultset_encoding::binary,
             {0x00, 0x00},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta({ protocol_field_type::tiny })
         },
         {
             "binary_no_space_value_last",
             resultset_encoding::binary,
             {0x00, 0x00, 0x01},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta(std::vector<protocol_field_type>(2, protocol_field_type::tiny))
         },
         {
             "binary_no_space_value_middle",
             resultset_encoding::binary,
             {0x00, 0x00, 0x01},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             make_meta(std::vector<protocol_field_type>(3, protocol_field_type::tiny))
         },
         {
             "binary_extra_bytes",
             resultset_encoding::binary,
             {0x00, 0x00, 0x01, 0x02},
-            errc::extra_bytes,
+            client_errc::extra_bytes,
             make_meta({ protocol_field_type::tiny })
         },
         {
             "binary_row_for_empty_meta",
             resultset_encoding::binary,
             {0xfb, 0x01, 0x00, 0xfb},
-            errc::extra_bytes,
+            client_errc::extra_bytes,
             make_meta({})
         },
     };
@@ -393,7 +396,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     auto expected_fields = make_fv_vector(make_svoff_fv(1, 3, false), std::int64_t(21), 0.0f);
     std::vector<field_view> fields;
     error_code err;
-    error_info info;
+    server_diagnostics diag;
 
     // First row
     deserialize_row(
@@ -403,11 +406,11 @@ BOOST_AUTO_TEST_CASE(text_rows)
         st,
         fields,
         err,
-        info
+        diag
     );
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(info.message() == "");
+    BOOST_TEST(diag.message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -419,14 +422,14 @@ BOOST_AUTO_TEST_CASE(text_rows)
         st,
         fields,
         err,
-        info
+        diag
     );
     expected_fields.emplace_back(make_svoff_fv(12, 3, false));
     expected_fields.emplace_back(20);
     expected_fields.emplace_back(0.0f);
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(info.message() == "");
+    BOOST_TEST(diag.message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -447,7 +450,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     auto expected_fields = make_fv_vector(make_svoff_fv(3, 3, false), std::int64_t(1901));
     std::vector<field_view> fields;
     error_code err;
-    error_info info;
+    server_diagnostics diag;
 
     // First row
     deserialize_row(
@@ -457,11 +460,11 @@ BOOST_AUTO_TEST_CASE(binary_rows)
         st,
         fields,
         err,
-        info
+        diag
     );
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(info.message() == "");
+    BOOST_TEST(diag.message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -473,13 +476,13 @@ BOOST_AUTO_TEST_CASE(binary_rows)
         st,
         fields,
         err,
-        info
+        diag
     );
     expected_fields.emplace_back(make_svoff_fv(11, 3, false));
     expected_fields.emplace_back(nullptr);
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(info.message() == "");
+    BOOST_TEST(diag.message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -498,13 +501,13 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     auto fields_before = make_fv_vector("abc", 20);  // previous row
     auto fields = fields_before;
     error_code err;
-    error_info info;
+    server_diagnostics diag;
 
     // First row
-    deserialize_row(boost::asio::buffer(buff), capabilities(), buff.data(), st, fields, err, info);
+    deserialize_row(boost::asio::buffer(buff), capabilities(), buff.data(), st, fields, err, diag);
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(info.message() == "");
+    BOOST_TEST(diag.message() == "");
     BOOST_TEST(st.complete());
     BOOST_TEST(st.affected_rows() == 1u);
     BOOST_TEST(st.last_insert_id() == 6u);
@@ -520,19 +523,19 @@ BOOST_AUTO_TEST_CASE(error)
     {
         const char* name;
         std::vector<std::uint8_t> buffer;
-        errc expected_error;
+        error_code expected_error;
         const char* expected_info;
     } test_cases [] = {
         {
             "invalid_row",
             { 0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, }, // 1 byte missing
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             ""
         },
         {
             "invalid_ok_packet",
             { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00 }, // 1 byte missing
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             ""
         },
         {
@@ -542,19 +545,19 @@ BOOST_AUTO_TEST_CASE(error)
                 0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
                 0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
             },
-            errc::bad_db_error,
+            server_errc::bad_db_error,
             "Unknown database 'a'"
         },
         {
             "invalid_error_packet",
             { 0xff, 0x19 }, // bytes missing
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             ""
         },
         {
             "empty_message",
             {},
-            errc::incomplete_message,
+            client_errc::incomplete_message,
             ""
         }
     };
@@ -570,7 +573,7 @@ BOOST_AUTO_TEST_CASE(error)
             );
             std::vector<field_view> fields;
             error_code err;
-            error_info info;
+            server_diagnostics diag;
 
             // First row
             deserialize_row(
@@ -580,11 +583,11 @@ BOOST_AUTO_TEST_CASE(error)
                 st,
                 fields,
                 err,
-                info
+                diag
             );
 
-            BOOST_TEST(err == error_code(tc.expected_error));
-            BOOST_TEST(info.message() == tc.expected_info);
+            BOOST_TEST(err == tc.expected_error);
+            BOOST_TEST(diag.message() == tc.expected_info);
         }
     }
 }

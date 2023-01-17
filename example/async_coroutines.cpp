@@ -11,27 +11,19 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <iostream>
 
 using boost::mysql::error_code;
-using boost::mysql::error_info;
 
 void print_employee(boost::mysql::row_view employee)
 {
     std::cout << "Employee '" << employee.at(0) << " "   // first_name (string)
               << employee.at(1) << "' earns "            // last_name  (string)
               << employee.at(2) << " dollars yearly\n";  // salary     (double)
-}
-
-// Throws an exception if an operation failed
-void check_error(const error_code& err, const error_info& info = {})
-{
-    if (err)
-        throw boost::system::system_error(err, info.message());
 }
 
 void main_impl(int argc, char** argv)
@@ -75,10 +67,10 @@ void main_impl(int argc, char** argv)
     boost::asio::spawn(
         ctx.get_executor(),
         [&conn, &resolver, params, hostname, company_id](boost::asio::yield_context yield) {
-            // This error_code and error_info will be filled if an
+            // This error_code and server_diagnostics will be filled if an
             // operation fails. We will check them for every operation we perform.
             boost::mysql::error_code ec;
-            boost::mysql::error_info additional_info;
+            boost::mysql::server_diagnostics diag;
 
             // Hostname resolution
             auto endpoints = resolver.async_resolve(
@@ -86,11 +78,11 @@ void main_impl(int argc, char** argv)
                 boost::mysql::default_port_string,
                 yield[ec]
             );
-            check_error(ec);
+            boost::mysql::throw_on_error(ec);
 
             // Connect to server
-            conn.async_connect(*endpoints.begin(), params, additional_info, yield[ec]);
-            check_error(ec);
+            conn.async_connect(*endpoints.begin(), params, diag, yield[ec]);
+            boost::mysql::throw_on_error(ec, diag);
 
             // We will be using company_id, which is untrusted user input, so we will use a prepared
             // statement.
@@ -98,15 +90,15 @@ void main_impl(int argc, char** argv)
             conn.async_prepare_statement(
                 "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
                 stmt,
-                additional_info,
+                diag,
                 yield[ec]
             );
-            check_error(ec, additional_info);
+            boost::mysql::throw_on_error(ec, diag);
 
             // Execute the statement
             boost::mysql::resultset result;
-            stmt.async_execute(std::make_tuple(company_id), result, additional_info, yield[ec]);
-            check_error(ec, additional_info);
+            stmt.async_execute(std::make_tuple(company_id), result, diag, yield[ec]);
+            boost::mysql::throw_on_error(ec, diag);
 
             // Print the employees
             for (boost::mysql::row_view employee : result.rows())
@@ -115,8 +107,15 @@ void main_impl(int argc, char** argv)
             }
 
             // Notify the MySQL server we want to quit, then close the underlying connection.
-            conn.async_close(additional_info, yield[ec]);
-            check_error(ec, additional_info);
+            conn.async_close(diag, yield[ec]);
+            boost::mysql::throw_on_error(ec, diag);
+        },
+        // If any exception is thrown in the coroutine body, rethrow it.
+        [](std::exception_ptr ptr) {
+            if (ptr)
+            {
+                std::rethrow_exception(ptr);
+            }
         }
     );
 
@@ -131,9 +130,14 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::system::system_error& err)
+    catch (const boost::mysql::server_error& err)
     {
-        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
+        // Server errors include additional diagnostics provided by the server.
+        // Security note: server_diagnostics::message may contain user-supplied values (e.g. the
+        // field value that caused the error) and is encoded using to the connection's encoding
+        // (UTF-8 by default). Treat is as untrusted input.
+        std::cerr << "Error: " << err.what() << '\n'
+                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

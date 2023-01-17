@@ -26,11 +26,9 @@ type always has one of the two folling forms:
    have a result, e.g. [refmem connection async_read_one_row]
    (in this case, `T` is `row_view`).
    
-As noted [link mysql.error_handling here], all asynchronous
-are overloaded to accept an optional [reflink error_info]
-output parameter, which is set before calling the
-completion handler, and is populated with diagnostic
-information, if available.
+All asynchronous functions involving server communication are overloaded
+to accept an optional [reflink server_diagnostics] output parameter. It is populated
+with any server-provided error information before calling the completion handler.
 
 [section:reads_writes Stream reads and writes]
 
@@ -55,7 +53,7 @@ with this library. Here are some of the most common:
   function will return `void`.
   
   [link mysql.examples.async_callbacks This example]
-  demonstrates asynchronous text queries with callbacks.
+  demonstrates how to use async functions with callbacks.
 * [*Futures]. In this case, you pass in the constant
   [asioreflink use_future use_future] as completion token.
   The initiating function will return one of the following:
@@ -66,12 +64,12 @@ with this library. Here are some of the most common:
   
   You can wait for the future by calling `future::get`.
   If an error occurs, `future::get` will throw an exception.
-  Note that the exception will [*not] contain the extra information
-  stored in the [reflink error_info].
-  
+  Note that the exception is thrown by Asio itself, and will always
+  be of type `boost::system::system_error`, even if it's a server error.
+
   [link mysql.examples.async_futures This example]
-  demonstrates using futures with async queries.
-* [*__Coroutine__ coroutines]. In this case, you pass in
+  demonstrates using futures.
+* [*Stackful coroutines]. In this case, you pass in
   a [asioreflink yield_context yield_context]. To obtain one
   of these, you should use [asioreflink spawn spawn] to create
   a new coroutine. The initiating function will return:
@@ -84,11 +82,13 @@ with this library. Here are some of the most common:
   yield_context::operator\[\]], the operation will set the
   given [reflink error_code] when it fails. Otherwise, the
   function will throw a exception. Note that this exception
-  will not contain the extra information stored in the
-  [reflink error_info].
-  
+  is thrown by Asio itself, and thus will always be of type
+  `boost::system::system_error`. To obtain a [reflink server_error]
+  including extra diagnostics, we suggest using error codes and the
+  [reflink throw_on_error] function.
+
   [link mysql.examples.async_coroutines This example]
-  uses __Coroutine__ coroutines with async queries.
+  uses stackful coroutines.
 * [*C++20 coroutines]. In this case, you pass in the constant
   [asioreflink use_awaitable use_awaitable] as completion token.
   The initiating function will return:
@@ -99,12 +99,14 @@ with this library. Here are some of the most common:
   
   You can then use `co_await` on this return value. If the
   operation fails, `co_await` will throw an exception.
-  Note that this exception will not contain the extra
-  information stored in the [reflink error_info].
+  Note that this exception is thrown by Asio itself, and thus will always be of type
+  `boost::system::system_error`. To obtain a [reflink server_error]
+  including extra diagnostics, we suggest using the [asioreflink as_tuple as_tuple]
+  completion token, which will make `co_await` report failures using error codes, and the
+  [reflink throw_on_error] function.
   
   [link mysql.examples.async_coroutinescpp20 This example]
-  demonstrates using C++20 coroutines to perform text
-  queries.
+  demonstrates C++20 coroutines.
 * Any other type that satisfies the __CompletionToken__ type requirements.
   We have listed the most common ones here, but you can craft your own
   and use it with this library's async operations.

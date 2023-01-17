@@ -5,7 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -16,20 +18,19 @@
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
 #include "netfun_maker.hpp"
+#include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 
 using boost::mysql::blob;
-using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::resultset;
+using boost::mysql::server_errc;
 using boost::mysql::string_view;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding)
 
 namespace {
 
@@ -107,10 +108,11 @@ BOOST_AUTO_TEST_CASE(error_start_query)
         {
             auto result = create_initial_resultset();
             test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(0, server_errc::aborting_connection));
 
             // Call the function
-            fns.query(conn, "SELECT 1", result).validate_error_exact(errc::aborting_connection, "");
+            fns.query(conn, "SELECT 1", result)
+                .validate_error_exact(server_errc::aborting_connection);
         }
     }
 }
@@ -126,10 +128,11 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
             conn.get_channel().reset(1024);  // So that only one read per operation is performed
             conn.stream().add_message(create_message(1, {0x01}));  // Response OK, 1 metadata packet
             conn.stream().add_message(create_coldef_message(2, protocol_field_type::tiny, "f1"));
-            conn.stream().set_fail_count(fail_count(4, errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(4, server_errc::aborting_connection));
 
             // Call the function
-            fns.query(conn, "SELECT 1", result).validate_error_exact(errc::aborting_connection, "");
+            fns.query(conn, "SELECT 1", result)
+                .validate_error_exact(server_errc::aborting_connection);
 
             // Ensure we successfully ran the start_query
             BOOST_TEST(result.state().meta().at(0).column_name() == "f1");

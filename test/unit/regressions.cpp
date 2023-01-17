@@ -6,7 +6,6 @@
 //
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/resultset.hpp>
 
 #include <boost/asio/awaitable.hpp>

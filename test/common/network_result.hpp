@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_NETWORK_RESULT_HPP
 #define BOOST_MYSQL_TEST_COMMON_NETWORK_RESULT_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/optional/optional.hpp>
+#include <boost/test/tools/context.hpp>
 
 #include <string>
 #include <vector>
@@ -28,65 +30,76 @@ struct no_result
 struct network_result_base
 {
     error_code err;
-    boost::optional<error_info> info;  // some network_function's don't provide this
+    boost::optional<server_diagnostics> diag;  // some network_function's don't provide this
 
     network_result_base() = default;
     network_result_base(error_code ec) : err(ec) {}
-    network_result_base(error_code ec, error_info&& info) : err(ec), info(std::move(info)) {}
+    network_result_base(error_code ec, server_diagnostics&& diag) : err(ec), diag(std::move(diag))
+    {
+    }
 
     void validate_no_error() const
     {
-        BOOST_TEST_REQUIRE(
-            err == error_code(),
-            "with error_info= " << error_info_c_str() << ", error_code=" << err.message()
-        );
-        if (info)
+        BOOST_TEST_CONTEXT(
+            "server_diagnostics= " << server_diag_c_str() << ", error_code=" << err.message()
+        )
         {
-            BOOST_TEST(*info == error_info());
+            BOOST_TEST_REQUIRE(err == error_code());
+            if (diag)
+            {
+                BOOST_TEST(diag->message() == "");
+            }
         }
     }
 
     // Use when you don't care or can't determine the kind of error
     void validate_any_error(const std::vector<std::string>& expected_msg = {}) const
     {
-        BOOST_TEST_REQUIRE(err != error_code(), "with error_info= " << error_info_c_str());
-        if (info)
+        BOOST_TEST_CONTEXT(
+            "server_diagnostics= " << server_diag_c_str() << ", error_code=" << err.message()
+        )
         {
-            validate_string_contains(info->message(), expected_msg);
+            BOOST_TEST_REQUIRE(err != error_code());
+            if (diag)
+            {
+                validate_string_contains(diag->message(), expected_msg);
+            }
         }
     }
 
     void validate_error(error_code expected_errc, const std::vector<std::string>& expected_msg)
         const
     {
-        BOOST_TEST_REQUIRE(err == expected_errc, "with error_info= " << error_info_c_str());
-        if (info)
+        BOOST_TEST_CONTEXT(
+            "server_diagnostics= " << server_diag_c_str() << ", error_code=" << err.message()
+        )
         {
-            validate_string_contains(info->message(), expected_msg);
+            BOOST_TEST_REQUIRE(err == expected_errc);
+            if (diag)
+            {
+                validate_string_contains(diag->message(), expected_msg);
+            }
         }
     }
 
-    void validate_error(errc expected_errc, const std::vector<std::string>& expected_msg) const
+    void validate_error_exact(error_code expected_err, const char* expected_msg = "")
     {
-        validate_error(make_error_code(expected_errc), expected_msg);
-    }
-
-    void validate_error_exact(error_code expected_err, const char* expected_msg)
-    {
-        BOOST_TEST_REQUIRE(
-            err == expected_err,
-            "with error_info= " << (info ? info->message().c_str() : "<unavailable>")
-        );
-        if (info)
+        BOOST_TEST_CONTEXT(
+            "server_diagnostics= " << server_diag_c_str() << ", error_code=" << err.message()
+        )
         {
-            BOOST_TEST(info->message() == expected_msg);
+            BOOST_TEST_REQUIRE(err == expected_err);
+            if (diag)
+            {
+                BOOST_TEST(diag->message() == expected_msg);
+            }
         }
     }
 
 private:
-    const char* error_info_c_str() const noexcept
+    const char* server_diag_c_str() const noexcept
     {
-        return info ? info->message().c_str() : "<unavailable>";
+        return diag ? diag->message().c_str() : "<unavailable>";
     }
 };
 
@@ -97,7 +110,7 @@ struct network_result : network_result_base
     value_type value;
 
     network_result() = default;
-    network_result(error_code ec, error_info&& info, value_type&& value = {})
+    network_result(error_code ec, server_diagnostics&& info, value_type&& value = {})
         : network_result_base(ec, std::move(info)), value(std::move(value))
     {
     }

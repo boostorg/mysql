@@ -5,25 +5,26 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/server_errc.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
 #include "netfun_maker.hpp"
+#include "printing.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 
 using boost::mysql::blob;
-using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
+using boost::mysql::server_errc;
 using boost::mysql::string_view;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding)
 
 namespace {
 
@@ -97,11 +98,11 @@ BOOST_AUTO_TEST_CASE(error)
         {
             execution_state st{create_initial_state()};
             test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(0, server_errc::aborting_connection));
 
             // Call the function
             fns.start_query(conn, "SELECT 1", st)
-                .validate_error_exact(errc::aborting_connection, "");
+                .validate_error_exact(server_errc::aborting_connection);
         }
     }
 }

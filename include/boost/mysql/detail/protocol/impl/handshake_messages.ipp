@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::handshake_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields>::
     deserialize_(deserialization_context& ctx, handshake_packet& output) noexcept
@@ -36,7 +36,7 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
         output.status_flags,
         capability_flags_high
     );
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // Compose capabilities
@@ -48,11 +48,11 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     // Check minimum server capabilities to deserialize this frame
     capabilities cap(output.capability_falgs);
     if (!cap.has(CLIENT_PLUGIN_AUTH))
-        return errc::server_unsupported;
+        return deserialize_errc::server_unsupported;
 
     // Deserialize following fields
     err = deserialize(ctx, auth_plugin_data_len, reserved);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // Auth plugin data, second part
@@ -60,12 +60,12 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     )(13, auth_plugin_data_len - auth1_length));
     const void* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
-        return errc::incomplete_message;
+        return deserialize_errc::incomplete_message;
     ctx.advance(auth2_length);
 
     // Auth plugin name
     err = deserialize(ctx, output.auth_plugin_name);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // Compose auth_plugin_data
@@ -76,7 +76,7 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
         auth2_length - 1
     );  // discard an extra trailing NULL byte
 
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 std::size_t boost::mysql::detail::serialization_traits<
@@ -123,7 +123,7 @@ inline void boost::mysql::detail::serialization_traits<
     serialize(ctx, value.client_plugin_name);
 }
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::auth_switch_request_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields>::
     deserialize_(deserialization_context& ctx, auth_switch_request_packet& output) noexcept

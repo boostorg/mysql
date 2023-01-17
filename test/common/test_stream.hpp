@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_TEST_STREAM_HPP
 #define BOOST_MYSQL_TEST_COMMON_TEST_STREAM_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/system_executor.hpp>
@@ -35,7 +35,7 @@ public:
     static constexpr std::size_t never_fail = std::size_t(-1);
     explicit fail_count(
         std::size_t fail_after = never_fail,
-        error_code err = make_error_code(errc::no)
+        error_code err = make_error_code(std::errc::io_error)
     ) noexcept
         : fail_after_(fail_after), err_(err)
     {

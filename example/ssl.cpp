@@ -12,7 +12,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <iostream>
 
@@ -127,9 +126,14 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::system::system_error& err)
+    catch (const boost::mysql::server_error& err)
     {
-        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
+        // Server errors include additional diagnostics provided by the server.
+        // Security note: err.diagnostics().message() may contain user-supplied values (e.g. the
+        // field value that caused the error) and is encoded using to the connection's encoding
+        // (UTF-8 by default). Treat is as untrusted input.
+        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << '\n'
+                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

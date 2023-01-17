@@ -49,21 +49,21 @@ inline error_code deserialize_text_row(
         else
         {
             string_lenenc value_str;
-            errc err = deserialize(ctx, value_str);
-            if (err != errc::ok)
-                return make_error_code(err);
+            auto err = deserialize(ctx, value_str);
+            if (err != deserialize_errc::ok)
+                return to_error_code(err);
             err = deserialize_text_field(
                 value_str.value,
                 fields[i],
                 buffer_first,
                 output[old_size + i]
             );
-            if (err != errc::ok)
-                return make_error_code(err);
+            if (err != deserialize_errc::ok)
+                return to_error_code(err);
         }
     }
     if (!ctx.empty())
-        return make_error_code(errc::extra_bytes);
+        return client_errc::extra_bytes;
     return error_code();
 }
 
@@ -89,7 +89,7 @@ inline error_code deserialize_binary_row(
     null_bitmap_traits null_bitmap(binary_row_null_bitmap_offset, num_fields);
     const std::uint8_t* null_bitmap_begin = ctx.first();
     if (!ctx.enough_size(null_bitmap.byte_count()))
-        return make_error_code(errc::incomplete_message);
+        return client_errc::incomplete_message;
     ctx.advance(null_bitmap.byte_count());
 
     // Actual values
@@ -102,14 +102,14 @@ inline error_code deserialize_binary_row(
         else
         {
             auto err = deserialize_binary_field(ctx, meta[i], buffer_first, output[old_size + i]);
-            if (err != errc::ok)
-                return make_error_code(err);
+            if (err != deserialize_errc::ok)
+                return to_error_code(err);
         }
     }
 
     // Check for remaining bytes
     if (!ctx.empty())
-        return make_error_code(errc::extra_bytes);
+        return make_error_code(client_errc::extra_bytes);
 
     return error_code();
 }
@@ -139,7 +139,7 @@ void boost::mysql::detail::deserialize_row(
     execution_state& st,
     std::vector<field_view>& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     assert(!st.complete());
@@ -147,9 +147,13 @@ void boost::mysql::detail::deserialize_row(
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
     deserialization_context ctx(read_message, current_capabilities);
-    err = make_error_code(deserialize(ctx, msg_type));
-    if (err)
+    auto deser_errc = deserialize(ctx, msg_type);
+    if (deser_errc != deserialize_errc::ok)
+    {
+        err = to_error_code(deser_errc);
         return;
+    }
+
     if (msg_type == eof_packet_header)
     {
         // end of resultset => this is a ok_packet, not a row
@@ -162,7 +166,7 @@ void boost::mysql::detail::deserialize_row(
     else if (msg_type == error_packet_header)
     {
         // An error occurred during the generation of the rows
-        err = process_error_packet(ctx, info);
+        err = process_error_packet(ctx, diag);
     }
     else
     {

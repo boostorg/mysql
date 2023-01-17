@@ -11,6 +11,7 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/tcp.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 #include <boost/mysql/unix.hpp>
 #include <boost/mysql/unix_ssl.hpp>
 

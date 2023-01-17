@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ALL_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_ALL_ROWS_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 
@@ -25,7 +26,7 @@ void read_all_rows(
     execution_state& st,
     rows& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 template <
@@ -36,7 +37,7 @@ async_read_all_rows(
     channel<Stream>& channel,
     execution_state& st,
     rows& output,
-    error_info& output_info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

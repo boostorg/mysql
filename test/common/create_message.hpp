@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 
+#include <boost/mysql/server_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -145,7 +146,7 @@ inline std::vector<std::uint8_t> create_ok_packet_message_execute(
 
 inline std::vector<std::uint8_t> create_err_packet_message(
     std::uint8_t seqnum,
-    errc code,
+    server_errc code,
     string_view message = ""
 )
 {

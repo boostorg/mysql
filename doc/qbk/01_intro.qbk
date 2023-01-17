@@ -94,7 +94,7 @@ Boost.Mysql requires:
 Boost.Mysql is a header-only library. The following additional libraries are needed at link time:
 
 * OpenSSL is always required.
-* __Coroutine__ is required when using coroutines created by
+* __Context__ is required when using coroutines created by
   [@boost:/doc/html/boost_asio/reference/spawn.html `boost::asio::spawn`].
 
 If you are using CMake (finding the library using [*find_package] or

@@ -9,7 +9,7 @@
 # BOOST_MYSQL_INTEGRATION_TESTS is on
 
 cmake_minimum_required(VERSION 3.12...3.22) # string JOIN
-find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS coroutine)
+find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context)
 
 add_executable(
     boost_mysql_integrationtests
@@ -46,15 +46,15 @@ target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
     boost_mysql_testing
-    Boost::coroutine
+    Boost::context
 )
 common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
-    target_precompile_headers(
-        boost_mysql_integrationtests
-        PRIVATE
-        pch.hpp
-    )
+    # target_precompile_headers(
+    #     boost_mysql_integrationtests
+    #     PRIVATE
+    #     pch.hpp
+    # )
 endif()
 set_source_files_properties(
     entry_point.cpp

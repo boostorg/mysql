@@ -10,9 +10,11 @@
 
 #pragma once
 
+#include <boost/mysql/server_errc.hpp>
+
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::ok_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields>::
     deserialize_(deserialization_context& ctx, ok_packet& output) noexcept
@@ -25,7 +27,8 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
             output.status_flags,
             output.warnings
         );
-        if (err == errc::ok && ctx.enough_size(1))  // message is optional, may be omitted
+        if (err == deserialize_errc::ok &&
+            ctx.enough_size(1))  // message is optional, may be omitted
         {
             err = deserialize(ctx, output.info);
         }
@@ -33,7 +36,7 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
     }
 }
 
-inline boost::mysql::errc boost::mysql::detail::serialization_traits<
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::column_definition_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields>::
     deserialize_(deserialization_context& ctx, column_definition_packet& output) noexcept
@@ -60,7 +63,7 @@ inline boost::mysql::errc boost::mysql::detail::serialization_traits<
 
 inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
     deserialization_context& ctx,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     err_packet error_packet{};
@@ -68,8 +71,8 @@ inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
     if (code)
         return code;
     string_view sv = error_packet.error_message.value;
-    info.message().assign(sv.begin(), sv.end());
-    return make_error_code(static_cast<errc>(error_packet.error_code));
+    diag.message().assign(sv.begin(), sv.end());
+    return make_error_code(static_cast<server_errc>(error_packet.error_code));
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_COMMON_MESSAGES_IPP_ */

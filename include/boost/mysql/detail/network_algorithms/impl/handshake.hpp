@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
 
@@ -36,25 +37,25 @@ inline capabilities conditional_capability(bool condition, std::uint32_t cap)
 inline error_code deserialize_handshake(
     boost::asio::const_buffer buffer,
     handshake_packet& output,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     deserialization_context ctx(boost::asio::buffer(buffer), capabilities());
     std::uint8_t msg_type = 0;
-    auto err = deserialize(ctx, msg_type);
-    if (err != errc::ok)
-        return make_error_code(err);
+    auto err = deserialize_message_part(ctx, msg_type);
+    if (err)
+        return err;
     if (msg_type == handshake_protocol_version_9)
     {
-        return make_error_code(errc::server_unsupported);
+        return make_error_code(client_errc::server_unsupported);
     }
     else if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, info);
+        return process_error_packet(ctx, diag);
     }
     else if (msg_type != handshake_protocol_version_10)
     {
-        return make_error_code(errc::protocol_value_error);
+        return make_error_code(client_errc::protocol_value_error);
     }
     return deserialize_message(ctx, output);
 }
@@ -105,7 +106,7 @@ public:
                                      );
         if (!server_caps.has_all(required_caps))
         {
-            return make_error_code(errc::server_unsupported);
+            return make_error_code(client_errc::server_unsupported);
         }
         negotiated_caps_ = server_caps & (required_caps | optional_capabilities |
                                           conditional_capability(
@@ -117,13 +118,13 @@ public:
 
     error_code process_handshake(
         boost::asio::const_buffer buffer,
-        error_info& info,
+        server_diagnostics& diag,
         bool is_ssl_stream
     )
     {
         // Deserialize server greeting
         handshake_packet handshake;
-        auto err = deserialize_handshake(buffer, handshake, info);
+        auto err = deserialize_handshake(buffer, handshake, diag);
         if (err)
             return err;
 
@@ -175,12 +176,12 @@ public:
         boost::asio::const_buffer server_response,
         bytestring& write_buffer,
         auth_result& result,
-        error_info& info
+        server_diagnostics& diag
     )
     {
         deserialization_context ctx(server_response, negotiated_caps_);
         std::uint8_t msg_type = 0;
-        auto err = make_error_code(deserialize(ctx, msg_type));
+        auto err = deserialize_message_part(ctx, msg_type);
         if (err)
             return err;
         if (msg_type == ok_packet_header)
@@ -191,13 +192,13 @@ public:
         }
         else if (msg_type == error_packet_header)
         {
-            return process_error_packet(ctx, info);
+            return process_error_packet(ctx, diag);
         }
         else if (msg_type == auth_switch_request_header)
         {
             // We have received an auth switch request. Deserialize it
             auth_switch_request_packet auth_sw;
-            err = deserialize_message(ctx, auth_sw);
+            auto err = deserialize_message(ctx, auth_sw);
             if (err)
                 return err;
 
@@ -225,7 +226,7 @@ public:
         {
             // We have received an auth more data request. Deserialize it
             auth_more_data_packet more_data;
-            err = deserialize_message(ctx, more_data);
+            auto err = deserialize_message(ctx, more_data);
             if (err)
                 return err;
 
@@ -257,7 +258,7 @@ public:
         }
         else
         {
-            return make_error_code(errc::protocol_value_error);
+            return make_error_code(client_errc::protocol_value_error);
         }
     }
 };
@@ -266,12 +267,12 @@ template <class Stream>
 struct handshake_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
     handshake_processor processor_;
     auth_result auth_state_{auth_result::invalid};
 
-    handshake_op(channel<Stream>& channel, error_info& output_info, const handshake_params& params)
-        : chan_(channel), output_info_(output_info), processor_(params)
+    handshake_op(channel<Stream>& channel, server_diagnostics& diag, const handshake_params& params)
+        : chan_(channel), diag_(diag), processor_(params)
     {
     }
 
@@ -288,7 +289,7 @@ struct handshake_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            output_info_.clear();
+            diag_.clear();
 
             // Setup the channel
             chan_.reset(processor_.params().buffer_config().initial_read_buffer_size());
@@ -300,8 +301,7 @@ struct handshake_op : boost::asio::coroutine
             );
 
             // Process server greeting
-            err = processor_
-                      .process_handshake(read_msg, output_info_, is_ssl_stream<Stream>::value);
+            err = processor_.process_handshake(read_msg, diag_, is_ssl_stream<Stream>::value);
             if (err)
             {
                 self.complete(err);
@@ -345,7 +345,7 @@ struct handshake_op : boost::asio::coroutine
                     read_msg,
                     chan_.shared_buffer(),
                     auth_state_,
-                    output_info_
+                    diag_
                 );
                 if (err)
                 {
@@ -378,7 +378,7 @@ void boost::mysql::detail::handshake(
     channel<Stream>& channel,
     const handshake_params& params,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     channel.reset(params.buffer_config().initial_read_buffer_size());
@@ -392,7 +392,7 @@ void boost::mysql::detail::handshake(
         return;
 
     // Process server greeting (handshake)
-    err = processor.process_handshake(b, info, is_ssl_stream<Stream>::value);
+    err = processor.process_handshake(b, diag, is_ssl_stream<Stream>::value);
     if (err)
         return;
 
@@ -431,7 +431,7 @@ void boost::mysql::detail::handshake(
             b,
             channel.shared_buffer(),
             auth_outcome,
-            info
+            diag
         );
         if (err)
             return;
@@ -459,7 +459,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_handshake(
     channel<Stream>& chan,
     const handshake_params& params,
-    error_info& info,
+    server_diagnostics& info,
     CompletionToken&& token
 )
 {

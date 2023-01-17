@@ -26,7 +26,7 @@ boost::asio::const_buffer boost::mysql::detail::message_reader::get_next_message
     assert(has_message());
     if (result_.message.has_seqnum_mismatch || seqnum != result_.message.seqnum_first)
     {
-        ec = make_error_code(errc::sequence_number_mismatch);
+        ec = make_error_code(client_errc::sequence_number_mismatch);
         return {};
     }
     seqnum = result_.message.seqnum_last + 1;

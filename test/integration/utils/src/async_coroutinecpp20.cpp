@@ -6,8 +6,7 @@
 //
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/errc.hpp>
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -15,6 +14,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <boost/asio/awaitable.hpp>
@@ -36,13 +36,13 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-using boost::mysql::error_info;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
 using boost::mysql::handshake_params;
 using boost::mysql::resultset;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
+using boost::mysql::server_diagnostics;
 using boost::mysql::string_view;
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
@@ -52,8 +52,8 @@ using boost::asio::use_awaitable;
 namespace {
 
 template <class Callable>
-using impl_result_type = typename decltype(std::declval<Callable>()(std::declval<error_info&>())
-)::value_type;
+using impl_result_type = typename decltype(std::declval<Callable>(
+)(std::declval<server_diagnostics&>()))::value_type;
 
 template <class IoObj, class Callable>
 network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
@@ -64,14 +64,14 @@ network_result<impl_result_type<Callable>> impl(IoObj& obj, Callable&& cb)
     boost::asio::co_spawn(
         obj.get_executor(),
         [&]() -> boost::asio::awaitable<void> {
-            error_info info("error_info not cleared properly");
+            server_diagnostics info("server_diagnostics not cleared properly");
             try
             {
                 // Create the task
                 auto aw = cb(info);
 
                 // Verify that initiation didn't have side effects
-                BOOST_TEST(info.message() == "error_info not cleared properly");
+                BOOST_TEST(info.message() == "server_diagnostics not cleared properly");
 
                 // Run task and verify results
                 R result = co_await std::move(aw);
@@ -96,14 +96,14 @@ network_result<no_result> impl_no_result(IoObj& obj, Callable&& cb)
     boost::asio::co_spawn(
         obj.get_executor(),
         [&]() -> boost::asio::awaitable<void> {
-            error_info info("error_info not cleared properly");
+            server_diagnostics info("server_diagnostics not cleared properly");
             try
             {
                 // Create the task
                 auto aw = cb(info);
 
                 // Verify that initiation didn't have side effects
-                BOOST_TEST(info.message() == "error_info not cleared properly");
+                BOOST_TEST(info.message() == "server_diagnostics not cleared properly");
 
                 // Run task and verify results
                 co_await std::move(aw);
@@ -130,7 +130,7 @@ public:
         resultset& result
     ) override
     {
-        return impl_no_result(this->obj(), [&](error_info& info) {
+        return impl_no_result(this->obj(), [&](server_diagnostics& info) {
             return this->obj()
                 .async_execute(std::make_tuple(param1, param2), result, info, use_awaitable);
         });
@@ -141,7 +141,7 @@ public:
         execution_state& st
     ) override
     {
-        return impl_no_result(this->obj(), [&](error_info& info) {
+        return impl_no_result(this->obj(), [&](server_diagnostics& info) {
             return this->obj()
                 .async_start_execution(std::make_tuple(param1, param2), st, info, use_awaitable);
         });
@@ -152,14 +152,14 @@ public:
         execution_state& st
     ) override
     {
-        return impl_no_result(this->obj(), [&](error_info& info) {
+        return impl_no_result(this->obj(), [&](server_diagnostics& info) {
             return this->obj()
                 .async_start_execution(params_first, params_last, st, info, use_awaitable);
         });
     }
     network_result<no_result> close() override
     {
-        return impl_no_result(this->obj(), [&](error_info& info) {
+        return impl_no_result(this->obj(), [&](server_diagnostics& info) {
             return this->obj().async_close(info, use_awaitable);
         });
     }
@@ -173,67 +173,70 @@ public:
 
     network_result<no_result> physical_connect() override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) -> boost::asio::awaitable<void> {
-            info.clear();
+        return impl_no_result(
+            this->conn_,
+            [&](server_diagnostics& info) -> boost::asio::awaitable<void> {
+                info.clear();
 
-            co_await this->conn_.stream().lowest_layer().async_connect(
-                get_endpoint<Stream>(),
-                use_awaitable
-            );
-        });
+                co_await this->conn_.stream().lowest_layer().async_connect(
+                    get_endpoint<Stream>(),
+                    use_awaitable
+                );
+            }
+        );
     }
     network_result<no_result> connect(const handshake_params& params) override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_connect(get_endpoint<Stream>(), params, info, use_awaitable);
         });
     }
     network_result<no_result> handshake(const handshake_params& params) override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_handshake(params, info, use_awaitable);
         });
     }
     network_result<no_result> query(string_view query, resultset& result) override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_query(query, result, info, use_awaitable);
         });
     }
     network_result<no_result> start_query(string_view query, execution_state& st) override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_start_query(query, st, info, use_awaitable);
         });
     }
     network_result<no_result> prepare_statement(string_view statement, er_statement& stmt) override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_
                 .async_prepare_statement(statement, this->cast(stmt), info, use_awaitable);
         });
     }
     network_result<row_view> read_one_row(execution_state& st) override
     {
-        return impl(this->conn_, [&](error_info& info) {
+        return impl(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_read_one_row(st, info, use_awaitable);
         });
     }
     network_result<rows_view> read_some_rows(execution_state& st) override
     {
-        return impl(this->conn_, [&](error_info& info) {
+        return impl(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_read_some_rows(st, info, use_awaitable);
         });
     }
     network_result<no_result> quit() override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_quit(info, use_awaitable);
         });
     }
     network_result<no_result> close() override
     {
-        return impl_no_result(this->conn_, [&](error_info& info) {
+        return impl_no_result(this->conn_, [&](server_diagnostics& info) {
             return this->conn_.async_close(info, use_awaitable);
         });
     }

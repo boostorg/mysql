@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include <boost/mysql/error.hpp>
-
 #include <boost/asio/associated_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>

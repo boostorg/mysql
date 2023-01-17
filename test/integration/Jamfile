@@ -24,10 +24,6 @@ if $(test_filter) != "" {
     test_command = "-t $(test_filter)" ;
 }
 
-# Coroutine's dependency Boost.Context causes failures with warnings-as-errors
-# under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-local coroutine_lib = /boost/coroutine//boost_coroutine/<warnings-as-errors>off ;
-
 # Integration tests
 lib integrationtests_entry_point :
         entry_point.cpp
@@ -36,19 +32,24 @@ lib integrationtests_entry_point :
         <link>static
     ;
 
+# Boost.Context causes failures with warnings-as-errors
+# under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
+local context_lib = /boost/context//boost_context/<warnings-as-errors>off ;
+
 cpp-pch integrationtests_pch
     :
         pch.hpp
-        $(coroutine_lib)
+        $(context_lib)
         integrationtests_entry_point
     :
         <include>integration
     ;
 
+
 unit-test boost_mysql_integrationtests
     :
         integrationtests_pch
-        $(coroutine_lib)
+        $(context_lib)
         integrationtests_entry_point
 
         # Utilities

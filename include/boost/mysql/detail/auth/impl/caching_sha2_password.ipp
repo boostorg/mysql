@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/client_errc.hpp>
+
 #include <boost/mysql/detail/auth/caching_sha2_password.hpp>
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/auxiliar/make_string_view.hpp>
@@ -70,7 +72,7 @@ inline boost::mysql::error_code boost::mysql::detail::caching_sha2_password::com
     {
         if (!use_ssl)
         {
-            return make_error_code(errc::auth_plugin_requires_ssl);
+            return make_error_code(client_errc::auth_plugin_requires_ssl);
         }
         output.assign(password.begin(), password.end());
         output.push_back(0);
@@ -81,7 +83,7 @@ inline boost::mysql::error_code boost::mysql::detail::caching_sha2_password::com
         // Check challenge size
         if (challenge.size() != challenge_length)
         {
-            return make_error_code(errc::protocol_value_error);
+            return make_error_code(client_errc::protocol_value_error);
         }
 
         // Do the calculation

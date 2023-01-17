@@ -6,8 +6,8 @@
 //
 
 #include <boost/mysql/blob.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/date.hpp>
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/statement_base.hpp>
@@ -28,13 +28,14 @@
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
 #include "netfun_maker.hpp"
+#include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 #include "test_statement.hpp"
 
 using boost::mysql::blob;
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
@@ -42,8 +43,6 @@ using boost::mysql::string_view;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding)
 
 namespace {
 
@@ -151,11 +150,11 @@ BOOST_AUTO_TEST_CASE(error_start_execution_generic)
             execution_state st{create_initial_state()};
             test_connection conn;
             auto stmt = create_statement(conn, 2);
-            conn.stream().set_fail_count(fail_count(0, errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(0, client_errc::server_unsupported));
 
             // Call the function
             fns.start_statement_execution(stmt, field_view("test"), field_view(nullptr), st)
-                .validate_error_exact(errc::aborting_connection, "");
+                .validate_error_exact(client_errc::server_unsupported);
         }
     }
 }
@@ -172,7 +171,7 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
 
             // Call the function
             fns.start_statement_execution(stmt, field_view("test"), field_view(nullptr), st)
-                .validate_error_exact(error_code(errc::wrong_num_params), "");
+                .validate_error_exact(client_errc::wrong_num_params);
         }
     }
 }

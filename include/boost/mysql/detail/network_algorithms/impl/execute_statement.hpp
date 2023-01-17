@@ -28,7 +28,7 @@ template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
 struct execute_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
     const statement_base& stmt_;
     FieldLikeTuple params_;
     resultset& output_;
@@ -37,13 +37,13 @@ struct execute_statement_op : boost::asio::coroutine
     template <BOOST_MYSQL_FIELD_LIKE_TUPLE DeducedTuple>
     execute_statement_op(
         channel<Stream>& chan,
-        error_info& output_info,
+        server_diagnostics& diag,
         const statement_base& stmt,
         DeducedTuple&& params,
         resultset& output
     ) noexcept
         : chan_(chan),
-          output_info_(output_info),
+          diag_(diag),
           stmt_(stmt),
           params_(std::forward<DeducedTuple>(params)),
           output_(output)
@@ -69,7 +69,7 @@ struct execute_statement_op : boost::asio::coroutine
                 stmt_,
                 std::move(params_),
                 output_.state(),
-                output_info_,
+                diag_,
                 std::move(self)
             );
 
@@ -77,7 +77,7 @@ struct execute_statement_op : boost::asio::coroutine
                 chan_,
                 output_.state(),
                 output_.mutable_rows(),
-                output_info_,
+                diag_,
                 std::move(self)
             );
 
@@ -97,14 +97,14 @@ void boost::mysql::detail::execute_statement(
     const FieldLikeTuple& params,
     resultset& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
-    start_statement_execution(channel, stmt, params, output.state(), err, info);
+    start_statement_execution(channel, stmt, params, output.state(), err, diag);
     if (err)
         return;
 
-    read_all_rows(channel, output.state(), output.mutable_rows(), err, info);
+    read_all_rows(channel, output.state(), output.mutable_rows(), err, diag);
 }
 
 template <
@@ -117,7 +117,7 @@ boost::mysql::detail::async_execute_statement(
     const statement_base& stmt,
     FieldLikeTuple&& params,
     resultset& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -125,7 +125,7 @@ boost::mysql::detail::async_execute_statement(
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
         execute_statement_op<Stream, decayed_tuple>(
             chan,
-            info,
+            diag,
             stmt,
             std::forward<FieldLikeTuple>(params),
             output

@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/client_errc.hpp>
 
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -18,20 +18,19 @@
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
 #include "netfun_maker.hpp"
+#include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 #include "test_statement.hpp"
 
 using boost::mysql::blob;
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::resultset;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::resultset_encoding)
 
 namespace {
 
@@ -106,11 +105,11 @@ BOOST_AUTO_TEST_CASE(error_start_statement_execution)
             auto result = create_initial_resultset();
             test_connection conn;
             auto stmt = create_statement(conn, 2);
-            conn.stream().set_fail_count(fail_count(0, errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(0, client_errc::server_unsupported));
 
             // Call the function
             fns.execute_statement(stmt, std::make_tuple("abc", nullptr), result)
-                .validate_error_exact(errc::aborting_connection, "");
+                .validate_error_exact(client_errc::server_unsupported);
         }
     }
 }
@@ -127,11 +126,11 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
             conn.get_channel().reset(1024);  // So that only one read per operation is performed
             conn.stream().add_message(create_message(1, {0x01}));  // Response OK, 1 metadata packet
             conn.stream().add_message(create_coldef_message(2, protocol_field_type::tiny, "f1"));
-            conn.stream().set_fail_count(fail_count(4, errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(4, client_errc::server_unsupported));
 
             // Call the function
             fns.execute_statement(stmt, std::make_tuple("abc", nullptr), result)
-                .validate_error_exact(errc::aborting_connection, "");
+                .validate_error_exact(client_errc::server_unsupported);
 
             // Ensure we successfully ran the start_query
             BOOST_TEST(result.state().meta().at(0).column_name() == "f1");

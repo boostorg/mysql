@@ -10,9 +10,10 @@
 
 #pragma once
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
@@ -119,7 +120,7 @@ inline error_code check_num_params(const statement_base& stmt, std::size_t param
 {
     if (param_count != stmt.num_params())
     {
-        return make_error_code(errc::wrong_num_params);
+        return make_error_code(client_errc::wrong_num_params);
     }
     else
     {
@@ -140,9 +141,9 @@ error_code check_num_params(
 struct fast_fail_op : boost::asio::coroutine
 {
     error_code err_;
-    error_info& output_info_;
+    server_diagnostics& diag_;
 
-    fast_fail_op(error_code err, error_info& info) noexcept : err_(err), output_info_(info) {}
+    fast_fail_op(error_code err, server_diagnostics& diag) noexcept : err_(err), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self)
@@ -150,7 +151,7 @@ struct fast_fail_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-            output_info_.clear();
+            diag_.clear();
             self.complete(err_);
         }
     }
@@ -168,7 +169,7 @@ void boost::mysql::detail::start_statement_execution(
     FieldViewFwdIterator params_last,
     execution_state& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     err = check_num_params(stmt, params_first, params_last);
@@ -184,7 +185,7 @@ void boost::mysql::detail::start_statement_execution(
             ),
             output,
             err,
-            info
+            diag
         );
     }
 }
@@ -200,7 +201,7 @@ boost::mysql::detail::async_start_statement_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -208,7 +209,7 @@ boost::mysql::detail::async_start_statement_execution(
     if (err)
     {
         return boost::asio::async_compose<CompletionToken, void(error_code)>(
-            fast_fail_op(err, info),
+            fast_fail_op(err, diag),
             token,
             chan
         );
@@ -218,7 +219,7 @@ boost::mysql::detail::async_start_statement_execution(
         chan,
         stmt_execute_it_serialize_fn<FieldViewFwdIterator>(stmt.id(), params_first, params_last),
         output,
-        info,
+        diag,
         std::forward<CompletionToken>(token)
     );
 }
@@ -230,7 +231,7 @@ void boost::mysql::detail::start_statement_execution(
     const FieldLikeTuple& params,
     execution_state& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     auto params_array = tuple_to_array(params);
@@ -241,7 +242,7 @@ void boost::mysql::detail::start_statement_execution(
         params_array.end(),
         output,
         err,
-        info
+        diag
     );
 }
 
@@ -255,7 +256,7 @@ boost::mysql::detail::async_start_statement_execution(
     const statement_base& stmt,
     FieldLikeTuple&& params,
     execution_state& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -264,7 +265,7 @@ boost::mysql::detail::async_start_statement_execution(
     if (err)
     {
         return boost::asio::async_compose<CompletionToken, void(error_code)>(
-            fast_fail_op(err, info),
+            fast_fail_op(err, diag),
             token,
             chan
         );
@@ -277,7 +278,7 @@ boost::mysql::detail::async_start_statement_execution(
             std::forward<FieldLikeTuple>(params)
         ),
         output,
-        info,
+        diag,
         std::forward<CompletionToken>(token)
     );
 }

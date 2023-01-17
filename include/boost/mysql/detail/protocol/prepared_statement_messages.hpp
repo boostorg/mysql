@@ -8,9 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_PREPARED_STATEMENT_MESSAGES_HPP
 
+#include <boost/mysql/field_view.hpp>
+
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
-#include <boost/mysql/field_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -59,7 +60,7 @@ template <>
 struct serialization_traits<com_stmt_prepare_ok_packet, serialization_tag::struct_with_fields>
     : noop_serialize<com_stmt_prepare_ok_packet>
 {
-    static inline errc deserialize_(
+    static inline deserialize_errc deserialize_(
         deserialization_context& ctx,
         com_stmt_prepare_ok_packet& output
     ) noexcept;

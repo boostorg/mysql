@@ -50,7 +50,7 @@ template <>
 struct serialization_traits<handshake_packet, serialization_tag::struct_with_fields>
     : noop_serialize<handshake_packet>
 {
-    static inline errc deserialize_(
+    static inline deserialize_errc deserialize_(
         deserialization_context& ctx,
         handshake_packet& output
     ) noexcept;
@@ -149,7 +149,7 @@ template <>
 struct serialization_traits<auth_switch_request_packet, serialization_tag::struct_with_fields>
     : noop_serialize<auth_switch_request_packet>
 {
-    static inline errc deserialize_(
+    static inline deserialize_errc deserialize_(
         deserialization_context& ctx,
         auth_switch_request_packet& output
     ) noexcept;

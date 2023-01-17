@@ -5,25 +5,24 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_ERRC_HPP
-#define BOOST_MYSQL_ERRC_HPP
+#ifndef BOOST_MYSQL_SERVER_ERRC_HPP
+#define BOOST_MYSQL_SERVER_ERRC_HPP
 
-#include <iosfwd>
+#include <boost/mysql/error_code.hpp>
+
+#include <ostream>
 
 namespace boost {
 namespace mysql {
 
 /**
- * \brief MySQL-specific error codes.
- * \details Some error codes are defined by the client library, and others
- * are returned from the server. For the latter, the numeric value and
- * string descriptions match the ones described in the MySQL documentation.
+ * \brief MySQL server-defined error codes.
+ * \details The numeric value and semantics match the ones described in the MySQL documentation.
  * See <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">the MySQL error reference</a>
- * for more info on server errors.
+ * for more info.
  */
-enum class errc : int
+enum class server_errc : int
 {
-    ok = 0, ///< No error
     no = 1002, ///< Server error. Error number: 1002, symbol: <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_no">ER_NO</a>.
     yes = 1003, ///< Server error. Error number: 1003, symbol: <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_yes">ER_YES</a>.
     cant_create_file = 1004, ///< Server error. Error number: 1004, symbol: <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_cant_create_file">ER_CANT_CREATE_FILE</a>.
@@ -1611,22 +1610,24 @@ enum class errc : int
     tp_query_thrs_per_grp_exceeds_txn_thr_limit = 4121, ///< Server error. Error number: 4121, symbol: <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_tp_query_thrs_per_grp_exceeds_txn_thr_limit">ER_TP_QUERY_THRS_PER_GRP_EXCEEDS_TXN_THR_LIMIT</a>.
     bad_timestamp_format = 4122, ///< Server error. Error number: 4122, symbol: <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_bad_timestamp_format">ER_BAD_TIMESTAMP_FORMAT</a>.
     shape_pridiction_udf = 4123, ///< Server error. Error number: 4123, symbol: <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_shape_pridiction_udf">ER_SHAPE_PRIDICTION_UDF</a>.
-    incomplete_message = 65536, ///< Client error. An incomplete message was received from the server
-    extra_bytes = 65537, ///< Client error. Unexpected extra bytes at the end of a message were received
-    sequence_number_mismatch = 65538, ///< Client error. Mismatched sequence numbers
-    server_unsupported = 65539, ///< Client error. The server does not support the minimum required capabilities to establish the connection
-    protocol_value_error = 65540, ///< Client error. An unexpected value was found in a server-received message
-    unknown_auth_plugin = 65541, ///< Client error. The user employs an authentication plugin not known to this library
-    auth_plugin_requires_ssl = 65542, ///< Client error. The authentication plugin requires the connection to use SSL
-    wrong_num_params = 65543, ///< Client error. The number of parameters passed to the prepared statement does not match the number of actual parameters
 };
 
 /**
-  * \brief Streams an error code.
-  */
-inline std::ostream& operator<<(std::ostream&, errc);
+ * \brief Returns the error_category associated to \ref server_errc.
+ */
+inline const boost::system::error_category& get_server_category() noexcept;
 
-} // mysql
-} // boost
+/// Creates an \ref error_code from a \ref server_errc.
+inline error_code make_error_code(server_errc error);
+
+/**
+ * \brief Streams an error code.
+ */
+inline std::ostream& operator<<(std::ostream&, server_errc);
+
+}  // namespace mysql
+}  // namespace boost
+
+#include <boost/mysql/impl/server_errc.hpp>
 
 #endif

@@ -35,17 +35,17 @@ namespace detail {
 
 // Integers
 template <class T>
-errc deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
+deserialize_errc deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
 {
     T v;
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), v);
     if (!ok)
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     to = field_view(v);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_text_value_int(
+inline deserialize_errc deserialize_text_value_int(
     string_view from,
     field_view& to,
     const metadata& meta
@@ -57,18 +57,18 @@ inline errc deserialize_text_value_int(
 
 // Floating points
 template <class T>
-errc deserialize_text_value_float(string_view from, field_view& to) noexcept
+deserialize_errc deserialize_text_value_float(string_view from, field_view& to) noexcept
 {
     T val;
     bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), val);
     if (!ok || std::isnan(val) || std::isinf(val))  // SQL std forbids these values
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     to = field_view(val);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 // Strings
-inline errc deserialize_text_value_string(
+inline deserialize_errc deserialize_text_value_string(
     string_view from,
     field_view& to,
     const std::uint8_t* buffer_first,
@@ -76,7 +76,7 @@ inline errc deserialize_text_value_string(
 ) noexcept
 {
     to = field_view(string_view_offset::from_sv(from, buffer_first), is_blob);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 // Date/time types
@@ -92,13 +92,13 @@ inline unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexce
     return parsed_micros * static_cast<unsigned>(std::pow(10, textc::max_decimals - decimals));
 }
 
-inline errc deserialize_text_ymd(string_view from, date& to)
+inline deserialize_errc deserialize_text_ymd(string_view from, date& to)
 {
     using namespace textc;
 
     // Size check
     if (from.size() != date_sz)
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
 
     // Copy to a NULL-terminated buffer
     char buffer[date_sz + 1]{};
@@ -109,32 +109,32 @@ inline errc deserialize_text_ymd(string_view from, date& to)
     char extra_char;
     int parsed = sscanf(buffer, "%4u-%2u-%2u%c", &year, &month, &day, &extra_char);
     if (parsed != 3)
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
 
     // Range check for individual components. MySQL doesn't allow invidiual components
     // to be out of range, although they may be zero or representing an invalid date
     if (year > max_year || month > max_month || day > max_day)
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
 
     to = date(
         static_cast<std::uint16_t>(year),
         static_cast<std::uint8_t>(month),
         static_cast<std::uint8_t>(day)
     );
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_text_value_date(string_view from, field_view& to) noexcept
+inline deserialize_errc deserialize_text_value_date(string_view from, field_view& to) noexcept
 {
     date d;
     auto err = deserialize_text_ymd(from, d);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
     to = field_view(d);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_text_value_datetime(
+inline deserialize_errc deserialize_text_value_datetime(
     string_view from,
     field_view& to,
     const metadata& meta
@@ -148,12 +148,12 @@ inline errc deserialize_text_value_datetime(
     // Length check
     std::size_t expected_size = datetime_min_sz + (decimals ? decimals + 1 : 0);
     if (from.size() != expected_size)
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
 
     // Deserialize date part
     date d;
     auto err = deserialize_text_ymd(from.substr(0, date_sz), d);
-    if (err != errc::ok)
+    if (err != deserialize_errc::ok)
         return err;
 
     // Copy to NULL-terminated buffer
@@ -177,21 +177,21 @@ inline errc deserialize_text_value_datetime(
             &extra_char
         );
         if (parsed != 4)
-            return errc::protocol_value_error;
+            return deserialize_errc::protocol_value_error;
         micros = compute_micros(micros, decimals);
     }
     else
     {
         int parsed = sscanf(buffer, "%2u:%2u:%2u%c", &hours, &minutes, &seconds, &extra_char);
         if (parsed != 3)
-            return errc::protocol_value_error;
+            return deserialize_errc::protocol_value_error;
     }
 
     // Validity check. Although MySQL allows invalid and zero datetimes, it doesn't allow
     // individual components to be out of range.
     if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
     {
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     }
 
     datetime dt(
@@ -204,10 +204,10 @@ inline errc deserialize_text_value_datetime(
         static_cast<std::uint32_t>(micros)
     );
     to = field_view(dt);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
-inline errc deserialize_text_value_time(
+inline deserialize_errc deserialize_text_value_time(
     string_view from,
     field_view& to,
     const metadata& meta
@@ -223,7 +223,7 @@ inline errc deserialize_text_value_time(
     std::size_t actual_max_size = actual_min_size + 1 + 1;  // hour extra character and sign
     assert(actual_max_size <= time_max_sz);
     if (from.size() < actual_min_size || from.size() > actual_max_size)
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
 
     // Copy to NULL-terminated buffer
     char buffer[time_max_sz + 1]{};
@@ -249,20 +249,20 @@ inline errc deserialize_text_value_time(
             &extra_char
         );
         if (parsed != 4)
-            return errc::protocol_value_error;
+            return deserialize_errc::protocol_value_error;
         micros = compute_micros(micros, decimals);
     }
     else
     {
         int parsed = sscanf(first, "%3u:%2u:%2u%c", &hours, &minutes, &seconds, &extra_char);
         if (parsed != 3)
-            return errc::protocol_value_error;
+            return deserialize_errc::protocol_value_error;
     }
 
     // Range check
     if (hours > time_max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
     {
-        return errc::protocol_value_error;
+        return deserialize_errc::protocol_value_error;
     }
 
     // Sum it
@@ -275,14 +275,14 @@ inline errc deserialize_text_value_time(
 
     // Done
     to = field_view(res);
-    return errc::ok;
+    return deserialize_errc::ok;
 }
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::errc boost::mysql::detail::deserialize_text_field(
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_text_field(
     string_view from,
     const metadata& meta,
     const std::uint8_t* buffer_first,

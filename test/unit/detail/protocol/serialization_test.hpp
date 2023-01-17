@@ -161,7 +161,7 @@ public:
     virtual ~any_value() {}
     virtual void serialize(detail::serialization_context& ctx) const = 0;
     virtual std::size_t get_size(const detail::serialization_context& ctx) const = 0;
-    virtual errc deserialize(detail::deserialization_context& ctx) = 0;
+    virtual detail::deserialize_errc deserialize(detail::deserialization_context& ctx) = 0;
     virtual std::shared_ptr<any_value> default_construct() const = 0;
     virtual bool equals(const any_value& rhs) const = 0;
     virtual void print(std::ostream& os) const = 0;
@@ -190,7 +190,7 @@ public:
     {
         return ::boost::mysql::detail::get_size(ctx, value_);
     }
-    errc deserialize(detail::deserialization_context& ctx) override
+    detail::deserialize_errc deserialize(detail::deserialization_context& ctx) override
     {
         return ::boost::mysql::detail::deserialize(ctx, value_);
     }

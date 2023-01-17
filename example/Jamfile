@@ -39,7 +39,7 @@ for local example in $(examples_no_unix)
         :
             "$(example).cpp"
             /boost/mysql/test//mysql
-            /boost/coroutine//boost_coroutine
+            /boost/context//boost_context
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;

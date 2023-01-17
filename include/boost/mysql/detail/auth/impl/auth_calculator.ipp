@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/client_errc.hpp>
+
 #include <boost/mysql/detail/auth/auth_calculator.hpp>
 #include <boost/mysql/detail/auth/caching_sha2_password.hpp>
 #include <boost/mysql/detail/auth/mysql_native_password.hpp>
@@ -69,7 +71,7 @@ inline boost::mysql::error_code boost::mysql::detail::auth_calculator::calculate
     }
     else
     {
-        return make_error_code(errc::unknown_auth_plugin);
+        return make_error_code(client_errc::unknown_auth_plugin);
     }
 }
 

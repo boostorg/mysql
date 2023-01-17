@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_READER_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_READER_HPP
 
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/mysql/detail/channel/message_parser.hpp>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/error.hpp>
 
 #include <boost/asio/async_result.hpp>
 

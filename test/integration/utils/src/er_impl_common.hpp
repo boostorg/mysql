@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_SRC_ER_IMPL_COMMON_HPP
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/error.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/statement_base.hpp>
 

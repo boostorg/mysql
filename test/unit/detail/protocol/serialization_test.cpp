@@ -13,6 +13,7 @@
 #include <functional>
 
 #include "assert_buffer_equals.hpp"
+#include "printing.hpp"
 #include "serialization_test.hpp"
 #include "serialization_test_samples/basic_types.hpp"
 #include "serialization_test_samples/binary_serialization.hpp"
@@ -24,7 +25,6 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using namespace boost::unit_test;
-using boost::mysql::errc;
 
 BOOST_AUTO_TEST_SUITE(test_serialization)
 
@@ -143,7 +143,7 @@ BOOST_DATA_TEST_CASE(deserialize, data::make(all_samples.deserialization_samples
     auto err = actual_value->deserialize(ctx);
 
     // No error
-    BOOST_TEST(err == errc::ok);
+    BOOST_TEST(err == deserialize_errc::ok);
 
     // Iterator advanced
     BOOST_TEST(ctx.first() == first + size);
@@ -162,7 +162,7 @@ BOOST_DATA_TEST_CASE(deserialize_extra_space, data::make(all_samples.space_sampl
     auto err = actual_value->deserialize(ctx);
 
     // No error
-    BOOST_TEST(err == errc::ok);
+    BOOST_TEST(err == deserialize_errc::ok);
 
     // Iterator advanced
     BOOST_TEST(ctx.first() == first + sample.expected_buffer.size());
@@ -178,7 +178,7 @@ BOOST_DATA_TEST_CASE(deserialize_not_enough_space, data::make(all_samples.space_
     deserialization_context ctx(buffer.data(), buffer.data() + buffer.size() - 1, sample.caps);
     auto actual_value = sample.value->default_construct();
     auto err = actual_value->deserialize(ctx);
-    BOOST_TEST(err == errc::incomplete_message);
+    BOOST_TEST(err == deserialize_errc::incomplete_message);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

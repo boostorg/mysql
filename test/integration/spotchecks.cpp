@@ -17,11 +17,11 @@
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::errc;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
 using boost::mysql::resultset;
 using boost::mysql::row_view;
+using boost::mysql::server_errc;
 
 namespace {
 
@@ -47,7 +47,7 @@ BOOST_MYSQL_NETWORK_TEST(error, network_fixture, err_net_samples)
     setup_and_physical_connect(sample.net);
     params.set_database("bad_database");
     conn->handshake(params).validate_error(
-        errc::dbaccess_denied_error,
+        server_errc::dbaccess_denied_error,
         {"database", "bad_database"}
     );
 }
@@ -58,7 +58,7 @@ BOOST_MYSQL_NETWORK_TEST(connect_error, network_fixture, err_net_samples)
     setup(sample.net);
     set_credentials("integ_user", "bad_password");
     conn->connect(params).validate_error(
-        errc::access_denied_error,
+        server_errc::access_denied_error,
         {"access denied", "integ_user"}
     );
     BOOST_TEST(!conn->is_open());
@@ -81,7 +81,7 @@ BOOST_MYSQL_NETWORK_TEST(start_query_error, network_fixture, err_net_samples)
 
     execution_state st;
     conn->start_query("SELECT field_varchar, field_bad FROM one_row_table", st)
-        .validate_error(errc::bad_field_error, {"unknown column", "field_bad"});
+        .validate_error(server_errc::bad_field_error, {"unknown column", "field_bad"});
 }
 
 // Query
@@ -102,7 +102,7 @@ BOOST_MYSQL_NETWORK_TEST(query_error, network_fixture, err_net_samples)
 
     resultset result;
     conn->query("SELECT field_varchar, field_bad FROM one_row_table", result)
-        .validate_error(errc::bad_field_error, {"unknown column", "field_bad"});
+        .validate_error(server_errc::bad_field_error, {"unknown column", "field_bad"});
 }
 
 // Prepare statement
@@ -120,7 +120,7 @@ BOOST_MYSQL_NETWORK_TEST(prepare_statement_error, network_fixture, err_net_sampl
 {
     setup_and_connect(sample.net);
     conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)", *stmt)
-        .validate_error(errc::no_such_table, {"table", "doesn't exist", "bad_table"});
+        .validate_error(server_errc::no_such_table, {"table", "doesn't exist", "bad_table"});
 }
 
 // Start statement execution (iterator version)
@@ -161,7 +161,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, er
     std::forward_list<field_view> params{field_view("f0"), field_view("bad_date")};
     stmt->start_execution_it(params.begin(), params.end(), st)
         .validate_error(
-            errc::truncated_wrong_value,
+            server_errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
         );
 }
@@ -202,7 +202,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_error, network_fixture,
     execution_state st;
     stmt->start_execution_tuple2(field_view("abc"), field_view("bad_date"), st)
         .validate_error(
-            errc::truncated_wrong_value,
+            server_errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
         );
 }
@@ -238,7 +238,7 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_sampl
     resultset result;
     stmt->execute_tuple2(field_view("f0"), field_view("bad_date"), result)
         .validate_error(
-            errc::truncated_wrong_value,
+            server_errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
         );
 }

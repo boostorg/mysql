@@ -7,7 +7,7 @@
 
 # Note: examples count as integration tests. This is only processed
 # when we're the main project and BOOST_MYSQL_INTEGRATION_TESTS is on
-find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS coroutine)
+find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context)
 
 # Compile the example
 function (build_example EXECUTABLE_NAME CPPFILE)
@@ -18,8 +18,9 @@ function (build_example EXECUTABLE_NAME CPPFILE)
     target_link_libraries(
         ${EXECUTABLE_NAME}
         PRIVATE
+        Boost::disable_autolinking
         Boost::mysql
-        Boost::coroutine
+        Boost::context
         boost_mysql_asio
     )
     common_target_settings(${EXECUTABLE_NAME})

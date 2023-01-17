@@ -5,13 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
+
 #include <boost/mysql/detail/auth/auth_calculator.hpp>
 
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
-using boost::mysql::errc;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::string_view;
 
@@ -73,11 +75,11 @@ BOOST_FIXTURE_TEST_CASE(bad_challenge_length, mysql_native_password)
 {
     BOOST_TEST(
         (calc.calculate("mysql_native_password", "password", "", true)) ==
-        make_error_code(errc::protocol_value_error)
+        make_error_code(client_errc::protocol_value_error)
     );
     BOOST_TEST(
         (calc.calculate("mysql_native_password", "password", "bad_challenge", true)) ==
-        make_error_code(errc::protocol_value_error)
+        make_error_code(client_errc::protocol_value_error)
     );
 }
 
@@ -122,7 +124,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_challenge_auth_ssl_true, caching_sha2
 BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_false, caching_sha2_password_test)
 {
     auto err = calc.calculate("caching_sha2_password", "hola", cleartext_challenge, false);
-    BOOST_TEST(err == make_error_code(errc::auth_plugin_requires_ssl));
+    BOOST_TEST(err == make_error_code(client_errc::auth_plugin_requires_ssl));
 }
 
 BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_true, caching_sha2_password_test)
@@ -169,11 +171,11 @@ BOOST_FIXTURE_TEST_CASE(caching_sha2_bad_challenge_length, caching_sha2_password
 {
     BOOST_TEST(
         (calc.calculate("caching_sha2_password", "password", "", true)) ==
-        make_error_code(errc::protocol_value_error)
+        make_error_code(client_errc::protocol_value_error)
     );
     BOOST_TEST(
         (calc.calculate("caching_sha2_password", "password", "bad_challenge", true)) ==
-        make_error_code(errc::protocol_value_error)
+        make_error_code(client_errc::protocol_value_error)
     );
 }
 
@@ -183,11 +185,11 @@ BOOST_AUTO_TEST_CASE(unknown_auth_plugin)
     auth_calculator calc;
     BOOST_TEST(
         (calc.calculate("bad_plugin", "password", "challenge", true)) ==
-        make_error_code(errc::unknown_auth_plugin)
+        make_error_code(client_errc::unknown_auth_plugin)
     );
     BOOST_TEST(
         (calc.calculate("", "password", "challenge", true)) ==
-        make_error_code(errc::unknown_auth_plugin)
+        make_error_code(client_errc::unknown_auth_plugin)
     );
 }
 

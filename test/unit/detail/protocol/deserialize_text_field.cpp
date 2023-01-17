@@ -20,6 +20,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
+#include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
@@ -28,7 +29,6 @@ using namespace boost::unit_test;
 using boost::mysql::blob_view;
 using boost::mysql::date;
 using boost::mysql::datetime;
-using boost::mysql::errc;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::string_view;
@@ -73,7 +73,7 @@ struct success_sample
 std::ostream& operator<<(std::ostream& os, const success_sample& input)
 {
     return os << "(input=" << input.from
-              << ", type=" << to_string(input.type)
+              << ", type=" << input.type
               << ", name=" << input.name
               << ")";
 }
@@ -441,7 +441,7 @@ BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
         buffer_first,
         actual_value
     );
-    BOOST_TEST(err == errc::ok);
+    BOOST_TEST(err == deserialize_errc::ok);
 
     // Strings are representd as string view offsets
     if (sample.expected.is_string() || sample.expected.is_blob())
@@ -470,10 +470,10 @@ struct error_sample
     protocol_field_type type;
     std::uint16_t flags;
     unsigned decimals;
-    errc expected_err;
+    deserialize_errc expected_err;
 
     error_sample(std::string&& name, string_view from, protocol_field_type type,
-            std::uint16_t flags=0, unsigned decimals=0, errc expected_err=errc::protocol_value_error) :
+            std::uint16_t flags=0, unsigned decimals=0, deserialize_errc expected_err = deserialize_errc::protocol_value_error) :
         name(std::move(name)),
         from(from),
         type(type),
@@ -487,7 +487,7 @@ struct error_sample
 std::ostream& operator<<(std::ostream& os, const error_sample& input)
 {
     return os << "(input=" << input.from
-              << ", type=" << to_string(input.type)
+              << ", type=" << input.type
               << ", name=" << input.name
               << ")";
 }

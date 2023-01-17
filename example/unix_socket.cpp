@@ -11,7 +11,6 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <iostream>
 #include <tuple>
@@ -53,12 +52,10 @@ void main_impl(int argc, char** argv)
     // is user-supplied input, and should be treated as untrusted.
     const char* company_id = argc == 5 ? argv[4] : "HGS";
 
-    /**
-     * Connection parameters that tell us where and how to connect to the MySQL server.
-     * There are two types of parameters:
-     *   - UNIX-level connection parameters, identifying the UNIX socket to connect to.
-     *   - MySQL level parameters: database credentials and schema to use.
-     */
+    // Connection parameters that tell us where and how to connect to the MySQL server.
+    // There are two types of parameters:
+    //   - UNIX-level connection parameters, identifying the UNIX socket to connect to.
+    //   - MySQL level parameters: database credentials and schema to use.
     boost::asio::local::stream_protocol::endpoint ep(socket_path);
     boost::mysql::handshake_params params(
         argv[1],                // username
@@ -111,9 +108,14 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::system::system_error& err)
+    catch (const boost::mysql::server_error& err)
     {
-        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << std::endl;
+        // Server errors include additional diagnostics provided by the server.
+        // Security note: err.diagnostics().message() may contain user-supplied values (e.g. the
+        // field value that caused the error) and is encoded using to the connection's encoding
+        // (UTF-8 by default). Treat is as untrusted input.
+        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << '\n'
+                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

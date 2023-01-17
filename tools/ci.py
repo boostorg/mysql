@@ -236,7 +236,6 @@ def _cmake_build(
             '--prefix={}'.format(b2_distro),
             '--with-system',
             '--with-context',
-            '--with-coroutine',
             '--with-date_time',
             '--with-test',
             '-d0',

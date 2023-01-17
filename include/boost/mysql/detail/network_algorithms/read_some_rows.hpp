@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_HPP
 
-#include <boost/mysql/error.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 
@@ -24,7 +25,7 @@ rows_view read_some_rows(
     channel<Stream>& channel,
     execution_state& st,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 );
 
 template <
@@ -35,7 +36,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
 async_read_some_rows(
     channel<Stream>& channel,
     execution_state& result,
-    error_info& output_info,
+    server_diagnostics& diag,
     CompletionToken&& token
 );
 

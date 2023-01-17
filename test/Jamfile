@@ -79,7 +79,6 @@ local requirements =
         <define>BOOST_ASIO_DISABLE_BOOST_DATE_TIME=1
         <define>BOOST_ASIO_DISABLE_BOOST_REGEX=1
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
-        <define>BOOST_COROUTINES_NO_DEPRECATION_WARNING=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
         <toolset>msvc:<cxxflags>"/bigobj /Zc:__cplusplus"
         <toolset>msvc-14.1:<cxxflags>"/permissive-"
@@ -111,10 +110,13 @@ lib asio_separate_build
 
 alias mysql : asio_separate_build ;
 
+# Unit test library generates some internal warnings we're not interested in
+local unit_test_lib = /boost/test//boost_unit_test_framework/<warnings-as-errors>off ;
+
 alias test_common
     :
         mysql
-        /boost/test//boost_unit_test_framework
+        $(unit_test_lib)
     :
         <link>static
     :

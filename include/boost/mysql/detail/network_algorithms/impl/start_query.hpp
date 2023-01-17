@@ -47,7 +47,7 @@ void boost::mysql::detail::start_query(
     string_view query,
     execution_state& output,
     error_code& err,
-    error_info& info
+    server_diagnostics& diag
 )
 {
     start_execution_generic(
@@ -56,7 +56,7 @@ void boost::mysql::detail::start_query(
         query_serialize_fn(query),
         output,
         err,
-        info
+        diag
     );
 }
 
@@ -68,7 +68,7 @@ boost::mysql::detail::async_start_query(
     channel<Stream>& chan,
     string_view query,
     execution_state& output,
-    error_info& info,
+    server_diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -77,7 +77,7 @@ boost::mysql::detail::async_start_query(
         chan,
         query_serialize_fn(query),
         output,
-        info,
+        diag,
         std::forward<CompletionToken>(token)
     );
 }

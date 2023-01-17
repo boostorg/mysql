@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
+#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/core/ignore_unused.hpp>
 
@@ -44,9 +45,9 @@ inline void boost::mysql::detail::message_parser::parse_message(
                 boost::asio::buffer(buff.pending_first() - HEADER_SIZE, HEADER_SIZE),
                 capabilities(0)  // unaffected by capabilities
             );
-            errc err = deserialize(ctx, header);
+            auto err = deserialize_message_part(ctx, header);
             boost::ignore_unused(err);
-            assert(err == errc::ok);
+            assert(err == error_code());
 
             // Process the sequence number
             if (state_.is_first_frame)
