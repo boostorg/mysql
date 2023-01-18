@@ -5,12 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_ROW_VIEW_IPP
-#define BOOST_MYSQL_IMPL_ROW_VIEW_IPP
+#ifndef BOOST_MYSQL_IMPL_ROW_VIEW_HPP
+#define BOOST_MYSQL_IMPL_ROW_VIEW_HPP
 
 #pragma once
 
 #include <boost/mysql/row_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
 #include <cstddef>
 #include <ostream>
@@ -35,18 +37,9 @@ inline bool boost::mysql::operator==(const row_view& lhs, const row_view& rhs) n
     return true;
 }
 
-inline std::ostream& boost::mysql::operator<<(std::ostream& os, const row_view& value)
+struct boost::mysql::detail::row_view_access
 {
-    os << '{';
-    if (!value.empty())
-    {
-        os << value[0];
-        for (auto it = std::next(value.begin()); it != value.end(); ++it)
-        {
-            os << ", " << *it;
-        }
-    }
-    return os << '}';
-}
+    static row_view construct(const field_view* f, std::size_t size) noexcept { return row_view(f, size); }
+};
 
 #endif

@@ -7,6 +7,7 @@
 
 #include <boost/mysql/metadata.hpp>
 
+#include "create_meta.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
@@ -14,6 +15,7 @@ using namespace boost::mysql::detail;
 using boost::mysql::collation;
 using boost::mysql::column_type;
 using boost::mysql::metadata;
+using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
 
@@ -31,7 +33,7 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
         protocol_field_type::long_,
         column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
         0};
-    metadata meta(msg, true);
+    auto meta = create_meta(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -40,7 +42,6 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
     BOOST_TEST(meta.original_column_name() == "id");
     BOOST_TEST(meta.column_length() == 11u);
     BOOST_TEST(meta.type() == column_type::int_);
-    BOOST_TEST(meta.protocol_type() == protocol_field_type::long_);
     BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(meta.is_not_null());
     BOOST_TEST(meta.is_primary_key());
@@ -67,7 +68,7 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
         protocol_field_type::var_string,
         0,
         0};
-    metadata meta(msg, true);
+    auto meta = create_meta(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "child");
@@ -75,7 +76,6 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
     BOOST_TEST(meta.column_name() == "field_alias");
     BOOST_TEST(meta.original_column_name() == "field_varchar");
     BOOST_TEST(meta.column_length() == 765u);
-    BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
     BOOST_TEST(meta.type() == column_type::varchar);
     BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(!meta.is_not_null());
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(float_)
         protocol_field_type::float_,
         0,
         31};
-    metadata meta(msg, true);
+    auto meta = create_meta(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -111,7 +111,6 @@ BOOST_AUTO_TEST_CASE(float_)
     BOOST_TEST(meta.column_name() == "field_float");
     BOOST_TEST(meta.original_column_name() == "field_float");
     BOOST_TEST(meta.column_length() == 12u);
-    BOOST_TEST(meta.protocol_type() == protocol_field_type::float_);
     BOOST_TEST(meta.type() == column_type::float_);
     BOOST_TEST(meta.decimals() == 31u);
     BOOST_TEST(!meta.is_not_null());
@@ -139,7 +138,7 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
         protocol_field_type::var_string,
         0,
         0};
-    metadata meta(msg, false);
+    auto meta = create_meta(msg, false);
 
     BOOST_TEST(meta.database() == "");
     BOOST_TEST(meta.table() == "");
@@ -147,7 +146,6 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
     BOOST_TEST(meta.column_name() == "");
     BOOST_TEST(meta.original_column_name() == "");
     BOOST_TEST(meta.column_length() == 765u);
-    BOOST_TEST(meta.protocol_type() == protocol_field_type::var_string);
     BOOST_TEST(meta.type() == column_type::varchar);
     BOOST_TEST(meta.decimals() == 0u);
     BOOST_TEST(!meta.is_not_null());

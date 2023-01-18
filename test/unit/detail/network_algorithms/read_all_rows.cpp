@@ -9,6 +9,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -26,6 +27,7 @@ using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::rows;
 using boost::mysql::detail::async_read_all_rows;
+using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::read_all_rows;
 using boost::mysql::detail::resultset_encoding;
@@ -226,7 +228,7 @@ BOOST_AUTO_TEST_CASE(resultset_already_complete)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto st = create_execution_state(resultset_encoding::text, {});
-            st.complete(boost::mysql::detail::ok_packet{});
+            execution_state_access::complete(st, boost::mysql::detail::ok_packet{});
             test_channel chan = create_channel();
             rows rws = make_initial_rows();
 

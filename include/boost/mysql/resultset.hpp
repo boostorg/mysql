@@ -14,6 +14,8 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+
 #include <cassert>
 
 namespace boost {
@@ -25,10 +27,6 @@ namespace mysql {
 class resultset
 {
 public:
-    // TODO: hide these
-    execution_state& state() noexcept { return st_; }
-    ::boost::mysql::rows& mutable_rows() noexcept { return rows_; }
-
     /**
      * \brief Default constructor.
      * \details Constructs an empty resultset, with `this->has_value() == false`.
@@ -154,9 +152,15 @@ public:
 private:
     execution_state st_;
     ::boost::mysql::rows rows_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::resultset_access;
+#endif
 };
 
 }  // namespace mysql
 }  // namespace boost
+
+#include <boost/mysql/impl/resultset.hpp>
 
 #endif

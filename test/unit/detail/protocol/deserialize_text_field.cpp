@@ -12,6 +12,7 @@
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
@@ -20,6 +21,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
+#include "create_meta.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
@@ -427,11 +429,7 @@ std::vector<success_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
 {
-    column_definition_packet coldef {};
-    coldef.type = sample.type;
-    coldef.decimals = static_cast<std::uint8_t>(sample.decimals);
-    coldef.flags = sample.flags;
-    boost::mysql::metadata meta (coldef, false);
+    auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals));
     const std::uint8_t* buffer_first = reinterpret_cast<const std::uint8_t*>(sample.from.data());
     field_view actual_value;
 
@@ -449,7 +447,7 @@ BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
         std::size_t expected_offset = sample.expected.is_string() ? sample.expected.get_string().size() : sample.expected.get_blob().size();
         field_view expected_offset_fv = make_svoff_fv(0, expected_offset, sample.expected.is_blob());
         BOOST_TEST(actual_value == expected_offset_fv);
-        actual_value.offset_to_string_view(buffer_first);
+        field_view_access::offset_to_string_view(actual_value, buffer_first);
     }
 
     BOOST_TEST(actual_value == sample.expected);
@@ -698,11 +696,7 @@ std::vector<error_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(error, data::make(make_all_samples()))
 {
-    column_definition_packet coldef {};
-    coldef.type = sample.type;
-    coldef.decimals = static_cast<std::uint8_t>(sample.decimals);
-    coldef.flags = sample.flags;
-    boost::mysql::metadata meta (coldef, false);
+    auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals));
     auto buffer_first = reinterpret_cast<const std::uint8_t*>(sample.from.data());
     field_view actual_value;
     auto err = deserialize_text_field(sample.from, meta, buffer_first, actual_value);

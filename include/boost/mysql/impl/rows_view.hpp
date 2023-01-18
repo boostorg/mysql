@@ -5,13 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_ROWS_VIEW_IPP
-#define BOOST_MYSQL_IMPL_ROWS_VIEW_IPP
+#ifndef BOOST_MYSQL_IMPL_ROWS_VIEW_HPP
+#define BOOST_MYSQL_IMPL_ROWS_VIEW_HPP
 
 #pragma once
 
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 #include <cassert>
 #include <stdexcept>
@@ -42,5 +44,17 @@ inline bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noex
     }
     return true;
 }
+
+struct boost::mysql::detail::rows_view_access
+{
+    static rows_view construct(
+        const field_view* fields,
+        std::size_t num_fields,
+        std::size_t num_columns
+    ) noexcept
+    {
+        return rows_view(fields, num_fields, num_columns);
+    }
+};
 
 #endif

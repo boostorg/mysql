@@ -13,6 +13,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
@@ -51,7 +52,7 @@ inline void offsets_to_string_views(
 ) noexcept
 {
     for (auto& f : fields)
-        f.offset_to_string_view(buffer_first);
+        field_view_access::offset_to_string_view(f, buffer_first);
 }
 
 }  // namespace detail

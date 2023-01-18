@@ -5,12 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_METADATA_IPP
-#define BOOST_MYSQL_IMPL_METADATA_IPP
+#ifndef BOOST_MYSQL_IMPL_METADATA_HPP
+#define BOOST_MYSQL_IMPL_METADATA_HPP
 
 #pragma once
 
 #include <boost/mysql/metadata.hpp>
+
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
 namespace boost {
 namespace mysql {
@@ -75,9 +77,26 @@ inline column_type compute_field_type(protocol_field_type protocol_type, std::ui
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::column_type boost::mysql::metadata::type() const noexcept
+boost::mysql::metadata::metadata(const detail::column_definition_packet& msg, bool copy_strings)
+    : schema_(copy_strings ? msg.schema.value : string_view()),
+      table_(copy_strings ? msg.table.value : string_view()),
+      org_table_(copy_strings ? msg.org_table.value : string_view()),
+      name_(copy_strings ? msg.name.value : string_view()),
+      org_name_(copy_strings ? msg.org_name.value : string_view()),
+      character_set_(msg.character_set),
+      column_length_(msg.column_length),
+      type_(detail::compute_field_type(msg.type, msg.flags)),
+      flags_(msg.flags),
+      decimals_(msg.decimals)
 {
-    return detail::compute_field_type(type_, flags_);
 }
+
+struct boost::mysql::detail::metadata_access
+{
+    static metadata construct(const detail::column_definition_packet& msg, bool copy_strings)
+    {
+        return metadata(msg, copy_strings);
+    }
+};
 
 #endif

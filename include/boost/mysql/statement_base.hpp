@@ -10,6 +10,8 @@
 
 #include <boost/mysql/field_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
 #include <array>
@@ -29,18 +31,6 @@ namespace mysql {
 class statement_base
 {
 public:
-#ifndef BOOST_MYSQL_DOXYGEN
-    statement_base() = default;
-    // Private. Do not use. TODO: hide this
-    void reset(void* channel, const detail::com_stmt_prepare_ok_packet& msg) noexcept
-    {
-        channel_ = channel;
-        stmt_msg_ = msg;
-    }
-
-    void reset() noexcept { channel_ = nullptr; }
-#endif
-
     /**
      * \brief Returns `true` if the object represents an actual server statement.
      * \details Calling any function other than assignment on a statement for which
@@ -68,15 +58,21 @@ public:
     }
 
 protected:
-    void* channel_ptr() noexcept { return channel_; }
-    void swap(statement_base& other) noexcept { std::swap(*this, other); }
+    statement_base() = default;
+    detail::channel_base* channel_ptr() noexcept { return channel_; }
 
 private:
-    void* channel_{nullptr};
+    detail::channel_base* channel_{nullptr};
     detail::com_stmt_prepare_ok_packet stmt_msg_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::statement_base_access;
+#endif
 };
 
 }  // namespace mysql
 }  // namespace boost
+
+#include <boost/mysql/impl/statement_base.hpp>
 
 #endif

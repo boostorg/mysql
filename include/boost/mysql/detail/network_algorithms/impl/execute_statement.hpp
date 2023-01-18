@@ -42,11 +42,7 @@ struct execute_statement_op : boost::asio::coroutine
         DeducedTuple&& params,
         resultset& output
     ) noexcept
-        : chan_(chan),
-          diag_(diag),
-          stmt_(stmt),
-          params_(std::forward<DeducedTuple>(params)),
-          output_(output)
+        : chan_(chan), diag_(diag), stmt_(stmt), params_(std::forward<DeducedTuple>(params)), output_(output)
     {
     }
 
@@ -68,15 +64,15 @@ struct execute_statement_op : boost::asio::coroutine
                 chan_,
                 stmt_,
                 std::move(params_),
-                output_.state(),
+                resultset_access::get_state(output_),
                 diag_,
                 std::move(self)
             );
 
             BOOST_ASIO_CORO_YIELD async_read_all_rows(
                 chan_,
-                output_.state(),
-                output_.mutable_rows(),
+                resultset_access::get_state(output_),
+                resultset_access::get_rows(output_),
                 diag_,
                 std::move(self)
             );
@@ -100,11 +96,17 @@ void boost::mysql::detail::execute_statement(
     server_diagnostics& diag
 )
 {
-    start_statement_execution(channel, stmt, params, output.state(), err, diag);
+    start_statement_execution(channel, stmt, params, resultset_access::get_state(output), err, diag);
     if (err)
         return;
 
-    read_all_rows(channel, output.state(), output.mutable_rows(), err, diag);
+    read_all_rows(
+        channel,
+        resultset_access::get_state(output),
+        resultset_access::get_rows(output),
+        err,
+        diag
+    );
 }
 
 template <

@@ -86,7 +86,7 @@ constexpr std::uint8_t com_stmt_execute_blob_buffer[] = {0x70, 0x00, 0x01, 0xff}
 const serialization_test_spec com_stmt_execute_packet_spec {
     serialization_test_type::serialization, {
         make_stmt_execute_sample(1, 0x80, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(std::uint64_t(0xabffffabacadae)), {
+            make_fv_arr(std::uint64_t(0xabffffabacadae)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x08, 0x80, 0xae, 0xad,
                 0xac, 0xab, 0xff, 0xff, 0xab, 0x00
@@ -94,7 +94,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "uint64_t"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(std::int64_t(-0xabffffabacadae)), {
+            make_fv_arr(std::int64_t(-0xabffffabacadae)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x08, 0x00, 0x52, 0x52,
                 0x53, 0x54, 0x00, 0x00, 0x54, 0xff
@@ -102,7 +102,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "int64_t"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(string_view("test")), {
+            make_fv_arr(string_view("test")), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0xfe, 0x00, 0x04, 0x74,
                 0x65, 0x73, 0x74
@@ -110,7 +110,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "string"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(blob_view(com_stmt_execute_blob_buffer)), {
+            make_fv_arr(blob_view(com_stmt_execute_blob_buffer)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0xfc, 0x00, 0x04, 0x70,
                 0x00, 0x01, 0xff
@@ -118,7 +118,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "blob"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(3.14e20f), {
+            make_fv_arr(3.14e20f), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x04, 0x00, 0x01, 0x2d,
                 0x88, 0x61
@@ -126,7 +126,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "float"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(2.1e214), {
+            make_fv_arr(2.1e214), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x05, 0x00, 0x56, 0xc0,
                 0xee, 0xa6, 0x95, 0x30, 0x6f, 0x6c
@@ -134,7 +134,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "double"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(date(2010u, 9u, 3u)), {
+            make_fv_arr(date(2010u, 9u, 3u)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x0a, 0x00, 0x04, 0xda,
                 0x07, 0x09, 0x03
@@ -142,7 +142,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "date"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(datetime(2010u, 9u, 3u, 10u, 30u, 59u, 231800u)), {
+            make_fv_arr(datetime(2010u, 9u, 3u, 10u, 30u, 59u, 231800u)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x0c, 0x00, 0x0b, 0xda,
                 0x07, 0x09, 0x03, 0x0a, 0x1e, 0x3b, 0x78, 0x89,
@@ -151,7 +151,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "datetime"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(maket(230, 30, 59, 231800)), {
+            make_fv_arr(maket(230, 30, 59, 231800)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x0b, 0x00, 0x0c, 0x00,
                 0x09, 0x00, 0x00, 0x00, 0x0e, 0x1e, 0x3b, 0x78,
@@ -160,14 +160,14 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "time"
         ),
         make_stmt_execute_sample(1, 0, 1, 1, // stmt ID, flags, itercount, new params
-            make_field_views(nullptr), {
+            make_fv_arr(nullptr), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
                 0x00, 0x00, 0x01, 0x01, 0x06, 0x00
             },
             "null"
         ),
         make_stmt_execute_sample(2, 0, 1, 1,
-            make_field_views(
+            make_fv_arr(
                 std::uint64_t(0xabffffabacadae),
                 std::int64_t(-0xabffffabacadae),
                 string_view("test"),
@@ -193,7 +193,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "several_params"
         ),
         make_stmt_execute_sample<1, std::forward_list<field_view>>(1, 0x80, 1, 1,
-            make_field_views(std::uint64_t(0xabffff)), {
+            make_fv_arr(std::uint64_t(0xabffff)), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
                 0x00, 0x00, 0x00, 0x01, 0x08, 0x80, 0xff, 0xff,
                 0xab, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -201,7 +201,7 @@ const serialization_test_spec com_stmt_execute_packet_spec {
             "forward_list_iterator"
         ),
         make_stmt_execute_sample(1, 0x80, 1, 1,
-            make_field_views(), {
+            make_fv_arr(), {
                 0x17, 0x01, 0x00, 0x00, 0x00, 0x80, 0x01, 0x00,
                 0x00, 0x00
             },

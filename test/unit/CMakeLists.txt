@@ -41,7 +41,6 @@ add_executable(
     rows_view.cpp
     rows.cpp
     metadata.cpp
-    metadata_collection_view.cpp
     client_errc.cpp
     server_errc.cpp
     server_diagnostics.cpp

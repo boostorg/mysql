@@ -10,24 +10,11 @@
 
 #include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/collation.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
 namespace boost {
 namespace mysql {
-
-/// Determines whether to use TLS for the connection or not; ignored if the underlying stream is not
-/// SSL-capable.
-enum class ssl_mode
-{
-    /// Never use TLS
-    disable,
-
-    /// Use TLS if the server supports it, fall back to non-encrypted connection if it does not.
-    enable,
-
-    /// Always use TLS; abort the connection if the server does not support it.
-    require
-};
 
 /**
  * \brief Parameters defining how to perform the handshake with a MySQL server.

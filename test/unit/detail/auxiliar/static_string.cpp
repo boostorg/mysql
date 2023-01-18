@@ -9,6 +9,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "printing.hpp"
+
 using boost::mysql::string_view;
 using boost::mysql::detail::static_string;
 

@@ -9,8 +9,6 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <string>
@@ -20,11 +18,10 @@
 
 using boost::mysql::field;
 using boost::mysql::field_view;
-using boost::mysql::make_field_views;
 using boost::mysql::row;
 using boost::mysql::row_view;
-using boost::mysql::detail::stringize;
 using boost::mysql::test::makerow;
+using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_row)
 
@@ -44,11 +41,11 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_CASE(non_strings)
 {
-    auto fields = make_field_views(42, 5.0f);
-    row r(row_view(fields.data(), fields.size()));
+    auto fields = make_fv_arr(42, 5.0f);
+    row r(makerowv(fields.data(), fields.size()));
 
     // Fields still valid even when the original source of the view changed
-    fields = make_field_views(90, 2.0);
+    fields = make_fv_arr(90, 2.0);
     BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == field_view(42));
     BOOST_TEST(r[1] == field_view(5.0f));
@@ -57,8 +54,8 @@ BOOST_AUTO_TEST_CASE(non_strings)
 BOOST_AUTO_TEST_CASE(strings)
 {
     std::string s1("test"), s2("");
-    auto fields = make_field_views(s1, s2, 50);
-    row r(row_view(fields.data(), fields.size()));
+    auto fields = make_fv_arr(s1, s2, 50);
+    row r(makerowv(fields.data(), fields.size()));
 
     // Fields still valid even when the original strings changed
     s1 = "other";
@@ -149,8 +146,7 @@ BOOST_AUTO_TEST_CASE(strings)
     // Cast them to void* so that UTF doesn't try to print them and
     // generate valgrind errors
     BOOST_TEST(
-        static_cast<const void*>(r2[2].as_string().data()) ==
-        static_cast<const void*>(str_begin_before)
+        static_cast<const void*>(r2[2].as_string().data()) == static_cast<const void*>(str_begin_before)
     );
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -317,9 +313,9 @@ BOOST_AUTO_TEST_CASE(empty)
 BOOST_AUTO_TEST_CASE(non_strings)
 {
     row r = makerow(42, "abcdef");
-    auto fields = make_field_views(90, nullptr);
-    r = row_view(fields.data(), fields.size());
-    fields = make_field_views("abc", 42u);  // r should be independent of the original fields
+    auto fields = make_fv_arr(90, nullptr);
+    r = makerowv(fields.data(), fields.size());
+    fields = make_fv_arr("abc", 42u);  // r should be independent of the original fields
 
     BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == field_view(90));
@@ -330,10 +326,10 @@ BOOST_AUTO_TEST_CASE(strings)
 {
     std::string s1("a_very_long_string"), s2("");
     row r = makerow(42, "abcdef");
-    auto fields = make_field_views(s1, nullptr, s2);
-    r = row_view(fields.data(), fields.size());
-    fields = make_field_views("abc", 42u, 9);  // r should be independent of the original fields
-    s1 = "another_string";                     // r should be independent of the original strings
+    auto fields = make_fv_arr(s1, nullptr, s2);
+    r = makerowv(fields.data(), fields.size());
+    fields = make_fv_arr("abc", 42u, 9);  // r should be independent of the original fields
+    s1 = "another_string";                // r should be independent of the original strings
     s2 = "yet_another";
 
     BOOST_TEST(r.size() == 3u);
@@ -345,8 +341,8 @@ BOOST_AUTO_TEST_CASE(strings)
 BOOST_AUTO_TEST_CASE(strings_empty_to)
 {
     row r;
-    auto fields = make_field_views("abc", nullptr, "bcd");
-    r = row_view(fields.data(), fields.size());
+    auto fields = make_fv_arr("abc", nullptr, "bcd");
+    r = makerowv(fields.data(), fields.size());
 
     BOOST_TEST(r.size() == 3u);
     BOOST_TEST(r[0] == field_view("abc"));
@@ -513,8 +509,8 @@ BOOST_AUTO_TEST_CASE(row_rowview)
 {
     row r1 = makerow("abc", 4);
     row r2 = makerow(nullptr, 4);
-    auto fields = make_field_views("abc", 4);
-    row_view rv(fields.data(), fields.size());
+    auto fields = make_fv_arr("abc", 4);
+    auto rv = makerowv(fields.data(), fields.size());
 
     BOOST_TEST(r1 == rv);
     BOOST_TEST(!(r1 != rv));
@@ -527,13 +523,5 @@ BOOST_AUTO_TEST_CASE(row_rowview)
     BOOST_TEST(rv != r2);
 }
 BOOST_AUTO_TEST_SUITE_END()
-
-// operator<< relies on row_view's operator<<, so only
-// a small subset of tests here
-BOOST_AUTO_TEST_CASE(operator_stream)
-{
-    row r = makerow("abc", nullptr);
-    BOOST_TEST(stringize(r) == "{abc, <NULL>}");
-}
 
 BOOST_AUTO_TEST_SUITE_END()  // test_row

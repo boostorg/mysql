@@ -29,29 +29,20 @@ namespace mysql {
 namespace detail {
 
 // Implements the message layer of the MySQL protocol
-template <class Stream>
-class channel
+class channel_base
 {
-    disableable_ssl_stream<Stream> stream_;
     capabilities current_caps_;
-    message_reader reader_;
-    message_writer writer_;
 
     std::uint8_t shared_sequence_number_{};  // for async ops
     bytestring shared_buff_;                 // for async ops
     server_diagnostics shared_diag_;         // for async ops
     std::vector<field_view> shared_fields_;  // for read_some ops
-public:
-    // TODO: use this arg
-    template <class... Args>
-    channel(std::size_t read_buffer_size, Args&&... args)
-        : stream_(std::forward<Args>(args)...), reader_(read_buffer_size)
-    {
-    }
+protected:
+    message_reader reader_;
+    message_writer writer_;
 
-    // Executor
-    using executor_type = typename Stream::executor_type;
-    executor_type get_executor() { return stream_.get_executor(); }
+public:
+    channel_base(std::size_t read_buffer_size) : reader_(read_buffer_size) {}
 
     // Reading
     const std::uint8_t* buffer_first() const noexcept { return reader_.buffer_first(); }
@@ -61,6 +52,45 @@ public:
         return reader_.get_next_message(seqnum, err);
     }
 
+    // Capabilities
+    capabilities current_capabilities() const noexcept { return current_caps_; }
+    void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
+
+    void reset(std::size_t read_buffer_size)
+    {
+        current_caps_ = capabilities();
+        reset_sequence_number();
+        reader_.buffer().grow_to_fit(read_buffer_size);
+    }
+
+    // Internal buffer, server_diagnostics and sequence_number to help async ops
+    const bytestring& shared_buffer() const noexcept { return shared_buff_; }
+    bytestring& shared_buffer() noexcept { return shared_buff_; }
+    server_diagnostics& shared_diag() noexcept { return shared_diag_; }
+    std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
+    std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
+    std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }
+    const std::vector<field_view>& shared_fields() const noexcept { return shared_fields_; }
+};
+
+template <class Stream>
+class channel : public channel_base
+{
+    disableable_ssl_stream<Stream> stream_;
+
+public:
+    // TODO: use this arg
+    template <class... Args>
+    channel(std::size_t read_buffer_size, Args&&... args)
+        : channel_base(read_buffer_size), stream_(std::forward<Args>(args)...)
+    {
+    }
+
+    // Executor
+    using executor_type = typename Stream::executor_type;
+    executor_type get_executor() { return stream_.get_executor(); }
+
+    // Reading
     void read_some(error_code& code, bool keep_messages = false)
     {
         return reader_.read_some(stream_, code, keep_messages);
@@ -70,29 +100,19 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(CompletionToken&& token, bool keep_messages = false)
     {
-        return reader_
-            .async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
+        return reader_.async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
     }
 
-    boost::asio::const_buffer read_one(
-        std::uint8_t& seqnum,
-        error_code& ec,
-        bool keep_messages = false
-    )
+    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec, bool keep_messages = false)
     {
         return reader_.read_one(stream_, seqnum, ec, keep_messages);
     }
 
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer))
-                  CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-        CompletionToken,
-        void(error_code, ::boost::asio::const_buffer)
-    )
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer)) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
     async_read_one(std::uint8_t& seqnum, CompletionToken&& token, bool keep_messages = false)
     {
-        return reader_
-            .async_read_one(stream_, seqnum, std::forward<CompletionToken>(token), keep_messages);
+        return reader_.async_read_one(stream_, seqnum, std::forward<CompletionToken>(token), keep_messages);
     }
 
     // Writing
@@ -117,11 +137,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(const bytestring& buffer, std::uint8_t& seqnum, CompletionToken&& token)
     {
-        return async_write(
-            boost::asio::buffer(buffer),
-            seqnum,
-            std::forward<CompletionToken>(token)
-        );
+        return async_write(boost::asio::buffer(buffer), seqnum, std::forward<CompletionToken>(token));
     }
 
     // SSL
@@ -145,26 +161,11 @@ public:
     using lowest_layer_type = typename stream_type::lowest_layer_type;
     lowest_layer_type& lowest_layer() noexcept { return stream_.lowest_layer(); }
 
-    // Capabilities
-    capabilities current_capabilities() const noexcept { return current_caps_; }
-    void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
-
     void reset(std::size_t read_buffer_size)
     {
+        channel_base::reset(read_buffer_size);
         stream_.reset();
-        current_caps_ = capabilities();
-        reset_sequence_number();
-        reader_.buffer().grow_to_fit(read_buffer_size);
     }
-
-    // Internal buffer, server_diagnostics and sequence_number to help async ops
-    const bytestring& shared_buffer() const noexcept { return shared_buff_; }
-    bytestring& shared_buffer() noexcept { return shared_buff_; }
-    server_diagnostics& shared_diag() noexcept { return shared_diag_; }
-    std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
-    std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
-    std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }
-    const std::vector<field_view>& shared_fields() const noexcept { return shared_fields_; }
 };
 
 }  // namespace detail

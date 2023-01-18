@@ -56,9 +56,8 @@ public:
     template <BOOST_MYSQL_SERIALIZE_FN SerializeFn>
     void process_request(SerializeFn&& request)
     {
-        st_.reset(encoding_);
+        execution_state_access::reset(st_, encoding_);
         std::forward<SerializeFn>(request)(caps_, write_buffer_);
-        // serialize_message(request, caps_, write_buffer_);
     }
 
     void process_response(boost::asio::const_buffer msg, error_code& err)
@@ -68,13 +67,13 @@ public:
         {
         case execute_response::type_t::error: err = response.data.err; break;
         case execute_response::type_t::ok_packet:
-            st_.complete(response.data.ok_pack);
+            execution_state_access::complete(st_, response.data.ok_pack);
             num_fields_ = 0;
             break;
         case execute_response::type_t::num_fields:
             num_fields_ = response.data.num_fields;
             remaining_fields_ = num_fields_;
-            st_.prepare_meta(num_fields_);
+            execution_state_access::prepare_meta(st_, num_fields_);
             break;
         }
     }
@@ -87,13 +86,12 @@ public:
         if (err)
             return err;
 
-        // Add it to our array
-        st_.add_meta(field_definition);
+        execution_state_access::add_meta(st_, field_definition);
         --remaining_fields_;
         return error_code();
     }
 
-    std::uint8_t& sequence_number() noexcept { return st_.sequence_number(); }
+    std::uint8_t& sequence_number() noexcept { return execution_state_access::get_sequence_number(st_); }
     std::size_t num_fields() const noexcept { return num_fields_; }
     bool has_remaining_fields() const noexcept { return remaining_fields_ != 0; }
 };
@@ -138,10 +136,7 @@ struct start_execution_generic_op : boost::asio::coroutine
                 .async_write(chan_.shared_buffer(), processor_.sequence_number(), std::move(self));
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(
-                processor_.sequence_number(),
-                std::move(self)
-            );
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(processor_.sequence_number(), std::move(self));
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields

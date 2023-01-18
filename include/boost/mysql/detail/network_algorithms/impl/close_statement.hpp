@@ -24,11 +24,7 @@ struct close_statement_op : boost::asio::coroutine
     statement_base& stmt_;
     server_diagnostics& diag_;
 
-    close_statement_op(
-        channel<Stream>& chan,
-        statement_base& stmt,
-        server_diagnostics& diag
-    ) noexcept
+    close_statement_op(channel<Stream>& chan, statement_base& stmt, server_diagnostics& diag) noexcept
         : chan_(chan), stmt_(stmt), diag_(diag)
     {
     }
@@ -60,7 +56,7 @@ struct close_statement_op : boost::asio::coroutine
                 .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
 
             // Mark the statement as invalid
-            stmt_.reset();
+            statement_base_access::reset(stmt_);
 
             // Complete
             self.complete(error_code());
@@ -77,22 +73,16 @@ void boost::mysql::detail::
     close_statement(channel<Stream>& chan, statement_base& stmt, error_code& code, server_diagnostics&)
 {
     // Serialize the close message
-    serialize_message(
-        com_stmt_close_packet{stmt.id()},
-        chan.current_capabilities(),
-        chan.shared_buffer()
-    );
+    serialize_message(com_stmt_close_packet{stmt.id()}, chan.current_capabilities(), chan.shared_buffer());
 
     // Send it. No response is sent back
     chan.write(boost::asio::buffer(chan.shared_buffer()), chan.reset_sequence_number(), code);
 
     // Mark the statement as invalid
-    stmt.reset();
+    statement_base_access::reset(stmt);
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_close_statement(
     channel<Stream>& chan,

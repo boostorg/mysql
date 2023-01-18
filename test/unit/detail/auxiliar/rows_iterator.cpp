@@ -5,10 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -19,12 +21,11 @@
 #include "test_common.hpp"
 
 using boost::mysql::field_view;
-using boost::mysql::make_field_views;
 using boost::mysql::row_view;
 using boost::mysql::rows;
 using boost::mysql::rows_view;
-using boost::mysql::test::make_fv_vector;
-using boost::mysql::test::makerow;
+using boost::mysql::detail::rows_view_access;
+using namespace boost::mysql::test;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
 
@@ -42,7 +43,7 @@ struct rows_view_wrapper
     template <typename... Args>
     rows_view_wrapper(std::size_t num_columns, Args&&... args)
         : fields(make_fv_vector(std::forward<Args>(args)...)),
-          r(fields.data(), sizeof...(args), num_columns)
+          r(makerowsv(fields.data(), sizeof...(args), num_columns))
     {
     }
 
@@ -61,8 +62,8 @@ struct rows_wrapper
     template <typename... Args>
     rows_wrapper(std::size_t num_columns, Args&&... args)
     {
-        auto fields = make_field_views(std::forward<Args>(args)...);
-        r = rows_view(fields.data(), fields.size(), num_columns);
+        auto fields = make_fv_arr(std::forward<Args>(args)...);
+        r = makerowsv(fields.data(), fields.size(), num_columns);
     }
 
     using iterator = rows::const_iterator;

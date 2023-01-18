@@ -5,14 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_ROWS_IPP
-#define BOOST_MYSQL_IMPL_ROWS_IPP
+#ifndef BOOST_MYSQL_IMPL_ROWS_HPP
+#define BOOST_MYSQL_IMPL_ROWS_HPP
 
 #pragma once
 
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 #include <cassert>
@@ -54,5 +55,10 @@ boost::mysql::row_view boost::mysql::rows::operator[](std::size_t i) const noexc
     assert(i < size());
     return detail::row_slice(fields_.data(), num_columns_, i);
 }
+
+struct boost::mysql::detail::rows_access
+{
+    static void clear(rows& r) noexcept { r.clear(); }
+};
 
 #endif

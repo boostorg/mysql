@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/datetime.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/bit_deserialization.hpp>
@@ -36,16 +37,16 @@ inline deserialize_errc deserialize_binary_field_string(
     auto err = deserialize(ctx, deser);
     if (err != deserialize_errc::ok)
         return err;
-    output = field_view(detail::string_view_offset::from_sv(deser.value, buffer_first), is_blob);
+    output = detail::field_view_access::construct(
+        detail::string_view_offset::from_sv(deser.value, buffer_first),
+        is_blob
+    );
     return deserialize_errc::ok;
 }
 
 // ints
 template <class TargetType, class DeserializableType>
-deserialize_errc deserialize_binary_field_int_impl(
-    deserialization_context& ctx,
-    field_view& output
-) noexcept
+deserialize_errc deserialize_binary_field_int_impl(deserialization_context& ctx, field_view& output) noexcept
 {
     DeserializableType deser;
     auto err = deserialize(ctx, deser);
@@ -63,14 +64,8 @@ deserialize_errc deserialize_binary_field_int(
 ) noexcept
 {
     return meta.is_unsigned()
-               ? deserialize_binary_field_int_impl<std::uint64_t, DeserializableTypeUnsigned>(
-                     ctx,
-                     output
-                 )
-               : deserialize_binary_field_int_impl<std::int64_t, DeserializableTypeSigned>(
-                     ctx,
-                     output
-                 );
+               ? deserialize_binary_field_int_impl<std::uint64_t, DeserializableTypeUnsigned>(ctx, output)
+               : deserialize_binary_field_int_impl<std::int64_t, DeserializableTypeSigned>(ctx, output);
 }
 
 // Bits. These come as a binary value between 1 and 8 bytes,
@@ -89,10 +84,7 @@ inline deserialize_errc deserialize_binary_field_bit(
 
 // Floats
 template <class T>
-deserialize_errc deserialize_binary_field_float(
-    deserialization_context& ctx,
-    field_view& output
-) noexcept
+deserialize_errc deserialize_binary_field_float(deserialization_context& ctx, field_view& output) noexcept
 {
     // Size check
     if (!ctx.enough_size(sizeof(T)))
@@ -264,9 +256,8 @@ inline deserialize_errc deserialize_binary_field_time(
 
     // Compose the final time
     output = field_view(time(
-        (is_negative ? -1 : 1) *
-        (days(num_days) + std::chrono::hours(hours) + std::chrono::minutes(minutes) +
-         std::chrono::seconds(seconds) + std::chrono::microseconds(microseconds))
+        (is_negative ? -1 : 1) * (days(num_days) + std::chrono::hours(hours) + std::chrono::minutes(minutes) +
+                                  std::chrono::seconds(seconds) + std::chrono::microseconds(microseconds))
     ));
     return deserialize_errc::ok;
 }
@@ -307,8 +298,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_
     case column_type::text:
     case column_type::enum_:
     case column_type::set:
-    case column_type::decimal:
-        return deserialize_binary_field_string(ctx, output, buffer_first, false);
+    case column_type::decimal: return deserialize_binary_field_string(ctx, output, buffer_first, false);
     // Blobs and anything else
     case column_type::binary:
     case column_type::varbinary:

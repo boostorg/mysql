@@ -12,6 +12,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/statement_base.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
@@ -40,6 +41,7 @@ using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
 using boost::mysql::string_view;
+using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
@@ -83,20 +85,18 @@ struct
     start_statement_execution_fn start_statement_execution;
     const char* name;
 } all_fns[] = {
-    {to_common_sig(netfun_maker_it::sync_errc(&test_statement::start_execution)),                "sync_errc_it"},
-    {to_common_sig(netfun_maker_tuple::sync_errc(&test_statement::start_execution)),
-     "sync_errc_tuple"                                                                                         },
-    {to_common_sig(netfun_maker_it::sync_exc(&test_statement::start_execution)),                 "sync_exc_it" },
-    {to_common_sig(netfun_maker_tuple::sync_exc(&test_statement::start_execution)),
-     "sync_exc_tuple"                                                                                          },
+    {to_common_sig(netfun_maker_it::sync_errc(&test_statement::start_execution)),                "sync_errc_it"   },
+    {to_common_sig(netfun_maker_tuple::sync_errc(&test_statement::start_execution)),             "sync_errc_tuple"},
+    {to_common_sig(netfun_maker_it::sync_exc(&test_statement::start_execution)),                 "sync_exc_it"    },
+    {to_common_sig(netfun_maker_tuple::sync_exc(&test_statement::start_execution)),              "sync_exc_tuple" },
     {to_common_sig(netfun_maker_it::async_errinfo(&test_statement::async_start_execution)),
-     "async_errinfo_it"                                                                                        },
+     "async_errinfo_it"                                                                                           },
     {to_common_sig(netfun_maker_tuple::async_errinfo(&test_statement::async_start_execution)),
-     "async_errinfo_tuple"                                                                                     },
+     "async_errinfo_tuple"                                                                                        },
     {to_common_sig(netfun_maker_it::async_noerrinfo(&test_statement::async_start_execution)),
-     "async_noerrinfo_it"                                                                                      },
+     "async_noerrinfo_it"                                                                                         },
     {to_common_sig(netfun_maker_tuple::async_noerrinfo(&test_statement::async_start_execution)),
-     "async_noerrinfo_tuple"                                                                                   },
+     "async_noerrinfo_tuple"                                                                                      },
 };
 
 // Verify that we reset the state
@@ -131,9 +131,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_message);
 
             // Verify the resultset
-            BOOST_TEST(st.encoding() == resultset_encoding::binary);
+            BOOST_TEST(execution_state_access::get_encoding(st) == resultset_encoding::binary);
             BOOST_TEST(st.complete());
-            BOOST_TEST(st.sequence_number() == 2u);
+            BOOST_TEST(execution_state_access::get_sequence_number(st) == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 2u);
         }
@@ -199,11 +199,10 @@ BOOST_AUTO_TEST_CASE(tuple_parameter_types)
 
     // Verify
     std::uint8_t expected_msg[] = {
-        0x3c, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-        0x00, 0x20, 0x01, 0x08, 0x80, 0x08, 0x00, 0xfe, 0x00, 0xfc, 0x00, 0x04, 0x00,
-        0x06, 0x00, 0x0a, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x04, 0x74, 0x65, 0x73, 0x74, 0x03,
-        0x00, 0x01, 0x02, 0x66, 0x66, 0x86, 0x40, 0x04, 0xe4, 0x07, 0x01, 0x02,
+        0x3c, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x20, 0x01,
+        0x08, 0x80, 0x08, 0x00, 0xfe, 0x00, 0xfc, 0x00, 0x04, 0x00, 0x06, 0x00, 0x0a, 0x00, 0x2a, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x04, 0x74,
+        0x65, 0x73, 0x74, 0x03, 0x00, 0x01, 0x02, 0x66, 0x66, 0x86, 0x40, 0x04, 0xe4, 0x07, 0x01, 0x02,
     };
     BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_msg);
 }
@@ -219,9 +218,8 @@ struct fixture
     test_statement stmt{create_statement(conn, 2)};
 
     static constexpr std::uint8_t expected_msg[]{
-        0x1d, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01,
-        0x00, 0x00, 0x00, 0x00, 0x01, 0xfe, 0x00, 0x08, 0x00, 0x04, 0x74,
-        0x65, 0x73, 0x74, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x1d, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xfe,
+        0x00, 0x08, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
 
     fixture() { conn.stream().add_message(create_ok_packet_message_execute(1)); }

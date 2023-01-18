@@ -45,21 +45,9 @@ public:
         size_ = new_size;
     }
     void clear() noexcept { size_ = 0; }
-    bool operator==(const static_string<max_size>& other) const noexcept
-    {
-        return value() == other.value();
-    }
-    bool operator!=(const static_string<max_size>& other) const noexcept
-    {
-        return !(*this == other);
-    }
+    bool operator==(const static_string<max_size>& other) const noexcept { return value() == other.value(); }
+    bool operator!=(const static_string<max_size>& other) const noexcept { return !(*this == other); }
 };
-
-template <std::size_t max_size>
-std::ostream& operator<<(std::ostream& os, const static_string<max_size>& value)
-{
-    return os << value.value();
-}
 
 }  // namespace detail
 }  // namespace mysql

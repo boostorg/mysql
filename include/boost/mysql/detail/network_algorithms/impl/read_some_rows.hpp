@@ -42,7 +42,7 @@ inline rows_view process_some_rows(
     while (channel.has_read_messages())
     {
         // Get the row message
-        auto message = channel.next_read_message(st.sequence_number(), err);
+        auto message = channel.next_read_message(execution_state_access::get_sequence_number(st), err);
         if (err)
             return rows_view();
 
@@ -69,10 +69,10 @@ inline rows_view process_some_rows(
     }
     offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
 
-    return rows_view(
+    return rows_view_access::construct(
         channel.shared_fields().data(),
-        num_rows * st.fields().size(),
-        st.fields().size()
+        num_rows * st.meta().size(),
+        st.meta().size()
     );
 }
 
@@ -154,10 +154,7 @@ template <
     class Stream,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
         CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::rows_view)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::rows_view))
 boost::mysql::detail::async_read_some_rows(
     channel<Stream>& channel,
     execution_state& st,

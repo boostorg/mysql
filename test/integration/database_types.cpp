@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "metadata_validator.hpp"
+#include "printing.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
@@ -104,14 +105,7 @@ struct table
         flagsvec ignore_flags = {}
     )
     {
-        metas.emplace_back(
-            name,
-            std::move(field),
-            type,
-            std::move(flags),
-            decimals,
-            std::move(ignore_flags)
-        );
+        metas.emplace_back(name, std::move(field), type, std::move(flags), decimals, std::move(ignore_flags));
     }
 
     template <typename... Args>
@@ -581,9 +575,9 @@ table types_not_implemented()
     res.add_meta("field_decimal", column_type::decimal);
     res.add_meta("field_geometry", column_type::geometry);
 
-    static constexpr std::uint8_t geometry_value[] = {
-        0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0xf0, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40};
+    static constexpr std::uint8_t geometry_value[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00,
+                                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f, 0x00,
+                                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40};
 
     res.add_row("regular", "300", blob_view(geometry_value));
     return res;

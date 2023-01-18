@@ -26,12 +26,7 @@ struct query_op : boost::asio::coroutine
     string_view query_;
     resultset& output_;
 
-    query_op(
-        channel<Stream>& chan,
-        server_diagnostics& diag,
-        string_view q,
-        resultset& output
-    ) noexcept
+    query_op(channel<Stream>& chan, server_diagnostics& diag, string_view q, resultset& output) noexcept
         : chan_(chan), diag_(diag), query_(q), output_(output)
     {
     }
@@ -50,12 +45,12 @@ struct query_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD
-            async_start_query(chan_, query_, output_.state(), diag_, std::move(self));
+            async_start_query(chan_, query_, resultset_access::get_state(output_), diag_, std::move(self));
 
             BOOST_ASIO_CORO_YIELD async_read_all_rows(
                 chan_,
-                output_.state(),
-                output_.mutable_rows(),
+                resultset_access::get_state(output_),
+                resultset_access::get_rows(output_),
                 diag_,
                 std::move(self)
             );
@@ -78,16 +73,20 @@ void boost::mysql::detail::query(
     server_diagnostics& diag
 )
 {
-    start_query(channel, query, output.state(), err, diag);
+    start_query(channel, query, resultset_access::get_state(output), err, diag);
     if (err)
         return;
 
-    read_all_rows(channel, output.state(), output.mutable_rows(), err, diag);
+    read_all_rows(
+        channel,
+        resultset_access::get_state(output),
+        resultset_access::get_rows(output),
+        err,
+        diag
+    );
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_query(
     channel<Stream>& chan,

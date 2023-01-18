@@ -13,6 +13,7 @@
 #include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/server_errc.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -50,6 +51,7 @@ using boost::mysql::detail::async_start_execution_generic;
 using boost::mysql::detail::capabilities;
 using boost::mysql::detail::deserialize_execute_response;
 using boost::mysql::detail::execute_response;
+using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using boost::mysql::detail::start_execution_generic;
@@ -118,11 +120,7 @@ BOOST_AUTO_TEST_CASE(num_fields)
         {
             std::uint8_t msg[] = {0xfc, 0xff, 0x00};
             server_diagnostics diag;
-            auto response = deserialize_execute_response(
-                boost::asio::buffer(msg),
-                capabilities(),
-                diag
-            );
+            auto response = deserialize_execute_response(boost::asio::buffer(msg), capabilities(), diag);
             BOOST_TEST(response.type == execute_response::type_t::num_fields);
             BOOST_TEST(response.data.num_fields == 0xffu);
             BOOST_TEST(diag.message() == "");
@@ -161,11 +159,7 @@ BOOST_AUTO_TEST_CASE(error)
         BOOST_TEST_CONTEXT(tc.name)
         {
             server_diagnostics diag;
-            auto response = deserialize_execute_response(
-                boost::asio::buffer(tc.msg),
-                capabilities(),
-                diag
-            );
+            auto response = deserialize_execute_response(boost::asio::buffer(tc.msg), capabilities(), diag);
             BOOST_TEST(response.type == execute_response::type_t::error);
             BOOST_TEST(response.data.err == tc.err);
             BOOST_TEST(diag.message() == tc.expected_info);
@@ -218,9 +212,9 @@ BOOST_AUTO_TEST_CASE(success_one_meta)
             fix.check_written_message();
 
             // We've read the response
-            BOOST_TEST(fix.st.encoding() == resultset_encoding::binary);
+            BOOST_TEST(execution_state_access::get_encoding(fix.st) == resultset_encoding::binary);
             BOOST_TEST(!fix.st.complete());
-            BOOST_TEST(fix.st.sequence_number() == 3u);
+            BOOST_TEST(execution_state_access::get_sequence_number(fix.st) == 3u);
             BOOST_TEST_REQUIRE(fix.st.meta().size() == 1u);
             BOOST_TEST(fix.st.meta()[0].column_name() == "mycol");
             BOOST_TEST(fix.st.meta()[0].type() == column_type::varchar);
@@ -249,9 +243,9 @@ BOOST_AUTO_TEST_CASE(success_several_meta_separate)
             fix.check_written_message();
 
             // We've read the response
-            BOOST_TEST(fix.st.encoding() == resultset_encoding::binary);
+            BOOST_TEST(execution_state_access::get_encoding(fix.st) == resultset_encoding::binary);
             BOOST_TEST(!fix.st.complete());
-            BOOST_TEST(fix.st.sequence_number() == 4u);
+            BOOST_TEST(execution_state_access::get_sequence_number(fix.st) == 4u);
             BOOST_TEST_REQUIRE(fix.st.meta().size() == 2u);
             BOOST_TEST(fix.st.meta()[0].column_name() == "f1");
             BOOST_TEST(fix.st.meta()[0].type() == column_type::varchar);
@@ -278,7 +272,7 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
             fix.check_written_message();
 
             // We've read the response
-            BOOST_TEST(fix.st.encoding() == resultset_encoding::binary);
+            BOOST_TEST(execution_state_access::get_encoding(fix.st) == resultset_encoding::binary);
             BOOST_TEST(fix.st.meta().size() == 0u);
             BOOST_TEST_REQUIRE(fix.st.complete());
             BOOST_TEST(fix.st.affected_rows() == 42u);
@@ -308,9 +302,7 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     fix.chan.lowest_layer().add_message(response);
                     fix.chan.lowest_layer().add_message(col1);
                     fix.chan.lowest_layer().add_message(col2);
-                    fix.chan.lowest_layer().set_fail_count(
-                        fail_count(i, client_errc::server_unsupported)
-                    );
+                    fix.chan.lowest_layer().set_fail_count(fail_count(i, client_errc::server_unsupported));
 
                     // Call the function
                     fix.call_fn(fns).validate_error_exact(client_errc::server_unsupported);

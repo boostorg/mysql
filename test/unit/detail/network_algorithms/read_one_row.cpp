@@ -9,6 +9,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -25,6 +26,8 @@ using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::row_view;
+using boost::mysql::detail::connection_access;
+using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
@@ -62,13 +65,15 @@ BOOST_AUTO_TEST_CASE(success)
             );
             test_connection conn;
             conn.stream().add_message(concat_copy(row1, row2, ok_packet));
-            conn.get_channel().shared_fields().emplace_back("abc");  // from previous call
+            connection_access::get_channel(conn).shared_fields().emplace_back("abc");
 
             // 1st row
             row_view rv = fns.read_one_row(conn, st).get();
             BOOST_TEST(rv == makerow("min", 1901));
             BOOST_TEST(!st.complete());
-            BOOST_TEST(conn.get_channel().shared_sequence_number() == 0u);  // not used
+            BOOST_TEST(
+                connection_access::get_channel(conn).shared_sequence_number() == 0u
+            );  // not used
 
             // 2nd row
             rv = fns.read_one_row(conn, st).get();
@@ -94,7 +99,7 @@ BOOST_AUTO_TEST_CASE(resultset_already_complete)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto st = create_execution_state(resultset_encoding::text, {});
-            st.complete(boost::mysql::detail::ok_packet{});
+            execution_state_access::complete(st, boost::mysql::detail::ok_packet{});
             test_connection conn;
 
             row_view rv = fns.read_one_row(conn, st).get();

@@ -7,6 +7,8 @@
 
 #include <boost/mysql/server_errc.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 #include "assert_buffer_equals.hpp"
@@ -22,6 +24,7 @@ using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::server_errc;
 using boost::mysql::string_view;
+using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
@@ -81,9 +84,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_message);
 
             // Verify the resultset
-            BOOST_TEST(st.encoding() == resultset_encoding::text);
+            BOOST_TEST(execution_state_access::get_encoding(st) == resultset_encoding::text);
             BOOST_TEST(st.complete());
-            BOOST_TEST(st.sequence_number() == 2u);
+            BOOST_TEST(execution_state_access::get_sequence_number(st) == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 2u);
         }
@@ -101,8 +104,7 @@ BOOST_AUTO_TEST_CASE(error)
             conn.stream().set_fail_count(fail_count(0, server_errc::aborting_connection));
 
             // Call the function
-            fns.start_query(conn, "SELECT 1", st)
-                .validate_error_exact(server_errc::aborting_connection);
+            fns.start_query(conn, "SELECT 1", st).validate_error_exact(server_errc::aborting_connection);
         }
     }
 }

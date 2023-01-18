@@ -61,7 +61,7 @@ public:
         serialize_message(packet, caps_, write_buffer_);
     }
 
-    void process_response(boost::asio::const_buffer message, void* channel, error_code& err)
+    void process_response(boost::asio::const_buffer message, channel_base& channel, error_code& err)
     {
         deserialization_context ctx(message, caps_);
         std::uint8_t msg_type = 0;
@@ -81,7 +81,7 @@ public:
         {
             com_stmt_prepare_ok_packet response;
             err = deserialize_message(ctx, response);
-            output_.reset(channel, response);
+            statement_base_access::reset(output_, channel, response);
             remaining_meta_ = response.num_columns + response.num_params;
         }
     }
@@ -124,13 +124,10 @@ struct prepare_statement_op : boost::asio::coroutine
                 .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
 
             // Read response
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(
-                chan_.shared_sequence_number(),
-                std::move(self)
-            );
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
 
             // Process response
-            processor_.process_response(read_message, &chan_, err);
+            processor_.process_response(read_message, chan_, err);
             if (err)
             {
                 self.complete(err);
@@ -194,7 +191,7 @@ void boost::mysql::detail::prepare_statement(
         return;
 
     // Process response
-    processor.process_response(read_buffer, &channel, err);
+    processor.process_response(read_buffer, channel, err);
     if (err)
         return;
 
@@ -220,9 +217,7 @@ void boost::mysql::detail::prepare_statement(
     }
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,
@@ -233,10 +228,7 @@ boost::mysql::detail::async_prepare_statement(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        prepare_statement_op<Stream>(
-            chan,
-            prepare_statement_processor(chan, statement, output, diag)
-        ),
+        prepare_statement_op<Stream>(chan, prepare_statement_processor(chan, statement, output, diag)),
         token,
         chan
     );

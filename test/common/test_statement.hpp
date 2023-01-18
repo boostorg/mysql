@@ -10,6 +10,8 @@
 
 #include <boost/mysql/statement.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+
 #include <cstdint>
 
 #include "test_connection.hpp"
@@ -28,8 +30,9 @@ inline test_statement create_statement(
 )
 {
     test_statement stmt{};
-    stmt.reset(
-        &conn.get_channel(),
+    detail::statement_base_access::reset(
+        stmt,
+        detail::connection_access::get_channel(conn),
         boost::mysql::detail::com_stmt_prepare_ok_packet{stmt_id, 2, num_params, 0}
     );
     return stmt;

@@ -15,6 +15,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 
@@ -138,17 +139,6 @@ public:
     /// field_kind::time`). \details Results in a `field_view` with value semantics (always valid).
     BOOST_CXX14_CONSTEXPR explicit inline field_view(const time& v) noexcept;
 
-    // TODO: hide this
-    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v, bool is_blob) noexcept
-        : ikind_(is_blob ? internal_kind::sv_offset_blob : internal_kind::sv_offset_string),
-          repr_(v)
-    {
-    }
-    BOOST_CXX14_CONSTEXPR explicit field_view(const detail::field_impl* v) noexcept
-        : ikind_(internal_kind::field_ptr), repr_(v)
-    {
-    }
-
     /// Returns the type of the value this `field_view` is pointing to.
     BOOST_CXX14_CONSTEXPR inline field_kind kind() const noexcept;
 
@@ -177,10 +167,7 @@ public:
     BOOST_CXX14_CONSTEXPR bool is_date() const noexcept { return kind() == field_kind::date; }
 
     /// Returns whether this `field_view` points to a datetime value.
-    BOOST_CXX14_CONSTEXPR bool is_datetime() const noexcept
-    {
-        return kind() == field_kind::datetime;
-    }
+    BOOST_CXX14_CONSTEXPR bool is_datetime() const noexcept { return kind() == field_kind::datetime; }
 
     /// Returns whether this `field_view` points to a time value.
     BOOST_CXX14_CONSTEXPR bool is_time() const noexcept { return kind() == field_kind::time; }
@@ -265,32 +252,19 @@ public:
     BOOST_CXX14_CONSTEXPR inline bool operator==(const field_view& rhs) const noexcept;
 
     /// Tests for inequality.
-    BOOST_CXX14_CONSTEXPR bool operator!=(const field_view& rhs) const noexcept
-    {
-        return !(*this == rhs);
-    }
-
-    // TODO: hide this
-    void offset_to_string_view(const std::uint8_t* buffer_first) noexcept
-    {
-        if (ikind_ == internal_kind::sv_offset_string)
-        {
-            ikind_ = internal_kind::string;
-            repr_.string = {
-                reinterpret_cast<const char*>(buffer_first) + repr_.sv_offset_.offset(),
-                repr_.sv_offset_.size()};
-        }
-        else if (ikind_ == internal_kind::sv_offset_blob)
-        {
-            ikind_ = internal_kind::blob;
-            repr_.blob = blob_view(
-                buffer_first + repr_.sv_offset_.offset(),
-                repr_.sv_offset_.size()
-            );
-        }
-    }
+    BOOST_CXX14_CONSTEXPR bool operator!=(const field_view& rhs) const noexcept { return !(*this == rhs); }
 
 private:
+    BOOST_CXX14_CONSTEXPR explicit field_view(detail::string_view_offset v, bool is_blob) noexcept
+        : ikind_(is_blob ? internal_kind::sv_offset_blob : internal_kind::sv_offset_string), repr_(v)
+    {
+    }
+
+    BOOST_CXX14_CONSTEXPR explicit field_view(const detail::field_impl* v) noexcept
+        : ikind_(internal_kind::field_ptr), repr_(v)
+    {
+    }
+
     enum class internal_kind
     {
         null = 0,
@@ -339,13 +313,12 @@ private:
     internal_kind ikind_{internal_kind::null};
     repr_t repr_;
 
-    BOOST_CXX14_CONSTEXPR bool is_field_ptr() const noexcept
-    {
-        return ikind_ == internal_kind::field_ptr;
-    }
+    BOOST_CXX14_CONSTEXPR bool is_field_ptr() const noexcept { return ikind_ == internal_kind::field_ptr; }
     BOOST_CXX14_CONSTEXPR inline void check_kind(internal_kind expected) const;
 
 #ifndef BOOST_MYSQL_DOXYGEN
+    friend class field;
+    friend struct detail::field_view_access;
     friend std::ostream& operator<<(std::ostream& os, const field_view& v);
 #endif
 };
@@ -355,10 +328,6 @@ private:
  * \brief Streams a `field_view`.
  */
 inline std::ostream& operator<<(std::ostream& os, const field_view& v);
-
-// TODO: hide this
-template <class... Types>
-BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_field_views(Types&&... args);
 
 }  // namespace mysql
 }  // namespace boost

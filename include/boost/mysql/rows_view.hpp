@@ -124,10 +124,7 @@ public:
     /**
      * \brief Returns the number of rows in the collection.
      */
-    std::size_t size() const noexcept
-    {
-        return (num_columns_ == 0) ? 0 : (num_fields_ / num_columns_);
-    }
+    std::size_t size() const noexcept { return (num_columns_ == 0) ? 0 : (num_fields_ / num_columns_); }
 
     /**
      * \brief Returns the number of elements each row in the collection has.
@@ -148,8 +145,11 @@ public:
      */
     inline bool operator!=(const rows_view& rhs) const noexcept { return !(*this == rhs); }
 
-#ifndef BOOST_MYSQL_DOXYGEN
-    // TODO: hide this
+private:
+    const field_view* fields_{};
+    std::size_t num_fields_{};
+    std::size_t num_columns_{};
+
     rows_view(const field_view* fields, std::size_t num_fields, std::size_t num_columns) noexcept
         : fields_(fields), num_fields_(num_fields), num_columns_(num_columns)
     {
@@ -157,14 +157,9 @@ public:
         assert(num_fields == 0 || num_columns != 0);   // num_fields != 0 => num_columns != 0
         assert(num_columns == 0 || (num_fields % num_columns == 0));
     }
-#endif
-
-private:
-    const field_view* fields_{};
-    std::size_t num_fields_{};
-    std::size_t num_columns_{};
 
 #ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::rows_view_access;
     friend class rows;
 #endif
 };
@@ -172,6 +167,6 @@ private:
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/rows_view.ipp>
+#include <boost/mysql/impl/rows_view.hpp>
 
 #endif

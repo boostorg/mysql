@@ -11,6 +11,8 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+
 #include <cstddef>
 #include <iosfwd>
 #include <iterator>
@@ -143,16 +145,15 @@ public:
 #ifndef BOOST_MYSQL_DOXYGEN
     // Required by iterators
     const row_view* operator->() const noexcept { return this; }
-
-    // TODO: hide these
-    row_view(const field_view* f, std::size_t size) noexcept : fields_(f), size_(size) {}
 #endif
 
 private:
+    row_view(const field_view* f, std::size_t size) noexcept : fields_(f), size_(size) {}
     const field_view* fields_{};
     std::size_t size_{};
 
 #ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::row_view_access;
     friend class row;
 #endif
 };
@@ -171,15 +172,9 @@ inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
  */
 inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
 
-/**
- * \relates row
- * \brief Streams a row.
- */
-inline std::ostream& operator<<(std::ostream& os, const row_view& value);
-
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/row_view.ipp>
+#include <boost/mysql/impl/row_view.hpp>
 
 #endif

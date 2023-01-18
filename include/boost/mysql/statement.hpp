@@ -52,16 +52,12 @@ public:
     /**
      * \brief Move constructor.
      */
-    statement(statement&& other) noexcept : statement_base(other) { other.reset(); }
+    statement(statement&& other) = default;
 
     /**
      * \brief Move assignment.
      */
-    statement& operator=(statement&& other) noexcept
-    {
-        swap(other);
-        return *this;
-    }
+    statement& operator=(statement&& other) = default;
 
     /**
      * \brief Destructor.
@@ -92,12 +88,7 @@ public:
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
-    void execute(
-        const FieldLikeTuple& params,
-        resultset& result,
-        error_code& err,
-        server_diagnostics& diag
-    );
+    void execute(const FieldLikeTuple& params, resultset& result, error_code& err, server_diagnostics& diag);
 
     /// \copydoc execute
     template <

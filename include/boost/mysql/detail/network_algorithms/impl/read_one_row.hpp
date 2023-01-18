@@ -51,7 +51,7 @@ inline row_view process_one_row(
     if (!err && !st.complete())
     {
         offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
-        return row_view(channel.shared_fields().data(), channel.shared_fields().size());
+        return row_view_access::construct(channel.shared_fields().data(), channel.shared_fields().size());
     }
     else
     {
@@ -96,7 +96,10 @@ struct read_one_row_op : boost::asio::coroutine
             }
 
             // Read the message
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(st_.sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(
+                execution_state_access::get_sequence_number(st_),
+                std::move(self)
+            );
 
             // Process it
             result = process_one_row(chan_, read_message, st_, err, diag_);
@@ -112,33 +115,30 @@ struct read_one_row_op : boost::asio::coroutine
 template <class Stream>
 boost::mysql::row_view boost::mysql::detail::read_one_row(
     channel<Stream>& channel,
-    execution_state& result,
+    execution_state& st,
     error_code& err,
     server_diagnostics& diag
 )
 {
     // If the resultset is already complete, we don't need to read anything
-    if (result.complete())
+    if (st.complete())
     {
         return row_view();
     }
 
     // Read a packet
-    auto read_message = channel.read_one(result.sequence_number(), err);
+    auto read_message = channel.read_one(execution_state_access::get_sequence_number(st), err);
     if (err)
         return row_view();
 
-    return process_one_row(channel, read_message, result, err, diag);
+    return process_one_row(channel, read_message, st, err, diag);
 }
 
 template <
     class Stream,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
         CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code, boost::mysql::row_view)
-)
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::row_view))
 boost::mysql::detail::async_read_one_row(
     channel<Stream>& channel,
     execution_state& st,

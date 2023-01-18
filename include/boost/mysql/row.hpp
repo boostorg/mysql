@@ -12,6 +12,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
 
 #include <cstddef>
@@ -176,13 +177,6 @@ public:
 
     /// \copydoc row_view::as_vector
     std::vector<field> as_vector() const { return std::vector<field>(begin(), end()); }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    // TODO: hide this
-    using detail::row_base::clear;
-    using detail::row_base::copy_strings;
-    std::vector<field_view>& fields() noexcept { return fields_; }
-#endif
 };
 
 /**
@@ -191,10 +185,7 @@ public:
  * \details The containers are considered equal if they have the same number of elements and they
  * all compare equal, as defined by \ref field_view::operator==.
  */
-inline bool operator==(const row& lhs, const row& rhs) noexcept
-{
-    return row_view(lhs) == row_view(rhs);
-}
+inline bool operator==(const row& lhs, const row& rhs) noexcept { return row_view(lhs) == row_view(rhs); }
 
 /**
  * \relates row
@@ -206,10 +197,7 @@ inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
  * \relates row
  * \copydoc row::operator==(const row&,const row&)
  */
-inline bool operator==(const row& lhs, const row_view& rhs) noexcept
-{
-    return row_view(lhs) == rhs;
-}
+inline bool operator==(const row& lhs, const row_view& rhs) noexcept { return row_view(lhs) == rhs; }
 
 /**
  * \relates row
@@ -221,22 +209,13 @@ inline bool operator!=(const row& lhs, const row_view& rhs) noexcept { return !(
  * \relates row
  * \copydoc row::operator==(const row&,const row&)
  */
-inline bool operator==(const row_view& lhs, const row& rhs) noexcept
-{
-    return lhs == row_view(rhs);
-}
+inline bool operator==(const row_view& lhs, const row& rhs) noexcept { return lhs == row_view(rhs); }
 
 /**
  * \relates row
  * \copydoc row::operator!=(const row&,const row&)
  */
 inline bool operator!=(const row_view& lhs, const row& rhs) noexcept { return !(lhs == rhs); }
-
-/**
- * \relates row
- * \brief Streams a row.
- */
-inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
 
 }  // namespace mysql
 }  // namespace boost

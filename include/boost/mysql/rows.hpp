@@ -13,6 +13,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
@@ -147,10 +148,7 @@ public:
     bool empty() const noexcept { return fields_.empty(); }
 
     /// \copydoc rows_view::size
-    std::size_t size() const noexcept
-    {
-        return num_columns_ == 0 ? 0 : fields_.size() / num_columns_;
-    }
+    std::size_t size() const noexcept { return num_columns_ == 0 ? 0 : fields_.size() / num_columns_; }
 
     /// \copydoc rows_view::num_columns
     std::size_t num_columns() const noexcept { return num_columns_; }
@@ -160,18 +158,14 @@ public:
      * \details The returned view will be valid until any function that invalidates iterators and
      * references is invoked on `*this` or `*this` is destroyed.
      */
-    operator rows_view() const noexcept
-    {
-        return rows_view(fields_.data(), fields_.size(), num_columns_);
-    }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    // TODO: hide this
-    using detail::row_base::clear;
-#endif
+    operator rows_view() const noexcept { return rows_view(fields_.data(), fields_.size(), num_columns_); }
 
 private:
     std::size_t num_columns_{};
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::rows_access;
+#endif
 };
 
 /**
@@ -180,10 +174,7 @@ private:
  * \details The containers are considered equal if they have the same number of rows and
  * they all compare equal, as defined by \ref row_view::operator==.
  */
-inline bool operator==(const rows& lhs, const rows& rhs) noexcept
-{
-    return rows_view(lhs) == rows_view(rhs);
-}
+inline bool operator==(const rows& lhs, const rows& rhs) noexcept { return rows_view(lhs) == rows_view(rhs); }
 
 /**
  * \relates rows
@@ -195,10 +186,7 @@ inline bool operator!=(const rows& lhs, const rows& rhs) noexcept { return !(lhs
  * \relates rows
  * \copydoc rows::operator==(const rows&, const rows&)
  */
-inline bool operator==(const rows_view& lhs, const rows& rhs) noexcept
-{
-    return lhs == rows_view(rhs);
-}
+inline bool operator==(const rows_view& lhs, const rows& rhs) noexcept { return lhs == rows_view(rhs); }
 
 /**
  * \relates rows
@@ -210,10 +198,7 @@ inline bool operator!=(const rows_view& lhs, const rows& rhs) noexcept { return 
  * \relates rows
  * \copydoc rows::operator==(const rows&, const rows&)
  */
-inline bool operator==(const rows& lhs, const rows_view& rhs) noexcept
-{
-    return rows_view(lhs) == rhs;
-}
+inline bool operator==(const rows& lhs, const rows_view& rhs) noexcept { return rows_view(lhs) == rhs; }
 
 /**
  * \relates rows
@@ -224,6 +209,6 @@ inline bool operator!=(const rows& lhs, const rows_view& rhs) noexcept { return 
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/rows.ipp>
+#include <boost/mysql/impl/rows.hpp>
 
 #endif

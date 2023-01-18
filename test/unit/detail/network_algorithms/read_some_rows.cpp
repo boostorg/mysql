@@ -9,6 +9,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -25,11 +26,17 @@ using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::rows_view;
+using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
 
 namespace {
+
+test_channel& get_channel(test_connection& conn) noexcept
+{
+    return boost::mysql::detail::connection_access::get_channel(conn);
+}
 
 using netfun_maker = netfun_maker_mem<rows_view, test_connection, execution_state&>;
 
@@ -59,8 +66,8 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof)
                 4  // seqnum
             );
             test_connection conn;
-            conn.get_channel().reset(1024);
-            conn.get_channel().shared_fields().emplace_back("abc");  // from previous call
+            get_channel(conn).reset(1024);
+            get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(concat_copy(row1, row2, ok_packet));
 
             rows_view rv = fns.read_some_rows(conn, st).get();
@@ -72,7 +79,7 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof)
             BOOST_TEST(st.last_insert_id() == 6u);
             BOOST_TEST(st.warning_count() == 9u);
             BOOST_TEST(st.info() == "ab");
-            BOOST_TEST(conn.get_channel().shared_sequence_number() == 0u);  // not used
+            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -92,8 +99,8 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof_separate)
                 4  // seqnum
             );
             test_connection conn;
-            conn.get_channel().reset(1024);
-            conn.get_channel().shared_fields().emplace_back("abc");  // from previous call
+            get_channel(conn).reset(1024);
+            get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(row1);
             conn.stream().add_message(concat_copy(row2, ok_packet));
 
@@ -112,7 +119,7 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof_separate)
             BOOST_TEST(st.last_insert_id() == 6u);
             BOOST_TEST(st.warning_count() == 9u);
             BOOST_TEST(st.info() == "ab");
-            BOOST_TEST(conn.get_channel().shared_sequence_number() == 0u);  // not used
+            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -131,8 +138,8 @@ BOOST_AUTO_TEST_CASE(success_row_eof_separate)
                 4  // seqnum
             );
             test_connection conn;
-            conn.get_channel().reset(1024);
-            conn.get_channel().shared_fields().emplace_back("abc");  // from previous call
+            get_channel(conn).reset(1024);
+            get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(row1);
             conn.stream().add_message(ok_packet);
 
@@ -150,7 +157,7 @@ BOOST_AUTO_TEST_CASE(success_row_eof_separate)
             BOOST_TEST(st.last_insert_id() == 6u);
             BOOST_TEST(st.warning_count() == 9u);
             BOOST_TEST(st.info() == "ab");
-            BOOST_TEST(conn.get_channel().shared_sequence_number() == 0u);  // not used
+            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -168,8 +175,8 @@ BOOST_AUTO_TEST_CASE(success_eof)
                 4  // seqnum
             );
             test_connection conn;
-            conn.get_channel().reset(1024);
-            conn.get_channel().shared_fields().emplace_back("abc");  // from previous call
+            get_channel(conn).reset(1024);
+            get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(ok_packet);
 
             rows_view rv = fns.read_some_rows(conn, st).get();
@@ -179,7 +186,7 @@ BOOST_AUTO_TEST_CASE(success_eof)
             BOOST_TEST(st.last_insert_id() == 6u);
             BOOST_TEST(st.warning_count() == 9u);
             BOOST_TEST(st.info() == "ab");
-            BOOST_TEST(conn.get_channel().shared_sequence_number() == 0u);  // not used
+            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -191,7 +198,7 @@ BOOST_AUTO_TEST_CASE(resultset_already_complete)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto st = create_execution_state(resultset_encoding::text, {});
-            st.complete(boost::mysql::detail::ok_packet{});
+            execution_state_access::complete(st, boost::mysql::detail::ok_packet{});
             test_connection conn;
 
             rows_view rv = fns.read_some_rows(conn, st).get();

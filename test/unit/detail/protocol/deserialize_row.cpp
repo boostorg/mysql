@@ -30,6 +30,7 @@
 
 #include "buffer_concat.hpp"
 #include "create_execution_state.hpp"
+#include "create_meta.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
@@ -53,9 +54,7 @@ std::vector<metadata> make_meta(const std::vector<protocol_field_type>& types)
     std::vector<metadata> res;
     for (const auto type : types)
     {
-        column_definition_packet coldef{};
-        coldef.type = type;
-        res.emplace_back(coldef, false);
+        res.push_back(create_meta(type));
     }
     return res;
 }
@@ -219,11 +218,7 @@ BOOST_AUTO_TEST_CASE(success)
         BOOST_TEST_CONTEXT(tc.name)
         {
             const auto& buffer = tc.from;
-            deserialization_context ctx(
-                buffer.data(),
-                buffer.data() + buffer.size(),
-                capabilities()
-            );
+            deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
             std::vector<field_view> actual;
             error_code err;
 
@@ -364,11 +359,7 @@ BOOST_AUTO_TEST_CASE(error)
         BOOST_TEST_CONTEXT(tc.name)
         {
             const auto& buffer = tc.from;
-            deserialization_context ctx(
-                buffer.data(),
-                buffer.data() + buffer.size(),
-                capabilities()
-            );
+            deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
             std::vector<field_view> actual;
             error_code err;
 
@@ -384,10 +375,8 @@ BOOST_AUTO_TEST_SUITE(with_execution_state)
 
 BOOST_AUTO_TEST_CASE(text_rows)
 {
-    std::vector<std::uint8_t>
-        row1{0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30};
-    std::vector<std::uint8_t>
-        row2{0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30};
+    std::vector<std::uint8_t> row1{0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30};
+    std::vector<std::uint8_t> row2{0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30};
     auto buff = concat_copy(row1, row2);
     auto st = create_execution_state(
         resultset_encoding::text,

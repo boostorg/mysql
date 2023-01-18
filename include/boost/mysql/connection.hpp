@@ -20,6 +20,7 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
@@ -29,7 +30,6 @@
 
 /// The Boost libraries namespace.
 namespace boost {
-
 /// Boost.Mysql library namespace.
 namespace mysql {
 
@@ -56,14 +56,17 @@ class connection
     }
     server_diagnostics& shared_diag() noexcept { return get_channel().shared_diag(); }
 
-public:
-    // TODO: hide this
     detail::channel<Stream>& get_channel() noexcept
     {
         assert(channel_ != nullptr);
         return *channel_;
     }
 
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::connection_access;
+#endif
+
+public:
     /**
      * \brief Initializing constructor.
      * \details

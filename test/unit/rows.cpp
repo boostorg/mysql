@@ -16,11 +16,11 @@
 
 #include "test_common.hpp"
 
-using boost::mysql::make_field_views;
 using boost::mysql::rows;
 using boost::mysql::rows_view;
 using boost::mysql::test::makerow;
 using boost::mysql::test::makerows;
+using namespace boost::mysql::test;
 
 namespace {
 
@@ -42,10 +42,10 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_CASE(non_strings)
 {
-    auto fields = make_field_views(20u, 1.0f, nullptr, -1);
-    rows_view v(fields.data(), fields.size(), 2);
+    auto fields = make_fv_arr(20u, 1.0f, nullptr, -1);
+    auto v = makerowsv(fields.data(), fields.size(), 2);
     rows r(v);
-    fields = make_field_views(0, 0, 0, 0);  // r should be independent of the original fields
+    fields = make_fv_arr(0, 0, 0, 0);  // r should be independent of the original fields
 
     BOOST_TEST(r.size() == 2u);
     BOOST_TEST(r[0] == makerow(20u, 1.0f));
@@ -55,12 +55,12 @@ BOOST_AUTO_TEST_CASE(non_strings)
 BOOST_AUTO_TEST_CASE(strings)
 {
     std::string s1("abc"), s2("");
-    auto fields = make_field_views(s1, 1.0f, s2, -1);
-    rows_view v(fields.data(), fields.size(), 2);
+    auto fields = make_fv_arr(s1, 1.0f, s2, -1);
+    auto v = makerowsv(fields.data(), fields.size(), 2);
     rows r(v);
 
     // r should be independent of the original fields/strings
-    fields = make_field_views(0, 0, 0, 0);
+    fields = make_fv_arr(0, 0, 0, 0);
     s1 = "other";
     s2 = "yet_another";
 
@@ -322,13 +322,13 @@ BOOST_AUTO_TEST_CASE(empty_to_nonempty)
 BOOST_AUTO_TEST_CASE(empty_different_num_columns)
 {
     rows r;
-    r = rows_view(nullptr, 0, 2);
+    r = makerowsv(nullptr, 0, 2);
 
     BOOST_TEST(r.empty());
     BOOST_TEST(r.size() == 0u);
     BOOST_TEST(r.num_columns() == 2u);
 
-    r = rows_view(nullptr, 0, 3);
+    r = makerowsv(nullptr, 0, 3);
 
     BOOST_TEST(r.empty());
     BOOST_TEST(r.size() == 0u);
@@ -338,8 +338,8 @@ BOOST_AUTO_TEST_CASE(empty_different_num_columns)
 BOOST_AUTO_TEST_CASE(non_strings)
 {
     rows r = makerows(1, 42, "abcdef");
-    auto fields = make_field_views(90, nullptr, 4.2f, 1u);
-    r = rows_view(fields.data(), fields.size(), 2);
+    auto fields = make_fv_arr(90, nullptr, 4.2f, 1u);
+    r = makerowsv(fields.data(), fields.size(), 2);
 
     BOOST_TEST_REQUIRE(r.size() == 2u);
     BOOST_TEST(r[0] == makerow(90, nullptr));
@@ -351,10 +351,10 @@ BOOST_AUTO_TEST_CASE(strings)
 {
     std::string s1("a_very_long_string"), s2("");
     rows r = makerows(1, 42, "abcdef", 90, "hij");
-    auto fields = make_field_views(s1, nullptr, s2, "bec");
-    r = rows_view(fields.data(), fields.size(), 2);
-    fields = make_field_views("abc", 42u, 9, 0);  // r should be independent of the original fields
-    s1 = "another_string";                        // r should be independent of the original strings
+    auto fields = make_fv_arr(s1, nullptr, s2, "bec");
+    r = makerowsv(fields.data(), fields.size(), 2);
+    fields = make_fv_arr("abc", 42u, 9, 0);  // r should be independent of the original fields
+    s1 = "another_string";                   // r should be independent of the original strings
     s2 = "yet_another";
 
     BOOST_TEST_REQUIRE(r.size() == 2u);
@@ -366,8 +366,8 @@ BOOST_AUTO_TEST_CASE(strings)
 BOOST_AUTO_TEST_CASE(strings_empty_to)
 {
     rows r;
-    auto fields = make_field_views("abc", nullptr, "bcd", 8.2f);
-    r = rows_view(fields.data(), fields.size(), 4);
+    auto fields = make_fv_arr("abc", nullptr, "bcd", 8.2f);
+    r = makerowsv(fields.data(), fields.size(), 4);
 
     BOOST_TEST_REQUIRE(r.size() == 1u);
     BOOST_TEST(r[0] == makerow("abc", nullptr, "bcd", 8.2f));
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_empty)
 BOOST_AUTO_TEST_CASE(self_assignment_cleared)
 {
     rows r = makerows(2, "abcdef", 42, "plk", "uv");
-    r.clear();
+    r = rows();
     r = rows_view(r);
 
     BOOST_TEST_REQUIRE(r.size() == 0u);

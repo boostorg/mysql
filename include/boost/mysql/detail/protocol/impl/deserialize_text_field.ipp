@@ -75,7 +75,7 @@ inline deserialize_errc deserialize_text_value_string(
     bool is_blob
 ) noexcept
 {
-    to = field_view(string_view_offset::from_sv(from, buffer_first), is_blob);
+    to = field_view_access::construct(string_view_offset::from_sv(from, buffer_first), is_blob);
     return deserialize_errc::ok;
 }
 
@@ -167,15 +167,7 @@ inline deserialize_errc deserialize_text_value_datetime(
     char extra_char;
     if (decimals)
     {
-        int parsed = sscanf(
-            buffer,
-            "%2u:%2u:%2u.%6u%c",
-            &hours,
-            &minutes,
-            &seconds,
-            &micros,
-            &extra_char
-        );
+        int parsed = sscanf(buffer, "%2u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
         if (parsed != 4)
             return deserialize_errc::protocol_value_error;
         micros = compute_micros(micros, decimals);
@@ -239,15 +231,7 @@ inline deserialize_errc deserialize_text_value_time(
     char extra_char;
     if (decimals)
     {
-        int parsed = sscanf(
-            first,
-            "%3u:%2u:%2u.%6u%c",
-            &hours,
-            &minutes,
-            &seconds,
-            &micros,
-            &extra_char
-        );
+        int parsed = sscanf(first, "%3u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
         if (parsed != 4)
             return deserialize_errc::protocol_value_error;
         micros = compute_micros(micros, decimals);
@@ -266,8 +250,8 @@ inline deserialize_errc deserialize_text_value_time(
     }
 
     // Sum it
-    auto res = std::chrono::hours(hours) + std::chrono::minutes(minutes) +
-               std::chrono::seconds(seconds) + std::chrono::microseconds(micros);
+    auto res = std::chrono::hours(hours) + std::chrono::minutes(minutes) + std::chrono::seconds(seconds) +
+               std::chrono::microseconds(micros);
     if (is_negative)
     {
         res = -res;
@@ -310,8 +294,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_
     case column_type::text:
     case column_type::enum_:
     case column_type::set:
-    case column_type::decimal:
-        return deserialize_text_value_string(from, output, buffer_first, false);
+    case column_type::decimal: return deserialize_text_value_string(from, output, buffer_first, false);
     // Blobs and anything else
     case column_type::binary:
     case column_type::varbinary:

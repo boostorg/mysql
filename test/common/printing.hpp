@@ -9,8 +9,11 @@
 #define BOOST_MYSQL_TEST_COMMON_PRINTING_HPP
 
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
 
+#include <boost/mysql/detail/auxiliar/static_string.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -27,7 +30,29 @@ inline std::ostream& operator<<(std::ostream& os, const server_diagnostics& diag
     return os << diag.message();
 }
 
+inline std::ostream& operator<<(std::ostream& os, const row_view& value)
+{
+    os << '{';
+    if (!value.empty())
+    {
+        os << value[0];
+        for (auto it = std::next(value.begin()); it != value.end(); ++it)
+        {
+            os << ", " << *it;
+        }
+    }
+    return os << '}';
+}
+
+inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
+
 namespace detail {
+
+template <std::size_t max_size>
+std::ostream& operator<<(std::ostream& os, const static_string<max_size>& value)
+{
+    return os << value.value();
+}
 
 inline std::ostream& operator<<(std::ostream& os, resultset_encoding t)
 {

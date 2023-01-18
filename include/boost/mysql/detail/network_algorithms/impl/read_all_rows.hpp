@@ -42,7 +42,7 @@ inline void process_all_rows(
     while (channel.has_read_messages())
     {
         // Get the row message
-        auto message = channel.next_read_message(st.sequence_number(), err);
+        auto message = channel.next_read_message(execution_state_access::get_sequence_number(st), err);
         if (err)
             return;
 
@@ -63,7 +63,7 @@ inline void process_all_rows(
         if (st.complete())
         {
             offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
-            output = rows_view(
+            output = rows_view_access::construct(
                 channel.shared_fields().data(),
                 channel.shared_fields().size(),
                 st.meta().size()
@@ -105,7 +105,7 @@ struct read_all_rows_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             diag_.clear();
-            output_.clear();
+            rows_access::clear(output_);
 
             // If the resultset_base is already complete, we don't need to read anything
             if (st_.complete())
@@ -153,7 +153,7 @@ void boost::mysql::detail::read_all_rows(
 )
 {
     diag.clear();
-    output.clear();
+    rows_access::clear(output);
 
     // If the resultset_base is already complete, we don't need to read anything
     if (st.complete())
@@ -179,9 +179,7 @@ void boost::mysql::detail::read_all_rows(
     }
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_read_all_rows(
     channel<Stream>& channel,

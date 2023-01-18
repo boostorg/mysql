@@ -52,12 +52,7 @@ inline error_code deserialize_text_row(
             auto err = deserialize(ctx, value_str);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
-            err = deserialize_text_field(
-                value_str.value,
-                fields[i],
-                buffer_first,
-                output[old_size + i]
-            );
+            err = deserialize_text_field(value_str.value, fields[i], buffer_first, output[old_size + i]);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
         }
@@ -161,7 +156,7 @@ void boost::mysql::detail::deserialize_row(
         err = deserialize_message(ctx, ok_pack);
         if (err)
             return;
-        st.complete(ok_pack);
+        execution_state_access::complete(st, ok_pack);
     }
     else if (msg_type == error_packet_header)
     {
@@ -172,7 +167,14 @@ void boost::mysql::detail::deserialize_row(
     {
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        deserialize_row(st.encoding(), ctx, st.fields(), buffer_first, output, err);
+        deserialize_row(
+            execution_state_access::get_encoding(st),
+            ctx,
+            execution_state_access::get_metadata(st),
+            buffer_first,
+            output,
+            err
+        );
     }
 }
 

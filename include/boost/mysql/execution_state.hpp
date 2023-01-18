@@ -12,6 +12,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -28,47 +29,7 @@ namespace mysql {
  */
 class execution_state
 {
-    bool eof_received_{false};
-    std::uint8_t seqnum_{};
-    detail::resultset_encoding encoding_{detail::resultset_encoding::text};
-    std::vector<metadata> meta_;
-    std::uint64_t affected_rows_{};
-    std::uint64_t last_insert_id_{};
-    std::uint16_t warnings_{};
-    std::vector<char> info_;  // guarantee that no SBO is used
-
 public:
-#ifndef BOOST_MYSQL_DOXYGEN
-    // Private, do not use. TODO: hide these
-    void reset(detail::resultset_encoding encoding) noexcept
-    {
-        seqnum_ = 0;
-        encoding_ = encoding;
-        meta_.clear();
-        eof_received_ = false;
-    }
-
-    void complete(const detail::ok_packet& pack)
-    {
-        affected_rows_ = pack.affected_rows.value;
-        last_insert_id_ = pack.last_insert_id.value;
-        warnings_ = pack.warnings;
-        info_.assign(pack.info.value.begin(), pack.info.value.end());
-        eof_received_ = true;
-    }
-
-    void prepare_meta(std::size_t num_fields) { meta_.reserve(num_fields); }
-
-    void add_meta(const detail::column_definition_packet& pack) { meta_.emplace_back(pack, true); }
-
-    detail::resultset_encoding encoding() const noexcept { return encoding_; }
-
-    std::uint8_t& sequence_number() noexcept { return seqnum_; }
-
-    std::vector<metadata>& fields() noexcept { return meta_; }
-    const std::vector<metadata>& fields() const noexcept { return meta_; }
-#endif
-
     /**
      * \brief Default constructor.
      * \details The constructed object is guaranteed to have `meta().empty()` and
@@ -147,9 +108,25 @@ public:
         assert(complete());
         return string_view(info_.data(), info_.size());
     }
+
+private:
+    bool eof_received_{false};
+    std::uint8_t seqnum_{};
+    detail::resultset_encoding encoding_{detail::resultset_encoding::text};
+    std::vector<metadata> meta_;
+    std::uint64_t affected_rows_{};
+    std::uint64_t last_insert_id_{};
+    std::uint16_t warnings_{};
+    std::vector<char> info_;  // guarantee that no SBO is used
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::execution_state_access;
+#endif
 };
 
 }  // namespace mysql
 }  // namespace boost
+
+#include <boost/mysql/impl/execution_state.hpp>
 
 #endif

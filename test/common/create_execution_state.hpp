@@ -10,6 +10,7 @@
 
 #include <boost/mysql/execution_state.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 namespace boost {
@@ -23,16 +24,16 @@ inline execution_state create_execution_state(
 )
 {
     execution_state res;
-    res.reset(enc);
+    detail::execution_state_access::reset(res, enc);
     boost::mysql::detail::column_definition_packet coldef;
     for (auto type : types)
     {
         coldef.type = type;
         coldef.flags = 0;
         coldef.decimals = 0;
-        res.add_meta(coldef);
+        detail::execution_state_access::add_meta(res, coldef);
     }
-    res.sequence_number() = seqnum;
+    detail::execution_state_access::get_sequence_number(res) = seqnum;
     return res;
 }
 
