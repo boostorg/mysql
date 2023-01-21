@@ -18,27 +18,27 @@ namespace mysql {
  */
 class buffer_params
 {
-    std::size_t initial_read_buffer_size_;
+    std::size_t initial_read_size_;
 
 public:
+    /// The default value of \ref initial_read_size.
+    static constexpr std::size_t default_initial_read_size = 1024;
+
     /**
      * \brief Initializing constructor.
      * \param init_read_buffer_size Initial size of the read buffer. A bigger read buffer
      * can increase the number of rows returned by \ref connection::read_some_rows.
      */
-    constexpr buffer_params(std::size_t init_read_buffer_size = 0) noexcept
-        : initial_read_buffer_size_(init_read_buffer_size)
+    constexpr explicit buffer_params(std::size_t initial_read_size = default_initial_read_size) noexcept
+        : initial_read_size_(initial_read_size)
     {
     }
 
     /// Gets the initial size of the read buffer.
-    constexpr std::size_t initial_read_buffer_size() const noexcept
-    {
-        return initial_read_buffer_size_;
-    }
+    constexpr std::size_t initial_read_size() const noexcept { return initial_read_size_; }
 
     /// Sets the initial size of the read buffer.
-    void set_initial_read_buffer_size(std::size_t v) noexcept { initial_read_buffer_size_ = v; }
+    void set_initial_read_size(std::size_t v) noexcept { initial_read_size_ = v; }
 };
 
 }  // namespace mysql

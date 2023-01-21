@@ -17,6 +17,7 @@
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/rows_view.hpp>

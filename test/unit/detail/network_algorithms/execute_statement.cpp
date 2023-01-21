@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/column_type.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -27,6 +28,7 @@
 
 using boost::mysql::blob;
 using boost::mysql::client_errc;
+using boost::mysql::column_type;
 using boost::mysql::error_code;
 using boost::mysql::resultset;
 using boost::mysql::detail::connection_access;
@@ -125,9 +127,8 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
             auto result = create_initial_resultset();
             test_connection conn;
             auto stmt = create_statement(conn, 2);
-            connection_access::get_channel(conn).reset(1024);      // Perform 1 read/op
             conn.stream().add_message(create_message(1, {0x01}));  // Response OK, 1 metadata packet
-            conn.stream().add_message(create_coldef_message(2, protocol_field_type::tiny, "f1"));
+            conn.stream().add_message(create_coldef_message(2, protocol_field_type::geometry));
             conn.stream().set_fail_count(fail_count(4, client_errc::server_unsupported));
 
             // Call the function
@@ -136,7 +137,7 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
 
             // Ensure we successfully ran the start_query
             BOOST_TEST_REQUIRE(resultset_access::get_state(result).meta().size() == 1u);
-            BOOST_TEST(resultset_access::get_state(result).meta()[0].column_name() == "f1");
+            BOOST_TEST(resultset_access::get_state(result).meta()[0].type() == column_type::geometry);
         }
     }
 }

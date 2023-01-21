@@ -204,14 +204,14 @@ def _cmake_build(
     standalone_tests: bool = True,
     add_subdir_tests: bool = True,
     install_tests: bool = True,
+    build_type: str = 'Debug',
     cxxstd: str = '20',
-    boost_branch: str = 'develop'
+    boost_branch: str = 'develop',
 ) -> None:
     # Config
     home = Path(os.path.expanduser('~'))
     b2_distro = home.joinpath('b2-distro')
     cmake_distro = home.joinpath('cmake-distro')
-    build_type = 'Debug'
     test_folder = _boost_root.joinpath('libs', 'mysql', 'test', 'cmake_test')
     os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '4'
     if _is_windows:
@@ -417,6 +417,7 @@ def main():
     parser.add_argument('--cmake-standalone-tests', type=_str2bool, default=True)
     parser.add_argument('--cmake-add-subdir-tests', type=_str2bool, default=True)
     parser.add_argument('--cmake-install-tests', type=_str2bool, default=True)
+    parser.add_argument('--cmake-build-type', choices=['Debug', 'Release', 'MinSizeRel'], default='Debug')
     parser.add_argument('--toolset', default='clang')
     parser.add_argument('--cxxstd', default='20')
     parser.add_argument('--variant', default='release')
@@ -451,6 +452,7 @@ def main():
             standalone_tests=args.cmake_standalone_tests,
             add_subdir_tests=args.cmake_add_subdir_tests,
             install_tests=args.cmake_install_tests,
+            build_type=args.cmake_build_type,
             cxxstd=args.cxxstd,
             boost_branch=boost_branch
         )

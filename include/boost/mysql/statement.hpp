@@ -83,6 +83,9 @@ public:
      * parameters as `this->num_params()`, or the operation will fail with an error.
      * String parameters should be encoded using the connection's character set.
      *\n
+     * Metadata in `result` will be populated according to `conn.meta_mode()`, where `conn`
+     * is the connection that prepared this statement.
+     *\n
      * This operation involves both reads and writes on the underlying stream.
      */
     template <
@@ -146,6 +149,8 @@ public:
      * metadata, but not the generated rows, if any. After this operation completes, `st` will have
      * \ref execution_state::meta populated, and may become \ref execution_state::complete
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     * Metadata will be populated according to `conn.meta_mode()`, where `conn`
+     * is the connection that prepared this statement.
      *\n
      * If the operation generated any rows, these <b>must</b> be read (by using \ref
      *connection::read_one_row or \ref connection::read_some_rows) before engaging in any further

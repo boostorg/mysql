@@ -10,6 +10,7 @@
 
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
@@ -32,11 +33,12 @@ namespace detail {
 class channel_base
 {
     capabilities current_caps_;
-
     std::uint8_t shared_sequence_number_{};  // for async ops
     bytestring shared_buff_;                 // for async ops
     server_diagnostics shared_diag_;         // for async ops
     std::vector<field_view> shared_fields_;  // for read_some ops
+    metadata_mode meta_mode_{metadata_mode::minimal};
+
 protected:
     message_reader reader_;
     message_writer writer_;
@@ -52,15 +54,18 @@ public:
         return reader_.get_next_message(seqnum, err);
     }
 
+    // Exposed for the sake of testing
+    std::size_t read_buffer_size() const noexcept { return reader_.buffer().size(); }
+
     // Capabilities
     capabilities current_capabilities() const noexcept { return current_caps_; }
     void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 
-    void reset(std::size_t read_buffer_size)
+    void reset()
     {
         current_caps_ = capabilities();
         reset_sequence_number();
-        reader_.buffer().grow_to_fit(read_buffer_size);
+        // Metadata mode does not get reset on handshake
     }
 
     // Internal buffer, server_diagnostics and sequence_number to help async ops
@@ -71,6 +76,10 @@ public:
     std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
     std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }
     const std::vector<field_view>& shared_fields() const noexcept { return shared_fields_; }
+
+    // Metadata mode
+    metadata_mode meta_mode() const noexcept { return meta_mode_; }
+    void set_meta_mode(metadata_mode v) noexcept { meta_mode_ = v; }
 };
 
 template <class Stream>
@@ -79,7 +88,6 @@ class channel : public channel_base
     disableable_ssl_stream<Stream> stream_;
 
 public:
-    // TODO: use this arg
     template <class... Args>
     channel(std::size_t read_buffer_size, Args&&... args)
         : channel_base(read_buffer_size), stream_(std::forward<Args>(args)...)
@@ -161,9 +169,9 @@ public:
     using lowest_layer_type = typename stream_type::lowest_layer_type;
     lowest_layer_type& lowest_layer() noexcept { return stream_.lowest_layer(); }
 
-    void reset(std::size_t read_buffer_size)
+    void reset()
     {
-        channel_base::reset(read_buffer_size);
+        channel_base::reset();
         stream_.reset();
     }
 };

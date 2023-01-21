@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_CONNECTION_HPP
 #define BOOST_MYSQL_CONNECTION_HPP
 
+#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
@@ -76,7 +78,23 @@ public:
     template <
         class... Args,
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
-    connection(Args&&... args) : channel_(new detail::channel<Stream>(0, std::forward<Args>(args)...))
+    connection(Args&&... args) : connection(buffer_params(), std::forward<Args>(args)...)
+    {
+    }
+
+    /**
+     * \brief Initializing constructor with buffer params.
+     * \details
+     * As part of the initialization, a `Stream` object is created
+     * by forwarding any passed in arguments to its constructor.
+     *\n
+     * The internal connection buffers will be allocated according to `buff_params`.
+     */
+    template <
+        class... Args,
+        class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
+    connection(const buffer_params& buff_params, Args&&... args)
+        : channel_(new detail::channel<Stream>(buff_params.initial_read_size(), std::forward<Args>(args)...))
     {
     }
 
@@ -128,6 +146,21 @@ public:
      * connection or not when using SSL negotiation.
      */
     bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
+
+    /**
+     * \brief Returns the current metadata mode that this connection is using.
+     */
+    metadata_mode meta_mode() const noexcept { return get_channel().meta_mode(); }
+
+    /**
+     * \brief Sets the metadata mode.
+     * \details
+     * Will affect any query and statement executions performed after the call.
+     *\n
+     * Calling this function while an asynchronous query or statement execution
+     * is outstanding causes unspecified results.
+     */
+    void set_meta_mode(metadata_mode v) noexcept { get_channel().set_meta_mode(v); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
@@ -241,6 +274,8 @@ public:
      *\n
      * After this operation completes successfully, `result.has_value() == true`.
      *\n
+     * Metadata in `result` will be populated according to `this->meta_mode()`.
+     *\n
      * This operation involves both reads and writes on the underlying stream.
      */
     void query(string_view query_string, resultset& result, error_code&, server_diagnostics&);
@@ -286,6 +321,7 @@ public:
      * metadata, but not the generated rows, if any. After this operation completes, `st` will have
      * \ref execution_state::meta populated, and may become \ref execution_state::complete
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     * Metadata will be populated according to `this->meta_mode()`.
      *\n
      * If the operation generated any rows, these <b>must</b> be read (by using \ref read_one_row or
      * \ref read_some_rows) before engaging in any further operation involving network reads.

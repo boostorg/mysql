@@ -61,13 +61,21 @@ public:
     /// Destructor.
     ~metadata() = default;
 
-    /// Returns the name of the database (schema) the column belongs to.
+    /**
+     * \brief Returns the name of the database (schema) the column belongs to.
+     * \details
+     * This is optional information - it won't be populated unless
+     * the connection executing the query has `meta_mode() == metadata_mode::full`.
+     */
     string_view database() const noexcept { return schema_; }
 
     /**
      * \brief Returns the name of the virtual table the column belongs to.
      * \details If the table was aliased, this will be the name of the alias
      * (e.g. in `"SELECT * FROM employees emp"`, `table()` will be `"emp"`).
+     *\n
+     * This is optional information - it won't be populated unless
+     * the connection executing the query has `meta_mode() == metadata_mode::full`.
      */
     string_view table() const noexcept { return table_; }
 
@@ -75,6 +83,9 @@ public:
      * \brief Returns the name of the physical table the column belongs to.
      * \details E.g. in `"SELECT * FROM employees emp"`,
      * `original_table()` will be `"employees"`.
+     *\n
+     * This is optional information - it won't be populated unless
+     * the connection executing the query has `meta_mode() == metadata_mode::full`.
      */
     string_view original_table() const noexcept { return org_table_; }
 
@@ -83,6 +94,9 @@ public:
      * \details If the column was aliased, this will be the name of the alias
      * (e.g. in `"SELECT id AS employee_id FROM employees"`,
      * `column_name()` will be `"employee_id"`).
+     *\n
+     * This is optional information - it won't be populated unless
+     * the connection executing the query has `meta_mode() == metadata_mode::full`.
      */
     string_view column_name() const noexcept { return name_; }
 
@@ -90,6 +104,9 @@ public:
      * \brief Returns the original (physical) name of the column.
      * \details E.g. in `"SELECT id AS employee_id FROM employees"`,
      * `original_column_name()` will be `"id"`.
+     *\n
+     * This is optional information - it won't be populated unless
+     * the connection executing the query has `meta_mode() == metadata_mode::full`.
      */
     string_view original_column_name() const noexcept { return org_name_; }
 

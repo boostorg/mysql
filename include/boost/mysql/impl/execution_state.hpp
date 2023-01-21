@@ -12,6 +12,7 @@
 
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
@@ -36,9 +37,13 @@ struct boost::mysql::detail::execution_state_access
 
     static void prepare_meta(execution_state& st, std::size_t num_fields) { st.meta_.reserve(num_fields); }
 
-    static void add_meta(execution_state& st, const detail::column_definition_packet& pack)
+    static void add_meta(
+        execution_state& st,
+        const detail::column_definition_packet& pack,
+        metadata_mode mode
+    )
     {
-        st.meta_.push_back(metadata_access::construct(pack, true));
+        st.meta_.push_back(metadata_access::construct(pack, mode == metadata_mode::full));
     }
 
     static resultset_encoding get_encoding(const execution_state& st) noexcept { return st.encoding_; }

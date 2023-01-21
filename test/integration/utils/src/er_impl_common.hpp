@@ -10,6 +10,7 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/statement_base.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -93,8 +94,7 @@ protected:
     er_network_variant& var_;
 
 public:
-    er_connection_base(connection<Stream>&& conn, er_network_variant& var)
-        : conn_(std::move(conn)), var_(var)
+    er_connection_base(connection<Stream>&& conn, er_network_variant& var) : conn_(std::move(conn)), var_(var)
     {
     }
     er_connection_base(
@@ -107,6 +107,7 @@ public:
     }
     bool uses_ssl() const override { return conn_.uses_ssl(); }
     bool is_open() const override { return conn_.stream().lowest_layer().is_open(); }
+    void set_metadata_mode(metadata_mode v) override { conn_.set_meta_mode(v); }
     void sync_close() noexcept override
     {
         try
@@ -124,21 +125,13 @@ public:
     }
 };
 
-template <
-    class Stream,
-    template <typename>
-    class ConnectionImpl,
-    template <typename>
-    class StatementImpl>
+template <class Stream, template <typename> class ConnectionImpl, template <typename> class StatementImpl>
 class er_network_variant_base : public er_network_variant
 {
 public:
     bool supports_ssl() const override { return ::boost::mysql::test::supports_ssl<Stream>(); }
     bool is_unix_socket() const override { return ::boost::mysql::test::is_unix_socket<Stream>(); }
-    const char* stream_name() const override
-    {
-        return ::boost::mysql::test::get_stream_name<Stream>();
-    }
+    const char* stream_name() const override { return ::boost::mysql::test::get_stream_name<Stream>(); }
     er_connection_ptr create_connection(
         boost::asio::io_context::executor_type ex,
         boost::asio::ssl::context& ssl_ctx
@@ -146,10 +139,7 @@ public:
     {
         return er_connection_ptr(new ConnectionImpl<Stream>(ex, ssl_ctx, *this));
     }
-    er_statement_ptr create_statement() override
-    {
-        return er_statement_ptr(new StatementImpl<Stream>());
-    }
+    er_statement_ptr create_statement() override { return er_statement_ptr(new StatementImpl<Stream>()); }
 };
 
 template <typename R>

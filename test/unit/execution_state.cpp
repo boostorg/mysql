@@ -7,6 +7,7 @@
 
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -46,9 +47,9 @@ BOOST_AUTO_TEST_CASE(member_fns)
     // Add meta
     column_definition_packet pack{};
     pack.type = protocol_field_type::var_string;
-    execution_state_access::add_meta(st, pack);
+    execution_state_access::add_meta(st, pack, boost::mysql::metadata_mode::minimal);
     pack.type = protocol_field_type::bit;
-    execution_state_access::add_meta(st, pack);
+    execution_state_access::add_meta(st, pack, boost::mysql::metadata_mode::minimal);
 
     BOOST_TEST(!st.complete());
     BOOST_TEST(st.meta().size() == 2u);

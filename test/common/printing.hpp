@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_PRINTING_HPP
 
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
@@ -45,6 +46,16 @@ inline std::ostream& operator<<(std::ostream& os, const row_view& value)
 }
 
 inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
+
+inline std::ostream& operator<<(std::ostream& os, metadata_mode v)
+{
+    switch (v)
+    {
+    case metadata_mode::full: return os << "full";
+    case metadata_mode::minimal: return os << "minimal";
+    default: return os << "<unknown metadata_mode>";
+    }
+}
 
 namespace detail {
 

@@ -9,6 +9,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/server_errc.hpp>
@@ -177,7 +178,11 @@ struct fixture
     }};
     test_channel chan{create_channel()};
 
-    fixture() { chan.shared_sequence_number() = 42; }
+    fixture()
+    {
+        chan.set_meta_mode(boost::mysql::metadata_mode::full);
+        chan.shared_sequence_number() = 42;
+    }
 
     void check_written_message()
     {
@@ -217,6 +222,35 @@ BOOST_AUTO_TEST_CASE(success_one_meta)
             BOOST_TEST(execution_state_access::get_sequence_number(fix.st) == 3u);
             BOOST_TEST_REQUIRE(fix.st.meta().size() == 1u);
             BOOST_TEST(fix.st.meta()[0].column_name() == "mycol");
+            BOOST_TEST(fix.st.meta()[0].type() == column_type::varchar);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(success_one_meta_metadata_minimal)
+{
+    for (auto fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            fixture fix;
+            auto response = create_message(1, {0x01});
+            auto col = create_coldef_message(2, protocol_field_type::var_string);
+            fix.chan.lowest_layer().add_message(concat_copy(response, col));
+            fix.chan.set_meta_mode(boost::mysql::metadata_mode::minimal);
+
+            // Call the function
+            fix.call_fn(fns).validate_no_error();
+
+            // We've written the request message
+            fix.check_written_message();
+
+            // We've read the response
+            BOOST_TEST(execution_state_access::get_encoding(fix.st) == resultset_encoding::binary);
+            BOOST_TEST(!fix.st.complete());
+            BOOST_TEST(execution_state_access::get_sequence_number(fix.st) == 3u);
+            BOOST_TEST_REQUIRE(fix.st.meta().size() == 1u);
+            BOOST_TEST(fix.st.meta()[0].column_name() == "");
             BOOST_TEST(fix.st.meta()[0].type() == column_type::varchar);
         }
     }

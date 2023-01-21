@@ -15,6 +15,7 @@
 #include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -33,36 +34,34 @@ namespace detail {
 
 class start_execution_processor
 {
+    channel_base& chan_;
     resultset_encoding encoding_;
     execution_state& st_;
     server_diagnostics& diag_;
-    bytestring& write_buffer_;
-    capabilities caps_;
     std::size_t num_fields_{};
     std::size_t remaining_fields_{};
 
 public:
     start_execution_processor(
+        channel_base& chan,
         resultset_encoding encoding,
         execution_state& st,
-        server_diagnostics& diag,
-        bytestring& write_buffer,
-        capabilities caps
+        server_diagnostics& diag
     ) noexcept
-        : encoding_(encoding), st_(st), diag_(diag), write_buffer_(write_buffer), caps_(caps){};
+        : chan_(chan), encoding_(encoding), st_(st), diag_(diag){};
 
-    void clear_output_info() noexcept { diag_.clear(); }
+    void clear_diagnostics() noexcept { diag_.clear(); }
 
     template <BOOST_MYSQL_SERIALIZE_FN SerializeFn>
     void process_request(SerializeFn&& request)
     {
         execution_state_access::reset(st_, encoding_);
-        std::forward<SerializeFn>(request)(caps_, write_buffer_);
+        std::forward<SerializeFn>(request)(chan_.current_capabilities(), chan_.shared_buffer());
     }
 
     void process_response(boost::asio::const_buffer msg, error_code& err)
     {
-        auto response = deserialize_execute_response(msg, caps_, diag_);
+        auto response = deserialize_execute_response(msg, chan_.current_capabilities(), diag_);
         switch (response.type)
         {
         case execute_response::type_t::error: err = response.data.err; break;
@@ -81,12 +80,12 @@ public:
     error_code process_field_definition(boost::asio::const_buffer message)
     {
         column_definition_packet field_definition;
-        deserialization_context ctx(message, caps_);
+        deserialization_context ctx(message, chan_.current_capabilities());
         auto err = deserialize_message(ctx, field_definition);
         if (err)
             return err;
 
-        execution_state_access::add_meta(st_, field_definition);
+        execution_state_access::add_meta(st_, field_definition, chan_.meta_mode());
         --remaining_fields_;
         return error_code();
     }
@@ -126,7 +125,7 @@ struct start_execution_generic_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            processor_.clear_output_info();
+            processor_.clear_diagnostics();
 
             // Serialize the request
             processor_.process_request(std::move(serialize_fn_));
@@ -247,8 +246,7 @@ void boost::mysql::detail::start_execution_generic(
     diag.clear();
 
     // Serialize the request
-    start_execution_processor
-        processor(encoding, st, diag, channel.shared_buffer(), channel.current_capabilities());
+    start_execution_processor processor(channel, encoding, st, diag);
     processor.process_request(fn);
 
     // Send it
@@ -308,13 +306,7 @@ boost::mysql::detail::async_start_execution_generic(
         start_execution_generic_op<Stream, typename std::decay<SerializeFn>::type>(
             channel,
             std::forward<SerializeFn>(fn),
-            start_execution_processor(
-                encoding,
-                st,
-                diag,
-                channel.shared_buffer(),
-                channel.current_capabilities()
-            )
+            start_execution_processor(channel, encoding, st, diag)
         ),
         token,
         channel

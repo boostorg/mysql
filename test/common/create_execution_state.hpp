@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_CREATE_EXECUTION_STATE_HPP
 
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -25,13 +26,13 @@ inline execution_state create_execution_state(
 {
     execution_state res;
     detail::execution_state_access::reset(res, enc);
-    boost::mysql::detail::column_definition_packet coldef;
+    boost::mysql::detail::column_definition_packet coldef{};
     for (auto type : types)
     {
         coldef.type = type;
         coldef.flags = 0;
         coldef.decimals = 0;
-        detail::execution_state_access::add_meta(res, coldef);
+        detail::execution_state_access::add_meta(res, coldef, metadata_mode::minimal);
     }
     detail::execution_state_access::get_sequence_number(res) = seqnum;
     return res;

@@ -5,10 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/tcp.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
+
+#include <boost/mysql/impl/connection.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_stream_socket.hpp>
@@ -17,13 +21,16 @@
 
 #include "create_message.hpp"
 #include "netfun_maker.hpp"
+#include "printing.hpp"
 #include "test_connection.hpp"
 
 using boost::mysql::connection;
+using boost::mysql::metadata_mode;
 using boost::mysql::resultset;
 using boost::mysql::string_view;
 using boost::mysql::tcp_connection;
 using boost::mysql::tcp_ssl_connection;
+using boost::mysql::detail::connection_access;
 using namespace boost::mysql::test;
 namespace net = boost::asio;
 
@@ -47,6 +54,19 @@ BOOST_AUTO_TEST_CASE(init_ctor)
 {
     test_connection c;
     BOOST_CHECK_NO_THROW(c.stream());
+
+    // Check buffer size. May not be the exact size
+    BOOST_TEST(connection_access::get_channel(c).read_buffer_size() >= 1024u);
+    BOOST_TEST(connection_access::get_channel(c).read_buffer_size() < 2000u);
+}
+
+BOOST_AUTO_TEST_CASE(init_ctor_with_buffer_params)
+{
+    test_connection c(boost::mysql::buffer_params(4096));
+
+    // Check buffer size. May not be the exact size
+    BOOST_TEST(connection_access::get_channel(c).read_buffer_size() >= 4096u);
+    BOOST_TEST(connection_access::get_channel(c).read_buffer_size() < 5000u);
 }
 
 // move ctor
@@ -126,6 +146,17 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
             BOOST_TEST(result.affected_rows() == 42u);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(set_meta_mode)
+{
+    // Default metadata mode
+    test_connection conn;
+    BOOST_TEST(conn.meta_mode() == metadata_mode::minimal);
+
+    // Setting it causes effect
+    conn.set_meta_mode(metadata_mode::full);
+    BOOST_TEST(conn.meta_mode() == metadata_mode::full);
 }
 
 // rebind_executor

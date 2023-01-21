@@ -66,7 +66,6 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof)
                 4  // seqnum
             );
             test_connection conn;
-            get_channel(conn).reset(1024);
             get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(concat_copy(row1, row2, ok_packet));
 
@@ -99,7 +98,6 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof_separate)
                 4  // seqnum
             );
             test_connection conn;
-            get_channel(conn).reset(1024);
             get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(row1);
             conn.stream().add_message(concat_copy(row2, ok_packet));
@@ -138,7 +136,6 @@ BOOST_AUTO_TEST_CASE(success_row_eof_separate)
                 4  // seqnum
             );
             test_connection conn;
-            get_channel(conn).reset(1024);
             get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(row1);
             conn.stream().add_message(ok_packet);
@@ -175,7 +172,6 @@ BOOST_AUTO_TEST_CASE(success_eof)
                 4  // seqnum
             );
             test_connection conn;
-            get_channel(conn).reset(1024);
             get_channel(conn).shared_fields().emplace_back("abc");  // from previous call
             conn.stream().add_message(ok_packet);
 
@@ -236,10 +232,7 @@ BOOST_AUTO_TEST_CASE(error_deserializing_row)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto r = create_message(0, {0x00});  // invalid row
-            auto st = create_execution_state(
-                resultset_encoding::binary,
-                {protocol_field_type::var_string}
-            );
+            auto st = create_execution_state(resultset_encoding::binary, {protocol_field_type::var_string});
             test_connection conn;
             conn.stream().add_message(r);
 

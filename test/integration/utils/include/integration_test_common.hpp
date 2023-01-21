@@ -62,6 +62,7 @@ struct network_fixture : network_fixture_base
     {
         var = variant;
         conn = var->create_connection(ctx.get_executor(), ssl_ctx);
+        conn->set_metadata_mode(metadata_mode::full);
         stmt = var->create_statement();
     }
 

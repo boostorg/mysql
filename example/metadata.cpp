@@ -34,6 +34,11 @@ void main_impl(int argc, char** argv)
     boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
     boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
 
+    // By default, string metadata (like column names) won't be retained.
+    // This is for efficiency reasons. You can change this setting by calling
+    // connection::set_meta_mode. It will affect any subsequent queries and statement executions.
+    conn.set_meta_mode(boost::mysql::metadata_mode::full);
+
     // Hostname resolution
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
     auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);

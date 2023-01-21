@@ -29,6 +29,7 @@ def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_m
 def _cmake_command(
     source_dir,
     build_shared_libs=0,
+    cmake_build_type='Debug',
     cxxstd='20',
     valgrind=0,
     coverage=0,
@@ -45,6 +46,7 @@ def _cmake_command(
                 '--generator="{}" '.format(generator) + \
                 '--source-dir="{}" '.format(source_dir) + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
+                '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--cxxstd={} '.format(cxxstd) + \
                 '--valgrind={} '.format(valgrind) + \
                 '--coverage={} '.format(coverage) + \
@@ -164,6 +166,7 @@ def linux_cmake(
     name,
     image,
     build_shared_libs=0,
+    cmake_build_type='Debug',
     cxxstd='20',
     valgrind=0,
     coverage=0,
@@ -175,6 +178,7 @@ def linux_cmake(
     command = _cmake_command(
         source_dir='$(pwd)',
         build_shared_libs=build_shared_libs,
+        cmake_build_type=cmake_build_type,
         cxxstd=cxxstd,
         valgrind=valgrind,
         coverage=coverage,
@@ -229,12 +233,14 @@ def docs():
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake valgrind',   _image('build-gcc11'), valgrind=1, build_shared_libs=0),
-        linux_cmake('Linux CMake coverage',   _image('build-gcc11'), coverage=1, build_shared_libs=0),
-        linux_cmake('Linux CMake MySQL 5.x',  _image('build-clang14'), db='mysql5', build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',    _image('build-clang14'), db='mariadb', build_shared_libs=1),
-        linux_cmake('Linux CMake cmake 3.8',  _image('build-cmake3_8'), cxxstd='11', standalone_tests=0, install_tests=0),
-        linux_cmake('Linux CMake no OpenSSL', _image('build-noopenssl'), standalone_tests=0, add_subdir_tests=0, install_tests=0),
+        linux_cmake('Linux CMake valgrind',       _image('build-gcc11'), valgrind=1, build_shared_libs=0),
+        linux_cmake('Linux CMake coverage',       _image('build-gcc11'), coverage=1, build_shared_libs=0),
+        linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
+        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', standalone_tests=0, install_tests=0),
+        linux_cmake('Linux CMake no OpenSSL',     _image('build-noopenssl'), standalone_tests=0, add_subdir_tests=0, install_tests=0),
+        linux_cmake('Linux CMake gcc Release',    _image('build-gcc11'), cmake_build_type='Release'),
+        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc11'), cmake_build_type='MinSizeRel'),
 
         # CMake Windows
         windows_cmake('Windows CMake static', build_shared_libs=0),

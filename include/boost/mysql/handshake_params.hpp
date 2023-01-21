@@ -26,7 +26,6 @@ class handshake_params
     string_view database_;
     collation connection_collation_;
     ssl_mode ssl_;
-    buffer_params buffer_config_;
 
 public:
     /**
@@ -46,15 +45,13 @@ public:
         string_view password,
         string_view db = "",
         collation connection_col = collation::utf8mb4_general_ci,
-        ssl_mode mode = ssl_mode::require,
-        const buffer_params& buffer_config = {}
+        ssl_mode mode = ssl_mode::require
     )
         : username_(username),
           password_(password),
           database_(db),
           connection_collation_(connection_col),
-          ssl_(mode),
-          buffer_config_(buffer_config)
+          ssl_(mode)
     {
     }
 
@@ -87,12 +84,6 @@ public:
 
     /// Sets SSL mode
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
-
-    /// Retrieves the buffer configuration.
-    buffer_params buffer_config() const noexcept { return buffer_config_; }
-
-    /// Sets the buffer configuration.
-    void set_buffer_config(const buffer_params& value) noexcept { buffer_config_ = value; }
 };
 
 }  // namespace mysql

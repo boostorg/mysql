@@ -205,8 +205,8 @@ and [refmem execution_state affected_rows]. As this information is contained in 
 
 To properly understand `read_some_rows`, we need to know that every [reflink connection]
 owns an internal *read buffer*, where packets sent by the server are stored.
-It is a single, flat buffer, and you can configure its initial size using
-[refmem handshake_params buffer_config] when establishing the connection.
+It is a single, flat buffer, and you can configure its initial size when constructing
+a `connection` object, passing a first [reflink buffer_params] argument.
 The read buffer may be grown under certain circumstances to accomodate large messages.
 
 `read_some_rows` gets the maximum number of rows that fit in the read buffer (without growing it)

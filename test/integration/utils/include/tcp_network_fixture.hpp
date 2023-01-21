@@ -22,7 +22,7 @@ struct tcp_network_fixture : network_fixture_base
 {
     boost::mysql::tcp_connection conn;
 
-    tcp_network_fixture() : conn(ctx.get_executor()) {}
+    tcp_network_fixture() : conn(ctx.get_executor()) { conn.set_meta_mode(metadata_mode::full); }
 
     void connect() { conn.connect(get_endpoint<tcp_socket>(), params); }
 
