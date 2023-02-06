@@ -31,25 +31,22 @@ auto err_net_samples = create_network_samples({
     "tcp_sync_errc",
     "tcp_sync_exc",
     "tcp_async_callback",
-    "tcp_async_callback_noerrinfo",
+    "tcp_async_coroutines",
 });
 
 // Handshake
-BOOST_MYSQL_NETWORK_TEST(success, network_fixture, all_network_samples())
+BOOST_MYSQL_NETWORK_TEST(handshake_success, network_fixture, all_network_samples())
 {
     setup_and_physical_connect(sample.net);
     conn->handshake(params).validate_no_error();
     BOOST_TEST(conn->uses_ssl() == var->supports_ssl());
 }
 
-BOOST_MYSQL_NETWORK_TEST(error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(handshake_error, network_fixture, err_net_samples)
 {
     setup_and_physical_connect(sample.net);
     params.set_database("bad_database");
-    conn->handshake(params).validate_error(
-        server_errc::dbaccess_denied_error,
-        {"database", "bad_database"}
-    );
+    conn->handshake(params).validate_error(server_errc::dbaccess_denied_error, {"database", "bad_database"});
 }
 
 // Connect: success is already widely tested throughout integ tests
@@ -57,10 +54,7 @@ BOOST_MYSQL_NETWORK_TEST(connect_error, network_fixture, err_net_samples)
 {
     setup(sample.net);
     set_credentials("integ_user", "bad_password");
-    conn->connect(params).validate_error(
-        server_errc::access_denied_error,
-        {"access denied", "integ_user"}
-    );
+    conn->connect(params).validate_error(server_errc::access_denied_error, {"access denied", "integ_user"});
     BOOST_TEST(!conn->is_open());
 }
 
@@ -109,8 +103,7 @@ BOOST_MYSQL_NETWORK_TEST(query_error, network_fixture, err_net_samples)
 BOOST_MYSQL_NETWORK_TEST(prepare_statement_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
-        .validate_no_error();
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
     BOOST_TEST_REQUIRE(stmt->base().valid());
     BOOST_TEST(stmt->base().id() > 0u);
     BOOST_TEST(stmt->base().num_params() == 2u);
@@ -124,17 +117,12 @@ BOOST_MYSQL_NETWORK_TEST(prepare_statement_error, network_fixture, err_net_sampl
 }
 
 // Start statement execution (iterator version)
-BOOST_MYSQL_NETWORK_TEST(
-    start_statement_execution_it_success,
-    network_fixture,
-    all_network_samples()
-)
+BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
     // Prepare
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
-        .validate_no_error();
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
 
     // Execute
     execution_state st;
@@ -150,10 +138,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, er
     start_transaction();
 
     // Prepare
-    conn->prepare_statement(
-            "INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)",
-            *stmt
-    )
+    conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)", *stmt)
         .validate_no_error();
 
     // Execute
@@ -167,17 +152,12 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, er
 }
 
 // Start statement execution (tuple version)
-BOOST_MYSQL_NETWORK_TEST(
-    start_statement_execution_tuple_success,
-    network_fixture,
-    all_network_samples()
-)
+BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
     // Prepare
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
-        .validate_no_error();
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
 
     // Execute
     execution_state st;
@@ -192,10 +172,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_error, network_fixture,
     start_transaction();
 
     // Prepare
-    conn->prepare_statement(
-            "INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)",
-            *stmt
-    )
+    conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)", *stmt)
         .validate_no_error();
 
     // Execute
@@ -213,8 +190,7 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_success, network_fixture, all_network
     setup_and_connect(sample.net);
 
     // Prepare
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt)
-        .validate_no_error();
+    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
 
     // Execute
     resultset result;
@@ -228,10 +204,7 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_sampl
     start_transaction();
 
     // Prepare
-    conn->prepare_statement(
-            "INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)",
-            *stmt
-    )
+    conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)", *stmt)
         .validate_no_error();
 
     // Execute
@@ -304,6 +277,21 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_success, network_fixture, all_network_sa
     rows = conn->read_some_rows(st).get();
     BOOST_TEST(rows.empty());
     validate_eof(st);
+}
+
+// Ping
+BOOST_MYSQL_NETWORK_TEST(ping_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+    conn->ping().validate_no_error();
+}
+
+BOOST_MYSQL_NETWORK_TEST(ping_error, network_fixture, all_network_samples())
+{
+    setup(sample.net);
+
+    // Ping should return an error for an unconnected connection
+    conn->ping().validate_any_error();
 }
 
 // Quit connection: no server error spotcheck

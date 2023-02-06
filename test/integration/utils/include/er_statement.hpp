@@ -30,22 +30,18 @@ class er_statement
 public:
     virtual ~er_statement() {}
     virtual const statement_base& base() const = 0;
-    virtual network_result<no_result> execute_tuple2(
-        field_view fv1,
-        field_view fv2,
-        resultset& result
-    ) = 0;
-    virtual network_result<no_result> start_execution_tuple2(
+    virtual network_result<void> execute_tuple2(field_view fv1, field_view fv2, resultset& result) = 0;
+    virtual network_result<void> start_execution_tuple2(
         field_view fv1,
         field_view fv2,
         execution_state& st
     ) = 0;
-    virtual network_result<no_result> start_execution_it(
+    virtual network_result<void> start_execution_it(
         value_list_it params_first,
         value_list_it params_last,
         execution_state& st
     ) = 0;
-    virtual network_result<no_result> close() = 0;
+    virtual network_result<void> close() = 0;
 };
 
 using er_statement_ptr = std::unique_ptr<er_statement>;

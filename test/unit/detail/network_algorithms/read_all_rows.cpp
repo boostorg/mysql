@@ -18,9 +18,9 @@
 
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::client_errc;
 using boost::mysql::error_code;
@@ -59,10 +59,7 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof)
         {
             auto row1 = create_message(4, {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07});
             auto row2 = create_message(5, {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78});
-            auto ok_packet = create_message(
-                6,
-                {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62}
-            );
+            auto ok_packet = create_message(6, {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62});
             auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_},
@@ -94,10 +91,7 @@ BOOST_AUTO_TEST_CASE(success_row_row_eof_separate)
         {
             auto row1 = create_message(4, {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07});
             auto row2 = create_message(5, {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78});
-            auto ok_packet = create_message(
-                6,
-                {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62}
-            );
+            auto ok_packet = create_message(6, {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62});
             auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_},
@@ -130,10 +124,7 @@ BOOST_AUTO_TEST_CASE(success_row_eof_separate)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto row1 = create_message(4, {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07});
-            auto ok_packet = create_message(
-                5,
-                {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62}
-            );
+            auto ok_packet = create_message(5, {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62});
             auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_},
@@ -165,10 +156,7 @@ BOOST_AUTO_TEST_CASE(success_eof)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto ok_packet = create_message(
-                4,
-                {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62}
-            );
+            auto ok_packet = create_message(4, {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62});
             auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_},
@@ -197,10 +185,7 @@ BOOST_AUTO_TEST_CASE(success_eof_shared_fields_empty)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto ok_packet = create_message(
-                4,
-                {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62}
-            );
+            auto ok_packet = create_message(4, {0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62});
             auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_},
@@ -269,10 +254,7 @@ BOOST_AUTO_TEST_CASE(error_deserializing_row)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto r = create_message(0, {0x00});  // invalid row
-            auto st = create_execution_state(
-                resultset_encoding::binary,
-                {protocol_field_type::var_string}
-            );
+            auto st = create_execution_state(resultset_encoding::binary, {protocol_field_type::var_string});
             test_channel chan = create_channel();
             rows rws = make_initial_rows();
             chan.lowest_layer().add_message(r);

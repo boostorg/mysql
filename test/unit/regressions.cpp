@@ -41,8 +41,8 @@ BOOST_AUTO_TEST_CASE(side_effects_in_initiation)
     resultset result1, result2;
 
     // Resultsets will be complete as soon as a message is read
-    auto ok_packet_1 = create_ok_packet_message(1, 1, 6, 0, 9, "ab", 0x00);
-    auto ok_packet_2 = create_ok_packet_message(1, 2, 0, 0, 0, "uv", 0x00);
+    auto ok_packet_1 = create_ok_packet_message(1, 1, 6, 0, 9, "ab");
+    auto ok_packet_2 = create_ok_packet_message(1, 2, 0, 0, 0, "uv");
     conn.stream().add_message(ok_packet_2);
     conn.stream().add_message(ok_packet_1);
 

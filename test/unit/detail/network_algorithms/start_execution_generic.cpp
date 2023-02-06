@@ -34,12 +34,12 @@
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "network_result.hpp"
 #include "printing.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "test_stream.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
 using boost::mysql::client_errc;
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_ok_packet_message_execute(1, 42, 43, 44, 45, "abc");
+            auto response = create_ok_packet_message(1, 42, 43, 44, 45, "abc");
             fix.chan.lowest_layer().add_message(response);
 
             // Call the function

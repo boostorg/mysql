@@ -19,12 +19,12 @@
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 #include "test_statement.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
 using boost::mysql::client_errc;
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(success)
             auto result = create_initial_resultset();
             test_connection conn;
             auto stmt = create_statement(conn, 2);
-            conn.stream().add_message(create_ok_packet_message_execute(1, 2, 3, 4, 5, "info"));
+            conn.stream().add_message(create_ok_packet_message(1, 2, 3, 4, 5, "info"));
 
             // Call the function
             fns.execute_statement(stmt, std::make_tuple("test", nullptr), result).validate_no_error();
@@ -157,7 +157,7 @@ struct fixture
         0x00, 0x08, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
 
-    fixture() { conn.stream().add_message(create_ok_packet_message_execute(1)); }
+    fixture() { conn.stream().add_message(create_ok_packet_message(1)); }
 };
 
 BOOST_AUTO_TEST_CASE(rvalue)

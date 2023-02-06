@@ -14,10 +14,10 @@
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
 using boost::mysql::error_code;
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(success)
         {
             execution_state st{create_initial_state()};
             test_connection conn;
-            conn.stream().add_message(create_ok_packet_message_execute(1, 2));
+            conn.stream().add_message(create_ok_packet_message(1, 2));
 
             // Call the function
             fns.start_query(conn, "SELECT 1", st).validate_no_error();

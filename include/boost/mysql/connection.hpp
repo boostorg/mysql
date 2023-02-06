@@ -426,6 +426,8 @@ public:
      * `st` must have previously been populated by a function starting the multifunction
      * operation, like \ref start_query or \ref statement::start_execution. Otherwise, the results
      * are undefined.
+     *\n
+     * This operation involves only reads on the underlying stream.
      */
     row_view read_one_row(execution_state& st, error_code& err, server_diagnostics& info);
 
@@ -473,6 +475,8 @@ public:
      * \n
      * The returned view points into memory owned by `*this`. It will be valid until the
      * underlying stream performs any other read operation or is destroyed.
+     *\n
+     * This operation involves only reads on the underlying stream.
      */
     rows_view read_some_rows(execution_state& st, error_code& err, server_diagnostics& info);
 
@@ -502,6 +506,46 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_some_rows(
         execution_state& st,
+        server_diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Checks whether the server is alive.
+     * \details
+     * If the server is alive, this function will complete without error.
+     * If it's not, it will fail with the relevant network or protocol error.
+     *\n
+     * Note that ping requests are treated as any other type of request at the protocol
+     * level, and won't be prioritized anyhow by the server. If the server is stuck
+     * in a long-running query, the ping request won't be answered until the query is
+     * finished.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     */
+    void ping(error_code&, server_diagnostics&);
+
+    /// \copydoc ping
+    void ping();
+
+    /**
+     * \copydoc ping
+     * \details
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_ping(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
+    {
+        return async_ping(this->shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_ping
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_ping(
         server_diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

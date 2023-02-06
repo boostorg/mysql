@@ -59,11 +59,8 @@ unit-test boost_mysql_integrationtests
         utils/src/sync_errc.cpp
         utils/src/sync_exc.cpp
         utils/src/async_callback.cpp
-        utils/src/async_callback_noerrinfo.cpp
-        utils/src/async_future.cpp
-        utils/src/async_coroutine.cpp
-        utils/src/async_coroutinecpp20.cpp
-        utils/src/default_completion_tokens.cpp
+        utils/src/async_coroutines.cpp
+        utils/src/async_coroutinescpp20.cpp
 
         # Actual tests
         spotchecks.cpp

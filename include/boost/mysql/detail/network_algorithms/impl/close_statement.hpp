@@ -87,8 +87,8 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_close_statement(
     channel<Stream>& chan,
     statement_base& stmt,
-    CompletionToken&& token,
-    server_diagnostics& diag
+    server_diagnostics& diag,
+    CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(

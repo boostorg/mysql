@@ -79,7 +79,7 @@ public:
 
     error_code process_field_definition(boost::asio::const_buffer message)
     {
-        column_definition_packet field_definition;
+        column_definition_packet field_definition{};
         deserialization_context ctx(message, chan_.current_capabilities());
         auto err = deserialize_message(ctx, field_definition);
         if (err)

@@ -10,6 +10,8 @@
 
 #include <boost/mysql/tcp.hpp>
 
+#include <boost/asio/io_context.hpp>
+
 #include "get_endpoint.hpp"
 #include "integration_test_common.hpp"
 #include "streams.hpp"

@@ -28,12 +28,12 @@
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 #include "test_statement.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
 using boost::mysql::client_errc;
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE(success)
         BOOST_TEST_CONTEXT(fns.name)
         {
             execution_state st{create_initial_state()};
-            auto ok_pack = create_ok_packet_message_execute(1, 2);
+            auto ok_pack = create_ok_packet_message(1, 2);
             test_connection conn;
             auto stmt = create_statement(conn, 2);
             conn.stream().add_message(ok_pack);
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(tuple_parameter_types)
         boost::mysql::date(2020, 1, 2)
     );
     test_statement stmt{create_statement(conn, std::tuple_size<decltype(params)>::value)};
-    conn.stream().add_message(create_ok_packet_message_execute(1));
+    conn.stream().add_message(create_ok_packet_message(1));
 
     // Execute
     stmt.start_execution(params, st);
@@ -222,7 +222,7 @@ struct fixture
         0x00, 0x08, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
 
-    fixture() { conn.stream().add_message(create_ok_packet_message_execute(1)); }
+    fixture() { conn.stream().add_message(create_ok_packet_message(1)); }
 };
 
 BOOST_AUTO_TEST_CASE(rvalue)

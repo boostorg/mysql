@@ -24,11 +24,7 @@ template <
     class SocketStream,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_close_connection(
-    channel<SocketStream>& chan,
-    CompletionToken&& token,
-    server_diagnostics& diag
-);
+async_close_connection(channel<SocketStream>& chan, server_diagnostics& diag, CompletionToken&& token);
 
 }  // namespace detail
 }  // namespace mysql

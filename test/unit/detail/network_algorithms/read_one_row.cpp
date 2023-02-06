@@ -17,10 +17,10 @@
 
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::client_errc;
 using boost::mysql::error_code;
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(success)
         {
             auto row1 = create_message(4, {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07});
             auto row2 = create_message(5, {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78});
-            auto ok_packet = create_ok_packet_message(6, 1, 6, 0, 9, "ab");
+            auto ok_packet = create_eof_packet_message(6, 1, 6, 0, 9, "ab");
             auto st = create_execution_state(
                 resultset_encoding::binary,
                 {protocol_field_type::var_string, protocol_field_type::short_},
@@ -71,9 +71,7 @@ BOOST_AUTO_TEST_CASE(success)
             row_view rv = fns.read_one_row(conn, st).get();
             BOOST_TEST(rv == makerow("min", 1901));
             BOOST_TEST(!st.complete());
-            BOOST_TEST(
-                connection_access::get_channel(conn).shared_sequence_number() == 0u
-            );  // not used
+            BOOST_TEST(connection_access::get_channel(conn).shared_sequence_number() == 0u);  // not used
 
             // 2nd row
             rv = fns.read_one_row(conn, st).get();
@@ -136,10 +134,7 @@ BOOST_AUTO_TEST_CASE(error_deserializing_row)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto r = create_message(0, {0x00});  // invalid row
-            auto st = create_execution_state(
-                resultset_encoding::binary,
-                {protocol_field_type::var_string}
-            );
+            auto st = create_execution_state(resultset_encoding::binary, {protocol_field_type::var_string});
             test_connection conn;
             conn.stream().add_message(r);
 

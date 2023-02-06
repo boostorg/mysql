@@ -20,11 +20,9 @@ namespace detail {
 template <class Stream>
 void quit_connection(channel<Stream>& chan, error_code& code, server_diagnostics& diag);
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_quit_connection(channel<Stream>& chan, CompletionToken&& token, server_diagnostics& diag);
+async_quit_connection(channel<Stream>& chan, server_diagnostics& diag, CompletionToken&& token);
 
 }  // namespace detail
 }  // namespace mysql

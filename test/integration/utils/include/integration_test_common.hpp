@@ -15,6 +15,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/system_executor.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <initializer_list>
@@ -43,10 +44,6 @@ struct network_fixture : network_fixture_base
     er_network_variant* var{};
     er_connection_ptr conn;
     er_statement_ptr stmt;
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard;
-    std::thread runner;
-
-    network_fixture() : guard(ctx.get_executor()), runner([this] { ctx.run(); }) {}
 
     ~network_fixture()
     {
@@ -54,8 +51,6 @@ struct network_fixture : network_fixture_base
         {
             conn->sync_close();
         }
-        guard.reset();
-        runner.join();
     }
 
     void setup(er_network_variant* variant)
@@ -69,7 +64,7 @@ struct network_fixture : network_fixture_base
     void setup_and_physical_connect(er_network_variant* net)
     {
         setup(net);
-        conn->physical_connect().validate_no_error();
+        conn->physical_connect();
     }
 
     void setup_and_connect(er_network_variant* variant, ssl_mode m = ssl_mode::require)

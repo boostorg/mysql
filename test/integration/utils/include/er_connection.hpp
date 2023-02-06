@@ -34,18 +34,20 @@ public:
     virtual bool uses_ssl() const = 0;
     virtual bool is_open() const = 0;
     virtual void set_metadata_mode(metadata_mode v) = 0;
-    virtual network_result<no_result> physical_connect() = 0;
-    virtual network_result<no_result> connect(const handshake_params&) = 0;
-    virtual network_result<no_result> handshake(const handshake_params&) = 0;
-    virtual network_result<no_result> query(string_view query, resultset& result) = 0;
-    virtual network_result<no_result> start_query(string_view query, execution_state& result) = 0;
-    virtual network_result<no_result> prepare_statement(string_view statement, er_statement& stmt) = 0;
-    virtual network_result<row_view> read_one_row(execution_state& st) = 0;
-    virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;
-    virtual network_result<no_result> quit() = 0;
-    virtual network_result<no_result> close() = 0;
+    virtual void physical_connect() = 0;     // used by fixture setup functions
     virtual void sync_close() noexcept = 0;  // used by fixture cleanup functions
     virtual er_network_variant& variant() const = 0;
+
+    virtual network_result<void> connect(const handshake_params&) = 0;
+    virtual network_result<void> handshake(const handshake_params&) = 0;
+    virtual network_result<void> query(string_view query, resultset& result) = 0;
+    virtual network_result<void> start_query(string_view query, execution_state& result) = 0;
+    virtual network_result<void> prepare_statement(string_view statement, er_statement& stmt) = 0;
+    virtual network_result<row_view> read_one_row(execution_state& st) = 0;
+    virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;
+    virtual network_result<void> ping() = 0;
+    virtual network_result<void> quit() = 0;
+    virtual network_result<void> close() = 0;
 };
 
 using er_connection_ptr = std::unique_ptr<er_connection>;

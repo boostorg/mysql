@@ -17,30 +17,9 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-// A TCP socket that has use_future as default completion token
-class future_executor : public boost::asio::io_context::executor_type
-{
-public:
-    future_executor(const boost::asio::io_context::executor_type& inner)
-        : boost::asio::io_context::executor_type(inner)
-    {
-    }
-    using default_completion_token_type = boost::asio::use_future_t<>;
-
-    // Required to build in MSVC for some arcane reason
-    operator boost::asio::any_io_executor() const
-    {
-        return boost::asio::any_io_executor(
-            static_cast<const boost::asio::io_context::executor_type>(*this)
-        );
-    }
-};
-
 // The actual streams we will be using to test
 using tcp_socket = boost::asio::ip::tcp::socket;
 using tcp_ssl_socket = boost::asio::ssl::stream<tcp_socket>;
-using tcp_ssl_future_socket = boost::asio::ssl::stream<
-    boost::asio::basic_stream_socket<boost::asio::ip::tcp, future_executor> >;
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 using unix_socket = boost::asio::local::stream_protocol::socket;
@@ -59,11 +38,6 @@ template <>
 constexpr const char* get_stream_name<tcp_ssl_socket>()
 {
     return "tcp_ssl";
-}
-template <>
-constexpr const char* get_stream_name<tcp_ssl_future_socket>()
-{
-    return "tcp_ssl_default_token";
 }
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
@@ -89,11 +63,6 @@ constexpr bool supports_ssl<tcp_socket>()
 }
 template <>
 constexpr bool supports_ssl<tcp_ssl_socket>()
-{
-    return true;
-}
-template <>
-constexpr bool supports_ssl<tcp_ssl_future_socket>()
 {
     return true;
 }

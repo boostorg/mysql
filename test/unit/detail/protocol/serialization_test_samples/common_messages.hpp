@@ -195,6 +195,12 @@ const serialization_test_spec quit_packet_spec {
         { "quit_packet", detail::quit_packet(), {0x01} }
     }
 };
+
+const serialization_test_spec ping_packet_spec {
+    serialization_test_type::serialization, {
+        { "ping_packet", detail::ping_packet(), {0x0e} }
+    }
+};
 // clang-format on
 
 }  // namespace test

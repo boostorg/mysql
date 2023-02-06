@@ -10,7 +10,7 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/asio/io_context.hpp>
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/core/span.hpp>
 
@@ -31,7 +31,7 @@ public:
     virtual const char* stream_name() const = 0;
     virtual const char* variant_name() const = 0;
     std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }
-    virtual er_connection_ptr create_connection(boost::asio::io_context::executor_type, boost::asio::ssl::context&) = 0;
+    virtual er_connection_ptr create_connection(boost::asio::any_io_executor, boost::asio::ssl::context&) = 0;
     virtual er_statement_ptr create_statement() = 0;
 };
 

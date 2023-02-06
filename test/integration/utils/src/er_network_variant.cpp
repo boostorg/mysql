@@ -5,18 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/core/span.hpp>
-
-#include <algorithm>
-#include <functional>
-#include <iterator>
-#include <stdexcept>
+#include <exception>
 #include <unordered_map>
 
 #include "er_impl_common.hpp"
 #include "er_network_variant.hpp"
 
 using namespace boost::mysql::test;
+using boost::mysql::error_code;
 
 static std::vector<er_network_variant*> make_all_variants()
 {
@@ -24,11 +20,8 @@ static std::vector<er_network_variant*> make_all_variants()
     add_sync_errc(res);
     add_sync_exc(res);
     add_async_callback(res);
-    add_async_callback_noerrinfo(res);
-    add_async_future(res);
-    add_async_coroutine(res);
-    add_async_coroutinecpp20(res);
-    add_default_completion_tokens(res);
+    add_async_coroutines(res);
+    add_async_coroutinescpp20(res);
     return res;
 }
 

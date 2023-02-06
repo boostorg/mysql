@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_RUN_COROUTINE_HPP
 
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
 

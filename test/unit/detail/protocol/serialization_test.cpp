@@ -55,6 +55,7 @@ samples_by_type make_all_samples()
         &err_packet_spec,
         &column_definition_spec,
         &quit_packet_spec,
+        &ping_packet_spec,
 
         &handshake_packet_spec,
         &handshake_response_packet_spec,
@@ -79,12 +80,8 @@ samples_by_type make_all_samples()
     {
         switch (spec->type)
         {
-        case serialization_test_type::serialization:
-            add_samples(*spec, res.serialization_samples);
-            break;
-        case serialization_test_type::deserialization:
-            add_samples(*spec, res.deserialization_samples);
-            break;
+        case serialization_test_type::serialization: add_samples(*spec, res.serialization_samples); break;
+        case serialization_test_type::deserialization: add_samples(*spec, res.deserialization_samples); break;
         case serialization_test_type::deserialization_space:
             add_samples(*spec, res.deserialization_samples);
             add_samples(*spec, res.space_samples);

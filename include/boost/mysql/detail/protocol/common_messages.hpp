@@ -61,13 +61,9 @@ struct ok_packet
 };
 
 template <>
-struct serialization_traits<ok_packet, serialization_tag::struct_with_fields>
-    : noop_serialize<ok_packet>
+struct serialization_traits<ok_packet, serialization_tag::struct_with_fields> : noop_serialize<ok_packet>
 {
-    static inline deserialize_errc deserialize_(
-        deserialization_context& ctx,
-        ok_packet& output
-    ) noexcept;
+    static inline deserialize_errc deserialize_(deserialization_context& ctx, ok_packet& output) noexcept;
 };
 
 // err packet
@@ -144,6 +140,17 @@ struct serialization_traits<column_definition_packet, serialization_tag::struct_
 struct quit_packet
 {
     static constexpr std::uint8_t command_id = 0x01;
+
+    template <class Self, class Callable>
+    static void apply(Self&, Callable&&) noexcept
+    {
+    }
+};
+
+// connection ping
+struct ping_packet
+{
+    static constexpr std::uint8_t command_id = 0x0e;
 
     template <class Self, class Callable>
     static void apply(Self&, Callable&&) noexcept

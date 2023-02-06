@@ -34,10 +34,7 @@ inline std::vector<std::uint8_t> create_message(std::uint8_t seqnum, std::vector
     boost::mysql::detail::packet_header header{boost::mysql::detail::int3{body_size}, seqnum};
     body.resize(body_size + 4);
     std::memmove(body.data() + 4, body.data(), body_size);
-    boost::mysql::detail::serialization_context ctx(
-        boost::mysql::detail::capabilities(),
-        body.data()
-    );
+    boost::mysql::detail::serialization_context ctx(boost::mysql::detail::capabilities(), body.data());
     boost::mysql::detail::serialize(ctx, header);
     return body;
 }
@@ -49,10 +46,7 @@ inline std::vector<std::uint8_t> create_message(
     std::vector<std::uint8_t> body2
 )
 {
-    return concat_copy(
-        create_message(seqnum1, std::move(body1)),
-        create_message(seqnum2, std::move(body2))
-    );
+    return concat_copy(create_message(seqnum1, std::move(body1)), create_message(seqnum2, std::move(body2)));
 }
 
 inline std::vector<std::uint8_t> create_message(
@@ -100,6 +94,32 @@ inline detail::ok_packet create_ok_packet(
     };
 }
 
+inline std::vector<std::uint8_t> create_ok_packet_body(
+    std::uint64_t affected_rows = 0,
+    std::uint64_t last_insert_id = 0,
+    std::uint16_t status_flags = 0,
+    std::uint16_t warnings = 0,
+    string_view info = "",
+    std::uint8_t header = 0x00
+)
+{
+    auto pack = create_ok_packet(affected_rows, last_insert_id, status_flags, warnings, info);
+    auto res = serialize_to_vector(
+        std::uint8_t(header),
+        pack.affected_rows,
+        pack.last_insert_id,
+        pack.status_flags,
+        pack.warnings
+    );
+    // When info is empty, it's actually omitted in the ok_packet
+    if (!info.empty())
+    {
+        auto vinfo = serialize_to_vector(pack.info);
+        concat(res, vinfo);
+    }
+    return res;
+}
+
 inline std::vector<std::uint8_t> create_ok_packet_message(
     std::uint8_t seqnum,
     std::uint64_t affected_rows = 0,
@@ -107,24 +127,16 @@ inline std::vector<std::uint8_t> create_ok_packet_message(
     std::uint16_t status_flags = 0,
     std::uint16_t warnings = 0,
     string_view info = "",
-    std::uint8_t header = 0xfe
+    std::uint8_t header = 0x00
 )
 {
-    auto pack = create_ok_packet(affected_rows, last_insert_id, status_flags, warnings, info);
     return create_message(
         seqnum,
-        serialize_to_vector(
-            std::uint8_t(header),
-            pack.affected_rows,
-            pack.last_insert_id,
-            pack.status_flags,
-            pack.warnings,
-            pack.info
-        )
+        create_ok_packet_body(affected_rows, last_insert_id, status_flags, warnings, info, header)
     );
 }
 
-inline std::vector<std::uint8_t> create_ok_packet_message_execute(
+inline std::vector<std::uint8_t> create_eof_packet_message(
     std::uint8_t seqnum,
     std::uint64_t affected_rows = 0,
     std::uint64_t last_insert_id = 0,
@@ -140,7 +152,24 @@ inline std::vector<std::uint8_t> create_ok_packet_message_execute(
         status_flags,
         warnings,
         info,
-        0x00
+        0xfe
+    );
+}
+
+inline std::vector<std::uint8_t> create_err_packet_body(server_errc code, string_view message = "")
+{
+    detail::err_packet pack{
+        static_cast<std::uint16_t>(code),
+        detail::string_fixed<1>{},
+        detail::string_fixed<5>{},
+        detail::string_eof{message},
+    };
+    return serialize_to_vector(
+        std::uint8_t(0xff),
+        pack.error_code,
+        pack.sql_state_marker,
+        pack.sql_state,
+        pack.error_message
     );
 }
 
@@ -150,22 +179,7 @@ inline std::vector<std::uint8_t> create_err_packet_message(
     string_view message = ""
 )
 {
-    detail::err_packet pack{
-        static_cast<std::uint16_t>(code),
-        detail::string_fixed<1>{},
-        detail::string_fixed<5>{},
-        detail::string_eof{message}};
-
-    return create_message(
-        seqnum,
-        serialize_to_vector(
-            std::uint8_t(0xff),
-            pack.error_code,
-            pack.sql_state_marker,
-            pack.sql_state,
-            pack.error_message
-        )
-    );
+    return create_message(seqnum, create_err_packet_body(code, message));
 }
 
 inline std::vector<std::uint8_t> create_coldef_message(

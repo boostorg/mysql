@@ -25,6 +25,7 @@ add_executable(
     detail/network_algorithms/read_all_rows.cpp
     detail/network_algorithms/query.cpp
     detail/network_algorithms/execute_statement.cpp
+    detail/network_algorithms/ping.cpp
     detail/protocol/capabilities.cpp
     detail/protocol/null_bitmap_traits.cpp
     detail/protocol/deserialize_errc.cpp

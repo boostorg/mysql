@@ -19,11 +19,11 @@
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
-#include "netfun_maker.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
 using boost::mysql::column_type;
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(success)
         {
             auto result = create_initial_resultset();
             test_connection conn;
-            conn.stream().add_message(create_ok_packet_message_execute(1, 2, 3, 4, 5, "info"));
+            conn.stream().add_message(create_ok_packet_message(1, 2, 3, 4, 5, "info"));
 
             // Call the function
             fns.query(conn, "SELECT 1", result).validate_no_error();

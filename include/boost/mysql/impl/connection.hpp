@@ -21,6 +21,7 @@
 #include <boost/mysql/detail/network_algorithms/close_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/connect.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
+#include <boost/mysql/detail/network_algorithms/ping.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/query.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
@@ -221,53 +222,7 @@ boost::mysql::connection<Stream>::async_prepare_statement(
     );
 }
 
-// Close
-template <class Stream>
-void boost::mysql::connection<Stream>::close(error_code& err, server_diagnostics& diag)
-{
-    detail::clear_errors(err, diag);
-    detail::close_connection(get_channel(), err, diag);
-}
-
-template <class Stream>
-void boost::mysql::connection<Stream>::close()
-{
-    detail::error_block blk;
-    detail::close_connection(get_channel(), blk.err, blk.diag);
-    blk.check(BOOST_CURRENT_LOCATION);
-}
-
-template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::connection<Stream>::async_close(server_diagnostics& diag, CompletionToken&& token)
-{
-    return detail::async_close_connection(get_channel(), std::forward<CompletionToken>(token), diag);
-}
-
-template <class Stream>
-void boost::mysql::connection<Stream>::quit(error_code& err, server_diagnostics& diag)
-{
-    detail::clear_errors(err, diag);
-    detail::quit_connection(get_channel(), err, diag);
-}
-
-template <class Stream>
-void boost::mysql::connection<Stream>::quit()
-{
-    detail::error_block blk;
-    detail::quit_connection(get_channel(), blk.err, blk.diag);
-    blk.check(BOOST_CURRENT_LOCATION);
-}
-
-template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::connection<Stream>::async_quit(server_diagnostics& diag, CompletionToken&& token)
-{
-    return detail::async_quit_connection(get_channel(), std::forward<CompletionToken>(token), diag);
-}
-
+// read one row
 template <class Stream>
 boost::mysql::row_view boost::mysql::connection<Stream>::read_one_row(
     execution_state& st,
@@ -301,6 +256,7 @@ boost::mysql::connection<Stream>::async_read_one_row(
     return detail::async_read_one_row(get_channel(), st, diag, std::forward<CompletionToken>(token));
 }
 
+// read some rows
 template <class Stream>
 boost::mysql::rows_view boost::mysql::connection<Stream>::read_some_rows(
     execution_state& st,
@@ -332,6 +288,78 @@ boost::mysql::connection<Stream>::async_read_some_rows(
 )
 {
     return detail::async_read_some_rows(get_channel(), st, diag, std::forward<CompletionToken>(token));
+}
+
+// ping
+template <class Stream>
+void boost::mysql::connection<Stream>::ping(error_code& err, server_diagnostics& diag)
+{
+    detail::clear_errors(err, diag);
+    detail::ping(get_channel(), err, diag);
+}
+
+template <class Stream>
+void boost::mysql::connection<Stream>::ping()
+{
+    detail::error_block blk;
+    detail::ping(get_channel(), blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_ping(server_diagnostics& diag, CompletionToken&& token)
+{
+    return detail::async_ping(get_channel(), diag, std::forward<CompletionToken>(token));
+}
+
+// Close
+template <class Stream>
+void boost::mysql::connection<Stream>::close(error_code& err, server_diagnostics& diag)
+{
+    detail::clear_errors(err, diag);
+    detail::close_connection(get_channel(), err, diag);
+}
+
+template <class Stream>
+void boost::mysql::connection<Stream>::close()
+{
+    detail::error_block blk;
+    detail::close_connection(get_channel(), blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_close(server_diagnostics& diag, CompletionToken&& token)
+{
+    return detail::async_close_connection(get_channel(), diag, std::forward<CompletionToken>(token));
+}
+
+// quit
+template <class Stream>
+void boost::mysql::connection<Stream>::quit(error_code& err, server_diagnostics& diag)
+{
+    detail::clear_errors(err, diag);
+    detail::quit_connection(get_channel(), err, diag);
+}
+
+template <class Stream>
+void boost::mysql::connection<Stream>::quit()
+{
+    detail::error_block blk;
+    detail::quit_connection(get_channel(), blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_quit(server_diagnostics& diag, CompletionToken&& token)
+{
+    return detail::async_quit_connection(get_channel(), diag, std::forward<CompletionToken>(token));
 }
 
 struct boost::mysql::detail::connection_access

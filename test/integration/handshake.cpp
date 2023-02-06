@@ -50,7 +50,7 @@ auto net_samples_both = create_network_samples({
     "tcp_ssl_sync_errc",
     "tcp_ssl_async_callback",
     "tcp_sync_exc",
-    "tcp_async_callback_noerrinfo",
+    "tcp_async_coroutines",
 });
 
 BOOST_AUTO_TEST_SUITE(test_handshake)

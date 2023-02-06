@@ -27,10 +27,7 @@ struct close_connection_op : boost::asio::coroutine
     channel<SocketStream>& chan_;
     server_diagnostics& diag_;
 
-    close_connection_op(channel<SocketStream>& chan, server_diagnostics& diag)
-        : chan_(chan), diag_(diag)
-    {
-    }
+    close_connection_op(channel<SocketStream>& chan, server_diagnostics& diag) : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {})
@@ -47,7 +44,7 @@ struct close_connection_op : boost::asio::coroutine
                 BOOST_ASIO_CORO_YIELD break;
             }
 
-            BOOST_ASIO_CORO_YIELD async_quit_connection(chan_, std::move(self), diag_);
+            BOOST_ASIO_CORO_YIELD async_quit_connection(chan_, diag_, std::move(self));
 
             // We call close regardless of the quit outcome
             close_err = chan_.close();
@@ -87,8 +84,8 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_close_connection(
     channel<SocketStream>& chan,
-    CompletionToken&& token,
-    server_diagnostics& diag
+    server_diagnostics& diag,
+    CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
