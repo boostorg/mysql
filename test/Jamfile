@@ -123,3 +123,5 @@ alias test_common
     :
         <include>common
     ;
+
+build-project unit ;

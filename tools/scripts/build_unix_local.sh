@@ -8,9 +8,9 @@
 
 set -e
 
-BK=docs
-IMAGE=build-docs
-CONTAINER=builder-$IMAGE
+BK=b2
+IMAGE=build-gcc11
+CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
 
 docker start mysql
@@ -26,12 +26,13 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --valgrind=0 \
     --coverage=0 \
     --clean=0 \
-    --toolset=clang \
-    --cxxstd=20 \
-    --variant=debug \
+    --toolset=gcc \
+    --cxxstd=17 \
+    --variant=release \
     --cmake-standalone-tests=1 \
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \
+    --cmake-build-type=Release \
     --stdlib=native
 
 if [ "$BK" == "docs" ]; then

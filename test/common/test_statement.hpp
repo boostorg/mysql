@@ -29,7 +29,7 @@ inline test_statement create_statement(
     std::uint32_t stmt_id = 1
 )
 {
-    test_statement stmt{};
+    test_statement stmt;
     detail::statement_base_access::reset(
         stmt,
         detail::connection_access::get_channel(conn),
