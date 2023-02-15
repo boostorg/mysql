@@ -10,7 +10,7 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
@@ -28,11 +28,11 @@
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
 #include "create_message.hpp"
+#include "create_statement.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
-#include "test_statement.hpp"
 #include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
@@ -40,6 +40,7 @@ using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
+using boost::mysql::statement;
 using boost::mysql::string_view;
 using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
@@ -51,33 +52,45 @@ namespace {
 // Machinery to treat iterator and tuple overloads the same
 using netfun_maker_it = netfun_maker_mem<
     void,
-    test_statement,
+    test_connection,
+    const statement&,
     const field_view*,
     const field_view*,
     execution_state&>;
 
 using netfun_maker_tuple = netfun_maker_mem<
     void,
-    test_statement,
+    test_connection,
+    const statement&,
     const std::tuple<field_view, field_view>&,
     execution_state&>;
 
 using start_statement_execution_fn = std::function<
-    network_result<void>(test_statement&, field_view, field_view, execution_state&)>;
+    network_result<void>(test_connection&, const statement&, field_view, field_view, execution_state&)>;
 
 start_statement_execution_fn to_common_sig(const netfun_maker_it::signature& sig)
 {
-    return [sig](test_statement& stmt, field_view p1, field_view p2, execution_state& st) {
+    return [sig](
+               test_connection& conn,
+               const statement& stmt,
+               field_view p1,
+               field_view p2,
+               execution_state& st
+           ) {
         field_view params[] = {p1, p2};
-        return sig(stmt, std::begin(params), std::end(params), st);
+        return sig(conn, stmt, std::begin(params), std::end(params), st);
     };
 }
 
 start_statement_execution_fn to_common_sig(const netfun_maker_tuple::signature& sig)
 {
-    return [sig](test_statement& stmt, field_view p1, field_view p2, execution_state& st) {
-        return sig(stmt, std::make_tuple(p1, p2), st);
-    };
+    return [sig](
+               test_connection& conn,
+               const statement& stmt,
+               field_view p1,
+               field_view p2,
+               execution_state& st
+           ) { return sig(conn, stmt, std::make_tuple(p1, p2), st); };
 }
 
 struct
@@ -85,18 +98,20 @@ struct
     start_statement_execution_fn start_statement_execution;
     const char* name;
 } all_fns[] = {
-    {to_common_sig(netfun_maker_it::sync_errc(&test_statement::start_execution)),                "sync_errc_it"   },
-    {to_common_sig(netfun_maker_tuple::sync_errc(&test_statement::start_execution)),             "sync_errc_tuple"},
-    {to_common_sig(netfun_maker_it::sync_exc(&test_statement::start_execution)),                 "sync_exc_it"    },
-    {to_common_sig(netfun_maker_tuple::sync_exc(&test_statement::start_execution)),              "sync_exc_tuple" },
-    {to_common_sig(netfun_maker_it::async_errinfo(&test_statement::async_start_execution)),
-     "async_errinfo_it"                                                                                           },
-    {to_common_sig(netfun_maker_tuple::async_errinfo(&test_statement::async_start_execution)),
-     "async_errinfo_tuple"                                                                                        },
-    {to_common_sig(netfun_maker_it::async_noerrinfo(&test_statement::async_start_execution)),
-     "async_noerrinfo_it"                                                                                         },
-    {to_common_sig(netfun_maker_tuple::async_noerrinfo(&test_statement::async_start_execution)),
-     "async_noerrinfo_tuple"                                                                                      },
+    {to_common_sig(netfun_maker_it::sync_errc(&test_connection::start_statement_execution)),                "sync_errc_it"},
+    {to_common_sig(netfun_maker_tuple::sync_errc(&test_connection::start_statement_execution)),
+     "sync_errc_tuple"                                                                                                    },
+    {to_common_sig(netfun_maker_it::sync_exc(&test_connection::start_statement_execution)),                 "sync_exc_it" },
+    {to_common_sig(netfun_maker_tuple::sync_exc(&test_connection::start_statement_execution)),
+     "sync_exc_tuple"                                                                                                     },
+    {to_common_sig(netfun_maker_it::async_errinfo(&test_connection::async_start_statement_execution)),
+     "async_errinfo_it"                                                                                                   },
+    {to_common_sig(netfun_maker_tuple::async_errinfo(&test_connection::async_start_statement_execution)),
+     "async_errinfo_tuple"                                                                                                },
+    {to_common_sig(netfun_maker_it::async_noerrinfo(&test_connection::async_start_statement_execution)),
+     "async_noerrinfo_it"                                                                                                 },
+    {to_common_sig(netfun_maker_tuple::async_noerrinfo(&test_connection::async_start_statement_execution)),
+     "async_noerrinfo_tuple"                                                                                              },
 };
 
 // Verify that we reset the state
@@ -116,11 +131,11 @@ BOOST_AUTO_TEST_CASE(success)
             execution_state st{create_initial_state()};
             auto ok_pack = create_ok_packet_message(1, 2);
             test_connection conn;
-            auto stmt = create_statement(conn, 2);
+            auto stmt = create_statement(2);
             conn.stream().add_message(ok_pack);
 
             // Call the function
-            fns.start_statement_execution(stmt, field_view("test"), field_view(nullptr), st)
+            fns.start_statement_execution(conn, stmt, field_view("test"), field_view(nullptr), st)
                 .validate_no_error();
 
             // Verify the message we sent
@@ -149,11 +164,11 @@ BOOST_AUTO_TEST_CASE(error_start_execution_generic)
         {
             execution_state st{create_initial_state()};
             test_connection conn;
-            auto stmt = create_statement(conn, 2);
+            auto stmt = create_statement(2);
             conn.stream().set_fail_count(fail_count(0, client_errc::server_unsupported));
 
             // Call the function
-            fns.start_statement_execution(stmt, field_view("test"), field_view(nullptr), st)
+            fns.start_statement_execution(conn, stmt, field_view("test"), field_view(nullptr), st)
                 .validate_error_exact(client_errc::server_unsupported);
         }
     }
@@ -167,10 +182,10 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
         {
             execution_state st{create_initial_state()};
             test_connection conn;
-            auto stmt = create_statement(conn, 3);
+            auto stmt = create_statement(3);
 
             // Call the function
-            fns.start_statement_execution(stmt, field_view("test"), field_view(nullptr), st)
+            fns.start_statement_execution(conn, stmt, field_view("test"), field_view(nullptr), st)
                 .validate_error_exact(client_errc::wrong_num_params);
         }
     }
@@ -191,11 +206,11 @@ BOOST_AUTO_TEST_CASE(tuple_parameter_types)
         nullptr,
         boost::mysql::date(2020, 1, 2)
     );
-    test_statement stmt{create_statement(conn, std::tuple_size<decltype(params)>::value)};
+    statement stmt{create_statement(std::tuple_size<decltype(params)>::value)};
     conn.stream().add_message(create_ok_packet_message(1));
 
     // Execute
-    stmt.start_execution(params, st);
+    conn.start_statement_execution(stmt, params, st);
 
     // Verify
     std::uint8_t expected_msg[] = {
@@ -215,7 +230,7 @@ struct fixture
 {
     execution_state st{create_initial_state()};
     test_connection conn;
-    test_statement stmt{create_statement(conn, 2)};
+    statement stmt{create_statement(2)};
 
     static constexpr std::uint8_t expected_msg[]{
         0x1d, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xfe,
@@ -231,7 +246,8 @@ BOOST_AUTO_TEST_CASE(rvalue)
         fixture fix;
 
         // Deferred op
-        auto aw = fix.stmt.async_start_execution(
+        auto aw = fix.conn.async_start_statement_execution(
+            fix.stmt,
             std::make_tuple(std::string("test"), 42),
             fix.st,
             boost::asio::use_awaitable
@@ -251,7 +267,7 @@ BOOST_AUTO_TEST_CASE(lvalue)
 
         // Deferred op
         auto tup = std::make_tuple(std::string("test"), 42);
-        auto aw = fix.stmt.async_start_execution(tup, fix.st, boost::asio::use_awaitable);
+        auto aw = fix.conn.async_start_statement_execution(fix.stmt, tup, fix.st, boost::asio::use_awaitable);
         tup = std::make_tuple(std::string("other"), 90);
         co_await std::move(aw);
 
@@ -268,7 +284,7 @@ BOOST_AUTO_TEST_CASE(const_lvalue)
 
         // Deferred op
         const auto tup = std::make_tuple(std::string("test"), 42);
-        auto aw = fix.stmt.async_start_execution(tup, fix.st, boost::asio::use_awaitable);
+        auto aw = fix.conn.async_start_statement_execution(fix.stmt, tup, fix.st, boost::asio::use_awaitable);
         co_await std::move(aw);
 
         // verify that the op had the intended effects

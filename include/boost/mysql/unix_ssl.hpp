@@ -19,11 +19,7 @@ namespace mysql {
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
 
 /// A connection to MySQL over a UNIX domain socket over TLS.
-using unix_ssl_connection = connection<
-    boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
-
-/// The statement type to use with \ref unix_ssl_connection.
-using unix_ssl_statement = typename unix_ssl_connection::statement_type;
+using unix_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
 
 #endif
 

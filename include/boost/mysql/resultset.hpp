@@ -63,7 +63,7 @@ public:
     /**
      * \brief Returns whether the object holds a valid result.
      * \details Having `this->has_value()` is a precondition to call all data accessors.
-     * Objects populated by \ref connection::query, \ref statement::execute or their async
+     * Objects populated by \ref connection::query, \ref connection::execute_statement or their async
      * counterparts are guaranteed to have `this->has_value()`.
      */
     bool has_value() const noexcept { return st_.complete(); }

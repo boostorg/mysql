@@ -23,7 +23,6 @@
 
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
-#include "er_statement.hpp"
 #include "metadata_validator.hpp"
 #include "network_test.hpp"
 #include "test_common.hpp"
@@ -43,7 +42,6 @@ struct network_fixture : network_fixture_base
 {
     er_network_variant* var{};
     er_connection_ptr conn;
-    er_statement_ptr stmt;
 
     ~network_fixture()
     {
@@ -58,7 +56,6 @@ struct network_fixture : network_fixture_base
         var = variant;
         conn = var->create_connection(ctx.get_executor(), ssl_ctx);
         conn->set_metadata_mode(metadata_mode::full);
-        stmt = var->create_statement();
     }
 
     void setup_and_physical_connect(er_network_variant* net)

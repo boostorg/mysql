@@ -124,21 +124,19 @@ boost::asio::awaitable<void> coro_main(
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
-    connection_type::statement_type stmt;
-    op_result = co_await (
+    auto stmt_op_result = co_await (
         timer.async_wait() || conn.async_prepare_statement(
                                   "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-                                  stmt,
                                   diag
                               )
     );
-    check_error(op_result, diag);
+    boost::mysql::statement stmt = check_error(std::move(stmt_op_result), diag);
 
     // Execute the statement
     boost::mysql::resultset result;
     timer.expires_after(TIMEOUT);
     op_result = co_await (
-        timer.async_wait() || stmt.async_execute(std::make_tuple(company_id), result, diag)
+        timer.async_wait() || conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag)
     );
     check_error(op_result, diag);
 

@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_TEST_COMMON_TEST_CONNECTION_HPP
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/statement.hpp>
 
 #include "test_stream.hpp"
 

@@ -69,40 +69,38 @@ void main_impl(int argc, char** argv)
     /**
      * We can tell MySQL to prepare a statement using connection::prepare_statement.
      * We provide a string SQL statement, which can include any number of parameters,
-     * identified by question marks. Parameters are optional: you can prepare a statement
-     * with no parameters.
+     * identified by question marks.
      *
      * Prepared statements are stored in the server on a per-connection basis.
      * Once a connection is closed, all prepared statements for that connection are deallocated.
      *
-     * The result of prepare_statement is a boost::mysql::statement object, which is
-     * templatized on the stream type of the connection (tcp_ssl_statement in our case).
+     * The result of prepare_statement is a boost::mysql::statement object, which
+     * is a lightweight handle for the server-side statement.
      *
      * We prepare two statements, a SELECT and an UPDATE.
      */
     //[prepared_statements_prepare
-    boost::mysql::tcp_ssl_statement salary_getter;
-    conn.prepare_statement("SELECT salary FROM employee WHERE first_name = ?", salary_getter);
+    boost::mysql::statement salary_getter = conn.prepare_statement(
+        "SELECT salary FROM employee WHERE first_name = ?"
+    );
     //]
 
     // num_params() returns the number of parameters (question marks)
     ASSERT(salary_getter.num_params() == 1);
 
-    boost::mysql::tcp_ssl_statement salary_updater;
-    conn.prepare_statement(
-        "UPDATE employee SET salary = salary + ? WHERE first_name = ?",
-        salary_updater
+    boost::mysql::statement salary_updater = conn.prepare_statement(
+        "UPDATE employee SET salary = salary + ? WHERE first_name = ?"
     );
     ASSERT(salary_updater.num_params() == 2);
 
     /*
-     * Once a statement has been prepared, it can be executed as many times as
-     * desired, by calling statement::execute(). Parameter actual values are provided
+     * Once a statement has been prepared, it can be executed by calling
+     * connection::execute_statement(). Parameter actual values are provided
      * as a std::tuple. Executing a statement yields a resultset.
      */
     //[prepared_statements_execute
     boost::mysql::resultset select_result, update_result;
-    salary_getter.execute(std::make_tuple(first_name), select_result);
+    conn.execute_statement(salary_getter, std::make_tuple(first_name), select_result);
     //]
 
     // First row, first column, cast to double
@@ -111,7 +109,7 @@ void main_impl(int argc, char** argv)
 
     // Run the update. In this case, we must pass in two parameters.
     double payrise = generate_random_payrise();
-    salary_updater.execute(std::make_tuple(payrise, first_name), update_result);
+    conn.execute_statement(salary_updater, std::make_tuple(payrise, first_name), update_result);
     ASSERT(update_result.rows().empty());  // an UPDATE never returns rows
 
     /**
@@ -119,24 +117,23 @@ void main_impl(int argc, char** argv)
      * as many times as we want. We do NOT need to call
      * connection::prepare_statement() again.
      */
-    salary_getter.execute(std::make_tuple(first_name), select_result);
+    conn.execute_statement(salary_getter, std::make_tuple(first_name), select_result);
     double new_salary = select_result.rows().at(0).at(0).as_double();
     ASSERT(new_salary > old_salary);  // Our update took place
     std::cout << "The salary after the payrise was: " << new_salary << std::endl;
 
     /**
      * Close the statements. Closing a statement deallocates it from the server.
-     *
      * Closing statements implies communicating with the server and can thus fail.
      *
      * Statements are automatically deallocated once the connection is closed.
      * If you are re-using connection objects and preparing statements over time,
-     * you should close() your statements to prevent excessive resource usage.
+     * you should close your statements to prevent excessive resource usage.
      * If you are not re-using the connections, or are preparing your statements
      * just once at application startup, there is no need to perform this step.
      */
-    salary_updater.close();
-    salary_getter.close();
+    conn.close_statement(salary_updater);
+    conn.close_statement(salary_getter);
 
     // Close the connection
     conn.close();

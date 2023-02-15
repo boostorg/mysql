@@ -10,7 +10,7 @@
 
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -20,22 +20,21 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-void prepare_statement(
+statement prepare_statement(
     channel<Stream>& chan,
     string_view statement,
-    statement_base& output,
     error_code& err,
     server_diagnostics& diag
 );
 
 template <
     class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+        CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
 async_prepare_statement(
     channel<Stream>& chan,
     string_view statement,
-    statement_base& output,
     server_diagnostics& diag,
     CompletionToken&& token
 );

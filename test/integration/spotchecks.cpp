@@ -103,16 +103,16 @@ BOOST_MYSQL_NETWORK_TEST(query_error, network_fixture, err_net_samples)
 BOOST_MYSQL_NETWORK_TEST(prepare_statement_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
-    BOOST_TEST_REQUIRE(stmt->base().valid());
-    BOOST_TEST(stmt->base().id() > 0u);
-    BOOST_TEST(stmt->base().num_params() == 2u);
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+    BOOST_TEST_REQUIRE(stmt.valid());
+    BOOST_TEST(stmt.id() > 0u);
+    BOOST_TEST(stmt.num_params() == 2u);
 }
 
 BOOST_MYSQL_NETWORK_TEST(prepare_statement_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
-    conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)", *stmt)
+    conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)")
         .validate_error(server_errc::no_such_table, {"table", "doesn't exist", "bad_table"});
 }
 
@@ -122,12 +122,12 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_success, network_fixture, 
     setup_and_connect(sample.net);
 
     // Prepare
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
 
     // Execute
     execution_state st;
     std::forward_list<field_view> params{field_view("item"), field_view(42)};
-    stmt->start_execution_it(params.begin(), params.end(), st).validate_no_error();
+    conn->start_statement_execution(stmt, params.begin(), params.end(), st).validate_no_error();
     validate_2fields_meta(st.meta(), "empty_table");
     BOOST_TEST(!st.complete());
 }
@@ -138,13 +138,13 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, er
     start_transaction();
 
     // Prepare
-    conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)", *stmt)
-        .validate_no_error();
+    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
+                    .get();
 
     // Execute
     execution_state st;
     std::forward_list<field_view> params{field_view("f0"), field_view("bad_date")};
-    stmt->start_execution_it(params.begin(), params.end(), st)
+    conn->start_statement_execution(stmt, params.begin(), params.end(), st)
         .validate_error(
             server_errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
@@ -157,11 +157,11 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_success, network_fixtur
     setup_and_connect(sample.net);
 
     // Prepare
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
 
     // Execute
     execution_state st;
-    stmt->start_execution_tuple2(field_view(42), field_view(40), st).validate_no_error();
+    conn->start_statement_execution(stmt, field_view(42), field_view(40), st).validate_no_error();
     validate_2fields_meta(st.meta(), "empty_table");
     BOOST_TEST(!st.complete());
 }
@@ -172,12 +172,12 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_error, network_fixture,
     start_transaction();
 
     // Prepare
-    conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)", *stmt)
-        .validate_no_error();
+    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
+                    .get();
 
     // Execute
     execution_state st;
-    stmt->start_execution_tuple2(field_view("abc"), field_view("bad_date"), st)
+    conn->start_statement_execution(stmt, field_view("abc"), field_view("bad_date"), st)
         .validate_error(
             server_errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
@@ -190,11 +190,11 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_success, network_fixture, all_network
     setup_and_connect(sample.net);
 
     // Prepare
-    conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)", *stmt).validate_no_error();
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
 
     // Execute
     resultset result;
-    stmt->execute_tuple2(field_view("item"), field_view(42), result).validate_no_error();
+    conn->execute_statement(stmt, field_view("item"), field_view(42), result).validate_no_error();
     BOOST_TEST(result.rows().size() == 0u);
 }
 
@@ -204,12 +204,12 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_sampl
     start_transaction();
 
     // Prepare
-    conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)", *stmt)
-        .validate_no_error();
+    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
+                    .get();
 
     // Execute
     resultset result;
-    stmt->execute_tuple2(field_view("f0"), field_view("bad_date"), result)
+    conn->execute_statement(stmt, field_view("f0"), field_view("bad_date"), result)
         .validate_error(
             server_errc::truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
@@ -222,13 +222,14 @@ BOOST_MYSQL_NETWORK_TEST(close_statement_success, network_fixture, all_network_s
     setup_and_connect(sample.net);
 
     // Prepare a statement
-    conn->prepare_statement("SELECT * FROM empty_table", *stmt).validate_no_error();
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
 
     // Close the statement
-    stmt->close().validate_no_error();
+    conn->close_statement(stmt).validate_no_error();
 
     // The statement is no longer valid
-    BOOST_TEST(!stmt->base().valid());
+    resultset result;
+    conn->execute_statement(stmt, field_view("a"), field_view("b"), result).validate_any_error();
 }
 
 // Read one row: no server error spotcheck

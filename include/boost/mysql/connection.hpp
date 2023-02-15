@@ -23,6 +23,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
@@ -130,9 +131,6 @@ public:
 
     /// Retrieves the underlying Stream object.
     const Stream& stream() const { return get_channel().stream().next_layer(); }
-
-    /// The type of prepared statements that can be used with this connection type.
-    using statement_type = statement<Stream>;
 
     /**
      * \brief Returns whether the connection uses SSL or not.
@@ -371,16 +369,14 @@ public:
     /**
      * \brief Prepares a statement server-side.
      * \details
-     * After this operation completes, `result` will reference `*this`.
-     *\n
      * This operation involves both reads and writes on the underlying stream.
      *\n
      * `stmt` should be encoded using the connection's character set.
      */
-    void prepare_statement(string_view stmt, statement<Stream>& result, error_code&, server_diagnostics&);
+    statement prepare_statement(string_view stmt, error_code&, server_diagnostics&);
 
     /// \copydoc prepare_statement
-    void prepare_statement(string_view stmt, statement<Stream>& result);
+    statement prepare_statement(string_view stmt);
 
     /**
      * \copydoc prepare_statement
@@ -389,27 +385,313 @@ public:
      * pointed to by `stmt` <b>must be kept alive by the caller until the operation is
      * initiated</b>.
      *\n
-     * The handler signature for this operation is `void(boost::mysql::error_code)`
+     * The handler signature for this operation is `void(boost::mysql::error_code, boost::mysql::statement)`.
+     */
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
+    async_prepare_statement(
+        string_view stmt,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_prepare_statement(stmt, shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_prepare_statement
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
+    async_prepare_statement(
+        string_view stmt,
+        server_diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Executes a prepared statement.
+     * \details
+     * Executes the statement with the given parameters and reads the response into `result`.
+     *\n
+     * After this operation completes successfully, `result.has_value() == true`.
+     *\n
+     * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
+     * See the `FieldLikeTuple` concept defition for more info. You should pass exactly as many
+     * parameters as `this->num_params()`, or the operation will fail with an error.
+     * String parameters should be encoded using the connection's character set.
+     *\n
+     * Metadata in `result` will be populated according to `conn.meta_mode()`, where `conn`
+     * is the connection that prepared this statement.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void execute_statement(
+        const statement& stmt,
+        const FieldLikeTuple& params,
+        resultset& result,
+        error_code& err,
+        server_diagnostics& diag
+    );
+
+    /// \copydoc execute_statement
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void execute_statement(const statement& stmt, const FieldLikeTuple& params, resultset& result);
+
+    /**
+     * \copydoc execute_statement
+     * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
+     * type (like `string_view`), the caller must keep the values pointed by these references alive
+     * until the operation is initiated. Value types will be copied/moved as required, so don't need
+     * to be kept alive.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute_statement(
+        const statement& stmt,
+        FieldLikeTuple&& params,
+        resultset& result,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute_statement(
+            stmt,
+            std::forward<FieldLikeTuple>(params),
+            result,
+            shared_diag(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_execute_statement
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute_statement(
+        const statement& stmt,
+        FieldLikeTuple&& params,
+        resultset& result,
+        server_diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Starts a statement execution as a multi-function operation.
+     * \details
+     * Writes the execute request and reads the initial server response and the column
+     * metadata, but not the generated rows, if any. After this operation completes, `st` will have
+     * \ref execution_state::meta populated, and may become \ref execution_state::complete
+     * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     * Metadata will be populated according to `conn.meta_mode()`, where `conn`
+     * is the connection that prepared this statement.
+     *\n
+     * If the operation generated any rows, these <b>must</b> be read (by using \ref
+     * read_one_row or \ref read_some_rows) before engaging in any further
+     * operation involving server communication. Otherwise, the results are undefined.
+     *\n
+     * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
+     * See the `FieldLikeTuple` concept defition for more info. You should pass exactly as many
+     * parameters as `this->num_params()`, or the operation will fail with an error.
+     * String parameters should be encoded using the connection's character set.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void start_statement_execution(
+        const statement& stmt,
+        const FieldLikeTuple& params,
+        execution_state& ex,
+        error_code& err,
+        server_diagnostics& diag
+    );
+
+    /// \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,server_diagnostics&)
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    void start_statement_execution(const statement& stmt, const FieldLikeTuple& params, execution_state& st);
+
+    /**
+     * \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,server_diagnostics&)
+     * \details
+     * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
+     * type (like `string_view`), the caller must keep the values pointed by these references alive
+     * until the operation is initiated. Value types will be copied/moved as required, so don't need
+     * to be kept alive.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_statement_execution(
+        const statement& stmt,
+        FieldLikeTuple&& params,
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_start_statement_execution(
+            stmt,
+            std::forward<FieldLikeTuple>(params),
+            st,
+            get_channel().shared_diag(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_start_statement_execution(const statement&,FieldLikeTuple&&,execution_state&,CompletionToken&&)
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
+        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_statement_execution(
+        const statement& stmt,
+        FieldLikeTuple&& params,
+        execution_state& st,
+        server_diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Starts a statement execution as a multi-function operation.
+     * \details
+     * Writes the execute request and reads the initial server response and the column
+     * metadata, but not the generated rows, if any. After this operation completes, `st` will have
+     * \ref execution_state::meta populated, and may become \ref execution_state::complete
+     * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     *\n
+     * If the operation generated any rows, these <b>must</b> be read (by using \ref
+     * connection::read_one_row or \ref connection::read_some_rows) before engaging in any further
+     * operation involving server communication. Otherwise, the results are undefined.
+     *\n
+     * The statement actual parameters are passed as an iterator range.
+     * See the `FieldViewForwardIterator` concept defition for more info. You should pass exactly as
+     * many parameters as `this->num_params()`, or the operation will fail with an error. String
+     * parameters should be encoded using the connection's character set.
+     *\n
+     * This operation involves both reads and writes on the underlying stream.
+     */
+    template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+    void start_statement_execution(
+        const statement& stmt,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        execution_state& st,
+        error_code& ec,
+        server_diagnostics& diag
+    );
+
+    /// \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,server_diagnostics&)
+    template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+    void start_statement_execution(
+        const statement& stmt,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        execution_state& st
+    );
+
+    /**
+     * \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,server_diagnostics&)
+     * \details
+     * If `CompletionToken` is deferred (like `use_awaitable`), the caller must keep objects in
+     * the iterator range alive until the  operation is initiated.
+     *
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_statement_execution(
+        const statement& stmt,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_start_statement_execution(
+            stmt,
+            params_first,
+            params_last,
+            st,
+            get_channel().shared_diag(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,CompletionToken&&)
+    template <
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_statement_execution(
+        const statement& stmt,
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last,
+        execution_state& st,
+        server_diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Closes a statement, deallocating it from the server.
+     * \details
+     * After this operation succeeds, `this->valid()` will return `false`, and no further functions
+     * may be called on this prepared statement, other than assignment.
+     *\n
+     * This operation involves only writes on the underlying stream.
+     */
+    void close_statement(const statement& stmt, error_code&, server_diagnostics&);
+
+    /// \copydoc close_statement
+    void close_statement(const statement& stmt);
+
+    /**
+     * \copydoc close_statement
+     * \details
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_prepare_statement(
-        string_view stmt,
-        statement<Stream>& result,
+    async_close_statement(
+        const statement& stmt,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_prepare_statement(stmt, result, shared_diag(), std::forward<CompletionToken>(token));
+        return async_close_statement(stmt, shared_diag(), std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc async_prepare_statement
+    /// \copydoc async_close_statement
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_prepare_statement(
-        string_view stmt,
-        statement<Stream>& result,
+    async_close_statement(
+        const statement& stmt,
         server_diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
@@ -424,7 +706,7 @@ public:
      * underlying stream performs any other read operation or is destroyed.
      *\n
      * `st` must have previously been populated by a function starting the multifunction
-     * operation, like \ref start_query or \ref statement::start_execution. Otherwise, the results
+     * operation, like \ref start_query or \ref start_statement_execution. Otherwise, the results
      * are undefined.
      *\n
      * This operation involves only reads on the underlying stream.
@@ -469,8 +751,8 @@ public:
      * rows to be read, returns an empty `rows_view`.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in \ref
-     * connection::connect, using \ref buffer_params::initial_read_buffer_size. The buffer may be
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
+     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
      * \n
      * The returned view points into memory owned by `*this`. It will be valid until the

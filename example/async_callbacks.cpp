@@ -26,14 +26,14 @@ void print_employee(boost::mysql::row_view employee)
 class application
 {
     boost::asio::ip::tcp::resolver::results_type eps;  // Physical endpoint(s) to connect to
-    boost::mysql::handshake_params conn_params;  // MySQL credentials and other connection config
-    boost::asio::io_context ctx;                 // boost::asio context
-    boost::asio::ip::tcp::resolver resolver;     // To perform hostname resolution
-    boost::asio::ssl::context ssl_ctx;           // MySQL 8+ default settings require SSL
-    boost::mysql::tcp_ssl_connection conn;       // Represents the connection to the MySQL server
-    boost::mysql::tcp_ssl_statement stmt;        // A prepared statement
-    boost::mysql::resultset result;              // A result from a query
-    boost::mysql::server_diagnostics diag;       // Will be populated with info about server errors
+    boost::mysql::handshake_params conn_params;        // MySQL credentials and other connection config
+    boost::asio::io_context ctx;                       // boost::asio context
+    boost::asio::ip::tcp::resolver resolver;           // To perform hostname resolution
+    boost::asio::ssl::context ssl_ctx;                 // MySQL 8+ default settings require SSL
+    boost::mysql::tcp_ssl_connection conn;             // Represents the connection to the MySQL server
+    boost::mysql::statement stmt;                      // A prepared statement
+    boost::mysql::resultset result;                    // A result from a query
+    boost::mysql::server_diagnostics diag;             // Will be populated with info about server errors
     const char* company_id;  // The ID of the company whose employees we want to list. Untrusted.
 public:
     application(const char* username, const char* password, const char* company_id)
@@ -74,10 +74,10 @@ public:
         // statement.
         conn.async_prepare_statement(
             "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-            stmt,
             diag,
-            [this](error_code err) {
+            [this](error_code err, boost::mysql::statement temp_stmt) {
                 boost::mysql::throw_on_error(err, diag);
+                stmt = temp_stmt;
                 query_employees();
             }
         );
@@ -85,7 +85,7 @@ public:
 
     void query_employees()
     {
-        stmt.async_execute(std::make_tuple(company_id), result, diag, [this](error_code err) {
+        conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag, [this](error_code err) {
             boost::mysql::throw_on_error(err, diag);
             for (boost::mysql::row_view employee : result.rows())
             {
@@ -108,8 +108,7 @@ void main_impl(int argc, char** argv)
 {
     if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0]
-                  << " <username> <password> <server-hostname> [company-id]\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> [company-id]\n";
         exit(1);
     }
 

@@ -113,10 +113,10 @@ Boost.Mysql has been tested with the following RDBMS systems:
 
 I would like to specially acknowledge [@https://github.com/madmongo1 Richard Hodges] (hodges.r@gmail.com)
 for his invaluable technical guidance during development. Thanks also to
-Christian Mazakas for his ideas in early stages,
-and to [@https://github.com/vinniefalco Vinnie Falco] for writing
-__Beast__, my source of inspiration, and [@https://github.com/boostorg/docca
-docca], which is used to generate these pages.
+Christian Mazakas for his ideas in early stages, and to
+[@https://github.com/klemens-morgenstern Klemens Morgenstern] and
+and [@https://github.com/vinniefalco Vinnie Falco] for his techincal advice.
+Without you, this library would not exist.
 
 Finally, thanks to [@https://github.com/chriskohlhoff Christopher Kohlhoff]
 for his awesome __Asio__ library, and to [@https://github.com/HowardHinnant

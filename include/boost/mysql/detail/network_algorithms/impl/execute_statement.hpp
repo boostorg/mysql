@@ -11,7 +11,7 @@
 #pragma once
 
 #include <boost/mysql/resultset.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
@@ -29,7 +29,7 @@ struct execute_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     server_diagnostics& diag_;
-    const statement_base& stmt_;
+    statement stmt_;
     FieldLikeTuple params_;
     resultset& output_;
 
@@ -38,7 +38,7 @@ struct execute_statement_op : boost::asio::coroutine
     execute_statement_op(
         channel<Stream>& chan,
         server_diagnostics& diag,
-        const statement_base& stmt,
+        const statement& stmt,
         DeducedTuple&& params,
         resultset& output
     ) noexcept
@@ -89,7 +89,7 @@ struct execute_statement_op : boost::asio::coroutine
 template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
 void boost::mysql::detail::execute_statement(
     channel<Stream>& channel,
-    const statement_base& stmt,
+    const statement& stmt,
     const FieldLikeTuple& params,
     resultset& output,
     error_code& err,
@@ -116,7 +116,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldLikeTuple&& params,
     resultset& output,
     server_diagnostics& diag,

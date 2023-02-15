@@ -62,13 +62,13 @@ The ones that impact this library's behavior are:
 * [mysqllink server-system-variables.html#sysvar_character_set_client character_set_client]
   determines the encoding that SQL statements sent to the server should have. This includes
   the SQL strings in [refmem connection query], [refmem connection prepare_statement], and
-  string parameters passed to [refmem statement execute].
+  string parameters passed to [refmem connection execute_statement].
 
   `character_set_client` doesn't allow all character sets. While it will accept `utf8`, it
   doesn't allow `utf16`.
 * [mysqllink server-system-variables.html#sysvar_character_set_results character_set_results]
   determines the encoding that the server will use to send any kind of result, including
-  string fields retrieved by [refmem connection query] and [refmem statement execute], metadata
+  string fields retrieved by [refmem connection query] and [refmem connection execute_statement], metadata
   like [refmem metadata column_name] and error messages.
 
   Note that, when you define a string column with a character set (e.g.
@@ -92,12 +92,12 @@ The table below summarizes the encoding used by each piece of functionality in t
         [`character_set_client`]
     ]
     [
-        [String values passed as parameters to [refmem statement execute]]
+        [String values passed as parameters to [refmem connection execute_statement]]
         [`character_set_client`]
     ]
     [
         [
-            String fields retrieved by [refmem connection query] or [refmem statement execute]:[br][br]
+            String fields retrieved by [refmem connection query] or [refmem connection execute_statement]:[br][br]
             [refmem field_view as_string][br]
             [refmem field_view get_string]
         ]

@@ -14,12 +14,14 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/error_helpers.hpp>
 #include <boost/mysql/detail/network_algorithms/close_connection.hpp>
+#include <boost/mysql/detail/network_algorithms/close_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/connect.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
 #include <boost/mysql/detail/network_algorithms/ping.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
@@ -28,6 +30,7 @@
 #include <boost/mysql/detail/network_algorithms/read_one_row.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/network_algorithms/start_query.hpp>
+#include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/assert/source_location.hpp>
@@ -184,42 +187,234 @@ boost::mysql::connection<Stream>::async_query(
 
 // Prepare statement
 template <class Stream>
-void boost::mysql::connection<Stream>::prepare_statement(
+boost::mysql::statement boost::mysql::connection<Stream>::prepare_statement(
     string_view stmt,
-    statement<Stream>& output,
     error_code& err,
     server_diagnostics& diag
 )
 {
     detail::clear_errors(err, diag);
-    detail::prepare_statement(get_channel(), stmt, output, err, diag);
+    return detail::prepare_statement(get_channel(), stmt, err, diag);
 }
 
 template <class Stream>
-void boost::mysql::connection<Stream>::prepare_statement(string_view stmt, statement<Stream>& output)
+boost::mysql::statement boost::mysql::connection<Stream>::prepare_statement(string_view stmt)
 {
     detail::error_block blk;
-    detail::prepare_statement(get_channel(), stmt, output, blk.err, blk.diag);
+    auto res = detail::prepare_statement(get_channel(), stmt, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+    return res;
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+              CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::statement))
+boost::mysql::connection<Stream>::async_prepare_statement(
+    string_view stmt,
+    server_diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    return detail::async_prepare_statement(get_channel(), stmt, diag, std::forward<CompletionToken>(token));
+}
+
+// execute statement
+template <class Stream>
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+void boost::mysql::connection<Stream>::execute_statement(
+    const statement& stmt,
+    const FieldLikeTuple& params,
+    resultset& result,
+    error_code& err,
+    server_diagnostics& diag
+)
+{
+    detail::clear_errors(err, diag);
+    detail::execute_statement(get_channel(), stmt, params, result, err, diag);
+}
+
+template <class Stream>
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+void boost::mysql::connection<Stream>::execute_statement(
+    const statement& stmt,
+    const FieldLikeTuple& params,
+    resultset& result
+)
+{
+    detail::error_block blk;
+    detail::execute_statement(get_channel(), stmt, params, result, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <
+    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken,
+    class>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_execute_statement(
+    const statement& stmt,
+    FieldLikeTuple&& params,
+    resultset& result,
+    server_diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    return detail::async_execute_statement(
+        get_channel(),
+        stmt,
+        std::forward<FieldLikeTuple>(params),
+        result,
+        diag,
+        std::forward<CompletionToken>(token)
+    );
+}
+
+template <class Stream>
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+void boost::mysql::connection<Stream>::start_statement_execution(
+    const statement& stmt,
+    const FieldLikeTuple& params,
+    execution_state& result,
+    error_code& err,
+    server_diagnostics& diag
+)
+{
+    detail::clear_errors(err, diag);
+    detail::start_statement_execution(get_channel(), stmt, params, result, err, diag);
+}
+
+template <class Stream>
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+void boost::mysql::connection<Stream>::start_statement_execution(
+    const statement& stmt,
+    const FieldLikeTuple& params,
+    execution_state& result
+)
+{
+    detail::error_block blk;
+    detail::start_statement_execution(get_channel(), stmt, params, result, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <
+    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken,
+    class>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_start_statement_execution(
+    const statement& stmt,
+    FieldLikeTuple&& params,
+    execution_state& result,
+    server_diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    return detail::async_start_statement_execution(
+        get_channel(),
+        stmt,
+        std::forward<FieldLikeTuple>(params),
+        result,
+        diag,
+        std::forward<CompletionToken>(token)
+    );
+}
+
+// Execute statement, with iterators
+template <class Stream>
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+void boost::mysql::connection<Stream>::start_statement_execution(
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& result,
+    error_code& err,
+    server_diagnostics& diag
+)
+{
+    detail::clear_errors(err, diag);
+    detail::start_statement_execution(get_channel(), stmt, params_first, params_last, result, err, diag);
+}
+
+template <class Stream>
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+void boost::mysql::connection<Stream>::start_statement_execution(
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& result
+)
+{
+    detail::error_block blk;
+    detail::start_statement_execution(
+        get_channel(),
+        stmt,
+        params_first,
+        params_last,
+        result,
+        blk.err,
+        blk.diag
+    );
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <
+    BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_start_statement_execution(
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& result,
+    server_diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    return detail::async_start_statement_execution(
+        get_channel(),
+        stmt,
+        params_first,
+        params_last,
+        result,
+        diag,
+        std::forward<CompletionToken>(token)
+    );
+}
+
+// Close statement
+template <class Stream>
+void boost::mysql::connection<Stream>::close_statement(
+    const statement& stmt,
+    error_code& code,
+    server_diagnostics& diag
+)
+{
+    detail::clear_errors(code, diag);
+    detail::close_statement(get_channel(), stmt, code, diag);
+}
+
+template <class Stream>
+void boost::mysql::connection<Stream>::close_statement(const statement& stmt)
+{
+    detail::error_block blk;
+    detail::close_statement(get_channel(), stmt, blk.err, blk.diag);
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
 template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::connection<Stream>::async_prepare_statement(
-    string_view stmt,
-    statement<Stream>& output,
+boost::mysql::connection<Stream>::async_close_statement(
+    const statement& stmt,
     server_diagnostics& diag,
     CompletionToken&& token
 )
 {
-    return detail::async_prepare_statement(
-        get_channel(),
-        stmt,
-        output,
-        diag,
-        std::forward<CompletionToken>(token)
-    );
+    return detail::async_close_statement(get_channel(), stmt, diag, std::forward<CompletionToken>(token));
 }
 
 // read one row

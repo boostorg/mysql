@@ -59,8 +59,7 @@ void main_impl(int argc, char** argv)
 {
     if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0]
-                  << " <username> <password> <server-hostname> [company-id]\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> [company-id]\n";
         exit(1);
     }
 
@@ -102,17 +101,15 @@ void main_impl(int argc, char** argv)
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
-    boost::mysql::tcp_ssl_statement stmt;
-    fut = conn.async_prepare_statement(
+    std::future<boost::mysql::statement> stmt_fut = conn.async_prepare_statement(
         "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        stmt,
         use_future
     );
-    fut.get();
+    boost::mysql::statement stmt = stmt_fut.get();
 
     // Execute the statement
     boost::mysql::resultset result;
-    fut = stmt.async_execute(std::make_tuple(company_id), result, use_future);
+    fut = conn.async_execute_statement(stmt, std::make_tuple(company_id), result, use_future);
     fut.get();
 
     // Print employees

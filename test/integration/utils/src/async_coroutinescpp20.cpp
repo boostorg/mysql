@@ -104,33 +104,31 @@ auto impl(Obj& obj, Callable&& fn)
 using token_t = boost::asio::as_tuple_t<boost::asio::use_awaitable_t<>>;
 using stream_type = token_t::as_default_on_t<boost::mysql::tcp_ssl_connection>::stream_type;
 using conn_type = boost::mysql::connection<stream_type>;
-using stmt_type = boost::mysql::statement<stream_type>;
 
-#define BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(obj_type, fn_name)             \
-    [](obj_type& obj, auto&&... args) {                                      \
-        return impl(obj, [&](server_diagnostics& diag) {                     \
-            return obj.fn_name(std::forward<decltype(args)>(args)..., diag); \
-        });                                                                  \
+#define BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(fn_name)                      \
+    [](conn_type& conn, auto&&... args) {                                     \
+        return impl(conn, [&](server_diagnostics& diag) {                     \
+            return conn.fn_name(std::forward<decltype(args)>(args)..., diag); \
+        });                                                                   \
     }
 
 function_table<stream_type> create_table()
 {
     return {
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(stmt_type, async_execute),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(stmt_type, async_start_execution),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(stmt_type, async_start_execution),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(stmt_type, async_close),
-
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_connect),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_handshake),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_query),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_start_query),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_prepare_statement),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_read_one_row),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_read_some_rows),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_ping),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_quit),
-        BOOST_MYSQL_DEFAULT_TOKEN_TABLE_ENTRY(conn_type, async_close),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_connect),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_handshake),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_query),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_query),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_prepare_statement),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_execute_statement),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_statement_execution),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_statement_execution),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_close_statement),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_one_row),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_some_rows),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_ping),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_quit),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_close),
     };
 }
 

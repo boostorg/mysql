@@ -661,12 +661,11 @@ BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
         BOOST_TEST_CONTEXT(table.name)
         {
             // Prepare the statement
-            boost::mysql::tcp_statement stmt;
-            conn.prepare_statement(table.select_sql(), stmt);
+            auto stmt = conn.prepare_statement(table.select_sql());
 
             // Execute it with the provided parameters
             resultset result;
-            stmt.execute(std::make_tuple(), result);
+            conn.execute_statement(stmt, std::make_tuple(), result);
 
             // Validate the received contents
             validate_meta(result.meta(), table.metas);
@@ -684,9 +683,8 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
         BOOST_TEST_CONTEXT(table.name)
         {
             // Prepare the statements
-            boost::mysql::tcp_statement insert_stmt, query_stmt;
-            conn.prepare_statement(table.insert_sql(), insert_stmt);
-            conn.prepare_statement(table.select_sql(), query_stmt);
+            auto insert_stmt = conn.prepare_statement(table.insert_sql());
+            auto query_stmt = conn.prepare_statement(table.select_sql());
 
             // Remove all contents from the table
             resultset result;
@@ -696,12 +694,12 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
             boost::mysql::execution_state st;
             for (const auto& row : table.rws)
             {
-                insert_stmt.start_execution(row.begin(), row.end(), st);
+                conn.start_statement_execution(insert_stmt, row.begin(), row.end(), st);
                 BOOST_TEST_REQUIRE(st.complete());
             }
 
             // Query them again and verify the insertion was okay
-            query_stmt.execute(std::make_tuple(), result);
+            conn.execute_statement(query_stmt, std::make_tuple(), result);
             validate_meta(result.meta(), table.metas);
             table.validate_rows(result.rows());
         }

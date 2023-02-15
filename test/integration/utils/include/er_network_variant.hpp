@@ -14,8 +14,6 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/core/span.hpp>
 
-#include <functional>
-
 #include "er_connection.hpp"
 
 namespace boost {
@@ -32,7 +30,6 @@ public:
     virtual const char* variant_name() const = 0;
     std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }
     virtual er_connection_ptr create_connection(boost::asio::any_io_executor, boost::asio::ssl::context&) = 0;
-    virtual er_statement_ptr create_statement() = 0;
 };
 
 boost::span<er_network_variant*> all_variants();

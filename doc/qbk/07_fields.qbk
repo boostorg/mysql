@@ -628,7 +628,7 @@ considerations are listed below.
 
 [section:cpp_to_mysql C++ to MySQL type mapping reference]
 
-This section shows how a parameter `v` in a expression `stmt.execute(std::make_tuple(v), result)`
+This section shows how a parameter `v` in a expression `conn.execute_statement(stmt, std::make_tuple(v), result)`
 is interpreted by MySQL, depeding on `v`'s type:
 
 [table

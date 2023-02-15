@@ -21,11 +21,11 @@ template <class Stream>
 struct close_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    statement_base& stmt_;
+    std::uint32_t stmt_id_;
     server_diagnostics& diag_;
 
-    close_statement_op(channel<Stream>& chan, statement_base& stmt, server_diagnostics& diag) noexcept
-        : chan_(chan), stmt_(stmt), diag_(diag)
+    close_statement_op(channel<Stream>& chan, const statement& stmt, server_diagnostics& diag) noexcept
+        : chan_(chan), stmt_id_(stmt.id()), diag_(diag)
     {
     }
 
@@ -46,7 +46,7 @@ struct close_statement_op : boost::asio::coroutine
 
             // Serialize the close message
             serialize_message(
-                com_stmt_close_packet{stmt_.id()},
+                com_stmt_close_packet{stmt_id_},
                 chan_.current_capabilities(),
                 chan_.shared_buffer()
             );
@@ -54,9 +54,6 @@ struct close_statement_op : boost::asio::coroutine
             // Write message (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
                 .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
-
-            // Mark the statement as invalid
-            statement_base_access::reset(stmt_);
 
             // Complete
             self.complete(error_code());
@@ -70,23 +67,20 @@ struct close_statement_op : boost::asio::coroutine
 
 template <class Stream>
 void boost::mysql::detail::
-    close_statement(channel<Stream>& chan, statement_base& stmt, error_code& code, server_diagnostics&)
+    close_statement(channel<Stream>& chan, const statement& stmt, error_code& code, server_diagnostics&)
 {
     // Serialize the close message
     serialize_message(com_stmt_close_packet{stmt.id()}, chan.current_capabilities(), chan.shared_buffer());
 
     // Send it. No response is sent back
     chan.write(boost::asio::buffer(chan.shared_buffer()), chan.reset_sequence_number(), code);
-
-    // Mark the statement as invalid
-    statement_base_access::reset(stmt);
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_close_statement(
     channel<Stream>& chan,
-    statement_base& stmt,
+    const statement& stmt,
     server_diagnostics& diag,
     CompletionToken&& token
 )

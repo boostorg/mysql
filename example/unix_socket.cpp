@@ -41,8 +41,7 @@ void main_impl(int argc, char** argv)
 {
     if (argc != 3 && argc != 4)
     {
-        std::cerr << "Usage: " << argv[0]
-                  << " <username> <password> [<socket-path>] [<company-id>]\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> [<socket-path>] [<company-id>]\n";
         exit(1);
     }
 
@@ -73,15 +72,13 @@ void main_impl(int argc, char** argv)
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
-    boost::mysql::unix_ssl_statement stmt;
-    conn.prepare_statement(
-        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        stmt
+    boost::mysql::statement stmt = conn.prepare_statement(
+        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?"
     );
 
     // Execute the statement
     boost::mysql::resultset result;
-    stmt.execute(std::make_tuple(company_id), result);
+    conn.execute_statement(stmt, std::make_tuple(company_id), result);
 
     // Print employees
     for (boost::mysql::row_view employee : result.rows())
@@ -95,10 +92,7 @@ void main_impl(int argc, char** argv)
 
 #else
 
-void main_impl(int, char**)
-{
-    std::cout << "Sorry, your system does not support UNIX sockets" << std::endl;
-}
+void main_impl(int, char**) { std::cout << "Sorry, your system does not support UNIX sockets" << std::endl; }
 
 #endif
 

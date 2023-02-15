@@ -15,8 +15,7 @@ contains parameters not known at compile-time.
 
 To prepare a statement, call [refmem connection prepare_statement]
 or [refmem connection async_prepare_statement], passing your statement
-as a string. This yields a [reflink statement] object, which is templated
-on the `Stream` type:
+as a string. This yields a [reflink statement] object:
 
 ```
     // Table setup
@@ -31,8 +30,7 @@ on the `Stream` type:
     )%", result);
 
     // Prepare a statement to insert into this table
-    tcp_ssl_statement stmt;
-    conn.prepare_statement("INSERT INTO products (description, price, show_in_store) VALUES (?, ?, ?)", stmt);
+    statement stmt = conn.prepare_statement("INSERT INTO products (description, price, show_in_store) VALUES (?, ?, ?)");
 ```
 
 The question mark characters (`?`) represent parameters 
@@ -45,9 +43,9 @@ will use these values to run the statement.
 
 To execute a statement, use any of the following functions:
 
-* [refmem statement execute] or [refmem statement async_execute], which execute the statement and
-  read the generated results.
-* [refmem statement start_execution] and [refmem statement async_start_execution], which initiate a
+* [refmem connection execute_statement] or [refmem connection async_execute_statement],
+  which execute the statement and read the generated results.
+* [refmem connection start_statement_execution] and [refmem connection async_start_statement_execution], which initiate a
   statement execution as a multi-function operation.
 
 For example:
@@ -56,14 +54,15 @@ For example:
     // description, price and show_in_store are not trusted, since they may
     // have been read from a file or an HTTP endpoint
     void insert_product(
-        tcp_ssl_statement& stmt,
+        tcp_ssl_connection& conn,
+        const statement& stmt,
         string_view description,
         int price,
         bool show_in_store
     )
     {
         resultset result;
-        stmt.execute(std::make_tuple(description, price, int(show_in_store)), result);
+        conn.execute_statement(stmt, std::make_tuple(description, price, int(show_in_store)), result);
     }
 ```
 
@@ -76,9 +75,9 @@ Some observations:
 * Parameters are passed as a `std::tuple`. You can pass in built-in integers,
   `float`, `double`, [reflink date], [reflink datetime], [reflink time],
   [reflink field_view] and [reflink field] objects as parameters.
-* `show_in_store` is passed as an `int` to `execute()`, but is defined as a `TINYINT`
+* `show_in_store` is passed as an `int` to `execute_statement()`, but is defined as a `TINYINT`
   (1 byte integer) in the table. As long as the passed integer is in range, MySQL
-  will perform the required conversions. Otherwise, `execute()` will fail with an error
+  will perform the required conversions. Otherwise, `execute_statement()` will fail with an error
   (no undefined behavior is invoked).
 
 You can also pass [reflink field_view]s and [reflink field]s as parameters. This is handy
@@ -88,7 +87,8 @@ to insert `NULL` values:
     // description, price and show_in_store are not trusted, since they may
     // have been read from a file or an HTTP endpoint
     void insert_product(
-        tcp_ssl_statement& stmt,
+        tcp_ssl_connection& conn,
+        const statement& stmt,
         std::optional<string_view> description,
         int price,
         bool show_in_store
@@ -100,7 +100,7 @@ to insert `NULL` values:
 
         // Execute the insert
         resultset result;
-        stmt.execute(std::make_tuple(description_param, price, int(show_in_store)), result);
+        conn.execute_statement(stmt, std::make_tuple(description_param, price, int(show_in_store)), result);
     }
 ```
 
@@ -110,8 +110,8 @@ executing a statement, see [link mysql.fields.cpp_to_mysql this section].
 [heading Closing a statement]
 
 Prepared statements are created server-side, and thus consume server resources. If you don't need a 
-[reflink statement] anymore, you can call [refmem statement close] or
-[refmem statement async_close] to instruct the server to deallocate it.
+[reflink statement] anymore, you can call [refmem connection close_statement] or
+[refmem connection async_close_statement] to instruct the server to deallocate it.
 
 Prepared statements are managed by the server on a per-connection basis. Once you close your connection
 with the server, all prepared statements you have created using this connection will be automatically
@@ -119,15 +119,15 @@ deallocated.
 
 If you are creating your prepared statements at the beginning
 of your program and keeping them alive until the connection
-is closed, then there is no need to call [refmem
-statement close], as closing the connection will do the cleanup
+is closed, then there is no need to call `close_statement()`,
+as closing the connection will do the cleanup
 for you. If you are creating and destroying prepared statements
-dynamically, then it is advised to use [refmem
-statement close] to prevent excessive resource usage in the server.
+dynamically, then it is advised to use `close_statement()` to prevent excessive
+resource usage in the server.
 
 Finally, note that [reflink statement]'s destructor
 does not perform any server-side deallocation of the statement.
 This is because closing a statement involves a network
-operation that may block your code or fail.
+operation that may block or fail.
 
 [endsect]

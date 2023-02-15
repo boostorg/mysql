@@ -14,7 +14,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -25,7 +25,6 @@
 
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
-#include "er_statement.hpp"
 #include "get_endpoint.hpp"
 #include "streams.hpp"
 
@@ -44,44 +43,41 @@ void add_async_coroutinescpp20(std::vector<er_network_variant*>&);
 template <class Stream>
 struct function_table
 {
-    using stmt_type = statement<Stream>;
     using conn_type = connection<Stream>;
 
-    using stmt_execute_tuple2_sig =
-        network_result<void>(stmt_type&, const std::tuple<field_view, field_view>&, resultset&);
-    using stmt_start_execution_tuple2_sig =
-        network_result<void>(stmt_type&, const std::tuple<field_view, field_view>&, execution_state&);
-    using stmt_start_execution_it_sig =
-        network_result<void>(stmt_type&, value_list_it, value_list_it, execution_state&);
-    using stmt_close_sig = network_result<void>(stmt_type&);
-
-    using conn_connect_sig = network_result<
+    using connect_sig = network_result<
         void>(conn_type&, const typename Stream::lowest_layer_type::endpoint_type&, const handshake_params&);
-    using conn_handshake_sig = network_result<void>(conn_type&, const handshake_params&);
-    using conn_query_sig = network_result<void>(conn_type&, string_view, resultset&);
-    using conn_start_query_sig = network_result<void>(conn_type&, string_view, execution_state&);
-    using conn_prepare_statement_sig = network_result<void>(conn_type&, string_view, stmt_type&);
-    using conn_read_one_row_sig = network_result<row_view>(conn_type&, execution_state&);
-    using conn_read_some_rows_sig = network_result<rows_view>(conn_type&, execution_state&);
-    using conn_ping_sig = network_result<void>(conn_type&);
-    using conn_quit_sig = network_result<void>(conn_type&);
-    using conn_close_sig = network_result<void>(conn_type&);
+    using handshake_sig = network_result<void>(conn_type&, const handshake_params&);
+    using query_sig = network_result<void>(conn_type&, string_view, resultset&);
+    using start_query_sig = network_result<void>(conn_type&, string_view, execution_state&);
+    using prepare_statement_sig = network_result<statement>(conn_type&, string_view);
+    using execute_stmt_sig = network_result<
+        void>(conn_type&, const statement&, const std::tuple<field_view, field_view>&, resultset&);
+    using start_stmt_execution_tuple_sig = network_result<
+        void>(conn_type&, const statement&, const std::tuple<field_view, field_view>&, execution_state&);
+    using start_stmt_execution_it_sig =
+        network_result<void>(conn_type&, const statement&, fv_list_it, fv_list_it, execution_state&);
+    using close_stmt_sig = network_result<void>(conn_type&, const statement&);
+    using read_one_row_sig = network_result<row_view>(conn_type&, execution_state&);
+    using read_some_rows_sig = network_result<rows_view>(conn_type&, execution_state&);
+    using ping_sig = network_result<void>(conn_type&);
+    using quit_sig = network_result<void>(conn_type&);
+    using close_sig = network_result<void>(conn_type&);
 
-    std::function<stmt_execute_tuple2_sig> stmt_execute_tuple2;
-    std::function<stmt_start_execution_tuple2_sig> stmt_start_execution_tuple2;
-    std::function<stmt_start_execution_it_sig> stmt_start_execution_it;
-    std::function<stmt_close_sig> stmt_close;
-
-    std::function<conn_connect_sig> conn_connect;
-    std::function<conn_handshake_sig> conn_handshake;
-    std::function<conn_query_sig> conn_query;
-    std::function<conn_start_query_sig> conn_start_query;
-    std::function<conn_prepare_statement_sig> conn_prepare_statement;
-    std::function<conn_read_one_row_sig> conn_read_one_row;
-    std::function<conn_read_some_rows_sig> conn_read_some_rows;
-    std::function<conn_ping_sig> conn_ping;
-    std::function<conn_quit_sig> conn_quit;
-    std::function<conn_close_sig> conn_close;
+    std::function<connect_sig> connect;
+    std::function<handshake_sig> handshake;
+    std::function<query_sig> query;
+    std::function<start_query_sig> start_query;
+    std::function<prepare_statement_sig> prepare_statement;
+    std::function<execute_stmt_sig> execute_stmt;
+    std::function<start_stmt_execution_tuple_sig> start_stmt_execution_tuple;
+    std::function<start_stmt_execution_it_sig> start_stmt_execution_it;
+    std::function<close_stmt_sig> close_stmt;
+    std::function<read_one_row_sig> read_one_row;
+    std::function<read_some_rows_sig> read_some_rows;
+    std::function<ping_sig> ping;
+    std::function<quit_sig> quit;
+    std::function<close_sig> close;
 };
 
 // Note: Netmaker should be a struct with a
@@ -92,27 +88,25 @@ struct function_table
 template <class Stream, class Netmaker>
 function_table<Stream> create_sync_table()
 {
-    using stmt_type = statement<Stream>;
     using conn_type = connection<Stream>;
     using table_t = function_table<Stream>;
 
     // clang-format off
     return function_table<Stream>{
-        Netmaker::template type<typename table_t::stmt_execute_tuple2_sig>::call(&stmt_type::execute),
-        Netmaker::template type<typename table_t::stmt_start_execution_tuple2_sig>::call(&stmt_type::start_execution),
-        Netmaker::template type<typename table_t::stmt_start_execution_it_sig>::call(&stmt_type::start_execution),
-        Netmaker::template type<typename table_t::stmt_close_sig>::call(&stmt_type::close),
-
-        Netmaker::template type<typename table_t::conn_connect_sig>::call(&conn_type::connect),
-        Netmaker::template type<typename table_t::conn_handshake_sig>::call(&conn_type::handshake),
-        Netmaker::template type<typename table_t::conn_query_sig>::call(&conn_type::query),
-        Netmaker::template type<typename table_t::conn_start_query_sig>::call(&conn_type::start_query),
-        Netmaker::template type<typename table_t::conn_prepare_statement_sig>::call(&conn_type::prepare_statement),
-        Netmaker::template type<typename table_t::conn_read_one_row_sig>::call(&conn_type::read_one_row),
-        Netmaker::template type<typename table_t::conn_read_some_rows_sig>::call(&conn_type::read_some_rows),
-        Netmaker::template type<typename table_t::conn_ping_sig>::call(&conn_type::ping),
-        Netmaker::template type<typename table_t::conn_quit_sig>::call(&conn_type::quit),
-        Netmaker::template type<typename table_t::conn_close_sig>::call(&conn_type::close),
+        Netmaker::template type<typename table_t::connect_sig>::call(&conn_type::connect),
+        Netmaker::template type<typename table_t::handshake_sig>::call(&conn_type::handshake),
+        Netmaker::template type<typename table_t::query_sig>::call(&conn_type::query),
+        Netmaker::template type<typename table_t::start_query_sig>::call(&conn_type::start_query),
+        Netmaker::template type<typename table_t::prepare_statement_sig>::call(&conn_type::prepare_statement),
+        Netmaker::template type<typename table_t::execute_stmt_sig>::call(&conn_type::execute_statement),
+        Netmaker::template type<typename table_t::start_stmt_execution_tuple_sig>::call(&conn_type::start_statement_execution),
+        Netmaker::template type<typename table_t::start_stmt_execution_it_sig>::call(&conn_type::start_statement_execution),
+        Netmaker::template type<typename table_t::close_stmt_sig>::call(&conn_type::close_statement),
+        Netmaker::template type<typename table_t::read_one_row_sig>::call(&conn_type::read_one_row),
+        Netmaker::template type<typename table_t::read_some_rows_sig>::call(&conn_type::read_some_rows),
+        Netmaker::template type<typename table_t::ping_sig>::call(&conn_type::ping),
+        Netmaker::template type<typename table_t::quit_sig>::call(&conn_type::quit),
+        Netmaker::template type<typename table_t::close_sig>::call(&conn_type::close),
     };
     // clang-format on
 }
@@ -121,64 +115,30 @@ function_table<Stream> create_sync_table()
 template <class Stream, class Netmaker>
 function_table<Stream> create_async_table()
 {
-    using stmt_type = statement<Stream>;
     using conn_type = connection<Stream>;
     using table_t = function_table<Stream>;
 
     // clang-format off
     return function_table<Stream>{
-        Netmaker::template type<typename table_t::stmt_execute_tuple2_sig>::call(&stmt_type::async_execute),
-        Netmaker::template type<typename table_t::stmt_start_execution_tuple2_sig>::call(&stmt_type::async_start_execution),
-        Netmaker::template type<typename table_t::stmt_start_execution_it_sig>::call(&stmt_type::async_start_execution),
-        Netmaker::template type<typename table_t::stmt_close_sig>::call(&stmt_type::async_close),
-
-        Netmaker::template type<typename table_t::conn_connect_sig>::call(&conn_type::async_connect),
-        Netmaker::template type<typename table_t::conn_handshake_sig>::call(&conn_type::async_handshake),
-        Netmaker::template type<typename table_t::conn_query_sig>::call(&conn_type::async_query),
-        Netmaker::template type<typename table_t::conn_start_query_sig>::call(&conn_type::async_start_query),
-        Netmaker::template type<typename table_t::conn_prepare_statement_sig>::call(&conn_type::async_prepare_statement),
-        Netmaker::template type<typename table_t::conn_read_one_row_sig>::call(&conn_type::async_read_one_row),
-        Netmaker::template type<typename table_t::conn_read_some_rows_sig>::call(&conn_type::async_read_some_rows),
-        Netmaker::template type<typename table_t::conn_ping_sig>::call(&conn_type::async_ping),
-        Netmaker::template type<typename table_t::conn_quit_sig>::call(&conn_type::async_quit),
-        Netmaker::template type<typename table_t::conn_close_sig>::call(&conn_type::async_close),
+        Netmaker::template type<typename table_t::connect_sig>::call(&conn_type::async_connect),
+        Netmaker::template type<typename table_t::handshake_sig>::call(&conn_type::async_handshake),
+        Netmaker::template type<typename table_t::query_sig>::call(&conn_type::async_query),
+        Netmaker::template type<typename table_t::start_query_sig>::call(&conn_type::async_start_query),
+        Netmaker::template type<typename table_t::prepare_statement_sig>::call(&conn_type::async_prepare_statement),
+        Netmaker::template type<typename table_t::execute_stmt_sig>::call(&conn_type::async_execute_statement),
+        Netmaker::template type<typename table_t::start_stmt_execution_tuple_sig>::call(&conn_type::async_start_statement_execution),
+        Netmaker::template type<typename table_t::start_stmt_execution_it_sig>::call(&conn_type::async_start_statement_execution),
+        Netmaker::template type<typename table_t::close_stmt_sig>::call(&conn_type::async_close_statement),
+        Netmaker::template type<typename table_t::read_one_row_sig>::call(&conn_type::async_read_one_row),
+        Netmaker::template type<typename table_t::read_some_rows_sig>::call(&conn_type::async_read_some_rows),
+        Netmaker::template type<typename table_t::ping_sig>::call(&conn_type::async_ping),
+        Netmaker::template type<typename table_t::quit_sig>::call(&conn_type::async_quit),
+        Netmaker::template type<typename table_t::close_sig>::call(&conn_type::async_close),
     };
     // clang-format on
 }
 
-// Variant implementations.
-template <class Stream>
-class er_statement_impl : public er_statement
-{
-    const function_table<Stream>& table_;
-    using stmt_type = statement<Stream>;
-    stmt_type stmt_;
-
-public:
-    er_statement_impl(const function_table<Stream>& table) : table_(table) {}
-    const statement_base& base() const noexcept override { return stmt_; }
-    stmt_type& obj() noexcept { return stmt_; }
-
-    network_result<void> execute_tuple2(field_view param1, field_view param2, resultset& result) override
-    {
-        return table_.stmt_execute_tuple2(stmt_, std::make_tuple(param1, param2), result);
-    }
-    network_result<void> start_execution_tuple2(field_view param1, field_view param2, execution_state& st)
-        override
-    {
-        return table_.stmt_start_execution_tuple2(stmt_, std::make_tuple(param1, param2), st);
-    }
-    network_result<void> start_execution_it(
-        value_list_it params_first,
-        value_list_it params_last,
-        execution_state& st
-    ) override
-    {
-        return table_.stmt_start_execution_it(stmt_, params_first, params_last, st);
-    }
-    network_result<void> close() override { return table_.stmt_close(stmt_); }
-};
-
+// Helpers
 template <class Stream>
 connection<Stream> create_connection_impl(
     boost::asio::any_io_executor executor,
@@ -212,6 +172,7 @@ connection<Stream> create_connection(
     );
 }
 
+// Implementation for er_connection
 template <class Stream>
 class er_connection_impl : public er_connection
 {
@@ -250,36 +211,63 @@ public:
 
     network_result<void> connect(const handshake_params& params) override
     {
-        return table_.conn_connect(conn_, get_endpoint<Stream>(), params);
+        return table_.connect(conn_, get_endpoint<Stream>(), params);
     }
     network_result<void> handshake(const handshake_params& params) override
     {
-        return table_.conn_handshake(conn_, params);
+        return table_.handshake(conn_, params);
     }
     network_result<void> query(string_view query, resultset& result) override
     {
-        return table_.conn_query(conn_, query, result);
+        return table_.query(conn_, query, result);
     }
     network_result<void> start_query(string_view query, execution_state& st) override
     {
-        return table_.conn_start_query(conn_, query, st);
+        return table_.start_query(conn_, query, st);
     }
-    network_result<void> prepare_statement(string_view stmt_sql, er_statement& output_stmt) override
+    network_result<statement> prepare_statement(string_view stmt_sql) override
     {
-        auto& typed_stmt = static_cast<er_statement_impl<Stream>&>(output_stmt).obj();
-        return table_.conn_prepare_statement(conn_, stmt_sql, typed_stmt);
+        return table_.prepare_statement(conn_, stmt_sql);
     }
+    network_result<void> execute_statement(
+        const statement& stmt,
+        field_view param1,
+        field_view param2,
+        resultset& result
+    ) override
+    {
+        return table_.execute_stmt(conn_, stmt, std::make_tuple(param1, param2), result);
+    }
+    network_result<void> start_statement_execution(
+        const statement& stmt,
+        field_view param1,
+        field_view param2,
+        execution_state& st
+    ) override
+    {
+        return table_.start_stmt_execution_tuple(conn_, stmt, std::make_tuple(param1, param2), st);
+    }
+    network_result<void> start_statement_execution(
+        const statement& stmt,
+        fv_list_it params_first,
+        fv_list_it params_last,
+        execution_state& st
+    ) override
+    {
+        return table_.start_stmt_execution_it(conn_, stmt, params_first, params_last, st);
+    }
+    network_result<void> close_statement(statement& stmt) override { return table_.close_stmt(conn_, stmt); }
     network_result<row_view> read_one_row(execution_state& st) override
     {
-        return table_.conn_read_one_row(conn_, st);
+        return table_.read_one_row(conn_, st);
     }
     network_result<rows_view> read_some_rows(execution_state& st) override
     {
-        return table_.conn_read_some_rows(conn_, st);
+        return table_.read_some_rows(conn_, st);
     }
-    network_result<void> ping() override { return table_.conn_ping(conn_); }
-    network_result<void> quit() override { return table_.conn_quit(conn_); }
-    network_result<void> close() override { return table_.conn_close(conn_); }
+    network_result<void> ping() override { return table_.ping(conn_); }
+    network_result<void> quit() override { return table_.quit(conn_); }
+    network_result<void> close() override { return table_.close(conn_); }
 };
 
 template <class Stream>
@@ -289,7 +277,6 @@ class er_network_variant_impl : public er_network_variant
     const char* variant_name_;
 
     using conn_type = er_connection_impl<Stream>;
-    using stmt_type = er_statement_impl<Stream>;
 
 public:
     er_network_variant_impl(function_table<Stream>&& table, const char* name)
@@ -306,7 +293,6 @@ public:
     {
         return er_connection_ptr(new conn_type(ex, ssl_ctx, *this, table_));
     }
-    er_statement_ptr create_statement() override { return er_statement_ptr(new stmt_type(table_)); }
 };
 
 template <class Stream, class Netmaker>

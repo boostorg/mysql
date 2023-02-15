@@ -17,9 +17,7 @@
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::date;
 using boost::mysql::resultset;
-using boost::mysql::tcp_statement;
 
 namespace {
 
@@ -50,10 +48,7 @@ BOOST_FIXTURE_TEST_CASE(query_insert, tcp_network_fixture)
 
     // Issue query
     resultset result;
-    conn.query(
-        "INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')",
-        result
-    );
+    conn.query("INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')", result);
 
     // Verify resultset
     BOOST_TEST(result.meta().empty());
@@ -118,13 +113,12 @@ BOOST_FIXTURE_TEST_CASE(statement_update, tcp_network_fixture)
     start_transaction();
 
     // Prepare the statement
-    tcp_statement stmt;
-    conn.prepare_statement("UPDATE updates_table SET field_int = ? WHERE field_varchar = ?", stmt);
+    auto stmt = conn.prepare_statement("UPDATE updates_table SET field_int = ? WHERE field_varchar = ?");
     BOOST_TEST(stmt.num_params() == 2u);
 
     // Execute it
     resultset result;
-    stmt.execute(std::make_tuple(200, "f0"), result);
+    conn.execute_statement(stmt, std::make_tuple(200, "f0"), result);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 1u);
@@ -137,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE(statement_update, tcp_network_fixture)
     BOOST_TEST(result.rows().at(0).at(0).as_int64() == 200);
 
     // Close the statement
-    stmt.close();
+    conn.close_statement(stmt);
 }
 
 BOOST_FIXTURE_TEST_CASE(statement_delete, tcp_network_fixture)
@@ -146,13 +140,12 @@ BOOST_FIXTURE_TEST_CASE(statement_delete, tcp_network_fixture)
     start_transaction();
 
     // Prepare the statement
-    tcp_statement stmt;
-    conn.prepare_statement("DELETE FROM updates_table WHERE field_varchar = ?", stmt);
+    auto stmt = conn.prepare_statement("DELETE FROM updates_table WHERE field_varchar = ?");
     BOOST_TEST(stmt.num_params() == 1u);
 
     // Execute it
     resultset result;
-    stmt.execute(std::make_tuple("f0"), result);
+    conn.execute_statement(stmt, std::make_tuple("f0"), result);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 1u);
@@ -165,6 +158,6 @@ BOOST_FIXTURE_TEST_CASE(statement_delete, tcp_network_fixture)
     BOOST_TEST(result.rows().at(0).at(0).as_int64() == 2);
 }
 
-BOOST_AUTO_TEST_SUITE_END()  // test_query
+BOOST_AUTO_TEST_SUITE_END()  // test_crud
 
 }  // namespace

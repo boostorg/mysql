@@ -15,15 +15,18 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/statement.hpp>
 
+#include <forward_list>
 #include <memory>
 
-#include "er_statement.hpp"
 #include "network_result.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
+
+using fv_list_it = std::forward_list<field_view>::const_iterator;
 
 class er_network_variant;
 
@@ -42,7 +45,26 @@ public:
     virtual network_result<void> handshake(const handshake_params&) = 0;
     virtual network_result<void> query(string_view query, resultset& result) = 0;
     virtual network_result<void> start_query(string_view query, execution_state& result) = 0;
-    virtual network_result<void> prepare_statement(string_view statement, er_statement& stmt) = 0;
+    virtual network_result<statement> prepare_statement(string_view statement) = 0;
+    virtual network_result<void> execute_statement(
+        const statement& stmt,
+        field_view fv1,
+        field_view fv2,
+        resultset& result
+    ) = 0;
+    virtual network_result<void> start_statement_execution(
+        const statement& stmt,
+        field_view fv1,
+        field_view fv2,
+        execution_state& st
+    ) = 0;
+    virtual network_result<void> start_statement_execution(
+        const statement& stmt,
+        fv_list_it params_first,
+        fv_list_it params_last,
+        execution_state& st
+    ) = 0;
+    virtual network_result<void> close_statement(statement&) = 0;
     virtual network_result<row_view> read_one_row(execution_state& st) = 0;
     virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;
     virtual network_result<void> ping() = 0;

@@ -81,10 +81,9 @@ boost::asio::awaitable<void> coro_main(
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
-    boost::mysql::tcp_ssl_statement stmt;
-    std::tie(ec) = co_await conn.async_prepare_statement(
+    boost::mysql::statement stmt;
+    std::tie(ec, stmt) = co_await conn.async_prepare_statement(
         "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        stmt,
         diag,
         tuple_awaitable
     );
@@ -92,7 +91,9 @@ boost::asio::awaitable<void> coro_main(
 
     // Execute the statement
     boost::mysql::resultset result;
-    std::tie(ec) = co_await stmt.async_execute(std::make_tuple(company_id), result, diag, tuple_awaitable);
+    std::tie(ec
+    ) = co_await conn
+            .async_execute_statement(stmt, std::make_tuple(company_id), result, diag, tuple_awaitable);
     boost::mysql::throw_on_error(ec, diag);
 
     // Print all employees

@@ -7,8 +7,8 @@
 
 [section:other_streams UNIX sockets and other stream types]
 
-I/O objects ([reflink connection] and [reflink statement])
-are templatized on the stream type. Any object fulfilling the __Stream__ concept may be used
+The [reflink connection] class is templatized on the stream type.
+Any object fulfilling the __Stream__ concept may be used
 as template argument.
 
 [heading Convenience type aliases]
@@ -19,38 +19,34 @@ This library provides helper type aliases for the most common cases:
     [
         [Transport]
         [Stream type]
-        [Typedefs]
+        [Type alias]
     ]
     [
         [SSL over TCP]
         [`boost::asio::ssl::stream<boost::asio::ip::tcp::socket>`]
         [
-            [reflink tcp_ssl_connection][br]
-            [reflink tcp_ssl_statement]
+            [reflink tcp_ssl_connection]
         ]
     ]
     [
         [Plaintext TCP]
         [`boost::asio::ip::tcp::socket`]
         [
-            [reflink tcp_connection][br]
-            [reflink tcp_statement]
+            [reflink tcp_connection]
         ]
     ]
     [
         [SSL over UNIX sockets]
         [`boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>`]
         [
-            [reflink unix_ssl_connection][br]
-            [reflink unix_ssl_statement]
+            [reflink unix_ssl_connection]
         ]
     ]
     [
         [Plaintext UNIX sockets]
         [`boost::asio::local::stream_protocol::socket`]
         [
-            [reflink unix_connection][br]
-            [reflink unix_statement]
+            [reflink unix_connection]
         ]
     ]
 ]

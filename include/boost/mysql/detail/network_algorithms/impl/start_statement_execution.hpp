@@ -14,7 +14,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
@@ -100,9 +100,7 @@ public:
     // We need a deduced context to enable perfect forwarding
     template <BOOST_MYSQL_FIELD_LIKE_TUPLE DeducedTuple>
     stmt_execute_tuple_serialize_fn(std::uint32_t stmt_id, DeducedTuple&& params) noexcept(
-        std::is_nothrow_constructible<
-            FieldLikeTuple,
-            decltype(std::forward<DeducedTuple>(params))>::value
+        std::is_nothrow_constructible<FieldLikeTuple, decltype(std::forward<DeducedTuple>(params))>::value
     )
         : stmt_id_(stmt_id), params_(std::forward<DeducedTuple>(params))
     {
@@ -116,7 +114,7 @@ public:
     }
 };
 
-inline error_code check_num_params(const statement_base& stmt, std::size_t param_count)
+inline error_code check_num_params(const statement& stmt, std::size_t param_count)
 {
     if (param_count != stmt.num_params())
     {
@@ -130,7 +128,7 @@ inline error_code check_num_params(const statement_base& stmt, std::size_t param
 
 template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
 error_code check_num_params(
-    const statement_base& stmt,
+    const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last
 )
@@ -164,7 +162,7 @@ struct fast_fail_op : boost::asio::coroutine
 template <class Stream, BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
 void boost::mysql::detail::start_statement_execution(
     channel<Stream>& chan,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
@@ -178,11 +176,7 @@ void boost::mysql::detail::start_statement_execution(
         start_execution_generic(
             resultset_encoding::binary,
             chan,
-            stmt_execute_it_serialize_fn<FieldViewFwdIterator>(
-                stmt.id(),
-                params_first,
-                params_last
-            ),
+            stmt_execute_it_serialize_fn<FieldViewFwdIterator>(stmt.id(), params_first, params_last),
             output,
             err,
             diag
@@ -197,7 +191,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_start_statement_execution(
     channel<Stream>& chan,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
@@ -227,7 +221,7 @@ boost::mysql::detail::async_start_statement_execution(
 template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
 void boost::mysql::detail::start_statement_execution(
     channel<Stream>& channel,
-    const statement_base& stmt,
+    const statement& stmt,
     const FieldLikeTuple& params,
     execution_state& output,
     error_code& err,
@@ -235,15 +229,7 @@ void boost::mysql::detail::start_statement_execution(
 )
 {
     auto params_array = tuple_to_array(params);
-    start_statement_execution(
-        channel,
-        stmt,
-        params_array.begin(),
-        params_array.end(),
-        output,
-        err,
-        diag
-    );
+    start_statement_execution(channel, stmt, params_array.begin(), params_array.end(), output, err, diag);
 }
 
 template <
@@ -253,7 +239,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_start_statement_execution(
     channel<Stream>& chan,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldLikeTuple&& params,
     execution_state& output,
     server_diagnostics& diag,
@@ -273,10 +259,7 @@ boost::mysql::detail::async_start_statement_execution(
     return async_start_execution_generic(
         resultset_encoding::binary,
         chan,
-        stmt_execute_tuple_serialize_fn<decayed_tuple>(
-            stmt.id(),
-            std::forward<FieldLikeTuple>(params)
-        ),
+        stmt_execute_tuple_serialize_fn<decayed_tuple>(stmt.id(), std::forward<FieldLikeTuple>(params)),
         output,
         diag,
         std::forward<CompletionToken>(token)

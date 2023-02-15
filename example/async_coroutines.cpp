@@ -30,8 +30,7 @@ void main_impl(int argc, char** argv)
 {
     if (argc != 4 && argc != 5)
     {
-        std::cerr << "Usage: " << argv[0]
-                  << " <username> <password> <server-hostname> [company-id]\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> [company-id]\n";
         exit(1);
     }
 
@@ -73,11 +72,7 @@ void main_impl(int argc, char** argv)
             boost::mysql::server_diagnostics diag;
 
             // Hostname resolution
-            auto endpoints = resolver.async_resolve(
-                hostname,
-                boost::mysql::default_port_string,
-                yield[ec]
-            );
+            auto endpoints = resolver.async_resolve(hostname, boost::mysql::default_port_string, yield[ec]);
             boost::mysql::throw_on_error(ec);
 
             // Connect to server
@@ -86,10 +81,8 @@ void main_impl(int argc, char** argv)
 
             // We will be using company_id, which is untrusted user input, so we will use a prepared
             // statement.
-            boost::mysql::tcp_ssl_statement stmt;
-            conn.async_prepare_statement(
+            boost::mysql::statement stmt = conn.async_prepare_statement(
                 "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-                stmt,
                 diag,
                 yield[ec]
             );
@@ -97,7 +90,7 @@ void main_impl(int argc, char** argv)
 
             // Execute the statement
             boost::mysql::resultset result;
-            stmt.async_execute(std::make_tuple(company_id), result, diag, yield[ec]);
+            conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag, yield[ec]);
             boost::mysql::throw_on_error(ec, diag);
 
             // Print the employees

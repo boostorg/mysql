@@ -23,8 +23,8 @@ type always has one of the two folling forms:
 # `void(error_code)`. Used in operations that do
    not have a proper result, e.g. [refmem connection async_connect].
 # `void(error_code, T)`. Used in operations that
-   have a result, e.g. [refmem connection async_read_one_row]
-   (in this case, `T` is `row_view`).
+   have a result, e.g. [refmem connection async_prepare_statement]
+   (in this case, `T` is `statement`).
    
 All asynchronous functions involving server communication are overloaded
 to accept an optional [reflink server_diagnostics] output parameter. It is populated
@@ -35,9 +35,6 @@ with any server-provided error information before calling the completion handler
 As mentioned in [link mysql.overview.async this section], only a single read and a single
 write operation per connection can be outstanding at a given point in time.
 If you need to perform queries in parallel, open more connections to the server.
-
-Recall also that [reflink statement] objects are proxy I/O objects. All I/O operations
-on statements end up using the underlying connection's stream.
 
 [endsect]
 

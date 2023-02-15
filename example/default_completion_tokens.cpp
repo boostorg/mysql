@@ -59,20 +59,17 @@ boost::asio::awaitable<void> coro_main(
     std::tie(ec) = co_await conn.async_connect(*endpoints.begin(), params, diag);
     boost::mysql::throw_on_error(ec, diag);
 
-    // Prepare an statement. Note that the statement type won't be
-    // tcp_ssl_statement, because the stream type we are using is different.
-    // We can use connection::statement_type to help
-    connection_type::statement_type stmt;
-    std::tie(ec) = co_await conn.async_prepare_statement(
+    // Prepare an statement
+    boost::mysql::statement stmt;
+    std::tie(ec, stmt) = co_await conn.async_prepare_statement(
         "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        stmt,
         diag
     );
     boost::mysql::throw_on_error(ec, diag);
 
     // Execute it
     boost::mysql::resultset result;
-    std::tie(ec) = co_await stmt.async_execute(std::make_tuple(company_id), result, diag);
+    std::tie(ec) = co_await conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag);
     boost::mysql::throw_on_error(ec, diag);
 
     // Use the received rows

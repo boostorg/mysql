@@ -9,69 +9,29 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "create_statement.hpp"
 #include "test_common.hpp"
-#include "test_connection.hpp"
-#include "test_statement.hpp"
 
 using namespace boost::mysql::test;
+using boost::mysql::statement;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_statement_)
 
-test_connection conn;
-
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
-    test_statement stmt;
+    statement stmt;
     BOOST_TEST(!stmt.valid());
 }
 
 BOOST_AUTO_TEST_CASE(member_fns)
 {
-    auto stmt = create_statement(conn, 3, 1);
+    auto stmt = create_statement(3, 1);
 
     BOOST_TEST(stmt.valid());
     BOOST_TEST(stmt.num_params() == 3u);
     BOOST_TEST(stmt.id() == 1u);
-}
-
-BOOST_AUTO_TEST_CASE(move_ctor_from_invalid)
-{
-    test_statement stmt1;
-    test_statement stmt2(std::move(stmt1));
-
-    BOOST_TEST(!stmt2.valid());
-}
-
-BOOST_AUTO_TEST_CASE(move_ctor_from_valid)
-{
-    auto stmt1 = create_statement(conn, 3, 1);
-    test_statement stmt2(std::move(stmt1));
-
-    BOOST_TEST(stmt2.valid());
-    BOOST_TEST(stmt2.num_params() == 3u);
-    BOOST_TEST(stmt2.id() == 1u);
-}
-
-BOOST_AUTO_TEST_CASE(move_assign_from_invalid)
-{
-    auto stmt1 = create_statement(conn, 3, 1);
-    test_statement stmt2;
-    stmt1 = std::move(stmt2);
-
-    BOOST_TEST(!stmt1.valid());
-}
-
-BOOST_AUTO_TEST_CASE(move_assign_from_valid)
-{
-    auto stmt1 = create_statement(conn, 8, 10);
-    auto stmt2 = create_statement(conn, 3, 1);
-
-    stmt1 = std::move(stmt2);
-    BOOST_TEST(stmt1.valid());
-    BOOST_TEST(stmt1.num_params() == 3u);
-    BOOST_TEST(stmt1.id() == 1u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

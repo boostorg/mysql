@@ -38,7 +38,6 @@ public:
      * `collation::utf8mb4_general_ci`.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection does not support SSL.
-     * \param buffer_config Configuration about internal buffers.
      */
     handshake_params(
         string_view username,

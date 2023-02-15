@@ -26,7 +26,7 @@ public:
 
     /**
      * \brief Initializing constructor.
-     * \param init_read_buffer_size Initial size of the read buffer. A bigger read buffer
+     * \param initial_read_size Initial size of the read buffer. A bigger read buffer
      * can increase the number of rows returned by \ref connection::read_some_rows.
      */
     constexpr explicit buffer_params(std::size_t initial_read_size = default_initial_read_size) noexcept

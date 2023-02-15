@@ -11,7 +11,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/server_diagnostics.hpp>
-#include <boost/mysql/statement_base.hpp>
+#include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -25,7 +25,7 @@ namespace detail {
 template <class Stream, BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
 void start_statement_execution(
     channel<Stream>& channel,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
@@ -40,7 +40,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_statement_execution(
     channel<Stream>& chan,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
@@ -51,7 +51,7 @@ async_start_statement_execution(
 template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
 void start_statement_execution(
     channel<Stream>& channel,
-    const statement_base& stmt,
+    const statement& stmt,
     const FieldLikeTuple& params,
     execution_state& output,
     error_code& err,
@@ -65,7 +65,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_statement_execution(
     channel<Stream>& chan,
-    const statement_base& stmt,
+    const statement& stmt,
     FieldLikeTuple&& params,
     execution_state& output,
     server_diagnostics& diag,
