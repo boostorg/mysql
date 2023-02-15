@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
@@ -139,9 +139,9 @@ error_code check_num_params(
 struct fast_fail_op : boost::asio::coroutine
 {
     error_code err_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
 
-    fast_fail_op(error_code err, server_diagnostics& diag) noexcept : err_(err), diag_(diag) {}
+    fast_fail_op(error_code err, diagnostics& diag) noexcept : err_(err), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self)
@@ -167,7 +167,7 @@ void boost::mysql::detail::start_statement_execution(
     FieldViewFwdIterator params_last,
     execution_state& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     err = check_num_params(stmt, params_first, params_last);
@@ -195,7 +195,7 @@ boost::mysql::detail::async_start_statement_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -225,7 +225,7 @@ void boost::mysql::detail::start_statement_execution(
     const FieldLikeTuple& params,
     execution_state& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     auto params_array = tuple_to_array(params);
@@ -242,7 +242,7 @@ boost::mysql::detail::async_start_statement_execution(
     const statement& stmt,
     FieldLikeTuple&& params,
     execution_state& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

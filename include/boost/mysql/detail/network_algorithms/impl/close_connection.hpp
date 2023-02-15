@@ -25,9 +25,9 @@ template <class SocketStream>
 struct close_connection_op : boost::asio::coroutine
 {
     channel<SocketStream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
 
-    close_connection_op(channel<SocketStream>& chan, server_diagnostics& diag) : chan_(chan), diag_(diag) {}
+    close_connection_op(channel<SocketStream>& chan, diagnostics& diag) : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {})
@@ -58,11 +58,7 @@ struct close_connection_op : boost::asio::coroutine
 }  // namespace boost
 
 template <class SocketStream>
-void boost::mysql::detail::close_connection(
-    channel<SocketStream>& chan,
-    error_code& code,
-    server_diagnostics& diag
-)
+void boost::mysql::detail::close_connection(channel<SocketStream>& chan, error_code& code, diagnostics& diag)
 {
     // Close = quit + close stream. We close the stream regardless of the quit failing or not
     if (chan.lowest_layer().is_open())
@@ -84,7 +80,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_close_connection(
     channel<SocketStream>& chan,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

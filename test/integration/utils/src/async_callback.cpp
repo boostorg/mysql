@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/server_diagnostics.hpp>
+#include <boost/mysql/diagnostics.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 
@@ -14,7 +14,7 @@
 #include "streams.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::server_diagnostics;
+using boost::mysql::diagnostics;
 
 namespace {
 
@@ -31,7 +31,7 @@ struct async_callback_maker
     struct type<network_result<R>(Obj&, Args...)>
     {
         using signature = std::function<network_result<R>(Obj&, Args...)>;
-        using async_sig = void (Obj::*)(Args..., server_diagnostics&, bound_callback_token<R>&&);
+        using async_sig = void (Obj::*)(Args..., diagnostics&, bound_callback_token<R>&&);
 
         static signature call(async_sig fn)
         {

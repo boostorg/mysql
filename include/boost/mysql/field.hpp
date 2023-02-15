@@ -38,9 +38,8 @@ namespace mysql {
  * Like a variant, at any point, a `field` always contains a value of
  * certain type. You can query the type using \ref kind and the `is_xxx` functions
  * like \ref is_int64. Use `as_xxx` and `get_xxx` for checked and unchecked value
- * access, respectively. You can mutate a `field` by calling the `emplace_xxx` functions, by
- * assigning it a different value, or using the lvalue references returned by `as_xxx` and
- * `get_xxx`.
+ * access, respectively. You can mutate a `field` by calling the assignment operator,
+ * or using the lvalue references returned by `as_xxx` and `get_xxx`.
  */
 class field
 {
@@ -130,14 +129,12 @@ public:
     /// \copybrief field(const std::string&)
     /// \details A `std::string` is constructed internally from `v`.
     explicit field(string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
-#if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
 
+#if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
     /// \copydoc field(string_view)
-    explicit field(std::string_view v) noexcept
-        : repr_(boost::variant2::in_place_type_t<std::string>(), v)
-    {
-    }
+    explicit field(std::string_view v) noexcept : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 #endif
+
     /// Constructs a `field` holding a `blob` (`this->kind() == field_kind::blob`).
     explicit field(blob v) noexcept : repr_(std::move(v)) {}
 
@@ -164,119 +161,127 @@ public:
     field(const field_view& v) { from_view(v); }
 
     /**
-     * \copydoc emplace_null
-     * \details Equivalent to \ref emplace_null.
+     * \brief Replaces `*this` with a `NULL`, changing the kind to `null` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(std::nullptr_t) noexcept
     {
-        emplace_null();
+        repr_.data.emplace<detail::field_impl::null_t>();
         return *this;
     }
 
     /**
-     * \copydoc emplace_int64
-     * \details Equivalent to \ref emplace_int64.
+     * \brief Replaces `*this` with `v`, changing the kind to `int64` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(signed char v) noexcept
     {
-        emplace_int64(v);
+        repr_.data.emplace<std::int64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(signed char)
     field& operator=(short v) noexcept
     {
-        emplace_int64(v);
+        repr_.data.emplace<std::int64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(signed char)
     field& operator=(int v) noexcept
     {
-        emplace_int64(v);
+        repr_.data.emplace<std::int64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(signed char)
     field& operator=(long v) noexcept
     {
-        emplace_int64(v);
+        repr_.data.emplace<std::int64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(signed char)
     field& operator=(long long v) noexcept
     {
-        emplace_int64(v);
+        repr_.data.emplace<std::int64_t>(v);
         return *this;
     }
 
     /**
-     * \copydoc emplace_uint64
-     * \details Equivalent to \ref emplace_uint64.
+     * \brief Replaces `*this` with `v`, changing the kind to `uint64` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(unsigned char v) noexcept
     {
-        emplace_uint64(v);
+        repr_.data.emplace<std::uint64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(unsigned char)
     field& operator=(unsigned short v) noexcept
     {
-        emplace_uint64(v);
+        repr_.data.emplace<std::uint64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(unsigned char)
     field& operator=(unsigned int v) noexcept
     {
-        emplace_uint64(v);
+        repr_.data.emplace<std::uint64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(unsigned char)
     field& operator=(unsigned long v) noexcept
     {
-        emplace_uint64(v);
+        repr_.data.emplace<std::uint64_t>(v);
         return *this;
     }
 
     /// \copydoc operator=(unsigned char)
     field& operator=(unsigned long long v) noexcept
     {
-        emplace_uint64(v);
+        repr_.data.emplace<std::uint64_t>(v);
         return *this;
     }
 
     /**
-     * \copydoc emplace_string
-     * \details Equivalent to \ref emplace_string.
+     * \brief Replaces `*this` with `v`, changing the kind to `string` and destroying any previous
+     * contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const std::string& v)
     {
-        emplace_string(v);
+        repr_.data.emplace<std::string>(v);
         return *this;
     }
 
     /// \copydoc operator=(const std::string&)
     field& operator=(std::string&& v)
     {
-        emplace_string(std::move(v));
+        repr_.data.emplace<std::string>(std::move(v));
         return *this;
     }
 
     /// \copydoc operator=(const std::string&)
     field& operator=(const char* v)
     {
-        emplace_string(v);
+        repr_.data.emplace<std::string>(v);
         return *this;
     }
 
     /// \copydoc operator=(const std::string&)
     field& operator=(string_view v)
     {
-        emplace_string(v);
+        repr_.data.emplace<std::string>(v);
         return *this;
     }
 
@@ -284,68 +289,79 @@ public:
     /// \copydoc operator=(const std::string&)
     field& operator=(std::string_view v)
     {
-        emplace_string(v);
+        repr_.data.emplace<std::string>(v);
         return *this;
     }
 #endif
 
     /**
-     * \copydoc emplace_blob
-     * \details Equivalent to \ref emplace_blob.
+     * \brief Replaces `*this` with `v`, changing the kind to `blob` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(blob v)
     {
-        emplace_blob(std::move(v));
+        repr_.data.emplace<blob>(std::move(v));
         return *this;
     }
 
     /**
-     * \copydoc emplace_float
-     * \details Equivalent to \ref emplace_float.
+     * \brief Replaces `*this` with `v`, changing the kind to `float_` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(float v) noexcept
     {
-        emplace_float(v);
+        repr_.data.emplace<float>(v);
         return *this;
     }
 
     /**
-     * \copydoc emplace_double
-     * \details Equivalent to \ref emplace_double.
+     * \brief Replaces `*this` with `v`, changing the kind to `double` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(double v) noexcept
     {
-        emplace_double(v);
+        repr_.data.emplace<double>(v);
         return *this;
     }
 
     /**
-     * \copydoc emplace_date
-     * \details Equivalent to \ref emplace_date.
+     * \brief Replaces `*this` with `v`, changing the kind to `date` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const date& v) noexcept
     {
-        emplace_date(v);
+        repr_.data.emplace<date>(v);
         return *this;
     }
 
     /**
-     * \copydoc emplace_datetime
-     * \details Equivalent to \ref emplace_datetime.
+     * \brief Replaces `*this` with `v`, changing the kind to `datetime` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const datetime& v) noexcept
     {
-        emplace_datetime(v);
+        repr_.data.emplace<datetime>(v);
         return *this;
     }
 
     /**
-     * \copydoc emplace_time
-     * \details Equivalent to \ref emplace_time.
+     * \brief Replaces `*this` with `v`, changing the kind to `time` and destroying any
+     * previous contents.
+     * \details Invalidates references obtained by as_xxx and get_xxx functions, but not
      */
     field& operator=(const time& v) noexcept
     {
-        emplace_time(v);
+        repr_.data.emplace<time>(v);
         return *this;
     }
 
@@ -613,99 +629,6 @@ public:
     time& get_time() noexcept { return repr_.get<time>(); }
 
     /**
-     * \brief Replaces `*this` with a `NULL`, changing the kind to `null` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_null() noexcept { repr_.data.emplace<detail::field_impl::null_t>(); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `int64` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_int64(std::int64_t v) noexcept { repr_.data.emplace<std::int64_t>(v); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `uint64` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_uint64(std::uint64_t v) noexcept { repr_.data.emplace<std::uint64_t>(v); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `string` and destroying any previous
-     * contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_string(const std::string& v) { repr_.data.emplace<std::string>(v); }
-
-    /// \copydoc emplace_string(const std::string&)
-    void emplace_string(std::string&& v) { repr_.data.emplace<std::string>(std::move(v)); }
-
-    /// \copydoc emplace_string(const std::string&)
-    void emplace_string(const char* v) { repr_.data.emplace<std::string>(v); }
-
-    /// \copydoc emplace_string(const std::string&)
-    void emplace_string(string_view v) { repr_.data.emplace<std::string>(v); }
-
-#if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
-    /// \copydoc emplace_string(const std::string&)
-    void emplace_string(std::string_view v) { repr_.data.emplace<std::string>(v); }
-#endif
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `blob` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_blob(blob v) { repr_.data.emplace<blob>(std::move(v)); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `float_` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_float(float v) noexcept { repr_.data.emplace<float>(v); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `double` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_double(double v) noexcept { repr_.data.emplace<double>(v); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `date` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_date(const date& v) noexcept { repr_.data.emplace<date>(v); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `datetime` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
-     * but not the ones obtained by \ref field::operator field_view().
-     */
-    void emplace_datetime(const datetime& v) noexcept { repr_.data.emplace<datetime>(v); }
-
-    /**
-     * \brief Replaces `*this` with `v`, changing the kind to `time` and destroying any
-     * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions, but not
-     */
-    void emplace_time(const time& v) noexcept { repr_.data.emplace<time>(v); }
-
-    /**
      * \brief Constructs a \ref field_view pointing to `*this`.
      * \details The resulting `field_view` has the same kind and value as `*this`. It acts as a
      * reference to `*this`, and will be valid as long as `*this` is alive.
@@ -739,10 +662,7 @@ inline bool operator!=(const field& lhs, const field& rhs) noexcept { return !(l
  * \brief Tests for equality.
  * \details The same considerations as \ref field_view::operator== apply.
  */
-inline bool operator==(const field_view& lhs, const field& rhs) noexcept
-{
-    return lhs == field_view(rhs);
-}
+inline bool operator==(const field_view& lhs, const field& rhs) noexcept { return lhs == field_view(rhs); }
 
 /**
  * \relates field
@@ -755,10 +675,7 @@ inline bool operator!=(const field_view& lhs, const field& rhs) noexcept { retur
  * \brief Tests for equality.
  * \details The same considerations as \ref field_view::operator== apply.
  */
-inline bool operator==(const field& lhs, const field_view& rhs) noexcept
-{
-    return field_view(lhs) == rhs;
-}
+inline bool operator==(const field& lhs, const field_view& rhs) noexcept { return field_view(lhs) == rhs; }
 
 /**
  * \relates field

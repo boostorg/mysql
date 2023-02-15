@@ -23,13 +23,13 @@ struct connect_op : boost::asio::coroutine
     using endpoint_type = typename Stream::lowest_layer_type::endpoint_type;
 
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     endpoint_type ep_;
     handshake_params params_;
 
     connect_op(
         channel<Stream>& chan,
-        server_diagnostics& diag,
+        diagnostics& diag,
         const endpoint_type& ep,
         const handshake_params& params
     )
@@ -74,7 +74,7 @@ void boost::mysql::detail::connect(
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const handshake_params& params,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     chan.lowest_layer().connect(endpoint, err);
@@ -90,15 +90,13 @@ void boost::mysql::detail::connect(
     }
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_connect(
     channel<Stream>& chan,
     const typename Stream::lowest_layer_type::endpoint_type& endpoint,
     const handshake_params& params,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

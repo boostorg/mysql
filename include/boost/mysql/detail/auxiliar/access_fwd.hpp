@@ -15,10 +15,11 @@ namespace detail {
 // These structs expose additional functions that are "public" to
 // other members of the library, but are not to be used by end users
 struct connection_access;
+struct diagnostics_access;
 struct execution_state_access;
 struct field_view_access;
 struct metadata_access;
-struct resultset_access;
+struct results_access;
 struct row_view_access;
 struct rows_view_access;
 struct rows_access;

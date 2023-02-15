@@ -18,7 +18,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/tcp.hpp>
@@ -44,7 +44,7 @@ using boost::mysql::column_type;
 using boost::mysql::date;
 using boost::mysql::datetime;
 using boost::mysql::metadata;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
@@ -61,13 +61,13 @@ struct database_types_fixture : tcp_network_fixture
     // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
     void set_time_zone()
     {
-        resultset result;
+        results result;
         conn.query("SET session time_zone = '+02:00'", result);
     }
 
     void set_sql_mode()
     {
-        resultset result;
+        results result;
         conn.query("SET session sql_mode = 'ALLOW_INVALID_DATES'", result);
     }
 
@@ -644,7 +644,7 @@ BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
         BOOST_TEST_CONTEXT(table.name)
         {
             // Execute the query
-            resultset result;
+            results result;
             conn.query(table.select_sql(), result);
 
             // Validate the received contents
@@ -664,7 +664,7 @@ BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
             auto stmt = conn.prepare_statement(table.select_sql());
 
             // Execute it with the provided parameters
-            resultset result;
+            results result;
             conn.execute_statement(stmt, std::make_tuple(), result);
 
             // Validate the received contents
@@ -687,7 +687,7 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
             auto query_stmt = conn.prepare_statement(table.select_sql());
 
             // Remove all contents from the table
-            resultset result;
+            results result;
             conn.query(table.delete_sql(), result);
 
             // Insert all the contents again

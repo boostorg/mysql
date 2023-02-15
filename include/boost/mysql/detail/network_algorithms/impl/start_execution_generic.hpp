@@ -10,9 +10,9 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -37,7 +37,7 @@ class start_execution_processor
     channel_base& chan_;
     resultset_encoding encoding_;
     execution_state& st_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     std::size_t num_fields_{};
     std::size_t remaining_fields_{};
 
@@ -46,7 +46,7 @@ public:
         channel_base& chan,
         resultset_encoding encoding,
         execution_state& st,
-        server_diagnostics& diag
+        diagnostics& diag
     ) noexcept
         : chan_(chan), encoding_(encoding), st_(st), diag_(diag){};
 
@@ -185,7 +185,7 @@ struct start_execution_generic_op : boost::asio::coroutine
 inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute_response(
     boost::asio::const_buffer msg,
     capabilities caps,
-    server_diagnostics& diag
+    diagnostics& diag
 ) noexcept
 {
     // Response may be: ok_packet, err_packet, local infile request (not implemented)
@@ -239,7 +239,7 @@ void boost::mysql::detail::start_execution_generic(
     const SerializeFn& fn,
     execution_state& st,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     // Clear info
@@ -298,7 +298,7 @@ boost::mysql::detail::async_start_execution_generic(
     channel<Stream>& channel,
     SerializeFn&& fn,
     execution_state& st,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {
@@ -313,4 +313,4 @@ boost::mysql::detail::async_start_execution_generic(
     );
 }
 
-#endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_IPP_ */
+#endif

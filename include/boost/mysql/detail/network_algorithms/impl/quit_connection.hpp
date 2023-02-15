@@ -10,8 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
@@ -32,9 +32,9 @@ template <class Stream>
 struct quit_connection_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
 
-    quit_connection_op(channel<Stream>& chan, server_diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
+    quit_connection_op(channel<Stream>& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {})
@@ -69,7 +69,7 @@ struct quit_connection_op : boost::asio::coroutine
 }  // namespace boost
 
 template <class Stream>
-void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& err, server_diagnostics&)
+void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& err, diagnostics&)
 {
     compose_quit(chan);
     chan.write(chan.shared_buffer(), chan.reset_sequence_number(), err);
@@ -86,11 +86,7 @@ void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& er
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_quit_connection(
-    channel<Stream>& chan,
-    server_diagnostics& diag,
-    CompletionToken&& token
-)
+boost::mysql::detail::async_quit_connection(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token)
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         quit_connection_op<Stream>(chan, diag),

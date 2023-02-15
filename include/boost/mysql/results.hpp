@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_RESULTSET_HPP
-#define BOOST_MYSQL_RESULTSET_HPP
+#ifndef BOOST_MYSQL_RESULTS_HPP
+#define BOOST_MYSQL_RESULTS_HPP
 
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
@@ -24,41 +24,41 @@ namespace mysql {
 /**
  * \brief Holds the results of a SQL query.
  */
-class resultset
+class results
 {
 public:
     /**
      * \brief Default constructor.
-     * \details Constructs an empty resultset, with `this->has_value() == false`.
+     * \details Constructs an empty results object, with `this->has_value() == false`.
      */
-    resultset() = default;
+    results() = default;
 
     /**
      * \brief Copy constructor.
      */
-    resultset(const resultset& other) = default;
+    results(const results& other) = default;
 
     /**
      * \brief Move constructor.
      * \details View objects referencing `other` remain valid.
      */
-    resultset(resultset&& other) = default;
+    results(results&& other) = default;
 
     /**
      * \brief Copy assignment.
      * \details View objects referencing `*this` are invalidated.
      */
-    resultset& operator=(const resultset& other) = default;
+    results& operator=(const results& other) = default;
 
     /**
      * \brief Move assignment.
      * \details View objects referencing `other` remain valid. View objects
      * referencing `*this` are invalidated.
      */
-    resultset& operator=(resultset&& other) = default;
+    results& operator=(results&& other) = default;
 
     /// Destructor
-    ~resultset() = default;
+    ~results() = default;
 
     /**
      * \brief Returns whether the object holds a valid result.
@@ -154,13 +154,13 @@ private:
     ::boost::mysql::rows rows_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::resultset_access;
+    friend struct detail::results_access;
 #endif
 };
 
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/resultset.hpp>
+#include <boost/mysql/impl/results.hpp>
 
 #endif

@@ -11,7 +11,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -104,7 +104,7 @@ struct network_fixture : network_fixture_base
     // make the testing environment more stable and speed up the tests
     void start_transaction()
     {
-        resultset result;
+        results result;
         conn->query("START TRANSACTION", result).get();
     }
 };

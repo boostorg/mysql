@@ -27,8 +27,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
             output.status_flags,
             output.warnings
         );
-        if (err == deserialize_errc::ok &&
-            ctx.enough_size(1))  // message is optional, may be omitted
+        if (err == deserialize_errc::ok && ctx.enough_size(1))  // message is optional, may be omitted
         {
             err = deserialize(ctx, output.info);
         }
@@ -63,7 +62,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
 
 inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
     deserialization_context& ctx,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     err_packet error_packet{};
@@ -71,7 +70,7 @@ inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
     if (code)
         return code;
     string_view sv = error_packet.error_message.value;
-    diag.message().assign(sv.begin(), sv.end());
+    diagnostics_access::assign(diag, sv);
     return make_error_code(static_cast<server_errc>(error_packet.error_code));
 }
 

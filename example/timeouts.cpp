@@ -49,7 +49,7 @@ void print_employee(boost::mysql::row_view employee)
 template <class T>
 T check_error(
     std::variant<std::monostate, std::tuple<error_code, T>>&& op_result,
-    const boost::mysql::server_diagnostics& diag = {}
+    const boost::mysql::diagnostics& diag = {}
 )
 {
     if (op_result.index() == 0)
@@ -63,7 +63,7 @@ T check_error(
 
 void check_error(
     const std::variant<std::monostate, std::tuple<error_code>>& op_result,
-    const boost::mysql::server_diagnostics& diag
+    const boost::mysql::diagnostics& diag
 )
 {
     if (op_result.index() == 0)
@@ -109,7 +109,7 @@ boost::asio::awaitable<void> coro_main(
     const char* company_id
 )
 {
-    boost::mysql::server_diagnostics diag;
+    boost::mysql::diagnostics diag;
 
     // Resolve hostname
     timer.expires_after(TIMEOUT);
@@ -133,7 +133,7 @@ boost::asio::awaitable<void> coro_main(
     boost::mysql::statement stmt = check_error(std::move(stmt_op_result), diag);
 
     // Execute the statement
-    boost::mysql::resultset result;
+    boost::mysql::results result;
     timer.expires_after(TIMEOUT);
     op_result = co_await (
         timer.async_wait() || conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag)
@@ -215,15 +215,15 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::server_error& err)
+    catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // Server errors include additional diagnostics provided by the server.
         // You will only get this type of exceptions if you use throw_on_error.
-        // Security note: server_diagnostics::message may contain user-supplied values (e.g. the
+        // Some errors include additional diagnostics, like server-provided error messages.
+        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's encoding
         // (UTF-8 by default). Treat is as untrusted input.
         std::cerr << "Error: " << err.what() << '\n'
-                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
+                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

@@ -36,7 +36,7 @@ There are two separate cases:
 * If your query retrieved at least one column (even if no rows were generated), we're in ['case 1]. The server sends:
     * An initial packet informing that the query executed correctly, and that we're in ['case 1].
     * Some matadata packets describing the columns that the query retrieved. These become available
-      under [refmem resultset meta] and [refmem execution_state meta], and are necessary to parse the rows.
+      under [refmem results meta] and [refmem execution_state meta], and are necessary to parse the rows.
     * The actual rows.
     * An OK packet, which marks the end of the resultset and contains information like `last_insert_id` and
       `affected_rows`.
@@ -63,7 +63,7 @@ Given the following setup:
 
 ```
     // TODO: this is repeated from the overview section
-    resultset result;
+    results result;
     conn.query(R"%(
         CREATE TEMPORARY TABLE posts (
             id INT PRIMARY KEY AUTO_INCREMENT,
@@ -108,84 +108,35 @@ or [refmem connection start_statement_execution]:
 
 [heading Reading rows]
 
-Once the operation has been started, you can read rows in two ways:
+Once the operation has been started, you [*must] read all the generated rows
+by calling [refmem connection read_some_rows], which will return a batch of an unspecified size.
 
-* [refmem connection read_one_row] reads a single row per call.
-* [refmem connection read_some_rows] reads a batch of an unspecified size.
+This is typical use of `read_some_rows`:
 
-The following table shows examples on how to use each method (where `st` is the [reflink execution_state]
-you passed to the `start_query()` or `start_statement_execution()` function):
+```
+    // TODO: this is duplicated
+    // st.complete() returns true once the OK packet is received
+    while (!st.complete())
+    {
+        // row_batch will be valid until conn performs any other network operation
+        rows_view row_batch = conn.read_some_rows(st);
 
-[table
-    [
-        [Function]
-        [Typical use]
-        [Remarks]
-    ]
-    [
-        [
-            [refmem connection read_one_row], non-owning
-        ]
-        [
-            ```
-            while (true)
-            {
-                // post will be valid until conn performs any other network operation
-                // when the OK packet is read, post will be an empty view
-                row_view post = conn.read_one_row(st);
+        for (row_view post : row_batch)
+        {
+            // Process post as required
+            std::cout << post << std::endl;
+        }
+    }
+```
 
-                // st.complete() returns true once the OK packet is received
-                if (st.complete())
-                    break;
+Some remarks:
+* If there are rows to be read, `read_some_rows` will return at least one, but may return more.
+* [refmem execution_state complete] returns `true` after we've read the final OK packet for this operation.
+* The final `row_batch` may or may not be empty, depending on the number of rows and their size.
+* Calling `read_some_rows` after reading the final OK packet returns an empty batch.
 
-                // Process post as required
-                std::cout << post << std::endl;
-            }
-            ```
-        ]
-        [
-            * When the final OK packet is found, `read_one_row` returns an empty view and `st.complete() == true`.
-            * May be slower than `read_some_rows`, but it may consume less memory.
-            * Calling `read_one_row` after reading the final OK packet returns an empty view.
-        ]
-    ]
-    [
-        [
-            [refmem connection read_some_rows], non-owning
-        ]
-        [
-            ```
-            // st.complete() returns true once the OK packet is received
-            while (!st.complete())
-            {
-                // row_batch will be valid until conn performs any other network operation
-                rows_view row_batch = conn.read_some_rows(st);
-
-                for (row_view post : row_batch)
-                {
-                    // Process post as required
-                    std::cout << post << std::endl;
-                }
-            }
-            ```
-        ]
-        [
-            * The final `row_batch` may or may not be empty, depending on the number of rows and their size.
-            * Usually the fastest alternative.
-            * Calling `read_some_rows` after reading the final OK packet returns an empty batch.
-        ]
-    ]
-]
-
-Both functions return view objects pointing into the connection's internal buffers. These views are valid
-until the connection performs any other operation involving a network transfer. 
-
-[refmem execution_state complete] returns `true` after we've read the final OK packet for this resultset.
-We use it to exit our read loop.
-
-You can take ownserhip of the views using the [reflink row] and [reflink rows] classes. Note however that these
-are immutable types (in that they don't have mutating functions other than assignment), designed to maximize memory reuse.
-If you need to mutate a row, you can use [refmem row_view as_vector] to obtain a `std::vector<field>`.
+`read_some_rows` returns a [reflink rows_view] object pointing into the connection's internal buffers.
+This view is valid until the connection performs any other operation involving a network transfer. 
 
 Note that there is no need to distinguish between ['case 1] and ['case 2] in code, as reading rows for
 a complete operation is well defined.

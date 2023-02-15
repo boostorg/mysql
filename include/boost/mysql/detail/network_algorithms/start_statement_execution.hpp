@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_STATEMENT_EXECUTION_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_STATEMENT_EXECUTION_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
@@ -30,7 +30,7 @@ void start_statement_execution(
     FieldViewFwdIterator params_last,
     execution_state& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 );
 
 template <
@@ -44,7 +44,7 @@ async_start_statement_execution(
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
     execution_state& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 );
 
@@ -55,7 +55,7 @@ void start_statement_execution(
     const FieldLikeTuple& params,
     execution_state& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 );
 
 template <
@@ -68,7 +68,7 @@ async_start_statement_execution(
     const statement& stmt,
     FieldLikeTuple&& params,
     execution_state& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 );
 

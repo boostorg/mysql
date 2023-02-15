@@ -7,7 +7,7 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/date.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/tcp.hpp>
 
 #include <boost/test/unit_test_suite.hpp>
@@ -17,7 +17,7 @@
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::resultset;
+using boost::mysql::results;
 
 namespace {
 
@@ -29,10 +29,10 @@ BOOST_FIXTURE_TEST_CASE(query_empty_select, tcp_network_fixture)
     connect();
 
     // Issue query
-    resultset result;
+    results result;
     conn.query("SELECT * FROM empty_table", result);
 
-    // Verify resultset
+    // Verify results
     validate_2fields_meta(result.meta(), "empty_table");
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 0u);
@@ -47,10 +47,10 @@ BOOST_FIXTURE_TEST_CASE(query_insert, tcp_network_fixture)
     start_transaction();
 
     // Issue query
-    resultset result;
+    results result;
     conn.query("INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')", result);
 
-    // Verify resultset
+    // Verify results
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 1u);
@@ -69,10 +69,10 @@ BOOST_FIXTURE_TEST_CASE(query_update, tcp_network_fixture)
     start_transaction();
 
     // Issue the query
-    resultset result;
+    results result;
     conn.query("UPDATE updates_table SET field_int = field_int+10", result);
 
-    // Validate resultset
+    // Validate results
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 2u);  // there are 3 rows, but 1 has field_int = NULL
@@ -91,10 +91,10 @@ BOOST_FIXTURE_TEST_CASE(query_delete, tcp_network_fixture)
     start_transaction();
 
     // Issue the query
-    resultset result;
+    results result;
     conn.query("DELETE FROM updates_table", result);
 
-    // Validate resultset
+    // Validate results
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 3u);
@@ -117,7 +117,7 @@ BOOST_FIXTURE_TEST_CASE(statement_update, tcp_network_fixture)
     BOOST_TEST(stmt.num_params() == 2u);
 
     // Execute it
-    resultset result;
+    results result;
     conn.execute_statement(stmt, std::make_tuple(200, "f0"), result);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
@@ -144,7 +144,7 @@ BOOST_FIXTURE_TEST_CASE(statement_delete, tcp_network_fixture)
     BOOST_TEST(stmt.num_params() == 1u);
 
     // Execute it
-    resultset result;
+    results result;
     conn.execute_statement(stmt, std::make_tuple("f0"), result);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());

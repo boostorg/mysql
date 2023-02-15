@@ -56,8 +56,7 @@ BOOST_AUTO_TEST_CASE(member_fns)
     BOOST_TEST(st.meta()[0].type() == column_type::varchar);
     BOOST_TEST(st.meta()[1].type() == column_type::bit);
 
-    // Complete the resultset
-
+    // Complete the op
     execution_state_access::complete(st, create_ok_packet(4, 1, 0, 3, "info"));
     BOOST_TEST(st.complete());
     BOOST_TEST(st.affected_rows() == 4u);
@@ -73,7 +72,7 @@ BOOST_AUTO_TEST_CASE(member_fns)
 
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construct a resultset with value
+    // Construct an execution_state with value
     auto st = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
     execution_state_access::complete(st, create_ok_packet(2, 3, 0, 4, "small"));
 
@@ -99,7 +98,7 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
-    // Construct a resultset with value
+    // Construct an execution_state with value
     auto st = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
     execution_state_access::complete(st, create_ok_packet(2, 3, 0, 4, "small"));
 

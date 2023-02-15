@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/server_diagnostics.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -27,8 +27,8 @@
 using namespace boost::mysql::test;
 using boost::asio::any_io_executor;
 using boost::asio::awaitable;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
-using boost::mysql::server_diagnostics;
 
 namespace {
 
@@ -54,11 +54,11 @@ void to_network_result(const std::tuple<error_code>& tup, network_result<void>& 
 
 void verify_message(const network_result_base& r)
 {
-    BOOST_TEST(r.diag->message() == "server_diagnostics not cleared properly");
+    BOOST_TEST(r.diag->server_message() == "diagnostics not cleared properly");
 }
 
 template <class R>
-using awaitable_fn = std::function<awaitable<result_tuple<R>>(server_diagnostics&)>;
+using awaitable_fn = std::function<awaitable<result_tuple<R>>(diagnostics&)>;
 
 template <class R>
 network_result<R> impl_aux(any_io_executor ex, awaitable_fn<R> fn)
@@ -90,7 +90,7 @@ network_result<R> impl_aux(any_io_executor ex, awaitable_fn<R> fn)
 template <class Obj, class Callable>
 auto impl(Obj& obj, Callable&& fn)
 {
-    using tup_type = typename decltype(fn(std::declval<server_diagnostics&>()))::value_type;
+    using tup_type = typename decltype(fn(std::declval<diagnostics&>()))::value_type;
     if constexpr (std::tuple_size_v<tup_type> == 1)
     {
         return impl_aux<void>(obj.get_executor(), fn);
@@ -107,7 +107,7 @@ using conn_type = boost::mysql::connection<stream_type>;
 
 #define BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(fn_name)                      \
     [](conn_type& conn, auto&&... args) {                                     \
-        return impl(conn, [&](server_diagnostics& diag) {                     \
+        return impl(conn, [&](diagnostics& diag) {                            \
             return conn.fn_name(std::forward<decltype(args)>(args)..., diag); \
         });                                                                   \
     }
@@ -124,7 +124,6 @@ function_table<stream_type> create_table()
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_statement_execution),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_statement_execution),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_close_statement),
-        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_one_row),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_some_rows),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_ping),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_quit),

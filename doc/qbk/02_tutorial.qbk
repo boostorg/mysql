@@ -66,22 +66,22 @@ which accepts two parameters:
 The next step is to issue the query to the server. We will use
 [reflink2 connection.query tcp_ssl_connection::query],
 which accepts a string containing a single SQL query and instructs
-the server to run it. It returns a [reflink resultset] 
+the server to run it. It returns a [reflink results] 
 object, containing the rows returned by the query:
 
 [tutorial_query]
 
 [heading Obtaining the results]
 
-A [reflink resultset] is an object that holds the result of a query in memory.
+[reflink results] is a class that holds the result of a query in memory.
 To obtain the value we selected, we can write:
 
-[tutorial_resultset]
+[tutorial_results]
 
 Let's break this into steps:
-* [refmem resultset rows] returns all the rows that this resultset contains.
+* [refmem results rows] returns all the rows that this object contains.
   It returns a [reflink rows_view], which is a matrix-like structure.
-* `result.rows().at(0)` returns the first row in the resultset, represented as a [reflink row_view].
+* `result.rows().at(0)` returns the first row, represented as a [reflink row_view].
 * `result.rows().at(0).at(0)` returns the first field in the first row. This is a
   [reflink field_view], a variant-like class that can hold any type allowed in MySQL.
 * The obtained `field_view` is streamed to `std::cout`.

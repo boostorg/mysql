@@ -26,13 +26,13 @@
           <member><link linkend="mysql.ref.boost__mysql__handshake_params">handshake_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata_collection_view">metadata_collection_view</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__resultset">resultset</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__results">results</link></member>
           <member><link linkend="mysql.ref.boost__mysql__row">row</link></member>
           <member><link linkend="mysql.ref.boost__mysql__row_view">row_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows">rows</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows_view">rows_view</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__server_diagnostics">server_diagnostics</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__server_error">server_error</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__diagnostics">diagnostics</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__error_with_diagnostics">error_with_diagnostics</link></member>
           <member><link linkend="mysql.ref.boost__mysql__statement">statement</link></member>
         </simplelist>
       </entry>

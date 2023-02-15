@@ -18,7 +18,7 @@ using namespace boost::mysql::test;
 
 namespace {
 
-// Coroutines test async without server_diagnostics overloads
+// Coroutines test async without diagnostics overloads
 struct async_coroutine_maker
 {
     static constexpr const char* name() { return "async_coroutines"; }

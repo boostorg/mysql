@@ -33,8 +33,6 @@ namespace mysql {
  * \li If it was obtained by indexing a \ref rows object, the same applies.
  * \li If it was obtained by indexing a \ref rows_view object, it's valid as long as the
  *    `rows_view` is valid.
- * \li If it was obtained by a call to \ref connection::read_one_row, it's valid until the
- *     `connection` performs the next network call or is destroyed.
  * \n
  * Calling any member function on an invalid view results in undefined behavior.
  * \n

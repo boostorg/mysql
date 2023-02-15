@@ -20,7 +20,6 @@ add_executable(
     detail/network_algorithms/start_execution_generic.cpp
     detail/network_algorithms/start_query.cpp
     detail/network_algorithms/start_statement_execution.cpp
-    detail/network_algorithms/read_one_row.cpp
     detail/network_algorithms/read_some_rows.cpp
     detail/network_algorithms/read_all_rows.cpp
     detail/network_algorithms/query.cpp
@@ -45,10 +44,10 @@ add_executable(
     metadata.cpp
     client_errc.cpp
     server_errc.cpp
-    server_diagnostics.cpp
+    diagnostics.cpp
     statement.cpp
     execution_state.cpp
-    resultset.cpp
+    results.cpp
     connection.cpp
     regressions.cpp
     throw_on_error.cpp

@@ -37,7 +37,7 @@ inline capabilities conditional_capability(bool condition, std::uint32_t cap)
 inline error_code deserialize_handshake(
     boost::asio::const_buffer buffer,
     handshake_packet& output,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     deserialization_context ctx(boost::asio::buffer(buffer), capabilities());
@@ -109,11 +109,7 @@ public:
         return error_code();
     }
 
-    error_code process_handshake(
-        boost::asio::const_buffer buffer,
-        server_diagnostics& diag,
-        bool is_ssl_stream
-    )
+    error_code process_handshake(boost::asio::const_buffer buffer, diagnostics& diag, bool is_ssl_stream)
     {
         // Deserialize server greeting
         handshake_packet handshake;
@@ -169,7 +165,7 @@ public:
         boost::asio::const_buffer server_response,
         bytestring& write_buffer,
         auth_result& result,
-        server_diagnostics& diag
+        diagnostics& diag
     )
     {
         deserialization_context ctx(server_response, negotiated_caps_);
@@ -255,11 +251,11 @@ template <class Stream>
 struct handshake_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     handshake_processor processor_;
     auth_result auth_state_{auth_result::invalid};
 
-    handshake_op(channel<Stream>& channel, server_diagnostics& diag, const handshake_params& params)
+    handshake_op(channel<Stream>& channel, diagnostics& diag, const handshake_params& params)
         : chan_(channel), diag_(diag), processor_(params)
     {
     }
@@ -351,7 +347,7 @@ void boost::mysql::detail::handshake(
     channel<Stream>& channel,
     const handshake_params& params,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     channel.reset();
@@ -421,7 +417,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_handshake(
     channel<Stream>& chan,
     const handshake_params& params,
-    server_diagnostics& info,
+    diagnostics& info,
     CompletionToken&& token
 )
 {

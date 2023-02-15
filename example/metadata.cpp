@@ -58,16 +58,16 @@ void main_impl(int argc, char** argv)
         FROM employee emp
         JOIN company comp ON (comp.id = emp.company_id)
     )";
-    boost::mysql::resultset result;
+    boost::mysql::results result;
     conn.query(sql, result);
 
     /**
-     * Resultsets allow you to access metadata about the columns in the query
+     * results objects allow you to access metadata about the columns in the query
      * using the meta() function, which returns span-like object containing metadata objects
      * (one per column in the query, and in the same order as in the query).
      * You can retrieve the column name, type, number of decimals,
      * suggested display width, whether the column is part of a key...
-     * These metadata objects are owned by the resultset.
+     * These metadata objects are owned by the results object.
      */
     ASSERT(result.meta().size() == 2);
 
@@ -105,14 +105,14 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::server_error& err)
+    catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // Server errors include additional diagnostics provided by the server.
-        // Security note: err.diagnostics().message() may contain user-supplied values (e.g. the
+        // Some errors include additional diagnostics, like server-provided error messages.
+        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's encoding
         // (UTF-8 by default). Treat is as untrusted input.
         std::cerr << "Error: " << err.what() << ", error code: " << err.code() << '\n'
-                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
+                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

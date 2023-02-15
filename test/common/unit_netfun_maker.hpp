@@ -67,9 +67,9 @@ class netfun_maker_mem
 
 public:
     using signature = std::function<network_result<R>(Obj&, Args...)>;
-    using sig_sync_errc = R (Obj::*)(Args..., error_code&, server_diagnostics&);
+    using sig_sync_errc = R (Obj::*)(Args..., error_code&, diagnostics&);
     using sig_sync_exc = R (Obj::*)(Args...);
-    using sig_async_errinfo = void (Obj::*)(Args..., server_diagnostics&, bound_callback_token<R>&&);
+    using sig_async_errinfo = void (Obj::*)(Args..., diagnostics&, bound_callback_token<R>&&);
     using sig_async_noerrinfo = void (Obj::*)(Args..., bound_callback_token<R>&&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
@@ -85,9 +85,9 @@ class netfun_maker_fn
 
 public:
     using signature = std::function<network_result<R>(Args...)>;
-    using sig_sync_errc = R (*)(Args..., error_code&, server_diagnostics&);
+    using sig_sync_errc = R (*)(Args..., error_code&, diagnostics&);
     using sig_sync_exc = R (*)(Args...);
-    using sig_async_errinfo = void (*)(Args..., server_diagnostics&, bound_callback_token<R>&&);
+    using sig_async_errinfo = void (*)(Args..., diagnostics&, bound_callback_token<R>&&);
     using sig_async_noerrinfo = void (*)(Args..., bound_callback_token<R>&&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }

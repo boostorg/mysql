@@ -33,9 +33,9 @@ void print_employee(boost::mysql::row_view employee)
 // Using this completion token instead of plain use_awaitable prevents
 // co_await from throwing exceptions. Instead, co_await will return a std::tuple<error_code>
 // with a non-zero code on error. We will then use boost::mysql::throw_on_error
-// to throw exceptions with embedded server_diagnostics, if available. If you
+// to throw exceptions with embedded diagnostics, if available. If you
 // employ plain use_awaitable, you will get boost::system::system_error exceptions
-// instead of boost::mysql::server_error exceptions. This is a limitation of use_awaitable.
+// instead of boost::mysql::error_with_diagnostics exceptions. This is a limitation of use_awaitable.
 constexpr auto tuple_awaitable = boost::asio::as_tuple(boost::asio::use_awaitable);
 
 /**
@@ -65,10 +65,10 @@ boost::asio::awaitable<void> coro_main(
 )
 {
     error_code ec;
-    boost::mysql::server_diagnostics diag;
+    boost::mysql::diagnostics diag;
 
     // Resolve hostname. We may use use_awaitable here, as hostname resolution
-    // never produces any server_diagnostics.
+    // never produces any diagnostics.
     auto endpoints = co_await resolver.async_resolve(
         hostname,
         boost::mysql::default_port_string,
@@ -90,7 +90,7 @@ boost::asio::awaitable<void> coro_main(
     boost::mysql::throw_on_error(ec, diag);
 
     // Execute the statement
-    boost::mysql::resultset result;
+    boost::mysql::results result;
     std::tie(ec
     ) = co_await conn
             .async_execute_statement(stmt, std::make_tuple(company_id), result, diag, tuple_awaitable);
@@ -172,15 +172,15 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::server_error& err)
+    catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // Server errors include additional diagnostics provided by the server.
         // You will only get this type of exceptions if you use throw_on_error.
-        // Security note: server_diagnostics::message may contain user-supplied values (e.g. the
+        // Some errors include additional diagnostics, like server-provided error messages.
+        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's encoding
         // (UTF-8 by default). Treat is as untrusted input.
         std::cerr << "Error: " << err.what() << '\n'
-                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
+                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

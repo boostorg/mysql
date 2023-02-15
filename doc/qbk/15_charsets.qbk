@@ -47,7 +47,7 @@ character set and collation. You can specify them in two ways:
   You can use [refmem connection query] to issue the statement:
 
 ```
-    resultset result;
+    results result;
     conn.query("SET NAMES utf8mb4", result);
     // Further operations can assume utf8mb4 as conn's charset
 ```
@@ -115,12 +115,14 @@ The table below summarizes the encoding used by each piece of functionality in t
         [`character_set_results`]
     ]
     [
-        [Server-generated error messages: [refmem server_diagnostics message]]
+        [Server-generated error messages: [refmem diagnostics server_message]]
         [`character_set_results`]
     ]
     [
         [
-            Informational messages as given by [refmem resultset info]
+            Informational messages:[br][br]
+            [refmem results info][br]
+            [refmem execution_state info]
         ]
         [
             ASCII. These can only contain ASCII characters and are always ASCII encoded. More info in

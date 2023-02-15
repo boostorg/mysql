@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PING_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PING_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -22,18 +22,14 @@ namespace mysql {
 namespace detail {
 
 // Exposed for the sake of testing
-inline error_code process_ping_response(
-    boost::asio::const_buffer msg,
-    capabilities caps,
-    server_diagnostics& diag
-);
+inline error_code process_ping_response(boost::asio::const_buffer msg, capabilities caps, diagnostics& diag);
 
 template <class Stream>
-void ping(channel<Stream>& channel, error_code& err, server_diagnostics& diag);
+void ping(channel<Stream>& channel, error_code& err, diagnostics& diag);
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_ping(channel<Stream>& chan, server_diagnostics& diag, CompletionToken&& token);
+async_ping(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token);
 
 }  // namespace detail
 }  // namespace mysql

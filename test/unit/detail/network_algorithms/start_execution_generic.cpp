@@ -8,10 +8,10 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
@@ -44,9 +44,9 @@
 using boost::mysql::blob;
 using boost::mysql::client_errc;
 using boost::mysql::column_type;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
-using boost::mysql::server_diagnostics;
 using boost::mysql::server_errc;
 using boost::mysql::detail::async_start_execution_generic;
 using boost::mysql::detail::capabilities;
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_SUITE(deserialize_execute_response_)
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
     std::uint8_t msg[] = {0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
-    server_diagnostics diag;
+    diagnostics diag;
     auto response = deserialize_execute_response(boost::asio::buffer(msg), capabilities(), diag);
     BOOST_TEST(response.type == execute_response::type_t::ok_packet);
     BOOST_TEST(response.data.ok_pack.affected_rows.value == 0u);
@@ -120,11 +120,11 @@ BOOST_AUTO_TEST_CASE(num_fields)
         BOOST_TEST_CONTEXT(tc.name)
         {
             std::uint8_t msg[] = {0xfc, 0xff, 0x00};
-            server_diagnostics diag;
+            diagnostics diag;
             auto response = deserialize_execute_response(boost::asio::buffer(msg), capabilities(), diag);
             BOOST_TEST(response.type == execute_response::type_t::num_fields);
             BOOST_TEST(response.data.num_fields == 0xffu);
-            BOOST_TEST(diag.message() == "");
+            BOOST_TEST(diag.server_message() == "");
         }
     }
 }
@@ -159,11 +159,11 @@ BOOST_AUTO_TEST_CASE(error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            server_diagnostics diag;
+            diagnostics diag;
             auto response = deserialize_execute_response(boost::asio::buffer(tc.msg), capabilities(), diag);
             BOOST_TEST(response.type == execute_response::type_t::error);
             BOOST_TEST(response.data.err == tc.err);
-            BOOST_TEST(diag.message() == tc.expected_info);
+            BOOST_TEST(diag.server_message() == tc.expected_info);
         }
     }
 }

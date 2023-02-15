@@ -8,7 +8,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/tcp.hpp>
@@ -24,7 +24,7 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::execution_state;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::row;
 using boost::mysql::row_view;
 
@@ -40,7 +40,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_executions, tcp_network_fixture)
     auto stmt = conn.prepare_statement("SELECT * FROM two_rows_table WHERE id = ? OR field_varchar = ?");
 
     // Execute it. Only one row will be returned (because of the id)
-    resultset result;
+    results result;
     conn.execute_statement(stmt, std::make_tuple(1, "non_existent"), result);
     validate_2fields_meta(result.meta(), "two_rows_table");
     BOOST_TEST_REQUIRE(result.rows().size() == 1u);
@@ -63,7 +63,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_statements, tcp_network_fixture)
     start_transaction();
 
     // Prepare an update and a select
-    resultset result;
+    results result;
     auto stmt_update = conn.prepare_statement("UPDATE updates_table SET field_int = ? WHERE field_varchar = ?"
     );
     auto stmt_select = conn.prepare_statement("SELECT field_int FROM updates_table WHERE field_varchar = ?");
@@ -108,43 +108,14 @@ BOOST_FIXTURE_TEST_CASE(statement_without_params, tcp_network_fixture)
     BOOST_TEST(stmt.num_params() == 0u);
 
     // Execute doesn't error
-    resultset result;
+    results result;
     conn.execute_statement(stmt, std::make_tuple(), result);
     validate_2fields_meta(result.meta(), "empty_table");
     BOOST_TEST(result.rows().size() == 0u);
 }
 
 // Note: multifn query is already covered in spotchecks
-BOOST_FIXTURE_TEST_CASE(multifn_read_one, tcp_network_fixture)
-{
-    connect();
-
-    // Prepare the statement
-    auto stmt = conn.prepare_statement("SELECT * FROM two_rows_table");
-
-    // Execute it
-    execution_state st;
-    conn.start_statement_execution(stmt, std::make_tuple(), st);
-    BOOST_TEST_REQUIRE(!st.complete());
-    validate_2fields_meta(st.meta(), "two_rows_table");
-
-    // Read first row
-    auto r = conn.read_one_row(st);
-    BOOST_TEST((r == makerow(1, "f0")));
-    BOOST_TEST(!st.complete());
-
-    // Read next row
-    r = conn.read_one_row(st);
-    BOOST_TEST((r == makerow(2, "f1")));
-    BOOST_TEST(!st.complete());
-
-    // Read next: end of resultset
-    r = conn.read_one_row(st);
-    BOOST_TEST(r == makerow());
-    validate_eof(st);
-}
-
-BOOST_FIXTURE_TEST_CASE(multifn_read_some, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(multifn, tcp_network_fixture)
 {
     connect();
 

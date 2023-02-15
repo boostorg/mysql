@@ -6,7 +6,7 @@
 //
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/buffer.hpp>
@@ -26,7 +26,7 @@
 
 using namespace boost::mysql::test;
 using boost::asio::buffer;
-using boost::mysql::resultset;
+using boost::mysql::results;
 
 namespace {
 
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(side_effects_in_initiation)
 {
     boost::asio::io_context ctx;
     test_connection conn;
-    resultset result1, result2;
+    results result1, result2;
 
     // Resultsets will be complete as soon as a message is read
     auto ok_packet_1 = create_ok_packet_message(1, 1, 6, 0, 9, "ab");

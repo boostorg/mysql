@@ -19,7 +19,7 @@ namespace mysql {
  * \brief A read-only view of a collection of \ref metadata objects.
  * \details
  * The object doesn't own the storage for the \ref metadata objects. These are typically
- * owned by a \ref resultset or \ref execution_state object. This view is valid as long
+ * owned by a \ref results or \ref execution_state object. This view is valid as long
  * as the memory allocated for the \ref metadata objects remain valid.
  */
 using metadata_collection_view = boost::span<const metadata>;

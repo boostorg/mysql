@@ -47,28 +47,19 @@ void boost::mysql::detail::start_query(
     string_view query,
     execution_state& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
-    start_execution_generic(
-        resultset_encoding::text,
-        channel,
-        query_serialize_fn(query),
-        output,
-        err,
-        diag
-    );
+    start_execution_generic(resultset_encoding::text, channel, query_serialize_fn(query), output, err, diag);
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_start_query(
     channel<Stream>& chan,
     string_view query,
     execution_state& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

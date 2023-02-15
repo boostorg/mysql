@@ -11,8 +11,8 @@
 #pragma once
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/network_algorithms/ping.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -31,9 +31,9 @@ template <class Stream>
 struct ping_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
 
-    ping_op(channel<Stream>& chan, server_diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
+    ping_op(channel<Stream>& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {}, boost::asio::const_buffer buff = {})
@@ -73,7 +73,7 @@ struct ping_op : boost::asio::coroutine
 inline boost::mysql::error_code boost::mysql::detail::process_ping_response(
     boost::asio::const_buffer buff,
     capabilities caps,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     // Header
@@ -102,7 +102,7 @@ inline boost::mysql::error_code boost::mysql::detail::process_ping_response(
 }
 
 template <class Stream>
-void boost::mysql::detail::ping(channel<Stream>& chan, error_code& code, server_diagnostics& diag)
+void boost::mysql::detail::ping(channel<Stream>& chan, error_code& code, diagnostics& diag)
 {
     // Serialize the ping message
     serialize_message(ping_packet{}, chan.current_capabilities(), chan.shared_buffer());
@@ -123,7 +123,7 @@ void boost::mysql::detail::ping(channel<Stream>& chan, error_code& code, server_
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_ping(channel<Stream>& chan, server_diagnostics& diag, CompletionToken&& token)
+boost::mysql::detail::async_ping(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token)
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         ping_op<Stream>(chan, diag),

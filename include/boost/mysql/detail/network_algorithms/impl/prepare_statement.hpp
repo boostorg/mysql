@@ -10,8 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
@@ -33,25 +33,21 @@ class prepare_statement_processor
     string_view statement_;
     capabilities caps_;
     bytestring& write_buffer_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     statement res_;
     unsigned remaining_meta_{};
 
 public:
     template <class Stream>
-    prepare_statement_processor(
-        channel<Stream>& chan,
-        string_view statement,
-        server_diagnostics& output_info
-    ) noexcept
+    prepare_statement_processor(channel<Stream>& chan, string_view statement, diagnostics& diag) noexcept
         : statement_(statement),
           caps_(chan.current_capabilities()),
           write_buffer_(chan.shared_buffer()),
-          diag_(output_info)
+          diag_(diag)
     {
     }
 
-    void clear_output_info() noexcept { diag_.clear(); }
+    void clear_diag() noexcept { diag_.clear(); }
 
     void process_request()
     {
@@ -116,7 +112,7 @@ struct prepare_statement_op : boost::asio::coroutine
         // Regular coroutine body; if there has been an error, we don't get here
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            processor_.clear_output_info();
+            processor_.clear_diag();
 
             // Serialize request
             processor_.process_request();
@@ -173,7 +169,7 @@ boost::mysql::statement boost::mysql::detail::prepare_statement(
     channel<Stream>& channel,
     string_view stmt_sql,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     prepare_statement_processor processor(channel, stmt_sql, diag);
@@ -228,7 +224,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_prepare_statement(
     channel<Stream>& chan,
     string_view stmt_sql,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

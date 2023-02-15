@@ -10,8 +10,8 @@
 #include "streams.hpp"
 
 using namespace boost::mysql::test;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
-using boost::mysql::server_diagnostics;
 
 namespace {
 
@@ -27,7 +27,7 @@ struct sync_errc_maker
     {
         using impl = netfun_maker_sync_impl<R, Obj&, Args...>;
         using signature = std::function<network_result<R>(Obj&, Args...)>;
-        using sync_sig = R (Obj::*)(Args..., error_code&, server_diagnostics&);
+        using sync_sig = R (Obj::*)(Args..., error_code&, diagnostics&);
 
         static signature call(sync_sig sync) { return impl::sync_errc(sync); }
     };

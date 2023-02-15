@@ -8,10 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_ROW_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_ROW_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -43,7 +43,7 @@ inline void deserialize_row(
     execution_state& st,               // should be !complete()
     std::vector<field_view>& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 );
 
 inline void offsets_to_string_views(

@@ -6,8 +6,8 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(process_ping_response_)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            boost::mysql::server_diagnostics diag;
+            boost::mysql::diagnostics diag;
             auto err = boost::mysql::detail::process_ping_response(
                 boost::asio::buffer(tc.message),
                 capabilities(),
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(process_ping_response_)
             );
 
             BOOST_TEST(err == tc.expected_err);
-            BOOST_TEST(diag.message() == tc.expected_msg);
+            BOOST_TEST(diag.server_message() == tc.expected_msg);
         }
     }
 }

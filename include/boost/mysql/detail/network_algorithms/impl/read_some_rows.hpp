@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
@@ -32,7 +32,7 @@ inline rows_view process_some_rows(
     channel<Stream>& channel,
     execution_state& st,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     // Process all read messages until they run out, an error happens
@@ -80,10 +80,10 @@ template <class Stream>
 struct read_some_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     execution_state& st_;
 
-    read_some_rows_op(channel<Stream>& chan, server_diagnostics& diag, execution_state& st) noexcept
+    read_some_rows_op(channel<Stream>& chan, diagnostics& diag, execution_state& st) noexcept
         : chan_(chan), diag_(diag), st_(st)
     {
     }
@@ -104,7 +104,7 @@ struct read_some_rows_op : boost::asio::coroutine
         {
             diag_.clear();
 
-            // If the resultset is already complete, we don't need to read anything
+            // If the op is already complete, we don't need to read anything
             if (st_.complete())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
@@ -132,10 +132,10 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     channel<Stream>& channel,
     execution_state& st,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
-    // If the resultset is already complete, we don't need to read anything
+    // If the op is already complete, we don't need to read anything
     if (st.complete())
     {
         return rows_view();
@@ -158,7 +158,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_read_some_rows(
     channel<Stream>& channel,
     execution_state& st,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

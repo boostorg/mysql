@@ -27,7 +27,7 @@ type always has one of the two folling forms:
    (in this case, `T` is `statement`).
    
 All asynchronous functions involving server communication are overloaded
-to accept an optional [reflink server_diagnostics] output parameter. It is populated
+to accept an optional [reflink diagnostics] output parameter. It is populated
 with any server-provided error information before calling the completion handler.
 
 [section:reads_writes Stream reads and writes]
@@ -62,7 +62,8 @@ with this library. Here are some of the most common:
   You can wait for the future by calling `future::get`.
   If an error occurs, `future::get` will throw an exception.
   Note that the exception is thrown by Asio itself, and will always
-  be of type `boost::system::system_error`, even if it's a server error.
+  be of type `boost::system::system_error`, even if diagnostics were
+  available.
 
   [link mysql.examples.async_futures This example]
   demonstrates using futures.
@@ -80,9 +81,8 @@ with this library. Here are some of the most common:
   given [reflink error_code] when it fails. Otherwise, the
   function will throw a exception. Note that this exception
   is thrown by Asio itself, and thus will always be of type
-  `boost::system::system_error`. To obtain a [reflink server_error]
-  including extra diagnostics, we suggest using error codes and the
-  [reflink throw_on_error] function.
+  `boost::system::system_error`. To obtain an [reflink error_with_diagnostics]
+  we suggest using error codes and the [reflink throw_on_error] function.
 
   [link mysql.examples.async_coroutines This example]
   uses stackful coroutines.
@@ -97,8 +97,8 @@ with this library. Here are some of the most common:
   You can then use `co_await` on this return value. If the
   operation fails, `co_await` will throw an exception.
   Note that this exception is thrown by Asio itself, and thus will always be of type
-  `boost::system::system_error`. To obtain a [reflink server_error]
-  including extra diagnostics, we suggest using the [asioreflink as_tuple as_tuple]
+  `boost::system::system_error`. To obtain an [reflink error_with_diagnostics]
+  we suggest using the [asioreflink as_tuple as_tuple]
   completion token, which will make `co_await` report failures using error codes, and the
   [reflink throw_on_error] function.
   

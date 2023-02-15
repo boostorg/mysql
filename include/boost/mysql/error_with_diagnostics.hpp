@@ -5,11 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_SERVER_ERROR_HPP
-#define BOOST_MYSQL_SERVER_ERROR_HPP
+#ifndef BOOST_MYSQL_ERROR_WITH_DIAGNOSTICS_HPP
+#define BOOST_MYSQL_ERROR_WITH_DIAGNOSTICS_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/system/system_error.hpp>
 
@@ -17,18 +17,18 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Exception thrown to indicate an error originated in the server.
+ * \brief A system_error with an embedded diagnostics object.
  * \details
  * Like `boost::system::system_error`, but adds a \ref diagnostics member
  * containing additional error-related information.
  */
-class server_error : public boost::system::system_error
+class error_with_diagnostics : public boost::system::system_error
 {
-    server_diagnostics diag_;
+    diagnostics diag_;
 
 public:
     /// Initializing constructor.
-    server_error(const error_code& err, const server_diagnostics& diag)
+    error_with_diagnostics(const error_code& err, const diagnostics& diag)
         : boost::system::system_error(err), diag_(diag)
     {
     }
@@ -36,7 +36,7 @@ public:
     /**
      * \brief Retrieves the server diagnostics embedded in this object.
      */
-    const server_diagnostics& diagnostics() const noexcept { return diag_; }
+    const diagnostics& get_diagnostics() const noexcept { return diag_; }
 };
 
 }  // namespace mysql

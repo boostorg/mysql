@@ -78,7 +78,7 @@ __assume_setup__
 
 [section:metadata Metadata]
 
-This example demonstrates how to use the available metadata in a [reflink resultset].
+This example demonstrates how to use the available metadata in a [reflink results] object.
 It employs synchronous functions with exceptions as error handling. __see_error_handling__
 
 __assume_setup__

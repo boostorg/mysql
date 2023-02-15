@@ -11,7 +11,7 @@ In the context of this library, metadata refers to information describing
 a column retrieved by the execution of a SQL query. The [reflink metadata] class
 contains information about an individual column.
 
-You may access metadata using [refmem resultset meta] or [refmem execution_state meta].
+You may access metadata using [refmem results meta] or [refmem execution_state meta].
 There is a `metadata` object per column retrieved by the query. The metadata objects are
 present even if no row was returned by the query (e.g. a `SELECT` on an empty table).
 
@@ -32,7 +32,7 @@ For example:
 
 ```
     // By default, a connection has metadata_mode::minimal
-    resultset result;
+    results result;
     conn.query("SELECT 1 AS my_field", result);
     string_view colname = result.meta()[0].column_name();
 

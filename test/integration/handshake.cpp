@@ -123,7 +123,7 @@ struct caching_sha2_fixture : handshake_fixture
     void clear_sha256_cache()
     {
         tcp_ssl_connection conn(ctx, ssl_ctx);
-        boost::mysql::resultset result;
+        boost::mysql::results result;
         conn.connect(get_endpoint<tcp_socket>(), handshake_params("root", ""));
         conn.query("FLUSH PRIVILEGES", result);
         conn.close();

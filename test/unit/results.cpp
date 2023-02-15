@@ -6,7 +6,7 @@
 //
 
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -21,27 +21,24 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::column_type;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
-using boost::mysql::detail::resultset_access;
+using boost::mysql::detail::results_access;
 using boost::mysql::detail::resultset_encoding;
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_resultset)
+BOOST_AUTO_TEST_SUITE(test_results)
 
 BOOST_AUTO_TEST_CASE(has_value)
 {
     // Default construction
-    resultset result;
+    results result;
     BOOST_TEST_REQUIRE(!result.has_value());
 
     // Populate it
-    execution_state_access::complete(
-        resultset_access::get_state(result),
-        create_ok_packet(4, 1, 0, 3, "info")
-    );
+    execution_state_access::complete(results_access::get_state(result), create_ok_packet(4, 1, 0, 3, "info"));
 
     // It's now valid
     BOOST_TEST_REQUIRE(result.has_value());
@@ -53,21 +50,21 @@ BOOST_AUTO_TEST_CASE(has_value)
     BOOST_TEST(result.info() == "info");
 }
 
-resultset create_complete_resultset()
+results create_populated_results()
 {
     auto st = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
     execution_state_access::complete(st, create_ok_packet(2, 3, 0, 4, "small"));
 
-    resultset result;
-    resultset_access::get_rows(result) = makerows(1, "abc", nullptr);
-    resultset_access::get_state(result) = st;
+    results result;
+    results_access::get_rows(result) = makerows(1, "abc", nullptr);
+    results_access::get_state(result) = st;
     return result;
 }
 
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construct a resultset with value
-    auto result = create_complete_resultset();
+    // Construct a results object
+    auto result = create_populated_results();
 
     // Obtain references
     auto rws = result.rows();
@@ -75,8 +72,8 @@ BOOST_AUTO_TEST_CASE(move_constructor)
     auto info = result.info();
 
     // Move construct
-    resultset result2(std::move(result));
-    result = resultset();  // Regression check - std::string impl SBO buffer
+    results result2(std::move(result));
+    result = results();  // Regression check - std::string impl SBO buffer
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));
@@ -94,8 +91,8 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
-    // Construct a resultset with value
-    auto result = create_complete_resultset();
+    // Construct a results object
+    auto result = create_populated_results();
 
     // Obtain references
     auto rws = result.rows();
@@ -103,9 +100,9 @@ BOOST_AUTO_TEST_CASE(move_assignment)
     auto info = result.info();
 
     // Move construct
-    resultset result2;
+    results result2;
     result2 = std::move(result);
-    result = resultset();  // Regression check - std::string impl SBO buffer
+    result = results();  // Regression check - std::string impl SBO buffer
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));

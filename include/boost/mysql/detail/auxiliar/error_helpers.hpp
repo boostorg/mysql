@@ -8,10 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_ERROR_HELPERS_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_ERROR_HELPERS_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
-#include <boost/mysql/server_errc.hpp>
-#include <boost/mysql/server_error.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 
 #include <boost/throw_exception.hpp>
 
@@ -21,25 +20,18 @@ namespace detail {
 
 inline void throw_on_error_loc(
     error_code err,
-    const server_diagnostics& diag,
+    const diagnostics& diag,
     const boost::source_location& loc
 
 )
 {
     if (err)
     {
-        if (err.category() == get_server_category())
-        {
-            ::boost::throw_exception(server_error(err, diag), loc);
-        }
-        else
-        {
-            ::boost::throw_exception(boost::system::system_error(err), loc);
-        }
+        ::boost::throw_exception(error_with_diagnostics(err, diag), loc);
     }
 }
 
-inline void clear_errors(error_code& err, server_diagnostics& diag) noexcept
+inline void clear_errors(error_code& err, diagnostics& diag) noexcept
 {
     err.clear();
     diag.clear();
@@ -49,7 +41,7 @@ inline void clear_errors(error_code& err, server_diagnostics& diag) noexcept
 struct error_block
 {
     error_code err;
-    server_diagnostics diag;
+    diagnostics diag;
 
     void check(const boost::source_location& loc) { throw_on_error_loc(err, diag, loc); }
 };

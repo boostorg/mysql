@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
@@ -28,19 +28,19 @@ template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
 struct execute_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     statement stmt_;
     FieldLikeTuple params_;
-    resultset& output_;
+    results& output_;
 
     // We need a deduced context to enable perfect forwarding
     template <BOOST_MYSQL_FIELD_LIKE_TUPLE DeducedTuple>
     execute_statement_op(
         channel<Stream>& chan,
-        server_diagnostics& diag,
+        diagnostics& diag,
         const statement& stmt,
         DeducedTuple&& params,
-        resultset& output
+        results& output
     ) noexcept
         : chan_(chan), diag_(diag), stmt_(stmt), params_(std::forward<DeducedTuple>(params)), output_(output)
     {
@@ -64,15 +64,15 @@ struct execute_statement_op : boost::asio::coroutine
                 chan_,
                 stmt_,
                 std::move(params_),
-                resultset_access::get_state(output_),
+                results_access::get_state(output_),
                 diag_,
                 std::move(self)
             );
 
             BOOST_ASIO_CORO_YIELD async_read_all_rows(
                 chan_,
-                resultset_access::get_state(output_),
-                resultset_access::get_rows(output_),
+                results_access::get_state(output_),
+                results_access::get_rows(output_),
                 diag_,
                 std::move(self)
             );
@@ -91,22 +91,16 @@ void boost::mysql::detail::execute_statement(
     channel<Stream>& channel,
     const statement& stmt,
     const FieldLikeTuple& params,
-    resultset& output,
+    results& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
-    start_statement_execution(channel, stmt, params, resultset_access::get_state(output), err, diag);
+    start_statement_execution(channel, stmt, params, results_access::get_state(output), err, diag);
     if (err)
         return;
 
-    read_all_rows(
-        channel,
-        resultset_access::get_state(output),
-        resultset_access::get_rows(output),
-        err,
-        diag
-    );
+    read_all_rows(channel, results_access::get_state(output), results_access::get_rows(output), err, diag);
 }
 
 template <
@@ -118,8 +112,8 @@ boost::mysql::detail::async_execute_statement(
     channel<Stream>& chan,
     const statement& stmt,
     FieldLikeTuple&& params,
-    resultset& output,
-    server_diagnostics& diag,
+    results& output,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

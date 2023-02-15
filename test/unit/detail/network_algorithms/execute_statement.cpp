@@ -31,11 +31,11 @@ using boost::mysql::blob;
 using boost::mysql::client_errc;
 using boost::mysql::column_type;
 using boost::mysql::error_code;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::statement;
 using boost::mysql::detail::connection_access;
 using boost::mysql::detail::protocol_field_type;
-using boost::mysql::detail::resultset_access;
+using boost::mysql::detail::results_access;
 using boost::mysql::detail::resultset_encoding;
 using namespace boost::mysql::test;
 
@@ -47,7 +47,7 @@ using netfun_maker = netfun_maker_mem<
     test_connection,
     const statement&,
     const std::tuple<const char*, std::nullptr_t>&,
-    resultset&>;
+    results&>;
 
 struct
 {
@@ -60,12 +60,12 @@ struct
     {netfun_maker::async_noerrinfo(&test_connection::async_execute_statement), "async_noerrinfo"},
 };
 
-// Verify that we reset the resultset
-resultset create_initial_resultset()
+// Verify that we reset the results object
+results create_initial_results()
 {
-    resultset res;
-    resultset_access::get_rows(res) = makerows(1, 42, "abc");
-    resultset_access::get_state(res
+    results res;
+    results_access::get_rows(res) = makerows(1, 42, "abc");
+    results_access::get_state(res
     ) = create_execution_state(resultset_encoding::text, {protocol_field_type::geometry}, 4);
     return res;
 }
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(success)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_resultset();
+            auto result = create_initial_results();
             test_connection conn;
             auto stmt = create_statement(2);
             conn.stream().add_message(create_ok_packet_message(1, 2, 3, 4, 5, "info"));
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(success)
             };
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_message);
 
-            // Verify the resultset
+            // Verify the results
             BOOST_TEST(result.meta().size() == 0u);
             BOOST_TEST(result.affected_rows() == 2u);
             BOOST_TEST(result.last_insert_id() == 3u);
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(error_start_statement_execution)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_resultset();
+            auto result = create_initial_results();
             test_connection conn;
             auto stmt = create_statement(2);
             conn.stream().set_fail_count(fail_count(0, client_errc::server_unsupported));
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_resultset();
+            auto result = create_initial_results();
             test_connection conn;
             auto stmt = create_statement(2);
             conn.stream().add_message(create_message(1, {0x01}));  // Response OK, 1 metadata packet
@@ -139,8 +139,8 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
                 .validate_error_exact(client_errc::server_unsupported);
 
             // Ensure we successfully ran the start_query
-            BOOST_TEST_REQUIRE(resultset_access::get_state(result).meta().size() == 1u);
-            BOOST_TEST(resultset_access::get_state(result).meta()[0].type() == column_type::geometry);
+            BOOST_TEST_REQUIRE(results_access::get_state(result).meta().size() == 1u);
+            BOOST_TEST(results_access::get_state(result).meta()[0].type() == column_type::geometry);
         }
     }
 }
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
 BOOST_AUTO_TEST_SUITE(deferred_lifetimes)
 struct fixture
 {
-    resultset result{create_initial_resultset()};
+    results result{create_initial_results()};
     test_connection conn;
     statement stmt{create_statement(2)};
 

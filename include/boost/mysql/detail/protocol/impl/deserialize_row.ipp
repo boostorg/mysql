@@ -134,7 +134,7 @@ void boost::mysql::detail::deserialize_row(
     execution_state& st,
     std::vector<field_view>& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     assert(!st.complete());

@@ -7,7 +7,7 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/server_errc.hpp>
 
 #include <boost/asio/ssl/verify_mode.hpp>
@@ -16,7 +16,7 @@
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::server_errc;
 
 namespace {
@@ -32,7 +32,7 @@ struct reconnect_fixture : network_fixture
 {
     void do_query_ok()
     {
-        resultset result;
+        results result;
         conn->query("SELECT * FROM empty_table", result).get();
         BOOST_TEST(result.rows().empty());
     }
@@ -60,10 +60,7 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, net
 
     // Error during server handshake
     params.set_database("bad_database");
-    conn->connect(params).validate_error(
-        server_errc::dbaccess_denied_error,
-        {"database", "bad_database"}
-    );
+    conn->connect(params).validate_error(server_errc::dbaccess_denied_error, {"database", "bad_database"});
 
     // Reopen with correct parameters and use the connection normally
     params.set_database("boost_mysql_integtests");

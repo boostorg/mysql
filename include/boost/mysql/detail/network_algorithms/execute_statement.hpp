@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_EXECUTE_STATEMENT_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/resultset.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
@@ -27,9 +27,9 @@ void execute_statement(
     channel<Stream>& channel,
     const statement& stmt,
     const FieldLikeTuple& params,
-    resultset& output,
+    results& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 );
 
 template <
@@ -41,8 +41,8 @@ async_execute_statement(
     channel<Stream>& chan,
     const statement& stmt,
     FieldLikeTuple&& params,
-    resultset& output,
-    server_diagnostics& diag,
+    results& output,
+    diagnostics& diag,
     CompletionToken&& token
 );
 

@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(success)
             };
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_message);
 
-            // Verify the resultset
+            // Verify the results
             BOOST_TEST(execution_state_access::get_encoding(st) == resultset_encoding::binary);
             BOOST_TEST(st.complete());
             BOOST_TEST(execution_state_access::get_sequence_number(st) == 2u);

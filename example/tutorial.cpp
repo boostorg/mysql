@@ -62,11 +62,11 @@ void main_impl(int argc, char** argv)
     //[tutorial_query
     // Issue the SQL query to the server
     const char* sql = "SELECT \"Hello world!\"";
-    boost::mysql::resultset result;
+    boost::mysql::results result;
     conn.query(sql, result);
     //]
 
-    //[tutorial_resultset
+    //[tutorial_results
     // Print the first field in the first row
     std::cout << result.rows().at(0).at(0) << std::endl;
     //]
@@ -83,14 +83,14 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::server_error& err)
+    catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // Server errors include additional diagnostics provided by the server.
-        // Security note: server_diagnostics::message may contain user-supplied values (e.g. the
+        // Some errors include additional diagnostics, like server-provided error messages.
+        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's encoding
         // (UTF-8 by default). Treat is as untrusted input.
         std::cerr << "Error: " << err.what() << '\n'
-                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
+                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

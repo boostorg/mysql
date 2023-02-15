@@ -37,10 +37,10 @@ using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 using boost::mysql::client_errc;
 using boost::mysql::date;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::metadata;
-using boost::mysql::server_diagnostics;
 using boost::mysql::server_errc;
 
 namespace {
@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     auto expected_fields = make_fv_vector(make_svoff_fv(1, 3, false), std::int64_t(21), 0.0f);
     std::vector<field_view> fields;
     error_code err;
-    server_diagnostics diag;
+    diagnostics diag;
 
     // First row
     deserialize_row(
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     );
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(diag.message() == "");
+    BOOST_TEST(diag.server_message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -418,7 +418,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     expected_fields.emplace_back(0.0f);
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(diag.message() == "");
+    BOOST_TEST(diag.server_message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -439,7 +439,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     auto expected_fields = make_fv_vector(make_svoff_fv(3, 3, false), std::int64_t(1901));
     std::vector<field_view> fields;
     error_code err;
-    server_diagnostics diag;
+    diagnostics diag;
 
     // First row
     deserialize_row(
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     );
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(diag.message() == "");
+    BOOST_TEST(diag.server_message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -471,7 +471,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     expected_fields.emplace_back(nullptr);
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(diag.message() == "");
+    BOOST_TEST(diag.server_message() == "");
     BOOST_TEST(!st.complete());
     BOOST_TEST(fields == expected_fields);
 
@@ -490,13 +490,13 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     auto fields_before = make_fv_vector("abc", 20);  // previous row
     auto fields = fields_before;
     error_code err;
-    server_diagnostics diag;
+    diagnostics diag;
 
     // First row
     deserialize_row(boost::asio::buffer(buff), capabilities(), buff.data(), st, fields, err, diag);
 
     BOOST_TEST(err == error_code());
-    BOOST_TEST(diag.message() == "");
+    BOOST_TEST(diag.server_message() == "");
     BOOST_TEST(st.complete());
     BOOST_TEST(st.affected_rows() == 1u);
     BOOST_TEST(st.last_insert_id() == 6u);
@@ -562,7 +562,7 @@ BOOST_AUTO_TEST_CASE(error)
             );
             std::vector<field_view> fields;
             error_code err;
-            server_diagnostics diag;
+            diagnostics diag;
 
             // First row
             deserialize_row(
@@ -576,7 +576,7 @@ BOOST_AUTO_TEST_CASE(error)
             );
 
             BOOST_TEST(err == tc.expected_error);
-            BOOST_TEST(diag.message() == tc.expected_info);
+            BOOST_TEST(diag.server_message() == tc.expected_info);
         }
     }
 }

@@ -8,7 +8,7 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
@@ -19,7 +19,7 @@
 using namespace boost::mysql::test;
 using boost::mysql::execution_state;
 using boost::mysql::field_view;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::row_view;
 using boost::mysql::server_errc;
 
@@ -83,7 +83,7 @@ BOOST_MYSQL_NETWORK_TEST(query_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
-    resultset result;
+    results result;
     conn->query("SELECT 'hello', 42", result).get();
     BOOST_TEST(result.rows().size() == 1u);
     BOOST_TEST(result.rows()[0] == makerow("hello", 42));
@@ -94,7 +94,7 @@ BOOST_MYSQL_NETWORK_TEST(query_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
 
-    resultset result;
+    results result;
     conn->query("SELECT field_varchar, field_bad FROM one_row_table", result)
         .validate_error(server_errc::bad_field_error, {"unknown column", "field_bad"});
 }
@@ -193,7 +193,7 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_success, network_fixture, all_network
     auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
 
     // Execute
-    resultset result;
+    results result;
     conn->execute_statement(stmt, field_view("item"), field_view(42), result).validate_no_error();
     BOOST_TEST(result.rows().size() == 0u);
 }
@@ -208,7 +208,7 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_sampl
                     .get();
 
     // Execute
-    resultset result;
+    results result;
     conn->execute_statement(stmt, field_view("f0"), field_view("bad_date"), result)
         .validate_error(
             server_errc::truncated_wrong_value,
@@ -228,30 +228,8 @@ BOOST_MYSQL_NETWORK_TEST(close_statement_success, network_fixture, all_network_s
     conn->close_statement(stmt).validate_no_error();
 
     // The statement is no longer valid
-    resultset result;
+    results result;
     conn->execute_statement(stmt, field_view("a"), field_view("b"), result).validate_any_error();
-}
-
-// Read one row: no server error spotcheck
-BOOST_MYSQL_NETWORK_TEST(read_one_row_success, network_fixture, all_network_samples())
-{
-    setup_and_connect(sample.net);
-
-    // Generate an execution state
-    execution_state st;
-    conn->start_query("SELECT * FROM one_row_table", st);
-    BOOST_TEST_REQUIRE(!st.complete());
-
-    // Read the only row
-    row_view r = conn->read_one_row(st).get();
-    validate_2fields_meta(st.meta(), "one_row_table");
-    BOOST_TEST((r == makerow(1, "f0")));
-    BOOST_TEST(!st.complete());
-
-    // Read next: end of resultset
-    r = conn->read_one_row(st).get();
-    BOOST_TEST(r == row_view());
-    validate_eof(st);
 }
 
 // Read some rows: no server error spotcheck
@@ -264,12 +242,12 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_success, network_fixture, all_network_sa
     conn->start_query("SELECT * FROM one_row_table", st);
     BOOST_TEST_REQUIRE(!st.complete());
 
-    // Read once. The resultset may or may not be complete, depending
+    // Read once. st may or may not be complete, depending
     // on how the buffer reallocated memory
     auto rows = conn->read_some_rows(st).get();
     BOOST_TEST((rows == makerows(2, 1, "f0")));
 
-    // Reading again should complete the resultset
+    // Reading again should complete st
     rows = conn->read_some_rows(st).get();
     BOOST_TEST(rows.empty());
     validate_eof(st);
@@ -304,7 +282,7 @@ BOOST_MYSQL_NETWORK_TEST(quit_success, network_fixture, all_network_samples())
     conn->quit().validate_no_error();
 
     // We are no longer able to query
-    resultset result;
+    results result;
     conn->query("SELECT 1", result).validate_any_error();
 }
 
@@ -317,7 +295,7 @@ BOOST_MYSQL_NETWORK_TEST(close_connection_success, network_fixture, all_network_
     conn->close().validate_no_error();
 
     // We are no longer able to query
-    boost::mysql::resultset result;
+    boost::mysql::results result;
     conn->query("SELECT 1", result).validate_any_error();
 
     // The stream is closed

@@ -6,8 +6,8 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/server_errc.hpp>
 #include <boost/mysql/statement.hpp>
 

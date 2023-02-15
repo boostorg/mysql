@@ -22,9 +22,9 @@ struct close_statement_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     std::uint32_t stmt_id_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
 
-    close_statement_op(channel<Stream>& chan, const statement& stmt, server_diagnostics& diag) noexcept
+    close_statement_op(channel<Stream>& chan, const statement& stmt, diagnostics& diag) noexcept
         : chan_(chan), stmt_id_(stmt.id()), diag_(diag)
     {
     }
@@ -67,7 +67,7 @@ struct close_statement_op : boost::asio::coroutine
 
 template <class Stream>
 void boost::mysql::detail::
-    close_statement(channel<Stream>& chan, const statement& stmt, error_code& code, server_diagnostics&)
+    close_statement(channel<Stream>& chan, const statement& stmt, error_code& code, diagnostics&)
 {
     // Serialize the close message
     serialize_message(com_stmt_close_packet{stmt.id()}, chan.current_capabilities(), chan.shared_buffer());
@@ -81,7 +81,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_close_statement(
     channel<Stream>& chan,
     const statement& stmt,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

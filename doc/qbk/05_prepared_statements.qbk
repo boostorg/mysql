@@ -19,7 +19,7 @@ as a string. This yields a [reflink statement] object:
 
 ```
     // Table setup
-    resultset result;
+    results result;
     conn.query(R"%(
         CREATE TEMPORARY TABLE products (
             id INT PRIMARY KEY AUTO_INCREMENT,
@@ -61,7 +61,7 @@ For example:
         bool show_in_store
     )
     {
-        resultset result;
+        results result;
         conn.execute_statement(stmt, std::make_tuple(description, price, int(show_in_store)), result);
     }
 ```
@@ -99,7 +99,7 @@ to insert `NULL` values:
         auto description_param = description ? field_view(*description) : field_view();
 
         // Execute the insert
-        resultset result;
+        results result;
         conn.execute_statement(stmt, std::make_tuple(description_param, price, int(show_in_store)), result);
     }
 ```

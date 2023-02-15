@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
@@ -34,7 +34,7 @@ inline void process_all_rows(
     execution_state& st,
     rows& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     // Process all read messages until they run out, an error happens
@@ -77,16 +77,11 @@ template <class Stream>
 struct read_all_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    server_diagnostics& diag_;
+    diagnostics& diag_;
     execution_state& st_;
     rows& output_;
 
-    read_all_rows_op(
-        channel<Stream>& chan,
-        server_diagnostics& diag,
-        execution_state& st,
-        rows& output
-    ) noexcept
+    read_all_rows_op(channel<Stream>& chan, diagnostics& diag, execution_state& st, rows& output) noexcept
         : chan_(chan), diag_(diag), st_(st), output_(output)
     {
     }
@@ -107,7 +102,7 @@ struct read_all_rows_op : boost::asio::coroutine
             diag_.clear();
             rows_access::clear(output_);
 
-            // If the resultset_base is already complete, we don't need to read anything
+            // If the op is already complete, we don't need to read anything
             if (st_.complete())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
@@ -149,13 +144,13 @@ void boost::mysql::detail::read_all_rows(
     execution_state& st,
     rows& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 )
 {
     diag.clear();
     rows_access::clear(output);
 
-    // If the resultset_base is already complete, we don't need to read anything
+    // If the op is already complete, we don't need to read anything
     if (st.complete())
     {
         err = error_code();
@@ -185,7 +180,7 @@ boost::mysql::detail::async_read_all_rows(
     channel<Stream>& channel,
     execution_state& st,
     rows& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {

@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_STATEMENT_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -19,19 +19,14 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-void close_statement(
-    channel<Stream>& chan,
-    const statement& stmt,
-    error_code& code,
-    server_diagnostics& diag
-);
+void close_statement(channel<Stream>& chan, const statement& stmt, error_code& code, diagnostics& diag);
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_close_statement(
     channel<Stream>& chan,
     const statement& stmt,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 );
 

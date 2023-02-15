@@ -9,8 +9,8 @@
 #define BOOST_MYSQL_TEST_COMMON_NETFUN_HELPERS_HPP
 
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/server_errc.hpp>
-#include <boost/mysql/server_error.hpp>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -21,6 +21,7 @@
 #include <functional>
 #include <type_traits>
 
+#include "create_diagnostics.hpp"
 #include "network_result.hpp"
 
 // Helper functions and classes to implement netmakers
@@ -133,7 +134,7 @@ network_result<R> create_initial_netresult(bool with_diag = true)
 {
     network_result<R> res(boost::mysql::make_error_code(boost::mysql::server_errc::no));
     if (with_diag)
-        res.diag = server_diagnostics("server_diagnostics not cleared properly");
+        res.diag = create_diagnostics("diagnostics not cleared properly");
     return res;
 }
 
@@ -162,10 +163,10 @@ struct netfun_maker_sync_impl
             {
                 invoke_and_assign(res, fn, std::forward<Args>(args)...);
             }
-            catch (const boost::mysql::server_error& err)
+            catch (const boost::mysql::error_with_diagnostics& err)
             {
                 res.err = err.code();
-                res.diag = err.diagnostics();
+                res.diag = err.get_diagnostics();
             }
             catch (const boost::system::system_error& err)
             {

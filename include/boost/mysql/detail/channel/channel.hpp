@@ -35,7 +35,7 @@ class channel_base
     capabilities current_caps_;
     std::uint8_t shared_sequence_number_{};  // for async ops
     bytestring shared_buff_;                 // for async ops
-    server_diagnostics shared_diag_;         // for async ops
+    diagnostics shared_diag_;                // for async ops
     std::vector<field_view> shared_fields_;  // for read_some ops
     metadata_mode meta_mode_{metadata_mode::minimal};
 
@@ -68,10 +68,10 @@ public:
         // Metadata mode does not get reset on handshake
     }
 
-    // Internal buffer, server_diagnostics and sequence_number to help async ops
+    // Internal buffer, diagnostics and sequence_number to help async ops
     const bytestring& shared_buffer() const noexcept { return shared_buff_; }
     bytestring& shared_buffer() noexcept { return shared_buff_; }
-    server_diagnostics& shared_diag() noexcept { return shared_diag_; }
+    diagnostics& shared_diag() noexcept { return shared_diag_; }
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
     std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
     std::vector<field_view>& shared_fields() noexcept { return shared_fields_; }

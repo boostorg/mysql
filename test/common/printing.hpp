@@ -8,11 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_PRINTING_HPP
 #define BOOST_MYSQL_TEST_COMMON_PRINTING_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/auxiliar/static_string.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -26,9 +26,9 @@
 namespace boost {
 namespace mysql {
 
-inline std::ostream& operator<<(std::ostream& os, const server_diagnostics& diag)
+inline std::ostream& operator<<(std::ostream& os, const diagnostics& diag)
 {
-    return os << diag.message();
+    return os << diag.server_message();
 }
 
 inline std::ostream& operator<<(std::ostream& os, const row_view& value)

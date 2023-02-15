@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -20,12 +20,7 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-statement prepare_statement(
-    channel<Stream>& chan,
-    string_view statement,
-    error_code& err,
-    server_diagnostics& diag
-);
+statement prepare_statement(channel<Stream>& chan, string_view statement, error_code& err, diagnostics& diag);
 
 template <
     class Stream,
@@ -35,7 +30,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
 async_prepare_statement(
     channel<Stream>& chan,
     string_view statement,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 );
 

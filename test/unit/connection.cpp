@@ -8,7 +8,7 @@
 #include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/tcp.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
@@ -26,7 +26,7 @@
 
 using boost::mysql::connection;
 using boost::mysql::metadata_mode;
-using boost::mysql::resultset;
+using boost::mysql::results;
 using boost::mysql::string_view;
 using boost::mysql::tcp_connection;
 using boost::mysql::tcp_ssl_connection;
@@ -36,7 +36,7 @@ namespace net = boost::asio;
 
 namespace {
 
-using query_netfun_maker = netfun_maker_mem<void, test_connection, string_view, resultset&>;
+using query_netfun_maker = netfun_maker_mem<void, test_connection, string_view, results&>;
 
 struct
 {
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
 
             // Use it
             conn.stream().add_message(create_ok_packet_message(1));
-            resultset result;
+            results result;
             fns.query(conn, "SELECT * FROM myt", result).validate_no_error();
 
             // Move construct another connection from conn
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
             // Use them
             conn1.stream().add_message(create_ok_packet_message(1));
             conn2.stream().add_message(create_ok_packet_message(1));
-            resultset result;
+            results result;
             fns.query(conn1, "SELECT * FROM myt", result).validate_no_error();
             fns.query(conn2, "SELECT * FROM myt", result).validate_no_error();
 

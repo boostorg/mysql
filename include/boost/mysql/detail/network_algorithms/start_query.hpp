@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_QUERY_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_QUERY_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -27,18 +27,16 @@ void start_query(
     string_view query,
     execution_state& output,
     error_code& err,
-    server_diagnostics& diag
+    diagnostics& diag
 );
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_query(
     channel<Stream>& chan,
     string_view query,
     execution_state& output,
-    server_diagnostics& diag,
+    diagnostics& diag,
     CompletionToken&& token
 );
 

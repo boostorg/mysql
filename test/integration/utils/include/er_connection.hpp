@@ -12,7 +12,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
@@ -43,14 +43,14 @@ public:
 
     virtual network_result<void> connect(const handshake_params&) = 0;
     virtual network_result<void> handshake(const handshake_params&) = 0;
-    virtual network_result<void> query(string_view query, resultset& result) = 0;
+    virtual network_result<void> query(string_view query, results& result) = 0;
     virtual network_result<void> start_query(string_view query, execution_state& result) = 0;
     virtual network_result<statement> prepare_statement(string_view statement) = 0;
     virtual network_result<void> execute_statement(
         const statement& stmt,
         field_view fv1,
         field_view fv2,
-        resultset& result
+        results& result
     ) = 0;
     virtual network_result<void> start_statement_execution(
         const statement& stmt,
@@ -65,7 +65,6 @@ public:
         execution_state& st
     ) = 0;
     virtual network_result<void> close_statement(statement&) = 0;
-    virtual network_result<row_view> read_one_row(execution_state& st) = 0;
     virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;
     virtual network_result<void> ping() = 0;
     virtual network_result<void> quit() = 0;

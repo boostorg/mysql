@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_QUIT_CONNECTION_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_QUIT_CONNECTION_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 
@@ -18,11 +18,11 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-void quit_connection(channel<Stream>& chan, error_code& code, server_diagnostics& diag);
+void quit_connection(channel<Stream>& chan, error_code& code, diagnostics& diag);
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_quit_connection(channel<Stream>& chan, server_diagnostics& diag, CompletionToken&& token);
+async_quit_connection(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token);
 
 }  // namespace detail
 }  // namespace mysql

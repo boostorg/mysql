@@ -84,22 +84,22 @@ void main_impl(int argc, char** argv)
 
     /**
      * To issue a SQL query to the database server, use tcp_ssl_connection::query, which takes
-     * the SQL to be executed as parameter and returns a resultset object by lvalue reference.
+     * the SQL to be executed as parameter and returns a results object by lvalue reference.
      * Resultset objects contain the retrieved rows, among other info.
      * We will get all employees working for 'High Growth Startup'.
      */
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
-    boost::mysql::resultset result;
+    boost::mysql::results result;
     conn.query(sql, result);
 
-    // We can access the rows using resultset::rows
+    // We can access the rows using results::rows
     for (boost::mysql::row_view employee : result.rows())
     {
         print_employee(employee);
     }
 
     // We can issue any SQL statement, not only SELECTs. In this case, the returned
-    // resultset will have no fields and no rows
+    // results will have no fields and no rows
     sql = "UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'";
     conn.query(sql, result);
     ASSERT(result.rows().empty());  // UPDATEs don't retrieve rows
@@ -121,14 +121,14 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::server_error& err)
+    catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // Server errors include additional diagnostics provided by the server.
-        // Security note: err.diagnostics().message() may contain user-supplied values (e.g. the
+        // Some errors include additional diagnostics, like server-provided error messages.
+        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's encoding
         // (UTF-8 by default). Treat is as untrusted input.
         std::cerr << "Error: " << err.what() << ", error code: " << err.code() << '\n'
-                  << "Server diagnostics: " << err.diagnostics().message() << std::endl;
+                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
         return 1;
     }
     catch (const std::exception& err)

@@ -9,16 +9,16 @@
 #define BOOST_MYSQL_CONNECTION_HPP
 
 #include <boost/mysql/buffer_params.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/server_diagnostics.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -57,7 +57,7 @@ class connection
         assert(channel_ != nullptr);
         return *channel_;
     }
-    server_diagnostics& shared_diag() noexcept { return get_channel().shared_diag(); }
+    diagnostics& shared_diag() noexcept { return get_channel().shared_diag(); }
 
     detail::channel<Stream>& get_channel() noexcept
     {
@@ -178,7 +178,7 @@ public:
         const EndpointType& endpoint,
         const handshake_params& params,
         error_code& ec,
-        server_diagnostics& diagnostics
+        diagnostics& diag
     );
 
     /// \copydoc connect
@@ -216,7 +216,7 @@ public:
     async_connect(
         const EndpointType& endpoint,
         const handshake_params& params,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -230,7 +230,7 @@ public:
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
-    void handshake(const handshake_params& params, error_code& ec, server_diagnostics& diag);
+    void handshake(const handshake_params& params, error_code& ec, diagnostics& diag);
 
     /// \copydoc handshake
     void handshake(const handshake_params& params);
@@ -260,7 +260,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_handshake(
         const handshake_params& params,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -276,10 +276,10 @@ public:
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
-    void query(string_view query_string, resultset& result, error_code&, server_diagnostics&);
+    void query(string_view query_string, results& result, error_code&, diagnostics&);
 
     /// \copydoc query
-    void query(string_view query_string, resultset& result);
+    void query(string_view query_string, results& result);
 
     /**
      * \copydoc query
@@ -295,7 +295,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         string_view query_string,
-        resultset& result,
+        results& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -308,8 +308,8 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_query(
         string_view query_string,
-        resultset& result,
-        server_diagnostics& diag,
+        results& result,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -321,7 +321,7 @@ public:
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
      * Metadata will be populated according to `this->meta_mode()`.
      *\n
-     * If the operation generated any rows, these <b>must</b> be read (by using \ref read_one_row or
+     * If the operation generated any rows, these <b>must</b> be read (by using
      * \ref read_some_rows) before engaging in any further operation involving network reads.
      * Otherwise, the results are undefined.
      *\n
@@ -329,7 +329,7 @@ public:
      *\n
      * `query_string` should be encoded using the connection's character set.
      */
-    void start_query(string_view query_string, execution_state& st, error_code&, server_diagnostics&);
+    void start_query(string_view query_string, execution_state& st, error_code&, diagnostics&);
 
     /// \copydoc start_query
     void start_query(string_view query_string, execution_state& st);
@@ -362,7 +362,7 @@ public:
     async_start_query(
         string_view query_string,
         execution_state& st,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -373,7 +373,7 @@ public:
      *\n
      * `stmt` should be encoded using the connection's character set.
      */
-    statement prepare_statement(string_view stmt, error_code&, server_diagnostics&);
+    statement prepare_statement(string_view stmt, error_code&, diagnostics&);
 
     /// \copydoc prepare_statement
     statement prepare_statement(string_view stmt);
@@ -404,7 +404,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
     async_prepare_statement(
         string_view stmt,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -431,16 +431,16 @@ public:
     void execute_statement(
         const statement& stmt,
         const FieldLikeTuple& params,
-        resultset& result,
+        results& result,
         error_code& err,
-        server_diagnostics& diag
+        diagnostics& diag
     );
 
     /// \copydoc execute_statement
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
-    void execute_statement(const statement& stmt, const FieldLikeTuple& params, resultset& result);
+    void execute_statement(const statement& stmt, const FieldLikeTuple& params, results& result);
 
     /**
      * \copydoc execute_statement
@@ -460,7 +460,7 @@ public:
     async_execute_statement(
         const statement& stmt,
         FieldLikeTuple&& params,
-        resultset& result,
+        results& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -483,8 +483,8 @@ public:
     async_execute_statement(
         const statement& stmt,
         FieldLikeTuple&& params,
-        resultset& result,
-        server_diagnostics& diag,
+        results& result,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -498,8 +498,8 @@ public:
      * Metadata will be populated according to `conn.meta_mode()`, where `conn`
      * is the connection that prepared this statement.
      *\n
-     * If the operation generated any rows, these <b>must</b> be read (by using \ref
-     * read_one_row or \ref read_some_rows) before engaging in any further
+     * If the operation generated any rows, these <b>must</b> be read (by using
+     * \ref read_some_rows) before engaging in any further
      * operation involving server communication. Otherwise, the results are undefined.
      *\n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
@@ -517,17 +517,17 @@ public:
         const FieldLikeTuple& params,
         execution_state& ex,
         error_code& err,
-        server_diagnostics& diag
+        diagnostics& diag
     );
 
-    /// \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,server_diagnostics&)
+    /// \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,diagnostics&)
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
         class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
     void start_statement_execution(const statement& stmt, const FieldLikeTuple& params, execution_state& st);
 
     /**
-     * \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,server_diagnostics&)
+     * \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,diagnostics&)
      * \details
      * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
      * type (like `string_view`), the caller must keep the values pointed by these references alive
@@ -569,7 +569,7 @@ public:
         const statement& stmt,
         FieldLikeTuple&& params,
         execution_state& st,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -581,8 +581,8 @@ public:
      * \ref execution_state::meta populated, and may become \ref execution_state::complete
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
      *\n
-     * If the operation generated any rows, these <b>must</b> be read (by using \ref
-     * connection::read_one_row or \ref connection::read_some_rows) before engaging in any further
+     * If the operation generated any rows, these <b>must</b> be read (by using
+     * \ref connection::read_some_rows) before engaging in any further
      * operation involving server communication. Otherwise, the results are undefined.
      *\n
      * The statement actual parameters are passed as an iterator range.
@@ -599,10 +599,10 @@ public:
         FieldViewFwdIterator params_last,
         execution_state& st,
         error_code& ec,
-        server_diagnostics& diag
+        diagnostics& diag
     );
 
-    /// \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,server_diagnostics&)
+    /// \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,diagnostics&)
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void start_statement_execution(
         const statement& stmt,
@@ -612,7 +612,7 @@ public:
     );
 
     /**
-     * \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,server_diagnostics&)
+     * \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,diagnostics&)
      * \details
      * If `CompletionToken` is deferred (like `use_awaitable`), the caller must keep objects in
      * the iterator range alive until the  operation is initiated.
@@ -653,7 +653,7 @@ public:
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last,
         execution_state& st,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -665,7 +665,7 @@ public:
      *\n
      * This operation involves only writes on the underlying stream.
      */
-    void close_statement(const statement& stmt, error_code&, server_diagnostics&);
+    void close_statement(const statement& stmt, error_code&, diagnostics&);
 
     /// \copydoc close_statement
     void close_statement(const statement& stmt);
@@ -692,54 +692,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close_statement(
         const statement& stmt,
-        server_diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
-    /**
-     * \brief Reads a single row.
-     * \details
-     * If a row was read successfully, returns a non-empty \ref row_view.
-     * If there were no more rows to read, returns an empty `row_view`.
-     *\n
-     * The returned view points into memory owned by `*this`. It will be valid until the
-     * underlying stream performs any other read operation or is destroyed.
-     *\n
-     * `st` must have previously been populated by a function starting the multifunction
-     * operation, like \ref start_query or \ref start_statement_execution. Otherwise, the results
-     * are undefined.
-     *\n
-     * This operation involves only reads on the underlying stream.
-     */
-    row_view read_one_row(execution_state& st, error_code& err, server_diagnostics& info);
-
-    /// \copydoc read_one_row
-    row_view read_one_row(execution_state& st);
-
-    /**
-     * \copydoc read_one_row
-     *
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::row_view)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
-    async_read_one_row(
-        execution_state& st,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_read_one_row(st, shared_diag(), std::forward<CompletionToken>(token));
-    }
-
-    /// \copydoc async_read_one_row
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::row_view))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, row_view))
-    async_read_one_row(
-        execution_state& st,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -760,7 +713,7 @@ public:
      *\n
      * This operation involves only reads on the underlying stream.
      */
-    rows_view read_some_rows(execution_state& st, error_code& err, server_diagnostics& info);
+    rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& info);
 
     /// \copydoc read_some_rows
     rows_view read_some_rows(execution_state& st);
@@ -788,7 +741,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_some_rows(
         execution_state& st,
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -805,7 +758,7 @@ public:
      *\n
      * This operation involves both reads and writes on the underlying stream.
      */
-    void ping(error_code&, server_diagnostics&);
+    void ping(error_code&, diagnostics&);
 
     /// \copydoc ping
     void ping();
@@ -827,10 +780,7 @@ public:
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_ping(
-        server_diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
+    async_ping(diagnostics& diag, CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type));
 
     /**
      * \brief Closes the connection to the server.
@@ -844,7 +794,7 @@ public:
      * no longer be usable for server interaction.
      *\n
      */
-    void close(error_code&, server_diagnostics&);
+    void close(error_code&, diagnostics&);
 
     /// \copydoc close
     void close();
@@ -867,7 +817,7 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(
-        server_diagnostics& diag,
+        diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
@@ -884,7 +834,7 @@ public:
      * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.
      */
-    void quit(error_code&, server_diagnostics&);
+    void quit(error_code&, diagnostics&);
 
     /// \copydoc quit
     void quit();
@@ -906,10 +856,7 @@ public:
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_quit(
-        server_diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
+    async_quit(diagnostics& diag, CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type));
 
     /**
      * \brief Rebinds the connection type to another executor.
