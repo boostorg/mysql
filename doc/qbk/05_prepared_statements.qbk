@@ -17,21 +17,7 @@ To prepare a statement, call [refmem connection prepare_statement]
 or [refmem connection async_prepare_statement], passing your statement
 as a string. This yields a [reflink statement] object:
 
-```
-    // Table setup
-    results result;
-    conn.query(R"%(
-        CREATE TEMPORARY TABLE products (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            description VARCHAR(256),
-            price INT NOT NULL,
-            show_in_store TINYINT
-        )
-    )%", result);
-
-    // Prepare a statement to insert into this table
-    statement stmt = conn.prepare_statement("INSERT INTO products (description, price, show_in_store) VALUES (?, ?, ?)");
-```
+[prepared_statements_prepare]
 
 The question mark characters (`?`) represent parameters 
 (as described [mysqllink prepare.html here]).
@@ -50,21 +36,7 @@ To execute a statement, use any of the following functions:
 
 For example:
 
-```
-    // description, price and show_in_store are not trusted, since they may
-    // have been read from a file or an HTTP endpoint
-    void insert_product(
-        tcp_ssl_connection& conn,
-        const statement& stmt,
-        string_view description,
-        int price,
-        bool show_in_store
-    )
-    {
-        results result;
-        conn.execute_statement(stmt, std::make_tuple(description, price, int(show_in_store)), result);
-    }
-```
+[prepared_statements_execute]
 
 Some observations:
 
@@ -83,26 +55,7 @@ Some observations:
 You can also pass [reflink field_view]s and [reflink field]s as parameters. This is handy
 to insert `NULL` values:
 
-```
-    // description, price and show_in_store are not trusted, since they may
-    // have been read from a file or an HTTP endpoint
-    void insert_product(
-        tcp_ssl_connection& conn,
-        const statement& stmt,
-        std::optional<string_view> description,
-        int price,
-        bool show_in_store
-    )
-    {
-        // if description has a value, description_param will have kind() == field_kind::string
-        // and will point to it. Otherwise, description_param.kind() == field_kind::null
-        auto description_param = description ? field_view(*description) : field_view();
-
-        // Execute the insert
-        results result;
-        conn.execute_statement(stmt, std::make_tuple(description_param, price, int(show_in_store)), result);
-    }
-```
+[prepared_statements_execute_null]
 
 For a full reference on the types you can pass as parameters when
 executing a statement, see [link mysql.fields.cpp_to_mysql this section].

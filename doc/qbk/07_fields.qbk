@@ -21,22 +21,12 @@ and [reflink field], which is owning. The relationship between them is similar t
 
 For efficiency reasons, all library functions return `field_view`s. For example:
 
-```
-    results result;
-    conn.query("SELECT 'Hello world!'", result);
-    field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-    string_view sv = fv.as_string(); // sv also points into result; if result goes out of scope, sv becomes invalid
-```
+[fields_field_views]
 
 When dealing with scalars (anything that is neither a string nor a blob), `field_view`'s accessors make
 a copy of the scalar:
 
-```
-    results result;
-    conn.query("SELECT 42", result);
-    field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-    std::int64_t intv = fv.as_int64(); // intv is valid even after result goes out of scope
-```
+[fields_field_views_scalars]
 
 `field_view`s are cheap to create and to copy, as they are small objects and don't perform
 any memory allocations. They are also immutable. On the other hand, `field`s may be more
@@ -44,12 +34,7 @@ expensive to create and copy, as they may perform memory allocations.
 
 You may create a `field` from a `field_view`, taking ownership of its contents:
 
-```
-    results result;
-    conn.query("SELECT 'Hello world!'", result);
-    field_view fv = result.rows().at(0).at(0); // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-    field f (fv); // f takes ownership of fv's contents. f is valid even after result goes out of scope
-```
+[fields_taking_ownership]
 
 `field` and `field_view` use the same underlying types for scalars. For strings and blobs,
 `field` uses the owning types `std::string` and [reflink blob], while `field_view` uses the
@@ -57,19 +42,12 @@ reference types [reflink string_view] and [reflink blob_view].
 
 `field` accessors return references, which allow you to mutate the underlying object:
 
-```
-    field f ("my_string"); // constructs a field that owns the string "my_string"
-    std::string& s = f.as_string(); // s points into f's storage
-    s.push_back('2'); // f now holds "my_string2"
-```
+[field_accessor_references]
 
 You can also mutate a `field` using the assignment operator. This allows you to also
 change the underlying type of a `field`:
 
-```
-    field f ("my_string"); // constructs a field that owns the string "my_string"
-    f = 42;                // destroys "my_string" and stores the value 42 as an int64
-```
+[field_assignment]
 
 [endsect]
 
@@ -116,41 +94,21 @@ of a `std::chrono::time_point` type is that, under certain configurations, MySQL
 dates, such as `2020-00-01`. These are not representable as a `std::chrono::time_point`.
 
 Unless dealing with these special values, we recommend converting `date`s to a `time_point` before using it.
-The member type [refmem date time_point_type] is a system-clock `time_point` that can represent the entire
+The member type [refmem date time_point] is a system-clock `time_point` that can represent the entire
 MySQL `DATE` range without problems. You can use [refmem date as_time_point] to perform the cast:
 
-```
-    date d (2020, 2, 19); // d holds "2020-02-19"
-    date::time_point_type tp = d.as_time_point(); // now use tp normally
-```
+[field_date_as_time_point]
 
 If the date is not valid, `as_time_point` will throw an exception.
 
 You can query whether a `date` contains a valid date or not using [refmem date valid]:
 
-```
-    date d1 (2020, 2, 19); // regular date
-    bool v1 = d1.valid();  // true
-    date d2 (2020, 0, 19); // invalid date
-    bool v2 = d1.valid();  // false
-```
+[field_date_valid]
 
 You can combine it with [refmem date get_time_point], which performs an unchecked
 conversion:
 
-```
-    date d = /* obtain a date somehow */;
-    if (d.valid())
-    {
-        // Same as as_time_point, but doesn't check for validity
-        // Caution: if d is not valid, this will result in undefined behavior
-        date::time_point_type tp = d.get_time_point();
-    }
-    else
-    {
-        // the date is invalid
-    }
-```
+[field_date_get_time_point]
 
 You can also construct a `date` from a `time_point`. If the `time_point` is
 out of range, an exception is thrown.
@@ -165,14 +123,7 @@ having year, month, day, hour, minute, second and microseconds.
 MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`). The same considerations for
 `date` apply also to `datetime`:
 
-```
-    datetime dt1 (2020, 10, 11, 10, 20, 59, 123456); // regular datetime 2020-10-11 10:20:59.123456
-    bool v1 = dt1.valid(); // true
-    datetime dt2 (2020, 0, 11, 10, 20, 59); // invalid datetime 2020-00-10 10:20:59.000000
-    bool v2 = dt1.valid(); // false
-
-    datetime::time_point_type tp = dt1.as_time_point(); // convert to time_point
-```
+[field_datetime]
 
 The `datetime` object doesn't carry any time zone information with it. The time zone semantics
 depend on the actual MySQL type:
@@ -183,16 +134,38 @@ depend on the actual MySQL type:
   as given by the __time_zone__ variable, and converted to UTC for storage. When retrieved, they are converted back
   to the time zone indicated by __time_zone__. The retrieved value of a `TIMESTAMP`
   field is thus a time point in some local time zone, dictated by the current
-  __time_zone__ variable. As this variable can be changed programmatically, without
-  the client knowing it, we represent `TIMESTAMP`'s using the `datetime` object, which doesn't include time zone information.
+  __time_zone__ variable. As this variable can be changed programmatically from SQL, without
+  the library knowing it, we represent `TIMESTAMP`'s using the `datetime` object, which doesn't include time zone information.
 
-When working with `TIMESTAMP` values, we recommend setting the __time_zone__ to a known value. For example: 
+When using `TIMESTAMP`, we recommend setting the __time_zone__ to a known value. To illustrate this,
+consider an event-logging system with the following table definition:
 
-```
-    tcp_ssl_resultset result;
-    conn.query("SET SESSION time_zone = UTC", result);
-    // All TIMESTAMP values inserted or retrieved after this point will use UTC
-```
+[field_timestamp_setup]
+
+We will be inserting events with an explicit timestamp. We may also want to retrieve events with
+a timestamp filter. This is what our prepared statements would look like:
+
+[field_timestamp_stmts]
+
+These statements may be run from different parts of our code, or even from different applications.
+To get consistent results, we must make sure that timestamps are interpreted in the right time zone.
+By default, __time_zone__ gets set to `SYSTEM`, which will use the server's time zone settings.
+This is not what we want here, so let's change it:
+
+[fields_timestamp_set_time_zone]
+
+With this, the insertion code can look like:
+
+[fields_timestamp_insert]
+
+The querying code would be:
+
+[fields_timestamp_select]
+    
+If you don't set __time_zone__, you may apparently get the right results if you run
+both insertions and queries from clients that don't set `time_zone` and the server doesn't
+change its configuration. However, relying on this will make your applications brittle, so we
+don't recommend it.
 
 [endsect]
 

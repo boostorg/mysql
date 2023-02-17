@@ -49,10 +49,11 @@ void main_impl(int argc, char** argv)
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
     auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
 
-    // The username and password to use
+    // The username, password and database to use
     boost::mysql::handshake_params params(
-        argv[1],  // username
-        argv[2]   // password
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database
     );
 
     // Connect to the server using the first endpoint returned by the resolver

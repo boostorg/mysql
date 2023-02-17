@@ -26,7 +26,7 @@ In this case, `Stream` is `boost::asio::ssl::stream<boost::asio::ip::tcp::socket
 which can be constructed from a [asioreflink any_io_executor any_io_executor]
 and a [asioreflink ssl__context ssl::context]:
 
-[tutorial_connection]
+[overview_connection]
 
 Typedefs for other transports are also available. See [link mysql.other_streams this section] for more info.
 
@@ -51,7 +51,7 @@ establishment, usually by calling [refmem connection connect]. This function per
 * [reflink handshake_params] to use for the handshake operation. This parameter doesn't depend on the `Stream`
   type. See [link mysql.connparams this section] for more info.
 
-[tutorial_connect]
+[overview_connect]
 
 Note that [refmem connection connect] can only be used with socket-like streams. If your stream
 is not a socket, you must use the lower-level [refmem connection handshake] function. Please
@@ -82,10 +82,7 @@ The two main ways to use a connection are text queries and prepared statements:
             
         ]
         [
-            ```
-            results result;
-            conn.query("START TRANSACTION", result);
-            ```
+            [overview_query_use_case]
         ]
     ]
     [
@@ -98,12 +95,7 @@ The two main ways to use a connection are text queries and prepared statements:
             Queries with parameters unknown at compile-time.
         ]
         [
-            ```
-            statement stmt = conn.prepare_statement("SELECT first_name FROM employees WHERE company_id = ? AND salary > ?");
-
-            results result;
-            conn.execute_statement(stmt, std::make_tuple("HGS", 30000), result);
-            ```
+            [overview_statement_use_case]
         ]
     ]
 ]
@@ -172,20 +164,7 @@ retrieved by SQL query. This library defines six data structures to represent My
 [refmem results rows] returns a [reflink rows_view] object. The memory for the rows is owned by the
 `results` object. Indexing the returned view also returns view objects:
 
-```
-    // Populate a results object
-    results result;
-    conn.query("SELECT 'Hello world'", result);
-
-    // results::rows() returns a rows_view. The underlying memory is owned by the results object
-    rows_view all_rows = result.rows();
-
-    // Indexing a rows_view yields a row_view. The underlying memory is owned by the results object
-    row_view first_row = all_rows.at(0);
-
-    // Indexing a row_view yields a field_view. The underlying memory is owned by the results object
-    field_view first_field = first_row.at(0); // Contains the string "Hello world"
-```
+[overview_views]
 
 Views behave similarly to `std::string_view`. You must make sure that you don't use a view after the
 storage its points to has gone out of scope. In this case, you must not use any of the views after the
@@ -193,16 +172,7 @@ storage its points to has gone out of scope. In this case, you must not use any 
 
 As it happens with `std::string_view`, you can take ownership of a view using its owning counterpart:
 
-```
-    // You may use all_rows_owning after result has gone out of scope
-    rows all_rows_owning {all_rows};
-
-    // You may use first_row_owning after result has gone out of scope
-    row first_row_owning {first_row};
-
-    // You may use first_field_owning after result has gone out of scope
-    field first_field_owning {first_field};
-```
+[overview_taking_ownership]
 
 [endsect]
 
@@ -222,62 +192,14 @@ you may find in a MySQL table. Once you obtain a field, you can access its conte
 
 For example:
 
-```
-    results result;
-    conn.query("SELECT \"abc\", 42", result);
-
-    // Using the is_xxx and get_xxx accessors
-    field_view f = result.rows().at(0).at(0); // f points to the string "abc"
-    if (f.is_string())
-    {
-        // we know it's a string, unchecked access
-        string_view s = f.get_string();
-        std::cout << s << std::endl; // Use the string as required
-    }
-    else
-    {
-        // Oops, something went wrong - schema msimatch?
-    }
-
-    // Using the as_xxx accessor
-    f = result.rows().at(0).at(1);
-    std::int64_t value = f.as_int64(); // Checked access. Throws if f doesn't contain an int
-    std::cout << value << std::endl; // Use the int as required
-```
+[overview_using_fields]
 
 `NULL` values are represented as field objects having `kind() == field_kind::null`.
 You can check whether a value is `NULL` or not using [refmemunq field_view is_null].
 In the following snippet, the `salary` column was defined as a nullable `double`.
 This is how `NULL`s are typically handled:
 
-```
-    results result;
-    conn.query(R"%(
-        SELECT 0 AS product_id, 'potatoes' as description UNION
-        SELECT 1, NULL UNION
-        SELECT 2, 'carrots'
-    )%", result);
-
-    for (row_view r : result.rows())
-    {
-        field_view description_fv = r.at(1);
-        if (description_fv.is_null())
-        {
-            // Handle the NULL value
-            // Note: description_fv.is_string() will return false here; NULL is represented as a separate type
-            std::cout << "No description for product_id " << r.at(0) << std::endl;
-        }
-        else
-        {
-            // Handle the non-NULL case. Get the underlying value and use it as you want
-            // If there is any schema mismatch (and description was not defined as VARCHAR), this will throw
-            string_view description = description_fv.as_string();
-
-            // Use description as required
-            std::cout << "product_id " << r.at(0) << ": " << description << std::endl;
-        }
-    }
-```
+[overview_handling_nulls]
 
 Every MySQL type is mapped to a single C++ type. The following table shows these mappings:
 
@@ -402,33 +324,15 @@ handle to the server-side prepared statement.
 Let's say you've got an inventory table, and you're writing a command-line program to get products
 by ID. You've got the following table definition:
 
-```
-    results result;
-    conn.query(R"%(
-        CREATE TEMPORARY TABLE products (
-            id VARCHAR(50) PRIMARY KEY,
-            description VARCHAR(256)
-        )
-    )", result);
-    conn.query("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', 'Carrots')", result);
-```
+[overview_statements_setup]
 
 You can prepare a statement to retrieve products by ID using:
 
-```
-    statement stmt = conn.prepare_statement("SELECT description FROM products WHERE id = ?");
-```
+[overview_statements_prepare]
 
 You can execute the statement using [refmem connection execute_statement]:
 
-```
-    // Obtain the product_id from the user. product_id is untrusted input
-    const char* product_id = argv[2];
-
-    results result;
-    conn.execute_statement(stmt, std::make_tuple(product_id), result);
-    // Use result as required
-```
+[overview_statements_execute]
 
 The `statement` object is passed as first parameter, which tells the server which
 statement it should execute. Actual parameters are passed as the second argument,
@@ -452,45 +356,9 @@ Some use cases may not fit in this simple pattern. For example:
 
 For these cases, we can break the `query()` or `execute_statement()` operation into several steps,
 in a ['multi-function operation] (the term is coined by this library). This example reads an entire
-table row by row, which can be the case in an ETL process:
+table in batches, which can be the case in an ETL process:
 
-```
-    // Create the table and some sample data
-    // In a real system, body may be megabaytes long.
-    results result;
-    conn.query(R"%(
-        CREATE TEMPORARY TABLE posts (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            title VARCHAR (256),
-            body TEXT
-        )
-    )%", result);
-    conn.query(R"%(
-        INSERT INTO posts (title, body) VALUES
-            ('Post 1', 'A very long post body'),
-            ('Post 2', 'An even longer post body')
-    )%", result);
-
-    // execution_state stores state about our operation, and must be passed to all functions
-    execution_state st;
-
-    // Writes the query request and reads the server response, but not the rows
-    conn.start_query("SELECT title, body FROM posts", st);
-
-    // Reads all the returned rows, in batches.
-    // st.complete() returns true once there are no more rows to read
-    while (!st.complete())
-    {
-        // row_batch will be valid until conn performs any other network operation
-        rows_view row_batch = conn.read_some_rows(st);
-
-        for (row_view post : row_batch)
-        {
-            // Process post as required
-            std::cout << post << std::endl;
-        }
-    }
-```
+[overview_multifn]
 
 [warning
     Once you start a multi-function operation with [refmem connection start_query] or [refmem connection start_statement_execution],
@@ -521,14 +389,7 @@ document whether they perform reads, writes or both.
 For example, [refmem connection async_query] performs both reads and writes.
 Doing this is illegal and should be avoided:
 
-```
-    // Coroutine body
-    // DO NOT DO THIS!!!!
-    results result1, result2;
-    auto q1 = conn.async_query("SELECT 1", result1, use_awaitable);
-    auto q2 = conn.async_query("SELECT 2", result2, use_awaitable);
-    co_await (q1 && q2);
-```
+[overview_async_dont]
 
 If you need to perform queries in parallel, open more connections to the server.
 

@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(valid)
     {
         BOOST_TEST_CONTEXT(tc.days_since_epoch)
         {
-            date::time_point_type tp(days(tc.days_since_epoch));
+            date::time_point tp(days(tc.days_since_epoch));
             date d(tp);
             BOOST_TEST(d.valid());
             BOOST_TEST(d.year() == tc.year);
@@ -68,10 +68,10 @@ BOOST_AUTO_TEST_CASE(valid)
 
 BOOST_AUTO_TEST_CASE(invalid)
 {
-    BOOST_CHECK_THROW(date(date::time_point_type(days(2932897))), std::out_of_range);
-    BOOST_CHECK_THROW(date(date::time_point_type(days(-719529))), std::out_of_range);
-    BOOST_CHECK_THROW(date(date::time_point_type(days(INT_MAX))), std::out_of_range);
-    BOOST_CHECK_THROW(date(date::time_point_type(days(INT_MIN))), std::out_of_range);
+    BOOST_CHECK_THROW(date(date::time_point(days(2932897))), std::out_of_range);
+    BOOST_CHECK_THROW(date(date::time_point(days(-719529))), std::out_of_range);
+    BOOST_CHECK_THROW(date(date::time_point(days(INT_MAX))), std::out_of_range);
+    BOOST_CHECK_THROW(date(date::time_point(days(INT_MIN))), std::out_of_range);
 }
 BOOST_AUTO_TEST_SUITE_END()  // ctor_from_time_point
 
@@ -174,9 +174,7 @@ BOOST_AUTO_TEST_CASE(operator_stream)
         {
             for (const auto& day : day_values)
             {
-                BOOST_TEST_CONTEXT(
-                    "year=" << year.name << ", month=" << month.name << ", day=" << day.name
-                )
+                BOOST_TEST_CONTEXT("year=" << year.name << ", month=" << month.name << ", day=" << day.name)
                 {
                     auto expected = stringize(year.repr, '-', month.repr, '-', day.repr);
                     auto actual = stringize(date(year.value, month.value, day.value));
@@ -185,6 +183,14 @@ BOOST_AUTO_TEST_CASE(operator_stream)
             }
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(now)
+{
+    auto d = date::now();
+    BOOST_TEST_REQUIRE(d.valid());
+    BOOST_TEST(d.year() > 2020u);
+    BOOST_TEST(d.year() < 2100u);
 }
 
 // Make sure constxpr can actually be used in a constexpr context
@@ -209,11 +215,11 @@ BOOST_AUTO_TEST_CASE(constexpr_fns_cxx11)
 #ifndef BOOST_NO_CXX14_CONSTEXPR
 BOOST_AUTO_TEST_CASE(constexpr_fns_cxx14)
 {
-    constexpr date d0(date::time_point_type(days(2932896)));
+    constexpr date d0(date::time_point(days(2932896)));
     static_assert(d0 == date(9999, 12, 31), "");
 
     constexpr auto tp1 = d0.get_time_point();
-    static_assert(tp1 == date::time_point_type(days(2932896)), "");
+    static_assert(tp1 == date::time_point(days(2932896)), "");
 
     constexpr auto tp2 = d0.as_time_point();
     static_assert(tp2 == tp1, "");

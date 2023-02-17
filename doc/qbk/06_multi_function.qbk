@@ -61,26 +61,7 @@ Some takeaways:
 
 Given the following setup:
 
-```
-    // TODO: this is repeated from the overview section
-    results result;
-    conn.query(R"%(
-        CREATE TEMPORARY TABLE posts (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            title VARCHAR (256),
-            body TEXT
-        )
-    )%", result);
-    conn.query(R"%(
-        INSERT INTO posts (title, body) VALUES
-            ('Post 1', 'A very long post body'),
-            ('Post 2', 'An even longer post body')
-    )%", result);
-
-
-    // This is not repeated
-    statement stmt = conn.prepare_statement("SELECT title, body FROM posts");
-```
+[multi_function_setup]
 
 You can start a multi-function operation using [refmem connection start_query]
 or [refmem connection start_statement_execution]:
@@ -91,18 +72,8 @@ or [refmem connection start_statement_execution]:
         [Prepared statements]
     ]
     [
-        [
-            ```
-                execution_state st;
-                conn.start_query("SELECT title, body FROM posts", st);
-            ```
-        ]
-        [
-            ```
-                execution_state st;
-                conn.start_statement_execution(stmt, std::make_tuple(), st); // The statement has no params, so an empty tuple is passed
-            ```
-        ]
+        [[multi_function_start_query]]
+        [[multi_function_start_statement_execution]]
     ]
 ]
 
@@ -111,23 +82,9 @@ or [refmem connection start_statement_execution]:
 Once the operation has been started, you [*must] read all the generated rows
 by calling [refmem connection read_some_rows], which will return a batch of an unspecified size.
 
-This is typical use of `read_some_rows`:
+This is the typical use of `read_some_rows`:
 
-```
-    // TODO: this is duplicated
-    // st.complete() returns true once the OK packet is received
-    while (!st.complete())
-    {
-        // row_batch will be valid until conn performs any other network operation
-        rows_view row_batch = conn.read_some_rows(st);
-
-        for (row_view post : row_batch)
-        {
-            // Process post as required
-            std::cout << post << std::endl;
-        }
-    }
-```
+[multi_function_read_some_rows]
 
 Some remarks:
 * If there are rows to be read, `read_some_rows` will return at least one, but may return more.

@@ -16,6 +16,7 @@ if $(hostname) = ""
 
 # Example list
 local examples_no_unix =
+    snippets
     tutorial
     text_queries
     prepared_statements

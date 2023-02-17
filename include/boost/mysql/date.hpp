@@ -34,7 +34,7 @@ class date
 {
 public:
     /// A `std::chrono::time_point` that can represent any valid date.
-    using time_point_type = std::chrono::time_point<std::chrono::system_clock, days>;
+    using time_point = std::chrono::time_point<std::chrono::system_clock, days>;
 
     /**
      * \brief Constructs a zero date.
@@ -55,7 +55,7 @@ public:
      * \details If the supplied `time_point` would result in a `date` object
      * out of the [\ref min_date, \ref max_date] range, throws `std::out_of_range`.
      */
-    BOOST_CXX14_CONSTEXPR inline explicit date(time_point_type tp);
+    BOOST_CXX14_CONSTEXPR inline explicit date(time_point tp);
 
     /**
      * \brief Retrieves the year component.
@@ -85,13 +85,13 @@ public:
      * \brief Converts `*this` into a `time_point` (unchecked access).
      * \details If `!this->valid()`, results in undefined behavior.
      */
-    BOOST_CXX14_CONSTEXPR inline time_point_type get_time_point() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline time_point get_time_point() const noexcept;
 
     /**
      * \brief Converts `*this` into a `time_point` (checked access).
      * \details If `!this->valid()`, throws `std::invalid_argument`.
      */
-    BOOST_CXX14_CONSTEXPR inline time_point_type as_time_point() const;
+    BOOST_CXX14_CONSTEXPR inline time_point as_time_point() const;
 
     /**
      * \brief Tests for equality.
@@ -105,12 +105,21 @@ public:
      */
     constexpr bool operator!=(const date& rhs) const noexcept { return !(rhs == *this); }
 
+    /**
+     * \brief Returns the current system time as a date object.
+     */
+    static date now()
+    {
+        auto now = time_point::clock::now();
+        return date(std::chrono::time_point_cast<time_point::duration>(now));
+    }
+
 private:
     std::uint16_t year_{};
     std::uint8_t month_{};
     std::uint8_t day_{};
 
-    BOOST_CXX14_CONSTEXPR inline time_point_type unch_get_time_point() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept;
 };
 
 /**

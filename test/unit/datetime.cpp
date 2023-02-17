@@ -25,8 +25,7 @@ namespace {
 
 datetime from_timestamp(std::int64_t micros_since_epoch)
 {
-    return datetime(datetime::time_point_type(datetime::time_point_type::duration(micros_since_epoch
-    )));
+    return datetime(datetime::time_point(datetime::time_point::duration(micros_since_epoch)));
 }
 
 BOOST_AUTO_TEST_SUITE(test_datetime_class)
@@ -342,6 +341,14 @@ BOOST_AUTO_TEST_CASE(operator_stream)
     // clang-format off
 }
 
+BOOST_AUTO_TEST_CASE(now)
+{
+    auto d = datetime::now();
+    BOOST_TEST_REQUIRE(d.valid());
+    BOOST_TEST(d.year() > 2020u);
+    BOOST_TEST(d.year() < 2100u);
+}
+
 
 // Make sure constxpr can actually be used in a constexpr context
 BOOST_AUTO_TEST_CASE(constexpr_fns_cxx11)
@@ -373,7 +380,7 @@ BOOST_AUTO_TEST_CASE(constexpr_fns_cxx11)
 #ifndef BOOST_NO_CXX14_CONSTEXPR
 BOOST_AUTO_TEST_CASE(constexpr_fns_cxx14)
 {
-    constexpr datetime d0(datetime::time_point_type(datetime::time_point_type::duration(1272841310123456)));
+    constexpr datetime d0(datetime::time_point(datetime::time_point::duration(1272841310123456)));
     static_assert(d0 == datetime(2010, 5,  2,  23, 1,  50, 123456), "");
 
     constexpr auto tp1 = d0.get_time_point();

@@ -65,6 +65,7 @@ else()
 endif()
 
 # Build and run all the examples
+add_example(snippets                    TRUE    ${SERVER_HOST})
 add_example(tutorial                    TRUE    ${SERVER_HOST})
 add_example(text_queries                TRUE    ${SERVER_HOST})
 add_example(prepared_statements         TRUE    ${SERVER_HOST})

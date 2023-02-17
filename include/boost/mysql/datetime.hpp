@@ -36,7 +36,7 @@ public:
      * \brief A `std::chrono::time_point` that can represent any valid datetime.
      * \details Represents microseconds, with the same precision for all architectures.
      */
-    using time_point_type = std::chrono::
+    using time_point = std::chrono::
         time_point<std::chrono::system_clock, std::chrono::duration<std::int64_t, std::micro>>;
 
     /**
@@ -72,7 +72,7 @@ public:
      * \details If the supplied `time_point` would result in a `datetime` object
      * out of the [\ref min_datetime, \ref max_datetime] range, throws `std::out_of_range`.
      */
-    BOOST_CXX14_CONSTEXPR inline explicit datetime(time_point_type tp);
+    BOOST_CXX14_CONSTEXPR inline explicit datetime(time_point tp);
 
     /**
      * \brief Retrieves the year component.
@@ -122,13 +122,13 @@ public:
      * \brief Converts `*this` into a `time_point` (unchecked access).
      * \details If `!this->valid()`, results in undefined behavior.
      */
-    BOOST_CXX14_CONSTEXPR inline time_point_type get_time_point() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline time_point get_time_point() const noexcept;
 
     /**
      * \brief Converts `*this` into a `time_point` (checked access).
      * \details If `!this->valid()`, throws `std::invalid_argument`.
      */
-    BOOST_CXX14_CONSTEXPR inline time_point_type as_time_point() const;
+    BOOST_CXX14_CONSTEXPR inline time_point as_time_point() const;
 
     /**
      * \brief Tests for equality.
@@ -142,6 +142,15 @@ public:
      */
     constexpr bool operator!=(const datetime& rhs) const noexcept { return !(*this == rhs); }
 
+    /**
+     * \brief Returns the current system time as a datetime object.
+     */
+    static datetime now()
+    {
+        auto now = time_point::clock::now();
+        return datetime(std::chrono::time_point_cast<time_point::duration>(now));
+    }
+
 private:
     std::uint16_t year_{};
     std::uint8_t month_{};
@@ -151,7 +160,7 @@ private:
     std::uint8_t second_{};
     std::uint32_t microsecond_{};
 
-    BOOST_CXX14_CONSTEXPR inline time_point_type unch_get_time_point() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept;
 };
 
 /**

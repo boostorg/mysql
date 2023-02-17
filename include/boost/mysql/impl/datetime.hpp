@@ -20,7 +20,7 @@
 #include <ostream>
 #include <stdexcept>
 
-BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point_type tp)
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point tp)
 {
     using std::chrono::duration_cast;
     using std::chrono::hours;
@@ -59,20 +59,18 @@ BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point_type tp)
 
 constexpr bool boost::mysql::datetime::valid() const noexcept
 {
-    return detail::is_valid(year_, month_, day_) && hour_ <= detail::max_hour &&
-           minute_ <= detail::max_min && second_ <= detail::max_sec &&
-           microsecond_ <= detail::max_micro;
+    return detail::is_valid(year_, month_, day_) && hour_ <= detail::max_hour && minute_ <= detail::max_min &&
+           second_ <= detail::max_sec && microsecond_ <= detail::max_micro;
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point_type boost::mysql::datetime::
-    get_time_point() const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point boost::mysql::datetime::get_time_point(
+) const noexcept
 {
     assert(valid());
     return unch_get_time_point();
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point_type boost::mysql::datetime::as_time_point(
-) const
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point boost::mysql::datetime::as_time_point() const
 {
     if (!valid())
         throw std::invalid_argument("datetime::as_time_point: invalid datetime");
@@ -85,14 +83,14 @@ constexpr bool boost::mysql::datetime::operator==(const datetime& rhs) const noe
            minute_ == rhs.minute_ && second_ == rhs.second_ && microsecond_ == rhs.microsecond_;
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point_type boost::mysql::datetime::
-    unch_get_time_point() const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point boost::mysql::datetime::unch_get_time_point(
+) const noexcept
 {
     // Doing time of day independently to prevent overflow
     days d(detail::ymd_to_days(year_, month_, day_));
     auto time_of_day = std::chrono::hours(hour_) + std::chrono::minutes(minute_) +
                        std::chrono::seconds(second_) + std::chrono::microseconds(microsecond_);
-    return time_point_type(d) + time_of_day;
+    return time_point(d) + time_of_day;
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const datetime& value)

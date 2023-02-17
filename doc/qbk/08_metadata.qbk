@@ -30,20 +30,6 @@ are affected by this setting. You may change this setting using [refmem connecti
 
 For example:
 
-```
-    // By default, a connection has metadata_mode::minimal
-    results result;
-    conn.query("SELECT 1 AS my_field", result);
-    string_view colname = result.meta()[0].column_name();
-
-    // colname will be empty because conn.meta_mode() == metadata_mode::minimal
-    ASSERT(colname == "");
-
-    // If you are using metadata names, set the connection's metadata_mode
-    conn.set_meta_mode(metadata_mode::full);
-    conn.query("SELECT 1 AS my_field", result);
-    colname = result.meta()[0].column_name();
-    ASSERT(colname == "myfield");
-```
+[metadata]
 
 [endsect]

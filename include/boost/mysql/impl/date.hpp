@@ -16,21 +16,20 @@
 #include <ostream>
 #include <stdexcept>
 
-BOOST_CXX14_CONSTEXPR boost::mysql::date::date(time_point_type tp)
+BOOST_CXX14_CONSTEXPR boost::mysql::date::date(time_point tp)
 {
     bool ok = detail::days_to_ymd(tp.time_since_epoch().count(), year_, month_, day_);
     if (!ok)
         throw std::out_of_range("date::date: time_point was out of range");
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point_type boost::mysql::date::get_time_point(
-) const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point boost::mysql::date::get_time_point() const noexcept
 {
     assert(valid());
     return unch_get_time_point();
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point_type boost::mysql::date::as_time_point() const
+BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point boost::mysql::date::as_time_point() const
 {
     if (!valid())
         throw std::invalid_argument("date::as_time_point: invalid date");
@@ -42,10 +41,9 @@ constexpr bool boost::mysql::date::operator==(const date& rhs) const noexcept
     return year_ == rhs.year_ && month_ == rhs.month_ && day_ == rhs.day_;
 }
 
-BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point_type boost::mysql::date::unch_get_time_point(
-) const noexcept
+BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point boost::mysql::date::unch_get_time_point() const noexcept
 {
-    return time_point_type(days(detail::ymd_to_days(year_, month_, day_)));
+    return time_point(days(detail::ymd_to_days(year_, month_, day_)));
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const date& value)

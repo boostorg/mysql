@@ -84,6 +84,8 @@
 [def __USE__ [mysqllink use.html `USE`]]
 
 
+[import ../../example/snippets.cpp]
+
 [include 01_intro.qbk]
 [include 02_tutorial.qbk]
 [include 03_overview.qbk]
