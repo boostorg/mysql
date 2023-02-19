@@ -8,17 +8,18 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
-#include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -44,12 +45,13 @@
 using boost::mysql::blob;
 using boost::mysql::client_errc;
 using boost::mysql::column_type;
+using boost::mysql::common_server_errc;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
-using boost::mysql::server_errc;
 using boost::mysql::detail::async_start_execution_generic;
 using boost::mysql::detail::capabilities;
+using boost::mysql::detail::db_flavor;
 using boost::mysql::detail::deserialize_execute_response;
 using boost::mysql::detail::execute_response;
 using boost::mysql::detail::execution_state_access;
@@ -92,7 +94,12 @@ BOOST_AUTO_TEST_CASE(ok_packet)
 {
     std::uint8_t msg[] = {0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
     diagnostics diag;
-    auto response = deserialize_execute_response(boost::asio::buffer(msg), capabilities(), diag);
+    auto response = deserialize_execute_response(
+        boost::asio::buffer(msg),
+        capabilities(),
+        db_flavor::mariadb,
+        diag
+    );
     BOOST_TEST(response.type == execute_response::type_t::ok_packet);
     BOOST_TEST(response.data.ok_pack.affected_rows.value == 0u);
     BOOST_TEST(response.data.ok_pack.status_flags == 2u);
@@ -121,7 +128,12 @@ BOOST_AUTO_TEST_CASE(num_fields)
         {
             std::uint8_t msg[] = {0xfc, 0xff, 0x00};
             diagnostics diag;
-            auto response = deserialize_execute_response(boost::asio::buffer(msg), capabilities(), diag);
+            auto response = deserialize_execute_response(
+                boost::asio::buffer(msg),
+                capabilities(),
+                db_flavor::mysql,
+                diag
+            );
             BOOST_TEST(response.type == execute_response::type_t::num_fields);
             BOOST_TEST(response.data.num_fields == 0xffu);
             BOOST_TEST(diag.server_message() == "");
@@ -142,7 +154,7 @@ BOOST_AUTO_TEST_CASE(error)
          {0xff, 0x7a, 0x04, 0x23, 0x34, 0x32, 0x53, 0x30, 0x32, 0x54, 0x61, 0x62, 0x6c, 0x65,
           0x20, 0x27, 0x6d, 0x79, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x61, 0x62, 0x63, 0x27, 0x20,
           0x64, 0x6f, 0x65, 0x73, 0x6e, 0x27, 0x74, 0x20, 0x65, 0x78, 0x69, 0x73, 0x74},
-         server_errc::no_such_table,
+         common_server_errc::er_no_such_table,
          "Table 'mytest.abc' doesn't exist"                                                                                   },
         {"bad_server_error", {0xff, 0x00},                                               client_errc::incomplete_message,   ""},
         {"bad_ok_packet",    {0x00, 0xff},                                               client_errc::incomplete_message,   ""},
@@ -160,7 +172,12 @@ BOOST_AUTO_TEST_CASE(error)
         BOOST_TEST_CONTEXT(tc.name)
         {
             diagnostics diag;
-            auto response = deserialize_execute_response(boost::asio::buffer(tc.msg), capabilities(), diag);
+            auto response = deserialize_execute_response(
+                boost::asio::buffer(tc.msg),
+                capabilities(),
+                db_flavor::mysql,
+                diag
+            );
             BOOST_TEST(response.type == execute_response::type_t::error);
             BOOST_TEST(response.data.err == tc.err);
             BOOST_TEST(diag.server_message() == tc.expected_info);
@@ -375,11 +392,11 @@ BOOST_AUTO_TEST_CASE(error_deserialize_execution_response)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_err_packet_message(1, server_errc::no_such_db, "no_db");
+            auto response = create_err_packet_message(1, common_server_errc::er_bad_db_error, "no_db");
             fix.chan.lowest_layer().add_message(response);
 
             // Call the function
-            fix.call_fn(fns).validate_error_exact(server_errc::no_such_db, "no_db");
+            fix.call_fn(fns).validate_error_exact(common_server_errc::er_bad_db_error, "no_db");
         }
     }
 }

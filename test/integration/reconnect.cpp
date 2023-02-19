@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/server_errc.hpp>
 
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/test/unit_test.hpp>
@@ -16,8 +16,8 @@
 #include "integration_test_common.hpp"
 
 using namespace boost::mysql::test;
+using boost::mysql::common_server_errc;
 using boost::mysql::results;
-using boost::mysql::server_errc;
 
 namespace {
 
@@ -60,7 +60,10 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, net
 
     // Error during server handshake
     params.set_database("bad_database");
-    conn->connect(params).validate_error(server_errc::dbaccess_denied_error, {"database", "bad_database"});
+    conn->connect(params).validate_error(
+        common_server_errc::er_dbaccess_denied_error,
+        {"database", "bad_database"}
+    );
 
     // Reopen with correct parameters and use the connection normally
     params.set_database("boost_mysql_integtests");

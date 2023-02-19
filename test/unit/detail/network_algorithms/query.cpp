@@ -7,8 +7,8 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -27,9 +27,9 @@
 
 using boost::mysql::blob;
 using boost::mysql::column_type;
+using boost::mysql::common_server_errc;
 using boost::mysql::error_code;
 using boost::mysql::results;
-using boost::mysql::server_errc;
 using boost::mysql::string_view;
 using boost::mysql::detail::connection_access;
 using boost::mysql::detail::protocol_field_type;
@@ -113,10 +113,11 @@ BOOST_AUTO_TEST_CASE(error_start_query)
         {
             auto result = create_initial_results();
             test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, server_errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
 
             // Call the function
-            fns.query(conn, "SELECT 1", result).validate_error_exact(server_errc::aborting_connection);
+            fns.query(conn, "SELECT 1", result)
+                .validate_error_exact(common_server_errc::er_aborting_connection);
         }
     }
 }
@@ -131,10 +132,11 @@ BOOST_AUTO_TEST_CASE(error_read_all_rows)
             test_connection conn;
             conn.stream().add_message(create_message(1, {0x01}));  // Response OK, 1 metadata packet
             conn.stream().add_message(create_coldef_message(2, protocol_field_type::geometry));
-            conn.stream().set_fail_count(fail_count(4, server_errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(4, common_server_errc::er_aborting_connection));
 
             // Call the function
-            fns.query(conn, "SELECT 1", result).validate_error_exact(server_errc::aborting_connection);
+            fns.query(conn, "SELECT 1", result)
+                .validate_error_exact(common_server_errc::er_aborting_connection);
 
             // Ensure we successfully ran the start_query
             BOOST_TEST_REQUIRE(results_access::get_state(result).meta().size() == 1u);

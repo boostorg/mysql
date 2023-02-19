@@ -57,7 +57,7 @@
           <member><link linkend="mysql.ref.boost__mysql__client_errc">client_errc</link></member>
           <member><link linkend="mysql.ref.boost__mysql__collation">collation</link></member>
           <member><link linkend="mysql.ref.boost__mysql__column_type">column_type</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__server_errc">server_errc</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__common_server_errc">common_server_errc</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field_kind">field_kind</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ssl_mode">ssl_mode</link></member>
         </simplelist>

@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/server_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
@@ -20,9 +20,9 @@
 #include "unit_netfun_maker.hpp"
 
 using boost::mysql::blob;
+using boost::mysql::common_server_errc;
 using boost::mysql::error_code;
 using boost::mysql::execution_state;
-using boost::mysql::server_errc;
 using boost::mysql::string_view;
 using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
@@ -101,10 +101,11 @@ BOOST_AUTO_TEST_CASE(error)
         {
             execution_state st{create_initial_state()};
             test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, server_errc::aborting_connection));
+            conn.stream().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
 
             // Call the function
-            fns.start_query(conn, "SELECT 1", st).validate_error_exact(server_errc::aborting_connection);
+            fns.start_query(conn, "SELECT 1", st)
+                .validate_error_exact(common_server_errc::er_aborting_connection);
         }
     }
 }

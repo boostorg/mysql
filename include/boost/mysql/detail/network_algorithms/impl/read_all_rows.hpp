@@ -50,6 +50,7 @@ inline void process_all_rows(
         deserialize_row(
             message,
             channel.current_capabilities(),
+            channel.flavor(),
             channel.buffer_first(),
             st,
             channel.shared_fields(),

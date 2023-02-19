@@ -33,6 +33,7 @@ add_executable(
     detail/protocol/deserialize_text_field.cpp
     detail/protocol/deserialize_binary_field.cpp
     detail/protocol/deserialize_row.cpp
+    detail/protocol/process_error_packet.cpp
     date.cpp
     datetime.cpp
     field_view.cpp
@@ -43,7 +44,9 @@ add_executable(
     rows.cpp
     metadata.cpp
     client_errc.cpp
-    server_errc.cpp
+    common_server_errc.cpp
+    mysql_server_errc.cpp
+    mariadb_server_errc.cpp
     diagnostics.cpp
     statement.cpp
     execution_state.cpp
@@ -59,11 +62,11 @@ target_link_libraries(
     boost_mysql_testing
 )
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
-    # target_precompile_headers(
-    #     boost_mysql_unittests
-    #     PRIVATE
-    #     pch.hpp
-    # )
+    target_precompile_headers(
+        boost_mysql_unittests
+        PRIVATE
+        pch.hpp
+    )
 endif()
 set_source_files_properties(
     entry_point.cpp

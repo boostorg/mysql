@@ -15,6 +15,7 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
 
@@ -39,6 +40,7 @@ inline void deserialize_row(
 inline void deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
+    db_flavor flavor,
     const std::uint8_t* buffer_first,  // to store strings as offsets and allow buffer reallocation
     execution_state& st,               // should be !complete()
     std::vector<field_view>& output,

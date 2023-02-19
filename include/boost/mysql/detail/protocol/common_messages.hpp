@@ -8,14 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 
-#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/collation.hpp>
-#include <boost/mysql/diagnostics.hpp>
 
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
-
-#include <tuple>
 
 namespace boost {
 namespace mysql {
@@ -157,9 +153,6 @@ struct ping_packet
     {
     }
 };
-
-// aux
-inline error_code process_error_packet(deserialization_context& ctx, diagnostics& diag);
 
 }  // namespace detail
 }  // namespace mysql

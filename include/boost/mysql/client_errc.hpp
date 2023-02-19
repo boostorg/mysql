@@ -10,10 +10,6 @@
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/system/error_category.hpp>
-
-#include <ostream>
-
 namespace boost {
 namespace mysql {
 
@@ -52,22 +48,12 @@ enum class client_errc : int
     wrong_num_params
 };
 
-/**
- * \brief Returns the error_category associated to \ref client_errc.
- */
-inline const boost::system::error_category& get_client_category() noexcept;
-
 /// Creates an \ref error_code from a \ref client_errc.
 inline error_code make_error_code(client_errc error);
-
-/**
- * \brief Streams an error code.
- */
-inline std::ostream& operator<<(std::ostream&, client_errc);
 
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/client_errc.hpp>
+#include <boost/mysql/impl/error_categories.hpp>
 
 #endif

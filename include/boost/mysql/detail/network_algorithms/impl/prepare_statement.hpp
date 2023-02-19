@@ -18,6 +18,7 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -30,20 +31,16 @@ namespace detail {
 
 class prepare_statement_processor
 {
-    string_view statement_;
-    capabilities caps_;
-    bytestring& write_buffer_;
+    channel_base& channel_;
+    string_view stmt_sql_;
     diagnostics& diag_;
     statement res_;
     unsigned remaining_meta_{};
 
 public:
     template <class Stream>
-    prepare_statement_processor(channel<Stream>& chan, string_view statement, diagnostics& diag) noexcept
-        : statement_(statement),
-          caps_(chan.current_capabilities()),
-          write_buffer_(chan.shared_buffer()),
-          diag_(diag)
+    prepare_statement_processor(channel<Stream>& chan, string_view stmt_sql, diagnostics& diag) noexcept
+        : channel_(chan), stmt_sql_(stmt_sql), diag_(diag)
     {
     }
 
@@ -51,13 +48,13 @@ public:
 
     void process_request()
     {
-        com_stmt_prepare_packet packet{string_eof(statement_)};
-        serialize_message(packet, caps_, write_buffer_);
+        com_stmt_prepare_packet packet{string_eof(stmt_sql_)};
+        serialize_message(packet, channel_.current_capabilities(), channel_.shared_buffer());
     }
 
     void process_response(boost::asio::const_buffer message, error_code& err)
     {
-        deserialization_context ctx(message, caps_);
+        deserialization_context ctx(message, channel_.current_capabilities());
         std::uint8_t msg_type = 0;
         err = deserialize_message_part(ctx, msg_type);
         if (err)
@@ -65,7 +62,7 @@ public:
 
         if (msg_type == error_packet_header)
         {
-            err = process_error_packet(ctx, diag_);
+            err = process_error_packet(ctx, channel_.flavor(), diag_);
         }
         else if (msg_type != 0)
         {
@@ -86,17 +83,22 @@ public:
     bool has_remaining_meta() const noexcept { return remaining_meta_ != 0; }
     void on_meta_received() noexcept { --remaining_meta_; }
     const statement& result() const noexcept { return res_; }
+    channel_base& get_channel() noexcept { return channel_; }
 };
 
 template <class Stream>
 struct prepare_statement_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
     prepare_statement_processor processor_;
 
-    prepare_statement_op(channel<Stream>& chan, const prepare_statement_processor& processor)
-        : chan_(chan), processor_(processor)
+    prepare_statement_op(channel<Stream>& chan, string_view stmt_sql, diagnostics& diag)
+        : processor_(chan, stmt_sql, diag)
     {
+    }
+
+    channel<Stream>& get_channel() noexcept
+    {
+        return static_cast<channel<Stream>&>(processor_.get_channel());
     }
 
     template <class Self>
@@ -118,11 +120,17 @@ struct prepare_statement_op : boost::asio::coroutine
             processor_.process_request();
 
             // Write message
-            BOOST_ASIO_CORO_YIELD chan_
-                .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD get_channel().async_write(
+                get_channel().shared_buffer(),
+                get_channel().reset_sequence_number(),
+                std::move(self)
+            );
 
             // Read response
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
+                get_channel().shared_sequence_number(),
+                std::move(self)
+            );
 
             // Process response
             processor_.process_response(read_message, err);
@@ -137,13 +145,13 @@ struct prepare_statement_op : boost::asio::coroutine
             while (processor_.has_remaining_meta())
             {
                 // Read from the stream if necessary
-                if (!chan_.has_read_messages())
+                if (!get_channel().has_read_messages())
                 {
-                    BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
+                    BOOST_ASIO_CORO_YIELD get_channel().async_read_some(std::move(self));
                 }
 
                 // Read the message
-                read_message = chan_.next_read_message(chan_.shared_sequence_number(), err);
+                read_message = get_channel().next_read_message(get_channel().shared_sequence_number(), err);
                 if (err)
                 {
                     self.complete(err, statement());
@@ -229,7 +237,7 @@ boost::mysql::detail::async_prepare_statement(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, statement)>(
-        prepare_statement_op<Stream>(chan, prepare_statement_processor(chan, stmt_sql, diag)),
+        prepare_statement_op<Stream>(chan, stmt_sql, diag),
         token,
         chan
     );

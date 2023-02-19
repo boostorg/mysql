@@ -8,17 +8,18 @@
 // Tests for both deserialize_binary_row() and deserialize_text_row()
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
-#include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -36,12 +37,12 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 using boost::mysql::client_errc;
+using boost::mysql::common_server_errc;
 using boost::mysql::date;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::metadata;
-using boost::mysql::server_errc;
 
 namespace {
 
@@ -391,6 +392,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     deserialize_row(
         boost::asio::const_buffer(buff.data(), row1.size()),
         capabilities(),
+        db_flavor::mysql,
         buff.data(),
         st,
         fields,
@@ -407,6 +409,7 @@ BOOST_AUTO_TEST_CASE(text_rows)
     deserialize_row(
         boost::asio::const_buffer(buff.data() + row1.size(), row2.size()),
         capabilities(),
+        db_flavor::mysql,
         buff.data(),
         st,
         fields,
@@ -445,6 +448,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     deserialize_row(
         boost::asio::const_buffer(buff.data(), row1.size()),
         capabilities(),
+        db_flavor::mysql,
         buff.data(),
         st,
         fields,
@@ -461,6 +465,7 @@ BOOST_AUTO_TEST_CASE(binary_rows)
     deserialize_row(
         boost::asio::const_buffer(buff.data() + row1.size(), row2.size()),
         capabilities(),
+        db_flavor::mysql,
         buff.data(),
         st,
         fields,
@@ -493,7 +498,16 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     diagnostics diag;
 
     // First row
-    deserialize_row(boost::asio::buffer(buff), capabilities(), buff.data(), st, fields, err, diag);
+    deserialize_row(
+        boost::asio::buffer(buff),
+        capabilities(),
+        db_flavor::mysql,
+        buff.data(),
+        st,
+        fields,
+        err,
+        diag
+    );
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.server_message() == "");
@@ -534,7 +548,7 @@ BOOST_AUTO_TEST_CASE(error)
                 0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
                 0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
             },
-            server_errc::bad_db_error,
+            common_server_errc::er_bad_db_error,
             "Unknown database 'a'"
         },
         {
@@ -568,6 +582,7 @@ BOOST_AUTO_TEST_CASE(error)
             deserialize_row(
                 boost::asio::buffer(tc.buffer),
                 capabilities(),
+                db_flavor::mysql,
                 tc.buffer.data(),
                 st,
                 fields,

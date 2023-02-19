@@ -13,6 +13,7 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
@@ -22,7 +23,12 @@ namespace mysql {
 namespace detail {
 
 // Exposed for the sake of testing
-inline error_code process_ping_response(boost::asio::const_buffer msg, capabilities caps, diagnostics& diag);
+inline error_code process_ping_response(
+    boost::asio::const_buffer msg,
+    capabilities caps,
+    db_flavor flavor,
+    diagnostics& diag
+);
 
 template <class Stream>
 void ping(channel<Stream>& channel, error_code& err, diagnostics& diag);

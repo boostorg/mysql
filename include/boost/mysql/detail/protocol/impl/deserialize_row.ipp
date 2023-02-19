@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 #include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
+#include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 namespace boost {
@@ -130,6 +131,7 @@ void boost::mysql::detail::deserialize_row(
 void boost::mysql::detail::deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
+    db_flavor flavor,
     const std::uint8_t* buffer_first,  // to store strings as offsets and allow buffer reallocation
     execution_state& st,
     std::vector<field_view>& output,
@@ -161,7 +163,7 @@ void boost::mysql::detail::deserialize_row(
     else if (msg_type == error_packet_header)
     {
         // An error occurred during the generation of the rows
-        err = process_error_packet(ctx, diag);
+        err = process_error_packet(ctx, flavor, diag);
     }
     else
     {

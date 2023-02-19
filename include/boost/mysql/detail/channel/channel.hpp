@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_CHANNEL_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -17,6 +18,7 @@
 #include <boost/mysql/detail/channel/message_reader.hpp>
 #include <boost/mysql/detail/channel/message_writer.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
@@ -32,6 +34,7 @@ namespace detail {
 // Implements the message layer of the MySQL protocol
 class channel_base
 {
+    db_flavor flavor_{db_flavor::mysql};
     capabilities current_caps_;
     std::uint8_t shared_sequence_number_{};  // for async ops
     bytestring shared_buff_;                 // for async ops
@@ -61,8 +64,13 @@ public:
     capabilities current_capabilities() const noexcept { return current_caps_; }
     void set_current_capabilities(capabilities value) noexcept { current_caps_ = value; }
 
+    // DB flavor
+    db_flavor flavor() const noexcept { return flavor_; }
+    void set_flavor(db_flavor v) noexcept { flavor_ = v; }
+
     void reset()
     {
+        flavor_ = db_flavor::mysql;
         current_caps_ = capabilities();
         reset_sequence_number();
         // Metadata mode does not get reset on handshake

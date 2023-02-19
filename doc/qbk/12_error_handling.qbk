@@ -42,23 +42,25 @@ Every piece of functionality involving network transfers is offered in four vers
   
 [heading Types of errors]
 
-This library emits three different types of errors. They are all treated as `error_code`s, but
-with different `error_category`s:
+This library defines two types of errors
 
-* Network errors are produced by the underlying Boost.Asio library.
+* Client errors indicate failures detected by Boost.MySQL. For instance, when 
+  a corrupted message is received. These use the [reflink client_errc] enumeration
+  and the [reflink get_client_category] error category.
 * Server errors appear when the server can't execute the requested operation.
   For example, when a query contains invalid SQL or when authentication fails.
-  These use the [reflink server_errc] enumeration. They are described
-  in detail [@https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html in the MySQL error reference].
-* Client errors indicate failures detected by Boost.MySQL. For instance, when 
-  a corrupted message is received. These use the [reflink client_errc] enumeration.
+  These are further split:
+  * The common server category holds error codes that are shared between MySQL and
+    MariaDB. These are represented as the [reflink common_server_errc] enumeration
+    and the [reflink get_common_server_category]. Since there is no common development
+    between MySQL and MariaDB, the common server category is not expected to change.
+  * Server-specific categories hold error codes that are specific to either MySQL
+    ([reflink get_mysql_server_category]) or MariaDB ([reflink get_mariadb_server_category]).
+    Both servers are in active development and keep adding new error codes. It's also possible
+    to raise custom error codes from SQL. Thus, no enumeration is provided for server-specific errors.
+    Instead, individual values are provided as constants in the `mysql_server_errc` and
+    `mariadb_server_errc` namespaces.
 
-[note
-    No validation is in place to guarantee that the error
-    codes sent by the server are the ones defined in [reflink server_errc].
-    The server may define additional error codes, and that should
-    not make operations fail. 
-]
 
 [heading Security notes on diagnostics]
 

@@ -19,6 +19,7 @@
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
+#include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -61,7 +62,7 @@ struct ping_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
 
             // Verify it's what we expected
-            self.complete(process_ping_response(buff, chan_.current_capabilities(), diag_));
+            self.complete(process_ping_response(buff, chan_.current_capabilities(), chan_.flavor(), diag_));
         }
     }
 };
@@ -73,6 +74,7 @@ struct ping_op : boost::asio::coroutine
 inline boost::mysql::error_code boost::mysql::detail::process_ping_response(
     boost::asio::const_buffer buff,
     capabilities caps,
+    db_flavor flavor,
     diagnostics& diag
 )
 {
@@ -92,7 +94,7 @@ inline boost::mysql::error_code boost::mysql::detail::process_ping_response(
     else if (packet_header == error_packet_header)
     {
         // Theoretically, the server can answer with an error packet, too
-        return process_error_packet(ctx, diag);
+        return process_error_packet(ctx, flavor, diag);
     }
     else
     {
@@ -118,7 +120,7 @@ void boost::mysql::detail::ping(channel<Stream>& chan, error_code& code, diagnos
         return;
 
     // Verify it's what we expected
-    code = process_ping_response(response, chan.current_capabilities(), diag);
+    code = process_ping_response(response, chan.current_capabilities(), chan.flavor(), diag);
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>

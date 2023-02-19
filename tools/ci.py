@@ -42,14 +42,13 @@ def _cmake_bool(value: bool) -> str:
 def _common_settings(
     boost_root: Path,
     server_host: str = 'localhost',
-    is_mysql8: bool = True
+    db: str = 'mysql8'
 ) -> None:
     _add_to_path(boost_root)
     os.environ['BOOST_MYSQL_SERVER_HOST'] = server_host
+    os.environ['BOOST_MYSQL_TEST_DB'] = db
     if _is_windows:
         os.environ['BOOST_MYSQL_NO_UNIX_SOCKET_TESTS'] = '1'
-    if not is_mysql8:
-        os.environ['BOOST_MYSQL_NO_SHA256_TESTS'] = '1'
 
 
 def _remove_readonly(func, path, _):
@@ -413,7 +412,7 @@ def main():
     parser.add_argument('--valgrind', type=_str2bool, default=False)
     parser.add_argument('--coverage', type=_str2bool, default=False)
     parser.add_argument('--clean', type=_str2bool, default=False)
-    parser.add_argument('--is-mysql8', type=_str2bool, default=True)
+    parser.add_argument('--db', choices=['mysql5', 'mysql8', 'mariadb'], default='mysql8')
     parser.add_argument('--cmake-standalone-tests', type=_str2bool, default=True)
     parser.add_argument('--cmake-add-subdir-tests', type=_str2bool, default=True)
     parser.add_argument('--cmake-install-tests', type=_str2bool, default=True)
@@ -427,7 +426,7 @@ def main():
 
     args = parser.parse_args()
 
-    _common_settings(_boost_root, args.server_host, is_mysql8=args.is_mysql8)
+    _common_settings(_boost_root, args.server_host, db=args.db)
     boost_branch = _deduce_boost_branch() if args.boost_branch is None else args.boost_branch
 
     if args.build_kind == 'b2':

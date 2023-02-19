@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -62,6 +63,7 @@ struct execute_response
 inline execute_response deserialize_execute_response(
     boost::asio::const_buffer msg,
     capabilities caps,
+    db_flavor flavor,
     diagnostics& diag
 ) noexcept;
 

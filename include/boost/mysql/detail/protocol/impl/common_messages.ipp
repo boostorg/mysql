@@ -10,8 +10,12 @@
 
 #pragma once
 
-#include <boost/mysql/server_errc.hpp>
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/mariadb_server_errc.hpp>
+#include <boost/mysql/mysql_server_errc.hpp>
 
+#include <boost/mysql/detail/auxiliar/server_errc_strings.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
 inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
@@ -58,20 +62,6 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
         output.decimals,
         final_padding
     );
-}
-
-inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
-    deserialization_context& ctx,
-    diagnostics& diag
-)
-{
-    err_packet error_packet{};
-    auto code = deserialize_message(ctx, error_packet);
-    if (code)
-        return code;
-    string_view sv = error_packet.error_message.value;
-    diagnostics_access::assign(diag, sv);
-    return make_error_code(static_cast<server_errc>(error_packet.error_code));
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_COMMON_MESSAGES_IPP_ */

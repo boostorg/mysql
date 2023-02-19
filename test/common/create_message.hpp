@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 
-#include <boost/mysql/server_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -156,10 +156,10 @@ inline std::vector<std::uint8_t> create_eof_packet_message(
     );
 }
 
-inline std::vector<std::uint8_t> create_err_packet_body(server_errc code, string_view message = "")
+inline std::vector<std::uint8_t> create_err_packet_body(std::uint16_t code, string_view message = "")
 {
     detail::err_packet pack{
-        static_cast<std::uint16_t>(code),
+        code,
         detail::string_fixed<1>{},
         detail::string_fixed<5>{},
         detail::string_eof{message},
@@ -173,9 +173,14 @@ inline std::vector<std::uint8_t> create_err_packet_body(server_errc code, string
     );
 }
 
+inline std::vector<std::uint8_t> create_err_packet_body(common_server_errc code, string_view message = "")
+{
+    return create_err_packet_body(static_cast<std::uint16_t>(code), message);
+}
+
 inline std::vector<std::uint8_t> create_err_packet_message(
     std::uint8_t seqnum,
-    server_errc code,
+    common_server_errc code,
     string_view message = ""
 )
 {

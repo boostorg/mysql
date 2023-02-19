@@ -10,10 +10,17 @@
 
 #pragma once
 
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/handshake_params.hpp>
+
 #include <boost/mysql/detail/auth/auth_calculator.hpp>
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
+#include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -34,6 +41,11 @@ inline capabilities conditional_capability(bool condition, std::uint32_t cap)
     return capabilities(condition ? cap : 0);
 }
 
+inline db_flavor parse_db_version(string_view version_string) noexcept
+{
+    return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
+}
+
 inline error_code deserialize_handshake(
     boost::asio::const_buffer buffer,
     handshake_packet& output,
@@ -51,13 +63,39 @@ inline error_code deserialize_handshake(
     }
     else if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, diag);
+        // We don't know which DB is yet
+        return process_error_packet(ctx, db_flavor::mysql, diag);
     }
     else if (msg_type != handshake_protocol_version_10)
     {
         return make_error_code(client_errc::protocol_value_error);
     }
     return deserialize_message(ctx, output);
+}
+
+inline error_code process_capabilities(
+    const handshake_params& params,
+    const handshake_packet& handshake,
+    bool is_ssl_stream,
+    capabilities& negotiated_caps
+)
+{
+    auto ssl = params.ssl();
+    capabilities server_caps(handshake.capability_falgs);
+    capabilities required_caps = mandatory_capabilities |
+                                 conditional_capability(!params.database().empty(), CLIENT_CONNECT_WITH_DB) |
+                                 conditional_capability(
+                                     ssl == ssl_mode::require && is_ssl_stream,
+                                     CLIENT_SSL
+                                 );
+    if (!server_caps.has_all(required_caps))
+    {
+        return make_error_code(client_errc::server_unsupported);
+    }
+    negotiated_caps = server_caps &
+                      (required_caps | optional_capabilities |
+                       conditional_capability(ssl == ssl_mode::enable && is_ssl_stream, CLIENT_SSL));
+    return error_code();
 }
 
 // When receiving an auth response from the server, several things can happen:
@@ -70,7 +108,7 @@ inline error_code deserialize_handshake(
 //    This means auth is complete and we should wait for an OK packet (auth_result::wait_for_ok).
 //    I have no clue why the server sends this instead of just an OK packet. It
 //    happens just for caching_sha2_password.
-enum class auth_result
+enum class auth_state
 {
     complete,
     send_more_data,
@@ -81,46 +119,40 @@ enum class auth_result
 class handshake_processor
 {
     handshake_params params_;
-    capabilities negotiated_caps_;
+    diagnostics& diag_;
+    channel_base& channel_;
     auth_calculator auth_calc_;
+    auth_state auth_state_{auth_state::invalid};
 
 public:
-    handshake_processor(const handshake_params& params) : params_(params){};
-    capabilities negotiated_capabilities() const noexcept { return negotiated_caps_; }
+    handshake_processor(const handshake_params& params, diagnostics& diag, channel_base& channel)
+        : params_(params), diag_(diag), channel_(channel){};
     const handshake_params& params() const noexcept { return params_; }
-    bool use_ssl() const noexcept { return negotiated_caps_.has(CLIENT_SSL); }
+    channel_base& get_channel() noexcept { return channel_; }
+    void clear_diagnostics() noexcept { diag_.clear(); }
+
+    // Once the handshake is processed, the capabilities are stored in the channel
+    bool use_ssl() const noexcept { return channel_.current_capabilities().has(CLIENT_SSL); }
 
     // Initial greeting processing
-    error_code process_capabilities(const handshake_packet& handshake, bool is_ssl_stream)
-    {
-        auto ssl = params_.ssl();
-        capabilities server_caps(handshake.capability_falgs);
-        capabilities
-            required_caps = mandatory_capabilities |
-                            conditional_capability(!params_.database().empty(), CLIENT_CONNECT_WITH_DB) |
-                            conditional_capability(ssl == ssl_mode::require && is_ssl_stream, CLIENT_SSL);
-        if (!server_caps.has_all(required_caps))
-        {
-            return make_error_code(client_errc::server_unsupported);
-        }
-        negotiated_caps_ = server_caps &
-                           (required_caps | optional_capabilities |
-                            conditional_capability(ssl == ssl_mode::enable && is_ssl_stream, CLIENT_SSL));
-        return error_code();
-    }
-
-    error_code process_handshake(boost::asio::const_buffer buffer, diagnostics& diag, bool is_ssl_stream)
+    error_code process_handshake(boost::asio::const_buffer buffer, bool is_ssl_stream)
     {
         // Deserialize server greeting
         handshake_packet handshake;
-        auto err = deserialize_handshake(buffer, handshake, diag);
+        auto err = deserialize_handshake(buffer, handshake, diag_);
         if (err)
             return err;
 
         // Check capabilities
-        err = process_capabilities(handshake, is_ssl_stream);
+        capabilities negotiated_caps;
+        err = process_capabilities(params_, handshake, is_ssl_stream, negotiated_caps);
         if (err)
             return err;
+        channel_.set_current_capabilities(negotiated_caps);
+
+        // Check whether it's MySQL or MariaDB
+        auto flavor = parse_db_version(handshake.server_version.value);
+        channel_.set_flavor(flavor);
 
         // Compute auth response
         return auth_calc_.calculate(
@@ -135,20 +167,20 @@ public:
     void compose_ssl_request(bytestring& buffer)
     {
         ssl_request sslreq{
-            negotiated_capabilities().get(),
+            channel_.current_capabilities().get(),
             static_cast<std::uint32_t>(MAX_PACKET_SIZE),
             get_collation_first_byte(params_.connection_collation()),
             {}};
 
         // Serialize and send
-        serialize_message(sslreq, negotiated_caps_, buffer);
+        serialize_message(sslreq, channel_.current_capabilities(), buffer);
     }
 
     void compose_handshake_response(bytestring& buffer)
     {
         // Compose response
         handshake_response_packet response{
-            negotiated_caps_.get(),
+            channel_.current_capabilities().get(),
             static_cast<std::uint32_t>(MAX_PACKET_SIZE),
             get_collation_first_byte(params_.connection_collation()),
             string_null(params_.username()),
@@ -157,18 +189,16 @@ public:
             string_null(auth_calc_.plugin_name())};
 
         // Serialize
-        serialize_message(response, negotiated_caps_, buffer);
+        serialize_message(response, channel_.current_capabilities(), buffer);
     }
 
     // Server handshake response
     error_code process_handshake_server_response(
         boost::asio::const_buffer server_response,
-        bytestring& write_buffer,
-        auth_result& result,
-        diagnostics& diag
+        bytestring& write_buffer
     )
     {
-        deserialization_context ctx(server_response, negotiated_caps_);
+        deserialization_context ctx(server_response, channel_.current_capabilities());
         std::uint8_t msg_type = 0;
         auto err = deserialize_message_part(ctx, msg_type);
         if (err)
@@ -176,12 +206,12 @@ public:
         if (msg_type == ok_packet_header)
         {
             // Auth success via fast auth path
-            result = auth_result::complete;
+            auth_state_ = auth_state::complete;
             return error_code();
         }
         else if (msg_type == error_packet_header)
         {
-            return process_error_packet(ctx, diag);
+            return process_error_packet(ctx, channel_.flavor(), diag_);
         }
         else if (msg_type == auth_switch_request_header)
         {
@@ -204,11 +234,11 @@ public:
             // Serialize
             serialize_message(
                 auth_switch_response_packet{string_eof(auth_calc_.response())},
-                negotiated_caps_,
+                channel_.current_capabilities(),
                 write_buffer
             );
 
-            result = auth_result::send_more_data;
+            auth_state_ = auth_state::send_more_data;
             return error_code();
         }
         else if (msg_type == auth_more_data_header)
@@ -222,7 +252,7 @@ public:
             string_view challenge = more_data.auth_plugin_data.value;
             if (challenge == fast_auth_complete_challenge)
             {
-                result = auth_result::wait_for_ok;
+                auth_state_ = auth_state::wait_for_ok;
                 return error_code();
             }
 
@@ -233,11 +263,11 @@ public:
 
             serialize_message(
                 auth_switch_response_packet{string_eof(auth_calc_.response())},
-                negotiated_caps_,
+                channel_.current_capabilities(),
                 write_buffer
             );
 
-            result = auth_result::send_more_data;
+            auth_state_ = auth_state::send_more_data;
             return error_code();
         }
         else
@@ -245,19 +275,28 @@ public:
             return make_error_code(client_errc::protocol_value_error);
         }
     }
+
+    bool should_send_auth_switch_response() const noexcept
+    {
+        return auth_state_ == auth_state::send_more_data;
+    }
+
+    bool auth_complete() const noexcept { return auth_state_ == auth_state::complete; }
 };
 
 template <class Stream>
 struct handshake_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
-    diagnostics& diag_;
     handshake_processor processor_;
-    auth_result auth_state_{auth_result::invalid};
 
-    handshake_op(channel<Stream>& channel, diagnostics& diag, const handshake_params& params)
-        : chan_(channel), diag_(diag), processor_(params)
+    handshake_op(const handshake_params& params, diagnostics& diag, channel<Stream>& channel)
+        : processor_(params, diag, channel)
     {
+    }
+
+    channel<Stream>& get_channel() noexcept
+    {
+        return static_cast<channel<Stream>&>(processor_.get_channel());
     }
 
     template <class Self>
@@ -273,63 +312,72 @@ struct handshake_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            diag_.clear();
+            processor_.clear_diagnostics();
 
             // Setup the channel
-            chan_.reset();
+            get_channel().reset();
 
             // Read server greeting
-            BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
+                get_channel().shared_sequence_number(),
+                std::move(self)
+            );
 
             // Process server greeting
-            err = processor_.process_handshake(read_msg, diag_, is_ssl_stream<Stream>::value);
+            err = processor_.process_handshake(read_msg, is_ssl_stream<Stream>::value);
             if (err)
             {
                 self.complete(err);
                 BOOST_ASIO_CORO_YIELD break;
             }
-            chan_.set_current_capabilities(processor_.negotiated_capabilities());
 
             // SSL
             if (processor_.use_ssl())
             {
                 // Send SSL request
-                processor_.compose_ssl_request(chan_.shared_buffer());
-                BOOST_ASIO_CORO_YIELD chan_
-                    .async_write(chan_.shared_buffer(), chan_.shared_sequence_number(), std::move(self));
+                processor_.compose_ssl_request(get_channel().shared_buffer());
+                BOOST_ASIO_CORO_YIELD get_channel().async_write(
+                    get_channel().shared_buffer(),
+                    get_channel().shared_sequence_number(),
+                    std::move(self)
+                );
 
                 // SSL handshake
-                BOOST_ASIO_CORO_YIELD chan_.stream().async_handshake(std::move(self));
+                BOOST_ASIO_CORO_YIELD get_channel().stream().async_handshake(std::move(self));
             }
 
             // Compose and send handshake response
-            processor_.compose_handshake_response(chan_.shared_buffer());
-            BOOST_ASIO_CORO_YIELD chan_
-                .async_write(chan_.shared_buffer(), chan_.shared_sequence_number(), std::move(self));
+            processor_.compose_handshake_response(get_channel().shared_buffer());
+            BOOST_ASIO_CORO_YIELD get_channel().async_write(
+                get_channel().shared_buffer(),
+                get_channel().shared_sequence_number(),
+                std::move(self)
+            );
 
-            while (auth_state_ != auth_result::complete)
+            while (!processor_.auth_complete())
             {
                 // Receive response
-                BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
+                BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
+                    get_channel().shared_sequence_number(),
+                    std::move(self)
+                );
 
                 // Process it
-                err = processor_.process_handshake_server_response(
-                    read_msg,
-                    chan_.shared_buffer(),
-                    auth_state_,
-                    diag_
-                );
+                err = processor_.process_handshake_server_response(read_msg, get_channel().shared_buffer());
                 if (err)
                 {
                     self.complete(err);
                     BOOST_ASIO_CORO_YIELD break;
                 }
 
-                if (auth_state_ == auth_result::send_more_data)
+                // We received an auth switch response and we have the response ready to be sent
+                if (processor_.should_send_auth_switch_response())
                 {
-                    // We received an auth switch response and we have the response ready to be sent
-                    BOOST_ASIO_CORO_YIELD chan_
-                        .async_write(chan_.shared_buffer(), chan_.shared_sequence_number(), std::move(self));
+                    BOOST_ASIO_CORO_YIELD get_channel().async_write(
+                        get_channel().shared_buffer(),
+                        get_channel().shared_sequence_number(),
+                        std::move(self)
+                    );
                 }
             }
 
@@ -353,7 +401,7 @@ void boost::mysql::detail::handshake(
     channel.reset();
 
     // Set up processor
-    handshake_processor processor(params);
+    handshake_processor processor(params, diag, channel);
 
     // Read server greeting
     auto b = channel.read_one(channel.shared_sequence_number(), err);
@@ -361,7 +409,7 @@ void boost::mysql::detail::handshake(
         return;
 
     // Process server greeting (handshake)
-    err = processor.process_handshake(b, diag, is_ssl_stream<Stream>::value);
+    err = processor.process_handshake(b, is_ssl_stream<Stream>::value);
     if (err)
         return;
 
@@ -382,12 +430,11 @@ void boost::mysql::detail::handshake(
 
     // Handshake response
     processor.compose_handshake_response(channel.shared_buffer());
-    channel.write(boost::asio::buffer(channel.shared_buffer()), channel.shared_sequence_number(), err);
+    channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
     if (err)
         return;
 
-    auth_result auth_outcome = auth_result::invalid;
-    while (auth_outcome != auth_result::complete)
+    while (!processor.auth_complete())
     {
         // Receive response
         b = channel.read_one(channel.shared_sequence_number(), err);
@@ -395,21 +442,18 @@ void boost::mysql::detail::handshake(
             return;
 
         // Process it
-        err = processor.process_handshake_server_response(b, channel.shared_buffer(), auth_outcome, diag);
+        err = processor.process_handshake_server_response(b, channel.shared_buffer());
         if (err)
             return;
 
-        if (auth_outcome == auth_result::send_more_data)
+        if (processor.should_send_auth_switch_response())
         {
             // We received an auth switch request and we have the response ready to be sent
-            channel
-                .write(boost::asio::buffer(channel.shared_buffer()), channel.shared_sequence_number(), err);
+            channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
             if (err)
                 return;
         }
     };
-
-    channel.set_current_capabilities(processor.negotiated_capabilities());
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
@@ -417,12 +461,12 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_handshake(
     channel<Stream>& chan,
     const handshake_params& params,
-    diagnostics& info,
+    diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        handshake_op<Stream>(chan, info, params),
+        handshake_op<Stream>(params, diag, chan),
         token,
         chan
     );

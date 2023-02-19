@@ -6,9 +6,9 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_errc.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/asio/awaitable.hpp>
@@ -21,8 +21,8 @@
 #include "unit_netfun_maker.hpp"
 
 using namespace boost::mysql::test;
+using boost::mysql::common_server_errc;
 using boost::mysql::error_code;
-using boost::mysql::server_errc;
 using boost::mysql::statement;
 
 namespace {
@@ -74,10 +74,11 @@ BOOST_AUTO_TEST_CASE(error_network)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.conn.stream().set_fail_count(fail_count(0, server_errc::aborting_connection));
+            fix.conn.stream().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
 
             // Call the function
-            fns.close_statement(fix.conn, fix.stmt).validate_error_exact(server_errc::aborting_connection);
+            fns.close_statement(fix.conn, fix.stmt)
+                .validate_error_exact(common_server_errc::er_aborting_connection);
         }
     }
 }

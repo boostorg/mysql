@@ -19,6 +19,7 @@
 #include <boost/mysql/detail/network_algorithms/start_execution_generic.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
@@ -61,7 +62,8 @@ public:
 
     void process_response(boost::asio::const_buffer msg, error_code& err)
     {
-        auto response = deserialize_execute_response(msg, chan_.current_capabilities(), diag_);
+        auto
+            response = deserialize_execute_response(msg, chan_.current_capabilities(), chan_.flavor(), diag_);
         switch (response.type)
         {
         case execute_response::type_t::error: err = response.data.err; break;
@@ -185,6 +187,7 @@ struct start_execution_generic_op : boost::asio::coroutine
 inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute_response(
     boost::asio::const_buffer msg,
     capabilities caps,
+    db_flavor flavor,
     diagnostics& diag
 ) noexcept
 {
@@ -207,7 +210,7 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
     }
     else if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, diag);
+        return process_error_packet(ctx, flavor, diag);
     }
     else
     {

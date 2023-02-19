@@ -53,7 +53,7 @@ def _cmake_command(
                 '--cmake-standalone-tests={} '.format(standalone_tests) + \
                 '--cmake-add-subdir-tests={} '.format(add_subdir_tests) + \
                 '--cmake-install-tests={} '.format(install_tests) + \
-                '--is-mysql8={} '.format(1 if db == 'mysql8' else 0) + \
+                '--db={} '.format(db) + \
                 '--server-host={} '.format(server_host)
 
 

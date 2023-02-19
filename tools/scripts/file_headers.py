@@ -9,10 +9,9 @@
 import os
 import re
 from os import path
-from typing import List, NamedTuple, Tuple
+from typing import List, Tuple
 import glob
 from abc import abstractmethod, ABCMeta
-import argparse
 
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
@@ -43,7 +42,8 @@ HEADER_TEMPLATE = '''{begin}
 {linesym} file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 {end}'''
 
-MYSQL_ERROR_HEADER = '/usr/include/mysql/mysqld_error.h'
+MYSQL_ERROR_HEADER = path.join(REPO_BASE, 'private', 'mysqld_error.h')
+MARIADB_ERROR_HEADER = path.join(REPO_BASE, 'private', 'mariadb_error.h')
 MYSQL_INCLUDE = re.compile('#include <boost/mysql/(.*)>')
 
 def find_first_blank(lines):
@@ -195,113 +195,6 @@ def process_all_files():
                 process_file(path.join(curdir, fname))
 
 
-class Error(NamedTuple):
-    symbol: str
-    number: int
-    descr: str
-
-
-SERVER_ERRC_TEMPLATE = '''
-#ifndef BOOST_MYSQL_SERVER_ERRC_HPP
-#define BOOST_MYSQL_SERVER_ERRC_HPP
-
-#include <boost/mysql/error_code.hpp>
-
-#include <ostream>
-
-namespace boost {{
-namespace mysql {{
-
-/**
- * \\brief MySQL server-defined error codes.
- * \\details The numeric value and semantics match the ones described in the MySQL documentation.
- * See <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">the MySQL error reference</a>
- * for more info.
- */
-enum class server_errc : int
-{{
-{}
-}};
-
-/**
- * \\brief Returns the error_category associated to \\ref server_errc.
- */
-inline const boost::system::error_category& get_server_category() noexcept;
-
-/// Creates an \\ref error_code from a \\ref server_errc.
-inline error_code make_error_code(server_errc error);
-
-/**
- * \\brief Streams an error code.
- */
-inline std::ostream& operator<<(std::ostream&, server_errc);
-
-}}  // namespace mysql
-}}  // namespace boost
-
-#include <boost/mysql/impl/server_errc.hpp>
-
-#endif
-'''
-
-SERVER_STRINGS_TEMPLATE='''
-#ifndef BOOST_MYSQL_IMPL_SERVER_ERRC_STRINGS_HPP
-#define BOOST_MYSQL_IMPL_SERVER_ERRC_STRINGS_HPP
-
-#pragma once
-
-#include <boost/mysql/server_errc.hpp>
-
-namespace boost {{
-namespace mysql {{
-namespace detail {{
-
-inline const char* error_to_string(server_errc error) noexcept
-{{
-    switch (error)
-    {{
-{}
-    default: return "<unknown MySQL server error>";
-    }}
-}}
-
-}}  // namespace detail
-}}  // namespace mysql
-}}  // namespace boost
-
-#endif
-'''
-
-def generate_errc_entry(err: Error) -> str:
-    doc = ('Server error. Error number: {}, symbol: ' + \
-            '<a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_{}">ER_{}</a>.').format(
-                err.number, err.symbol, err.symbol.upper())
-    return f'    {err.symbol} = {err.number}, ///< {doc}'
-
-def generate_description_entry(err: Error) -> str:
-    return f'    case server_errc::{err.symbol}: return "{err.descr}";'
-                
-def generate_errc_headers() -> None:
-    # Get the error list
-    with open(MYSQL_ERROR_HEADER, 'rt') as f:
-        content = f.read()
-    pat = r'#define ER_([A-Z0-9_]*) ([0-9]*)'
-    parsed_header = [(symbol.lower(), int(number)) for symbol, number in re.findall(pat, content) if int(number) < 5000]
-    errors = [Error(sym, num, sym) for (sym, num) in parsed_header]
-    
-    # Generate server_errc.hpp header
-    errc_content = SERVER_ERRC_TEMPLATE.format('\n'.join(generate_errc_entry(err) for err in errors))
-    with open(path.join(REPO_BASE, 'include', 'boost', 'mysql', 'server_errc.hpp'), 'wt') as f:
-        f.write(errc_content)
-        
-    # Generate error descriptions header
-    descr_content = SERVER_STRINGS_TEMPLATE.format('\n'.join(generate_description_entry(err) 
-                                                           for err in errors))
-    with open(path.join(REPO_BASE, 'include', 'boost', 'mysql', 
-                        'impl', 'server_errc_strings.hpp'), 'wt') as f:
-        f.write(descr_content)
-
-
 # Check that cmake and b2 test source files are equal
 def verify_test_consistency():
     for test_type in ('unit', 'integration'):
@@ -320,13 +213,6 @@ def verify_test_consistency():
 
             
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--errc', action='store_true')
-    args = parser.parse_args()
-
-    if args.errc:
-        generate_errc_headers()
-    
     process_all_files()
     verify_test_consistency()
             

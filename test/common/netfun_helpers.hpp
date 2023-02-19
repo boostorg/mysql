@@ -8,9 +8,9 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_NETFUN_HELPERS_HPP
 #define BOOST_MYSQL_TEST_COMMON_NETFUN_HELPERS_HPP
 
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/server_errc.hpp>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -132,7 +132,7 @@ using bound_callback_token = boost::asio::executor_binder<as_network_result<R>, 
 template <class R>
 network_result<R> create_initial_netresult(bool with_diag = true)
 {
-    network_result<R> res(boost::mysql::make_error_code(boost::mysql::server_errc::no));
+    network_result<R> res(boost::mysql::make_error_code(boost::mysql::common_server_errc::er_no));
     if (with_diag)
         res.diag = create_diagnostics("diagnostics not cleared properly");
     return res;

@@ -30,6 +30,7 @@ add_executable(
     handshake.cpp
     prepared_statements.cpp
     reconnect.cpp
+    db_specific.cpp
     database_types.cpp
 
     entry_point.cpp
@@ -47,11 +48,11 @@ target_link_libraries(
 )
 common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
-    # target_precompile_headers(
-    #     boost_mysql_integrationtests
-    #     PRIVATE
-    #     pch.hpp
-    # )
+    target_precompile_headers(
+        boost_mysql_integrationtests
+        PRIVATE
+        pch.hpp
+    )
 endif()
 set_source_files_properties(
     entry_point.cpp
@@ -63,9 +64,11 @@ set_source_files_properties(
 if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     list(APPEND TEST_EXCLUSIONS "!@unix")
 endif()
-if (NOT "$ENV{BOOST_MYSQL_NO_SHA256_TESTS}" STREQUAL "")
-    list(APPEND TEST_EXCLUSIONS "!@sha256")
+set (DB_SYSTEM $ENV{BOOST_MYSQL_TEST_DB})
+if ("${DB_SYSTEM}" STREQUAL "")
+    set(DB_SYSTEM "mysql8")
 endif()
+list(APPEND TEST_EXCLUSIONS "!@skip_${DB_SYSTEM}")
 string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS})
 
 if ("${TEST_FILTER}" STREQUAL "")

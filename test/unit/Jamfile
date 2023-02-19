@@ -52,6 +52,7 @@ unit-test boost_mysql_unittests
         detail/protocol/deserialize_text_field.cpp
         detail/protocol/deserialize_binary_field.cpp
         detail/protocol/deserialize_row.cpp
+        detail/protocol/process_error_packet.cpp
         date.cpp
         datetime.cpp
         field_view.cpp
@@ -62,7 +63,9 @@ unit-test boost_mysql_unittests
         rows.cpp
         metadata.cpp
         client_errc.cpp
-        server_errc.cpp
+        common_server_errc.cpp
+        mysql_server_errc.cpp
+        mariadb_server_errc.cpp
         diagnostics.cpp
         statement.cpp
         execution_state.cpp

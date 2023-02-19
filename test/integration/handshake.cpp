@@ -6,8 +6,8 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/server_errc.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/ssl/host_name_verification.hpp>
@@ -27,9 +27,9 @@
 using namespace boost::mysql::test;
 
 using boost::mysql::client_errc;
+using boost::mysql::common_server_errc;
 using boost::mysql::error_code;
 using boost::mysql::handshake_params;
-using boost::mysql::server_errc;
 using boost::mysql::ssl_mode;
 using boost::mysql::string_view;
 using boost::mysql::tcp_ssl_connection;
@@ -100,7 +100,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, net_samples_both)
     setup_and_physical_connect(sample.net);
     set_credentials("mysqlnp_user", "bad_password");
     conn->handshake(params).validate_error(
-        server_errc::access_denied_error,
+        common_server_errc::er_access_denied_error,
         {"access denied", "mysqlnp_user"}
     );
 }
@@ -108,7 +108,8 @@ BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, net_samples_both)
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
 // caching_sha2_password
-BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
 BOOST_AUTO_TEST_SUITE(caching_sha2_password)
 
 struct caching_sha2_fixture : handshake_fixture
@@ -207,7 +208,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_hit, caching_sha2_fixture, ne
     set_credentials("csha2p_user", "bad_password");
     load_sha256_cache("csha2p_user", "csha2p_password");
     conn->handshake(params).validate_error(
-        server_errc::access_denied_error,
+        common_server_errc::er_access_denied_error,
         {"access denied", "csha2p_user"}
     );
 }
@@ -219,7 +220,7 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, n
     set_credentials("csha2p_user", "bad_password");
     clear_sha256_cache();
     conn->handshake(params).validate_error(
-        server_errc::access_denied_error,
+        common_server_errc::er_access_denied_error,
         {"access denied", "csha2p_user"}
     );
 }
@@ -299,7 +300,8 @@ BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture, net_samples_both)
     do_handshake_ok();
 }
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("sha256"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
 BOOST_MYSQL_NETWORK_TEST(unknown_auth_plugin, handshake_fixture, net_samples_ssl)
 {
     // Note: sha256_password is not supported, so it's an unknown plugin to us

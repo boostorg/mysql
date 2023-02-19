@@ -6,11 +6,12 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/server_errc.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/db_flavor.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
@@ -22,8 +23,8 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::client_errc;
+using boost::mysql::common_server_errc;
 using boost::mysql::error_code;
-using boost::mysql::server_errc;
 using boost::mysql::detail::capabilities;
 
 namespace {
@@ -57,8 +58,8 @@ BOOST_AUTO_TEST_CASE(process_ping_response_)
         {"invalid_message_type", {0xab}, client_errc::protocol_value_error, ""},
         {"bad_ok_packet", {0x00, 0x01}, client_errc::incomplete_message, ""},
         {"err_packet",
-         create_err_packet_body(server_errc::bad_db_error, "abc"),
-         server_errc::bad_db_error,
+         create_err_packet_body(common_server_errc::er_bad_db_error, "abc"),
+         common_server_errc::er_bad_db_error,
          "abc"},
         {"bad_err_packet", {0xff, 0x01}, client_errc::incomplete_message, ""},
     };
@@ -71,6 +72,7 @@ BOOST_AUTO_TEST_CASE(process_ping_response_)
             auto err = boost::mysql::detail::process_ping_response(
                 boost::asio::buffer(tc.message),
                 capabilities(),
+                boost::mysql::detail::db_flavor::mariadb,
                 diag
             );
 
@@ -108,10 +110,10 @@ BOOST_AUTO_TEST_CASE(error_network)
             BOOST_TEST_CONTEXT(fns.name << " in network transfer " << i)
             {
                 test_connection conn;
-                conn.stream().set_fail_count(fail_count(i, server_errc::aborting_connection));
+                conn.stream().set_fail_count(fail_count(i, common_server_errc::er_aborting_connection));
 
                 // Call the function
-                fns.ping(conn).validate_error_exact(server_errc::aborting_connection);
+                fns.ping(conn).validate_error_exact(common_server_errc::er_aborting_connection);
             }
         }
     }
@@ -124,10 +126,12 @@ BOOST_AUTO_TEST_CASE(error_response)
         BOOST_TEST_CONTEXT(fns.name)
         {
             test_connection conn;
-            conn.stream().add_message(create_err_packet_message(1, server_errc::no_such_db, "my_message"));
+            conn.stream().add_message(
+                create_err_packet_message(1, common_server_errc::er_bad_db_error, "my_message")
+            );
 
             // Call the function
-            fns.ping(conn).validate_error_exact(server_errc::no_such_db, "my_message");
+            fns.ping(conn).validate_error_exact(common_server_errc::er_bad_db_error, "my_message");
         }
     }
 }

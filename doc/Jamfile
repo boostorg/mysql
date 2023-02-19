@@ -13,10 +13,12 @@ import os ;
 import ../../../tools/docca/docca.jam ;
 
 
+# Note: adding server-specific error codes to the reference increases build times
+# a lot without any benefit.
 docca.reference reference.qbk
     :
         xsl/custom-overrides.xsl
-        [ glob-tree-ex ../include/boost/mysql : *.hpp : detail impl ]
+        [ glob-tree-ex ../include/boost/mysql : *.hpp : detail impl mysql_server_errc.hpp mariadb_server_errc.hpp ]
     :
         <doxygen:param>PROJECT_NAME=MySQL
         <doxygen:param>PROJECT_BRIEF="C++ MySQL Client Library"

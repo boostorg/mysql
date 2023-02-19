@@ -11,6 +11,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
 

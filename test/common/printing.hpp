@@ -26,6 +26,13 @@
 namespace boost {
 namespace mysql {
 
+inline std::ostream& operator<<(std::ostream& os, client_errc v) { return os << detail::error_to_string(v); }
+
+inline std::ostream& operator<<(std::ostream& os, common_server_errc v)
+{
+    return os << detail::error_to_string(v);
+}
+
 inline std::ostream& operator<<(std::ostream& os, const diagnostics& diag)
 {
     return os << diag.server_message();
