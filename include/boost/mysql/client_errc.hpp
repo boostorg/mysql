@@ -45,7 +45,10 @@ enum class client_errc : int
 
     /// The number of parameters passed to the prepared statement does not match the number of
     /// actual parameters.
-    wrong_num_params
+    wrong_num_params,
+
+    /// The connection mandatory SSL, but the server doesn't accept SSL connections.
+    server_doesnt_support_ssl
 };
 
 /// Creates an \ref error_code from a \ref client_errc.

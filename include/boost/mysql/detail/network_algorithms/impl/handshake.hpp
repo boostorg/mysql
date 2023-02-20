@@ -85,7 +85,13 @@ inline error_code process_capabilities(
                                      ssl == ssl_mode::require && is_ssl_stream,
                                      CLIENT_SSL
                                  );
-    if (!server_caps.has_all(required_caps))
+    if (required_caps.has(CLIENT_SSL) && !server_caps.has(CLIENT_SSL))
+    {
+        // This happens if the server doesn't have SSL configured. This special
+        // error code helps users diagnosing their problem a lot (server_unsupported doesn't).
+        return make_error_code(client_errc::server_doesnt_support_ssl);
+    }
+    else if (!server_caps.has_all(required_caps))
     {
         return make_error_code(client_errc::server_unsupported);
     }

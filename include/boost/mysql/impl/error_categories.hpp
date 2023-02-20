@@ -42,6 +42,9 @@ inline const char* error_to_string(client_errc error) noexcept
     case client_errc::wrong_num_params:
         return "The number of parameters passed to the prepared statement does not match the "
                "number of actual parameters";
+    case boost::mysql::client_errc::server_doesnt_support_ssl:
+        return "The connection is configured to require SSL, but the server doesn't allow SSL connections. "
+               "Configure SSL on your server or change your connection to not require SSL";
     default: return "<unknown MySQL client error>";
     }
 }
