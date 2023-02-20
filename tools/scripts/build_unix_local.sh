@@ -8,8 +8,8 @@
 
 set -e
 
-BK=b2
-IMAGE=build-gcc11
+BK=docs
+IMAGE=build-docs
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
 
