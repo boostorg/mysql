@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_HANDSHAKE_MESSAGES_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_HANDSHAKE_MESSAGES_HPP
 
+#include <boost/mysql/mysql_collations.hpp>
+
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
 
 #include "../serialization_test.hpp"
@@ -58,7 +60,7 @@ const serialization_test_spec handshake_packet_spec {
             detail::handshake_packet::auth_buffer_type(
                 makesv(handshake_auth_plugin_data)),
             hanshake_caps,
-            static_cast<std::uint8_t>(collation::latin1_swedish_ci),
+            static_cast<std::uint8_t>(mysql_collations::latin1_swedish_ci),
             static_cast<std::uint16_t>(detail::SERVER_STATUS_AUTOCOMMIT),
             string_null("mysql_native_password")
         }, {
@@ -107,7 +109,7 @@ const serialization_test_spec handshake_response_packet_spec {
         { "without_db", detail::handshake_response_packet{
             handshake_response_caps,
             16777216, // max packet size
-            static_cast<std::uint8_t>(collation::utf8_general_ci),
+            static_cast<std::uint8_t>(mysql_collations::utf8_general_ci),
             string_null("root"),
             string_lenenc(makesv(handshake_response_auth_data)),
             string_null(""), // Irrelevant, not using connect with DB
@@ -128,7 +130,7 @@ const serialization_test_spec handshake_response_packet_spec {
         { "with_db", detail::handshake_response_packet {
             handshake_response_caps | detail::CLIENT_CONNECT_WITH_DB,
             16777216, // max packet size
-            static_cast<std::uint8_t>(collation::utf8_general_ci),
+            static_cast<std::uint8_t>(mysql_collations::utf8_general_ci),
             string_null("root"),
             string_lenenc(makesv(handshake_response_auth_data)),
             string_null("database"), // database name

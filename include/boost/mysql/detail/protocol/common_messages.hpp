@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP
 
-#include <boost/mysql/collation.hpp>
-
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
@@ -88,13 +86,13 @@ struct err_packet
 // col def
 struct column_definition_packet
 {
-    string_lenenc catalog;  // always "def"
-    string_lenenc schema;
-    string_lenenc table;      // virtual table
-    string_lenenc org_table;  // physical table
-    string_lenenc name;       // virtual column name
-    string_lenenc org_name;   // physical column name
-    collation character_set;
+    string_lenenc catalog;        // always "def"
+    string_lenenc schema;         // database
+    string_lenenc table;          // virtual table
+    string_lenenc org_table;      // physical table
+    string_lenenc name;           // virtual column name
+    string_lenenc org_name;       // physical column name
+    std::uint16_t character_set;  // collation id, somehow named character_set in the protocol docs
     std::uint32_t column_length;  // maximum length of the field
     protocol_field_type type;     // type of the column as defined in enum_field_types
     std::uint16_t flags;          // Flags as defined in Column Definition Flags

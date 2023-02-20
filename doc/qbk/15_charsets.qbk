@@ -34,10 +34,12 @@ Every session you establish can have its own different connection
 character set and collation. You can specify them in two ways:
 
 * When calling [refmem connection connect] or [refmem connection handshake], using
-  [refmem handshake_params connection_collation]. You specify a [reflink collation], and your
-  connection will use the character set associated to this collation.
+  [refmem handshake_params connection_collation]. You specify a numeric ID that identifies
+  the collation to use, and your connection will use the character set associated to this collation.
+  You can find collation IDs in the [include_file boost/mysql/mysql_collations.hpp] and 
+  [include_file boost/mysql/mariadb_collations.hpp] headers.
 
-  The problem with this approach is that if you specify a `collation` that is unknown to the server
+  The problem with this approach is that if you specify a collation ID that is unknown to the server
   (e.g. `utf8mb4_0900_ai_ci` for an old MySQL 5.7 server), the handshake operation
   will succeed but the connection [*will sillently fall back to the server's default character set],
   (usually `latin1`, which is not Unicode).

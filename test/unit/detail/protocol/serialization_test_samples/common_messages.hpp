@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_COMMON_MESSAGES_HPP
 #define BOOST_MYSQL_TEST_UNIT_DETAIL_PROTOCOL_SERIALIZATION_TEST_SAMPLES_COMMON_MESSAGES_HPP
 
+#include <boost/mysql/mysql_collations.hpp>
+
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
 #include "../serialization_test.hpp"
@@ -125,7 +127,7 @@ const serialization_test_spec column_definition_spec {
             string_lenenc("test_table"), // physical table
             string_lenenc("id"), // field name
             string_lenenc("id"), // physical field name
-            collation::binary,
+            mysql_collations::binary,
             11, // length
             detail::protocol_field_type::long_,
             detail::column_flags::not_null | detail::column_flags::pri_key |
@@ -147,7 +149,7 @@ const serialization_test_spec column_definition_spec {
             string_lenenc("child_table"), // physical table
             string_lenenc("field_alias"), // field name
             string_lenenc("field_varchar"), // physical field name
-            collation::utf8_general_ci,
+            mysql_collations::utf8_general_ci,
             765, // length
             detail::protocol_field_type::var_string,
             0, // no column flags
@@ -171,7 +173,7 @@ const serialization_test_spec column_definition_spec {
             string_lenenc("test_table"), // physical table
             string_lenenc("field_float"), // field name
             string_lenenc("field_float"), // physical field name
-            collation::binary, // binary
+            mysql_collations::binary, // binary
             12, // length
             detail::protocol_field_type::float_,
             0, // no column flags

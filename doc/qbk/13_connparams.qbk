@@ -70,16 +70,24 @@ the connection.
 
 [section:collation Connection encoding and collation]
 
-When establishing a connection, you specify a [reflink collation]
+When establishing a connection, you specify a numeric collation ID
 parameter ([refmem handshake_params connection_collation]), which will
 determine the connection's character set and collation. This determines
 the encoding of the strings sent to and received from the server.
-If left unspecified, `utf8mb4_general_ci` will be used.
+If left unspecified, `utf8mb4_general_ci` will be used, which is portable
+accross MySQL 5.x, MySQL 8.x and MariaDB.
+
+Collation IDs are defined in [include_file boost/mysql/mysql_collations.hpp] and 
+[include_file boost/mysql/mariadb_collations.hpp]. Some collations are portable
+between servers, while others are MySQL or MariaDB-specific, and some IDs overlap.
+You may also define your own collations server-side. This is why collations
+are specified as an integer, rather than an enumeration.
+
 Please refer to [link mysql.charsets this section] for more info
 about character sets.
 
 [warning
-    If you specify a `collation` that is unknown to the server (an old server
+    If you specify a collation ID that is unknown to the server (an old server
     that doesn't recognizes the newest collations), the handshake operation
     will succeed but the connection will sillently fall back to the server's default character set
     and collation. If you want to be sure, use a `"SET NAMES"` statement.

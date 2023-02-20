@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_CREATE_MESSAGE_HPP
 
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -200,7 +201,7 @@ inline std::vector<std::uint8_t> create_coldef_message(
         detail::string_lenenc("mytable"),
         detail::string_lenenc(name),
         detail::string_lenenc(name),
-        boost::mysql::collation::utf8_general_ci,
+        mysql_collations::utf8_general_ci,
         10,  // column_length
         type,
         0,  // flags

@@ -59,7 +59,8 @@ This library defines two types of errors
     Both servers are in active development and keep adding new error codes. It's also possible
     to raise custom error codes from SQL. Thus, no enumeration is provided for server-specific errors.
     Instead, individual values are provided as constants in the `mysql_server_errc` and
-    `mariadb_server_errc` namespaces.
+    `mariadb_server_errc` namespaces (see headers [include_file boost/mysql/mysql_server_errc.hpp]
+    and [include_file boost/mysql/mariadb_server_errc.hpp]).
 
 
 [heading Security notes on diagnostics]

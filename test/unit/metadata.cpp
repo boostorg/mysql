@@ -6,13 +6,13 @@
 //
 
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 
 #include "create_meta.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
-using boost::mysql::collation;
 using boost::mysql::column_type;
 using boost::mysql::metadata;
 using namespace boost::mysql::test;
@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
         string_lenenc("test_table"),
         string_lenenc("id"),
         string_lenenc("id"),
-        collation::binary,
+        boost::mysql::mysql_collations::binary,
         11,
         protocol_field_type::long_,
         column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
         string_lenenc("child_table"),
         string_lenenc("field_alias"),
         string_lenenc("field_varchar"),
-        collation::utf8mb4_general_ci,
+        boost::mysql::mysql_collations::utf8mb4_general_ci,
         765,
         protocol_field_type::var_string,
         0,
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(float_)
         string_lenenc("test_table"),
         string_lenenc("field_float"),
         string_lenenc("field_float"),
-        collation::binary,
+        boost::mysql::mysql_collations::binary,
         12,
         protocol_field_type::float_,
         0,
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
         string_lenenc("child_table"),
         string_lenenc("field_alias"),
         string_lenenc("field_varchar"),
-        collation::utf8mb4_general_ci,
+        boost::mysql::mysql_collations::utf8mb4_general_ci,
         765,
         protocol_field_type::var_string,
         0,

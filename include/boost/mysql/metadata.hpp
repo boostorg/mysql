@@ -111,12 +111,12 @@ public:
     string_view original_column_name() const noexcept { return org_name_; }
 
     /**
-     * \brief Returns the collation that fields belonging to this column use.
+     * \brief Returns the ID of the collation that fields belonging to this column use.
      * \details This collation matches the character set and collation that
      * fields belonging to this column use, rather than the collation used to
      * define the column. It will almost always match the connection's collation.
      */
-    collation column_collation() const noexcept { return character_set_; }
+    std::uint16_t column_collation() const noexcept { return character_set_; }
 
     /// Returns the maximum length of the column.
     unsigned column_length() const noexcept { return column_length_; }
@@ -161,7 +161,7 @@ private:
     std::string org_table_;  // physical table
     std::string name_;       // virtual column name
     std::string org_name_;   // physical column name
-    collation character_set_;
+    std::uint16_t character_set_;
     std::uint32_t column_length_;  // maximum length of the field
     column_type type_;             // type of the column
     std::uint16_t flags_;          // Flags as defined in Column Definition Flags

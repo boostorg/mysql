@@ -31,7 +31,6 @@
 [template refmem[class mem][reflink2 [class].[mem] [class]::[mem]]]
 [template refmemunq[class mem][reflink2 [class].[mem] [mem]]]
 [template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^boost::asio::[term]]]]
-[template beastreflink[id term][@boost:/doc/html/boost_beast/reference/[id].html [^boost::beast::[term]]]]
 [template mysqllink[id text][@https://dev.mysql.com/doc/refman/8.0/en/[id] [text]]]
 
 [def __Stream__ [reflink2 Stream ['Stream]]]

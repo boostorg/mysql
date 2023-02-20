@@ -9,9 +9,10 @@
 #define BOOST_MYSQL_HANDSHAKE_PARAMS_HPP
 
 #include <boost/mysql/buffer_params.hpp>
-#include <boost/mysql/collation.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
+
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
@@ -24,18 +25,21 @@ class handshake_params
     string_view username_;
     string_view password_;
     string_view database_;
-    collation connection_collation_;
+    std::uint16_t connection_collation_;
     ssl_mode ssl_;
 
 public:
+    /// The default collation to use with the connection (utf8mb4_general_ci, on both MySQL and MariaDB).
+    static constexpr std::uint16_t default_collation = 45;
+
     /**
      * \brief Initializing constructor.
      * \param username User name to authenticate as.
      * \param password Password for that username, possibly empty.
      * \param db Database name to use, or empty string for no database (this is the default).
-     * \param connection_col The \ref collation to use for the connection.
+     * \param connection_col The ID of the collation to use for the connection.
      * Impacts how text queries and prepared statements are interpreted. Defaults to
-     * `collation::utf8mb4_general_ci`.
+     * `utf8mb4_general_ci` (see \ref default_collation), which is compatible with MySQL 5.x, 8.x and MariaDB.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection does not support SSL.
      */
@@ -43,7 +47,7 @@ public:
         string_view username,
         string_view password,
         string_view db = "",
-        collation connection_col = collation::utf8mb4_general_ci,
+        std::uint16_t connection_col = default_collation,
         ssl_mode mode = ssl_mode::require
     )
         : username_(username),
@@ -73,10 +77,10 @@ public:
     void set_database(string_view value) noexcept { database_ = value; }
 
     /// Retrieves the connection collation.
-    collation connection_collation() const noexcept { return connection_collation_; }
+    std::uint16_t connection_collation() const noexcept { return connection_collation_; }
 
     /// Sets the connection collation
-    void set_connection_collation(collation value) noexcept { connection_collation_ = value; }
+    void set_connection_collation(std::uint16_t value) noexcept { connection_collation_ = value; }
 
     /// Retrieves SSL mode
     ssl_mode ssl() const noexcept { return ssl_; }

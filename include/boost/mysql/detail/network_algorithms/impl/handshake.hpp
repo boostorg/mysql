@@ -31,10 +31,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline std::uint8_t get_collation_first_byte(collation value)
-{
-    return static_cast<std::uint16_t>(value) % 0xff;
-}
+inline std::uint8_t get_collation_first_byte(std::uint16_t value) { return value % 0xff; }
 
 inline capabilities conditional_capability(bool condition, std::uint32_t cap)
 {
