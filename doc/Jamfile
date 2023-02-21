@@ -37,7 +37,6 @@ docca.reference reference.qbk
         <doxygen:param>EXPAND_ONLY_PREDEF=YES
         <doxygen:param>SEARCH_INCLUDES=NO
         <doxygen:param>"PREDEFINED=\\
-            BOOST_MYSQL_EXPERIMENTAL_API \\
             BOOST_MYSQL_DOXYGEN \\
             \"BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto\" \\
             \"BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)=class\" \\

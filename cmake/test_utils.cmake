@@ -55,9 +55,6 @@ function(common_target_settings TARGET_NAME)
         target_compile_options(${TARGET_NAME} PRIVATE --coverage)
         target_link_options(${TARGET_NAME} PRIVATE --coverage)
     endif()
-
-    # Don't get hit by our own experimental warnings
-    target_compile_definitions(${TARGET_NAME} PRIVATE BOOST_MYSQL_EXPERIMENTAL_API)
 endfunction()
 
 # Valgrind stuff

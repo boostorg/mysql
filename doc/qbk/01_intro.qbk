@@ -10,13 +10,6 @@
 
 __Self__ is a C++11 client for the __Mysql__ database server, based on __Asio__.
 
-[note
-    As of Boost 1.82, the Boost.MySQL API is still experimental, and might change
-    in Boost 1.83. We will keep any replaced APIs as deprecated in Boost 1.83 and will
-    remove them in subsequent releases. Define `BOOST_MYSQL_EXPERIMENTAL_API` to suppress
-    warnings about this.
-]
-
 [section Motivation]
 
 __Mysql__ is one of the most widespread SQL database servers. MySQL

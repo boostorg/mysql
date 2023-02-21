@@ -28,18 +28,8 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 
-#include <boost/config/pragma_message.hpp>
-
 #include <type_traits>
 #include <utility>
-
-#ifndef BOOST_MYSQL_EXPERIMENTAL_API
-BOOST_PRAGMA_MESSAGE(
-    "Boost.MySQL API is still experimental. The functions connection::query() and "
-    "connection::execute_statement() might change in subsequent releases. Define "
-    "BOOST_MYSQL_EXPERIMENTAL_API to suppress this warning"
-)
-#endif
 
 /// The Boost libraries namespace.
 namespace boost {

@@ -108,7 +108,7 @@ lib asio_separate_build
         <define>BOOST_ASIO_SEPARATE_COMPILATION
     ;
 
-alias mysql : asio_separate_build : : : <define>BOOST_MYSQL_EXPERIMENTAL_API ;
+alias mysql : asio_separate_build ;
 
 # Unit test library generates some internal warnings we're not interested in
 local unit_test_lib = /boost/test//boost_unit_test_framework/<warnings-as-errors>off ;

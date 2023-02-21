@@ -1,21 +1,14 @@
 # Boost.MySQL (to be released in Boost 1.82)
 
-Branch | Windows/Linux Build | OSX build | Coverage | Documentation
--------|---------------------|-----------|--------- | -------------
-[`master`](https://github.com/boostorg/mysql/tree/master)   | [![Build Status](https://drone.cpp.al/api/badges/boostorg/mysql/status.svg)](https://drone.cpp.al/boostorg/mysql)                        | [![Build Status](https://github.com/boostorg/mysql/actions/workflows/build-code.yml/badge.svg)](https://github.com/boostorg/mysql)                | [![codecov](https://codecov.io/gh/boostorg/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/boostorg/mysql/branch/master)   | [Docs for master](https://www.boost.org/doc/libs/master/libs/mysql/doc/html/index.html)
-[`develop`](https://github.com/boostorg/mysql/tree/develop) | [![Build Status](https://drone.cpp.al/api/badges/boostorg/mysql/status.svg?ref=refs/heads/develop)](https://drone.cpp.al/boostorg/mysql) | [![Build Status](https://github.com/boostorg/mysql/actions/workflows/build-code.yml/badge.svg?branch=develop)](https://github.com/boostorg/mysql) | [![codecov](https://codecov.io/gh/boostorg/mysql/branch/develop/graph/badge.svg)](https://codecov.io/gh/boostorg/mysql/branch/develop) | [Docs for develop](https://www.boost.org/doc/libs/develop/libs/mysql/doc/html/index.html)
+Branch | Windows/Linux Build | OSX build | Coverage
+-------|---------------------|-----------|---------
+[`master`](https://github.com/boostorg/mysql/tree/master)   | [![Build Status](https://drone.cpp.al/api/badges/boostorg/mysql/status.svg)](https://drone.cpp.al/boostorg/mysql)                        | [![Build Status](https://github.com/boostorg/mysql/actions/workflows/build-code.yml/badge.svg)](https://github.com/boostorg/mysql)                | [![codecov](https://codecov.io/gh/boostorg/mysql/branch/master/graph/badge.svg)](https://codecov.io/gh/boostorg/mysql/branch/master)
+[`develop`](https://github.com/boostorg/mysql/tree/develop) | [![Build Status](https://drone.cpp.al/api/badges/boostorg/mysql/status.svg?ref=refs/heads/develop)](https://drone.cpp.al/boostorg/mysql) | [![Build Status](https://github.com/boostorg/mysql/actions/workflows/build-code.yml/badge.svg?branch=develop)](https://github.com/boostorg/mysql) | [![codecov](https://codecov.io/gh/boostorg/mysql/branch/develop/graph/badge.svg)](https://codecov.io/gh/boostorg/mysql/branch/develop)
 
-Boost.MySQL is a C++11 client for the MySQL database server, based on Boost.Asio.
+Boost.Mysql is a C++11 client for the MySQL database server, based on Boost.Asio.
 This library is in the process of being proposed for Boost.
 
-## Preview release in 1.82
-
-Boost.MySQL will get a preview release with Boost 1.82. Some of the API is still experimental,
-and is likely to change in 1.83. We will keep any replaced APIs as deprecated in 1.83 and will
-remove them in subsequent releases. Define `BOOST_MYSQL_EXPERIMENTAL_API` to suppress
-warnings about this.
-
-Boost 1.82 is scheduled for 2023-04-12.
+Documentation and examples are [here](https://anarthal.github.io/mysql/index.html).
 
 ## Why another MySQL C++ client?
 
@@ -53,7 +46,16 @@ And with the following databases:
 - MySQL v8.0.20
 - MariaDB v10.3
 
-## Upgrading from 0.0.x to 0.2.x
+## Versioning and upgrading
+
+The current latest version is 0.2.0. Boost.Mysql has officially passed its formal review
+and is now in the process of being integrated into Boost. As part of this process, the library
+will get breaking changes that were deemed required by the formal review. The library will get
+its first stable release when Boost 1.82 is released (scheduled for early 2023).
+Any breaking change from v0.2.0 will be listed here, together with a rationale and
+an upgrade guide. If you encounter any trouble, please open an issue in the repository.
+
+### Breaking changes from 0.0.x to 0.2.x
 
 This version has changed the way SSL is handled by the library to
 a more standard approach, similar to what Boost.Beast and Boost.Asio use.
