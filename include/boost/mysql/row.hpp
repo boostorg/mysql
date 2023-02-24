@@ -25,14 +25,15 @@ namespace mysql {
 /**
  * \brief An owning, read-only sequence of fields.
  * \details
+ * Although owning, `row` is read-only. It's optimized for memory re-use. If you need to mutate
+ * fields, use a `std::vector<field>` instead (see \ref row_view::as_vector and \ref
+ * row::as_vector).
+ *
+ * \par Object lifetimes
  * A `row` object owns a chunk of memory in which it stores its elements. On element access (using
  * iterators, \ref row::at or \ref row::operator[]) it returns \ref field_view's pointing into the
  * `row`'s internal storage. These views behave like references, and are valid as long as pointers,
  * iterators and references into the `row` remain valid.
- * \n
- * Although owning, `row` is read-only. It's optimized for memory re-use. If you need to mutate
- * fields, use a `std::vector<field>` instead (see \ref row_view::as_vector and \ref
- * row::as_vector).
  */
 class row : private detail::row_base
 {
@@ -48,13 +49,9 @@ public:
 #endif
 
     /// \copydoc iterator
-    using const_iterator = const field_view*;
+    using const_iterator = iterator;
 
-    /**
-     * \brief A type that can hold elements in this collection with value semantics.
-     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
-     * objects instead of `value_type` objects. You can use this type if you need an owning class.
-     */
+    /// A type that can hold elements in this collection with value semantics.
     using value_type = field;
 
     /// The reference type.
@@ -71,56 +68,98 @@ public:
 
     /**
      * \brief Constructs an empty row.
+     * \par Exception safety
+     * No-throw guarantee.
      */
     row() = default;
 
     /**
      * \brief Copy constructor.
-     * \details `*this` lifetime will be independent of `other`'s.
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `other`'s.
+     *
+     * \par Complexity
+     * Linear on `other.size()`.
      */
     row(const row& other) = default;
 
     /**
      * \brief Move constructor.
-     * \details Iterators and references (including \ref row_view's and \ref field_view's) to
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Iterators and references (including \ref row_view's and \ref field_view's) to
      * elements in `other` remain valid.
+     *
+     * \par Complexity
+     * Constant.
      */
     row(row&& other) = default;
 
     /**
      * \brief Copy assignment.
-     * \details `*this` lifetime will be independent of `other`'s. Iterators and references
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `other`'s. Iterators and references
      * (including \ref row_view's and \ref field_view's) to elements in `*this` are invalidated.
+     *
+     * \par Complexity
+     * Linear on `this->size()` and `other.size()`.
      */
     row& operator=(const row& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details Iterators and references (including \ref row_view's and \ref field_view's) to
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Iterators and references (including \ref row_view's and \ref field_view's) to
      * elements in `*this` are invalidated. Iterators and references to elements in `other` remain
      * valid.
+     *
+     * \par Complexity
+     * Constant.
      */
     row& operator=(row&& other) = default;
 
     /**
      * \brief Destructor.
-     * \details Iterators and references (including \ref row_view's and \ref field_view's) to
-     * elements in `*this` are invalidated.
      */
     ~row() = default;
 
     /**
      * \brief Constructs a row from a \ref row_view.
-     * \details `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
      * into `*this`).
+     *
+     * \par Complexity
+     * Linear on `r.size()`.
      */
     row(row_view r) : detail::row_base(r.begin(), r.size()) {}
 
     /**
      * \brief Replaces the contents with a \ref row_view.
-     * \details `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
      * into `*this`). Iterators and references (including \ref row_view's and \ref field_view's) to
      * elements in `*this` are invalidated.
+     *
+     * \par Complexity
+     * Linear on `this->size()` and `r.size()`.
      */
     row& operator=(row_view r)
     {
@@ -163,8 +202,15 @@ public:
 
     /**
      * \brief Creates a \ref row_view that references `*this`.
-     * \details The returned view will be valid until any function that invalidates iterators and
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned view will be valid until any function that invalidates iterators and
      * references is invoked on `*this` or `*this` is destroyed.
+     *
+     * \par Complexity
+     * Constant.
      */
     operator row_view() const noexcept { return row_view(fields_.data(), fields_.size()); }
 
@@ -184,12 +230,24 @@ public:
  * \brief Equality operator.
  * \details The containers are considered equal if they have the same number of elements and they
  * all compare equal, as defined by \ref field_view::operator==.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Complexity
+ * Linear in `lhs.size()` and `rhs.size()`.
  */
 inline bool operator==(const row& lhs, const row& rhs) noexcept { return row_view(lhs) == row_view(rhs); }
 
 /**
  * \relates row
  * \brief Inequality operator.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Complexity
+ * Linear in `lhs.size()` and `rhs.size()`.
  */
 inline bool operator!=(const row& lhs, const row& rhs) { return !(lhs == rhs); }
 

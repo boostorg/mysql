@@ -10,6 +10,9 @@
 
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -22,7 +25,9 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
@@ -44,6 +49,9 @@
 
 using boost::mysql::date;
 using boost::mysql::datetime;
+using boost::mysql::diagnostics;
+using boost::mysql::error_code;
+using boost::mysql::error_with_diagnostics;
 using boost::mysql::execution_state;
 using boost::mysql::field;
 using boost::mysql::field_view;
@@ -78,7 +86,11 @@ void insert_product(
 )
 {
     results result;
-    conn.execute_statement(stmt, std::make_tuple(description, price, int(show_in_store)), result);
+    conn.execute_statement(
+        stmt,
+        std::make_tuple(description, price, static_cast<int>(show_in_store)),
+        result
+    );
 }
 //]
 
@@ -100,9 +112,66 @@ void insert_product(
 
     // Execute the insert
     results result;
-    conn.execute_statement(stmt, std::make_tuple(description_param, price, int(show_in_store)), result);
+    conn.execute_statement(
+        stmt,
+        std::make_tuple(description_param, price, static_cast<int>(show_in_store)),
+        result
+    );
 }
 //]
+#endif
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+boost::asio::awaitable<void> overview_coro(tcp_ssl_connection& conn)
+{
+    //[overview_async_coroutinescpp20
+    // Using this CompletionToken, you get C++20 coroutines that communicate
+    // errors with error_codes. This way, you can access the diagnostics object.
+    constexpr auto token = boost::asio::as_tuple(boost::asio::use_awaitable);
+
+    // Run our query as a coroutine
+    diagnostics diag;
+    results result;
+    auto [ec] = co_await conn.async_query("SELECT 'Hello world!'", result, diag, token);
+
+    // This will throw an error_with_diagnostics in case of failure
+    boost::mysql::throw_on_error(ec, diag);
+    //]
+}
+
+void run_overview_coro(tcp_ssl_connection& conn)
+{
+    boost::asio::co_spawn(
+        conn.get_executor(),
+        [&conn] { return overview_coro(conn); },
+        [](std::exception_ptr ptr) {
+            if (ptr)
+            {
+                std::rethrow_exception(ptr);
+            }
+        }
+    );
+    static_cast<boost::asio::io_context&>(conn.get_executor().context()).run();
+}
+
+boost::asio::awaitable<void> dont_run()
+{
+    using namespace boost::asio::experimental::awaitable_operators;
+
+    // Setup
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
+    boost::mysql::tcp_ssl_connection conn(co_await boost::asio::this_coro::executor, ssl_ctx);
+
+    //[overview_async_dont
+    // Coroutine body
+    // DO NOT DO THIS!!!!
+    results result1, result2;
+    co_await (
+        conn.async_query("SELECT 1", result1, boost::asio::use_awaitable) &&
+        conn.async_query("SELECT 2", result2, boost::asio::use_awaitable)
+    );
+    //]
+}
 #endif
 
 void main_impl(int argc, char** argv)
@@ -113,7 +182,7 @@ void main_impl(int argc, char** argv)
         exit(1);
     }
 
-    //[overview_setup
+    //[overview_connection
     // The execution context, required to run I/O operations.
     boost::asio::io_context ctx;
 
@@ -189,9 +258,9 @@ void main_impl(int argc, char** argv)
     {
         //[overview_using_fields
         results result;
-        conn.query("SELECT \"abc\", 42", result);
+        conn.query("SELECT 'abc', 42", result);
 
-        // Using the is_xxx and get_xxx accessors
+        // Obtain a field's underlying value using the is_xxx and get_xxx accessors
         field_view f = result.rows().at(0).at(0);  // f points to the string "abc"
         if (f.is_string())
         {
@@ -204,7 +273,7 @@ void main_impl(int argc, char** argv)
             // Oops, something went wrong - schema msimatch?
         }
 
-        // Using the as_xxx accessor
+        // Alternative: use the as_xxx accessor
         f = result.rows().at(0).at(1);
         std::int64_t value = f.as_int64();  // Checked access. Throws if f doesn't contain an int
         std::cout << value << std::endl;    // Use the int as required
@@ -214,14 +283,21 @@ void main_impl(int argc, char** argv)
     {
         //[overview_handling_nulls
         results result;
+
+        // Create some test data
         conn.query(
             R"%(
-                SELECT 0 AS product_id, 'potatoes' as description UNION
-                SELECT 1, NULL UNION
-                SELECT 2, 'carrots'
+                CREATE TEMPORARY TABLE products (
+                    id VARCHAR(50) PRIMARY KEY,
+                    description VARCHAR(256)
+                )
             )%",
             result
         );
+        conn.query("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', NULL)", result);
+
+        // Retrieve the data. Note that some fields are NULL
+        conn.query("SELECT id, description FROM products", result);
 
         for (row_view r : result.rows())
         {
@@ -245,6 +321,8 @@ void main_impl(int argc, char** argv)
             }
         }
         //]
+
+        conn.query("DROP TABLE products", result);
     }
     {
         //[overview_statements_setup
@@ -313,7 +391,7 @@ void main_impl(int argc, char** argv)
         // st.complete() returns true once there are no more rows to read
         while (!st.complete())
         {
-            // row_batch will be valid until conn performs any other network operation
+            // row_batch will be valid until conn performs the next network operation
             rows_view row_batch = conn.read_some_rows(st);
 
             for (row_view post : row_batch)
@@ -326,6 +404,50 @@ void main_impl(int argc, char** argv)
 
         conn.query("DROP TABLE posts", result);
     }
+    {
+        //[overview_errors_sync_errc
+        error_code ec;
+        diagnostics diag;
+        results result;
+
+        // The provided SQL is invalid. The server will return an error.
+        // ec will be set to a non-zero value
+        conn.query("this is not SQL!", result, ec, diag);
+
+        if (ec)
+        {
+            // The error code will likely report a syntax error
+            std::cout << "Operation failed with error code: " << ec << '\n';
+
+            // diag.server_message() will contain the classic phrase
+            // "You have an error in your SQL syntax; check the manual..."
+            // Bear in mind that server_message() may contain user input, so treat it with caution
+            std::cout << "Server diagnostics: " << diag.server_message() << std::endl;
+        }
+        //]
+    }
+    {
+        //[overview_errors_sync_exc
+        try
+        {
+            // The provided SQL is invalid. This function will throw an exception.
+            results result;
+            conn.query("this is not SQL!", result);
+        }
+        catch (const error_with_diagnostics& err)
+        {
+            // error_with_diagnostics contains an error_code and a diagnostics object.
+            // It inherits from boost::system::system_error.
+            std::cout << "Operation failed with error code: " << err.code() << '\n'
+                      << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
+        }
+        //]
+    }
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+    {
+        run_overview_coro(conn);
+    }
+#endif
     {
         //[prepared_statements_prepare
         // Table setup
@@ -385,7 +507,7 @@ void main_impl(int argc, char** argv)
             // st.complete() returns true once the OK packet is received
             while (!st.complete())
             {
-                // row_batch will be valid until conn performs any other network operation
+                // row_batch will be valid until conn performs the next network operation
                 rows_view row_batch = conn.read_some_rows(st);
 
                 for (row_view post : row_batch)
@@ -602,43 +724,6 @@ void main_impl(int argc, char** argv)
     // Close
     conn.close();
 }
-
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-boost::asio::awaitable<void> dont_run_coro_main()
-{
-    using namespace boost::asio::experimental::awaitable_operators;
-
-    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-    boost::mysql::tcp_ssl_connection conn(co_await boost::asio::this_coro::executor, ssl_ctx);
-
-    {
-        //[overview_async_dont
-        // Coroutine body
-        // DO NOT DO THIS!!!!
-        results result1, result2;
-        co_await (
-            conn.async_query("SELECT 1", result1, boost::asio::use_awaitable) &&
-            conn.async_query("SELECT 2", result2, boost::asio::use_awaitable)
-        );
-        //]
-    }
-}
-
-void dont_run()
-{
-    // Setup
-    boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
-
-    boost::asio::co_spawn(ctx.get_executor(), dont_run_coro_main, [](std::exception_ptr ptr) {
-        if (ptr)
-        {
-            std::rethrow_exception(ptr);
-        }
-    });
-}
-#endif
 
 int main(int argc, char** argv)
 {

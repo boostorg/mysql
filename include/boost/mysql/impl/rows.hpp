@@ -20,12 +20,6 @@
 #include <cstddef>
 #include <stdexcept>
 
-boost::mysql::rows::rows(const rows_view& view)
-    : detail::row_base(view.fields_, view.num_fields_), num_columns_(view.num_columns_)
-{
-    copy_strings();
-}
-
 boost::mysql::rows& boost::mysql::rows::operator=(const rows_view& rhs)
 {
     // Protect against self-assignment

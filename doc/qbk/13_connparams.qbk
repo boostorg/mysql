@@ -26,7 +26,8 @@ pluggable authentication]. The decission of which authentication
 plugin to use is made in a per-user basis. This information
 is stored in the `mysql.user` table. In addition to this,
 servers define a default authentication plugin
-(see [mysqllink server-system-variables.html#sysvar_default_authentication_plugin
+(see [mysqllink server-system-variables.html#sysvar_authentication_policy `authentication_policy`] and
+[mysqllink server-system-variables.html#sysvar_default_authentication_plugin
 `default_authentication_plugin`]). The default plugin will
 be used for newly created users, and may affect how the handshake works.
 
@@ -40,8 +41,10 @@ __Self__ implements the two most common authentication plugins:
   `caching_sha2_password`]. Unless otherwise configured, this is the default plugin for
   MySQL 8.0. It can only be used over TLS, which makes it less vulnerable.
   This is also the reason why all examples use TLS.
-  
-Note that the `sha256_password` plugin is [*not] supported.
+
+Other authentication plugins are not supported. Multi-factor authentication
+is not yet supported, either. If you require any other plugin, please file a feature request
+against the GitHub repository.
 
 If you try to establish a connection (using [refmem connection handshake] or
 [refmem connection connect]) and you specify a user with
@@ -50,8 +53,8 @@ an unsupported authentication plugin, the operation will fail.
 [note
     Servers configured with a default authentication plugin
     not implemented in __Self__ are not supported, regardless
-    of the actual plugin the concrete user employs. This is due to
-    an oddity in the MySQL protocol.
+    of the actual plugin the concrete user employs. This limitation
+    may be lifted in the future.
 ]
 
 [endsect]
@@ -88,7 +91,7 @@ about character sets.
 
 [warning
     If you specify a collation ID that is unknown to the server (an old server
-    that doesn't recognizes the newest collations), the handshake operation
+    that doesn't recognize the newest collations), the handshake operation
     will succeed but the connection will sillently fall back to the server's default character set
     and collation. If you want to be sure, use a `"SET NAMES"` statement.
 ]

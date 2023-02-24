@@ -5,9 +5,9 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[library Boost.Mysql
+[library Boost.MySQL
     [quickbook 1.7]
-    [copyright 2019 - 2022 Ruben Perez]
+    [copyright 2019 - 2023 Ruben Perez]
     [id mysql]
     [purpose MySQL client library]
     [license
@@ -103,17 +103,14 @@
 [include 16_examples.qbk]
 [include 17_tests.qbk]
 
-[section:quickref Reference]
-[xinclude helpers/quickref.xml]
-[endsect]
 
-[block'''<reference><title>This Page Intentionally Left Blank 1/2</title>''']
-[section:ref This Page Intentionally Left Blank 2/2]
+[section:ref Reference]
+[xinclude helpers/quickref.xml]
+[block'''<part label="Two: Reference">''']
 [include reference.qbk]
 [include helpers/Stream.qbk]
 [include helpers/SocketStream.qbk]
 [include helpers/FieldViewFwdIterator.qbk]
 [include helpers/FieldLikeTuple.qbk]
+[block'''</part>''']
 [endsect]
-[block'''</reference>''']
-

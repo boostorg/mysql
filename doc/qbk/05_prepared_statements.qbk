@@ -30,7 +30,7 @@ will use these values to run the statement.
 To execute a statement, use any of the following functions:
 
 * [refmem connection execute_statement] or [refmem connection async_execute_statement],
-  which execute the statement and read the generated results.
+  which execute the statement and read the generated rows.
 * [refmem connection start_statement_execution] and [refmem connection async_start_statement_execution], which initiate a
   statement execution as a multi-function operation.
 

@@ -20,8 +20,11 @@ To use SSL/TLS, you must use a [reflink connection] with a
 [asioreflink ssl__stream_base ssl::stream_base]. This includes both
 [asioreflink ssl__stream ssl::stream] and `boost::beast::ssl_stream`.
 
-To make life easier, the type aliases [reflink tcp_ssl_connection] and [reflink unix_ssl_connection]
-are provided, for TCP and UNIX connections over TLS, respectively.
+To make life easier, this library provides the type alias [reflink tcp_ssl_connection].
+
+Note that there is no need to use TLS when using UNIX sockets. As the traffic doesn't
+leave the machine, MySQL considers them secure, and will allow using authentication
+plugins like `caching_sha2_password` even if TLS is not used.
 
 [endsect]
 
@@ -62,7 +65,7 @@ are implemented in terms of [refmem connection quit] and
 
 During the handshake, client and server will negotiate whether to use TLS or not. For SSL
 capable streams, we support using TLS conditionally. This is controlled using the [reflink ssl_mode]
-parameter in [reflink handshake_params], which configue the MySQL handshake process.
+parameter in [reflink handshake_params], which configure the MySQL handshake process.
 
 There are three possible values for this [reflink ssl_mode]:
 

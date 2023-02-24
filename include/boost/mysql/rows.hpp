@@ -26,13 +26,13 @@ namespace mysql {
  * Models an owning, matrix-like container. Indexing a `rows` object (by using iterators,
  * \ref rows::at or \ref rows::operator[]) returns a \ref row_view object, representing a
  * single row. All rows in the collection are the same size (as given by \ref num_columns).
- *\n
+ * \n
  * A `rows` object owns a chunk of memory in which it stores its elements. The \ref rows_view
  * objects obtained on element access point into the `rows`' internal storage. These views (and any
  * \ref row_view and \ref field_view obtained from the former) behave
  * like references, and are valid as long as pointers, iterators and references into the `rows`
  * object remain valid.
- \n
+ * \n
  * Although owning, `rows` is read-only. It's optimized for memory re-use.
  */
 class rows : private detail::row_base
@@ -72,57 +72,99 @@ public:
 
     /**
      * \brief Construct an empty `rows` object.
+     * \par Exception safety
+     * No-throw guarantee.
      */
     rows() = default;
 
     /**
      * \brief Copy constructor.
-     * \details `*this` lifetime will be independent of `other`'s.
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `other`'s.
+     *
+     * \par Complexity
+     * Linear on `other.size() * other.num_columns()`.
      */
     rows(const rows& other) = default;
 
     /**
      * \brief Move constructor.
-     * \details Iterators and references (including \ref rows_view's, \ref row_view's and \ref
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Iterators and references (including \ref rows_view's, \ref row_view's and \ref
      * field_view's) to elements in `other` remain valid.
+     *
+     * \par Complexity
+     * Constant.
      */
     rows(rows&& other) = default;
 
     /**
      * \brief Copy assignment.
-     * \details `*this` lifetime will be independent of `other`'s. Iterators and references
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `other`'s. Iterators and references
      * (including \ref rows_view's, \ref row_view's and \ref field_view's) to elements in `*this`
      * are invalidated.
+     *
+     * \par Complexity
+     * Linear on `this->size() * this->num_columns()` and `other.size() * other.num_columns()`.
      */
     rows& operator=(const rows& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details Iterators and references (including \ref rows_view's \ref row_view's and \ref
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Iterators and references (including \ref rows_view's \ref row_view's and \ref
      * field_view's) to elements in `*this` are invalidated. Iterators and references to elements in
      * `other` remain valid.
+     *
+     * \par Complexity
+     * Constant.
      */
     rows& operator=(rows&& other) = default;
 
     /**
      * \brief Destructor.
-     * \details Iterators and references (including \ref rows_view's \ref row_view's and \ref
-     * field_view's) to elements in `*this` are invalidated.
      */
     ~rows() = default;
 
     /**
      * \brief Constructs a rows object from a \ref rows_view.
-     * \details `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
      * into `*this`).
+     *
+     * \par Complexity
+     * Linear on `r.size() * r.num_columns()`.
      */
-    inline rows(const rows_view& r);
+    rows(const rows_view& r) : detail::row_base(r.fields_, r.num_fields_), num_columns_(r.num_columns_) {}
 
     /**
      * \brief Replaces the contents with a \ref rows_view.
-     * \details `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `r`'s (the contents of `r` will be copied
      * into `*this`). Iterators and references (including \ref rows_view's \ref row_view's and \ref
      * field_view's) to elements in `*this` are invalidated.
+     *
+     * \par Complexity
+     * Linear on `r.size() * r.num_columns()`.
      */
     inline rows& operator=(const rows_view& r);
 
@@ -155,8 +197,15 @@ public:
 
     /**
      * \brief Creates a \ref rows_view that references `*this`.
-     * \details The returned view will be valid until any function that invalidates iterators and
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned view will be valid until any function that invalidates iterators and
      * references is invoked on `*this` or `*this` is destroyed.
+     *
+     * \par Complexity
+     * Constant.
      */
     operator rows_view() const noexcept { return rows_view(fields_.data(), fields_.size(), num_columns_); }
 
@@ -173,12 +222,24 @@ private:
  * \brief Equality operator.
  * \details The containers are considered equal if they have the same number of rows and
  * they all compare equal, as defined by \ref row_view::operator==.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Complexity
+ * Linear in `lhs.size() * lhs.num_columns()` and `rhs.size() * rhs.num_columns()`.
  */
 inline bool operator==(const rows& lhs, const rows& rhs) noexcept { return rows_view(lhs) == rows_view(rhs); }
 
 /**
  * \relates rows
  * \brief Inequality operator.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Complexity
+ * Linear in `lhs.size() * lhs.num_columns()` and `rhs.size() * rhs.num_columns()`.
  */
 inline bool operator!=(const rows& lhs, const rows& rhs) noexcept { return !(lhs == rhs); }
 

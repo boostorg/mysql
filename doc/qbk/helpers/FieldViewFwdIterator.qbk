@@ -11,9 +11,4 @@ A type `T` fulfills `FieldViewFwdIterator` if it fulfills the
 `LegacyForwardIterator` standard concept, and
 `std::iterator_traits<T>::reference` is convertible to [reflink field_view].
 
-[warning
-    This concept is used in experimental code. The requirements for this concept
-    may change in future releases without notice.
-]
-
 [endsect]

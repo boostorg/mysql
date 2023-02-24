@@ -15,21 +15,57 @@ namespace mysql {
 
 /**
  * \brief Returns the error_category associated to \ref client_errc.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Object lifetimes
+ * The returned reference is always valid (points to a singleton).
+ *
+ * \par Thread safety
+ * This function is thread-safe.
  */
 inline const boost::system::error_category& get_client_category() noexcept;
 
 /**
  * \brief Returns the error_category associated to \ref common_server_errc.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Object lifetimes
+ * The returned reference is always valid (points to a singleton).
+ *
+ * \par Thread safety
+ * This function is thread-safe.
  */
 inline const boost::system::error_category& get_common_server_category() noexcept;
 
 /**
  * \brief Returns the error_category associated to errors specific to MySQL.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Object lifetimes
+ * The returned reference is always valid (points to a singleton).
+ *
+ * \par Thread safety
+ * This function is thread-safe.
  */
 inline const boost::system::error_category& get_mysql_server_category() noexcept;
 
 /**
  * \brief Returns the error_category associated to errors specific to MariaDB.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Object lifetimes
+ * The returned reference is always valid (points to a singleton).
+ *
+ * \par Thread safety
+ * This function is thread-safe.
  */
 inline const boost::system::error_category& get_mariadb_server_category() noexcept;
 

@@ -18,7 +18,7 @@ called async initiating functions.
 Every async initiating function has an associated
 handler type, which dictates how the asynchronous operation
 communicates its result back to the caller. This handler
-type always has one of the two folling forms:
+type always has one of the two following forms:
 
 # `void(error_code)`. Used in operations that do
    not have a proper result, e.g. [refmem connection async_connect].
@@ -26,14 +26,14 @@ type always has one of the two folling forms:
    have a result, e.g. [refmem connection async_prepare_statement]
    (in this case, `T` is `statement`).
    
-All asynchronous functions involving server communication are overloaded
+All asynchronous functions are overloaded
 to accept an optional [reflink diagnostics] output parameter. It is populated
 with any server-provided error information before calling the completion handler.
 
-[section:reads_writes Stream reads and writes]
+[section:single_outstanding_op Single outstanding operation per connection]
 
-As mentioned in [link mysql.overview.async this section], only a single read and a single
-write operation per connection can be outstanding at a given point in time.
+As mentioned in [link mysql.overview.async this section], only a single async
+operation per connection can be outstanding at a given point in time.
 If you need to perform queries in parallel, open more connections to the server.
 
 [endsect]
@@ -43,9 +43,9 @@ If you need to perform queries in parallel, open more connections to the server.
 Any completion token you may use with Boost.Asio can also be used
 with this library. Here are some of the most common:
 
-* [*Callbacks]. You can pass in a callable (function pointer,
+* [*Callbacks]. You can pass in a callable (function pointer or
   function object) with the same signature as the handler
-  signature specified for the operation. The handler
+  signature specified for the operation. The callable
   will be called when the operation completes. The initiating
   function will return `void`.
   

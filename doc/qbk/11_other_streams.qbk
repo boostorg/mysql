@@ -36,24 +36,16 @@ This library provides helper type aliases for the most common cases:
         ]
     ]
     [
-        [SSL over UNIX sockets]
-        [`boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>`]
-        [
-            [reflink unix_ssl_connection]
-        ]
-    ]
-    [
-        [Plaintext UNIX sockets]
+        [UNIX sockets]
         [`boost::asio::local::stream_protocol::socket`]
         [
             [reflink unix_connection]
+
+            Only available if `BOOST_ASIO_HAS_LOCAL_SOCKETS` is defined.
         ]
     ]
 ]
 
-
-Note that the UNIX socket type aliases only exist when the macro
-`BOOST_ASIO_HAS_LOCAL_SOCKETS` is defined.
 
 [link mysql.examples.unix_socket This example] employs a UNIX
 domain socket to establish a connection to a MySQL server.

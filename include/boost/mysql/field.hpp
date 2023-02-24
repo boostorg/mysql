@@ -44,29 +44,49 @@ namespace mysql {
 class field
 {
 public:
-    /// Constructs a `field` holding NULL (`this->kind() == field_kind::null`).
+    /**
+     * \brief Constructs a `field` holding NULL.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     field() = default;
 
-    /// Copy constructor.
+    /**
+     * \brief Copy constructor.
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     */
     field(const field&) = default;
 
     /**
      * \brief Move constructor.
-     * \details All references into `other` are invalidated, including the ones obtained by calling
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * All references into `other` are invalidated, including the ones obtained by calling
      * get_xxx, as_xxx and \ref field::operator field_view().
      */
     field(field&& other) = default;
 
     /**
      * \brief Copy assignment.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const field&) = default;
 
     /**
      * \brief Move assignment.
-     * \details Invalidates references to `*this` obtained by as_xxx and get_xxx functions,
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references to `*this` obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view(). All references into `other`
      * are invalidated, including the ones obtained by calling get_xxx, as_xxx and
      * \ref field::operator field_view().
@@ -77,14 +97,21 @@ public:
     ~field() = default;
 
     /**
-     * \copybrief field()
+     * \brief Constructs a `field` holding NULL.
      * \details
      * Caution: `field(NULL)` will __NOT__ match this overload. It will try to construct
      * a `string_view` from a NULL C string, causing undefined behavior.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
      */
     explicit field(std::nullptr_t) noexcept {}
 
-    /// Constructs a `field` holding an `int64` (`this->kind() == field_kind::int64`).
+    /**
+     * \brief Constructs a `field` holding an `int64`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(signed char v) noexcept : repr_(std::int64_t(v)) {}
 
     /// \copydoc field(signed char)
@@ -99,7 +126,11 @@ public:
     /// \copydoc field(signed char)
     explicit field(long long v) noexcept : repr_(std::int64_t(v)) {}
 
-    /// Constructs a `field` holding a `uint64` (`this->kind() == field_kind::uint64`).
+    /**
+     * \brief Constructs a `field` holding an `uint64`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(unsigned char v) noexcept : repr_(std::uint64_t(v)) {}
 
     /// \copydoc field(unsigned char)
@@ -114,56 +145,96 @@ public:
     /// \copydoc field(unsigned char)
     explicit field(unsigned long long v) noexcept : repr_(std::uint64_t(v)) {}
 
-    /// \brief Constructs a `field` holding a string (`this->kind() == field_kind::string`).
-    /// \details A `std::string` is constructed internally by copying `v`.
+    /**
+     * \brief Constructs a `field` holding a string.
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     */
     explicit field(const std::string& v) : repr_(v) {}
 
-    /// \copybrief field(const std::string&)
-    /// \details A `std::string` is constructed internally by moving `v`.
+    /**
+     * \brief Constructs a `field` holding a string.
+     * \details v is moved into an internal `std::string` object.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(std::string&& v) noexcept : repr_(std::move(v)) {}
 
-    /// \copybrief field(const std::string&)
-    /// \details A `std::string` is constructed internally from the NULL-terminated C string `v`.
+    /// \copydoc field(const std::string&)
     explicit field(const char* v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 
-    /// \copybrief field(const std::string&)
-    /// \details A `std::string` is constructed internally from `v`.
+    /// \copydoc field(const std::string&)
     explicit field(string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 
 #if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
-    /// \copydoc field(string_view)
+    /// \copydoc field(const std::string&)
     explicit field(std::string_view v) noexcept : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 #endif
 
-    /// Constructs a `field` holding a `blob` (`this->kind() == field_kind::blob`).
+    /**
+     * \brief Constructs a `field` holding a `blob`.
+     * \details v is moved into an internal `blob` object.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(blob v) noexcept : repr_(std::move(v)) {}
 
-    /// Constructs a `field` holding a `float` (`this->kind() == field_kind::float`).
+    /**
+     * \brief Constructs a `field` holding a `float`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(float v) noexcept : repr_(v) {}
 
-    /// Constructs a `field` holding a `double` (`this->kind() == field_kind::double`).
+    /**
+     * \brief Constructs a `field` holding a `double`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(double v) noexcept : repr_(v) {}
 
-    /// Constructs a `field` holding a `date` (`this->kind() == field_kind::date`).
+    /**
+     * \brief Constructs a `field` holding a `date`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(const date& v) noexcept : repr_(v) {}
 
-    /// Constructs a `field` holding a `datetime` (`this->kind() == field_kind::datetime`).
+    /**
+     * \brief Constructs a `field` holding a `datetime`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(const datetime& v) noexcept : repr_(v) {}
 
-    /// Constructs a `field` holding a `time` (`this->kind() == field_kind::time`).
+    /**
+     * \brief Constructs a `field` holding a `time`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     explicit field(const time& v) noexcept : repr_(v) {}
 
     /**
      * \brief Constructs a `field` from a \ref field_view.
-     * \details The resulting `field` has the same kind and value as the original `field_view`. The
-     * resulting `field` is guaranteed to be valid even after `v` becomes invalid.
+     * \details The resulting `field` has the same kind and value as the original `field_view`.
+     *
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * The resulting `field` is guaranteed to be valid even after `v` becomes invalid.
      */
     field(const field_view& v) { from_view(v); }
 
     /**
      * \brief Replaces `*this` with a `NULL`, changing the kind to `null` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(std::nullptr_t) noexcept
@@ -175,7 +246,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `int64` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(signed char v) noexcept
@@ -215,7 +291,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `uint64` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(unsigned char v) noexcept
@@ -255,7 +336,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `string` and destroying any previous
      * contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const std::string& v)
@@ -297,7 +383,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `blob` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(blob v)
@@ -309,7 +400,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `float_` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(float v) noexcept
@@ -321,7 +417,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `double` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(double v) noexcept
@@ -333,7 +434,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `date` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const date& v) noexcept
@@ -345,7 +451,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `datetime` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions,
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions,
      * but not the ones obtained by \ref field::operator field_view().
      */
     field& operator=(const datetime& v) noexcept
@@ -357,7 +468,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `time` and destroying any
      * previous contents.
-     * \details Invalidates references obtained by as_xxx and get_xxx functions, but not
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Invalidates references obtained by as_xxx and get_xxx functions, but not
      */
     field& operator=(const time& v) noexcept
     {
@@ -368,7 +484,12 @@ public:
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `v.kind()` and destroying any previous
      * contents.
-     * \details Invalidates references to `*this` obtained by as_xxx and get_xxx functions, but not
+     *
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * Invalidates references to `*this` obtained by as_xxx and get_xxx functions, but not
      * the ones obtained by \ref field::operator field_view().
      *\n
      * `*this` is guaranteed to be valid even after `v` becomes invalid.
@@ -379,43 +500,90 @@ public:
         return *this;
     }
 
-    /// Returns the type of the value this `field` is holding.
+    /**
+     * \brief Returns the type of the value this `field` is holding.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     field_kind kind() const noexcept { return repr_.kind(); }
 
-    /// Returns whether this `field` is holding a `NULL` value.
+    /**
+     * \brief Returns whether this `field` is holding a `NULL` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_null() const noexcept { return kind() == field_kind::null; }
 
-    /// Returns whether this `field` is holding an int64 value.
+    /**
+     * \brief Returns whether this `field` is holding a `int64` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_int64() const noexcept { return kind() == field_kind::int64; }
 
-    /// Returns whether this `field` is holding a uint64 value.
+    /**
+     * \brief Returns whether this `field` is holding a `uint64` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_uint64() const noexcept { return kind() == field_kind::uint64; }
 
-    /// Returns whether this `field` is holding a string value.
+    /**
+     * \brief Returns whether this `field` is holding a string value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_string() const noexcept { return kind() == field_kind::string; }
 
-    /// Returns whether this `field` is holding a blob value.
+    /**
+     * \brief Returns whether this `field` is holding a blob value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_blob() const noexcept { return kind() == field_kind::blob; }
 
-    /// Returns whether this `field` is holding a float value.
+    /**
+     * \brief Returns whether this `field` is holding a `float` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_float() const noexcept { return kind() == field_kind::float_; }
 
-    /// Returns whether this `field` is holding a double value.
+    /**
+     * \brief Returns whether this `field` is holding a `double` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_double() const noexcept { return kind() == field_kind::double_; }
 
-    /// Returns whether this `field` is holding a date value.
+    /**
+     * \brief Returns whether this `field` is holding a `date` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_date() const noexcept { return kind() == field_kind::date; }
 
-    /// Returns whether this `field` is holding a datetime value.
+    /**
+     * \brief Returns whether this `field` is holding a `datetime` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_datetime() const noexcept { return kind() == field_kind::datetime; }
 
-    /// Returns whether this `field` is holding a time value.
+    /**
+     * \brief Returns whether this `field` is holding a `time` value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_time() const noexcept { return kind() == field_kind::time; }
 
     /**
      * \brief Retrieves a reference to the underlying `std::int64_t` value or throws an exception.
-     * \details If `!this->is_int64()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_int64()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -423,8 +591,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `std::uint64_t` value or throws an exception.
-     * \details If `!this->is_uint64()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_uint64()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -432,8 +603,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `std::string` value or throws an exception.
-     * \details If `!this->is_string()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_string()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -441,8 +615,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `blob` value or throws an exception.
-     * \details If `!this->is_blob()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_blob()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -450,8 +627,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `float` value or throws an exception.
-     * \details If `!this->is_float()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_float()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -459,8 +639,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `double` value or throws an exception.
-     * \details If `!this->is_double()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_double()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -468,8 +651,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `date` value or throws an exception.
-     * \details If `!this->is_date()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_date()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -477,8 +663,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `datetime` value or throws an exception.
-     * \details If `!this->is_datetime()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_datetime()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -486,8 +675,11 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `time` value or throws an exception.
-     * \details If `!this->is_time()`, throws \ref bad_field_access.
+     * \par Exception safety
+     * Strong guarantee. Throws on type mismatch.
+     * \throws bad_field_access If `!this->is_time()`
      *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -522,8 +714,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `std::int64_t` value (unchecked access).
-     * \details If `!this->is_int64()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_int64() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -531,8 +728,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `std::uint64_t` value (unchecked access).
-     * \details If `!this->is_uint64()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_uint64() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -540,8 +742,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `std::string` value (unchecked access).
-     * \details If `!this->is_string()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_string() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -549,8 +756,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `blob` value (unchecked access).
-     * \details If `!this->is_blob()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_blob() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -558,8 +770,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `float` value (unchecked access).
-     * \details If `!this->is_float()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_float() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -567,8 +784,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `double` value (unchecked access).
-     * \details If `!this->is_double()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_double() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -576,8 +798,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `date` value (unchecked access).
-     * \details If `!this->is_date()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_date() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -585,8 +812,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `datetime` value (unchecked access).
-     * \details If `!this->is_datetime()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_datetime() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -594,8 +826,13 @@ public:
 
     /**
      * \brief Retrieves a reference to the underlying `time` value (unchecked access).
-     * \details If `!this->is_time()`, results in undefined behavior.
+     * \par Preconditions
+     * `this->is_time() == true` (if violated, results in undefined behavior).
      *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
      * The returned reference is valid as long as `*this` is alive and no function that invalidates
      * references is called on `*this`.
      */
@@ -630,7 +867,13 @@ public:
 
     /**
      * \brief Constructs a \ref field_view pointing to `*this`.
-     * \details The resulting `field_view` has the same kind and value as `*this`. It acts as a
+     * \details The resulting `field_view` has the same kind and value as `*this`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned object acts as a
      * reference to `*this`, and will be valid as long as `*this` is alive.
      */
     inline operator field_view() const noexcept { return field_view(&repr_); }
@@ -645,6 +888,9 @@ private:
  * \relates field
  * \brief Tests for equality.
  * \details The same considerations as \ref field_view::operator== apply.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator==(const field& lhs, const field& rhs) noexcept
 {
@@ -654,6 +900,8 @@ inline bool operator==(const field& lhs, const field& rhs) noexcept
 /**
  * \relates field
  * \brief Tests for inequality.
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator!=(const field& lhs, const field& rhs) noexcept { return !(lhs == rhs); }
 
@@ -661,12 +909,17 @@ inline bool operator!=(const field& lhs, const field& rhs) noexcept { return !(l
  * \relates field
  * \brief Tests for equality.
  * \details The same considerations as \ref field_view::operator== apply.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator==(const field_view& lhs, const field& rhs) noexcept { return lhs == field_view(rhs); }
 
 /**
  * \relates field
  * \brief Tests for inequality.
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator!=(const field_view& lhs, const field& rhs) noexcept { return !(lhs == rhs); }
 
@@ -674,12 +927,16 @@ inline bool operator!=(const field_view& lhs, const field& rhs) noexcept { retur
  * \relates field
  * \brief Tests for equality.
  * \details The same considerations as \ref field_view::operator== apply.
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator==(const field& lhs, const field_view& rhs) noexcept { return field_view(lhs) == rhs; }
 
 /**
  * \relates field
  * \brief Tests for inequality.
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator!=(const field& lhs, const field_view& rhs) noexcept { return !(lhs == rhs); }
 

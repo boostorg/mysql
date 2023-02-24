@@ -9,8 +9,8 @@
 
 [import ../../example/tutorial.cpp]
 
-Welcome to Boost.Mysql's tutorial. We will go through the simplest
-possible piece of code using Boost.Mysql: a program that connects
+Welcome to Boost.MySQL's tutorial. We will go through the simplest
+possible piece of code using Boost.MySQL: a program that connects
 to the MySQL server and issues the query `SELECT "Hello World!"`.
 
 To run this tutorial, you need a running MySQL server listening
@@ -46,19 +46,17 @@ which accepts two parameters:
 
 * The first one specifies the network address of the MySQL server.
   As we are using TCP, this is a [asioreflink ip__tcp/endpoint ip::tcp::endpoint],
-  identifying the host and port to connect to. We will use a `boost::asio::ip::tcp::resolver`
-  to convert the string hostname into a `boost::asio::ip::tcp::endpoint`.
-* The second one is a collection of MySQL handshake parameters, including
-  username and password. This parameter must be an instance of
-  [reflink handshake_params]. You may also set other options like
-  the database name to use by default or whether to use SSL or not.
-  
+  which holds an IP address and a port. We will use a `boost::asio::ip::tcp::resolver`
+  to resolve the hostname into an IP address and thus obtain a `boost::asio::ip::tcp::endpoint`.
+* The second one is an instance of [reflink handshake_params], which holds per-connection settings,
+  including the username and password to use.
+
 [tutorial_connect]
 
 [note
     Read-only strings, like the ones used in [reflink handshake_params]'s
-    constructor, are represented as [reflink string_view]`s, which are similar
-    to `std::string_view`s but do not require C++17 to work.
+    constructor, are represented as [reflink string_view]'s, which are similar
+    to `std::string_view`'s but do not require C++17 to work.
 ]
 
 [heading Issuing the SQL query]
@@ -79,6 +77,7 @@ To obtain the value we selected, we can write:
 [tutorial_results]
 
 Let's break this into steps:
+
 * [refmem results rows] returns all the rows that this object contains.
   It returns a [reflink rows_view], which is a matrix-like structure.
 * `result.rows().at(0)` returns the first row, represented as a [reflink row_view].

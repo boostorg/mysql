@@ -8,11 +8,11 @@
 [section:intro Introduction]
 [nochunk]
 
-__Self__ is a C++11 client for the __Mysql__ database server, based on __Asio__.
+__Self__ is a C++11 client for the __Mysql__ and [@https://mariadb.com/ MariaDB] database servers, based on __Asio__.
 
 [section Motivation]
 
-__Mysql__ is one of the most widespread SQL database servers. MySQL
+MySQL and MariaDB are widespread SQL database servers. MySQL
 clients connect to the server in order to issue SQL queries. For this
 purpose, MySQL employs a dedicated protocol. __Self__ is an
 implementation of the client side of this protocol.
@@ -32,7 +32,7 @@ over the main library capabilities.
 The design goals of this library are:
 
 * [*Interoperability with Asio]: this library employs the same principles as __Asio__ and __Beast__.
-  Users of any of these libraries will immediately understand Boost.Mysql, and will have it easy
+  Users of any of these libraries will immediately understand Boost.MySQL, and will have it easy
   to integrate it in their programs.
 * [*Basis for further abstraction]: it allows efficient access to the MySQL client/server protocol
   so it can be used by higher level components as a building block. Do a single thing and do it well.
@@ -75,7 +75,7 @@ It may not be a good fit for you if:
 
 [section Requirements]
 
-Boost.Mysql requires:
+Boost.MySQL requires:
 
 * [*C++11] capable compiler. Tested with:
     * gcc 5.4 (Linux)
@@ -88,24 +88,34 @@ Boost.Mysql requires:
     * clang 12.0 (Linux)
     * clang 13.0 (OSX)
     * MSVC 19.25 (Windows)
-* [*Boost]. Boost.Mysql does not work with the standalone version of __Asio__.
+* [*Boost]. Boost.MySQL does not work with the standalone version of __Asio__.
 * [*OpenSSL].
 
-Boost.Mysql is a header-only library. The following additional libraries are needed at link time:
+Boost.MySQL is a header-only library. The following additional libraries are needed at link time:
 
 * OpenSSL is always required.
 * __Context__ is required when using coroutines created by
   [@boost:/doc/html/boost_asio/reference/spawn.html `boost::asio::spawn`].
 
-If you are using CMake (finding the library using [*find_package] or
-fetching it using [*FetchContent]), you can link against the [*Boost::mysql*]
-CMake target, which will take care of the details for you.
+If you are using CMake with a Boost distribution (e.g. one you downloaded and built with `b2`),
+you can use the following code to get the required setup:
 
-Boost.Mysql has been tested with the following RDBMS systems:
+```
+project(boost_mysql_example LANGUAGES CXX)
 
-* [@https://dev.mysql.com/downloads/mysql/5.7.html MySQL v5.7.29].
-* [@https://dev.mysql.com/downloads/mysql/8.0.html MySQL v8.0.19].
-* [@https://downloads.mariadb.org/mariadb/10.3.13/ MariaDB v10.3].
+find_package(Boost REQUIRED COMPONENTS headers)
+find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
+
+add_executable(main main.cpp)
+target_link_libraries(main PRIVATE Boost::headers Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+```
+
+Boost.MySQL has been tested with the following RDBMS systems:
+
+* MySQL v5.7.41.
+* MySQL v8.0.31.
+* MariaDB v10.11.2.
 
 [endsect]
 

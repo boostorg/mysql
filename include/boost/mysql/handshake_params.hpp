@@ -19,6 +19,9 @@ namespace mysql {
 
 /**
  * \brief Parameters defining how to perform the handshake with a MySQL server.
+ * \par Object lifetimes
+ * This object stores references to strings (like username and password), performing
+ * no copy of these values. Users are resposible for keeping them alive until required.
  */
 class handshake_params
 {
@@ -29,11 +32,14 @@ class handshake_params
     ssl_mode ssl_;
 
 public:
-    /// The default collation to use with the connection (utf8mb4_general_ci, on both MySQL and MariaDB).
+    /// The default collation to use with the connection (`utf8mb4_general_ci` on both MySQL and MariaDB).
     static constexpr std::uint16_t default_collation = 45;
 
     /**
      * \brief Initializing constructor.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
      * \param username User name to authenticate as.
      * \param password Password for that username, possibly empty.
      * \param db Database name to use, or empty string for no database (this is the default).
@@ -41,7 +47,7 @@ public:
      * Impacts how text queries and prepared statements are interpreted. Defaults to
      * `utf8mb4_general_ci` (see \ref default_collation), which is compatible with MySQL 5.x, 8.x and MariaDB.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
-     * the connection does not support SSL.
+     * the connection's `Stream` does not support SSL.
      */
     handshake_params(
         string_view username,
@@ -58,34 +64,74 @@ public:
     {
     }
 
-    /// Retrieves the username.
+    /**
+     * \brief Retrieves the username.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     string_view username() const noexcept { return username_; }
 
-    /// Sets the username.
+    /**
+     * \brief Sets the username.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void set_username(string_view value) noexcept { username_ = value; }
 
-    /// Retrieves the password.
+    /**
+     * \brief Retrieves the password.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     string_view password() const noexcept { return password_; }
 
-    /// Sets the password
+    /**
+     * \brief Sets the password.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void set_password(string_view value) noexcept { password_ = value; }
 
-    /// Retrieves the database.
+    /**
+     * \brief Retrieves the database name to use when connecting.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     string_view database() const noexcept { return database_; }
 
-    /// Sets the database
+    /**
+     * \brief Sets the database name to use when connecting.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void set_database(string_view value) noexcept { database_ = value; }
 
-    /// Retrieves the connection collation.
+    /**
+     * \brief Retrieves the connection collation.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     std::uint16_t connection_collation() const noexcept { return connection_collation_; }
 
-    /// Sets the connection collation
+    /**
+     * \brief Sets the connection collation.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void set_connection_collation(std::uint16_t value) noexcept { connection_collation_ = value; }
 
-    /// Retrieves SSL mode
+    /**
+     * \brief Retrieves the SSL mode.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     ssl_mode ssl() const noexcept { return ssl_; }
 
-    /// Sets SSL mode
+    /**
+     * \brief Sets the SSL mode.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
 };
 

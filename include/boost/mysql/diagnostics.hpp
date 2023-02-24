@@ -22,25 +22,39 @@ namespace mysql {
  * \brief Contains additional information about errors.
  * \details
  * This class is a container for additional diagnostics about an operation that
- * failed. Right now, it's used to hold any error messages sent by the server on
+ * failed. Currently, it's used to hold any error messages sent by the server on
  * error (\ref server_message). More members may be added in the future.
- * The message may be empty, if no diagnostic is available.
- *\n
- * \ref server_message is encoded according to `character_set_results` character set, which
- * usually matches the connection's character set. It may potentially contain user input.
  */
 class diagnostics
 {
 public:
     /**
-     * \brief Constructs an empty diagnostics object.
+     * \brief Constructs a diagnostics object with an empty error message.
+     * \par Exception safety
+     * No-throw guarantee.
      */
     diagnostics() = default;
 
-    /// Gets the server-generated error message.
+    /**
+     * \brief Gets the server-generated error message.
+     * \details
+     * It's encoded according to `character_set_results` character set, which
+     * usually matches the connection's character set. It may potentially contain user input.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned view is valid as long as `*this` is alive, hasn't been assigned-to
+     * or moved-from, and \ref clear hasn't been called. Moving `*this` invalidates the view.
+     */
     string_view server_message() const noexcept { return msg_; }
 
-    /// Restores the object to its initial state.
+    /**
+     * \brief Clears the error message.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void clear() noexcept { msg_.clear(); }
 
 private:
@@ -54,6 +68,8 @@ private:
 /**
  * \relates diagnostics
  * \brief Compares two diagnostics objects.
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept
 {
@@ -63,6 +79,8 @@ inline bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept
 /**
  * \relates diagnostics
  * \brief Compares two diagnostics objects.
+ * \par Exception safety
+ * No-throw guarantee.
  */
 inline bool operator!=(const diagnostics& lhs, const diagnostics& rhs) noexcept { return !(lhs == rhs); }
 

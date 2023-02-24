@@ -26,8 +26,9 @@ commit them using `COMMIT` and rolling them back using `ROLLBACK`.
   will produce an error.
 * At the moment, there is no equivalent to
   [@https://dev.mysql.com/doc/c-api/8.0/en/mysql-real-escape-string.html `mysql_real_escape_string`]
-  to sanitize user provided input. Doing composition by hand can
-  lead to SQL injection vulnerabilities. Please use [link mysql.prepared_statements prepared statements]
+  to sanitize user provided input. This limits text queries to queries without parameters.
+  Doing composition by hand can lead to SQL injection vulnerabilities.
+  Please use [link mysql.prepared_statements prepared statements]
   instead, which perform composition server-side in a safe way. 
 
 [warning

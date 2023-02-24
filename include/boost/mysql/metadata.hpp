@@ -30,30 +30,53 @@ class metadata
 public:
     /**
      * \brief Default constructor.
-     * \details The constructed metadata object will have undefined
+     * \details The constructed metadata object has undefined
      * values for all of its members.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
      */
     metadata() = default;
 
     /**
      * \brief Move constructor.
-     * \details `string_view`s obtained by calling accessor functions on `other` are invalidated.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * `string_view`s obtained by calling accessor functions on `other` are invalidated.
      */
     metadata(metadata&& other) = default;
 
-    /// Copy constructor
+    /**
+     * \brief Copy constructor.
+     *
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     */
     metadata(const metadata& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details `string_view`s obtained by calling accessor functions on both `*this` and `other`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * `string_view`s obtained by calling accessor functions on both `*this` and `other`
      * are invalidated.
      */
     metadata& operator=(metadata&& other) = default;
 
     /**
      * \brief Copy assignment.
-     * \details `string_view`s obtained by calling accessor functions on `*this`
+     *
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `string_view`s obtained by calling accessor functions on `*this`
      * are invalidated.
      */
     metadata& operator=(const metadata& other) = default;
@@ -66,6 +89,13 @@ public:
      * \details
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive and hasn't been
+     * assigned to or moved from.
      */
     string_view database() const noexcept { return schema_; }
 
@@ -76,6 +106,13 @@ public:
      *\n
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive and hasn't been
+     * assigned to or moved from.
      */
     string_view table() const noexcept { return table_; }
 
@@ -83,9 +120,16 @@ public:
      * \brief Returns the name of the physical table the column belongs to.
      * \details E.g. in `"SELECT * FROM employees emp"`,
      * `original_table()` will be `"employees"`.
-     *\n
+     * \n
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive and hasn't been
+     * assigned to or moved from.
      */
     string_view original_table() const noexcept { return org_table_; }
 
@@ -97,6 +141,13 @@ public:
      *\n
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive and hasn't been
+     * assigned to or moved from.
      */
     string_view column_name() const noexcept { return name_; }
 
@@ -104,55 +155,113 @@ public:
      * \brief Returns the original (physical) name of the column.
      * \details E.g. in `"SELECT id AS employee_id FROM employees"`,
      * `original_column_name()` will be `"id"`.
-     *\n
+     * \n
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive and hasn't been
+     * assigned to or moved from.
      */
     string_view original_column_name() const noexcept { return org_name_; }
 
     /**
      * \brief Returns the ID of the collation that fields belonging to this column use.
-     * \details This collation matches the character set and collation that
-     * fields belonging to this column use, rather than the collation used to
-     * define the column. It will almost always match the connection's collation.
+     * \details This is <b>not</b> the collation used when defining the column
+     * in a `CREATE TABLE` statement, but the collation that fields that belong to
+     * this column and are sent to the client have. It usually matches the connection's collation.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
      */
     std::uint16_t column_collation() const noexcept { return character_set_; }
 
-    /// Returns the maximum length of the column.
+    /**
+     * \brief Returns the maximum length of the column.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     unsigned column_length() const noexcept { return column_length_; }
 
-    /// Returns the type of the column (see \ref column_type for more info).
+    /**
+     * \brief  Returns the type of the column (see \ref column_type for more info).
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     column_type type() const noexcept { return type_; }
 
-    /// Returns the number of decimals of the column.
+    /**
+     * \brief  Returns the number of decimals of the column.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     unsigned decimals() const noexcept { return decimals_; }
 
-    /// Returns `true` if the column is not allowed to be NULL, `false` if it is nullable.
+    /**
+     * \brief Returns `true` if the column is not allowed to be NULL, `false` if it is nullable.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_not_null() const noexcept { return flag_set(detail::column_flags::not_null); }
 
-    /// Returns `true` if the column is part of a `PRIMARY KEY`.
+    /**
+     * \brief Returns `true` if the column is part of a `PRIMARY KEY`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_primary_key() const noexcept { return flag_set(detail::column_flags::pri_key); }
 
-    /// Returns `true` if the column is part of a `UNIQUE KEY` (but not a `PRIMARY KEY`).
+    /**
+     * \brief Returns `true` if the column is part of a `UNIQUE KEY` (but not a `PRIMARY KEY`).
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_unique_key() const noexcept { return flag_set(detail::column_flags::unique_key); }
 
-    /// Returns `true` if the column is part of a `KEY` (but not a `UNIQUE KEY` or `PRIMARY KEY`).
+    /**
+     * \brief Returns `true` if the column is part of a `KEY` (but not a `UNIQUE KEY` or `PRIMARY KEY`).
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_multiple_key() const noexcept { return flag_set(detail::column_flags::multiple_key); }
 
-    /// Returns `true` if the column has no sign (is `UNSIGNED`).
+    /**
+     * \brief Returns `true` if the column has no sign (is `UNSIGNED`).
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_unsigned() const noexcept { return flag_set(detail::column_flags::unsigned_); }
 
-    /// Returns `true` if the column is defined as `ZEROFILL` (padded to its maximum length by
-    /// zeros).
+    /**
+     * \brief Returns `true` if the column is defined as `ZEROFILL` (padded to its maximum length by
+     *        zeros).
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_zerofill() const noexcept { return flag_set(detail::column_flags::zerofill); }
 
-    /// Returns `true` if the column is defined as `AUTO_INCREMENT`.
+    /**
+     * \brief Returns `true` if the column is defined as `AUTO_INCREMENT`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_auto_increment() const noexcept { return flag_set(detail::column_flags::auto_increment); }
 
-    /// Returns `true` if the column does not have a default value.
+    /**
+     * \brief Returns `true` if the column does not have a default value.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool has_no_default_value() const noexcept { return flag_set(detail::column_flags::no_default_value); }
 
-    /// Returns `true` if the column is defined as `ON UPDATE CURRENT_TIMESTAMP`.
+    /**
+     * \brief Returns `true` if the column is defined as `ON UPDATE CURRENT_TIMESTAMP`.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool is_set_to_now_on_update() const noexcept { return flag_set(detail::column_flags::on_update_now); }
 
 private:

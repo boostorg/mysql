@@ -20,7 +20,7 @@ namespace mysql {
  * \brief A system_error with an embedded diagnostics object.
  * \details
  * Like `boost::system::system_error`, but adds a \ref diagnostics member
- * containing additional error-related information.
+ * containing additional information.
  */
 class error_with_diagnostics : public boost::system::system_error
 {
@@ -35,6 +35,11 @@ public:
 
     /**
      * \brief Retrieves the server diagnostics embedded in this object.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive.
      */
     const diagnostics& get_diagnostics() const noexcept { return diag_; }
 };

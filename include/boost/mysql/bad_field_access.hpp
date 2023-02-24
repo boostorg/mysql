@@ -18,6 +18,7 @@ namespace mysql {
 class bad_field_access : public std::exception
 {
 public:
+    /// Returns the error message.
     const char* what() const noexcept override { return "bad_value_access"; }
 };
 

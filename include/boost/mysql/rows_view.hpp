@@ -28,9 +28,10 @@ namespace mysql {
  * \n
  * A `rows_view` object points to memory owned by an external entity (like `string_view` does). The
  * validity of a `rows_view` object depends on how it was obtained:
+ * \n
  * \li If it was constructed from a \ref rows object (by calling \ref rows::operator rows_view()),
  *     the view acts as a reference to the `rows`' allocated memory, and is valid as long as
- *     references to that `rows` element's are valid.
+ *     references to that `rows` elements are valid.
  * \li If it was obtained by calling \ref connection::read_some_rows it's valid until the
  *     `connection` performs the next network call or is destroyed.
  * \n
@@ -40,7 +41,7 @@ namespace mysql {
  * \n
  * Calling any member function on an invalid view results in undefined behavior.
  * \n
- * Instances of this class are usually created by the library and not by the user.
+ * Instances of this class are usually created by the library, not by the user.
  */
 class rows_view
 {
@@ -58,11 +59,7 @@ public:
     /// \copydoc iterator
     using const_iterator = iterator;
 
-    /**
-     * \brief A type that can hold elements in this collection with value semantics.
-     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
-     * objects instead of `value_type` objects. You can use this type if you need an owning class.
-     */
+    /// A type that can hold elements in this collection with value semantics.
     using value_type = row;
 
     /// The reference type.
@@ -79,57 +76,111 @@ public:
 
     /**
      * \brief Construct an empty (but valid) view.
+     * \par Exception safety
+     * No-throw guarantee.
      */
     rows_view() = default;
 
     /**
      * \brief Returns an iterator to the first element in the collection.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     const_iterator begin() const noexcept { return iterator(fields_, num_columns_, 0); }
 
     /**
      * \brief Returns an iterator to one-past-the-last element in the collection.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     const_iterator end() const noexcept { return iterator(fields_, num_columns_, size()); }
 
     /**
      * \brief Returns the i-th row or throws an exception.
-     * \details Throws `std::out_of_range` if `i >= this->size()`.
+     * \par Exception safety
+     * Strong guranatee. Throws on invalid input.
+     * \throws std::out_of_range `i >= this->size()`
+     *
+     * \par Complexity
+     * Constant.
      */
     inline row_view at(std::size_t i) const;
 
     /**
      * \brief Returns the i-th row (unchecked access).
-     * \details Results in undefined behavior if `i >= this->size()`.
+     * \par Preconditions
+     * `i < this->size()`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     inline row_view operator[](std::size_t i) const noexcept;
 
     /**
      * \brief Returns the first row.
-     * \details Results in undefined behavior if `this->size() == 0`.
+     * \par Preconditions
+     * `this->size() > 0`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     row_view front() const noexcept { return (*this)[0]; }
 
     /**
      * \brief Returns the last row.
-     * \details Results in undefined behavior if `this->size() == 0`.
+     * \par Preconditions
+     * `this->size() > 0`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     row_view back() const noexcept { return (*this)[size() - 1]; }
 
     /**
      * \brief Returns true if there are no rows in the collection (i.e. `this->size() == 0`)
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     bool empty() const noexcept { return num_fields_ == 0; }
 
     /**
      * \brief Returns the number of rows in the collection.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     std::size_t size() const noexcept { return (num_columns_ == 0) ? 0 : (num_fields_ / num_columns_); }
 
     /**
      * \brief Returns the number of elements each row in the collection has.
-     * \details For every \ref row_view `r` obtained from this collection,
+     * \details For every \ref row_view object r obtained from this collection,
      * `r.size() == this->num_columns()`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     std::size_t num_columns() const noexcept { return num_columns_; }
 
@@ -137,11 +188,23 @@ public:
      * \brief Equality operator.
      * \details The containers are considered equal if they have the same number of rows and
      * they all compare equal, as defined by \ref row_view::operator==.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Linear on `this->size() * this->num_columns()`.
      */
     inline bool operator==(const rows_view& rhs) const noexcept;
 
     /**
      * \brief Inequality operator.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Linear on `this->size() * this->num_columns()`.
      */
     inline bool operator!=(const rows_view& rhs) const noexcept { return !(*this == rhs); }
 

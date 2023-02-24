@@ -62,7 +62,7 @@ use `double`.
 [section String types]
 
 String types (`CHAR`, `VARCHAR`, `TEXT`, `SET`...) are represented as string fields, which
-translates into [ref string_view] for `field_view` and `std::string` for `field`.
+translates into [reflink string_view] for `field_view` and `std::string` for `field`.
 
 This library performs no character set conversion on strings. All strings are provided
 as the server sends them. If you've issued a `"SET NAMES <charset-name>"` statement,
@@ -93,7 +93,7 @@ It is a type close to the protocol, rather than a vocabulary type. The main reas
 of a `std::chrono::time_point` type is that, under certain configurations, MySQL allows storing invalid
 dates, such as `2020-00-01`. These are not representable as a `std::chrono::time_point`.
 
-Unless dealing with these special values, we recommend converting `date`s to a `time_point` before using it.
+Unless dealing with these special values, we recommend converting `date`s to a `time_point` before using them.
 The member type [refmem date time_point] is a system-clock `time_point` that can represent the entire
 MySQL `DATE` range without problems. You can use [refmem date as_time_point] to perform the cast:
 
@@ -121,7 +121,7 @@ Both types are represented as [reflink datetime] in C++. `datetime` represents a
 having year, month, day, hour, minute, second and microseconds.
 
 MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`). The same considerations for
-`date` apply also to `datetime`:
+`date` apply:
 
 [field_datetime]
 
@@ -131,7 +131,7 @@ depend on the actual MySQL type:
 * __DATETIME__ is a "naive" time point object. It represents a time point without any time zone
   information at all. It is up to the user to interpret which time zone the object is in.
 * When a __TIMESTAMP__ object is inserted, it is interpreted  to be in the connection's local time zone,
-  as given by the __time_zone__ variable, and converted to UTC for storage. When retrieved, they are converted back
+  as given by the __time_zone__ variable, and converted to UTC for storage. When retrieved, it is converted back
   to the time zone indicated by __time_zone__. The retrieved value of a `TIMESTAMP`
   field is thus a time point in some local time zone, dictated by the current
   __time_zone__ variable. As this variable can be changed programmatically from SQL, without
@@ -148,7 +148,7 @@ a timestamp filter. This is what our prepared statements would look like:
 [field_timestamp_stmts]
 
 These statements may be run from different parts of our code, or even from different applications.
-To get consistent results, we must make sure that timestamps are interpreted in the right time zone.
+To get consistent results, we must make sure that the time zones used during insertion and retrieval are the same.
 By default, __time_zone__ gets set to `SYSTEM`, which will use the server's time zone settings.
 This is not what we want here, so let's change it:
 
@@ -189,8 +189,7 @@ available accesors for `field_view` and `field`.
 The following table reflects mapping from database types to C++ types.
 The range column shows the range of values that MySQL admits for that type. This library
 guarantees that any field retrieved from the database honors that range. The `column_type`
-column shows what [refmem metadata type] would return for a column of that type. Additional
-considerations are listed below.
+column shows what [refmem metadata type] would return for a column of that type.
 
 [table
     [
@@ -202,7 +201,7 @@ considerations are listed below.
         [Considerations]
     ]
     [
-        [__TINYINT__, signed]
+        [__TINYINT__]
         [`int64`]
         [`std::int64_t`]
         [`-0x80` to `0x7f`]
@@ -210,7 +209,7 @@ considerations are listed below.
         [1 byte integer]
     ]
     [
-        [__TINYINT__, unsigned]
+        [__TINYINT__ `UNSIGNED`]
         [`uint64`]
         [`std::uint64_t`]
         [`0` to `0xff`]
@@ -218,7 +217,7 @@ considerations are listed below.
         [1 byte integer]
     ]
     [
-        [__SMALLINT__, signed]
+        [__SMALLINT__]
         [`int64`]
         [`std::int64_t`]
         [`-0x8000` to `0x7fff`]
@@ -226,7 +225,7 @@ considerations are listed below.
         [2 byte integer]
     ]
     [
-        [__SMALLINT__, unsigned]
+        [__SMALLINT__ `UNSIGNED`]
         [`uint64`]
         [`std::uint64_t`]
         [`0` to `0xffff`]
@@ -234,7 +233,7 @@ considerations are listed below.
         [2 byte integer]
     ]
     [
-        [__MEDIUMINT__, signed]
+        [__MEDIUMINT__]
         [`int64`]
         [`std::int64_t`]
         [`-0x800000` to `0x7fffff`]
@@ -242,7 +241,7 @@ considerations are listed below.
         [3 byte integer]
     ]
     [
-        [__MEDIUMINT__, unsigned]
+        [__MEDIUMINT__ `UNSIGNED`]
         [`uint64`]
         [`std::uint64_t`]
         [`0` to `0xffffff`]
@@ -250,7 +249,7 @@ considerations are listed below.
         [3 byte integer]
     ]
     [
-        [__INT__, signed]
+        [__INT__]
         [`int64`]
         [`std::int64_t`]
         [`-0x80000000` to `0x7fffffff`]
@@ -258,7 +257,7 @@ considerations are listed below.
         [4 byte integer]
     ]
     [
-        [__INT__, unsigned]
+        [__INT__ `UNSIGNED`]
         [`uint64`]
         [`std::uint64_t`]
         [`0` to `0xffffffff`]
@@ -266,7 +265,7 @@ considerations are listed below.
         [4 byte integer]
     ]
     [
-        [__BIGINT__, signed]
+        [__BIGINT__]
         [`int64`]
         [`std::int64_t`]
         [`-0x8000000000000000` to `0x7fffffffffffffff`]
@@ -274,7 +273,7 @@ considerations are listed below.
         [8 byte integer]
     ]
     [
-        [__BIGINT__, unsigned]
+        [__BIGINT__ `UNSIGNED`]
         [`uint64`]
         [`std::uint64_t`]
         [`0` and `0xffffffffffffffff`]
@@ -290,7 +289,7 @@ considerations are listed below.
         [
             1 byte integer type used to represent years
 
-            Zero is often employed to represent invalid year values. We represent zero year here as a numeric 0.
+            Zero is often employed to represent invalid year values. We represent zero year as a numeric 0.
         ]
     ]
     [

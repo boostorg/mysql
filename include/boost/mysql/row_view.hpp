@@ -29,7 +29,7 @@ namespace mysql {
  * \n
  * \li If it was constructed from a \ref row object (by calling \ref row::operator row_view()), the
  *     view acts as a reference to the row's allocated memory, and is valid as long as references
- *     to that row element's are valid.
+ *     to that row elements are valid.
  * \li If it was obtained by indexing a \ref rows object, the same applies.
  * \li If it was obtained by indexing a \ref rows_view object, it's valid as long as the
  *    `rows_view` is valid.
@@ -38,15 +38,17 @@ namespace mysql {
  * \n
  * When indexed (by using iterators, \ref row_view::at or \ref row_view::operator[]), it returns
  * \ref field_view elements that are valid as long as the underlying storage that `*this` points
- * to is valid. Destroying a `row_view` doesn't invalidate references `field_view`s obtained from
+ * to is valid. Destroying a `row_view` doesn't invalidate `field_view`s obtained from
  * it.
- * \n Instances of this class are usually created by the library and not by the user.
+ * \n Instances of this class are usually created by the library, not by the user.
  */
 class row_view
 {
 public:
     /**
      * \brief Constructs an empty (but valid) view.
+     * \par Exception safety
+     * No-throw guarantee.
      */
     row_view() = default;
 
@@ -63,11 +65,7 @@ public:
     /// \copydoc iterator
     using const_iterator = iterator;
 
-    /**
-     * \brief A type that can hold elements in this collection with value semantics.
-     * \details Note that element accesors (like \ref row_view::operator[]) return \ref reference
-     * objects instead of `value_type` objects. You can use this type if you need an owning class.
-     */
+    /// A type that can hold elements in this collection with value semantics.
     using value_type = field;
 
     /// The reference type.
@@ -84,45 +82,91 @@ public:
 
     /**
      * \brief Returns an iterator to the first field in the row.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     iterator begin() const noexcept { return fields_; }
 
     /**
      * \brief Returns an iterator to one-past-the-last field in the row.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     iterator end() const noexcept { return fields_ + size_; }
 
     /**
      * \brief Returns the i-th element in the row or throws an exception.
-     * \details Throws `std::out_of_range` if `i >= this->size()`.
+     * \par Exception safety
+     * Strong guranatee. Throws on invalid input.
+     * \throws std::out_of_range `i >= this->size()`
+     *
+     * \par Complexity
+     * Constant.
      */
     inline field_view at(std::size_t i) const;
 
     /**
      * \brief Returns the i-th element in the row (unchecked access).
-     * \details Results in undefined behavior if `i >= this->size()`.
+     * \par Preconditions
+     * `i < this->size()`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
 
     /**
      * \brief Returns the first element in the row.
-     * \details Results in undefined behavior if `this->size() == 0`.
+     * \par Preconditions
+     * `this->size() > 0`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     field_view front() const noexcept { return *fields_; }
 
     /**
      * \brief Returns the last element in the row.
-     * \details Results in undefined behavior if `this->size() == 0`.
+     * \par Preconditions
+     * `this->size() > 0`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     field_view back() const noexcept { return fields_[size_ - 1]; }
 
     /**
-     * \brief Returns true if there are no fields in the row (i.e. `this->size() == 0`)
+     * \brief Returns true if there are no fields in the row (i.e. `this->size() == 0`).
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     bool empty() const noexcept { return size_ == 0; }
 
     /**
      * \brief Returns the number of fields in the row.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     std::size_t size() const noexcept { return size_; }
 
@@ -130,6 +174,12 @@ public:
      * \brief Converts the row into a `std::vector` of \ref field's.
      * \details As \ref row objects are read-only, you can use this function if you need to mutate
      * fields in a row.
+     *
+     * \par Exception safety
+     * Basic guarantee. Allocations may throw.
+     *
+     * \par Complexity
+     * Linear in `this->size()`.
      */
     template <class Allocator>
     void as_vector(std::vector<field, Allocator>& out) const
@@ -161,12 +211,24 @@ private:
  * \brief Equality operator.
  * \details The containers are considered equal if they have the same number of elements and they
  * all compare equal, as defined by \ref field_view::operator==.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Complexity
+ * Linear in `lhs.size()` and `rhs.size()`.
  */
 inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
 
 /**
  * \relates row_view
  * \brief Inequality operator.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ *
+ * \par Complexity
+ * Linear in `lhs.size()` and `rhs.size()`.
  */
 inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { return !(lhs == rhs); }
 

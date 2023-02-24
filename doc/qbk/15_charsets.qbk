@@ -30,8 +30,8 @@ Every connection has an associated character set and collation. The connection's
 the encoding for character strings sent to and retrieved from the server. This includes SQL query strings,
 string fields and column names in metadata. The connection's collation is used for string literal comparison.
 
-Every session you establish can have its own different connection
-character set and collation. You can specify them in two ways:
+Every session you establish can have its own different
+character set and collation. You can specify this in two ways:
 
 * When calling [refmem connection connect] or [refmem connection handshake], using
   [refmem handshake_params connection_collation]. You specify a numeric ID that identifies
@@ -66,8 +66,8 @@ The ones that impact this library's behavior are:
   the SQL strings in [refmem connection query], [refmem connection prepare_statement], and
   string parameters passed to [refmem connection execute_statement].
 
-  `character_set_client` doesn't allow all character sets. While it will accept `utf8`, it
-  doesn't allow `utf16`.
+  Not all character sets are permissible in `character_set_client`. The server will accept setting
+  this variable to any UTF-8 character set, but won't accept UTF-16.
 * [mysqllink server-system-variables.html#sysvar_character_set_results character_set_results]
   determines the encoding that the server will use to send any kind of result, including
   string fields retrieved by [refmem connection query] and [refmem connection execute_statement], metadata

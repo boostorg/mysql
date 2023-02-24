@@ -33,12 +33,11 @@
 
 /// The Boost libraries namespace.
 namespace boost {
-/// Boost.Mysql library namespace.
+/// Boost.MySQL library namespace.
 namespace mysql {
 
 /**
  * \brief A connection to a MySQL server.
- *
  * \details
  * Represents a connection to a MySQL server.
  *\n
@@ -46,6 +45,12 @@ namespace mysql {
  * is accessed by functions involving network operations, as well as session state. You can access
  * the stream using \ref connection::stream, and its executor via \ref connection::get_executor. The
  * executor used by this object is always the same as the underlying stream.
+ *\n
+ * \par Thread safety
+ * Distinct objects: safe. \n
+ * Shared objects: unsafe. \n
+ * This class is <b>not thread-safe</b>: for a single object, if you
+ * call its member functions concurrently from separate threads, you will get a race condition.
  */
 template <class Stream>
 class connection
@@ -73,8 +78,13 @@ public:
     /**
      * \brief Initializing constructor.
      * \details
-     * As part of the initialization, a `Stream` object is created
-     * by forwarding any passed in arguments to its constructor.
+     * As part of the initialization, an internal `Stream` object is created.
+     *
+     * \par Exception safety
+     * Basic guarantee. Throws if the `Stream` constructor throws
+     * or if memory allocation for internal state fails.
+     *
+     * \param args Arguments to be forwarded to the `Stream` constructor.
      */
     template <
         class... Args,
@@ -86,10 +96,14 @@ public:
     /**
      * \brief Initializing constructor with buffer params.
      * \details
-     * As part of the initialization, a `Stream` object is created
-     * by forwarding any passed in arguments to its constructor.
-     *\n
-     * The internal connection buffers will be allocated according to `buff_params`.
+     * As part of the initialization, an internal `Stream` object is created.
+     *
+     * \par Exception safety
+     * Basic guarantee. Throws if the `Stream` constructor throws
+     * or if memory allocation for internal state fails.
+     *
+     * \param buff_params Specifies initial sizes for internal buffers.
+     * \param args Arguments to be forwarded to the `Stream` constructor.
      */
     template <
         class... Args,
@@ -101,14 +115,11 @@ public:
 
     /**
      * \brief Move constructor.
-     * \details \ref statement objects referencing `other` remain usable for I/O operations.
      */
     connection(connection&& other) = default;
 
     /**
      * \brief Move assignment.
-     * \details \ref statement objects referencing `other` remain usable for I/O operations.
-     * Statements referencing `*this` will no longer be usable.
      */
     connection& operator=(connection&& rhs) = default;
 
@@ -126,27 +137,50 @@ public:
     /// The `Stream` type this connection is using.
     using stream_type = Stream;
 
-    /// Retrieves the underlying Stream object.
-    Stream& stream() { return get_channel().stream().next_layer(); }
-
-    /// Retrieves the underlying Stream object.
-    const Stream& stream() const { return get_channel().stream().next_layer(); }
+    /**
+     * \brief Retrieves the underlying Stream object.
+     * \details
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    Stream& stream() noexcept { return get_channel().stream().next_layer(); }
 
     /**
-     * \brief Returns whether the connection uses SSL or not.
-     * \details This function always returns `false` if the underlying
+     * \brief Retrieves the underlying Stream object.
+     * \details
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    const Stream& stream() const noexcept { return get_channel().stream().next_layer(); }
+
+    /**
+     * \brief Returns whether the connection negotiated the use of SSL or not.
+     * \details
+     * This function can be used to determine whether you are using a SSL
+     * connection or not when using SSL negotiation.
+     * \n
+     * This function always returns `false` if the underlying
      * stream does not support SSL. This function always returns `false`
      * for connections that haven't been
      * established yet (handshake not run yet). If the handshake fails,
      * the return value is undefined.
-     *\n
-     * This function can be used to determine whether you are using a SSL
-     * connection or not when using SSL negotiation.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \returns Whether the connection is using SSL.
      */
     bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
 
     /**
      * \brief Returns the current metadata mode that this connection is using.
+     * \details
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \returns The matadata mode that will be used for queries and statement executions.
      */
     metadata_mode meta_mode() const noexcept { return get_channel().meta_mode(); }
 
@@ -154,24 +188,30 @@ public:
      * \brief Sets the metadata mode.
      * \details
      * Will affect any query and statement executions performed after the call.
-     *\n
-     * Calling this function while an asynchronous query or statement execution
-     * is outstanding causes unspecified results.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Preconditions
+     * No asynchronous operation should be outstanding when this function is called.
+     *
+     * \param v The new metadata mode.
      */
     void set_meta_mode(metadata_mode v) noexcept { get_channel().set_meta_mode(v); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
-     * \details This function is only available if `Stream` satisfies the
+     * \details
+     * This function is only available if `Stream` satisfies the
      * `SocketStream` concept.
-     *\n
+     * \n
      * Connects the underlying stream and performs the handshake
      * with the server. The underlying stream is closed in case of error. Prefer
      * this function to \ref connection::handshake.
-     *\n
+     * \n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
+     * \n
+     * `endpoint` should be convertible to `Stream::lowest_layer_type::endpoint_type`.
      */
     template <typename EndpointType>
     void connect(
@@ -187,10 +227,12 @@ public:
 
     /**
      * \copydoc connect
-     *\n
+     * \par Object lifetimes
      * The strings pointed to by `params` should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
-     *\n
+     * `endpoint` is copied as required and doesn't need to be kept alive.
+     *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -222,13 +264,12 @@ public:
 
     /**
      * \brief Performs the MySQL-level handshake.
-     * \details Does not connect the underlying stream.
+     * \details
+     * Does not connect the underlying stream.
      * If the `Stream` template parameter fulfills the `SocketConnection`
      * requirements, use \ref connection::connect instead of this function.
-     *\n
+     * \n
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
      */
     void handshake(const handshake_params& params, error_code& ec, diagnostics& diag);
 
@@ -237,10 +278,11 @@ public:
 
     /**
      * \copydoc handshake
-     *\n
-     * The strings pointed to by params should be kept alive by the caller
+     * \par Object lifetimes
+     * The strings pointed to by `params` should be kept alive by the caller
      * until the operation completes, as no copy is made by the library.
-     *\n
+     *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -268,13 +310,16 @@ public:
      * \brief Executes a SQL text query.
      * \details
      * Sends `query_string` to the server for execution and reads the response into `result`.
-     * `query_string` should be encoded using the connection's character set.
-     *\n
+     * query_string should be encoded using the connection's character set.
+     * \n
      * After this operation completes successfully, `result.has_value() == true`.
-     *\n
+     * \n
      * Metadata in `result` will be populated according to `this->meta_mode()`.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
+     * \n
+     * \par Security
+     * If you compose `query_string` by concatenating strings manually, <b>your code is
+     * vulnerable to SQL injection attacks</b>. If your query contains patameters unknown at
+     * compile time, use prepared statements instead of this function.
      */
     void query(string_view query_string, results& result, error_code&, diagnostics&);
 
@@ -284,10 +329,12 @@ public:
     /**
      * \copydoc query
      * \details
+     * \par Object lifetimes
      * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `query_string` __must be kept alive by the caller until the operation is
-     * initiated__.
-     *\n
+     * pointed to by `query_string` must be kept alive by the caller until the operation is
+     * initiated.
+     *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -315,18 +362,17 @@ public:
 
     /**
      * \brief Starts a text query as a multi-function operation.
-     * \details Writes the query request and reads the initial server response and the column
+     * \details
+     * Writes the query request and reads the initial server response and the column
      * metadata, but not the generated rows, if any. After this operation completes, `st` will have
      * \ref execution_state::meta populated, and may become \ref execution_state::complete
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
      * Metadata will be populated according to `this->meta_mode()`.
-     *\n
+     * \n
      * If the operation generated any rows, these <b>must</b> be read (by using
-     * \ref read_some_rows) before engaging in any further operation involving network reads.
+     * \ref read_some_rows) before engaging in any further network operation.
      * Otherwise, the results are undefined.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
-     *\n
+     * \n
      * `query_string` should be encoded using the connection's character set.
      */
     void start_query(string_view query_string, execution_state& st, error_code&, diagnostics&);
@@ -337,10 +383,12 @@ public:
     /**
      * \copydoc start_query
      * \details
+     * \par Object lifetimes
      * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `query_string` <b>must be kept alive by the caller until the operation is
-     * initiated</b>.
+     * pointed to by `query_string` must be kept alive by the caller until the operation is
+     * initiated.
      *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -369,9 +417,9 @@ public:
     /**
      * \brief Prepares a statement server-side.
      * \details
-     * This operation involves both reads and writes on the underlying stream.
-     *\n
      * `stmt` should be encoded using the connection's character set.
+     * \n
+     * The returned statement has `valid() == true`.
      */
     statement prepare_statement(string_view stmt, error_code&, diagnostics&);
 
@@ -381,10 +429,12 @@ public:
     /**
      * \copydoc prepare_statement
      * \details
+     * \par Object lifetimes
      * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `stmt` <b>must be kept alive by the caller until the operation is
-     * initiated</b>.
-     *\n
+     * pointed to by `stmt` must be kept alive by the caller until the operation is
+     * initiated.
+     *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code, boost::mysql::statement)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
@@ -411,19 +461,20 @@ public:
     /**
      * \brief Executes a prepared statement.
      * \details
-     * Executes the statement with the given parameters and reads the response into `result`.
-     *\n
+     * Executes a statement with the given parameters and reads the response into `result`.
+     * \n
      * After this operation completes successfully, `result.has_value() == true`.
-     *\n
+     * \n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
      * See the `FieldLikeTuple` concept defition for more info. You should pass exactly as many
      * parameters as `this->num_params()`, or the operation will fail with an error.
      * String parameters should be encoded using the connection's character set.
-     *\n
+     * \n
      * Metadata in `result` will be populated according to `conn.meta_mode()`, where `conn`
      * is the connection that prepared this statement.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
+     *
+     * \par Preconditions
+     *    `stmt.valid() == true`
      */
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
@@ -444,11 +495,13 @@ public:
 
     /**
      * \copydoc execute_statement
+     * \par Object lifetimes
      * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
      * type (like `string_view`), the caller must keep the values pointed by these references alive
      * until the operation is initiated. Value types will be copied/moved as required, so don't need
-     * to be kept alive.
+     * to be kept alive. It's not required to keep `stmt` alive, either.
      *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -495,19 +548,17 @@ public:
      * metadata, but not the generated rows, if any. After this operation completes, `st` will have
      * \ref execution_state::meta populated, and may become \ref execution_state::complete
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
-     * Metadata will be populated according to `conn.meta_mode()`, where `conn`
-     * is the connection that prepared this statement.
-     *\n
+     * Metadata will be populated according to `this->meta_mode()`.
+     * \n
      * If the operation generated any rows, these <b>must</b> be read (by using
      * \ref read_some_rows) before engaging in any further
      * operation involving server communication. Otherwise, the results are undefined.
-     *\n
+     * \n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
-     * See the `FieldLikeTuple` concept defition for more info. You should pass exactly as many
-     * parameters as `this->num_params()`, or the operation will fail with an error.
      * String parameters should be encoded using the connection's character set.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
+     *
+     * \par Preconditions
+     *    `stmt.valid() == true`
      */
     template <
         BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
@@ -529,11 +580,13 @@ public:
     /**
      * \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,diagnostics&)
      * \details
+     * \par Object lifetimes
      * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
      * type (like `string_view`), the caller must keep the values pointed by these references alive
      * until the operation is initiated. Value types will be copied/moved as required, so don't need
-     * to be kept alive.
+     * to be kept alive. It's not required to keep `stmt` alive, either.
      *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -580,17 +633,16 @@ public:
      * metadata, but not the generated rows, if any. After this operation completes, `st` will have
      * \ref execution_state::meta populated, and may become \ref execution_state::complete
      * if the operation did not generate any rows (e.g. it was an `UPDATE`).
-     *\n
+     * \n
      * If the operation generated any rows, these <b>must</b> be read (by using
      * \ref connection::read_some_rows) before engaging in any further
      * operation involving server communication. Otherwise, the results are undefined.
-     *\n
+     * \n
      * The statement actual parameters are passed as an iterator range.
-     * See the `FieldViewForwardIterator` concept defition for more info. You should pass exactly as
-     * many parameters as `this->num_params()`, or the operation will fail with an error. String
-     * parameters should be encoded using the connection's character set.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
+     * String parameters should be encoded using the connection's character set.
+     *
+     * \par Preconditions
+     *    `stmt.valid() == true`
      */
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
     void start_statement_execution(
@@ -614,9 +666,11 @@ public:
     /**
      * \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,diagnostics&)
      * \details
+     * \par Object lifetimes
      * If `CompletionToken` is deferred (like `use_awaitable`), the caller must keep objects in
      * the iterator range alive until the  operation is initiated.
      *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
@@ -660,10 +714,10 @@ public:
     /**
      * \brief Closes a statement, deallocating it from the server.
      * \details
-     * After this operation succeeds, `this->valid()` will return `false`, and no further functions
-     * may be called on this prepared statement, other than assignment.
-     *\n
-     * This operation involves only writes on the underlying stream.
+     * After this operation succeeds, `stmt` must not be used again for execution.
+     * \n
+     * \par Preconditions
+     *    `stmt.valid() == true`
      */
     void close_statement(const statement& stmt, error_code&, diagnostics&);
 
@@ -673,6 +727,10 @@ public:
     /**
      * \copydoc close_statement
      * \details
+     * \par Object lifetimes
+     * It is not required to keep `stmt` alive, as copies are made by the implementation as required.
+     *
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -708,10 +766,8 @@ public:
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
      * \n
-     * The returned view points into memory owned by `*this`. It will be valid until the
-     * underlying stream performs any other read operation or is destroyed.
-     *\n
-     * This operation involves only reads on the underlying stream.
+     * The returned view points into memory owned by `*this`. It will be valid until
+     * `*this` performs the next network operation or is destroyed.
      */
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& info);
 
@@ -721,6 +777,7 @@ public:
     /**
      * \copydoc read_some_rows
      * \details
+     * \par Handler signature
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
      */
@@ -750,13 +807,11 @@ public:
      * \details
      * If the server is alive, this function will complete without error.
      * If it's not, it will fail with the relevant network or protocol error.
-     *\n
+     * \n
      * Note that ping requests are treated as any other type of request at the protocol
      * level, and won't be prioritized anyhow by the server. If the server is stuck
      * in a long-running query, the ping request won't be answered until the query is
      * finished.
-     *\n
-     * This operation involves both reads and writes on the underlying stream.
      */
     void ping(error_code&, diagnostics&);
 
@@ -766,6 +821,8 @@ public:
     /**
      * \copydoc ping
      * \details
+     * \n
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -786,13 +843,9 @@ public:
      * \brief Closes the connection to the server.
      * \details
      * This function is only available if `Stream` satisfies the `SocketStream` concept.
-     *\n
+     * \n
      * Sends a quit request, performs the TLS shutdown (if required)
      * and closes the underlying stream. Prefer this function to \ref connection::quit.
-     *\n
-     * After calling this function, any \ref statement referencing `*this` will
-     * no longer be usable for server interaction.
-     *\n
      */
     void close(error_code&, diagnostics&);
 
@@ -802,6 +855,7 @@ public:
     /**
      * \copydoc close
      * \details
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -826,10 +880,7 @@ public:
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
      * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
-     *\n
-     * After calling this function, any \ref statement referencing `*this` will
-     * no longer be usable for server interaction.
-     *\n
+     * \n
      * If the `Stream` template parameter fulfills the `SocketConnection`
      * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.
@@ -842,6 +893,7 @@ public:
     /**
      * \copydoc quit
      * \details
+     * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -860,9 +912,10 @@ public:
 
     /**
      * \brief Rebinds the connection type to another executor.
-     * \details The Stream type must either provide a `rebind_executor`
+     * \details
+     * The `Stream` type must either provide a `rebind_executor`
      * member with the same semantics, or be an instantiation of `boost::asio::ssl::stream` with
-     * a Stream type providing a `rebind_executor` member.
+     * a `Stream` type providing a `rebind_executor` member.
      */
     template <typename Executor1>
     struct rebind_executor

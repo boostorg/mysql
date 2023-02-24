@@ -13,7 +13,7 @@
 namespace boost {
 namespace mysql {
 
-/// Type representing MySQL `__TIME__` data type.
+/// Type representing MySQL `TIME` data type.
 using time = std::chrono::microseconds;
 
 /// The minimum allowed value for \ref time.

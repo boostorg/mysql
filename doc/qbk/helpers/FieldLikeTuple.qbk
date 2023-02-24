@@ -13,12 +13,7 @@ concept `FieldLike`. Empty tuples satisfy `FieldLikeTuple`.
 
 Currently, a type `T2` satisfies `FieldLike` if a [reflink field_view]
 can be constructed from `T2`. The exact definition may change in future releases.
-However, the following types are guaranteed to satisfy `FieldLike`:
 
-* Built-in integer types, `float`, `double`, `date`, `datetime`, `time`
-  and `std::nullptr_t`, and references to them.
-* `std::string`, [reflink string_view], `std::string_view`, `const char*` and references to them.
-* `blob`, `blob_view` and references to them.
-* `field`, `field_view` and references to them.
+However, the types listed in [link mysql.fields.cpp_to_mysql this table] are guaranteed to satisfy `FieldLike`.
 
 [endsect]

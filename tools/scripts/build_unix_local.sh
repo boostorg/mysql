@@ -8,12 +8,12 @@
 
 set -e
 
-BK=b2
-IMAGE=build-gcc11
+BK=docs
+IMAGE=build-docs
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
 
-docker start mysql
+docker start mysql8
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
     -v ~/workspace/mysql:/opt/boost-mysql \
@@ -36,7 +36,5 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --stdlib=native
 
 if [ "$BK" == "docs" ]; then
-    usr=$(whoami)
-    sudo chown "$usr" -R ~/workspace/mysql/doc/html
-    sudo chgrp "$usr" -R ~/workspace/mysql/doc/html
+    cp -r ~/workspace/mysql/doc/html ~/workspace/boost-root/libs/mysql/doc/
 fi

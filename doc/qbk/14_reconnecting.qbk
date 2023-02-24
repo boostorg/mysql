@@ -13,7 +13,7 @@ supports it, you can re-open an existing connection. This is the case for
 
 [warning
   Unfortunately, [asioreflink ssl__stream ssl::stream] does not support reconnection.
-  If you are using [reflink tcp_ssl_connection] or [reflink unix_ssl_connection] and you close
+  If you are using [reflink tcp_ssl_connection] and you close
   the connection or encounter an error, you will have to destroy and re-create the connection object.
 ]
 
@@ -38,7 +38,7 @@ and closing the underlying stream, if necessary. Some guidelines:
 * If your [refmem connection handshake] operation failed, you are responsible for closing the underlying stream if required.
   You should then establish the physical connection again, and then call [refmem connection handshake].
 * If you connected your connection successfully but encountered a network problem in any subsequent operation,
-  and you would like to re-establish connection, you should first call [refmem connection quit] first, then close and re-open
+  and you would like to re-establish connection, you should call [refmem connection quit] first, then close and re-open
   the physical connection, and finally call [refmem connection handshake].
 
 Note that __Self__ does not perform any built-in retry strategy, as different use cases have different requirements.

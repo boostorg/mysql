@@ -10,7 +10,6 @@
 #include <boost/mysql.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ssl/context.hpp>
 
 #include <iostream>
 #include <tuple>
@@ -64,10 +63,11 @@ void main_impl(int argc, char** argv)
     );
 
     boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
 
-    // Connection to the MySQL server, over a UNIX socket
-    boost::mysql::unix_ssl_connection conn(ctx, ssl_ctx);
+    // Connection to the MySQL server, over a UNIX socket. Note that we don't need
+    // to use SSL when using UNIX sockets because it's restricted to the local machine,
+    // so MySQL considers it secure, even if it's not encrypted.
+    boost::mysql::unix_connection conn(ctx);
     conn.connect(ep, params);  // UNIX socket connect and MySQL handshake
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared

@@ -95,23 +95,17 @@ boostbook mysql
     :
         mysql_doc
     :
-        <xsl:param>boost.defaults=Boost
-        <xsl:param>"boost.root=https://www.boost.org/doc/libs/1_80_0"
-        <xsl:param>boost.graphics.root=images/
-        <xsl:param>nav.layout=none
-        # <xsl:param>boost.root=../../../..
+        <xsl:param>boost.root=../../../..
         <xsl:param>chapter.autolabel=1
         <xsl:param>chunk.section.depth=8                # Depth to which sections should be chunked
         <xsl:param>chunk.first.sections=1               # Chunk the first top-level section?
         <xsl:param>toc.section.depth=8                  # How deep should recursive sections appear in the TOC?
         <xsl:param>toc.max.depth=8                      # How many levels should be created for each TOC?
-        #<xsl:param>generate.toc=""
         <xsl:param>generate.toc="chapter toc,title section nop reference nop part toc"
         <include>../../../tools/boostbook/dtd
     :
         <dependency>images
     ;
-
 
 # These are used to inform the build system of the
 # means to build the integrated and stand-alone docs.
