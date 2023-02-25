@@ -13,74 +13,113 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
+#include <boost/mysql/detail/network_algorithms/execute.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
-#include <boost/mysql/detail/network_algorithms/read_all_rows.hpp>
-#include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
+#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <type_traits>
+#include <utility>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
-struct execute_statement_op : boost::asio::coroutine
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+com_stmt_execute_packet<FieldViewFwdIterator> make_stmt_execute_packet(
+    std::uint32_t stmt_id,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last
+) noexcept(std::is_nothrow_copy_constructible<FieldViewFwdIterator>::value)
 {
-    channel<Stream>& chan_;
-    diagnostics& diag_;
-    statement stmt_;
-    FieldLikeTuple params_;
-    results& output_;
+    return com_stmt_execute_packet<FieldViewFwdIterator>{
+        stmt_id,
+        std::uint8_t(0),   // flags
+        std::uint32_t(1),  // iteration count
+        std::uint8_t(1),   // new params flag: set
+        params_first,
+        params_last,
+    };
+}
 
+template <BOOST_MYSQL_FIELD_LIKE... T, std::size_t... I>
+std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, boost::mp11::index_sequence<I...>) noexcept
+{
+    return std::array<field_view, sizeof...(T)>{{field_view(std::get<I>(t))...}};
+}
+
+template <BOOST_MYSQL_FIELD_LIKE... T>
+std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
+{
+    return tuple_to_array_impl(t, boost::mp11::make_index_sequence<sizeof...(T)>());
+}
+
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+class stmt_it_execution_request : public execution_request
+{
+    std::uint32_t stmt_id_;
+    FieldViewFwdIterator first_;
+    FieldViewFwdIterator last_;
+
+public:
+    stmt_it_execution_request(std::uint32_t stmt_id, FieldViewFwdIterator first, FieldViewFwdIterator last)
+        : stmt_id_(stmt_id), first_(first), last_(last)
+    {
+    }
+
+    void serialize(capabilities caps, std::vector<std::uint8_t>& buffer) const override
+    {
+        auto request = make_stmt_execute_packet(stmt_id_, first_, last_);
+        serialize_message(request, caps, buffer);
+    }
+    resultset_encoding encoding() const override { return resultset_encoding::binary; }
+};
+
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+class stmt_tuple_execution_request : public execution_request
+{
+    std::uint32_t stmt_id_;
+    FieldLikeTuple params_;
+
+public:
     // We need a deduced context to enable perfect forwarding
     template <BOOST_MYSQL_FIELD_LIKE_TUPLE DeducedTuple>
-    execute_statement_op(
-        channel<Stream>& chan,
-        diagnostics& diag,
-        const statement& stmt,
-        DeducedTuple&& params,
-        results& output
-    ) noexcept
-        : chan_(chan), diag_(diag), stmt_(stmt), params_(std::forward<DeducedTuple>(params)), output_(output)
+    stmt_tuple_execution_request(std::uint32_t stmt_id, DeducedTuple&& params)
+        : stmt_id_(stmt_id), params_(std::forward<DeducedTuple>(params))
     {
     }
 
-    template <class Self>
-    void operator()(Self& self, error_code err = {})
+    void serialize(capabilities caps, std::vector<std::uint8_t>& buffer) const override
     {
-        // Error checking
-        if (err)
-        {
-            self.complete(err);
-            return;
-        }
-
-        // Normal path
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            BOOST_ASIO_CORO_YIELD
-            async_start_statement_execution(
-                chan_,
-                stmt_,
-                std::move(params_),
-                results_access::get_state(output_),
-                diag_,
-                std::move(self)
-            );
-
-            BOOST_ASIO_CORO_YIELD async_read_all_rows(
-                chan_,
-                results_access::get_state(output_),
-                results_access::get_rows(output_),
-                diag_,
-                std::move(self)
-            );
-
-            self.complete(error_code());
-        }
+        auto field_views = tuple_to_array(params_);
+        auto request = make_stmt_execute_packet(stmt_id_, field_views.begin(), field_views.end());
+        serialize_message(request, caps, buffer);
     }
+    resultset_encoding encoding() const override { return resultset_encoding::binary; }
 };
+
+inline error_code check_num_params(const statement& stmt, std::size_t param_count)
+{
+    return param_count == stmt.num_params() ? error_code() : make_error_code(client_errc::wrong_num_params);
+}
+
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+error_code check_num_params(
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last
+)
+{
+    return check_num_params(stmt, std::distance(params_first, params_last));
+}
+
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+error_code check_num_params(const statement& stmt, const FieldLikeTuple&)
+{
+    return check_num_params(stmt, std::tuple_size<FieldLikeTuple>::value);
+}
 
 }  // namespace detail
 }  // namespace mysql
@@ -96,11 +135,14 @@ void boost::mysql::detail::execute_statement(
     diagnostics& diag
 )
 {
-    start_statement_execution(channel, stmt, params, results_access::get_state(output), err, diag);
-    if (err)
-        return;
-
-    read_all_rows(channel, results_access::get_state(output), results_access::get_rows(output), err, diag);
+    execute(
+        channel,
+        check_num_params(stmt, params),
+        stmt_tuple_execution_request<FieldLikeTuple>(stmt.id(), params),  // TODO: this is optimizable
+        results_access::get_state(output),
+        err,
+        diag
+    );
 }
 
 template <
@@ -118,16 +160,107 @@ boost::mysql::detail::async_execute_statement(
 )
 {
     using decayed_tuple = typename std::decay<FieldLikeTuple>::type;
-    return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        execute_statement_op<Stream, decayed_tuple>(
-            chan,
-            diag,
-            stmt,
-            std::forward<FieldLikeTuple>(params),
-            output
+    return async_execute(
+        chan,
+        check_num_params(stmt, params),
+        std::unique_ptr<execution_request>(
+            new stmt_tuple_execution_request<decayed_tuple>(std::forward<FieldLikeTuple>(params))
         ),
-        token,
-        chan
+        results_access::get_state(output),
+        diag,
+        std::forward<CompletionToken>(token)
+    );
+}
+
+template <class Stream, BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+void boost::mysql::detail::start_statement_execution(
+    channel<Stream>& chan,
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& output,
+    error_code& err,
+    diagnostics& diag
+)
+{
+    start_execution(
+        chan,
+        check_num_params(stmt, params_first, params_last),
+        false,
+        stmt_it_execution_request<FieldViewFwdIterator>(stmt.id(), params_first, params_last),
+        output.impl_,
+        err,
+        diag
+    );
+}
+
+template <
+    class Stream,
+    BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::async_start_statement_execution(
+    channel<Stream>& chan,
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& output,
+    diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    return async_start_execution(
+        chan,
+        check_num_params(stmt, params_first, params_last),
+        false,
+        std::unique_ptr<execution_request>(
+            new stmt_it_execution_request<FieldViewFwdIterator>(stmt.id(), params_first, params_last)
+        ),
+        output.impl_,
+        diag,
+        std::forward<CompletionToken>(token)
+    );
+}
+
+template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+void boost::mysql::detail::start_statement_execution(
+    channel<Stream>& channel,
+    const statement& stmt,
+    const FieldLikeTuple& params,
+    execution_state& output,
+    error_code& err,
+    diagnostics& diag
+)
+{
+    auto params_array = tuple_to_array(params);
+    start_statement_execution(channel, stmt, params_array.begin(), params_array.end(), output, err, diag);
+}
+
+template <
+    class Stream,
+    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::detail::async_start_statement_execution(
+    channel<Stream>& chan,
+    const statement& stmt,
+    FieldLikeTuple&& params,
+    execution_state& output,
+    diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    using decayed_tuple = typename std::decay<FieldLikeTuple>::type;
+    return async_start_execution(
+        chan,
+        check_num_params(stmt, std::tuple_size<decayed_tuple>::value),
+        false,
+        std::unique_ptr<execution_request>(
+            new stmt_tuple_execution_request<decayed_tuple>(std::forward<FieldLikeTuple>(params))
+        ),
+        output.impl_,
+        diag,
+        std::forward<CompletionToken>(token)
     );
 }
 

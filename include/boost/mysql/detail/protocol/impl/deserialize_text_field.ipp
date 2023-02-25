@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_TEXT_FIELD_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_TEXT_FIELD_IPP
 
+#include <boost/mysql/blob_view.hpp>
 #pragma once
 
 #include <boost/mysql/detail/auxiliar/datetime.hpp>
@@ -68,14 +69,15 @@ deserialize_errc deserialize_text_value_float(string_view from, field_view& to) 
 }
 
 // Strings
-inline deserialize_errc deserialize_text_value_string(
-    string_view from,
-    field_view& to,
-    const std::uint8_t* buffer_first,
-    bool is_blob
-) noexcept
+inline deserialize_errc deserialize_text_value_string(string_view from, field_view& to) noexcept
 {
-    to = field_view_access::construct(string_view_offset::from_sv(from, buffer_first), is_blob);
+    to = field_view(from);
+    return deserialize_errc::ok;
+}
+
+inline deserialize_errc deserialize_text_value_blob(string_view from, field_view& to) noexcept
+{
+    to = field_view(blob_view(reinterpret_cast<const unsigned char*>(from.data()), from.size()));
     return deserialize_errc::ok;
 }
 
@@ -269,7 +271,6 @@ inline deserialize_errc deserialize_text_value_time(
 inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_text_field(
     string_view from,
     const metadata& meta,
-    const std::uint8_t* buffer_first,
     field_view& output
 )
 {
@@ -294,13 +295,13 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_
     case column_type::text:
     case column_type::enum_:
     case column_type::set:
-    case column_type::decimal: return deserialize_text_value_string(from, output, buffer_first, false);
+    case column_type::decimal: return deserialize_text_value_string(from, output);
     // Blobs and anything else
     case column_type::binary:
     case column_type::varbinary:
     case column_type::blob:
     case column_type::geometry:
-    default: return deserialize_text_value_string(from, output, buffer_first, true);
+    default: return deserialize_text_value_blob(from, output);
     }
 }
 

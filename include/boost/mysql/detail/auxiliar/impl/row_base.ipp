@@ -11,6 +11,8 @@
 #pragma once
 
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
+#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/impl/field_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -36,6 +38,38 @@ inline unsigned char* copy_string(unsigned char* buffer_it, field_view& f) noexc
         buffer_it += str.size();
     }
     return buffer_it;
+}
+
+inline std::size_t copy_string_as_offset(
+    unsigned char* buffer_first,
+    std::size_t offset,
+    field_view& f
+) noexcept
+{
+    auto str = f.get_string();
+    if (!str.empty())
+    {
+        std::memcpy(buffer_first + offset, str.data(), str.size());
+        f = field_view_access::construct(string_view_offset(offset, str.size()), false);
+        return str.size();
+    }
+    return 0;
+}
+
+inline std::size_t copy_blob_as_offset(
+    unsigned char* buffer_first,
+    std::size_t offset,
+    field_view& f
+) noexcept
+{
+    auto str = f.get_blob();
+    if (!str.empty())
+    {
+        std::memcpy(buffer_first + offset, str.data(), str.size());
+        f = field_view_access::construct(string_view_offset(offset, str.size()), true);
+        return str.size();
+    }
+    return 0;
 }
 
 inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcept
@@ -84,8 +118,8 @@ inline void boost::mysql::detail::row_base::copy_strings()
         size += get_string_size(f);
     }
 
-    // Make space
-    string_buffer_.resize(size);
+    // Make space. The previous fields should be in offset form
+    string_buffer_.resize(string_buffer_.size() + size);
 
     // Copy strings and blobs
     unsigned char* buffer_it = string_buffer_.data();
@@ -99,6 +133,38 @@ inline void boost::mysql::detail::row_base::copy_strings()
         }
     }
     assert(buffer_it == string_buffer_.data() + string_buffer_.size());
+}
+
+inline void boost::mysql::detail::row_base::copy_strings_as_offsets(std::size_t first, std::size_t num_fields)
+{
+    // Preconditions
+    assert(first < fields_.size());
+    assert(first + num_fields < fields_.size());
+
+    // Calculate the required size for the new strings
+    std::size_t size = 0;
+    for (std::size_t i = first; i < first + num_fields; ++i)
+    {
+        size += get_string_size(fields_[i]);
+    }
+
+    // Make space. The previous fields should be in offset form
+    std::size_t old_string_buffer_size = string_buffer_.size();
+    string_buffer_.resize(old_string_buffer_size + size);
+
+    // Copy strings and blobs
+    std::size_t offset = old_string_buffer_size;
+    for (std::size_t i = first; i < first + num_fields; ++i)
+    {
+        auto& f = fields_[i];
+        switch (f.kind())
+        {
+        case field_kind::string: offset += copy_string_as_offset(string_buffer_.data(), offset, f); break;
+        case field_kind::blob: offset += copy_blob_as_offset(string_buffer_.data(), offset, f); break;
+        default: break;
+        }
+    }
+    assert(offset == string_buffer_.size());
 }
 
 #endif

@@ -15,6 +15,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 #include <cassert>
 
@@ -109,7 +110,7 @@ public:
     rows_view rows() const noexcept
     {
         assert(has_value());
-        return rows_;
+        return st_.get_rows();
     }
 
     /**
@@ -132,7 +133,7 @@ public:
     metadata_collection_view meta() const noexcept
     {
         assert(has_value());
-        return st_.meta();
+        return st_.current_resultset_meta();  // TODO: this is wrong
     }
 
     /**
@@ -146,7 +147,7 @@ public:
     std::uint64_t affected_rows() const noexcept
     {
         assert(has_value());
-        return st_.affected_rows();
+        return st_.per_result_.front().affected_rows;
     }
 
     /**
@@ -160,7 +161,7 @@ public:
     std::uint64_t last_insert_id() const noexcept
     {
         assert(has_value());
-        return st_.last_insert_id();
+        return st_.per_result_.front().last_insert_id;
     }
 
     /**
@@ -174,7 +175,7 @@ public:
     unsigned warning_count() const noexcept
     {
         assert(has_value());
-        return st_.warning_count();
+        return st_.per_result_.front().warnings;
     }
 
     /**
@@ -199,13 +200,11 @@ public:
     string_view info() const noexcept
     {
         assert(has_value());
-        return st_.info();
+        return string_view(st_.info_.data(), st_.info_.size());  // TODO: this is wrong
     }
 
 private:
-    execution_state st_;
-    ::boost::mysql::rows rows_;
-
+    detail::execution_state_impl st_;
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::results_access;
 #endif

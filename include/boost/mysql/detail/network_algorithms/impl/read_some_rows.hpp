@@ -51,7 +51,6 @@ inline rows_view process_some_rows(
             message,
             channel.current_capabilities(),
             channel.flavor(),
-            channel.buffer_first(),
             st,
             channel.shared_fields(),
             err,
@@ -68,7 +67,6 @@ inline rows_view process_some_rows(
             break;
         ++num_rows;
     }
-    offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
 
     return rows_view_access::construct(
         channel.shared_fields().data(),

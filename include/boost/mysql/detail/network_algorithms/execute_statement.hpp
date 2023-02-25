@@ -46,6 +46,56 @@ async_execute_statement(
     CompletionToken&& token
 );
 
+template <class Stream, BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+void start_statement_execution(
+    channel<Stream>& channel,
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& output,
+    error_code& err,
+    diagnostics& diag
+);
+
+template <
+    class Stream,
+    BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_start_statement_execution(
+    channel<Stream>& chan,
+    const statement& stmt,
+    FieldViewFwdIterator params_first,
+    FieldViewFwdIterator params_last,
+    execution_state& output,
+    diagnostics& diag,
+    CompletionToken&& token
+);
+
+template <class Stream, BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+void start_statement_execution(
+    channel<Stream>& channel,
+    const statement& stmt,
+    const FieldLikeTuple& params,
+    execution_state& output,
+    error_code& err,
+    diagnostics& diag
+);
+
+template <
+    class Stream,
+    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_start_statement_execution(
+    channel<Stream>& chan,
+    const statement& stmt,
+    FieldLikeTuple&& params,
+    execution_state& output,
+    diagnostics& diag,
+    CompletionToken&& token
+);
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost

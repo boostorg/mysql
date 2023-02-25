@@ -18,19 +18,28 @@
 
 struct boost::mysql::detail::execution_state_access
 {
-    static void reset(execution_state& st, detail::resultset_encoding encoding) noexcept
+    static void reset(
+        execution_state& st,
+        detail::resultset_encoding encoding,
+        bool append_mode = false
+    ) noexcept
     {
         st.seqnum_ = 0;
         st.encoding_ = encoding;
         st.meta_.clear();
-        st.eof_received_ = false;
+        st.state_ = execution_state::state_t::initial;
+        st.append_mode_ = append_mode;
     }
 
-    static void complete(execution_state& st, const detail::ok_packet& pack)
+    static void on_ok_packet(execution_state& st, const detail::ok_packet& pack)
     {
         st.affected_rows_ = pack.affected_rows.value;
         st.last_insert_id_ = pack.last_insert_id.value;
         st.warnings_ = pack.warnings;
+        if (st.append_mode_)
+        {
+            st.info_.in
+        }
         st.info_.assign(pack.info.value.begin(), pack.info.value.end());
         st.eof_received_ = true;
     }

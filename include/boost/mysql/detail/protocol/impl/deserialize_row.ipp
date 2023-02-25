@@ -8,6 +8,9 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_ROW_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_ROW_IPP
 
+#include <boost/mysql/metadata_collection_view.hpp>
+
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #pragma once
 
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
@@ -30,14 +33,13 @@ inline bool is_next_field_null(const deserialization_context& ctx)
 
 inline error_code deserialize_text_row(
     deserialization_context& ctx,
-    const std::vector<metadata>& fields,
-    const std::uint8_t* buffer_first,
+    metadata_collection_view meta,
     std::vector<field_view>& output
 )
 {
     // Make space
     std::size_t old_size = output.size();
-    auto num_fields = fields.size();
+    auto num_fields = meta.size();
     output.resize(old_size + num_fields);
 
     for (std::vector<field_view>::size_type i = 0; i < num_fields; ++i)
@@ -53,7 +55,7 @@ inline error_code deserialize_text_row(
             auto err = deserialize(ctx, value_str);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
-            err = deserialize_text_field(value_str.value, fields[i], buffer_first, output[old_size + i]);
+            err = deserialize_text_field(value_str.value, meta[i], output[old_size + i]);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
         }
@@ -65,8 +67,7 @@ inline error_code deserialize_text_row(
 
 inline error_code deserialize_binary_row(
     deserialization_context& ctx,
-    const std::vector<metadata>& meta,
-    const std::uint8_t* buffer_first,
+    metadata_collection_view meta,
     std::vector<field_view>& output
 )
 {
@@ -97,7 +98,7 @@ inline error_code deserialize_binary_row(
         }
         else
         {
-            auto err = deserialize_binary_field(ctx, meta[i], buffer_first, output[old_size + i]);
+            auto err = deserialize_binary_field(ctx, meta[i], output[old_size + i]);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
         }
@@ -117,29 +118,26 @@ inline error_code deserialize_binary_row(
 void boost::mysql::detail::deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
-    const std::vector<metadata>& meta,
-    const std::uint8_t* buffer_first,
+    metadata_collection_view meta,
     std::vector<field_view>& output,
     error_code& err
 )
 {
-    err = encoding == detail::resultset_encoding::text
-              ? deserialize_text_row(ctx, meta, buffer_first, output)
-              : deserialize_binary_row(ctx, meta, buffer_first, output);
+    err = encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output)
+                                                       : deserialize_binary_row(ctx, meta, output);
 }
 
 void boost::mysql::detail::deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     db_flavor flavor,
-    const std::uint8_t* buffer_first,  // to store strings as offsets and allow buffer reallocation
-    execution_state& st,
+    execution_state_impl& st,
     std::vector<field_view>& output,
     error_code& err,
     diagnostics& diag
 )
 {
-    assert(!st.complete());
+    assert(st.should_read_rows());
 
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
@@ -158,7 +156,7 @@ void boost::mysql::detail::deserialize_row(
         err = deserialize_message(ctx, ok_pack);
         if (err)
             return;
-        execution_state_access::complete(st, ok_pack);
+        st.on_ok_packet(ok_pack);
     }
     else if (msg_type == error_packet_header)
     {
@@ -169,14 +167,7 @@ void boost::mysql::detail::deserialize_row(
     {
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        deserialize_row(
-            execution_state_access::get_encoding(st),
-            ctx,
-            execution_state_access::get_metadata(st),
-            buffer_first,
-            output,
-            err
-        );
+        deserialize_row(st.encoding(), ctx, st.current_resultset_meta(), output, err);
     }
 }
 

@@ -29,7 +29,6 @@ namespace detail {
 inline deserialize_errc deserialize_binary_field_string(
     deserialization_context& ctx,
     field_view& output,
-    const std::uint8_t* buffer_first,
     bool is_blob
 ) noexcept
 {
@@ -37,10 +36,16 @@ inline deserialize_errc deserialize_binary_field_string(
     auto err = deserialize(ctx, deser);
     if (err != deserialize_errc::ok)
         return err;
-    output = detail::field_view_access::construct(
-        detail::string_view_offset::from_sv(deser.value, buffer_first),
-        is_blob
-    );
+    if (is_blob)
+    {
+        output = field_view(
+            blob_view(reinterpret_cast<const unsigned char*>(deser.value.data()), deser.value.size())
+        );
+    }
+    else
+    {
+        output = field_view(deser.value);
+    }
     return deserialize_errc::ok;
 }
 
@@ -269,7 +274,6 @@ inline deserialize_errc deserialize_binary_field_time(
 inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_binary_field(
     deserialization_context& ctx,
     const metadata& meta,
-    const std::uint8_t* buffer_first,
     field_view& output
 )
 {
@@ -298,13 +302,13 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_
     case column_type::text:
     case column_type::enum_:
     case column_type::set:
-    case column_type::decimal: return deserialize_binary_field_string(ctx, output, buffer_first, false);
+    case column_type::decimal: return deserialize_binary_field_string(ctx, output, false);
     // Blobs and anything else
     case column_type::binary:
     case column_type::varbinary:
     case column_type::blob:
     case column_type::geometry:
-    default: return deserialize_binary_field_string(ctx, output, buffer_first, true);
+    default: return deserialize_binary_field_string(ctx, output, true);
     }
 }
 

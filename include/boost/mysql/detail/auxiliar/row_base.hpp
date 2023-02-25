@@ -31,15 +31,29 @@ public:
     row_base& operator=(row_base&&) = default;
     ~row_base() = default;
 
+    // Used by row/rows in assignment from view
     inline void assign(const field_view* fields, std::size_t size);
+
+    // Internal use only
     inline void copy_strings();
+
+    // Used by execute() to save strings into our buffer
+    inline void copy_strings_as_offsets(std::size_t first, std::size_t num_fields);
+
+    // Used by execute() to restore sv offsets into string views, once all rows have been read
+    inline void offsets_to_string_views()
+    {
+        for (auto& f : fields_)
+            field_view_access::offset_to_string_view(f, string_buffer_.data());
+    }
+
+    // Used by execute() as first thing to do
     inline void clear() noexcept
     {
         fields_.clear();
         string_buffer_.clear();
     }
 
-protected:
     std::vector<field_view> fields_;
 
 private:

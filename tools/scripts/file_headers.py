@@ -168,6 +168,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.svg', IgnoreProcessor()),
     ('valgrind_suppressions.txt', IgnoreProcessor()),
     ('.pem', IgnoreProcessor()),
+    ('.md', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
