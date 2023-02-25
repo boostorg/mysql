@@ -18,16 +18,14 @@
 #include <tuple>
 #include <utility>
 
+#include "printing.hpp"
 #include "test_common.hpp"
 
 using boost::mysql::field_view;
 using boost::mysql::row_view;
 using boost::mysql::rows;
 using boost::mysql::rows_view;
-using boost::mysql::detail::rows_view_access;
 using namespace boost::mysql::test;
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
 
 namespace {
 

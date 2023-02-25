@@ -12,23 +12,60 @@
 
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
 
+namespace boost {
+namespace mysql {
+namespace detail {
+
+inline std::size_t get_string_size(field_view f) noexcept
+{
+    switch (f.kind())
+    {
+    case field_kind::string: return f.get_string().size();
+    case field_kind::blob: return f.get_blob().size();
+    default: return 0;
+    }
+}
+
+inline unsigned char* copy_string(unsigned char* buffer_it, field_view& f) noexcept
+{
+    auto str = f.get_string();
+    if (!str.empty())
+    {
+        std::memcpy(buffer_it, str.data(), str.size());
+        f = field_view(string_view(reinterpret_cast<const char*>(buffer_it), str.size()));
+        buffer_it += str.size();
+    }
+    return buffer_it;
+}
+
+inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcept
+{
+    auto b = f.get_blob();
+    if (!b.empty())
+    {
+        std::memcpy(buffer_it, b.data(), b.size());
+        f = field_view(blob_view(buffer_it, b.size()));
+        buffer_it += b.size();
+    }
+    return buffer_it;
+}
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
 boost::mysql::detail::row_base::row_base(const field_view* fields, std::size_t size)
     : fields_(fields, fields + size)
 {
     copy_strings();
 }
 
-boost::mysql::detail::row_base::row_base(const row_base& rhs)
-    : fields_(rhs.fields_), string_buffer_(rhs.string_buffer_)
-{
-    rebase_strings(rhs.string_buffer_.data());
-}
+boost::mysql::detail::row_base::row_base(const row_base& rhs) : fields_(rhs.fields_) { copy_strings(); }
 
 boost::mysql::detail::row_base& boost::mysql::detail::row_base::operator=(const row_base& rhs)
 {
     fields_ = rhs.fields_;
-    string_buffer_ = rhs.string_buffer_;
-    rebase_strings(rhs.string_buffer_.data());
+    copy_strings();
     return *this;
 }
 
@@ -38,53 +75,30 @@ void boost::mysql::detail::row_base::assign(const field_view* fields, std::size_
     copy_strings();
 }
 
-inline void boost::mysql::detail::row_base::rebase_strings(const char* old_buffer_base)
-{
-    const char* new_buffer_base = string_buffer_.data();
-    for (auto& f : fields_)
-    {
-        if (f.is_string())
-        {
-            auto sv = f.get_string();
-            if (!sv.empty())
-            {
-                std::size_t offset = sv.data() - old_buffer_base;
-                f = field_view(string_view(new_buffer_base + offset, sv.size()));
-            }
-        }
-    }
-}
-
 inline void boost::mysql::detail::row_base::copy_strings()
 {
     // Calculate the required size for the new strings
     std::size_t size = 0;
-    for (const auto& f : fields_)
+    for (auto f : fields_)
     {
-        if (f.is_string())
-        {
-            size += f.get_string().size();
-        }
+        size += get_string_size(f);
     }
 
     // Make space
     string_buffer_.resize(size);
 
-    // Copy the strings
-    std::size_t offset = 0;
+    // Copy strings and blobs
+    unsigned char* buffer_it = string_buffer_.data();
     for (auto& f : fields_)
     {
-        if (f.is_string())
+        switch (f.kind())
         {
-            auto str = f.get_string();
-            if (!str.empty())
-            {
-                std::memcpy(string_buffer_.data() + offset, str.data(), str.size());
-                f = field_view(string_view(string_buffer_.data() + offset, str.size()));
-                offset += str.size();
-            }
+        case field_kind::string: buffer_it = copy_string(buffer_it, f); break;
+        case field_kind::blob: buffer_it = copy_blob(buffer_it, f); break;
+        default: break;
         }
     }
+    assert(buffer_it == string_buffer_.data() + string_buffer_.size());
 }
 
 #endif

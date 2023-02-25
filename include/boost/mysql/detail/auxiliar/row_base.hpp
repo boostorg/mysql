@@ -32,7 +32,6 @@ public:
     ~row_base() = default;
 
     inline void assign(const field_view* fields, std::size_t size);
-    inline void rebase_strings(const char* old_buffer_base);
     inline void copy_strings();
     inline void clear() noexcept
     {
@@ -44,7 +43,7 @@ protected:
     std::vector<field_view> fields_;
 
 private:
-    std::vector<char> string_buffer_;
+    std::vector<unsigned char> string_buffer_;
 };
 
 }  // namespace detail

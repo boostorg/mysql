@@ -14,6 +14,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/detail/auxiliar/static_string.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
@@ -133,5 +134,6 @@ inline std::ostream& operator<<(std::ostream& os, deserialize_errc v)
 }  // namespace boost
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
 
 #endif
