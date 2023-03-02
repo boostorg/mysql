@@ -11,55 +11,12 @@
 #pragma once
 
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/metadata.hpp>
-#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
 struct boost::mysql::detail::execution_state_access
 {
-    static void reset(
-        execution_state& st,
-        detail::resultset_encoding encoding,
-        bool append_mode = false
-    ) noexcept
-    {
-        st.seqnum_ = 0;
-        st.encoding_ = encoding;
-        st.meta_.clear();
-        st.state_ = execution_state::state_t::initial;
-        st.append_mode_ = append_mode;
-    }
-
-    static void on_ok_packet(execution_state& st, const detail::ok_packet& pack)
-    {
-        st.affected_rows_ = pack.affected_rows.value;
-        st.last_insert_id_ = pack.last_insert_id.value;
-        st.warnings_ = pack.warnings;
-        if (st.append_mode_)
-        {
-            st.info_.in
-        }
-        st.info_.assign(pack.info.value.begin(), pack.info.value.end());
-        st.eof_received_ = true;
-    }
-
-    static void prepare_meta(execution_state& st, std::size_t num_fields) { st.meta_.reserve(num_fields); }
-
-    static void add_meta(
-        execution_state& st,
-        const detail::column_definition_packet& pack,
-        metadata_mode mode
-    )
-    {
-        st.meta_.push_back(metadata_access::construct(pack, mode == metadata_mode::full));
-    }
-
-    static resultset_encoding get_encoding(const execution_state& st) noexcept { return st.encoding_; }
-
-    static std::uint8_t& get_sequence_number(execution_state& st) noexcept { return st.seqnum_; }
-
-    static std::vector<metadata>& get_metadata(execution_state& st) noexcept { return st.meta_; }
+    static detail::execution_state_impl& get_impl(execution_state& st) noexcept { return st.impl_; }
 };
 
 #endif

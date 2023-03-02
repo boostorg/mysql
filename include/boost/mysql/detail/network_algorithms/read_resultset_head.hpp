@@ -19,40 +19,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// TODO: rename this
-// Exposed for the sake of testing
-struct execute_response
-{
-    enum class type_t
-    {
-        num_fields,
-        ok_packet,
-        error
-    } type;
-    union data_t
-    {
-        static_assert(std::is_trivially_destructible<error_code>::value, "");
-
-        std::size_t num_fields;
-        ok_packet ok_pack;
-        error_code err;
-
-        data_t(size_t v) noexcept : num_fields(v) {}
-        data_t(const ok_packet& v) noexcept : ok_pack(v) {}
-        data_t(error_code v) noexcept : err(v) {}
-    } data;
-
-    execute_response(std::size_t v) noexcept : type(type_t::num_fields), data(v) {}
-    execute_response(const ok_packet& v) noexcept : type(type_t::ok_packet), data(v) {}
-    execute_response(error_code v) noexcept : type(type_t::error), data(v) {}
-};
-inline execute_response deserialize_execute_response(
-    boost::asio::const_buffer msg,
-    capabilities caps,
-    db_flavor flavor,
-    diagnostics& diag
-) noexcept;
-
 template <class Stream>
 void read_resultset_head(
     channel<Stream>& channel,

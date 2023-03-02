@@ -91,8 +91,6 @@ void add_string_samples(std::vector<success_sample>& output)
     output.emplace_back("decimal", "1", "1", protocol_field_type::newdecimal);
 }
 
-
-
 void add_blob_samples(std::vector<success_sample>& output)
 {
     static constexpr std::uint8_t buff [] = { 0x00, 0x01, 0x02, 0x03 };
@@ -430,26 +428,15 @@ std::vector<success_sample> make_all_samples()
 BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
 {
     auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals));
-    const std::uint8_t* buffer_first = reinterpret_cast<const std::uint8_t*>(sample.from.data());
-    field_view actual_value;
 
+    field_view actual_value;
     auto err = deserialize_text_field(
         sample.from,
         meta,
-        buffer_first,
         actual_value
     );
+
     BOOST_TEST(err == deserialize_errc::ok);
-
-    // Strings are representd as string view offsets
-    if (sample.expected.is_string() || sample.expected.is_blob())
-    {
-        std::size_t expected_offset = sample.expected.is_string() ? sample.expected.get_string().size() : sample.expected.get_blob().size();
-        field_view expected_offset_fv = make_svoff_fv(0, expected_offset, sample.expected.is_blob());
-        BOOST_TEST(actual_value == expected_offset_fv);
-        field_view_access::offset_to_string_view(actual_value, buffer_first);
-    }
-
     BOOST_TEST(actual_value == sample.expected);
 }
 
@@ -697,9 +684,10 @@ std::vector<error_sample> make_all_samples()
 BOOST_DATA_TEST_CASE(error, data::make(make_all_samples()))
 {
     auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals));
-    auto buffer_first = reinterpret_cast<const std::uint8_t*>(sample.from.data());
+
     field_view actual_value;
-    auto err = deserialize_text_field(sample.from, meta, buffer_first, actual_value);
+    auto err = deserialize_text_field(sample.from, meta, actual_value);
+    
     BOOST_TEST(err == sample.expected_err);
 }
 

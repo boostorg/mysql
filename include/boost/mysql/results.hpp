@@ -10,14 +10,17 @@
 
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/results_iterator.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 #include <cassert>
+#include <stdexcept>
 
 namespace boost {
 namespace mysql {
@@ -33,6 +36,27 @@ namespace mysql {
 class results
 {
 public:
+    using iterator = detail::results_iterator;
+
+    /// \copydoc iterator
+    using const_iterator = iterator;
+
+    /// A type that can hold elements in this collection with value semantics.
+    // TODO: what do we put here?
+    // using value_type = field;
+
+    /// The reference type.
+    using reference = field_view;
+
+    /// \copydoc reference
+    using const_reference = field_view;
+
+    /// An unsigned integer type to represent sizes.
+    using size_type = std::size_t;
+
+    /// A signed integer type used to represent differences.
+    using difference_type = std::ptrdiff_t;
+
     /**
      * \brief Default constructor.
      * \details Constructs an empty results object, with `this->has_value() == false`.
@@ -40,7 +64,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    results() = default;
+    results() noexcept : impl_(true) {}
 
     /**
      * \brief Copy constructor.
@@ -92,7 +116,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool has_value() const noexcept { return st_.complete(); }
+    bool has_value() const noexcept { return impl_.complete(); }
 
     /**
      * \brief Returns the rows retrieved by the SQL query.
@@ -110,7 +134,7 @@ public:
     rows_view rows() const noexcept
     {
         assert(has_value());
-        return st_.get_rows();
+        return impl_.get_rows(0);
     }
 
     /**
@@ -133,7 +157,7 @@ public:
     metadata_collection_view meta() const noexcept
     {
         assert(has_value());
-        return st_.current_resultset_meta();  // TODO: this is wrong
+        return impl_.get_meta(0);
     }
 
     /**
@@ -147,7 +171,7 @@ public:
     std::uint64_t affected_rows() const noexcept
     {
         assert(has_value());
-        return st_.per_result_.front().affected_rows;
+        return impl_.get_affected_rows(0);
     }
 
     /**
@@ -161,7 +185,7 @@ public:
     std::uint64_t last_insert_id() const noexcept
     {
         assert(has_value());
-        return st_.per_result_.front().last_insert_id;
+        return impl_.get_last_insert_id(0);
     }
 
     /**
@@ -175,7 +199,7 @@ public:
     unsigned warning_count() const noexcept
     {
         assert(has_value());
-        return st_.per_result_.front().warnings;
+        return impl_.get_warning_count(0);
     }
 
     /**
@@ -200,11 +224,34 @@ public:
     string_view info() const noexcept
     {
         assert(has_value());
-        return string_view(st_.info_.data(), st_.info_.size());  // TODO: this is wrong
+        return impl_.get_info(0);
     }
 
+    iterator begin() const noexcept { return iterator(&impl_, 0); }
+    iterator end() const noexcept { return iterator(&impl_, size()); }
+    inline resultset_view at(std::size_t i) const
+    {
+        if (i >= size())
+            throw std::out_of_range("results::at: out of range");
+        return resultset_view(impl_, i);
+    }
+
+    resultset_view operator[](std::size_t i) const noexcept
+    {
+        assert(i < size());
+        return resultset_view(impl_, i);
+    }
+
+    resultset_view front() const noexcept { return (*this)[0]; }
+
+    resultset_view back() const noexcept { return (*this)[size() - 1]; }
+
+    bool empty() const noexcept { return size() == 0; }
+
+    std::size_t size() const noexcept { return impl_.num_resultsets(); }
+
 private:
-    detail::execution_state_impl st_;
+    detail::execution_state_impl impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::results_access;
 #endif

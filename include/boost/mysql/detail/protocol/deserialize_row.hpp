@@ -34,7 +34,7 @@ inline void deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
     metadata_collection_view meta,
-    std::vector<field_view>& output,
+    field_view* output,  // Should point to meta.size() field_view objects
     error_code& err
 );
 
@@ -43,7 +43,7 @@ inline void deserialize_row(
     capabilities current_capabilities,
     db_flavor flavor,
     execution_state_impl& st,
-    std::vector<field_view>& output,
+    field_view* output,
     error_code& err,
     diagnostics& diag
 );

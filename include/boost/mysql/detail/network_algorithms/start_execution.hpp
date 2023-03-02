@@ -44,7 +44,6 @@ template <class Stream>
 void start_execution(
     channel<Stream>& channel,
     error_code fast_fail,
-    bool append_mode,
     const execution_request& req,
     execution_state_impl& st,
     error_code& err,
@@ -56,7 +55,6 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_execution(
     channel<Stream>& chan,
     error_code fast_fail,
-    bool append_mode,
     std::unique_ptr<execution_request> req,  // TODO: find a better way to perform this erasing
     execution_state_impl& st,
     diagnostics& diag,

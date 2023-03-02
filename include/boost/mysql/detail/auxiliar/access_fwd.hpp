@@ -22,7 +22,6 @@ struct metadata_access;
 struct results_access;
 struct row_view_access;
 struct rows_view_access;
-struct rows_access;
 struct statement_access;
 
 }  // namespace detail

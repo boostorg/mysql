@@ -12,11 +12,34 @@
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/impl/execution_state.hpp>
 
 namespace boost {
 namespace mysql {
 namespace test {
+
+inline detail::execution_state_impl create_execution_state_impl(
+    detail::resultset_encoding enc,
+    const std::vector<detail::protocol_field_type>& types,
+    std::uint8_t seqnum = 0
+)
+{
+    detail::execution_state_impl res{false};
+    res.reset(enc);
+    boost::mysql::detail::column_definition_packet coldef{};
+    res.on_num_meta(types.size());
+    for (auto type : types)
+    {
+        coldef.type = type;
+        coldef.flags = 0;
+        coldef.decimals = 0;
+        res.on_meta(coldef, metadata_mode::minimal);
+    }
+    res.sequence_number() = seqnum;
+    return res;
+}
 
 inline execution_state create_execution_state(
     detail::resultset_encoding enc,
@@ -25,16 +48,7 @@ inline execution_state create_execution_state(
 )
 {
     execution_state res;
-    detail::execution_state_access::reset(res, enc);
-    boost::mysql::detail::column_definition_packet coldef{};
-    for (auto type : types)
-    {
-        coldef.type = type;
-        coldef.flags = 0;
-        coldef.decimals = 0;
-        detail::execution_state_access::add_meta(res, coldef, metadata_mode::minimal);
-    }
-    detail::execution_state_access::get_sequence_number(res) = seqnum;
+    detail::execution_state_access::get_impl(res) = create_execution_state_impl(enc, types, seqnum);
     return res;
 }
 

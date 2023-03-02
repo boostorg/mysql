@@ -15,6 +15,7 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
@@ -44,35 +45,34 @@ public:
 
     error_code process_response(boost::asio::const_buffer msg)
     {
-        auto
-            response = deserialize_execute_response(msg, chan_.current_capabilities(), chan_.flavor(), diag_);
-        switch (response.type)
-        {
-        case execute_response::type_t::error: return response.data.err;
-        case execute_response::type_t::ok_packet:
-            st_.on_ok_packet(response.data.ok_pack);
-            return error_code();
-        case execute_response::type_t::num_fields:
-            st_.on_num_meta(response.data.num_fields);
-            return error_code();
-        }
+        error_code err;
+        deserialize_execute_response(msg, chan_.current_capabilities(), chan_.flavor(), st_, err, diag_);
+        return err;
     }
 
-    error_code process_field_definition(boost::asio::const_buffer message)
+    error_code process_field_definition()
     {
-        column_definition_packet field_definition{};
-        deserialization_context ctx(message, chan_.current_capabilities());
-        auto err = deserialize_message(ctx, field_definition);
+        // Read the field definition packet (it's cached at this point)
+        assert(chan_.has_read_messages());
+        error_code err;
+        auto msg = chan_.next_read_message(st_.sequence_number(), err);
         if (err)
             return err;
 
+        // Deserialize
+        column_definition_packet field_definition{};
+        deserialization_context ctx(msg, chan_.current_capabilities());
+        err = deserialize_message(ctx, field_definition);
+        if (err)
+            return err;
+
+        // Notify the state object
         st_.on_meta(field_definition, chan_.meta_mode());
         return error_code();
     }
 
     channel_base& get_channel() noexcept { return chan_; }
-    std::uint8_t& sequence_number() noexcept { return st_.sequence_number(); }
-    bool has_remaining_meta() const noexcept { return st_.has_remaining_meta(); }
+    execution_state_impl& state() noexcept { return st_; }
 };
 
 template <class Stream>
@@ -85,7 +85,10 @@ struct read_resultset_head_op : boost::asio::coroutine
     {
     }
 
-    channel<Stream> get_channel() noexcept { return static_cast<channel<Stream>>(processor_.get_channel()); }
+    channel<Stream>& get_channel() noexcept
+    {
+        return static_cast<channel<Stream>&>(processor_.get_channel());
+    }
 
     template <class Self>
     void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
@@ -104,7 +107,10 @@ struct read_resultset_head_op : boost::asio::coroutine
             processor_.setup();
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD get_channel().async_read_one(processor_.sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
+                processor_.state().sequence_number(),
+                std::move(self)
+            );
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
@@ -116,7 +122,7 @@ struct read_resultset_head_op : boost::asio::coroutine
             }
 
             // Read all of the field definitions
-            while (processor_.has_remaining_meta())
+            while (processor_.state().should_read_meta())
             {
                 // Read from the stream if we need it
                 if (!get_channel().has_read_messages())
@@ -124,16 +130,8 @@ struct read_resultset_head_op : boost::asio::coroutine
                     BOOST_ASIO_CORO_YIELD get_channel().async_read_some(std::move(self));
                 }
 
-                // Read the field definition packet
-                read_message = get_channel().next_read_message(processor_.sequence_number(), err);
-                if (err)
-                {
-                    self.complete(err);
-                    BOOST_ASIO_CORO_YIELD break;
-                }
-
-                // Process the message
-                err = processor_.process_field_definition(read_message);
+                // Process the metadata packet
+                err = processor_.process_field_definition();
                 if (err)
                 {
                     self.complete(err);
@@ -150,57 +148,6 @@ struct read_resultset_head_op : boost::asio::coroutine
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute_response(
-    boost::asio::const_buffer msg,
-    capabilities caps,
-    db_flavor flavor,
-    diagnostics& diag
-) noexcept
-{
-    // Response may be: ok_packet, err_packet, local infile request (not implemented)
-    // If it is none of this, then the message type itself is the beginning of
-    // a length-encoded int containing the field count
-    deserialization_context ctx(msg, caps);
-    std::uint8_t msg_type = 0;
-    auto err = deserialize_message_part(ctx, msg_type);
-    if (err)
-        return err;
-
-    if (msg_type == ok_packet_header)
-    {
-        ok_packet ok_pack;
-        err = deserialize_message(ctx, ok_pack);
-        if (err)
-            return err;
-        return ok_pack;
-    }
-    else if (msg_type == error_packet_header)
-    {
-        return process_error_packet(ctx, flavor, diag);
-    }
-    else
-    {
-        // Resultset with metadata. First packet is an int_lenenc with
-        // the number of field definitions to expect. Message type is part
-        // of this packet, so we must rewind the context
-        ctx.rewind(1);
-        int_lenenc num_fields;
-        err = deserialize_message(ctx, num_fields);
-        if (err)
-            return err;
-
-        // We should have at least one field.
-        // The max number of fields is some value around 1024. For simplicity/extensibility,
-        // we accept anything less than 0xffff
-        if (num_fields.value == 0 || num_fields.value > 0xffffu)
-        {
-            return make_error_code(client_errc::protocol_value_error);
-        }
-
-        return static_cast<std::size_t>(num_fields.value);
-    }
-}
 
 template <class Stream>
 void boost::mysql::detail::read_resultset_head(
@@ -226,7 +173,7 @@ void boost::mysql::detail::read_resultset_head(
         return;
 
     // Read all of the field definitions (zero if empty resultset)
-    while (st.has_remaining_meta())
+    while (st.should_read_meta())
     {
         // Read from the stream if required
         if (!chan.has_read_messages())
@@ -236,13 +183,8 @@ void boost::mysql::detail::read_resultset_head(
                 return;
         }
 
-        // Read the field definition packet
-        msg = chan.next_read_message(st.sequence_number(), err);
-        if (err)
-            return;
-
-        // Process the message
-        err = processor.process_field_definition(msg);
+        // Process the packet
+        err = processor.process_field_definition();
         if (err)
             return;
     }

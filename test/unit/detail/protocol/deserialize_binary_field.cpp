@@ -645,28 +645,13 @@ std::vector<success_sample> make_all_samples()
 BOOST_DATA_TEST_CASE(test_deserialize_binary_value_ok, data::make(make_all_samples()))
 {
     auto meta = create_meta(sample.type, sample.flags);
-    field_view actual_value;
     const bytestring& buffer = sample.from;
     deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
 
-    auto err = deserialize_binary_field(ctx, meta, buffer.data(), actual_value);
+    field_view actual_value;
+    auto err = deserialize_binary_field(ctx, meta, actual_value);
+
     BOOST_TEST(err == deserialize_errc::ok);
-
-    // Strings are representd as string view offsets. Strings are prefixed
-    // by their length, so they don't start at offset 0
-    if (sample.expected.is_string() || sample.expected.is_blob())
-    {
-        std::size_t expected_size = sample.expected.is_string() ? sample.expected.get_string().size()
-                                                                : sample.expected.get_blob().size();
-        field_view expected_offset = make_svoff_fv(
-            buffer.size() - expected_size,
-            expected_size,
-            sample.expected.is_blob()
-        );
-        BOOST_TEST(actual_value == expected_offset);
-        field_view_access::offset_to_string_view(actual_value, buffer.data());
-    }
-
     BOOST_TEST(actual_value == sample.expected);
     BOOST_TEST(ctx.first() == buffer.data() + buffer.size());  // all bytes consumed
 }
@@ -1028,12 +1013,13 @@ std::vector<error_sample> make_all_samples()
 BOOST_DATA_TEST_CASE(test_deserialize_binary_value_error, data::make(make_all_samples()))
 {
     auto meta = create_meta(sample.type, sample.flags);
-    field_view actual_value;
     const bytestring& buff = sample.from;
     deserialization_context ctx(buff.data(), buff.data() + buff.size(), capabilities());
-    auto err = deserialize_binary_field(ctx, meta, buff.data(), actual_value);
-    auto expected = sample.expected_err;
-    BOOST_TEST(expected == err);
+
+    field_view actual_value;
+    auto err = deserialize_binary_field(ctx, meta, actual_value);
+
+    BOOST_TEST(err == sample.expected_err);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

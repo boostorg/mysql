@@ -15,6 +15,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row.hpp>
 
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 
@@ -27,39 +28,41 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
 inline rows_view process_some_rows(
-    channel<Stream>& channel,
+    channel_base& channel,
     execution_state& st,
     error_code& err,
     diagnostics& diag
 )
 {
+    std::size_t num_rows = 0;
+    std::size_t num_columns = st.meta().size();
+    channel.shared_fields().clear();
+
     // Process all read messages until they run out, an error happens
     // or an EOF is received
-    std::size_t num_rows = 0;
-    channel.shared_fields().clear();
     while (channel.has_read_messages())
     {
         // Get the row message
-        auto message = channel.next_read_message(execution_state_access::get_sequence_number(st), err);
+        auto message = channel.next_read_message(execution_state_access::get_impl(st).sequence_number(), err);
         if (err)
             return rows_view();
 
         // Deserialize the row. Values are stored in a vector owned by the channel
+        field_view* storage = add_fields(channel.shared_fields(), num_columns);
         deserialize_row(
             message,
             channel.current_capabilities(),
             channel.flavor(),
-            st,
-            channel.shared_fields(),
+            execution_state_access::get_impl(st),
+            storage,
             err,
             diag
         );
         if (err)
             return rows_view();
 
-        // There is no need to copy strings values anywhere; the returned values
+        // There is no need to copy strings values anywhere; deserialized field_view's
         // will point into the channel's internal buffer
 
         // If we received an EOF, we're done
@@ -68,11 +71,7 @@ inline rows_view process_some_rows(
         ++num_rows;
     }
 
-    return rows_view_access::construct(
-        channel.shared_fields().data(),
-        num_rows * st.meta().size(),
-        st.meta().size()
-    );
+    return rows_view_access::construct(channel.shared_fields().data(), num_rows * num_columns, num_columns);
 }
 
 template <class Stream>

@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_IMPL_ROW_BASE_IPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_IMPL_ROW_BASE_IPP
+#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_IMPL_ROW_IMPL_IPP
+#define BOOST_MYSQL_DETAIL_AUXILIAR_IMPL_ROW_IMPL_IPP
 
 #pragma once
 
-#include <boost/mysql/detail/auxiliar/row_base.hpp>
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/impl/field_view.hpp>
 
@@ -88,28 +88,37 @@ inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcep
 }  // namespace mysql
 }  // namespace boost
 
-boost::mysql::detail::row_base::row_base(const field_view* fields, std::size_t size)
+boost::mysql::detail::row_impl::row_impl(const field_view* fields, std::size_t size)
     : fields_(fields, fields + size)
 {
     copy_strings();
 }
 
-boost::mysql::detail::row_base::row_base(const row_base& rhs) : fields_(rhs.fields_) { copy_strings(); }
+boost::mysql::detail::row_impl::row_impl(const row_impl& rhs) : fields_(rhs.fields_) { copy_strings(); }
 
-boost::mysql::detail::row_base& boost::mysql::detail::row_base::operator=(const row_base& rhs)
+boost::mysql::detail::row_impl& boost::mysql::detail::row_impl::operator=(const row_impl& rhs)
 {
-    fields_ = rhs.fields_;
-    copy_strings();
+    assign(rhs.fields_.data(), rhs.fields_.size());
     return *this;
 }
 
-void boost::mysql::detail::row_base::assign(const field_view* fields, std::size_t size)
+void boost::mysql::detail::row_impl::assign(const field_view* fields, std::size_t size)
 {
-    fields_.assign(fields, fields + size);
-    copy_strings();
+    // Protect against self-assignment. This is valid as long as we
+    // don't implement sub-range operators (e.g. row_view[2:4])
+    if (fields_.data() == fields)
+    {
+        assert(fields_.size() == size);
+    }
+    else
+    {
+        fields_.assign(fields, fields + size);
+        string_buffer_.clear();
+        copy_strings();
+    }
 }
 
-inline void boost::mysql::detail::row_base::copy_strings()
+inline void boost::mysql::detail::row_impl::copy_strings()
 {
     // Calculate the required size for the new strings
     std::size_t size = 0;
@@ -132,14 +141,14 @@ inline void boost::mysql::detail::row_base::copy_strings()
         default: break;
         }
     }
-    assert(buffer_it == string_buffer_.data() + string_buffer_.size());
+    assert(buffer_it == string_buffer_.data() + size);
 }
 
-inline void boost::mysql::detail::row_base::copy_strings_as_offsets(std::size_t first, std::size_t num_fields)
+inline void boost::mysql::detail::row_impl::copy_strings_as_offsets(std::size_t first, std::size_t num_fields)
 {
     // Preconditions
-    assert(first < fields_.size());
-    assert(first + num_fields < fields_.size());
+    assert(first <= fields_.size());
+    assert(first + num_fields <= fields_.size());
 
     // Calculate the required size for the new strings
     std::size_t size = 0;

@@ -34,20 +34,15 @@ inline bool is_next_field_null(const deserialization_context& ctx)
 inline error_code deserialize_text_row(
     deserialization_context& ctx,
     metadata_collection_view meta,
-    std::vector<field_view>& output
+    field_view* output
 )
 {
-    // Make space
-    std::size_t old_size = output.size();
-    auto num_fields = meta.size();
-    output.resize(old_size + num_fields);
-
-    for (std::vector<field_view>::size_type i = 0; i < num_fields; ++i)
+    for (std::vector<field_view>::size_type i = 0; i < meta.size(); ++i)
     {
         if (is_next_field_null(ctx))
         {
             ctx.advance(1);
-            output[old_size + i] = field_view(nullptr);
+            output[i] = field_view(nullptr);
         }
         else
         {
@@ -55,7 +50,7 @@ inline error_code deserialize_text_row(
             auto err = deserialize(ctx, value_str);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
-            err = deserialize_text_field(value_str.value, meta[i], output[old_size + i]);
+            err = deserialize_text_field(value_str.value, meta[i], output[i]);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
         }
@@ -68,7 +63,7 @@ inline error_code deserialize_text_row(
 inline error_code deserialize_binary_row(
     deserialization_context& ctx,
     metadata_collection_view meta,
-    std::vector<field_view>& output
+    field_view* output
 )
 {
     // Skip packet header (it is not part of the message in the binary
@@ -78,9 +73,7 @@ inline error_code deserialize_binary_row(
     ctx.advance(1);
 
     // Number of fields
-    std::size_t old_size = output.size();
-    auto num_fields = meta.size();
-    output.resize(old_size + num_fields);
+    std::size_t num_fields = meta.size();
 
     // Null bitmap
     null_bitmap_traits null_bitmap(binary_row_null_bitmap_offset, num_fields);
@@ -94,11 +87,11 @@ inline error_code deserialize_binary_row(
     {
         if (null_bitmap.is_null(null_bitmap_begin, i))
         {
-            output[old_size + i] = field_view(nullptr);
+            output[i] = field_view(nullptr);
         }
         else
         {
-            auto err = deserialize_binary_field(ctx, meta[i], output[old_size + i]);
+            auto err = deserialize_binary_field(ctx, meta[i], output[i]);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
         }
@@ -119,7 +112,7 @@ void boost::mysql::detail::deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
     metadata_collection_view meta,
-    std::vector<field_view>& output,
+    field_view* output,
     error_code& err
 )
 {
@@ -132,7 +125,7 @@ void boost::mysql::detail::deserialize_row(
     capabilities current_capabilities,
     db_flavor flavor,
     execution_state_impl& st,
-    std::vector<field_view>& output,
+    field_view* output,
     error_code& err,
     diagnostics& diag
 )
@@ -156,7 +149,7 @@ void boost::mysql::detail::deserialize_row(
         err = deserialize_message(ctx, ok_pack);
         if (err)
             return;
-        st.on_ok_packet(ok_pack);
+        st.on_row_ok_packet(ok_pack);
     }
     else if (msg_type == error_packet_header)
     {
@@ -168,6 +161,7 @@ void boost::mysql::detail::deserialize_row(
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
         deserialize_row(st.encoding(), ctx, st.current_resultset_meta(), output, err);
+        st.on_row();
     }
 }
 

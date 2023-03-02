@@ -39,14 +39,13 @@ namespace detail {
 
 inline void start_execution_setup(
     channel_base& chan,
-    bool append_mode,
     const execution_request& req,
     execution_state_impl& st,
     diagnostics& diag
 )
 {
     diag.clear();
-    st.reset(req.encoding(), append_mode);
+    st.reset(req.encoding());
     req.serialize(chan.current_capabilities(), chan.shared_buffer());
 }
 
@@ -54,7 +53,6 @@ template <class Stream>
 struct start_execution_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    bool append_mode_;
     error_code fast_fail_;
     std::unique_ptr<execution_request> req_;  // TODO: this doesn't follow Asio's allocation model
     execution_state_impl& st_;
@@ -62,18 +60,12 @@ struct start_execution_op : boost::asio::coroutine
 
     start_execution_op(
         channel<Stream>& chan,
-        bool append_mode,
         error_code fast_fail,
         std::unique_ptr<execution_request> req,
         execution_state_impl& st,
         diagnostics& diag
     )
-        : chan_(chan),
-          append_mode_(append_mode),
-          fast_fail_(fast_fail),
-          req_(std::move(req)),
-          st_(st),
-          diag_(diag)
+        : chan_(chan), fast_fail_(fast_fail), req_(std::move(req)), st_(st), diag_(diag)
     {
     }
 
@@ -99,7 +91,7 @@ struct start_execution_op : boost::asio::coroutine
             }
 
             // Setup & serialize
-            start_execution_setup(chan_, append_mode_, *req_, st_, diag_);
+            start_execution_setup(chan_, *req_, st_, diag_);
             req_.reset();
 
             // Send it
@@ -109,6 +101,8 @@ struct start_execution_op : boost::asio::coroutine
             // Read the first resultset's head
             BOOST_ASIO_CORO_YIELD
             async_read_resultset_head(chan_, st_, diag_, std::move(self));
+
+            self.complete(error_code());
         }
     }
 };
@@ -121,7 +115,6 @@ template <class Stream>
 void boost::mysql::detail::start_execution(
     channel<Stream>& channel,
     error_code fast_fail,
-    bool append_mode,
     const execution_request& req,
     execution_state_impl& st,
     error_code& err,
@@ -136,7 +129,7 @@ void boost::mysql::detail::start_execution(
     }
 
     // Setup & serialize
-    start_execution_setup(channel, append_mode, req, st, diag);
+    start_execution_setup(channel, req, st, diag);
 
     // Send it
     channel.write(channel.shared_buffer(), st.sequence_number(), err);
@@ -144,7 +137,7 @@ void boost::mysql::detail::start_execution(
         return;
 
     // Read the first resultset's head
-    err = read_resultset_head(channel, st, err, diag);
+    read_resultset_head(channel, st, err, diag);
     if (err)
         return;
 }
@@ -154,7 +147,6 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_start_execution(
     channel<Stream>& channel,
     error_code fast_fail,
-    bool append_mode,
     std::unique_ptr<execution_request> req,
     execution_state_impl& st,
     diagnostics& diag,
@@ -162,7 +154,7 @@ boost::mysql::detail::async_start_execution(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        start_execution_op<Stream>(channel, fast_fail, append_mode, std::move(req), st, diag),
+        start_execution_op<Stream>(channel, fast_fail, std::move(req), st, diag),
         token,
         channel
     );
