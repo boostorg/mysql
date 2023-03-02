@@ -16,6 +16,13 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline bool overlaps(const void* first1, const void* first2, std::size_t size) noexcept
+{
+    const void* last1 = static_cast<const unsigned char*>(first1) + size;
+    const void* last2 = static_cast<const unsigned char*>(first2) + size;
+    return (first1 >= first2 && first1 < last2) || (last1 >= first2 && last1 < last2);
+}
+
 inline std::size_t get_string_size(field_view f) noexcept
 {
     switch (f.kind())
@@ -31,6 +38,7 @@ inline unsigned char* copy_string(unsigned char* buffer_it, field_view& f) noexc
     auto str = f.get_string();
     if (!str.empty())
     {
+        assert(!overlaps(buffer_it, str.data(), str.size()));
         std::memcpy(buffer_it, str.data(), str.size());
         f = field_view(string_view(reinterpret_cast<const char*>(buffer_it), str.size()));
         buffer_it += str.size();
@@ -43,6 +51,7 @@ inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcep
     auto b = f.get_blob();
     if (!b.empty())
     {
+        assert(!overlaps(buffer_it, b.data(), b.size()));
         std::memcpy(buffer_it, b.data(), b.size());
         f = field_view(blob_view(buffer_it, b.size()));
         buffer_it += b.size();
@@ -64,8 +73,11 @@ boost::mysql::detail::row_base::row_base(const row_base& rhs) : fields_(rhs.fiel
 
 boost::mysql::detail::row_base& boost::mysql::detail::row_base::operator=(const row_base& rhs)
 {
-    fields_ = rhs.fields_;
-    copy_strings();
+    if (this != &rhs)
+    {
+        fields_ = rhs.fields_;
+        copy_strings();
+    }
     return *this;
 }
 
