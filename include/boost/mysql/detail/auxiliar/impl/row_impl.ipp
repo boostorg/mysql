@@ -14,9 +14,24 @@
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/impl/field_view.hpp>
 
+#include <cstring>
+
 namespace boost {
 namespace mysql {
 namespace detail {
+
+inline bool overlaps(const void* first1, const void* first2, std::size_t size) noexcept
+{
+    const void* last1 = static_cast<const unsigned char*>(first1) + size;
+    const void* last2 = static_cast<const unsigned char*>(first2) + size;
+    return (first1 >= first2 && first1 < last2) || (last1 >= first2 && last1 < last2);
+}
+
+inline void guarded_memcpy(void* to, const void* from, std::size_t size) noexcept
+{
+    assert(!overlaps(to, from, size));
+    std::memcpy(to, from, size);
+}
 
 inline std::size_t get_string_size(field_view f) noexcept
 {
@@ -33,9 +48,21 @@ inline unsigned char* copy_string(unsigned char* buffer_it, field_view& f) noexc
     auto str = f.get_string();
     if (!str.empty())
     {
-        std::memcpy(buffer_it, str.data(), str.size());
+        guarded_memcpy(buffer_it, str.data(), str.size());
         f = field_view(string_view(reinterpret_cast<const char*>(buffer_it), str.size()));
         buffer_it += str.size();
+    }
+    return buffer_it;
+}
+
+inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcept
+{
+    auto b = f.get_blob();
+    if (!b.empty())
+    {
+        guarded_memcpy(buffer_it, b.data(), b.size());
+        f = field_view(blob_view(buffer_it, b.size()));
+        buffer_it += b.size();
     }
     return buffer_it;
 }
@@ -49,7 +76,7 @@ inline std::size_t copy_string_as_offset(
     auto str = f.get_string();
     if (!str.empty())
     {
-        std::memcpy(buffer_first + offset, str.data(), str.size());
+        guarded_memcpy(buffer_first + offset, str.data(), str.size());
         f = field_view_access::construct(string_view_offset(offset, str.size()), false);
         return str.size();
     }
@@ -65,23 +92,11 @@ inline std::size_t copy_blob_as_offset(
     auto str = f.get_blob();
     if (!str.empty())
     {
-        std::memcpy(buffer_first + offset, str.data(), str.size());
+        guarded_memcpy(buffer_first + offset, str.data(), str.size());
         f = field_view_access::construct(string_view_offset(offset, str.size()), true);
         return str.size();
     }
     return 0;
-}
-
-inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcept
-{
-    auto b = f.get_blob();
-    if (!b.empty())
-    {
-        std::memcpy(buffer_it, b.data(), b.size());
-        f = field_view(blob_view(buffer_it, b.size()));
-        buffer_it += b.size();
-    }
-    return buffer_it;
 }
 
 }  // namespace detail
