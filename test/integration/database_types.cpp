@@ -35,6 +35,7 @@
 
 #include "metadata_validator.hpp"
 #include "printing.hpp"
+#include "safe_getenv.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
@@ -50,6 +51,8 @@ using boost::mysql::detail::stringize;
 BOOST_AUTO_TEST_SUITE(test_database_types)
 
 // Helpers
+bool is_mariadb() { return safe_getenv("BOOST_MYSQL_TEST_DB", "mysql8") == "mariadb"; }
+
 using flagsvec = std::vector<meta_validator::flag_getter>;
 
 const flagsvec flags_unsigned{&metadata::is_unsigned};
@@ -539,14 +542,29 @@ table types_string()
     res.add_meta("field_text", column_type::text);
     res.add_meta("field_mediumtext", column_type::text);
     res.add_meta("field_longtext", column_type::text);
+    res.add_meta("field_text_bincol", column_type::text);
     res.add_meta("field_enum", column_type::enum_);
     res.add_meta("field_set", column_type::set);
 
     // clang-format off
-    res.add_row("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "red",    "red,green");
-    res.add_row("utf8",    "\xc3\xb1",  "\xc3\x91",     "\xc3\xa1",      "\xc3\xa9",  "\xc3\xad",        "\xc3\xb3",      nullptr,  nullptr);
-    res.add_row("empty",   "",          "",             "",              "",          "",                "",              nullptr,  "");
+    res.add_row("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "test_bincol", "red",    "red,green");
+    res.add_row("utf8",    "\xc3\xb1",  "\xc3\x91",     "\xc3\xa1",      "\xc3\xa9",  "\xc3\xad",        "\xc3\xb3",      "\xc3\xba",    nullptr,  nullptr);
+    res.add_row("empty",   "",          "",             "",              "",          "",                "",              "",            nullptr,  "");
     // clang-format on
+    return res;
+}
+
+// MariaDB doesn't have a dedicated column type, so there is a difference in metadata.
+// Values should be the same, though.
+table types_json()
+{
+    table res("types_json");
+    res.add_meta("field_json", is_mariadb() ? column_type::text : column_type::json);
+
+    res.add_row("regular", R"([null, 42, false, "abc", {"key": "value"}])");
+    res.add_row("unicode_escape", R"(["\\u0000value\\u0000"])");
+    res.add_row("utf8", "[\"adi\xc3\xb3os\"]");
+    res.add_row("empty", "{}");
     return res;
 }
 

@@ -17,5 +17,6 @@ RUN \
         ninja-build \
         cmake \
         python3 \
-        python-is-python3
+        python-is-python3 \
+        mysql-client
 

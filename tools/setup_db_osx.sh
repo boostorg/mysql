@@ -24,8 +24,3 @@ sudo chmod 777 /var/run/mysqld/
 
 # Start the server
 mysql.server start
-
-# Load the data
-mysql -u root < test/integration/db_setup.sql
-mysql -u root < test/integration/db_setup_sha256.sql
-mysql -u root < example/db_setup.sql

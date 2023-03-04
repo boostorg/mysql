@@ -29,9 +29,8 @@ BASE_FOLDERS = [
     '.github'
 ]
 BASE_FILES = [
-    '.appveyor.yml',
     'CMakeLists.txt',
-    'Jamfile'
+    '.drone.star'
 ]
 HTML_GEN_PATH = path.join(REPO_BASE, 'doc', 'html')
 
@@ -160,6 +159,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.yml', hash_processor),
     ('.cnf', hash_processor),
     ('.dockerfile', hash_processor),
+    ('.star', hash_processor),
     ('.cpp', cpp_processor),
     ('.hpp', HppProcessor()),
     ('.ipp', HppProcessor()),
@@ -168,6 +168,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.svg', IgnoreProcessor()),
     ('valgrind_suppressions.txt', IgnoreProcessor()),
     ('.pem', IgnoreProcessor()),
+    ('.md', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
@@ -193,6 +194,8 @@ def process_all_files():
                 continue
             for fname in files:
                 process_file(path.join(curdir, fname))
+    for fname in BASE_FILES:
+        process_file(path.join(REPO_BASE, fname))
 
 
 # Check that cmake and b2 test source files are equal

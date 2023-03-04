@@ -8,9 +8,11 @@
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 
@@ -45,6 +47,7 @@ struct success_sample
     field_view expected;
     protocol_field_type type;
     std::uint16_t flags;
+    std::uint16_t collation;
 
     template <class T>
     success_sample(
@@ -52,13 +55,15 @@ struct success_sample
         std::vector<std::uint8_t> from,
         T&& expected_value,
         protocol_field_type type,
-        std::uint16_t flags = 0
+        std::uint16_t flags = 0,
+        std::uint16_t collation = boost::mysql::mysql_collations::utf8mb4_general_ci
     )
         : name(std::move(name)),
           from(std::move(from)),
           expected(std::forward<T>(expected_value)),
           type(type),
-          flags(flags)
+          flags(flags),
+          collation(collation)
     {
     }
 };
@@ -98,6 +103,7 @@ void add_string_samples(std::vector<success_sample>& output)
         column_flags::set
     ));
     output.push_back(success_sample("decimal", {0x02, 0x31, 0x30}, "10", protocol_field_type::newdecimal));
+    output.push_back(success_sample("json", {0x02, 0x7b, 0x7d}, "{}", protocol_field_type::json));
 }
 
 void add_blob_samples(std::vector<success_sample>& output)
@@ -109,30 +115,34 @@ void add_blob_samples(std::vector<success_sample>& output)
         {0x04, 0x01, 0x00, 0x73, 0x74},
         blob_view(buff),
         protocol_field_type::var_string,
-        column_flags::binary
+        column_flags::binary,
+        binary_collation
     ));
     output.push_back(success_sample(
         "binary",
         {0x04, 0x01, 0x00, 0x73, 0x74},
         blob_view(buff),
         protocol_field_type::string,
-        column_flags::binary
+        column_flags::binary,
+        binary_collation
     ));
     output.push_back(success_sample(
         "blob",
         {0x04, 0x01, 0x00, 0x73, 0x74},
         blob_view(buff),
         protocol_field_type::blob,
-        column_flags::binary
+        column_flags::binary,
+        binary_collation
     ));
     output.push_back(success_sample(
         "geometry",
         {0x04, 0x01, 0x00, 0x73, 0x74},
         blob_view(buff),
-        protocol_field_type::geometry
+        protocol_field_type::geometry,
+        binary_collation
     ));
 
-    // Anything we don't know what it is, we interpret as a string
+    // Anything we don't know what it is, we interpret as a blob
     output.push_back(success_sample(
         "unknown_protocol_type",
         {0x04, 0x01, 0x00, 0x73, 0x74},
@@ -644,7 +654,7 @@ std::vector<success_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(test_deserialize_binary_value_ok, data::make(make_all_samples()))
 {
-    auto meta = create_meta(sample.type, sample.flags);
+    auto meta = create_meta(sample.type, sample.flags, 0, sample.collation);
     field_view actual_value;
     const bytestring& buffer = sample.from;
     deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());

@@ -13,40 +13,39 @@
 #include <boost/mysql/metadata.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline column_type compute_field_type_string(std::uint32_t flags)
+inline column_type compute_field_type_string(std::uint32_t flags, std::uint16_t collation)
 {
     if (flags & column_flags::set)
         return column_type::set;
     else if (flags & column_flags::enum_)
         return column_type::enum_;
-    else if (flags & column_flags::binary)
+    else if (collation == binary_collation)
         return column_type::binary;
     else
         return column_type::char_;
 }
 
-inline column_type compute_field_type_var_string(std::uint32_t flags)
+inline column_type compute_field_type_var_string(std::uint16_t collation)
 {
-    if (flags & column_flags::binary)
-        return column_type::varbinary;
-    else
-        return column_type::varchar;
+    return collation == binary_collation ? column_type::varbinary : column_type::varchar;
 }
 
-inline column_type compute_field_type_blob(std::uint32_t flags)
+inline column_type compute_field_type_blob(std::uint16_t collation)
 {
-    if (flags & column_flags::binary)
-        return column_type::blob;
-    else
-        return column_type::text;
+    return collation == binary_collation ? column_type::blob : column_type::text;
 }
 
-inline column_type compute_field_type(protocol_field_type protocol_type, std::uint32_t flags)
+inline column_type compute_field_type(
+    protocol_field_type protocol_type,
+    std::uint32_t flags,
+    std::uint16_t collation
+)
 {
     switch (protocol_type)
     {
@@ -66,9 +65,10 @@ inline column_type compute_field_type(protocol_field_type protocol_type, std::ui
     case protocol_field_type::timestamp: return column_type::timestamp;
     case protocol_field_type::time: return column_type::time;
     case protocol_field_type::year: return column_type::year;
-    case protocol_field_type::string: return compute_field_type_string(flags);
-    case protocol_field_type::var_string: return compute_field_type_var_string(flags);
-    case protocol_field_type::blob: return compute_field_type_blob(flags);
+    case protocol_field_type::json: return column_type::json;
+    case protocol_field_type::string: return compute_field_type_string(flags, collation);
+    case protocol_field_type::var_string: return compute_field_type_var_string(collation);
+    case protocol_field_type::blob: return compute_field_type_blob(collation);
     default: return column_type::unknown;
     }
 }
@@ -85,7 +85,7 @@ boost::mysql::metadata::metadata(const detail::column_definition_packet& msg, bo
       org_name_(copy_strings ? msg.org_name.value : string_view()),
       character_set_(msg.character_set),
       column_length_(msg.column_length),
-      type_(detail::compute_field_type(msg.type, msg.flags)),
+      type_(detail::compute_field_type(msg.type, msg.flags, msg.character_set)),
       flags_(msg.flags),
       decimals_(msg.decimals)
 {

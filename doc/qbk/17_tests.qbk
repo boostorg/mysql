@@ -37,12 +37,16 @@ You can run the containers as follows:
     > docker run -p 3306:3306 -d ghcr.io/anarthal-containers/mysql8
 ```
 
-If you are using your own database server, you will need to perform the following steps:
+You then need to run the following setup files, e.g. by running `mysql -u root < path/to/setup.sql`:
 
-* Run `example/db_setup.sql` and `test/integration/db_setup.sql` as the root user. If you are running a MySQL 8.x server,
-  run also `test/integration/db_setup_sha256.sql`.
-* Install the SSL certificates in `tools/ssl` in your MySQL server and change your config file so that your server uses them.
-  More information [mysqllink using-encrypted-connections.html here].
+* `example/db_setup.sql`
+* `test/integration/db_setup.sql`
+* If you are running a MySQL 8.x server, run also `test/integration/db_setup_sha256.sql`.
+
+
+If you are using your own database server, you will need to install the SSL certificates in `tools/ssl`
+in your MySQL server and change your config file so that your server uses them.
+More information [mysqllink using-encrypted-connections.html here].
 
 Next, define the following environment variables:
 
@@ -50,7 +54,7 @@ Next, define the following environment variables:
   If you are using the Docker image as provided in this document, you don't need this.
 * If your system does not support UNIX sockets or your socket path is different than MySQL's default (`/var/run/mysqld/mysqld.sock`),
   define `BOOST_MYSQL_NO_UNIX_SOCKET_TESTS=1`.
-* If you are using MySQL 5.x or MariaDB, define `BOOST_MYSQL_NO_SHA256_TESTS=1`. These servers don't support part of the functionality we test.
+* Define `BOOST_MYSQL_TEST_DB` to either `mysql5`, `mysql8` or `mariadb`, depending on the server you're running.
 
 If you are using `b2`, you can build the targets `boost/mysql/example//boost_mysql_all_examples`,
 `boost/mysql/test/integration//boost_mysql_integrationtests` and `boost/mysql/test` to build and run the tests.

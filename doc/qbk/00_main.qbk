@@ -71,7 +71,6 @@
 [def __DECIMAL__ [mysqllink fixed-point-types.html `DECIMAL`]]
 [def __NUMERIC__ [mysqllink fixed-point-types.html `NUMERIC`]]
 [def __BIT__ [mysqllink bit-type.html `BIT`]]
-[def __GEOMETRY__ [mysqllink spatial-type-overview.html `GEOMETRY`]]
 [def __CHAR__ [mysqllink char.html `CHAR`]]
 [def __VARCHAR__ [mysqllink char.html `VARCHAR`]]
 [def __BINARY__ [mysqllink binary-varbinary.html `BINARY`]]
@@ -80,6 +79,8 @@
 [def __BLOB__ [mysqllink blob.html `BLOB`]]
 [def __ENUM__ [mysqllink enum.html `ENUM`]]
 [def __SET__ [mysqllink set.html `SET`]]
+[def __JSON__ [mysqllink json.html `JSON`]]
+[def __GEOMETRY__ [mysqllink spatial-type-overview.html `GEOMETRY`]]
 [def __USE__ [mysqllink use.html `USE`]]
 
 

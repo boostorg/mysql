@@ -15,29 +15,15 @@
 #include <cstdlib>
 
 #include "get_endpoint.hpp"
+#include "safe_getenv.hpp"
 
 namespace {
-
-std::string get_host()
-{
-    // MSVC doesn't like getenv
-#ifdef BOOST_MSVC
-#pragma warning(push)
-#pragma warning(disable : 4996)
-#endif
-    const char* hostname = std::getenv("BOOST_MYSQL_SERVER_HOST");
-#ifdef BOOST_MSVC
-#pragma warning(pop)
-#endif
-
-    return std::string(hostname ? hostname : "localhost");
-}
 
 // Get the endpoint to use for TCP from an environment variable.
 // Required as CI MySQL doesn't run on loocalhost
 boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 {
-    std::string hostname = get_host();
+    std::string hostname = boost::mysql::test::safe_getenv("BOOST_MYSQL_SERVER_HOST", "localhost");
     boost::asio::io_context ctx;
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
     auto results = resolver.resolve(hostname, boost::mysql::default_port_string);
@@ -46,8 +32,7 @@ boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 
 }  // namespace
 
-boost::asio::ip::tcp::endpoint boost::mysql::test::endpoint_getter<
-    boost::asio::ip::tcp>::operator()()
+boost::asio::ip::tcp::endpoint boost::mysql::test::endpoint_getter<boost::asio::ip::tcp>::operator()()
 {
     static auto res = get_tcp_valid_endpoint();
     return res;

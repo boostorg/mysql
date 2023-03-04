@@ -1,12 +1,12 @@
 #
-# Copyright (c) 2019-2020 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "bugfix/*", "feature/*", "fix/*", "pr/*" ] }
-_container_tag = 'a2479d03ed00a86cb7f916c9155e0dbbeee59325'
+_container_tag = '65e51d3af7132dcb1001249629c24cc59b934cb6'
 
 
 def _image(name):

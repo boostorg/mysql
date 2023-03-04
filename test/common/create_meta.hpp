@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_CREATE_META_HPP
 
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -28,13 +29,15 @@ inline metadata create_meta(const detail::column_definition_packet& coldef, bool
 inline metadata create_meta(
     detail::protocol_field_type type,
     std::uint16_t flags = 0,
-    std::uint8_t decimals = 0
+    std::uint8_t decimals = 0,
+    std::uint16_t collation = mysql_collations::utf8mb4_general_ci
 )
 {
     detail::column_definition_packet coldef{};
     coldef.type = type;
     coldef.flags = flags;
     coldef.decimals = decimals;
+    coldef.character_set = collation;
     return create_meta(coldef, true);
 }
 

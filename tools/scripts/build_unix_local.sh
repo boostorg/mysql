@@ -8,12 +8,12 @@
 
 set -e
 
-BK=docs
-IMAGE=build-docs
+BK=b2
+IMAGE=build-gcc11
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
 
-docker start mysql8
+docker start mariadb
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
     -v ~/workspace/mysql:/opt/boost-mysql \
@@ -33,7 +33,9 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \
     --cmake-build-type=Release \
-    --stdlib=native
+    --stdlib=native \
+    --server-host=mariadb \
+    --db=mariadb
 
 if [ "$BK" == "docs" ]; then
     cp -r ~/workspace/mysql/doc/html ~/workspace/boost-root/libs/mysql/doc/

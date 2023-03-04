@@ -48,6 +48,7 @@ enum class column_type
     blob,       ///< `BLOB` types (`TINYBLOB`, `MEDIUMBLOB`, `BLOB` and `LONGBLOB`)
     enum_,      ///< `ENUM`
     set,        ///< `SET`
+    json,       ///< `JSON`
     geometry,   ///< `GEOMETRY`
     unknown,    ///< None of the known types; maybe a new MySQL type we have no knowledge of.
 };
@@ -81,6 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, column_type t)
     case column_type::blob: return os << "blob";
     case column_type::enum_: return os << "enum_";
     case column_type::set: return os << "set";
+    case column_type::json: return os << "json";
     case column_type::geometry: return os << "geometry";
     default: return os << "<unknown field type>";
     }
