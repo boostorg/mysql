@@ -231,7 +231,7 @@ Every MySQL type is mapped to a single C++ type. The following table shows these
             `std::string` for `field`
         ]
         [
-            __CHAR__, __VARCHAR__, __TEXT__ (all sizes), __ENUM__, __SET__, __DECIMAL__, __NUMERIC__
+            __CHAR__, __VARCHAR__, __TEXT__ (all sizes), __ENUM__, __SET__, __DECIMAL__, __NUMERIC__, __JSON__
         ]
         [[refmemunq field_view is_string]]
         [[refmemunq field_view as_string]]

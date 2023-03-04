@@ -295,7 +295,8 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_
     case column_type::text:
     case column_type::enum_:
     case column_type::set:
-    case column_type::decimal: return deserialize_text_value_string(from, output);
+    case column_type::decimal:
+    case column_type::json: return deserialize_text_value_string(from, output);
     // Blobs and anything else
     case column_type::binary:
     case column_type::varbinary:

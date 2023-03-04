@@ -18,7 +18,8 @@ RUN \
         gnupg-curl \
         libssl-dev \
         ninja-build \
-        curl && \
+        curl \
+        mysql-client && \
     ln -s /usr/bin/python3 /usr/bin/python
 
 RUN \

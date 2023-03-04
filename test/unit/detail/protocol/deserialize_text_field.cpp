@@ -11,10 +11,12 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 
 #include <boost/test/data/monomorphic/collection.hpp>
@@ -50,8 +52,9 @@ struct success_sample
     std::string from;
     field_view expected;
     protocol_field_type type;
-    unsigned decimals;
     std::uint16_t flags;
+    unsigned decimals;
+    std::uint16_t collation;
 
     template <class T>
     success_sample(
@@ -60,14 +63,16 @@ struct success_sample
         T&& expected_value,
         protocol_field_type type,
         std::uint16_t flags=0,
-        unsigned decimals=0
+        unsigned decimals=0,
+        std::uint16_t collation=boost::mysql::mysql_collations::utf8mb4_general_ci 
     ) :
         name(std::move(name)),
         from(std::move(from)),
         expected(std::forward<T>(expected_value)),
         type(type),
+        flags(flags),
         decimals(decimals),
-        flags(flags)
+        collation(collation)
     {
     }
 };
@@ -89,6 +94,7 @@ void add_string_samples(std::vector<success_sample>& output)
     output.emplace_back("enum", "value", "value", protocol_field_type::string, column_flags::enum_);
     output.emplace_back("set", "value1,value2", "value1,value2", protocol_field_type::string, column_flags::set);
     output.emplace_back("decimal", "1", "1", protocol_field_type::newdecimal);
+    output.emplace_back("json", "{}", "{}", protocol_field_type::json);
 }
 
 void add_blob_samples(std::vector<success_sample>& output)
@@ -96,12 +102,12 @@ void add_blob_samples(std::vector<success_sample>& output)
     static constexpr std::uint8_t buff [] = { 0x00, 0x01, 0x02, 0x03 };
     std::string from { 0x00, 0x01, 0x02, 0x03 };
 
-    output.emplace_back("varbinary_non_empty", from, blob_view(buff), protocol_field_type::var_string, column_flags::binary);
-    output.emplace_back("varbinary_empty", "", blob_view(), protocol_field_type::var_string, column_flags::binary);
-    output.emplace_back("binary", from, blob_view(buff), protocol_field_type::string, column_flags::binary);
-    output.emplace_back("blob", from, blob_view(buff), protocol_field_type::blob, column_flags::binary);
+    output.emplace_back("varbinary_non_empty", from, blob_view(buff), protocol_field_type::var_string, column_flags::binary, 0, binary_collation);
+    output.emplace_back("varbinary_empty", "", blob_view(), protocol_field_type::var_string, column_flags::binary, 0, binary_collation);
+    output.emplace_back("binary", from, blob_view(buff), protocol_field_type::string, column_flags::binary, 0, binary_collation);
+    output.emplace_back("blob", from, blob_view(buff), protocol_field_type::blob, column_flags::binary, 0, binary_collation);
     output.emplace_back("geometry", from, blob_view(buff), protocol_field_type::geometry,
-            column_flags::binary | column_flags::blob);
+            column_flags::binary | column_flags::blob, 0, binary_collation);
 
     // Anything we don't know what it is, we interpret as a blob
     output.emplace_back("unknown_protocol_type", from,
@@ -427,7 +433,7 @@ std::vector<success_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
 {
-    auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals));
+    auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals), sample.collation);
 
     field_view actual_value;
     auto err = deserialize_text_field(

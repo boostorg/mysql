@@ -10,15 +10,8 @@ FROM ${BASE_IMAGE}
 
 COPY tools/win-ci.cnf C:/my.cnf
 COPY tools/ssl C:/ssl
-COPY test/integration/*.sql C:/db_setup/integration/
-COPY example/db_setup.sql C:/db_setup/example/
 
-RUN choco install --no-progress -y mysql --version 8.0.20 && \
-    call refreshenv && \
-    CHCP 65001 && \
-    mysql -u root < C:/db_setup/integration/db_setup.sql && \
-    mysql -u root < C:/db_setup/integration/db_setup_sha256.sql && \
-    mysql -u root < C:/db_setup/example/db_setup.sql
+RUN choco install --no-progress -y mysql --version 8.0.20
 
 RUN powershell -Command \
     $ErrorActionPreference = 'Stop' ; \

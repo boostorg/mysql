@@ -26,7 +26,8 @@ RUN \
         git \
         gpg \
         cmake \
-        gpg-agent && \
+        gpg-agent \
+        mysql-client && \
     unlink /usr/bin/gcc && \
     ln -s /usr/bin/g++-11 /usr/bin/g++ && \
     ln -s /usr/bin/gcc-11 /usr/bin/gcc && \

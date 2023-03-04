@@ -397,7 +397,6 @@ INSERT INTO types_time VALUES
     ("max",           "838:59:59",  "838:59:58.9",  "838:59:58.99",  "838:59:58.999",  "838:59:58.9999",  "838:59:58.99999",  "838:59:58.999999")
 ;
 
-
 CREATE TABLE types_string(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
     field_char CHAR(20),
@@ -406,13 +405,28 @@ CREATE TABLE types_string(
     field_text TEXT,
     field_mediumtext MEDIUMTEXT,
     field_longtext LONGTEXT,
+    field_text_bincol TEXT CHARACTER SET utf16 COLLATE utf16_bin,
     field_enum ENUM("red", "green", "blue"),
     field_set SET("red", "green", "blue")
 );
 INSERT INTO types_string VALUES
-    ("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "red", "red,green"),
-    ("utf8",    "ñ",         "Ñ",            "á",             "é",         "í",               "ó",             NULL,  NULL),
-    ("empty",   "",          "",             "",              "",          "",                "",              NULL,  "")
+    ("regular", "test_char", "test_varchar", "test_tinytext", "test_text", "test_mediumtext", "test_longtext", "test_bincol", "red", "red,green"),
+    ("utf8",    "ñ",         "Ñ",            "á",             "é",         "í",               "ó",             "ú",           NULL,  NULL),
+    ("empty",   "",          "",             "",              "",          "",                "",              "",            NULL,  "")
+;
+
+-- JSON is handled different by MySQL and MariaDB, so a separate table helps tests
+-- Having arrays in the json fields guarantees order, avoiding requiring parsing
+-- the json object to verify equality.
+CREATE TABLE types_json(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_json JSON
+);
+INSERT INTO types_json VALUES
+    ("regular",        '[null, 42, false, "abc", {"key": "value"}]'),
+    ("unicode_escape", '["\\u0000value\\u0000"]'),
+    ("utf8",           '["adiós"]'),
+    ("empty",          '{}')
 ;
 
 CREATE TABLE types_binary(

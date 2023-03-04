@@ -32,8 +32,8 @@ Examples make use of a database named `boost_mysql_examples`.
 The server hostname and credentials (username and password) are passed 
 to the examples via the command line.
 
-If you're using docker, you can use the `ghcr.io/anarthal-containers/mysql8` container,
-which already ships with all the required configuration:
+If you're using docker, you can use the `ghcr.io/anarthal-containers/mysql8` container
+to simplify the process:
 
 [!teletype]
 ```
@@ -43,6 +43,10 @@ which already ships with all the required configuration:
 
     # If you're on a system that does not support UNIX sockets
     > docker run -p 3306:3306 -d ghcr.io/anarthal-containers/mysql8
+
+    # All the required data can be loaded by running example/db_setup.sql.
+    # If you're using the above container, the root user has a blank password
+    > mysql -u root < example/db_setup.sql
 ```
 
 Please note that this container is just for demonstrative purposes,

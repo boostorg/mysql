@@ -68,7 +68,8 @@ This library performs no character set conversion on strings. All strings are pr
 as the server sends them. If you've issued a `"SET NAMES <charset-name>"` statement,
 strings will be encoded according to `<charset-name>`. For details, see [link mysql.charsets this section].
 
-The type `DECIMAL` is also provided as a string, to avoid losing precision.
+The `JSON` type is represented as a string containing the serialized JSON value.
+The `DECIMAL` type is also provided as a string, to avoid losing precision.
 
 [endsect]
 
@@ -422,6 +423,18 @@ column shows what [refmem metadata type] would return for a column of that type.
         ]
     ]
     [
+        [__JSON__]
+        [`string`]
+        [[reflink string_view] or `std::string`]
+        []
+        [`json` (MySQL) or `text` (MariaDB)]
+        [
+            A serialized JSON value of any type.
+            
+            Note that [refmem metadata type] is different depending on the DB system. MySQL has a dedicated `JSON` type, while in MariaDB `JSON` is an alias for `LONGTEXT`. JSON values are represented as strings by this library in both cases.
+        ]
+    ]
+    [
         [__DECIMAL__/__NUMERIC__]
         [`string`]
         [[reflink string_view] or `std::string`]
@@ -501,7 +514,7 @@ is interpreted by MySQL, depeding on `v`'s type:
     [
         [`std::string`, [reflink string_view], `std::string_view`, `const char*`]
         [`VARCHAR`]
-        [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `DECIMAL`, `NUMERIC`]
+        [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `JSON`, `DECIMAL`, `NUMERIC`]
     ]
     [
         [[reflink blob], [reflink blob_view]]

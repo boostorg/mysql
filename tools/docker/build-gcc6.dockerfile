@@ -14,7 +14,8 @@ RUN \
         ca-certificates \
         libssl-dev \
         git \
-        python3 && \
+        python3 \
+        mysql-client && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get --no-install-recommends -y install gcc-6 g++-6 && \
     ln -s /usr/bin/g++-6 /usr/bin/g++ && \

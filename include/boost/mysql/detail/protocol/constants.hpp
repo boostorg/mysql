@@ -35,6 +35,7 @@ enum class protocol_field_type : std::uint8_t
     year = 0x0d,         // YEAR
     varchar = 0x0f,      // Apparently not sent
     bit = 0x10,          // BIT
+    json = 0xf5,         // JSON
     newdecimal = 0xf6,   // DECIMAL
     enum_ = 0xf7,        // Apparently not sent
     set = 0xf8,          // Apperently not sent
@@ -75,6 +76,9 @@ constexpr std::uint8_t eof_packet_header = 0xfe;
 constexpr std::uint8_t auth_switch_request_header = 0xfe;
 constexpr std::uint8_t auth_more_data_header = 0x01;
 constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
+
+// The binary collation number, used to distinguish blobs from strings
+constexpr std::uint16_t binary_collation = 63;
 
 // Column flags
 namespace column_flags {
@@ -122,9 +126,8 @@ constexpr std::size_t secs_sz = 2;
 
 constexpr std::size_t date_sz = year_sz + month_sz + day_sz + 2;           // delimiters
 constexpr std::size_t time_min_sz = hours_min_sz + mins_sz + secs_sz + 2;  // delimiters
-constexpr std::size_t time_max_sz = time_min_sz + max_decimals +
-                                    3;  // sign, period, hour extra character
-constexpr std::size_t datetime_min_sz = date_sz + time_min_sz + 1;           // delimiter
+constexpr std::size_t time_max_sz = time_min_sz + max_decimals + 3;  // sign, period, hour extra character
+constexpr std::size_t datetime_min_sz = date_sz + time_min_sz + 1;   // delimiter
 constexpr std::size_t datetime_max_sz = datetime_min_sz + max_decimals + 1;  // period
 
 constexpr unsigned time_max_hour = 838;

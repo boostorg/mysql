@@ -25,6 +25,13 @@ def _run(args: List[str]) -> None:
     subprocess.run(args, check=True)
 
 
+def _run_piped_stdin(args: List[str], fname: Path) -> None:
+    with open(str(fname), 'rt', encoding='utf8') as f:
+        content = f.read()
+    print('+ ', args, '(with < {})'.format(fname), flush=True)
+    subprocess.run(args, input=content.encode(), check=True)
+
+
 def _add_to_path(path: Path) -> None:
     sep = ';' if _is_windows  else ':'
     os.environ['PATH'] = '{}{}{}'.format(path, sep, os.environ["PATH"])
@@ -121,6 +128,20 @@ def _install_boost(
         _run(['b2', 'headers'])
 
 
+def _run_sql_file(fname: Path) -> None:
+    _run_piped_stdin(['mysql', '-u', 'root'], fname)
+
+
+def _db_setup(
+    source_dir: Path,
+    db: str = 'mysql8'
+) -> None:
+    _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
+    _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
+    if db == 'mysql8':
+        _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
+
+
 def _doc_build(
     source_dir: Path,
     clean: bool = False,
@@ -158,7 +179,8 @@ def _b2_build(
     stdlib: str = 'native',
     address_model: str = '64',
     clean: bool = False,
-    boost_branch: str = 'develop'
+    boost_branch: str = 'develop',
+    db: str = 'mysql8'
 ) -> None:
     # Config
     if _is_windows:
@@ -171,6 +193,9 @@ def _b2_build(
         clean=clean,
         branch=boost_branch
     )
+
+    # Setup DB
+    _db_setup(source_dir, db)
 
     # Invoke b2
     _run([
@@ -206,6 +231,7 @@ def _cmake_build(
     build_type: str = 'Debug',
     cxxstd: str = '20',
     boost_branch: str = 'develop',
+    db: str = 'mysql8'
 ) -> None:
     # Config
     home = Path(os.path.expanduser('~'))
@@ -227,6 +253,9 @@ def _cmake_build(
         clean=clean,
         branch=boost_branch
     )
+
+    # Setup DB
+    _db_setup(source_dir, db)
 
     # Generate "pre-built" b2 distro
     if standalone_tests:
@@ -438,7 +467,8 @@ def main():
             stdlib=args.stdlib,
             address_model=args.address_model,
             clean=args.clean,
-            boost_branch=boost_branch
+            boost_branch=boost_branch,
+            db=args.db
         )
     elif args.build_kind == 'cmake':
         _cmake_build(
@@ -453,7 +483,8 @@ def main():
             install_tests=args.cmake_install_tests,
             build_type=args.cmake_build_type,
             cxxstd=args.cxxstd,
-            boost_branch=boost_branch
+            boost_branch=boost_branch,
+            db=args.db
         )
     else:
         _doc_build(
