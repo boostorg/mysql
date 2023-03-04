@@ -81,6 +81,8 @@ inline error_code process_capabilities(
     capabilities server_caps(handshake.capability_falgs);
     capabilities required_caps = mandatory_capabilities |
                                  conditional_capability(!params.database().empty(), CLIENT_CONNECT_WITH_DB) |
+                                 conditional_capability(params.multi_results(), CLIENT_MULTI_RESULTS) |
+                                 conditional_capability(params.multi_results(), CLIENT_PS_MULTI_RESULTS) |
                                  conditional_capability(
                                      ssl == ssl_mode::require && is_ssl_stream,
                                      CLIENT_SSL

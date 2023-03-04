@@ -30,6 +30,7 @@ class handshake_params
     string_view database_;
     std::uint16_t connection_collation_;
     ssl_mode ssl_;
+    bool multi_results_;
 
 public:
     /// The default collation to use with the connection (`utf8mb4_general_ci` on both MySQL and MariaDB).
@@ -54,13 +55,15 @@ public:
         string_view password,
         string_view db = "",
         std::uint16_t connection_col = default_collation,
-        ssl_mode mode = ssl_mode::require
+        ssl_mode mode = ssl_mode::require,
+        bool multi_results = false
     )
         : username_(username),
           password_(password),
           database_(db),
           connection_collation_(connection_col),
-          ssl_(mode)
+          ssl_(mode),
+          multi_results_(multi_results)
     {
     }
 
@@ -133,6 +136,9 @@ public:
      * No-throw guarantee.
      */
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
+
+    bool multi_results() const noexcept { return multi_results_; }
+    void set_multi_results(bool v) noexcept { multi_results_ = v; }
 };
 
 }  // namespace mysql
