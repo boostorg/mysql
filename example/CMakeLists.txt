@@ -30,7 +30,7 @@ endfunction()
 function (test_example EXECUTABLE_NAME CONNECTION_ARG)
     add_test(
         NAME ${EXECUTABLE_NAME}
-        COMMAND ${EXECUTABLE_NAME} example_user example_password ${CONNECTION_ARG}
+        COMMAND ${EXECUTABLE_NAME} example_user example_password ${CONNECTION_ARG} ${ARGN}
     )
 endfunction()
 
@@ -53,7 +53,7 @@ function (add_example EXAMPLE_NAME DO_MEMCHECK CONNECTION_ARG)
     if (BOOST_MYSQL_VALGRIND_TESTS AND DO_MEMCHECK)
         memcheck_example(${EXECUTABLE_NAME} ${CONNECTION_ARG})
     else()
-        test_example(${EXECUTABLE_NAME} ${CONNECTION_ARG})
+        test_example(${EXECUTABLE_NAME} ${CONNECTION_ARG} ${ARGN})
     endif()
 endfunction()
 
@@ -77,7 +77,7 @@ add_example(default_completion_tokens   TRUE    ${SERVER_HOST})
 add_example(metadata                    TRUE    ${SERVER_HOST})
 add_example(ssl                         TRUE    ${SERVER_HOST})
 add_example(timeouts                    TRUE    ${SERVER_HOST})
-add_example(stored_procedures           TRUE    ${SERVER_HOST})
+add_example(stored_procedures           TRUE    ${SERVER_HOST} get-orders)
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     add_example(unix_socket             TRUE    "/var/run/mysqld/mysqld.sock")
 endif()

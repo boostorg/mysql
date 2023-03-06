@@ -52,7 +52,7 @@ FLUSH PRIVILEGES;
 CREATE TABLE products (
     id INT PRIMARY KEY AUTO_INCREMENT,
     short_name VARCHAR(100) NOT NULL,
-    descr TEXT DEFAULT '',
+    descr TEXT,
     price INT NOT NULL,
     FULLTEXT(short_name, descr)
 );
