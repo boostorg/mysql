@@ -17,13 +17,13 @@ add_executable(
     detail/auxiliar/rows_iterator.cpp
     detail/auxiliar/field_type_traits.cpp
     detail/auxiliar/datetime.cpp
-    detail/network_algorithms/start_execution_generic.cpp
-    detail/network_algorithms/start_query.cpp
-    detail/network_algorithms/start_statement_execution.cpp
-    detail/network_algorithms/read_some_rows.cpp
-    detail/network_algorithms/read_all_rows.cpp
-    detail/network_algorithms/query.cpp
-    detail/network_algorithms/execute_statement.cpp
+    # detail/network_algorithms/start_execution_generic.cpp
+    # detail/network_algorithms/start_query.cpp
+    # detail/network_algorithms/start_statement_execution.cpp
+    # detail/network_algorithms/read_some_rows.cpp
+    # detail/network_algorithms/read_all_rows.cpp
+    # detail/network_algorithms/query.cpp
+    # detail/network_algorithms/execute_statement.cpp
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
     detail/protocol/capabilities.cpp
@@ -49,8 +49,8 @@ add_executable(
     mariadb_server_errc.cpp
     diagnostics.cpp
     statement.cpp
-    execution_state.cpp
-    results.cpp
+    # execution_state.cpp
+    # results.cpp
     connection.cpp
     regressions.cpp
     throw_on_error.cpp

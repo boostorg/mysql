@@ -188,13 +188,12 @@ inline std::vector<std::uint8_t> create_err_packet_message(
     return create_message(seqnum, create_err_packet_body(code, message));
 }
 
-inline std::vector<std::uint8_t> create_coldef_message(
-    std::uint8_t seqnum,
+inline detail::column_definition_packet create_coldef(
     detail::protocol_field_type type,
     string_view name = "mycol"
 )
 {
-    boost::mysql::detail::column_definition_packet pack{
+    return boost::mysql::detail::column_definition_packet{
         detail::string_lenenc("def"),
         detail::string_lenenc("mydb"),
         detail::string_lenenc("mytable"),
@@ -207,6 +206,15 @@ inline std::vector<std::uint8_t> create_coldef_message(
         0,  // flags
         0,  // decimals
     };
+}
+
+inline std::vector<std::uint8_t> create_coldef_message(
+    std::uint8_t seqnum,
+    detail::protocol_field_type type,
+    string_view name = "mycol"
+)
+{
+    auto pack = create_coldef(type, name);
     return create_message(
         seqnum,
         serialize_to_vector(
