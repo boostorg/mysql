@@ -125,6 +125,8 @@ public:
      */
     string_view info() const noexcept { return impl_.get_info(0); }
 
+    bool is_out_params() const noexcept { return impl_.get_is_out_params(0); }
+
 private:
     detail::execution_state_impl impl_;
 

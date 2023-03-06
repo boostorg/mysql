@@ -250,6 +250,8 @@ public:
 
     std::size_t size() const noexcept { return impl_.num_resultsets(); }
 
+    row_view out_params() const noexcept { return impl_.get_out_params(); }
+
 private:
     detail::execution_state_impl impl_;
 #ifndef BOOST_MYSQL_DOXYGEN

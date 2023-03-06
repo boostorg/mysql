@@ -63,6 +63,12 @@ public:
         return st_->get_info(index_);
     }
 
+    bool is_out_params() const noexcept
+    {
+        assert(st_ != nullptr);
+        return st_->get_is_out_params(index_);
+    }
+
     const resultset_view* operator->() const noexcept { return this; }
 };
 

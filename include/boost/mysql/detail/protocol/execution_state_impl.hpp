@@ -35,8 +35,8 @@ public:
     execution_state_impl(bool append_mode) noexcept : append_mode_(append_mode) {}
 
     // State accessors
-    bool should_read_meta() const noexcept { return state_ == state_t::reading_metadata; }
     bool should_read_head() const noexcept { return state_ == state_t::reading_first_packet; }
+    bool should_read_meta() const noexcept { return state_ == state_t::reading_metadata; }
     bool should_read_rows() const noexcept { return state_ == state_t::reading_rows; }
     bool complete() const noexcept { return state_ == state_t::complete; }
 
@@ -149,6 +149,25 @@ public:
         return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
     }
 
+    bool get_is_out_params(std::size_t index) const noexcept
+    {
+        return get_resultset_with_ok_packet(index).is_out_params;
+    }
+
+    row_view get_out_params() const noexcept
+    {
+        assert(append_mode_ && state_ == state_t::complete);
+        for (std::size_t i = 0; i < per_result_.size(); ++i)
+        {
+            if (per_result_[i].is_out_params)
+            {
+                auto res = get_rows(i);
+                return res.empty() ? row_view() : res[0];
+            }
+        }
+        return row_view();
+    }
+
 private:
     enum class state_t
     {
@@ -171,6 +190,7 @@ private:
         std::size_t info_offset{};       // Offset into the vector of info characters
         std::size_t info_size{};         // Number of characters that this resultset's info string has
         bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
+        bool is_out_params{false};       // Does this resultset contain OUT param information?
     };
 
     void on_new_resultset() noexcept
@@ -198,6 +218,7 @@ private:
         resultset_data.warnings = pack.warnings;
         resultset_data.info_size = pack.info.value.size();
         resultset_data.has_ok_packet_data = true;
+        resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
         info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
         state_ = pack.status_flags & SERVER_MORE_RESULTS_EXISTS ? state_t::reading_first_packet
                                                                 : state_t::complete;

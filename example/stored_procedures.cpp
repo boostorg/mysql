@@ -219,7 +219,7 @@ struct visitor
         boost::mysql::results result;
         auto stmt = conn.prepare_statement("CALL create_order(?)");
         conn.execute_statement(stmt, std::make_tuple(nullptr), result);
-        auto order_id = result.at(0).rows().at(0).at(0).as_int64();
+        auto order_id = result.out_params().at(0).as_int64();
         std::cout << "Created order: " << order_id << std::endl;
     }
 
@@ -261,7 +261,7 @@ struct visitor
         print_order(result, "Added line item to order");
 
         // The output parameter is the last resultset
-        auto new_line_item_id = result.at(2).rows().at(0).at(0).as_int64();
+        auto new_line_item_id = result.out_params().at(0).as_int64();
         std::cout << "The newly created line item ID is: " << new_line_item_id << std::endl;
     }
 
@@ -279,8 +279,8 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL checkout_order(?, ?)");
         conn.execute_statement(stmt, std::make_tuple(args.order_id, nullptr), result);
         print_order(result, "Checked out order");
-        std::cout << "The total amount to pay is: " << result.at(2).rows().at(0).at(0).as_int64() / 100.0
-                  << "$" << std::endl;
+        std::cout << "The total amount to pay is: " << result.out_params().at(0).as_int64() / 100.0 << "$"
+                  << std::endl;
     }
 };
 
