@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(default_ctor)
     BOOST_TEST(r.empty());
 }
 
-BOOST_AUTO_TEST_SUITE(ctor_from_row_view)
+BOOST_AUTO_TEST_SUITE(ctor_from_frow_view)
 BOOST_AUTO_TEST_CASE(empty)
 {
     row_view v;
@@ -376,7 +376,7 @@ BOOST_AUTO_TEST_SUITE(assignment_from_view)
 BOOST_AUTO_TEST_CASE(empty)
 {
     row r = makerow(42, "abcdef", makebv("\0\xae"));
-    r = row();
+    r = row_view();
     BOOST_TEST(r.empty());
 }
 
