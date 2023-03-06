@@ -10,6 +10,7 @@
 
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -42,14 +43,13 @@ public:
     using const_iterator = iterator;
 
     /// A type that can hold elements in this collection with value semantics.
-    // TODO: what do we put here?
-    // using value_type = field;
+    using value_type = resultset;
 
     /// The reference type.
-    using reference = field_view;
+    using reference = resultset_view;
 
     /// \copydoc reference
-    using const_reference = field_view;
+    using const_reference = resultset_view;
 
     /// An unsigned integer type to represent sizes.
     using size_type = std::size_t;

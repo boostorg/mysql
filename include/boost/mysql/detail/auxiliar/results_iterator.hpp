@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_RESULTS_ITERATOR_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_RESULTS_ITERATOR_HPP
 
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
@@ -22,7 +23,7 @@ class results_iterator
     std::size_t index_{};
 
 public:
-    using value_type = resultset_view;  // TODO: maybe we need a resultset
+    using value_type = resultset;
     using reference = resultset_view;
     using pointer = resultset_view;
     using difference_type = std::ptrdiff_t;

@@ -27,45 +27,47 @@ public:
     {
     }
 
+    bool has_value() const noexcept { return st_ != nullptr; }
+
     rows_view rows() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_rows(index_);
     }
 
     metadata_collection_view meta() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_meta(index_);
     }
 
     std::uint64_t affected_rows() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_affected_rows(index_);
     }
 
     std::uint64_t last_insert_id() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_last_insert_id(index_);
     }
 
     unsigned warning_count() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_warning_count(index_);
     }
 
     string_view info() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_info(index_);
     }
 
     bool is_out_params() const noexcept
     {
-        assert(st_ != nullptr);
+        assert(has_value());
         return st_->get_is_out_params(index_);
     }
 
