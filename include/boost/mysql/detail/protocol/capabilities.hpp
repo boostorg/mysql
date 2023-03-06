@@ -67,14 +67,8 @@ public:
     {
         return capabilities(value_ & rhs.value_);
     }
-    constexpr bool operator==(const capabilities& rhs) const noexcept
-    {
-        return value_ == rhs.value_;
-    }
-    constexpr bool operator!=(const capabilities& rhs) const noexcept
-    {
-        return value_ != rhs.value_;
-    }
+    constexpr bool operator==(const capabilities& rhs) const noexcept { return value_ == rhs.value_; }
+    constexpr bool operator!=(const capabilities& rhs) const noexcept { return value_ != rhs.value_; }
 };
 
 /*
@@ -127,7 +121,7 @@ constexpr capabilities mandatory_capabilities{
 };
 // clang-format on
 
-constexpr capabilities optional_capabilities{0};
+constexpr capabilities optional_capabilities{CLIENT_MULTI_RESULTS | CLIENT_PS_MULTI_RESULTS};
 
 }  // namespace detail
 }  // namespace mysql

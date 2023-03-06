@@ -11,27 +11,9 @@
 
 [mysqllink create-procedure.html Stored procedures] cal be called using the `CALL` SQL statement.
 You can use `CALL` statements from both text queries and prepared statements, in a similar way
-to other SQL statements.
+to other SQL statements. Contrary to other statements, `CALL` may generate more than one resultset.
 
-Stored procedures can generate more than one resultset. To use them, you must
-enable the [refmem handshake_params multi_results] option before you connect to the server:
-
-```
-    handshake_params params (
-        "example_user",
-        "example_password",
-        "boost_mysql_integtests" // DB
-    );
-    
-    // This line enables a protocol feature to be able to retrieve several results.
-    // Without this line, you will get a sp_badselect error
-    params.set_multi_results(true);
-
-    // Connect normally
-    conn.connect(endpoint, params);
-```
-
-Now, given a stored procedure like this:
+For example, given a stored procedure like this:
 
 ```
     results result;

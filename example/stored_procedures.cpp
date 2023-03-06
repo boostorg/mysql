@@ -301,10 +301,8 @@ void main_impl(int argc, char** argv)
     boost::mysql::handshake_params params(
         args.username,          // username
         args.password,          // password
-        "boost_mysql_examples"  // database to use; leave empty or omit the parameter for no
-                                // database
+        "boost_mysql_examples"  // database to use
     );
-    params.set_multi_results(true);
 
     // Hostname resolution
     auto endpoints = resolver.resolve(args.host, boost::mysql::default_port_string);
