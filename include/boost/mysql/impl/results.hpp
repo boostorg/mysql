@@ -16,7 +16,7 @@
 
 struct boost::mysql::detail::results_access
 {
-    static execution_state_impl& get_state(results& result) noexcept { return result.impl_; }
+    static execution_state_impl& get_impl(results& result) noexcept { return result.impl_; }
 };
 
 #endif

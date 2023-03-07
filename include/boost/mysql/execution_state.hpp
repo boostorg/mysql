@@ -44,7 +44,8 @@ public:
      */
     execution_state() noexcept : impl_(false){};
 
-    bool should_read_head() const noexcept { return impl_.should_read_head(); }
+    bool should_read_head() const noexcept { return impl_.should_read_head() || impl_.should_read_meta(); }
+
     bool should_read_rows() const noexcept { return impl_.should_read_rows(); }
 
     /**

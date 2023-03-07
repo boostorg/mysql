@@ -196,7 +196,7 @@ void boost::mysql::detail::query(
         channel,
         error_code(),
         query_execution_request(query),
-        results_access::get_state(output),
+        results_access::get_impl(output),
         err,
         diag
     );
@@ -216,7 +216,7 @@ boost::mysql::detail::async_query(
         chan,
         error_code(),
         std::unique_ptr<execution_request>(new query_execution_request(query)),
-        results_access::get_state(output),
+        results_access::get_impl(output),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -236,7 +236,7 @@ void boost::mysql::detail::execute_statement(
         channel,
         check_num_params(stmt, params),
         stmt_tuple_execution_request<FieldLikeTuple>(stmt.id(), params),  // TODO: this is optimizable
-        results_access::get_state(output),
+        results_access::get_impl(output),
         err,
         diag
     );
@@ -263,7 +263,7 @@ boost::mysql::detail::async_execute_statement(
         std::unique_ptr<execution_request>(
             new stmt_tuple_execution_request<decayed_tuple>(stmt.id(), std::forward<FieldLikeTuple>(params))
         ),
-        results_access::get_state(output),
+        results_access::get_impl(output),
         diag,
         std::forward<CompletionToken>(token)
     );

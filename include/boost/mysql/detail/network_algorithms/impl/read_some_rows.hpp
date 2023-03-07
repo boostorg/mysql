@@ -66,7 +66,7 @@ inline rows_view process_some_rows(
         // will point into the channel's internal buffer
 
         // If we received an EOF, we're done
-        if (st.complete())
+        if (!st.should_read_rows())
             break;
         ++num_rows;
     }
