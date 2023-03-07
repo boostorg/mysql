@@ -84,6 +84,10 @@ public:
     bool operator<=(results_iterator rhs) const noexcept { return index_ <= rhs.index_; }
     bool operator>(results_iterator rhs) const noexcept { return index_ > rhs.index_; }
     bool operator>=(results_iterator rhs) const noexcept { return index_ >= rhs.index_; }
+
+    // TODO: make this private
+    std::size_t index() const noexcept { return index_; }
+    const execution_state_impl* obj() const noexcept { return self_; }
 };
 
 inline results_iterator operator+(std::ptrdiff_t n, results_iterator it) noexcept { return it + n; }

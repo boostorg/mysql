@@ -227,10 +227,19 @@ public:
         return impl_.get_info(0);
     }
 
-    iterator begin() const noexcept { return iterator(&impl_, 0); }
-    iterator end() const noexcept { return iterator(&impl_, size()); }
+    iterator begin() const noexcept
+    {
+        assert(has_value());
+        return iterator(&impl_, 0);
+    }
+    iterator end() const noexcept
+    {
+        assert(has_value());
+        return iterator(&impl_, size());
+    }
     inline resultset_view at(std::size_t i) const
     {
+        assert(has_value());
         if (i >= size())
             throw std::out_of_range("results::at: out of range");
         return resultset_view(impl_, i);
@@ -238,6 +247,7 @@ public:
 
     resultset_view operator[](std::size_t i) const noexcept
     {
+        assert(has_value());
         assert(i < size());
         return resultset_view(impl_, i);
     }
@@ -246,11 +256,23 @@ public:
 
     resultset_view back() const noexcept { return (*this)[size() - 1]; }
 
-    bool empty() const noexcept { return size() == 0; }
+    bool empty() const noexcept
+    {
+        assert(has_value());
+        return false;
+    }
 
-    std::size_t size() const noexcept { return impl_.num_resultsets(); }
+    std::size_t size() const noexcept
+    {
+        assert(has_value());
+        return impl_.num_resultsets();
+    }
 
-    row_view out_params() const noexcept { return impl_.get_out_params(); }
+    row_view out_params() const noexcept
+    {
+        assert(has_value());
+        return impl_.get_out_params();
+    }
 
 private:
     detail::execution_state_impl impl_;
