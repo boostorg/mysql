@@ -8,13 +8,13 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
+#include "create_message.hpp"
 #include "create_meta.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
 using boost::mysql::column_type;
-using boost::mysql::metadata;
 using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
@@ -157,6 +157,18 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
     BOOST_TEST(!meta.is_auto_increment());
     BOOST_TEST(!meta.has_no_default_value());
     BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(string_ownership)
+{
+    // Create the meta object
+    std::string colname = "col1";
+    auto coldef = create_coldef(protocol_field_type::float_, colname);
+    auto meta = create_meta(coldef, true);
+
+    // Check that we actually copy the data
+    colname = "abcd";
+    BOOST_TEST(meta.column_name() == "col1");
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_metadata

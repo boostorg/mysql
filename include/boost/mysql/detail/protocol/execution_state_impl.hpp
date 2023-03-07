@@ -97,6 +97,7 @@ public:
     // Accessors for other protocol stuff
     resultset_encoding encoding() const noexcept { return encoding_; }
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
+    bool is_append_mode() const noexcept { return append_mode_; }  // For testing
 
     metadata_collection_view current_resultset_meta() const noexcept
     {
