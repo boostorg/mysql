@@ -154,6 +154,18 @@ void add_fields(execution_state_impl& st, const Args&... args)
     }
 }
 
+// Create an initial execution_state_impl object, to verify we clear things correctly
+execution_state_impl create_initial_state(bool append_mode)
+{
+    execution_state_impl st(append_mode);
+    st.on_num_meta(1);
+    st.on_meta(create_coldef(protocol_field_type::geometry), metadata_mode::minimal);
+    if (append_mode)
+        add_fields(st, makebv("\0\0"), makebv(""));
+    st.on_row_ok_packet(create_ok_packet(1, 2, SERVER_MORE_RESULTS_EXISTS, 4, "abcdef"));
+    return st;
+}
+
 BOOST_AUTO_TEST_SUITE(test_execution_state_impl)
 
 BOOST_AUTO_TEST_SUITE(append_false)
@@ -161,7 +173,8 @@ BOOST_AUTO_TEST_SUITE(append_false)
 BOOST_AUTO_TEST_CASE(one_resultset_data)
 {
     // Initial
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
 
     // Head indicates resultset with metadata
@@ -194,7 +207,8 @@ BOOST_AUTO_TEST_CASE(one_resultset_data)
 BOOST_AUTO_TEST_CASE(one_resultset_norows)
 {
     // Initial
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
 
     // Resultset head, same as previous test
@@ -214,7 +228,8 @@ BOOST_AUTO_TEST_CASE(one_resultset_norows)
 BOOST_AUTO_TEST_CASE(one_resultset_empty)
 {
     // Initial
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
 
     // Directly end of resultet, no meta
@@ -227,7 +242,8 @@ BOOST_AUTO_TEST_CASE(one_resultset_empty)
 BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
 {
     // Resultset r1: equivalent to single resultset case
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
     st.on_num_meta(2);
     st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
@@ -266,7 +282,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
 BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
 {
     // Resultset r1: same as the single case
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     st.on_head_ok_packet(create_ok_r1(SERVER_MORE_RESULTS_EXISTS));
     check_should_read_head(st);
     check_meta_empty(st.get_meta(0));
@@ -298,7 +315,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
 BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
 {
     // Resultset r1: equivalent to single resultset case
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     st.on_num_meta(2);
     st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
@@ -320,7 +338,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
 BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
 {
     // Resultset r1: equivalent to single resultset case
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
 
     // OK packet indicates more results
     st.on_head_ok_packet(create_ok_r1(SERVER_MORE_RESULTS_EXISTS));
@@ -338,7 +357,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
 BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
 {
     // Two first resultsets
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     st.on_head_ok_packet(create_ok_r1(SERVER_MORE_RESULTS_EXISTS));
     st.on_head_ok_packet(create_ok_r2(SERVER_MORE_RESULTS_EXISTS));
     check_should_read_head(st);
@@ -377,7 +397,8 @@ BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
 BOOST_AUTO_TEST_CASE(three_resultsets_data_empty_data)
 {
     // Two first resultsets
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
     st.on_num_meta(2);
     st.on_meta(create_coldef(protocol_field_type::float_), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::double_), metadata_mode::minimal);
@@ -408,7 +429,8 @@ BOOST_AUTO_TEST_CASE(three_resultsets_data_empty_data)
 
 BOOST_AUTO_TEST_CASE(info_string_ownserhip)
 {
-    execution_state_impl st(false);
+    auto st = create_initial_state(false);
+    st.reset(resultset_encoding::text);
 
     // OK packet received, doesn't own the string
     std::string info = "Some info";
@@ -425,33 +447,6 @@ BOOST_AUTO_TEST_CASE(info_string_ownserhip)
     info = "abcdfefgh";
     BOOST_TEST(st.get_info(0) == "other info");
 }
-
-BOOST_AUTO_TEST_CASE(reset)
-{
-    execution_state_impl st(false);
-
-    // From intermediate state
-    st.reset(resultset_encoding::binary);
-    st.on_num_meta(4);
-    st.on_meta(create_coldef(protocol_field_type::bit), metadata_mode::full);
-    st.sequence_number() = 80;
-
-    // Reset
-    st.reset(resultset_encoding::text);
-    check_should_read_head(st);
-    BOOST_TEST(!st.is_append_mode());  // reset doesn't clear append mode
-    BOOST_TEST(st.sequence_number() == 0);
-    BOOST_TEST(st.encoding() == resultset_encoding::text);
-
-    // Can be used normally
-    st.on_num_meta(1);
-    st.on_meta(create_coldef(protocol_field_type::float_), metadata_mode::full);
-    check_meta_r1(st.current_resultset_meta());
-    st.on_row_ok_packet(create_ok_r1());
-    check_complete(st);
-    check_meta_r1(st.get_meta(0));
-    check_ok_r1(st, 0);
-}
 BOOST_AUTO_TEST_SUITE_END()  // append_false
 
 //
@@ -462,7 +457,8 @@ BOOST_AUTO_TEST_SUITE(append_true)
 BOOST_AUTO_TEST_CASE(one_resultset_data)
 {
     // Initial
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
 
     // Head indicates resultset with two columns
@@ -497,7 +493,8 @@ BOOST_AUTO_TEST_CASE(one_resultset_data)
 BOOST_AUTO_TEST_CASE(one_resultset_norows)
 {
     // Initial
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
 
     // Metadata
@@ -520,7 +517,8 @@ BOOST_AUTO_TEST_CASE(one_resultset_norows)
 BOOST_AUTO_TEST_CASE(one_resultset_empty)
 {
     // Initial
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     check_should_read_head(st);
 
     // End of resultset
@@ -536,7 +534,8 @@ BOOST_AUTO_TEST_CASE(one_resultset_empty)
 BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
 {
     // Resultset r1: equivalent to single resultset case
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     st.on_num_meta(2);
     st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
@@ -578,7 +577,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
 BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
 {
     // Resultset r1: same as the single case
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     st.on_head_ok_packet(create_ok_r1(SERVER_MORE_RESULTS_EXISTS));
     check_should_read_head(st);
 
@@ -614,7 +614,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
 BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
 {
     // Resultset r1: equivalent to single resultset case
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     st.on_num_meta(2);
     st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
@@ -642,7 +643,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
 BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
 {
     // Resultset r1: equivalent to single resultset case
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     st.on_head_ok_packet(create_ok_r1(SERVER_MORE_RESULTS_EXISTS));
     check_should_read_head(st);
 
@@ -662,7 +664,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
 BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
 {
     // Two first resultsets
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     st.on_head_ok_packet(create_ok_r1(SERVER_MORE_RESULTS_EXISTS));
     st.on_head_ok_packet(create_ok_r2(SERVER_MORE_RESULTS_EXISTS));
     check_should_read_head(st);
@@ -709,7 +712,8 @@ BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
 BOOST_AUTO_TEST_CASE(three_resultsets_data_data_data)
 {
     // First resultset
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
     st.on_num_meta(2);
     st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
@@ -752,7 +756,8 @@ BOOST_AUTO_TEST_CASE(three_resultsets_data_data_data)
 
 BOOST_AUTO_TEST_CASE(info_string_ownserhip)
 {
-    execution_state_impl st(true);
+    auto st = create_initial_state(true);
+    st.reset(resultset_encoding::text);
 
     // Head OK packet
     std::string info = "Some info";
@@ -771,78 +776,6 @@ BOOST_AUTO_TEST_CASE(info_string_ownserhip)
     BOOST_TEST(st.get_info(0) == "Some info");
     BOOST_TEST(st.get_info(1) == "");
     BOOST_TEST(st.get_info(2) == "other info");
-}
-
-BOOST_AUTO_TEST_CASE(reset_from_intermediate)
-{
-    execution_state_impl st(true);
-
-    // From intermediate state
-    st.reset(resultset_encoding::binary);
-    st.on_num_meta(4);
-    st.on_meta(create_coldef(protocol_field_type::bit), metadata_mode::full);
-    st.sequence_number() = 80;
-
-    // Reset
-    st.reset(resultset_encoding::text);
-    check_should_read_head(st);
-    BOOST_TEST(st.is_append_mode());  // reset doesn't clear append mode
-    BOOST_TEST(st.sequence_number() == 0);
-    BOOST_TEST(st.encoding() == resultset_encoding::text);
-
-    // Can be used normally
-    st.on_num_meta(1);
-    st.on_meta(create_coldef(protocol_field_type::float_), metadata_mode::full);
-    st.on_row_ok_packet(create_ok_r1());
-
-    // Verify that there were no leftovers
-    check_complete(st);
-    check_meta_r1(st.get_meta(0));
-    check_ok_r1(st, 0);
-    BOOST_TEST(st.num_resultsets() == 1);
-    BOOST_TEST(st.get_rows(0) == makerows(1));
-}
-
-BOOST_AUTO_TEST_CASE(reset_from_complete)
-{
-    // Run to completion
-    execution_state_impl st(true);
-    st.on_num_meta(2);
-    st.on_meta(create_coldef(protocol_field_type::float_), metadata_mode::full);
-    st.on_meta(create_coldef(protocol_field_type::double_), metadata_mode::full);
-    add_fields(st, 4.2f, 4.2, 42.0f, 42.0);
-    st.on_row();
-    st.on_row();
-    st.on_row_ok_packet(create_ok_packet(1, 2, SERVER_MORE_RESULTS_EXISTS, 4, "abc"));
-
-    st.on_head_ok_packet(create_ok_packet(5, 6, SERVER_MORE_RESULTS_EXISTS, 7, "fgh"));
-
-    st.on_num_meta(1);
-    st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::full);
-    add_fields(st, 50);
-    st.on_row();
-
-    // Reset
-    st.reset(resultset_encoding::binary);
-    check_should_read_head(st);
-    BOOST_TEST(st.is_append_mode());  // reset doesn't clear append mode
-    BOOST_TEST(st.sequence_number() == 0);
-    BOOST_TEST(st.encoding() == resultset_encoding::binary);
-
-    // Can be used normally
-    st.on_num_meta(1);
-    st.on_meta(create_coldef(protocol_field_type::float_), metadata_mode::full);
-    add_fields(st, 4.2f, 50.0f);
-    st.on_row();
-    st.on_row();
-    st.on_row_ok_packet(create_ok_r1());
-
-    // Verify that there were no leftovers
-    check_complete(st);
-    check_meta_r1(st.get_meta(0));
-    check_ok_r1(st, 0);
-    BOOST_TEST(st.num_resultsets() == 1);
-    BOOST_TEST(st.get_rows(0) == makerows(1, 42.0f, 50.0f));
 }
 BOOST_AUTO_TEST_SUITE_END()  // append true
 
