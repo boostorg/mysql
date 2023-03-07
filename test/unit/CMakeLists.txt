@@ -51,7 +51,7 @@ add_executable(
     diagnostics.cpp
     statement.cpp
     execution_state.cpp
-    # results.cpp
+    results.cpp
     connection.cpp
     regressions.cpp
     throw_on_error.cpp

@@ -6,12 +6,15 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/impl/results.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -21,6 +24,8 @@
 
 using namespace boost::mysql::test;
 using boost::mysql::column_type;
+using boost::mysql::field_view;
+using boost::mysql::metadata_mode;
 using boost::mysql::results;
 using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
@@ -31,6 +36,18 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_results)
 
+void populate(results& r)
+{
+    auto& impl = boost::mysql::detail::results_access::get_impl(r);
+    impl.on_num_meta(1);
+    impl.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
+    auto fields = make_fv_arr("abc", nullptr);
+    impl.rows().assign(fields.data(), fields.size());
+    impl.on_row();
+    impl.on_row();
+    impl.on_row_ok_packet(create_ok_packet(0, 0, 0, 0, "small"));
+}
+
 BOOST_AUTO_TEST_CASE(has_value)
 {
     // Default construction
@@ -38,35 +55,18 @@ BOOST_AUTO_TEST_CASE(has_value)
     BOOST_TEST_REQUIRE(!result.has_value());
 
     // Populate it
-    execution_state_access::complete(results_access::get_state(result), create_ok_packet(4, 1, 0, 3, "info"));
-
-    // It's now valid
+    populate(result);
     BOOST_TEST_REQUIRE(result.has_value());
-    BOOST_TEST(result.meta().size() == 0u);
-    BOOST_TEST(result.rows().size() == 0u);
-    BOOST_TEST(result.affected_rows() == 4u);
-    BOOST_TEST(result.last_insert_id() == 1u);
-    BOOST_TEST(result.warning_count() == 3u);
-    BOOST_TEST(result.info() == "info");
 }
 
-results create_populated_results()
-{
-    auto st = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
-    execution_state_access::complete(st, create_ok_packet(2, 3, 0, 4, "small"));
-
-    results result;
-    results_access::get_rows(result) = makerows(1, "abc", nullptr);
-    results_access::get_state(result) = st;
-    return result;
-}
-
+// Verify view validity
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construct a results object
-    auto result = create_populated_results();
+    // Construct a valid object
+    results result;
+    populate(result);
 
-    // Obtain references
+    // Obtain references. Note that iterators and resultset_view's don't remain valid.
     auto rws = result.rows();
     auto meta = result.meta();
     auto info = result.info();
@@ -92,7 +92,8 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
     // Construct a results object
-    auto result = create_populated_results();
+    results result;
+    populate(result);
 
     // Obtain references
     auto rws = result.rows();
