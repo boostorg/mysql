@@ -50,7 +50,7 @@ add_executable(
     mariadb_server_errc.cpp
     diagnostics.cpp
     statement.cpp
-    # execution_state.cpp
+    execution_state.cpp
     # results.cpp
     connection.cpp
     regressions.cpp

@@ -9,72 +9,73 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/protocol_types.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-#include "create_execution_state.hpp"
 #include "create_message.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::column_type;
 using boost::mysql::execution_state;
-using boost::mysql::detail::column_definition_packet;
-using boost::mysql::detail::execution_state_access;
+using boost::mysql::metadata_mode;
 using boost::mysql::detail::protocol_field_type;
-using boost::mysql::detail::resultset_encoding;
 
 namespace {
-
 BOOST_AUTO_TEST_SUITE(test_execution_state)
 
-BOOST_AUTO_TEST_CASE(member_fns)
+// The functionality has been tested in execution_state_impl already.
+// Just spotchecks here
+BOOST_AUTO_TEST_CASE(spotchecks)
 {
-    // Construction
     execution_state st;
+    auto& impl = boost::mysql::detail::execution_state_access::get_impl(st);
+
+    // Initial
+    BOOST_TEST(st.should_read_head());
+    BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(st.meta().size() == 0u);
 
-    // Reset
-    execution_state_access::reset(st, resultset_encoding::binary);
+    // Reading meta
+    impl.on_num_meta(1);
+    BOOST_TEST(st.should_read_head());
+    BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(st.meta().size() == 0u);
 
-    // Add meta
-    column_definition_packet pack{};
-    pack.type = protocol_field_type::var_string;
-    execution_state_access::add_meta(st, pack, boost::mysql::metadata_mode::minimal);
-    pack.type = protocol_field_type::bit;
-    execution_state_access::add_meta(st, pack, boost::mysql::metadata_mode::minimal);
-
+    // Reading rows
+    impl.on_meta(create_coldef(protocol_field_type::bit), metadata_mode::full);
+    BOOST_TEST(!st.should_read_head());
+    BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(st.meta().size() == 2u);
-    BOOST_TEST(st.meta()[0].type() == column_type::varchar);
-    BOOST_TEST(st.meta()[1].type() == column_type::bit);
+    BOOST_TEST(st.meta()[0].type() == column_type::bit);
 
-    // Complete the op
-    execution_state_access::complete(st, create_ok_packet(4, 1, 0, 3, "info"));
+    // Complete
+    impl.on_row_ok_packet(create_ok_packet(1, 2, 0, 4, "abc"));
+    BOOST_TEST(!st.should_read_head());
+    BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(st.complete());
-    BOOST_TEST(st.affected_rows() == 4u);
-    BOOST_TEST(st.last_insert_id() == 1u);
-    BOOST_TEST(st.warning_count() == 3u);
-    BOOST_TEST(st.info() == "info");
+    BOOST_TEST(st.meta()[0].type() == column_type::bit);
+    BOOST_TEST(st.affected_rows() == 1);
+    BOOST_TEST(st.last_insert_id() == 2);
+    BOOST_TEST(st.warning_count() == 4);
+    BOOST_TEST(st.info() == "abc");
+    BOOST_TEST(!st.is_out_params());
+}
 
-    // Reset
-    execution_state_access::reset(st, resultset_encoding::text);
-    BOOST_TEST(!st.complete());
-    BOOST_TEST(st.meta().size() == 0u);
+// Verify that the lifetime guarantees we make are correct
+void populate(execution_state& st)
+{
+    auto& impl = boost::mysql::detail::execution_state_access::get_impl(st);
+    impl.on_num_meta(1);
+    impl.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::full);
+    impl.on_row_ok_packet(create_ok_packet(0, 0, 0, 0, "small"));
 }
 
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construct an execution_state with value
-    auto st = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
-    execution_state_access::complete(st, create_ok_packet(2, 3, 0, 4, "small"));
+    // Construction
+    execution_state st;
+    populate(st);
 
     // Obtain references
     auto meta = st.meta();
@@ -82,7 +83,7 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
     // Move construct
     execution_state st2(std::move(st));
-    st = execution_state();  // Regression check - std::string impl SBO buffer
+    st = execution_state();  // Regression check
 
     // Make sure that views are still valid
     BOOST_TEST_REQUIRE(meta.size() == 1u);
@@ -99,8 +100,8 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
     // Construct an execution_state with value
-    auto st = create_execution_state(resultset_encoding::text, {protocol_field_type::var_string});
-    execution_state_access::complete(st, create_ok_packet(2, 3, 0, 4, "small"));
+    execution_state st;
+    populate(st);
 
     // Obtain references
     auto meta = st.meta();
