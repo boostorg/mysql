@@ -111,6 +111,7 @@ public:
 
     rows_view get_rows(std::size_t index) const noexcept
     {
+        assert(append_mode_);
         const auto& resultset_data = get_resultset(index);
         return rows_view_access::construct(
             rows_.fields().data() + resultset_data.field_offset,

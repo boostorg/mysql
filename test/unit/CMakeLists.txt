@@ -34,6 +34,7 @@ add_executable(
     detail/protocol/deserialize_binary_field.cpp
     detail/protocol/deserialize_row.cpp
     detail/protocol/process_error_packet.cpp
+    detail/protocol/execution_state_impl.cpp
     date.cpp
     datetime.cpp
     field_view.cpp
