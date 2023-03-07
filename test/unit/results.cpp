@@ -9,6 +9,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/resultset_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -33,11 +34,13 @@ using boost::mysql::column_type;
 using boost::mysql::field_view;
 using boost::mysql::metadata_mode;
 using boost::mysql::results;
+using boost::mysql::resultset_view;
 using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::results_access;
 using boost::mysql::detail::resultset_encoding;
 using boost::mysql::detail::SERVER_MORE_RESULTS_EXISTS;
+using boost::mysql::detail::SERVER_PS_OUT_PARAMS;
 
 namespace {
 
@@ -46,6 +49,7 @@ BOOST_AUTO_TEST_SUITE(test_results)
 void populate(results& r)
 {
     auto& impl = boost::mysql::detail::results_access::get_impl(r);
+
     // First resultset
     impl.on_num_meta(1);
     impl.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
@@ -54,9 +58,24 @@ void populate(results& r)
     impl.on_row();
     impl.on_row();
     impl.on_row_ok_packet(create_ok_packet(0, 0, SERVER_MORE_RESULTS_EXISTS, 0, "1st"));
-    impl.on_head_ok_packet(create_ok_packet(0, 0, SERVER_MORE_RESULTS_EXISTS, 0, "2nd"));
+
+    // Second resultset
+    auto flags = SERVER_MORE_RESULTS_EXISTS | SERVER_PS_OUT_PARAMS;
+    impl.on_num_meta(1);
+    impl.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
+    *impl.rows().add_fields(1) = field_view(42);
+    impl.on_row();
+    impl.on_row_ok_packet(create_ok_packet(4, 5, flags, 6, "2nd"));
+
+    // Third resultset
     impl.on_head_ok_packet(create_ok_packet(0, 0, 0, 0, "3rd"));
 }
+
+struct fixture
+{
+    results result;
+    fixture() { populate(result); }
+};
 
 BOOST_AUTO_TEST_CASE(has_value)
 {
@@ -70,12 +89,6 @@ BOOST_AUTO_TEST_CASE(has_value)
 }
 
 BOOST_AUTO_TEST_SUITE(iterators)
-
-struct fixture
-{
-    results result;
-    fixture() { populate(result); }
-};
 
 BOOST_FIXTURE_TEST_CASE(basic, fixture)
 {
@@ -272,11 +285,8 @@ BOOST_FIXTURE_TEST_CASE(relational, fixture)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_CASE(collection_fns)
+BOOST_FIXTURE_TEST_CASE(collection_fns, fixture)
 {
-    results result;
-    populate(result);
-
     // at
     BOOST_TEST(result.at(0).info() == "1st");
     BOOST_TEST(result.at(1).info() == "2nd");
@@ -297,13 +307,33 @@ BOOST_AUTO_TEST_CASE(collection_fns)
     BOOST_TEST(!result.empty());
 }
 
-// Verify view validity
-BOOST_AUTO_TEST_CASE(move_constructor)
-{
-    // Construct a valid object
-    results result;
-    populate(result);
+BOOST_AUTO_TEST_SUITE(resultset_view_)
 
+BOOST_AUTO_TEST_CASE(null_view)
+{
+    resultset_view v;
+    BOOST_TEST(!v.has_value());
+}
+
+BOOST_FIXTURE_TEST_CASE(valid_view, fixture)
+{
+    auto v = result.at(1);
+    BOOST_TEST_REQUIRE(v.has_value());
+    BOOST_TEST(v.rows() == makerows(1, 42));
+    BOOST_TEST_REQUIRE(v.meta().size() == 1);
+    BOOST_TEST(v.meta()[0].type() == column_type::tinyint);
+    BOOST_TEST(v.affected_rows() == 4);
+    BOOST_TEST(v.last_insert_id() == 5);
+    BOOST_TEST(v.warning_count() == 6);
+    BOOST_TEST(v.info() == "2nd");
+    BOOST_TEST(v.is_out_params());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Verify view validity
+BOOST_FIXTURE_TEST_CASE(move_constructor, fixture)
+{
     // Obtain references. Note that iterators and resultset_view's don't remain valid.
     auto rws = result.rows();
     auto meta = result.meta();
@@ -327,12 +357,8 @@ BOOST_AUTO_TEST_CASE(move_constructor)
     BOOST_TEST(result2.info() == "1st");
 }
 
-BOOST_AUTO_TEST_CASE(move_assignment)
+BOOST_FIXTURE_TEST_CASE(move_assignment, fixture)
 {
-    // Construct a results object
-    results result;
-    populate(result);
-
     // Obtain references
     auto rws = result.rows();
     auto meta = result.meta();
