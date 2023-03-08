@@ -52,6 +52,8 @@ add_executable(
     statement.cpp
     execution_state.cpp
     results.cpp
+    resultset_view.cpp
+    resultset.cpp
     connection.cpp
     regressions.cpp
     throw_on_error.cpp
