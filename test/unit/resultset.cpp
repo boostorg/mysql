@@ -14,6 +14,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 #include "printing.hpp"
@@ -63,8 +64,7 @@ BOOST_AUTO_TEST_CASE(ctor_from_view)
 
     BOOST_TEST_REQUIRE(r.has_value());
     BOOST_TEST(r.rows() == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(r.meta().size() == 1u);
-    BOOST_TEST(r.meta()[0].type() == column_type::varchar);
+    check_meta(r.meta(), {column_type::varchar});
     BOOST_TEST(r.affected_rows() == 1u);
     BOOST_TEST(r.last_insert_id() == 2u);
     BOOST_TEST(r.warning_count() == 3u);
@@ -81,8 +81,7 @@ BOOST_AUTO_TEST_CASE(assignment_from_view)
 
     BOOST_TEST_REQUIRE(r.has_value());
     BOOST_TEST(r.rows() == makerows(1, 42));
-    BOOST_TEST_REQUIRE(r.meta().size() == 1u);
-    BOOST_TEST(r.meta()[0].type() == column_type::tinyint);
+    check_meta(r.meta(), {column_type::tinyint});
     BOOST_TEST(r.affected_rows() == 4u);
     BOOST_TEST(r.last_insert_id() == 5u);
     BOOST_TEST(r.warning_count() == 6u);
@@ -108,15 +107,13 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(meta.size() == 1u);
-    BOOST_TEST(meta[0].type() == column_type::varchar);
+    check_meta(meta, {column_type::varchar});
     BOOST_TEST(info == "1st");
 
     // The new object holds the same data
     BOOST_TEST_REQUIRE(r2.has_value());
     BOOST_TEST(r2.rows() == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(r2.meta().size() == 1u);
-    BOOST_TEST(r2.meta()[0].type() == column_type::varchar);
+    check_meta(r2.meta(), {column_type::varchar});
     BOOST_TEST(r2.info() == "1st");
 }
 
@@ -145,8 +142,7 @@ BOOST_AUTO_TEST_CASE(move_assignment)
     // The new object holds the same data
     BOOST_TEST_REQUIRE(r2.has_value());
     BOOST_TEST(r2.rows() == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(r2.meta().size() == 1u);
-    BOOST_TEST(r2.meta()[0].type() == column_type::varchar);
+    check_meta(r2.meta(), {column_type::varchar});
     BOOST_TEST(r2.info() == "1st");
 }
 

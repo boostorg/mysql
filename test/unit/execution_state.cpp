@@ -13,6 +13,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 
@@ -81,14 +82,12 @@ BOOST_AUTO_TEST_CASE(move_constructor)
     st = execution_state();  // Regression check
 
     // Make sure that views are still valid
-    BOOST_TEST_REQUIRE(meta.size() == 1u);
-    BOOST_TEST(meta[0].type() == column_type::varchar);
+    check_meta(meta, {column_type::varchar});
     BOOST_TEST(info == "small");
 
     // The new object holds the same data
     BOOST_TEST_REQUIRE(st2.complete());
-    BOOST_TEST_REQUIRE(st2.meta().size() == 1u);
-    BOOST_TEST(st2.meta()[0].type() == column_type::varchar);
+    check_meta(st2.meta(), {column_type::varchar});
     BOOST_TEST(st2.info() == "small");
 }
 
@@ -110,14 +109,12 @@ BOOST_AUTO_TEST_CASE(move_assignment)
     st = execution_state();  // Regression check - std::string impl SBO buffer
 
     // Make sure that views are still valid
-    BOOST_TEST_REQUIRE(meta.size() == 1u);
-    BOOST_TEST(meta[0].type() == column_type::varchar);
+    check_meta(meta, {column_type::varchar});
     BOOST_TEST(info == "small");
 
     // The new object holds the same data
     BOOST_TEST_REQUIRE(st2.complete());
-    BOOST_TEST_REQUIRE(st2.meta().size() == 1u);
-    BOOST_TEST(st2.meta()[0].type() == column_type::varchar);
+    check_meta(st2.meta(), {column_type::varchar});
     BOOST_TEST(st2.info() == "small");
 }
 

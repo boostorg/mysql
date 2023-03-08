@@ -14,6 +14,7 @@
 
 #include <stdexcept>
 
+#include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 #include "printing.hpp"
@@ -293,15 +294,13 @@ BOOST_FIXTURE_TEST_CASE(move_constructor, fixture)
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(meta.size() == 1u);
-    BOOST_TEST(meta[0].type() == column_type::varchar);
+    check_meta(meta, {column_type::varchar});
     BOOST_TEST(info == "1st");
 
     // The new object holds the same data
     BOOST_TEST_REQUIRE(result2.has_value());
     BOOST_TEST(result2.rows() == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(result2.meta().size() == 1u);
-    BOOST_TEST(result2.meta()[0].type() == column_type::varchar);
+    check_meta(result2.meta(), {column_type::varchar});
     BOOST_TEST(result2.info() == "1st");
 }
 
@@ -319,15 +318,13 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, fixture)
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(meta.size() == 1u);
-    BOOST_TEST(meta[0].type() == column_type::varchar);
+    check_meta(meta, {column_type::varchar});
     BOOST_TEST(info == "1st");
 
     // The new object holds the same data
     BOOST_TEST_REQUIRE(result2.has_value());
     BOOST_TEST(result2.rows() == makerows(1, "abc", nullptr));
-    BOOST_TEST_REQUIRE(result2.meta().size() == 1u);
-    BOOST_TEST(result2.meta()[0].type() == column_type::varchar);
+    check_meta(result2.meta(), {column_type::varchar});
     BOOST_TEST(result2.info() == "1st");
 }
 

@@ -73,22 +73,4 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
     }
 }
 
-inline void boost::mysql::detail::deserialize_execute_response(
-    boost::asio::const_buffer msg,
-    capabilities caps,
-    db_flavor flavor,
-    execution_state_impl& st,
-    error_code& err,
-    diagnostics& diag
-)
-{
-    auto response = deserialize_execute_response(msg, caps, flavor, diag);
-    switch (response.type)
-    {
-    case execute_response::type_t::error: err = response.data.err; break;
-    case execute_response::type_t::ok_packet: st.on_head_ok_packet(response.data.ok_pack); break;
-    case execute_response::type_t::num_fields: st.on_num_meta(response.data.num_fields); break;
-    }
-}
-
 #endif

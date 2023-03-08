@@ -10,6 +10,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 #include "test_common.hpp"
@@ -40,8 +41,7 @@ BOOST_AUTO_TEST_CASE(valid_view)
     auto v = result.at(0);
     BOOST_TEST_REQUIRE(v.has_value());
     BOOST_TEST(v.rows() == makerows(1, 42));
-    BOOST_TEST_REQUIRE(v.meta().size() == 1u);
-    BOOST_TEST(v.meta()[0].type() == column_type::tinyint);
+    check_meta(v.meta(), {column_type::tinyint});
     BOOST_TEST(v.affected_rows() == 4u);
     BOOST_TEST(v.last_insert_id() == 5u);
     BOOST_TEST(v.warning_count() == 6u);

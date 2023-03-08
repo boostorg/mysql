@@ -46,7 +46,14 @@ public:
     error_code process_response(boost::asio::const_buffer msg)
     {
         error_code err;
-        deserialize_execute_response(msg, chan_.current_capabilities(), chan_.flavor(), st_, err, diag_);
+        auto
+            response = deserialize_execute_response(msg, chan_.current_capabilities(), chan_.flavor(), diag_);
+        switch (response.type)
+        {
+        case execute_response::type_t::error: err = response.data.err; break;
+        case execute_response::type_t::ok_packet: st_.on_head_ok_packet(response.data.ok_pack); break;
+        case execute_response::type_t::num_fields: st_.on_num_meta(response.data.num_fields); break;
+        }
         return err;
     }
 

@@ -14,7 +14,6 @@
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 namespace boost {
 namespace mysql {
@@ -53,15 +52,6 @@ inline execute_response deserialize_execute_response(
     db_flavor flavor,
     diagnostics& diag
 ) noexcept;
-
-inline void deserialize_execute_response(
-    boost::asio::const_buffer msg,
-    capabilities caps,
-    db_flavor flavor,
-    execution_state_impl& st,
-    error_code& err,
-    diagnostics& diag
-);
 
 }  // namespace detail
 }  // namespace mysql

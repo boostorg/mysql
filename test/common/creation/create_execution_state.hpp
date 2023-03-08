@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_COMMON_CREATE_EXECUTION_STATE_HPP
-#define BOOST_MYSQL_TEST_COMMON_CREATE_EXECUTION_STATE_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_EXECUTION_STATE_HPP
+#define BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_EXECUTION_STATE_HPP
 
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -46,6 +46,13 @@ public:
     {
         res_.reset(enc);
     }
+
+    exec_builder& seqnum(std::uint8_t v)
+    {
+        res_.sequence_number() = v;
+        return *this;
+    }
+
     exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
     {
         res_.on_num_meta(types.size());
