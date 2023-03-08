@@ -14,11 +14,14 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 
+#include <cassert>
+
 namespace boost {
 namespace mysql {
 
 class resultset
 {
+public:
     resultset() = default;
 
     resultset(resultset_view v) { assign(v); }
@@ -31,19 +34,47 @@ class resultset
 
     bool has_value() const noexcept { return has_value_; }
 
-    rows_view rows() const noexcept { return rws_; }
+    rows_view rows() const noexcept
+    {
+        assert(has_value_);
+        return rws_;
+    }
 
-    metadata_collection_view meta() const noexcept { return meta_; }
+    metadata_collection_view meta() const noexcept
+    {
+        assert(has_value_);
+        return meta_;
+    }
 
-    std::uint64_t affected_rows() const noexcept { return affected_rows_; }
+    std::uint64_t affected_rows() const noexcept
+    {
+        assert(has_value_);
+        return affected_rows_;
+    }
 
-    std::uint64_t last_insert_id() const noexcept { return last_insert_id_; }
+    std::uint64_t last_insert_id() const noexcept
+    {
+        assert(has_value_);
+        return last_insert_id_;
+    }
 
-    unsigned warning_count() const noexcept { return warnings_; }
+    unsigned warning_count() const noexcept
+    {
+        assert(has_value_);
+        return warnings_;
+    }
 
-    string_view info() const noexcept { return string_view(info_.data(), info_.size()); }
+    string_view info() const noexcept
+    {
+        assert(has_value_);
+        return string_view(info_.data(), info_.size());
+    }
 
-    bool is_out_params() const noexcept { return is_out_params_; }
+    bool is_out_params() const noexcept
+    {
+        assert(has_value_);
+        return is_out_params_;
+    }
 
 private:
     bool has_value_{false};

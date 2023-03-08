@@ -9,6 +9,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
@@ -34,6 +35,7 @@ using boost::mysql::column_type;
 using boost::mysql::field_view;
 using boost::mysql::metadata_mode;
 using boost::mysql::results;
+using boost::mysql::resultset;
 using boost::mysql::resultset_view;
 using boost::mysql::detail::execution_state_access;
 using boost::mysql::detail::protocol_field_type;
@@ -57,7 +59,7 @@ void populate(results& r)
     impl.rows().assign(fields.data(), fields.size());
     impl.on_row();
     impl.on_row();
-    impl.on_row_ok_packet(create_ok_packet(0, 0, SERVER_MORE_RESULTS_EXISTS, 0, "1st"));
+    impl.on_row_ok_packet(create_ok_packet(1, 2, SERVER_MORE_RESULTS_EXISTS, 3, "1st"));
 
     // Second resultset
     auto flags = SERVER_MORE_RESULTS_EXISTS | SERVER_PS_OUT_PARAMS;
@@ -303,12 +305,11 @@ BOOST_FIXTURE_TEST_CASE(collection_fns, fixture)
     BOOST_TEST(result.back().info() == "3rd");
 
     // size & empty
-    BOOST_TEST(result.size() == 3);
+    BOOST_TEST(result.size() == 3u);
     BOOST_TEST(!result.empty());
 }
 
 BOOST_AUTO_TEST_SUITE(resultset_view_)
-
 BOOST_AUTO_TEST_CASE(null_view)
 {
     resultset_view v;
@@ -320,15 +321,122 @@ BOOST_FIXTURE_TEST_CASE(valid_view, fixture)
     auto v = result.at(1);
     BOOST_TEST_REQUIRE(v.has_value());
     BOOST_TEST(v.rows() == makerows(1, 42));
-    BOOST_TEST_REQUIRE(v.meta().size() == 1);
+    BOOST_TEST_REQUIRE(v.meta().size() == 1u);
     BOOST_TEST(v.meta()[0].type() == column_type::tinyint);
-    BOOST_TEST(v.affected_rows() == 4);
-    BOOST_TEST(v.last_insert_id() == 5);
-    BOOST_TEST(v.warning_count() == 6);
+    BOOST_TEST(v.affected_rows() == 4u);
+    BOOST_TEST(v.last_insert_id() == 5u);
+    BOOST_TEST(v.warning_count() == 6u);
     BOOST_TEST(v.info() == "2nd");
     BOOST_TEST(v.is_out_params());
 }
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(resultset_)
+
+BOOST_AUTO_TEST_CASE(default_ctor)
+{
+    resultset r;
+    BOOST_TEST(!r.has_value());
+}
+
+BOOST_AUTO_TEST_CASE(ctor_from_view_empty)
+{
+    resultset r{resultset_view{}};
+    BOOST_TEST(!r.has_value());
+}
+
+BOOST_FIXTURE_TEST_CASE(ctor_from_view, fixture)
+{
+    results tmp = result;
+    resultset r{tmp.at(0)};
+    tmp = results();
+
+    BOOST_TEST_REQUIRE(r.has_value());
+    BOOST_TEST(r.rows() == makerows(1, "abc", nullptr));
+    BOOST_TEST_REQUIRE(r.meta().size() == 1u);
+    BOOST_TEST(r.meta()[0].type() == column_type::varchar);
+    BOOST_TEST(r.affected_rows() == 1u);
+    BOOST_TEST(r.last_insert_id() == 2u);
+    BOOST_TEST(r.warning_count() == 3u);
+    BOOST_TEST(r.info() == "1st");
+    BOOST_TEST(!r.is_out_params());
+}
+
+BOOST_FIXTURE_TEST_CASE(assignment_from_view, fixture)
+{
+    results tmp = result;
+    resultset r{tmp.at(0)};
+    r = tmp.at(1);
+    tmp = results();
+
+    BOOST_TEST_REQUIRE(r.has_value());
+    BOOST_TEST(r.rows() == makerows(1, 42));
+    BOOST_TEST_REQUIRE(r.meta().size() == 1u);
+    BOOST_TEST(r.meta()[0].type() == column_type::tinyint);
+    BOOST_TEST(r.affected_rows() == 4u);
+    BOOST_TEST(r.last_insert_id() == 5u);
+    BOOST_TEST(r.warning_count() == 6u);
+    BOOST_TEST(r.info() == "2nd");
+    BOOST_TEST(r.is_out_params());
+}
+
+// View validity
+BOOST_FIXTURE_TEST_CASE(move_constructor, fixture)
+{
+    // Construct object
+    resultset r1(result.at(0));
+
+    // Obtain references
+    auto rws = r1.rows();
+    auto meta = r1.meta();
+    auto info = r1.info();
+
+    // Move construct
+    resultset r2(std::move(r1));
+    r1 = resultset();
+
+    // Make sure that views are still valid
+    BOOST_TEST(rws == makerows(1, "abc", nullptr));
+    BOOST_TEST_REQUIRE(meta.size() == 1u);
+    BOOST_TEST(meta[0].type() == column_type::varchar);
+    BOOST_TEST(info == "1st");
+
+    // The new object holds the same data
+    BOOST_TEST_REQUIRE(r2.has_value());
+    BOOST_TEST(r2.rows() == makerows(1, "abc", nullptr));
+    BOOST_TEST_REQUIRE(r2.meta().size() == 1u);
+    BOOST_TEST(r2.meta()[0].type() == column_type::varchar);
+    BOOST_TEST(r2.info() == "1st");
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assignment, fixture)
+{
+    // Construct object
+    resultset r1(result.at(0));
+
+    // Obtain references
+    auto rws = r1.rows();
+    auto meta = r1.meta();
+    auto info = r1.info();
+
+    // Move construct
+    resultset r2;
+    r2 = std::move(r1);
+    r1 = resultset();
+
+    // Make sure that views are still valid
+    BOOST_TEST(rws == makerows(1, "abc", nullptr));
+    BOOST_TEST_REQUIRE(meta.size() == 1u);
+    BOOST_TEST(meta[0].type() == column_type::varchar);
+    BOOST_TEST(info == "1st");
+
+    // The new object holds the same data
+    BOOST_TEST_REQUIRE(r2.has_value());
+    BOOST_TEST(r2.rows() == makerows(1, "abc", nullptr));
+    BOOST_TEST_REQUIRE(r2.meta().size() == 1u);
+    BOOST_TEST(r2.meta()[0].type() == column_type::varchar);
+    BOOST_TEST(r2.info() == "1st");
+}
 BOOST_AUTO_TEST_SUITE_END()
 
 // Verify view validity
