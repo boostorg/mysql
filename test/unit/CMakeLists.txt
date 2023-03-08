@@ -33,6 +33,7 @@ add_executable(
     detail/protocol/deserialize_text_field.cpp
     detail/protocol/deserialize_binary_field.cpp
     detail/protocol/deserialize_row.cpp
+    detail/protocol/deserialize_execute_response.cpp
     detail/protocol/process_error_packet.cpp
     detail/protocol/execution_state_impl.cpp
     date.cpp
