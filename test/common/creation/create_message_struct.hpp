@@ -8,28 +8,61 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_MESSAGE_STRUCT_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_MESSAGE_STRUCT_HPP
 
+#include <boost/mysql/string_view.hpp>
+
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/constants.hpp>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline detail::ok_packet create_ok_packet(
-    std::uint64_t affected_rows = 0,
-    std::uint64_t last_insert_id = 0,
-    std::uint16_t status_flags = 0,
-    std::uint16_t warnings = 0,
-    string_view info = ""
-)
+class ok_builder
 {
-    return detail::ok_packet{
-        detail::int_lenenc{affected_rows},
-        detail::int_lenenc{last_insert_id},
-        status_flags,
-        warnings,
-        detail::string_lenenc{info},
-    };
-}
+    detail::ok_packet pack_{};
+
+    void flag(std::uint16_t f, bool value)
+    {
+        if (value)
+            pack_.status_flags |= f;
+        else
+            pack_.status_flags &= ~f;
+    }
+
+public:
+    ok_builder() = default;
+    ok_builder& affected_rows(std::uint64_t v)
+    {
+        pack_.affected_rows.value = v;
+        return *this;
+    }
+    ok_builder& last_insert_id(std::uint64_t v)
+    {
+        pack_.last_insert_id.value = v;
+        return *this;
+    }
+    ok_builder& warnings(std::uint16_t v)
+    {
+        pack_.warnings = v;
+        return *this;
+    }
+    ok_builder& more_results(bool v = true)
+    {
+        flag(detail::SERVER_MORE_RESULTS_EXISTS, v);
+        return *this;
+    }
+    ok_builder& out_params(bool v = true)
+    {
+        flag(detail::SERVER_PS_OUT_PARAMS, v);
+        return *this;
+    }
+    ok_builder& info(string_view v)
+    {
+        pack_.info.value = v;
+        return *this;
+    }
+    detail::ok_packet build() { return pack_; }
+};
 
 inline detail::err_packet create_err_packet(std::uint16_t code, string_view message = "")
 {

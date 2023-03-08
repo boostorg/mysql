@@ -13,6 +13,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 
 using namespace boost::mysql::test;
@@ -50,7 +51,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.meta()[0].type() == column_type::bit);
 
     // Complete
-    impl.on_row_ok_packet(create_ok_packet(1, 2, 0, 4, "abc"));
+    impl.on_row_ok_packet(ok_builder().affected_rows(1).last_insert_id(2).warnings(4).info("abc").build());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(st.complete());
@@ -63,19 +64,13 @@ BOOST_AUTO_TEST_CASE(spotchecks)
 }
 
 // Verify that the lifetime guarantees we make are correct
-void populate(execution_state& st)
-{
-    auto& impl = boost::mysql::detail::execution_state_access::get_impl(st);
-    impl.on_num_meta(1);
-    impl.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::full);
-    impl.on_row_ok_packet(create_ok_packet(0, 0, 0, 0, "small"));
-}
-
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
     // Construction
-    execution_state st;
-    populate(st);
+    execution_state st = exec_builder(false)
+                             .meta({protocol_field_type::var_string})
+                             .ok(ok_builder().info("small").build())
+                             .build_state();
 
     // Obtain references
     auto meta = st.meta();
@@ -100,8 +95,10 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
     // Construct an execution_state with value
-    execution_state st;
-    populate(st);
+    execution_state st = exec_builder(false)
+                             .meta({protocol_field_type::var_string})
+                             .ok(ok_builder().info("small").build())
+                             .build_state();
 
     // Obtain references
     auto meta = st.meta();

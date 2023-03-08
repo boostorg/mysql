@@ -11,6 +11,7 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
+#include <boost/mysql/rows.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -25,58 +26,39 @@
 
 #include <stdexcept>
 
-#include "create_execution_state.hpp"
+#include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::column_type;
-using boost::mysql::field_view;
-using boost::mysql::metadata_mode;
 using boost::mysql::results;
 using boost::mysql::resultset;
 using boost::mysql::resultset_view;
-using boost::mysql::detail::execution_state_access;
+using boost::mysql::rows;
 using boost::mysql::detail::protocol_field_type;
-using boost::mysql::detail::results_access;
-using boost::mysql::detail::resultset_encoding;
-using boost::mysql::detail::SERVER_MORE_RESULTS_EXISTS;
-using boost::mysql::detail::SERVER_PS_OUT_PARAMS;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_results)
 
-void populate(results& r)
+results create_initial_results()
 {
-    auto& impl = boost::mysql::detail::results_access::get_impl(r);
-
-    // First resultset
-    impl.on_num_meta(1);
-    impl.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
-    auto fields = make_fv_arr("abc", nullptr);
-    impl.rows().assign(fields.data(), fields.size());
-    impl.on_row();
-    impl.on_row();
-    impl.on_row_ok_packet(create_ok_packet(1, 2, SERVER_MORE_RESULTS_EXISTS, 3, "1st"));
-
-    // Second resultset
-    auto flags = SERVER_MORE_RESULTS_EXISTS | SERVER_PS_OUT_PARAMS;
-    impl.on_num_meta(1);
-    impl.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
-    *impl.rows().add_fields(1) = field_view(42);
-    impl.on_row();
-    impl.on_row_ok_packet(create_ok_packet(4, 5, flags, 6, "2nd"));
-
-    // Third resultset
-    impl.on_head_ok_packet(create_ok_packet(0, 0, 0, 0, "3rd"));
+    return create_results({
+        {{protocol_field_type::var_string},
+         makerows(1, "abc", nullptr),
+         ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").build()},
+        {{protocol_field_type::tiny},
+         makerows(1, 42),
+         ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build()},
+        {{}, rows(), ok_builder().info("3rd").build()}
+    });
 }
 
 struct fixture
 {
-    results result;
-    fixture() { populate(result); }
+    results result{create_initial_results()};
 };
 
 BOOST_AUTO_TEST_CASE(has_value)
@@ -85,8 +67,8 @@ BOOST_AUTO_TEST_CASE(has_value)
     results result;
     BOOST_TEST_REQUIRE(!result.has_value());
 
-    // Populate it
-    populate(result);
+    // With value
+    result = create_initial_results();
     BOOST_TEST_REQUIRE(result.has_value());
 }
 

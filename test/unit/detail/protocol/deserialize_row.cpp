@@ -31,7 +31,7 @@
 #include <cstdint>
 
 #include "buffer_concat.hpp"
-#include "create_execution_state.hpp"
+#include "creation/create_execution_state.hpp"
 #include "creation/create_meta.hpp"
 #include "test_common.hpp"
 
@@ -355,10 +355,13 @@ BOOST_AUTO_TEST_CASE(text_row)
     std::vector<std::uint8_t> row1{0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30};
     std::vector<std::uint8_t> row2{0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30};
     auto buff = concat_copy(row1, row2);
-    auto st = create_execution_state_impl(
-        resultset_encoding::text,
-        {protocol_field_type::var_string, protocol_field_type::long_, protocol_field_type::float_}
-    );
+    auto st = exec_builder(false, resultset_encoding::text)
+                  .meta({
+                      protocol_field_type::var_string,
+                      protocol_field_type::long_,
+                      protocol_field_type::float_,
+                  })
+                  .build();
     std::vector<field_view> fields(st.current_resultset_meta().size());
     error_code err;
     diagnostics diag;
@@ -384,10 +387,9 @@ BOOST_AUTO_TEST_CASE(binary_row)
     std::vector<std::uint8_t> row1{0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07};
     std::vector<std::uint8_t> row2{0x00, 0x08, 0x03, 0x6d, 0x61, 0x78};
     auto buff = concat_copy(row1, row2);
-    auto st = create_execution_state_impl(
-        resultset_encoding::binary,
-        {protocol_field_type::var_string, protocol_field_type::short_}
-    );
+    auto st = exec_builder(false, resultset_encoding::binary)
+                  .meta({protocol_field_type::var_string, protocol_field_type::short_})
+                  .build();
     std::vector<field_view> fields(st.current_resultset_meta().size());
     error_code err;
     diagnostics diag;
@@ -411,10 +413,12 @@ BOOST_AUTO_TEST_CASE(binary_row)
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
     std::vector<std::uint8_t> buff{0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62};
-    auto st = create_execution_state_impl(
-        resultset_encoding::binary,
-        {protocol_field_type::var_string, protocol_field_type::short_}
-    );
+    auto st = exec_builder(false, resultset_encoding::binary)
+                  .meta({
+                      protocol_field_type::var_string,
+                      protocol_field_type::short_,
+                  })
+                  .build();
     auto fields_before = make_fv_vector("abc", 20);  // previous row
     auto fields = fields_before;
     error_code err;
@@ -491,10 +495,12 @@ BOOST_AUTO_TEST_CASE(error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto st = create_execution_state_impl(
-                resultset_encoding::binary,
-                {protocol_field_type::var_string, protocol_field_type::short_}
-            );
+            auto st = exec_builder(false, resultset_encoding::binary)
+                          .meta({
+                              protocol_field_type::var_string,
+                              protocol_field_type::short_,
+                          })
+                          .build();
             std::vector<field_view> fields(st.current_resultset_meta().size());
             error_code err;
             diagnostics diag;

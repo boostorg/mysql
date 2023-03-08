@@ -18,6 +18,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "creation/create_message.hpp"
+#include "creation/create_message_struct.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
 
@@ -53,7 +54,7 @@ BOOST_AUTO_TEST_CASE(process_ping_response_)
         error_code expected_err;
         const char* expected_msg;
     } test_cases[] = {
-        {"success", create_ok_packet_body(), error_code(), ""},
+        {"success", ok_msg_builder().build_body(), error_code(), ""},
         {"empty_message", {}, client_errc::incomplete_message, ""},
         {"invalid_message_type", {0xab}, client_errc::protocol_value_error, ""},
         {"bad_ok_packet", {0x00, 0x01}, client_errc::incomplete_message, ""},
@@ -89,7 +90,7 @@ BOOST_AUTO_TEST_CASE(success)
         BOOST_TEST_CONTEXT(fns.name)
         {
             test_connection conn;
-            conn.stream().add_message(create_ok_packet_message(1, 2, 3, 4, 5));
+            conn.stream().add_message(ok_msg_builder().seqnum(1).build_ok());
 
             // Call the function
             fns.ping(conn).validate_no_error();

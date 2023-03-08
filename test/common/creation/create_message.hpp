@@ -77,67 +77,62 @@ std::vector<std::uint8_t> serialize_to_vector(const Args&... args)
     return res;
 }
 
-inline std::vector<std::uint8_t> create_ok_packet_body(
-    std::uint64_t affected_rows = 0,
-    std::uint64_t last_insert_id = 0,
-    std::uint16_t status_flags = 0,
-    std::uint16_t warnings = 0,
-    string_view info = "",
-    std::uint8_t header = 0x00
-)
+class ok_msg_builder
 {
-    auto pack = create_ok_packet(affected_rows, last_insert_id, status_flags, warnings, info);
-    auto res = serialize_to_vector(
-        std::uint8_t(header),
-        pack.affected_rows,
-        pack.last_insert_id,
-        pack.status_flags,
-        pack.warnings
-    );
-    // When info is empty, it's actually omitted in the ok_packet
-    if (!info.empty())
+    ok_builder impl_;
+    std::uint8_t seqnum_{};
+
+public:
+    ok_msg_builder() = default;
+    ok_msg_builder seqnum(std::uint8_t v)
     {
-        auto vinfo = serialize_to_vector(pack.info);
-        concat(res, vinfo);
+        seqnum_ = v;
+        return *this;
     }
-    return res;
-}
+    ok_msg_builder& affected_rows(std::uint64_t v)
+    {
+        impl_.affected_rows(v);
+        return *this;
+    }
+    ok_msg_builder& last_insert_id(std::uint64_t v)
+    {
+        impl_.last_insert_id(v);
+        return *this;
+    }
+    ok_msg_builder& warnings(std::uint16_t v)
+    {
+        impl_.warnings(v);
+        return *this;
+    }
+    ok_msg_builder& info(string_view v)
+    {
+        impl_.info(v);
+        return *this;
+    }
 
-inline std::vector<std::uint8_t> create_ok_packet_message(
-    std::uint8_t seqnum,
-    std::uint64_t affected_rows = 0,
-    std::uint64_t last_insert_id = 0,
-    std::uint16_t status_flags = 0,
-    std::uint16_t warnings = 0,
-    string_view info = "",
-    std::uint8_t header = 0x00
-)
-{
-    return create_message(
-        seqnum,
-        create_ok_packet_body(affected_rows, last_insert_id, status_flags, warnings, info, header)
-    );
-}
+    std::vector<std::uint8_t> build_body(std::uint8_t header = 0x00)
+    {
+        auto pack = impl_.build();
+        auto res = serialize_to_vector(
+            std::uint8_t(header),
+            pack.affected_rows,
+            pack.last_insert_id,
+            pack.status_flags,
+            pack.warnings
+        );
+        // When info is empty, it's actually omitted in the ok_packet
+        if (!pack.info.value.empty())
+        {
+            auto vinfo = serialize_to_vector(pack.info);
+            concat(res, vinfo);
+        }
+        return res;
+    }
 
-inline std::vector<std::uint8_t> create_eof_packet_message(
-    std::uint8_t seqnum,
-    std::uint64_t affected_rows = 0,
-    std::uint64_t last_insert_id = 0,
-    std::uint16_t status_flags = 0,
-    std::uint16_t warnings = 0,
-    string_view info = ""
-)
-{
-    return create_ok_packet_message(
-        seqnum,
-        affected_rows,
-        last_insert_id,
-        status_flags,
-        warnings,
-        info,
-        0xfe
-    );
-}
+    std::vector<std::uint8_t> build_ok() { return create_message(seqnum_, build_body(0)); }
+
+    std::vector<std::uint8_t> build_eof() { return create_message(seqnum_, build_body(0xfe)); }
+};
 
 inline std::vector<std::uint8_t> create_err_packet_body(std::uint16_t code, string_view message = "")
 {
