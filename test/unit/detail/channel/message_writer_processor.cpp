@@ -22,7 +22,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 
 using boost::asio::buffer;
 using boost::mysql::error_code;
@@ -31,11 +31,7 @@ using boost::mysql::test::concat_copy;
 
 namespace {
 
-void check_header(
-    boost::asio::const_buffer buff,
-    std::uint8_t expected_seqnum,
-    std::size_t expected_size
-)
+void check_header(boost::asio::const_buffer buff, std::uint8_t expected_seqnum, std::size_t expected_size)
 {
     BOOST_TEST_REQUIRE(buff.size() == 4u);
     boost::mysql::detail::deserialization_context ctx(buff, boost::mysql::detail::capabilities());

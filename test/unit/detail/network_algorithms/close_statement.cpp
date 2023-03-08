@@ -15,7 +15,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "assert_buffer_equals.hpp"
-#include "create_statement.hpp"
+#include "creation/create_statement.hpp"
 #include "run_coroutine.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
@@ -47,7 +47,7 @@ constexpr std::uint8_t expected_message[]{0x05, 0x00, 0x00, 0x00, 0x19, 0x03, 0x
 struct fixture
 {
     test_connection conn;
-    statement stmt{create_statement(2, 3)};
+    statement stmt{statement_builder().id(3).num_params(2).build()};
 };
 
 BOOST_AUTO_TEST_CASE(success)

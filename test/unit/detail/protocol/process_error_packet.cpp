@@ -19,7 +19,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 
 using namespace boost::mysql::detail;
 using boost::mysql::client_errc;

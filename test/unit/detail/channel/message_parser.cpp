@@ -19,7 +19,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 
 using boost::asio::buffer;
 using boost::mysql::detail::message_parser;
@@ -57,10 +57,7 @@ public:
     }
     boost::asio::const_buffer check_message(const std::vector<std::uint8_t>& contents)
     {
-        auto msg = boost::asio::buffer(
-            buff_.current_message_first() - contents.size(),
-            contents.size()
-        );
+        auto msg = boost::asio::buffer(buff_.current_message_first() - contents.size(), contents.size());
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, boost::asio::buffer(contents));
         return msg;
     }
@@ -259,8 +256,7 @@ BOOST_AUTO_TEST_CASE(three_messages_last_fragmented)
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     std::vector<std::uint8_t> second_msg_body{0x04, 0x05, 0x06, 0x07};
     std::vector<std::uint8_t> third_msg_body{0x08, 0x09};
-    parser_fixture fixture(create_message(0, first_msg_body, 2, second_msg_body, 3, third_msg_body)
-    );
+    parser_fixture fixture(create_message(0, first_msg_body, 2, second_msg_body, 3, third_msg_body));
 
     // 1st message
     auto res = fixture.parse_bytes(20);  // 1st and 2nd messages + 3rd message header and body part
@@ -344,14 +340,7 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     // message to be parsed
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     parser_fixture fixture(
-        create_message(
-            0,
-            first_msg_body,
-            4,
-            std::vector<std::uint8_t>(64, 0x04),
-            5,
-            {0x05, 0x06, 0x07}
-        ),
+        create_message(0, first_msg_body, 4, std::vector<std::uint8_t>(64, 0x04), 5, {0x05, 0x06, 0x07}),
         64 + 64
     );
     auto second_msg_body = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
@@ -576,14 +565,7 @@ BOOST_AUTO_TEST_CASE(two_frame_max_size)
     // message to be parsed. The two frames have size == max_frame_size,
     // so a third, empty header is received
     parser_fixture fixture(
-        create_message(
-            1,
-            std::vector<std::uint8_t>(64, 0x04),
-            2,
-            std::vector<std::uint8_t>(64, 0x05),
-            3,
-            {}
-        ),
+        create_message(1, std::vector<std::uint8_t>(64, 0x04), 2, std::vector<std::uint8_t>(64, 0x05), 3, {}),
         64 * 3
     );
     auto expected_message = concat_copy(

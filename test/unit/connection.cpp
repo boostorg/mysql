@@ -19,7 +19,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "printing.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"

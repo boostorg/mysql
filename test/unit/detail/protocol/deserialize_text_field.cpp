@@ -23,7 +23,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
-#include "create_meta.hpp"
+#include "creation/create_meta.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
@@ -433,7 +433,11 @@ std::vector<success_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(ok, data::make(make_all_samples()))
 {
-    auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals), sample.collation);
+    auto meta = meta_builder(sample.type)
+        .flags(sample.flags)
+        .decimals(static_cast<std::uint8_t>(sample.decimals))
+        .collation(sample.collation)
+        .build();
 
     field_view actual_value;
     auto err = deserialize_text_field(
@@ -689,7 +693,7 @@ std::vector<error_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(error, data::make(make_all_samples()))
 {
-    auto meta = create_meta(sample.type, sample.flags, static_cast<std::uint8_t>(sample.decimals));
+    auto meta = meta_builder(sample.type).flags(sample.flags).decimals(static_cast<std::uint8_t>(sample.decimals)).build();
 
     field_view actual_value;
     auto err = deserialize_text_field(sample.from, meta, actual_value);

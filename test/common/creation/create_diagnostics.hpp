@@ -5,27 +5,23 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_COMMON_CREATE_STATEMENT_HPP
-#define BOOST_MYSQL_TEST_COMMON_CREATE_STATEMENT_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_DIAGNOSTICS_HPP
+#define BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_DIAGNOSTICS_HPP
 
-#include <boost/mysql/statement.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-
-#include <cstdint>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline statement create_statement(std::uint16_t num_params, std::uint32_t stmt_id = 1)
+inline diagnostics create_diagnostics(string_view s)
 {
-    statement stmt;
-    detail::statement_access::reset(
-        stmt,
-        boost::mysql::detail::com_stmt_prepare_ok_packet{stmt_id, 2, num_params, 0}
-    );
-    return stmt;
+    diagnostics res;
+    detail::diagnostics_access::assign(res, s);
+    return res;
 }
 
 }  // namespace test

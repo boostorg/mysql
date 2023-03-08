@@ -21,7 +21,7 @@
 
 #include <cstddef>
 
-#include "create_meta.hpp"
+#include "creation/create_meta.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
@@ -654,7 +654,7 @@ std::vector<success_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(test_deserialize_binary_value_ok, data::make(make_all_samples()))
 {
-    auto meta = create_meta(sample.type, sample.flags, 0, sample.collation);
+    auto meta = meta_builder(sample.type).flags(sample.flags).decimals(0).collation(sample.collation).build();
     const bytestring& buffer = sample.from;
     deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
 
@@ -1022,7 +1022,7 @@ std::vector<error_sample> make_all_samples()
 
 BOOST_DATA_TEST_CASE(test_deserialize_binary_value_error, data::make(make_all_samples()))
 {
-    auto meta = create_meta(sample.type, sample.flags);
+    auto meta = meta_builder(sample.type).flags(sample.flags).build();
     const bytestring& buff = sample.from;
     deserialization_context ctx(buff.data(), buff.data() + buff.size(), capabilities());
 

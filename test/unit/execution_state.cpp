@@ -13,7 +13,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "create_message.hpp"
+#include "creation/create_message_struct.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::column_type;

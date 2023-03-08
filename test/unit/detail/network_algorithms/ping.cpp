@@ -17,7 +17,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "assert_buffer_equals.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
 

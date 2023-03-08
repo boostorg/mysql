@@ -20,7 +20,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "test_stream.hpp"
 
 using boost::asio::buffer;
@@ -39,12 +39,7 @@ class reader_fns
 {
 public:
     virtual ~reader_fns() {}
-    virtual void read_some(
-        message_reader&,
-        test_stream&,
-        error_code&,
-        bool keep_messages = false
-    ) = 0;
+    virtual void read_some(message_reader&, test_stream&, error_code&, bool keep_messages = false) = 0;
     virtual boost::asio::const_buffer read_one(
         message_reader&,
         test_stream&,
@@ -58,12 +53,8 @@ public:
 class sync_reader_fns : public reader_fns
 {
 public:
-    void read_some(
-        message_reader& reader,
-        test_stream& stream,
-        error_code& err,
-        bool keep_messages = false
-    ) final override
+    void read_some(message_reader& reader, test_stream& stream, error_code& err, bool keep_messages = false)
+        final override
     {
         reader.read_some(stream, err, keep_messages);
     }
@@ -83,12 +74,8 @@ public:
 class async_reader_fns : public reader_fns
 {
 public:
-    void read_some(
-        message_reader& reader,
-        test_stream& stream,
-        error_code& err,
-        bool keep_messages = false
-    ) final override
+    void read_some(message_reader& reader, test_stream& stream, error_code& err, bool keep_messages = false)
+        final override
     {
         boost::asio::io_context ctx;
         reader.async_read_some(
@@ -392,8 +379,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     test_stream stream(
         create_message(seqnum, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, 3, {0x09, 0x0a})
     );
-    std::vector<std::uint8_t>
-        expected_msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a};
+    std::vector<std::uint8_t> expected_msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a};
     error_code err(client_errc::server_unsupported);
 
     // Read succesfully

@@ -32,7 +32,7 @@
 
 #include "buffer_concat.hpp"
 #include "create_execution_state.hpp"
-#include "create_meta.hpp"
+#include "creation/create_meta.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;

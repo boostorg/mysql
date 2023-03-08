@@ -21,7 +21,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "create_diagnostics.hpp"
+#include "creation/create_diagnostics.hpp"
 #include "network_result.hpp"
 
 // Helper functions and classes to implement netmakers

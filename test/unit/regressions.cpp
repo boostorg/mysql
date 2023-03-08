@@ -18,7 +18,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "run_coroutine.hpp"
 #include "test_connection.hpp"
 

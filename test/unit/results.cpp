@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 #include "create_execution_state.hpp"
-#include "create_message.hpp"
+#include "creation/create_message_struct.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 

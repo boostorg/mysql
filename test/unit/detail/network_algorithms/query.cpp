@@ -18,7 +18,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "create_execution_state.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
 #include "test_common.hpp"

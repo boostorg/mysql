@@ -17,7 +17,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "create_execution_state.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "unit_netfun_maker.hpp"
