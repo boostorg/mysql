@@ -23,6 +23,19 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
+void query(channel<Stream>& channel, string_view query, results& output, error_code& err, diagnostics& diag);
+
+template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_query(
+    channel<Stream>& chan,
+    string_view query,
+    results& output,
+    diagnostics& diag,
+    CompletionToken&& token
+);
+
+template <class Stream>
 void start_query(
     channel<Stream>& channel,
     string_view query,
@@ -37,19 +50,6 @@ async_start_query(
     channel<Stream>& chan,
     string_view query,
     execution_state& output,
-    diagnostics& diag,
-    CompletionToken&& token
-);
-
-template <class Stream>
-void query(channel<Stream>& channel, string_view query, results& output, error_code& err, diagnostics& diag);
-
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_query(
-    channel<Stream>& chan,
-    string_view query,
-    results& output,
     diagnostics& diag,
     CompletionToken&& token
 );

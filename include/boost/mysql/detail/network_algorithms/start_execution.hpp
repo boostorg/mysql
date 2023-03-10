@@ -10,41 +10,25 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/execution_state.hpp>
 
-#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
-#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
-#include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
-#include <cstddef>
-#include <memory>
-#include <type_traits>
-#include <utility>
+#include <boost/asio/async_result.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class execution_request
-{
-public:
-    virtual ~execution_request() {}
-    virtual void serialize(capabilities, std::vector<std::uint8_t>& buffer) const = 0;
-    virtual resultset_encoding encoding() const = 0;
-};
+// The caller function must serialize the execution request into channel's buffer
+// before calling these
 
 template <class Stream>
 void start_execution(
     channel<Stream>& channel,
     error_code fast_fail,
-    const execution_request& req,
+    resultset_encoding encoding,
     execution_state_impl& st,
     error_code& err,
     diagnostics& diag
@@ -55,7 +39,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_execution(
     channel<Stream>& chan,
     error_code fast_fail,
-    std::unique_ptr<execution_request> req,  // TODO: find a better way to perform this erasing
+    resultset_encoding encoding,
     execution_state_impl& st,
     diagnostics& diag,
     CompletionToken&& token

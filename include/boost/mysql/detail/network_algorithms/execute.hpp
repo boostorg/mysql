@@ -13,8 +13,7 @@
 #include <boost/mysql/results.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/async_result.hpp>
 
@@ -22,12 +21,15 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// The caller function must serialize the execution request into channel's buffer
+// before calling these
+
 template <class Stream>
 void execute(
     channel<Stream>& channel,
     error_code fast_fail,
-    const execution_request& req,
-    execution_state_impl& output,
+    resultset_encoding enc,
+    results& output,
     error_code& err,
     diagnostics& diag
 );
@@ -37,8 +39,8 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute(
     channel<Stream>& chan,
     error_code fast_fail,
-    std::unique_ptr<execution_request> req,
-    execution_state_impl& output,
+    resultset_encoding enc,
+    results& output,
     diagnostics& diag,
     CompletionToken&& token
 );

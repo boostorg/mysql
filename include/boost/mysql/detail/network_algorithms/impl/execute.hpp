@@ -89,18 +89,18 @@ struct execute_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     error_code fast_fail_;
-    std::unique_ptr<execution_request> req_;
+    resultset_encoding enc_;
     execution_state_impl& st_;
     diagnostics& diag_;
 
     execute_op(
         channel<Stream>& chan,
         error_code fast_fail,
-        std::unique_ptr<execution_request> req,
+        resultset_encoding enc,
         execution_state_impl& st,
         diagnostics& diag
     ) noexcept
-        : chan_(chan), fast_fail_(fast_fail), req_(std::move(req)), st_(st), diag_(diag)
+        : chan_(chan), fast_fail_(fast_fail), enc_(enc), st_(st), diag_(diag)
     {
     }
 
@@ -118,7 +118,7 @@ struct execute_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD
-            async_start_execution(chan_, fast_fail_, std::move(req_), st_, diag_, std::move(self));
+            async_start_execution(chan_, fast_fail_, enc_, st_, diag_, std::move(self));
 
             while (!st_.complete())
             {
@@ -161,13 +161,14 @@ template <class Stream>
 void boost::mysql::detail::execute(
     channel<Stream>& channel,
     error_code fast_fail,
-    const execution_request& req,
-    execution_state_impl& st,
+    resultset_encoding enc,
+    results& result,
     error_code& err,
     diagnostics& diag
 )
 {
-    start_execution(channel, fast_fail, req, st, err, diag);
+    auto& st = results_access::get_impl(result);
+    start_execution(channel, fast_fail, enc, st, err, diag);
     if (err)
         return;
 
@@ -206,14 +207,14 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_execute(
     channel<Stream>& chan,
     error_code fast_fail,
-    std::unique_ptr<execution_request> req,
-    execution_state_impl& st,
+    resultset_encoding enc,
+    results& result,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        execute_op<Stream>(chan, fast_fail, std::move(req), st, diag),
+        execute_op<Stream>(chan, fast_fail, enc, results_access::get_impl(result), diag),
         token,
         chan
     );
