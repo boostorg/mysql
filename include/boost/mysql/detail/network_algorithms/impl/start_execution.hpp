@@ -59,6 +59,8 @@ struct start_execution_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
+            diag_.clear();
+
             // If we got passed a fast-fail code (e.g. a statement number-of-params check failed), fail
             if (fast_fail_)
             {
@@ -68,9 +70,9 @@ struct start_execution_op : boost::asio::coroutine
             }
 
             // Setup
-            start_execution_setup(st_, diag_, enc_);
+            st_.reset(enc_);
 
-            // Send it
+            // Send the execution request (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
                 .async_write(chan_.shared_buffer(), st_.sequence_number(), std::move(self));
 
@@ -97,6 +99,8 @@ void boost::mysql::detail::start_execution(
     diagnostics& diag
 )
 {
+    diag.clear();
+
     // If we got passed a fast-fail code (e.g. a statement number-of-params check failed), fail
     if (fast_fail)
     {
@@ -105,9 +109,9 @@ void boost::mysql::detail::start_execution(
     }
 
     // Setup
-    start_execution_setup(st, diag, enc);
+    st.reset(enc);
 
-    // Send it
+    // Send the execution request (already serialized at this point)
     channel.write(channel.shared_buffer(), st.sequence_number(), err);
     if (err)
         return;
