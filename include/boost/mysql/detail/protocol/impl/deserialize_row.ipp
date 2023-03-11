@@ -125,7 +125,6 @@ void boost::mysql::detail::deserialize_row(
     capabilities current_capabilities,
     db_flavor flavor,
     execution_state_impl& st,
-    field_view* output,
     error_code& err,
     diagnostics& diag
 )
@@ -160,8 +159,8 @@ void boost::mysql::detail::deserialize_row(
     {
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        deserialize_row(st.encoding(), ctx, st.current_resultset_meta(), output, err);
-        st.on_row();
+        field_view* storage = st.add_row();
+        deserialize_row(st.encoding(), ctx, st.current_resultset_meta(), storage, err);
     }
 }
 

@@ -10,9 +10,9 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/execution_state.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/async_result.hpp>
@@ -27,9 +27,8 @@ namespace detail {
 template <class Stream>
 void start_execution(
     channel<Stream>& channel,
-    error_code fast_fail,
     resultset_encoding encoding,
-    execution_state_impl& st,
+    execution_state& st,
     error_code& err,
     diagnostics& diag
 );
@@ -38,9 +37,8 @@ template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::err
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_execution(
     channel<Stream>& chan,
-    error_code fast_fail,
     resultset_encoding encoding,
-    execution_state_impl& st,
+    execution_state& st,
     diagnostics& diag,
     CompletionToken&& token
 );

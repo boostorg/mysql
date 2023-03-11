@@ -20,29 +20,21 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void start_execution_setup(execution_state_impl& st, diagnostics& diag, resultset_encoding enc)
-{
-    diag.clear();
-    st.reset(enc);
-}
-
 template <class Stream>
 struct start_execution_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
-    error_code fast_fail_;
     resultset_encoding enc_;
     execution_state_impl& st_;
     diagnostics& diag_;
 
     start_execution_op(
         channel<Stream>& chan,
-        error_code fast_fail,
         resultset_encoding enc,
         execution_state_impl& st,
         diagnostics& diag
     )
-        : chan_(chan), fast_fail_(fast_fail), enc_(enc), st_(st), diag_(diag)
+        : chan_(chan), enc_(enc), st_(st), diag_(diag)
     {
     }
 
@@ -59,18 +51,9 @@ struct start_execution_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            diag_.clear();
-
-            // If we got passed a fast-fail code (e.g. a statement number-of-params check failed), fail
-            if (fast_fail_)
-            {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-                self.complete(fast_fail_);
-                BOOST_ASIO_CORO_YIELD break;
-            }
-
             // Setup
-            st_.reset(enc_);
+            diag_.clear();
+            st_.reset(enc_, &chan_.shared_fields());
 
             // Send the execution request (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
@@ -92,32 +75,25 @@ struct start_execution_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::start_execution(
     channel<Stream>& channel,
-    error_code fast_fail,
     resultset_encoding enc,
-    execution_state_impl& st,
+    execution_state& st,
     error_code& err,
     diagnostics& diag
 )
 {
+    // Setup
+    auto& impl = execution_state_access::get_impl(st);
     diag.clear();
 
-    // If we got passed a fast-fail code (e.g. a statement number-of-params check failed), fail
-    if (fast_fail)
-    {
-        err = fast_fail;
-        return;
-    }
-
-    // Setup
-    st.reset(enc);
+    impl.reset(enc, &channel.shared_fields());
 
     // Send the execution request (already serialized at this point)
-    channel.write(channel.shared_buffer(), st.sequence_number(), err);
+    channel.write(channel.shared_buffer(), impl.sequence_number(), err);
     if (err)
         return;
 
     // Read the first resultset's head
-    read_resultset_head(channel, st, err, diag);
+    read_resultset_head(channel, impl, err, diag);
     if (err)
         return;
 }
@@ -126,15 +102,14 @@ template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::err
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_start_execution(
     channel<Stream>& channel,
-    error_code fast_fail,
     resultset_encoding enc,
-    execution_state_impl& st,
+    execution_state& st,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        start_execution_op<Stream>(channel, fast_fail, enc, st, diag),
+        start_execution_op<Stream>(channel, enc, execution_state_access::get_impl(st), diag),
         token,
         channel
     );

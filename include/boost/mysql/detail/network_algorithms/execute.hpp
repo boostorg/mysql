@@ -27,7 +27,6 @@ namespace detail {
 template <class Stream>
 void execute(
     channel<Stream>& channel,
-    error_code fast_fail,
     resultset_encoding enc,
     results& output,
     error_code& err,
@@ -38,7 +37,6 @@ template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::err
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute(
     channel<Stream>& chan,
-    error_code fast_fail,
     resultset_encoding enc,
     results& output,
     diagnostics& diag,

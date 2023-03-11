@@ -9,13 +9,16 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HIGH_LEVEL_EXECUTION_HPP
 
 #pragma once
-
 #include <boost/mysql/detail/network_algorithms/execute.hpp>
 #include <boost/mysql/detail/network_algorithms/high_level_execution.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+
+#include <boost/asio/bind_executor.hpp>
+
+#include <functional>
 
 namespace boost {
 namespace mysql {
@@ -87,6 +90,15 @@ error_code check_num_params(const statement& stmt, const FieldLikeTuple&)
     return check_num_params(stmt, std::tuple_size<FieldLikeTuple>::value);
 }
 
+template <class Stream, class Handler>
+void fast_fail(channel<Stream>& chan, Handler&& handler, error_code ec)
+{
+    boost::asio::post(boost::asio::bind_executor(
+        boost::asio::get_associated_executor(handler, chan.get_executor()),
+        std::bind(std::forward<Handler>(handler), ec)
+    ));
+}
+
 // Async initiations
 struct initiate_query
 {
@@ -100,14 +112,7 @@ struct initiate_query
     )
     {
         serialize_query_exec_req(chan, query);
-        async_execute(
-            chan.get(),
-            error_code(),
-            resultset_encoding::text,
-            result,
-            diag,
-            std::forward<Handler>(handler)
-        );
+        async_execute(chan.get(), resultset_encoding::text, result, diag, std::forward<Handler>(handler));
     }
 };
 
@@ -123,14 +128,7 @@ struct initiate_start_query
     )
     {
         serialize_query_exec_req(chan, query);
-        async_start_execution(
-            chan.get(),
-            error_code(),
-            resultset_encoding::text,
-            execution_state_access::get_impl(st),
-            diag,
-            std::forward<Handler>(handler)
-        );
+        async_start_execution(chan.get(), resultset_encoding::text, st, diag, std::forward<Handler>(handler));
     }
 };
 
@@ -146,15 +144,22 @@ struct initiate_execute_statement
         diagnostics& diag
     )
     {
-        serialize_stmt_exec_req(chan, stmt, params);
-        async_execute(
-            chan.get(),
-            check_num_params(stmt, params),
-            resultset_encoding::binary,
-            result,
-            diag,
-            std::forward<Handler>(handler)
-        );
+        auto ec = check_num_params(stmt, params);
+        if (ec)
+        {
+            fast_fail(chan.get(), std::forward<Handler>(handler), ec);
+        }
+        else
+        {
+            serialize_stmt_exec_req(chan, stmt, params);
+            async_execute(
+                chan.get(),
+                resultset_encoding::binary,
+                result,
+                diag,
+                std::forward<Handler>(handler)
+            );
+        }
     }
 };
 
@@ -170,15 +175,22 @@ struct initiate_start_statement_execution
         diagnostics& diag
     )
     {
-        serialize_stmt_exec_req(chan, stmt, params);
-        async_start_execution(
-            chan.get(),
-            check_num_params(stmt, params),
-            resultset_encoding::binary,
-            execution_state_access::get_impl(st),
-            diag,
-            std::forward<Handler>(handler)
-        );
+        auto ec = check_num_params(stmt, params);
+        if (ec)
+        {
+            fast_fail(chan.get(), std::forward<Handler>(handler), ec);
+        }
+        else
+        {
+            serialize_stmt_exec_req(chan, stmt, params);
+            async_start_execution(
+                chan.get(),
+                resultset_encoding::binary,
+                st,
+                diag,
+                std::forward<Handler>(handler)
+            );
+        }
     }
 
     template <class Handler, class Stream, BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FwdIt>
@@ -192,15 +204,22 @@ struct initiate_start_statement_execution
         diagnostics& diag
     )
     {
-        serialize_stmt_exec_req(chan, stmt, first, last);
-        async_start_execution(
-            chan.get(),
-            check_num_params(stmt, first, last),
-            resultset_encoding::binary,
-            execution_state_access::get_impl(st),
-            diag,
-            std::forward<Handler>(handler)
-        );
+        auto ec = check_num_params(stmt, first, last);
+        if (ec)
+        {
+            fast_fail(chan.get(), std::forward<Handler>(handler), ec);
+        }
+        else
+        {
+            serialize_stmt_exec_req(chan, stmt, first, last);
+            async_start_execution(
+                chan.get(),
+                resultset_encoding::binary,
+                st,
+                diag,
+                std::forward<Handler>(handler)
+            );
+        }
     }
 };
 
@@ -218,7 +237,7 @@ void boost::mysql::detail::query(
 )
 {
     serialize_query_exec_req(channel, query);
-    execute(channel, error_code(), resultset_encoding::text, result, err, diag);
+    execute(channel, resultset_encoding::text, result, err, diag);
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
@@ -251,14 +270,7 @@ void boost::mysql::detail::start_query(
 )
 {
     serialize_query_exec_req(channel, query);
-    start_execution(
-        channel,
-        error_code(),
-        resultset_encoding::text,
-        detail::execution_state_access::get_impl(st),
-        err,
-        diag
-    );
+    start_execution(channel, resultset_encoding::text, st, err, diag);
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
@@ -291,8 +303,12 @@ void boost::mysql::detail::execute_statement(
     diagnostics& diag
 )
 {
+    err = check_num_params(stmt, params);
+    if (err)
+        return;
+
     serialize_stmt_exec_req(channel, stmt, params);
-    execute(channel, check_num_params(stmt, params), resultset_encoding::binary, result, err, diag);
+    execute(channel, resultset_encoding::binary, result, err, diag);
 }
 
 template <
@@ -330,15 +346,12 @@ void boost::mysql::detail::start_statement_execution(
     diagnostics& diag
 )
 {
+    err = check_num_params(stmt, params);
+    if (err)
+        return;
+
     serialize_stmt_exec_req(channel, stmt, params);
-    start_execution(
-        channel,
-        check_num_params(stmt, params),
-        resultset_encoding::binary,
-        execution_state_access::get_impl(st),
-        err,
-        diag
-    );
+    start_execution(channel, resultset_encoding::binary, st, err, diag);
 }
 
 template <
@@ -377,15 +390,12 @@ void boost::mysql::detail::start_statement_execution(
     diagnostics& diag
 )
 {
+    err = check_num_params(stmt, params_first, params_last);
+    if (err)
+        return;
+
     serialize_stmt_exec_req(chan, stmt, params_first, params_last);
-    start_execution(
-        chan,
-        check_num_params(stmt, params_first, params_last),
-        resultset_encoding::binary,
-        detail::execution_state_access::get_impl(st),
-        err,
-        diag
-    );
+    start_execution(chan, resultset_encoding::binary, st, err, diag);
 }
 
 template <

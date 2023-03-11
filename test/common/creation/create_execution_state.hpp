@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_EXECUTION_STATE_HPP
 
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows.hpp>
@@ -41,10 +42,14 @@ class exec_builder
     detail::execution_state_impl res_;
 
 public:
-    exec_builder(bool append_mode, detail::resultset_encoding enc = detail::resultset_encoding::text)
+    exec_builder(
+        bool append_mode,
+        detail::resultset_encoding enc = detail::resultset_encoding::text,
+        std::vector<field_view>* storage = nullptr
+    )
         : res_(append_mode)
     {
-        res_.reset(enc);
+        res_.reset(enc, storage);
     }
 
     exec_builder& seqnum(std::uint8_t v)
@@ -63,26 +68,19 @@ public:
         return *this;
     }
 
-    exec_builder& row()
-    {
-        res_.on_row();
-        return *this;
-    }
-
     exec_builder& rows(const boost::mysql::rows& r)
     {
         assert(r.num_columns() == res_.current_resultset_meta().size());
-        auto num_fields = r.size() * r.num_columns();
-        auto* storage = res_.rows().add_fields(num_fields);
+        res_.on_row_batch_start();
         for (auto rv : r)
         {
+            field_view* storage = res_.add_row();
             for (auto f : rv)
             {
                 *(storage++) = f;
             }
-            res_.on_row();
         }
-        res_.rows().copy_strings_as_offsets(0, num_fields);
+        res_.on_row_batch_finish();
         return *this;
     }
 
@@ -115,16 +113,12 @@ public:
 
     exec_builder& last_resultset(const resultset_spec& spec) { return resultset(spec, true); }
 
-    detail::execution_state_impl build()
-    {
-        res_.rows().offsets_to_string_views();
-        return std::move(res_);
-    }
+    detail::execution_state_impl build() { return std::move(res_); }
 
     execution_state build_state()
     {
         execution_state res;
-        detail::execution_state_access::get_impl(res) = std::move(*this).build();
+        detail::execution_state_access::get_impl(res) = build();
         return res;
     }
 };
@@ -137,7 +131,7 @@ inline results create_results(const std::vector<resultset_spec>& spec)
         builder.resultset(spec[i], i == spec.size() - 1);
     }
     results res;
-    detail::results_access::get_impl(res) = std::move(builder).build();
+    detail::results_access::get_impl(res) = builder.build();
     return res;
 }
 

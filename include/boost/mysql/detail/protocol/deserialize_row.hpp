@@ -29,7 +29,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Exposed here for the sake of testing
 inline void deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
@@ -43,7 +42,6 @@ inline void deserialize_row(
     capabilities current_capabilities,
     db_flavor flavor,
     execution_state_impl& st,
-    field_view* output,
     error_code& err,
     diagnostics& diag
 );
