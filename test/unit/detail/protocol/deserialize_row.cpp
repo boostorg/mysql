@@ -352,87 +352,75 @@ BOOST_AUTO_TEST_SUITE(with_execution_state)
 
 BOOST_AUTO_TEST_CASE(text_row)
 {
-    std::vector<std::uint8_t> row1{0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30};
-    std::vector<std::uint8_t> row2{0x03, 0x61, 0x62, 0x63, 0x02, 0x32, 0x30, 0x03, 0x30, 0x2e, 0x30};
-    auto buff = concat_copy(row1, row2);
-    auto st = exec_builder(false, resultset_encoding::text)
+    std::vector<std::uint8_t> rowbuff{0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30};
+    std::vector<field_view> fields = make_fv_vector(42, "abc");  // from previous call
+    auto st = exec_builder(false)
+                  .reset(resultset_encoding::text, &fields)
                   .meta({
                       protocol_field_type::var_string,
                       protocol_field_type::long_,
                       protocol_field_type::float_,
                   })
                   .build();
-    std::vector<field_view> fields(st.current_resultset_meta().size());
     error_code err;
     diagnostics diag;
 
     deserialize_row(
-        boost::asio::const_buffer(buff.data(), row1.size()),
+        boost::asio::const_buffer(rowbuff.data(), rowbuff.size()),
         capabilities(),
         db_flavor::mysql,
         st,
-        fields.data(),
         err,
         diag
     );
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.server_message() == "");
-    BOOST_TEST(!st.complete());
-    BOOST_TEST(fields == make_fv_vector("val", 21, 0.0f));
+    BOOST_TEST(st.should_read_rows());
+    BOOST_TEST(fields == make_fv_vector(42, "abc", "val", 21, 0.0f));
 }
 
 BOOST_AUTO_TEST_CASE(binary_row)
 {
-    std::vector<std::uint8_t> row1{0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07};
-    std::vector<std::uint8_t> row2{0x00, 0x08, 0x03, 0x6d, 0x61, 0x78};
-    auto buff = concat_copy(row1, row2);
-    auto st = exec_builder(false, resultset_encoding::binary)
+    std::vector<std::uint8_t> rowbuff{0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07};
+    std::vector<field_view> fields = make_fv_vector(42, "abc");  // from previous call
+    auto st = exec_builder(false)
+                  .reset(resultset_encoding::binary, &fields)
                   .meta({protocol_field_type::var_string, protocol_field_type::short_})
                   .build();
-    std::vector<field_view> fields(st.current_resultset_meta().size());
     error_code err;
     diagnostics diag;
 
     deserialize_row(
-        boost::asio::const_buffer(buff.data(), row1.size()),
+        boost::asio::const_buffer(rowbuff.data(), rowbuff.size()),
         capabilities(),
         db_flavor::mysql,
         st,
-        fields.data(),
         err,
         diag
     );
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.server_message() == "");
-    BOOST_TEST(!st.complete());
-    BOOST_TEST(fields == make_fv_vector("min", 1901));
+    BOOST_TEST(st.should_read_rows());
+    BOOST_TEST(fields == make_fv_vector(42, "abc", "min", 1901));
 }
 
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
     std::vector<std::uint8_t> buff{0xfe, 0x01, 0x06, 0x02, 0x00, 0x09, 0x00, 0x02, 0x61, 0x62};
-    auto st = exec_builder(false, resultset_encoding::binary)
+    std::vector<field_view> fields = make_fv_vector("abc", 20);
+    auto st = exec_builder(false)
+                  .reset(resultset_encoding::binary, &fields)
                   .meta({
                       protocol_field_type::var_string,
                       protocol_field_type::short_,
                   })
                   .build();
-    auto fields_before = make_fv_vector("abc", 20);  // previous row
-    auto fields = fields_before;
     error_code err;
     diagnostics diag;
 
-    deserialize_row(
-        boost::asio::buffer(buff),
-        capabilities(),
-        db_flavor::mysql,
-        st,
-        fields.data(),
-        err,
-        diag
-    );
+    deserialize_row(boost::asio::buffer(buff), capabilities(), db_flavor::mysql, st, err, diag);
 
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.server_message() == "");
@@ -441,7 +429,7 @@ BOOST_AUTO_TEST_CASE(ok_packet)
     BOOST_TEST(st.get_last_insert_id(0) == 6u);
     BOOST_TEST(st.get_warning_count(0) == 9u);
     BOOST_TEST(st.get_info(0) == "ab");
-    BOOST_TEST(fields == fields_before);  // they didn't change
+    BOOST_TEST(fields == make_fv_vector("abc", 20));  // they didn't change
 }
 
 BOOST_AUTO_TEST_CASE(error)
@@ -495,26 +483,19 @@ BOOST_AUTO_TEST_CASE(error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto st = exec_builder(false, resultset_encoding::binary)
+            std::vector<field_view> fields;
+            auto st = exec_builder(false)
+                          .reset(resultset_encoding::binary, &fields)
                           .meta({
                               protocol_field_type::var_string,
                               protocol_field_type::short_,
                           })
                           .build();
-            std::vector<field_view> fields(st.current_resultset_meta().size());
             error_code err;
             diagnostics diag;
 
             // First row
-            deserialize_row(
-                boost::asio::buffer(tc.buffer),
-                capabilities(),
-                db_flavor::mysql,
-                st,
-                fields.data(),
-                err,
-                diag
-            );
+            deserialize_row(boost::asio::buffer(tc.buffer), capabilities(), db_flavor::mysql, st, err, diag);
 
             BOOST_TEST(err == tc.expected_error);
             BOOST_TEST(diag.server_message() == tc.expected_info);

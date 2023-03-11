@@ -42,14 +42,15 @@ class exec_builder
     detail::execution_state_impl res_;
 
 public:
-    exec_builder(
-        bool append_mode,
+    exec_builder(bool append_mode) : res_(append_mode) {}
+
+    exec_builder& reset(
         detail::resultset_encoding enc = detail::resultset_encoding::text,
         std::vector<field_view>* storage = nullptr
     )
-        : res_(append_mode)
     {
         res_.reset(enc, storage);
+        return *this;
     }
 
     exec_builder& seqnum(std::uint8_t v)
