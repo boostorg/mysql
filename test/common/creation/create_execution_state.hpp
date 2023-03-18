@@ -44,6 +44,12 @@ class exec_builder
 public:
     exec_builder(bool append_mode) : res_(append_mode) {}
 
+    exec_builder& reset(std::vector<field_view>* storage)
+    {
+        res_.reset(res_.encoding(), storage);
+        return *this;
+    }
+
     exec_builder& reset(
         detail::resultset_encoding enc = detail::resultset_encoding::text,
         std::vector<field_view>* storage = nullptr

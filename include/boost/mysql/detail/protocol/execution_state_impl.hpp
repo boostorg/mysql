@@ -111,6 +111,8 @@ public:
     // they're owned by the external storage (usually the channel).
     execution_state_impl(bool append_mode) noexcept : append_mode_(append_mode) {}
 
+    bool is_append_mode() const noexcept { return append_mode_; }
+
     // State accessors
     bool should_read_head() const noexcept { return state_ == state_t::reading_first_packet; }
     bool should_read_meta() const noexcept { return state_ == state_t::reading_metadata; }

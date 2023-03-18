@@ -27,7 +27,7 @@ add_executable(
     detail/protocol/deserialize_row.cpp
     detail/protocol/deserialize_execute_response.cpp
     detail/protocol/process_error_packet.cpp
-    # detail/protocol/execution_state_impl.cpp
+    detail/protocol/execution_state_impl.cpp
     # detail/network_algorithms/read_resultset_head.cpp
     # detail/network_algorithms/start_execution.cpp
     # detail/network_algorithms/start_query.cpp

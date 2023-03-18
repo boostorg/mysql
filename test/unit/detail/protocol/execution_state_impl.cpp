@@ -10,6 +10,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -27,14 +28,15 @@
 #include "test_common.hpp"
 
 using boost::mysql::column_type;
+using boost::mysql::field_view;
 using boost::mysql::metadata_collection_view;
+using boost::mysql::metadata_mode;
 using boost::mysql::row_view;
+using boost::mysql::rows;
 using boost::mysql::rows_view;
+using boost::mysql::string_view;
 using boost::mysql::detail::execution_state_impl;
 using boost::mysql::detail::protocol_field_type;
-
-using boost::mysql::metadata_mode;
-using boost::mysql::string_view;
 using boost::mysql::detail::resultset_encoding;
 
 using namespace boost::mysql::test;
@@ -164,38 +166,38 @@ void check_ok_r3(const execution_state_impl& st, std::size_t idx)
 // Rows. Note that this doesn't handle copying strings into the internal rows -
 // this is not the responsibility of this component
 template <class... Args>
-void add_fields(execution_state_impl& st, const Args&... args)
+void add_row(execution_state_impl& st, const Args&... args)
 {
+    assert(sizeof...(Args) == st.current_resultset_meta().size());
     auto fields = make_fv_arr(args...);
-    auto* storage = st.rows().add_fields(fields.size());
+    auto* storage = st.add_row();
     for (std::size_t i = 0; i < fields.size(); ++i)
     {
         storage[i] = fields[i];
     }
 }
 
-// Create an initial execution_state_impl object, to verify we clear things correctly
-execution_state_impl create_initial_state(bool append_mode)
-{
-    exec_builder builder(append_mode);
-    builder.meta({protocol_field_type::geometry});
-    if (append_mode)
-        builder.rows(makerows(1, makebv("\0\0"), makebv("")));
-    builder.ok(
-        ok_builder().affected_rows(1).last_insert_id(2).more_results().info("abcde").warnings(10).build()
-    );
-    return std::move(builder).build();
-}
-
 BOOST_AUTO_TEST_SUITE(test_execution_state_impl)
 
 BOOST_AUTO_TEST_SUITE(append_false)
 
-BOOST_AUTO_TEST_CASE(one_resultset_data)
+struct append_false_fixture
 {
-    // Initial
-    auto st = create_initial_state(false);
-    st.reset(resultset_encoding::text);
+    std::vector<field_view> fields;
+    execution_state_impl st{false};
+
+    append_false_fixture() { st.reset(resultset_encoding::text, &fields); }
+};
+
+BOOST_FIXTURE_TEST_CASE(one_resultset_data, append_false_fixture)
+{
+    // Initial. Verify that we clear any previous result
+    st = exec_builder(false)
+             .reset(&fields)
+             .meta({protocol_field_type::geometry})
+             .rows(makerows(1, makebv("\0\0"), makebv("")))
+             .build();
+    st.reset(resultset_encoding::text, &fields);
     check_should_read_head(st);
 
     // Head indicates resultset with metadata
@@ -212,47 +214,22 @@ BOOST_AUTO_TEST_CASE(one_resultset_data)
     check_meta_r1(st.current_resultset_meta());
     check_meta_r1(st.get_meta(0));
 
-    // Read one row
-    st.on_row();
-    check_should_read_rows(st);
-    check_meta_r1(st.current_resultset_meta());
-    check_meta_r1(st.get_meta(0));
+    // Rows
+    st.on_row_batch_start();
+    add_row(st, 10, "abc");
+    add_row(st, 20, "cdef");
 
     // End of resultset
     st.on_row_ok_packet(create_ok_r1());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_r1(st.get_meta(0));
+    BOOST_TEST(st.get_external_rows() == makerows(2, 10, "abc", 20, "cdef"));
     check_ok_r1(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(one_resultset_norows)
+BOOST_FIXTURE_TEST_CASE(one_resultset_empty, append_false_fixture)
 {
-    // Initial
-    auto st = create_initial_state(false);
-    st.reset(resultset_encoding::text);
-    check_should_read_head(st);
-
-    // Resultset head, same as previous test
-    st.on_num_meta(2);
-    st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
-    st.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
-    check_should_read_rows(st);
-    check_meta_r1(st.current_resultset_meta());
-    check_meta_r1(st.get_meta(0));
-
-    // Directly end of resultset, no rows
-    st.on_row_ok_packet(create_ok_r1());
-    check_meta_r1(st.get_meta(0));
-    check_ok_r1(st, 0);
-}
-
-BOOST_AUTO_TEST_CASE(one_resultset_empty)
-{
-    // Initial
-    auto st = create_initial_state(false);
-    st.reset(resultset_encoding::text);
-    check_should_read_head(st);
-
     // Directly end of resultet, no meta
     st.on_head_ok_packet(create_ok_r1());
     check_complete(st);
@@ -260,10 +237,14 @@ BOOST_AUTO_TEST_CASE(one_resultset_empty)
     check_ok_r1(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
+BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, append_false_fixture)
 {
     // Resultset r1
-    auto st = exec_builder(false).meta(create_meta_r1()).row().build();
+    st = exec_builder(false)
+             .reset(&fields)
+             .meta(create_meta_r1())
+             .rows(makerows(2, 10, "abc", 20, "def"))
+             .build();
 
     // OK packet indicates more results
     st.on_row_ok_packet(create_ok_r1(true));
@@ -281,23 +262,22 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
     check_meta_r2(st.current_resultset_meta());
     check_meta_r2(st.get_meta(0));
 
-    // First row
-    st.on_row();
-    check_should_read_rows(st);
-    check_meta_r2(st.current_resultset_meta());
-    check_meta_r2(st.get_meta(0));
+    // Rows
+    st.on_row_batch_start();
+    add_row(st, 90u);
 
     // OK packet, no more resultsets
     st.on_row_ok_packet(create_ok_r2());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_r2(st.get_meta(0));
+    BOOST_TEST(st.get_external_rows() == makerows(1, 90u));
     check_ok_r2(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
+BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, append_false_fixture)
 {
     // Resultset r1
-    execution_state_impl st(false);
     st.on_head_ok_packet(create_ok_r1(true));
     check_should_read_head(st);
     check_meta_empty(st.get_meta(0));
@@ -314,22 +294,22 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
     check_meta_r2(st.get_meta(0));
 
     // Rows
-    st.on_row();
-    check_should_read_rows(st);
-    check_meta_r2(st.current_resultset_meta());
-    check_meta_r2(st.get_meta(0));
+    st.on_row_batch_start();
+    add_row(st, 90u);
 
     // Final OK packet
     st.on_row_ok_packet(create_ok_r2());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_r2(st.get_meta(0));
+    BOOST_TEST(st.get_external_rows() == makerows(1, 90u));
     check_ok_r2(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
+BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, append_false_fixture)
 {
     // Resultset r1
-    auto st = exec_builder(false).meta(create_meta_r1()).row().build();
+    st = exec_builder(false).reset(&fields).meta(create_meta_r1()).build();
 
     // OK packet indicates more results
     st.on_row_ok_packet(create_ok_r1(true));
@@ -344,12 +324,8 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
     check_ok_r2(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
+BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, append_false_fixture)
 {
-    // Resultset r1: equivalent to single resultset case
-    auto st = create_initial_state(false);
-    st.reset(resultset_encoding::text);
-
     // OK packet indicates more results
     st.on_head_ok_packet(create_ok_r1(true));
     check_should_read_head(st);
@@ -363,10 +339,9 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
     check_ok_r2(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
+BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, append_false_fixture)
 {
     // Two first resultsets
-    execution_state_impl st(false);
     st.on_head_ok_packet(create_ok_r1(true));
     st.on_head_ok_packet(create_ok_r2(true));
     check_should_read_head(st);
@@ -389,23 +364,28 @@ BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
     check_meta_r3(st.current_resultset_meta());
     check_meta_r3(st.get_meta(0));
 
-    // Read one row
-    st.on_row();
-    check_should_read_rows(st);
-    check_meta_r3(st.current_resultset_meta());
-    check_meta_r3(st.get_meta(0));
+    // Rows
+    st.on_row_batch_start();
+    add_row(st, 4.2f, 90.0, 9);
 
     // End of resultset
     st.on_row_ok_packet(create_ok_r3());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_r3(st.get_meta(0));
+    BOOST_TEST(st.get_external_rows() == makerows(3, 4.2f, 90.0, 9));
     check_ok_r3(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(three_resultsets_data_empty_data)
+BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, append_false_fixture)
 {
     // Two first resultsets
-    auto st = exec_builder(false).meta(create_meta_r1()).ok(create_ok_r1(true)).build();
+    st = exec_builder(false)
+             .reset(&fields)
+             .meta(create_meta_r1())
+             .rows(makerows(2, 40, "abc", 50, "def"))
+             .ok(create_ok_r1(true))
+             .build();
     st.on_head_ok_packet(create_ok_r2(true));
     check_should_read_head(st);
     check_meta_empty(st.get_meta(0));
@@ -423,17 +403,21 @@ BOOST_AUTO_TEST_CASE(three_resultsets_data_empty_data)
     check_meta_r3(st.current_resultset_meta());
     check_meta_r3(st.get_meta(0));
 
+    // Rows
+    st.on_row_batch_start();
+    add_row(st, 4.2f, 90.0, 9);
+
     // End of resultset
     st.on_row_ok_packet(create_ok_r3());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_r3(st.get_meta(0));
+    BOOST_TEST(st.get_external_rows() == makerows(3, 4.2f, 90.0, 9));
     check_ok_r3(st, 0);
 }
 
-BOOST_AUTO_TEST_CASE(info_string_ownserhip)
+BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, append_false_fixture)
 {
-    execution_state_impl st(false);
-
     // OK packet received, doesn't own the string
     std::string info = "Some info";
     st.on_head_ok_packet(ok_builder().more_results(true).info(info).build());
@@ -449,6 +433,62 @@ BOOST_AUTO_TEST_CASE(info_string_ownserhip)
     info = "abcdfefgh";
     BOOST_TEST(st.get_info(0) == "other info");
 }
+
+BOOST_FIXTURE_TEST_CASE(multiple_row_batches, append_false_fixture)
+{
+    // Head and meta
+    st = exec_builder(false)
+             .reset(&fields)
+             .meta({protocol_field_type::tiny, protocol_field_type::var_string})
+             .build();
+
+    // Row batch 1
+    st.on_row_batch_start();
+    add_row(st, 10, "abc");
+    add_row(st, 20, "cdef");
+    st.on_row_batch_finish();
+    check_should_read_rows(st);
+    BOOST_TEST(st.get_external_rows() == makerows(2, 10, "abc", 20, "cdef"));
+
+    // Row batch 2
+    st.on_row_batch_start();
+    add_row(st, 40, nullptr);
+    st.on_row_ok_packet(create_ok_r1());
+    st.on_row_batch_finish();
+    check_complete(st);
+    BOOST_TEST(st.get_external_rows() == makerows(2, 40, nullptr));
+    BOOST_TEST(fields.size() == 2u);  // space was re-used
+}
+
+BOOST_FIXTURE_TEST_CASE(empty_row_batch, append_false_fixture)
+{
+    // Head and meta
+    st = exec_builder(false)
+             .reset(&fields)
+             .meta({protocol_field_type::tiny, protocol_field_type::var_string})
+             .build();
+
+    // Row batch 1
+    st.on_row_batch_start();
+    add_row(st, 10, "abc");
+    add_row(st, 20, "cdef");
+    st.on_row_batch_finish();
+    BOOST_TEST(st.get_external_rows() == makerows(2, 10, "abc", 20, "cdef"));
+
+    // Row batch 2
+    st.on_row_batch_start();
+    add_row(st, 40, nullptr);
+    st.on_row_batch_finish();
+    BOOST_TEST(st.get_external_rows() == makerows(2, 40, nullptr));
+    BOOST_TEST(fields.size() == 2u);  // space was re-used
+
+    // End of resultset
+    st.on_row_batch_start();
+    st.on_row_ok_packet(create_ok_r1());
+    st.on_row_batch_finish();
+    BOOST_TEST(st.get_external_rows() == makerows(2));
+    check_complete(st);
+}
 BOOST_AUTO_TEST_SUITE_END()  // append_false
 
 //
@@ -458,9 +498,17 @@ BOOST_AUTO_TEST_SUITE(append_true)
 
 BOOST_AUTO_TEST_CASE(one_resultset_data)
 {
-    // Initial
-    auto st = create_initial_state(true);
-    st.reset(resultset_encoding::text);
+    // Initial. Check that we reset any previous state
+    auto st = exec_builder(true)
+                  .reset(resultset_encoding::binary)
+                  .meta({protocol_field_type::geometry})
+                  .rows(makerows(1, makebv("\0\0"), makebv("abc")))
+                  .ok(ok_builder().affected_rows(40).info("some_info").more_results(true).build())
+                  .meta({protocol_field_type::var_string})
+                  .rows(makerows(1, "aaaa", "bbbb"))
+                  .ok(ok_builder().info("more_info").more_results(true).build())
+                  .build();
+    st.reset(resultset_encoding::binary, nullptr);
     check_should_read_head(st);
 
     // Head indicates resultset with two columns
@@ -476,14 +524,13 @@ BOOST_AUTO_TEST_CASE(one_resultset_data)
     check_should_read_rows(st);
     check_meta_r1(st.current_resultset_meta());
 
-    // Row
-    add_fields(st, 42, "abc");
-    st.on_row();
-    check_should_read_rows(st);
-    check_meta_r1(st.current_resultset_meta());
+    // Rows
+    st.on_row_batch_start();
+    add_row(st, 42, "abc");
 
     // End of resultset
     st.on_row_ok_packet(create_ok_r1());
+    st.on_row_batch_finish();  // EOF is part of the batch
     check_complete(st);
     check_meta_r1(st.get_meta(0));
     check_ok_r1(st, 0);
@@ -492,35 +539,11 @@ BOOST_AUTO_TEST_CASE(one_resultset_data)
     BOOST_TEST(st.get_out_params() == row_view());
 }
 
-BOOST_AUTO_TEST_CASE(one_resultset_norows)
-{
-    // Initial
-    auto st = create_initial_state(true);
-    st.reset(resultset_encoding::text);
-    check_should_read_head(st);
-
-    // Metadata
-    st.on_num_meta(2);
-    st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
-    st.on_meta(create_coldef(protocol_field_type::var_string), metadata_mode::minimal);
-    check_should_read_rows(st);
-    check_meta_r1(st.current_resultset_meta());
-
-    // End of resultset
-    st.on_row_ok_packet(create_ok_r1());
-    check_complete(st);
-    check_meta_r1(st.get_meta(0));
-    check_ok_r1(st, 0);
-    BOOST_TEST(st.num_resultsets() == 1);
-    BOOST_TEST(st.get_rows(0) == makerows(2));  // empty but with 2 columns
-    BOOST_TEST(st.get_out_params() == row_view());
-}
-
 BOOST_AUTO_TEST_CASE(one_resultset_empty)
 {
     // Initial
-    auto st = create_initial_state(true);
-    st.reset(resultset_encoding::text);
+    execution_state_impl st(true);
+    st.reset(resultset_encoding::text, nullptr);
     check_should_read_head(st);
 
     // End of resultset
@@ -552,12 +575,13 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
     check_meta_r2(st.current_resultset_meta());
 
     // Row
-    add_fields(st, 70);
-    st.on_row();
+    st.on_row_batch_start();
+    add_row(st, 70);
     check_should_read_rows(st);
 
     // OK packet, no more resultsets
     st.on_row_ok_packet(create_ok_r2());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_r1(st.get_meta(0));
     check_meta_r2(st.get_meta(1));
@@ -586,12 +610,13 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
     check_meta_r2(st.current_resultset_meta());
 
     // Rows
-    add_fields(st, 70);
-    st.on_row();
+    st.on_row_batch_start();
+    add_row(st, 70);
     check_should_read_rows(st);
 
     // Final OK packet
     st.on_row_ok_packet(create_ok_r2());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_empty(st.get_meta(0));
     check_meta_r2(st.get_meta(1));
@@ -670,14 +695,13 @@ BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
     check_meta_r3(st.current_resultset_meta());
 
     // Read rows
-    add_fields(st, 4.2f, 5.0, 8, 42.0f, 50.0, 80);
-    st.on_row();
-    check_should_read_rows(st);
-    st.on_row();
-    check_should_read_rows(st);
+    st.on_row_batch_start();
+    add_row(st, 4.2f, 5.0, 8);
+    add_row(st, 42.0f, 50.0, 80);
 
     // End of resultset
     st.on_row_ok_packet(create_ok_r3());
+    st.on_row_batch_finish();
     check_complete(st);
     check_meta_empty(st.get_meta(0));
     check_meta_empty(st.get_meta(1));
@@ -712,10 +736,11 @@ BOOST_AUTO_TEST_CASE(three_resultsets_data_data_data)
     st.on_meta(create_coldef(protocol_field_type::float_), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::double_), metadata_mode::minimal);
     st.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::minimal);
-    add_fields(st, 4.2f, 5.0, 8, 42.0f, 50.0, 80);
-    st.on_row();
-    st.on_row();
+    st.on_row_batch_start();
+    add_row(st, 4.2f, 5.0, 8);
+    add_row(st, 42.0f, 50.0, 80);
     st.on_row_ok_packet(create_ok_r3());
+    st.on_row_batch_finish();
 
     // Check results
     check_complete(st);
@@ -754,7 +779,57 @@ BOOST_AUTO_TEST_CASE(info_string_ownserhip)
     BOOST_TEST(st.get_info(1) == "");
     BOOST_TEST(st.get_info(2) == "other info");
 }
+
+BOOST_AUTO_TEST_CASE(multiple_row_batches)
+{
+    // Initial
+    auto st = exec_builder(true).meta({protocol_field_type::tiny, protocol_field_type::var_string}).build();
+
+    // First batch
+    st.on_row_batch_start();
+    add_row(st, 42, "abc");
+    add_row(st, 50, "bdef");
+    st.on_row_batch_finish();
+
+    // Second batch (only one row)
+    st.on_row_batch_start();
+    add_row(st, 60, "pov");
+
+    // End of resultset
+    st.on_row_ok_packet(create_ok_r1());
+    st.on_row_batch_finish();
+    check_complete(st);
+    BOOST_TEST(st.num_resultsets() == 1);
+    BOOST_TEST(st.get_rows(0) == makerows(2, 42, "abc", 50, "bdef", 60, "pov"));
+}
+
+BOOST_AUTO_TEST_CASE(empty_row_batch)
+{
+    // Initial
+    auto st = exec_builder(true).meta({protocol_field_type::tiny, protocol_field_type::var_string}).build();
+
+    // No rows, directly eof
+    st.on_row_batch_start();
+    st.on_row_ok_packet(create_ok_r1());
+    st.on_row_batch_finish();
+    check_complete(st);
+    BOOST_TEST(st.num_resultsets() == 1);
+    BOOST_TEST(st.get_rows(0) == makerows(2));  // empty but with 2 cols
+}
 BOOST_AUTO_TEST_SUITE_END()  // append true
+
+BOOST_AUTO_TEST_CASE(reset)
+{
+    auto st = exec_builder(true)
+                  .reset(resultset_encoding::binary)
+                  .seqnum(90u)
+                  .meta({protocol_field_type::bit})
+                  .build();
+    st.reset(resultset_encoding::text, nullptr);
+    BOOST_TEST(st.encoding() == resultset_encoding::text);
+    BOOST_TEST(st.sequence_number() == 0u);
+    BOOST_TEST(st.is_append_mode() == true);  // doesn't get reset
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
