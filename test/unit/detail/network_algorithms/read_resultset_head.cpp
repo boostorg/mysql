@@ -10,6 +10,7 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/field_view.hpp>
 
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
@@ -31,6 +32,7 @@ using boost::mysql::client_errc;
 using boost::mysql::column_type;
 using boost::mysql::common_server_errc;
 using boost::mysql::execution_state;
+using boost::mysql::field_view;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 
@@ -52,7 +54,8 @@ BOOST_AUTO_TEST_SUITE(test_start_execution_generic)
 struct fixture
 {
     // We initiate seqnum to 1 because the initial request will have advanced it to this value
-    execution_state st{exec_builder(false, resultset_encoding::text).seqnum(1).build_state()};
+    std::vector<field_view> fields;
+    execution_state st{exec_builder(false).reset(resultset_encoding::text, &fields).seqnum(1).build_state()};
     test_connection conn;
 
     fixture()
