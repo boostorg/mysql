@@ -11,6 +11,7 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
@@ -21,6 +22,7 @@
 #include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
+#include "creation/create_message_struct.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
@@ -49,7 +51,7 @@ struct
     {netfun_maker::async_errinfo(&test_connection::async_read_resultset_head), "async"}
 };
 
-BOOST_AUTO_TEST_SUITE(test_start_execution_generic)
+BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 
 struct fixture
 {
@@ -165,6 +167,50 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
             BOOST_TEST_REQUIRE(fix.st.complete());
             BOOST_TEST(fix.st.affected_rows() == 42u);
             BOOST_TEST(fix.st.info() == "abc");
+        }
+    }
+}
+
+// Should be a no-op
+BOOST_AUTO_TEST_CASE(state_complete)
+{
+    for (auto fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            fixture fix;
+            fix.st_impl().on_head_ok_packet(ok_builder().affected_rows(42).build());
+
+            // Call the function
+            fns.read_resultset_head(fix.conn, fix.st).validate_no_error();
+
+            // Nothing changed
+            BOOST_TEST_REQUIRE(fix.st.complete());
+            BOOST_TEST(fix.st.affected_rows() == 42u);
+        }
+    }
+}
+
+// Should be a no-op
+BOOST_AUTO_TEST_CASE(state_reading_rows)
+{
+    for (auto fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            fixture fix;
+            fix.st_impl().on_num_meta(1);
+            fix.st_impl().on_meta(
+                create_coldef(protocol_field_type::bit),
+                boost::mysql::metadata_mode::minimal
+            );
+
+            // Call the function
+            fns.read_resultset_head(fix.conn, fix.st).validate_no_error();
+
+            // Nothing changed
+            BOOST_TEST_REQUIRE(fix.st.should_read_rows());
+            check_meta(fix.st.meta(), {column_type::bit});
         }
     }
 }

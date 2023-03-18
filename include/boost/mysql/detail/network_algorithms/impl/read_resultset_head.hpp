@@ -37,11 +37,7 @@ public:
     {
     }
 
-    void setup() noexcept
-    {
-        assert(st_.should_read_head());
-        diag_.clear();
-    }
+    void clear_diag() noexcept { diag_.clear(); }
 
     error_code process_response(boost::asio::const_buffer msg)
     {
@@ -110,8 +106,15 @@ struct read_resultset_head_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            // Setup
-            processor_.setup();
+            processor_.clear_diag();
+
+            // If we're not reading head, return
+            if (!processor_.state().should_read_head())
+            {
+                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                self.complete(error_code());
+                BOOST_ASIO_CORO_YIELD break;
+            }
 
             // Read the response
             BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
@@ -166,7 +169,11 @@ void boost::mysql::detail::read_resultset_head(
 {
     // Setup
     read_resultset_head_processor processor(chan, st, diag);
-    processor.setup();
+    processor.clear_diag();
+
+    // If we're not reading head, return
+    if (!st.should_read_head())
+        return;
 
     // Read the response
     auto msg = chan.read_one(st.sequence_number(), err);

@@ -18,6 +18,8 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/impl/execution_state.hpp>
+#include <boost/mysql/impl/results.hpp>
 
 #include <cstddef>
 
@@ -141,6 +143,13 @@ inline results create_results(const std::vector<resultset_spec>& spec)
     detail::results_access::get_impl(res) = builder.build();
     return res;
 }
+
+inline detail::execution_state_impl& get_impl(execution_state& st)
+{
+    return detail::execution_state_access::get_impl(st);
+}
+
+inline detail::execution_state_impl& get_impl(results& r) { return detail::results_access::get_impl(r); }
 
 }  // namespace test
 }  // namespace mysql
