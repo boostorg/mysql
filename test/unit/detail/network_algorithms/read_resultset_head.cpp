@@ -47,8 +47,10 @@ struct
     typename netfun_maker::signature read_resultset_head;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::read_resultset_head),           "sync" },
-    {netfun_maker::async_errinfo(&test_connection::async_read_resultset_head), "async"}
+    {netfun_maker::sync_errc(&test_connection::read_resultset_head),             "sync_errc"      },
+    {netfun_maker::sync_exc(&test_connection::read_resultset_head),              "sync_exc"       },
+    {netfun_maker::async_errinfo(&test_connection::async_read_resultset_head),   "async_errinfo"  },
+    {netfun_maker::async_noerrinfo(&test_connection::async_read_resultset_head), "async_noerrinfo"},
 };
 
 BOOST_AUTO_TEST_SUITE(test_read_resultset_head)

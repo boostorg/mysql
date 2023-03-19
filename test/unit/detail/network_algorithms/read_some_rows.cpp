@@ -33,8 +33,10 @@ struct
     typename netfun_maker::signature read_some_rows;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::read_some_rows),           "sync" },
-    {netfun_maker::async_errinfo(&test_connection::async_read_some_rows), "async"},
+    {netfun_maker::sync_errc(&test_connection::read_some_rows),             "sync_errc"      },
+    {netfun_maker::sync_exc(&test_connection::read_some_rows),              "sync_exc"       },
+    {netfun_maker::async_errinfo(&test_connection::async_read_some_rows),   "async_errinfo"  },
+    {netfun_maker::async_noerrinfo(&test_connection::async_read_some_rows), "async_noerrinfo"},
 };
 
 execution_state create_initial_state(test_connection& conn)
