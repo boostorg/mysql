@@ -64,10 +64,7 @@ struct execute_op : boost::asio::coroutine
 
             while (!st_.complete())
             {
-                if (st_.should_read_head())
-                {
-                    BOOST_ASIO_CORO_YIELD async_read_resultset_head(chan_, st_, diag_, std::move(self));
-                }
+                BOOST_ASIO_CORO_YIELD async_read_resultset_head(chan_, st_, diag_, std::move(self));
 
                 while (st_.should_read_rows())
                 {

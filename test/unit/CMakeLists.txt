@@ -33,7 +33,7 @@ add_executable(
     # detail/network_algorithms/start_query.cpp
     # detail/network_algorithms/start_statement_execution.cpp
     # detail/network_algorithms/read_some_rows.cpp
-    # detail/network_algorithms/read_all_rows.cpp
+    detail/network_algorithms/execute.cpp
     # detail/network_algorithms/query.cpp
     # detail/network_algorithms/execute_statement.cpp
     detail/network_algorithms/close_statement.cpp

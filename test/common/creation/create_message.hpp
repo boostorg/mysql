@@ -66,14 +66,20 @@ inline std::vector<std::uint8_t> create_message(
 }
 
 template <class... Args>
+void serialize_to_vector(std::vector<std::uint8_t>& res, const Args&... args)
+{
+    detail::serialization_context ctx(detail::capabilities(0));
+    std::size_t size = detail::get_size(ctx, args...);
+    res.resize(res.size() + size);
+    ctx.set_first(res.data());
+    detail::serialize(ctx, args...);
+}
+
+template <class... Args>
 std::vector<std::uint8_t> serialize_to_vector(const Args&... args)
 {
     std::vector<std::uint8_t> res;
-    detail::serialization_context ctx(detail::capabilities(0));
-    std::size_t size = detail::get_size(ctx, args...);
-    res.resize(size);
-    ctx.set_first(res.data());
-    detail::serialize(ctx, args...);
+    serialize_to_vector(res, args...);
     return res;
 }
 
@@ -107,6 +113,11 @@ public:
     ok_msg_builder& info(string_view v)
     {
         impl_.info(v);
+        return *this;
+    }
+    ok_msg_builder& more_results(bool v)
+    {
+        impl_.more_results(v);
         return *this;
     }
 
