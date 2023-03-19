@@ -8,6 +8,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
 
+#include <boost/mysql/detail/network_algorithms/execute.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -20,6 +21,7 @@
 #include "creation/create_row_message.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
+#include "test_stream.hpp"
 #include "unit_netfun_maker.hpp"
 
 using namespace boost::mysql::test;
