@@ -7,6 +7,7 @@
 
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/date.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/tcp.hpp>
 
@@ -39,6 +40,25 @@ BOOST_FIXTURE_TEST_CASE(query_empty_select, tcp_network_fixture)
     BOOST_TEST(result.warning_count() == 0u);
     BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
+}
+
+BOOST_FIXTURE_TEST_CASE(query_empty_select_multifn, tcp_network_fixture)
+{
+    connect();
+
+    // Issue query
+    boost::mysql::execution_state st;
+    conn.start_query("SELECT * FROM empty_table", st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+    validate_2fields_meta(st.meta(), "empty_table");
+
+    // Read eof
+    auto rv = conn.read_some_rows(st);
+    BOOST_TEST(rv.empty());
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
 }
 
 BOOST_FIXTURE_TEST_CASE(query_insert, tcp_network_fixture)
