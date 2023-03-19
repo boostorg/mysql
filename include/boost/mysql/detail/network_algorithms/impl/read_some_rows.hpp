@@ -55,8 +55,8 @@ struct read_some_rows_op : boost::asio::coroutine
         {
             diag_.clear();
 
-            // If the op is already complete, we don't need to read anything
-            if (st_.complete())
+            // If we are not reading rows, return
+            if (!st_.should_read_rows())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code(), rows_view());
@@ -93,8 +93,8 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
 {
     auto& impl = execution_state_access::get_impl(st);
 
-    // If the op is already complete, we don't need to read anything
-    if (impl.complete())
+    // If we are not reading rows, just return
+    if (!impl.should_read_rows())
     {
         return rows_view();
     }

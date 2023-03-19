@@ -147,6 +147,7 @@ struct initiate_execute_statement
         auto ec = check_num_params(stmt, params);
         if (ec)
         {
+            diag.clear();
             fast_fail(chan.get(), std::forward<Handler>(handler), ec);
         }
         else
@@ -178,6 +179,7 @@ struct initiate_start_statement_execution
         auto ec = check_num_params(stmt, params);
         if (ec)
         {
+            diag.clear();
             fast_fail(chan.get(), std::forward<Handler>(handler), ec);
         }
         else
@@ -207,6 +209,7 @@ struct initiate_start_statement_execution
         auto ec = check_num_params(stmt, first, last);
         if (ec)
         {
+            diag.clear();
             fast_fail(chan.get(), std::forward<Handler>(handler), ec);
         }
         else

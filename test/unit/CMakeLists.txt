@@ -30,12 +30,9 @@ add_executable(
     detail/protocol/execution_state_impl.cpp
     detail/network_algorithms/read_resultset_head.cpp
     detail/network_algorithms/start_execution.cpp
-    # detail/network_algorithms/start_query.cpp
-    # detail/network_algorithms/start_statement_execution.cpp
     detail/network_algorithms/read_some_rows.cpp
     detail/network_algorithms/execute.cpp
-    # detail/network_algorithms/query.cpp
-    # detail/network_algorithms/execute_statement.cpp
+    detail/network_algorithms/high_level_execution.cpp
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
     date.cpp
