@@ -55,8 +55,9 @@ add_executable(
     resultset_view.cpp
     resultset.cpp
     connection.cpp
-    regressions.cpp
     throw_on_error.cpp
+    regressions.cpp
+    multifn.cpp
     entry_point.cpp
 )
 target_link_libraries(
