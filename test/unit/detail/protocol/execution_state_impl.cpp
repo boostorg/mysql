@@ -534,7 +534,7 @@ BOOST_AUTO_TEST_CASE(one_resultset_data)
     check_complete(st);
     check_meta_r1(st.get_meta(0));
     check_ok_r1(st, 0);
-    BOOST_TEST(st.num_resultsets() == 1);
+    BOOST_TEST(st.num_resultsets() == 1u);
     BOOST_TEST(st.get_rows(0) == makerows(2, 42, "abc"));
     BOOST_TEST(st.get_out_params() == row_view());
 }
@@ -551,7 +551,7 @@ BOOST_AUTO_TEST_CASE(one_resultset_empty)
     check_complete(st);
     check_meta_empty(st.get_meta(0));
     check_ok_r1(st, 0);
-    BOOST_TEST(st.num_resultsets() == 1);
+    BOOST_TEST(st.num_resultsets() == 1u);
     BOOST_TEST(st.get_rows(0) == rows_view());
     BOOST_TEST(st.get_out_params() == row_view());
 }
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_data)
     check_meta_r2(st.get_meta(1));
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
-    BOOST_TEST(st.num_resultsets() == 2);
+    BOOST_TEST(st.num_resultsets() == 2u);
     BOOST_TEST(st.get_rows(0) == makerows(2, 42, "abc", 50, "def"));
     BOOST_TEST(st.get_rows(1) == makerows(1, 70));
     BOOST_TEST(st.get_out_params() == makerow(70));
@@ -622,7 +622,7 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_data)
     check_meta_r2(st.get_meta(1));
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
-    BOOST_TEST(st.num_resultsets() == 2);
+    BOOST_TEST(st.num_resultsets() == 2u);
     BOOST_TEST(st.get_rows(0) == rows_view());
     BOOST_TEST(st.get_rows(1) == makerows(1, 70));
     BOOST_TEST(st.get_out_params() == makerow(70));
@@ -646,7 +646,7 @@ BOOST_AUTO_TEST_CASE(two_resultsets_data_empty)
     check_meta_empty(st.get_meta(1));
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
-    BOOST_TEST(st.num_resultsets() == 2);
+    BOOST_TEST(st.num_resultsets() == 2u);
     BOOST_TEST(st.get_rows(0) == makerows(2, 42, "abc", 50, "def"));
     BOOST_TEST(st.get_rows(1) == rows_view());
     BOOST_TEST(st.get_out_params() == row_view());
@@ -666,7 +666,7 @@ BOOST_AUTO_TEST_CASE(two_resultsets_empty_empty)
     check_meta_empty(st.get_meta(1));
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
-    BOOST_TEST(st.num_resultsets() == 2);
+    BOOST_TEST(st.num_resultsets() == 2u);
     BOOST_TEST(st.get_rows(0) == rows_view());
     BOOST_TEST(st.get_rows(1) == rows_view());
     BOOST_TEST(st.get_out_params() == row_view());
@@ -709,7 +709,7 @@ BOOST_AUTO_TEST_CASE(three_resultsets_empty_empty_data)
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
     check_ok_r3(st, 2);
-    BOOST_TEST(st.num_resultsets() == 3);
+    BOOST_TEST(st.num_resultsets() == 3u);
     BOOST_TEST(st.get_rows(0) == rows_view());
     BOOST_TEST(st.get_rows(1) == rows_view());
     BOOST_TEST(st.get_rows(2) == makerows(3, 4.2f, 5.0, 8, 42.0f, 50.0, 80));
@@ -750,7 +750,7 @@ BOOST_AUTO_TEST_CASE(three_resultsets_data_data_data)
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
     check_ok_r3(st, 2);
-    BOOST_TEST(st.num_resultsets() == 3);
+    BOOST_TEST(st.num_resultsets() == 3u);
     BOOST_TEST(st.get_rows(0) == makerows(2, 42, "abc", 50, "def"));
     BOOST_TEST(st.get_rows(1) == makerows(1, 60));
     BOOST_TEST(st.get_rows(2) == makerows(3, 4.2f, 5.0, 8, 42.0f, 50.0, 80));
@@ -799,7 +799,7 @@ BOOST_AUTO_TEST_CASE(multiple_row_batches)
     st.on_row_ok_packet(create_ok_r1());
     st.on_row_batch_finish();
     check_complete(st);
-    BOOST_TEST(st.num_resultsets() == 1);
+    BOOST_TEST(st.num_resultsets() == 1u);
     BOOST_TEST(st.get_rows(0) == makerows(2, 42, "abc", 50, "bdef", 60, "pov"));
 }
 
@@ -813,7 +813,7 @@ BOOST_AUTO_TEST_CASE(empty_row_batch)
     st.on_row_ok_packet(create_ok_r1());
     st.on_row_batch_finish();
     check_complete(st);
-    BOOST_TEST(st.num_resultsets() == 1);
+    BOOST_TEST(st.num_resultsets() == 1u);
     BOOST_TEST(st.get_rows(0) == makerows(2));  // empty but with 2 cols
 }
 BOOST_AUTO_TEST_SUITE_END()  // append true

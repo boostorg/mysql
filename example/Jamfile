@@ -30,11 +30,6 @@ local regular_examples =
     timeouts
 ;
 
-# UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
-if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
-    regular_examples += unix_socket ;
-}
-
 for local example in $(regular_examples)
 {
     local example_name = "boost_mysql_example_$(example)" ;
@@ -48,12 +43,31 @@ for local example in $(regular_examples)
         ;
 }
 
-# Source script
-unit-test boost_mysql_example_source_script
+# UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
+if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
+    unit-test boost_mysql_example_unix_socket
+    :
+        unix_socket.cpp
+        /boost/mysql/test//mysql
+    :
+        <testing.arg>"example_user example_password"
+    ;
+}
+
+
+# Source script. unit-test doesn't support input-file correctly
+exe source_script 
     :
         source_script.cpp
         /boost/mysql/test//mysql
-    :
+    ;
+
+run source_script
+    : target-name boost_mysql_example_source_script
+    : requirements
         <testing.arg>"example_user example_password $(hostname)"
         <testing.input-file>test_script.sql
     ;
+
+
+

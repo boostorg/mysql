@@ -80,6 +80,6 @@ add_example(timeouts                    TRUE    ${SERVER_HOST})
 add_example(stored_procedures           TRUE    ${SERVER_HOST} get-orders)
 add_example(source_script               TRUE    ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/test_script.sql)
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
-    add_example(unix_socket             TRUE    "/var/run/mysqld/mysqld.sock")
+    add_example(unix_socket             TRUE)
 endif()
 
