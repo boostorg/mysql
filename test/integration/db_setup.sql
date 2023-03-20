@@ -514,6 +514,11 @@ BEGIN
     SET pinout = pinout + 1;
 END //
 
+CREATE PROCEDURE sp_signal()
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1002;
+END //
+
 DELIMITER ;
 
 COMMIT;

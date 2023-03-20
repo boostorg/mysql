@@ -6,13 +6,16 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "check_meta.hpp"
 #include "integration_test_common.hpp"
+#include "printing.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
@@ -218,13 +221,89 @@ BOOST_FIXTURE_TEST_CASE(output_params_bound, tcp_network_fixture)
     BOOST_TEST(result.out_params() == makerow(10, 31));
 }
 
-/**
- * stored procedures
-                    with bound output params multifn
-                    with signal
-                    with query
- *
- */
+BOOST_FIXTURE_TEST_CASE(output_params_bound_multifn, tcp_network_fixture)
+{
+    connect();
+
+    // Statement
+    auto stmt = conn.prepare_statement("CALL sp_outparams(?, ?, ?)");
+
+    // Call the procedure
+    execution_state st;
+    conn.start_statement_execution(stmt, std::make_tuple(10, nullptr, 30), st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+    validate_2fields_meta(st.meta(), "one_row_table");
+
+    // 1st resultset, rows
+    auto rv = conn.read_some_rows(st);
+    BOOST_TEST(rv == makerows(2, 1, "f0"));
+    BOOST_TEST_REQUIRE(st.should_read_head());
+    BOOST_TEST(!st.is_out_params());
+
+    // out params, head
+    conn.read_resultset_head(st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+    check_meta(st.meta(), {column_type::int_, column_type::int_});
+
+    // out params, rows and eof
+    rv = conn.read_some_rows(st);
+    BOOST_TEST_REQUIRE(st.should_read_head());
+    BOOST_TEST(rv == makerows(2, 10, 31));
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
+    BOOST_TEST(st.is_out_params());
+
+    // final eof
+    conn.read_resultset_head(st);
+    BOOST_TEST_REQUIRE(st.complete());
+    BOOST_TEST(st.meta().size() == 0u);
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
+    BOOST_TEST(!st.is_out_params());
+}
+
+BOOST_FIXTURE_TEST_CASE(with_signal, tcp_network_fixture)
+{
+    connect();
+
+    // Statement
+    auto stmt = conn.prepare_statement("CALL sp_signal()");
+
+    // Call the procedure. It should fail, since we're invoking SIGNAL
+    results result;
+    error_code err;
+    diagnostics diag;
+    conn.execute_statement(stmt, std::make_tuple(), result, err, diag);
+
+    // Verify results
+    BOOST_TEST(err == common_server_errc::er_no);
+    BOOST_TEST(diag.server_message() == "An error occurred");
+}
+
+BOOST_FIXTURE_TEST_CASE(with_query, tcp_network_fixture)
+{
+    connect();
+
+    // Call the procedure
+    results result;
+    conn.query("CALL sp_outparams(42, @var1, @var2)", result);
+
+    // Verify results
+    BOOST_TEST_REQUIRE(result.size() == 2u);
+    validate_2fields_meta(result[0].meta(), "one_row_table");
+    BOOST_TEST(result[0].rows() == makerows(2, 1, "f0"));
+    BOOST_TEST(result[1].meta().size() == 0u);
+    BOOST_TEST(result[1].rows().size() == 0u);
+    BOOST_TEST(result[1].affected_rows() == 0u);
+    BOOST_TEST(result[1].warning_count() == 0u);
+    BOOST_TEST(result[1].last_insert_id() == 0u);
+    BOOST_TEST(result[1].info() == "");
+    BOOST_TEST(result.out_params() == row_view());
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
