@@ -15,7 +15,7 @@ if $(hostname) = ""
 }
 
 # Example list
-local examples_no_unix =
+local regular_examples =
     snippets
     tutorial
     text_queries
@@ -30,10 +30,12 @@ local examples_no_unix =
     timeouts
 ;
 
-local example_targets ;
+# UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
+if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
+    regular_examples += unix_socket ;
+}
 
-# Non-UNIX
-for local example in $(examples_no_unix)
+for local example in $(regular_examples)
 {
     local example_name = "boost_mysql_example_$(example)" ;
     unit-test $(example_name)
@@ -44,23 +46,14 @@ for local example in $(examples_no_unix)
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;
-    explicit $(example_name) ;
-    example_targets += $(example_name) ;
 }
 
-# UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
-if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
-    unit-test boost_mysql_example_unix_socket
-        :
-            unix_socket.cpp
-            /boost/mysql/test//mysql
-        :
-            <testing.arg>"example_user example_password"
-        ;
-    explicit boost_mysql_example_unix_socket ;
-    example_targets += boost_mysql_example_unix_socket ;
-}
-
-# Helper to run all of them in one go
-alias boost_mysql_all_examples : $(example_targets) ;
-explicit boost_mysql_all_examples ;
+# Source script
+unit-test boost_mysql_example_source_script
+    :
+        source_script.cpp
+        /boost/mysql/test//mysql
+    :
+        <testing.arg>"example_user example_password $(hostname)"
+        <testing.input-file>test_script.sql
+    ;

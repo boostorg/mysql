@@ -27,33 +27,33 @@ function (build_example EXECUTABLE_NAME CPPFILE)
 endfunction()
 
 # Run it as a test
-function (test_example EXECUTABLE_NAME CONNECTION_ARG)
+function (test_example EXECUTABLE_NAME)
     add_test(
         NAME ${EXECUTABLE_NAME}
-        COMMAND ${EXECUTABLE_NAME} example_user example_password ${CONNECTION_ARG} ${ARGN}
+        COMMAND ${EXECUTABLE_NAME} example_user example_password ${ARGN}
     )
 endfunction()
 
 # Run it as a test using Valgrind
-function (memcheck_example EXECUTABLE_NAME CONNECTION_ARG)
+function (memcheck_example EXECUTABLE_NAME)
     set(TEST_NAME "${EXECUTABLE_NAME}_memcheck")
     add_memcheck_test(
         NAME ${TEST_NAME}
         TARGET ${EXECUTABLE_NAME}
-        ARGUMENTS example_user example_password ${CONNECTION_ARG}
+        ARGUMENTS example_user example_password ${ARGN}
     )
 endfunction()
 
 # Build and run it as either of them
-function (add_example EXAMPLE_NAME DO_MEMCHECK CONNECTION_ARG)
+function (add_example EXAMPLE_NAME DO_MEMCHECK)
     set(EXECUTABLE_NAME "boost_mysql_example_${EXAMPLE_NAME}")
 
     build_example(${EXECUTABLE_NAME} "${EXAMPLE_NAME}.cpp")
 
     if (BOOST_MYSQL_VALGRIND_TESTS AND DO_MEMCHECK)
-        memcheck_example(${EXECUTABLE_NAME} ${CONNECTION_ARG})
+        memcheck_example(${EXECUTABLE_NAME} ${ARGN})
     else()
-        test_example(${EXECUTABLE_NAME} ${CONNECTION_ARG} ${ARGN})
+        test_example(${EXECUTABLE_NAME} ${ARGN})
     endif()
 endfunction()
 
@@ -78,6 +78,7 @@ add_example(metadata                    TRUE    ${SERVER_HOST})
 add_example(ssl                         TRUE    ${SERVER_HOST})
 add_example(timeouts                    TRUE    ${SERVER_HOST})
 add_example(stored_procedures           TRUE    ${SERVER_HOST} get-orders)
+add_example(source_script               TRUE    ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/test_script.sql)
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     add_example(unix_socket             TRUE    "/var/run/mysqld/mysqld.sock")
 endif()

@@ -24,6 +24,7 @@ Here is a list of available examples:
 # [link mysql.examples.default_completion_tokens Async functions using default completion tokens]
 # [link mysql.examples.timeouts Settings timeouts]
 # [link mysql.examples.ssl Setting SSL options]
+# [link mysql.examples.source_script Using multi-queries to source a .sql file]
 
 [section:setup Setup]
 
@@ -207,6 +208,24 @@ for you.
 
 [import ../../example/ssl.cpp]
 [example_ssl]
+
+[endsect]
+
+[section:source_script Using multi-queries to source a .sql file]
+
+This example demonstrates how to source a .sql script using the
+[link mysql.multi_resultset.multi_queries multi-queries feature].
+
+Note that commands like `DELIMITER` won't work, since these are handled
+by the `mysql` command line tool, rather than the server.
+
+The example employs synchronous functions with
+exceptions as error handling. __see_error_handling__
+
+__assume_setup__
+
+[import ../../example/source_script.cpp]
+[example_source_script]
 
 [endsect]
 

@@ -210,7 +210,7 @@ def _b2_build(
         '-j4',
         'libs/mysql/test',
         'libs/mysql/test/integration//boost_mysql_integrationtests',
-        'libs/mysql/example//boost_mysql_all_examples'
+        'libs/mysql/example'
     ])
 
 
