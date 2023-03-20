@@ -86,26 +86,26 @@ std::vector<protocol_field_type> create_meta_r2() { return {protocol_field_type:
 
 void check_meta_r1(metadata_collection_view meta)
 {
-    BOOST_TEST_REQUIRE(meta.size() == 2);
+    BOOST_TEST_REQUIRE(meta.size() == 2u);
     BOOST_TEST(meta[0].type() == column_type::tinyint);
     BOOST_TEST(meta[1].type() == column_type::varchar);
 }
 
 void check_meta_r2(metadata_collection_view meta)
 {
-    BOOST_TEST_REQUIRE(meta.size() == 1);
+    BOOST_TEST_REQUIRE(meta.size() == 1u);
     BOOST_TEST(meta[0].type() == column_type::bit);
 }
 
 void check_meta_r3(metadata_collection_view meta)
 {
-    BOOST_TEST_REQUIRE(meta.size() == 3);
+    BOOST_TEST_REQUIRE(meta.size() == 3u);
     BOOST_TEST(meta[0].type() == column_type::float_);
     BOOST_TEST(meta[1].type() == column_type::double_);
     BOOST_TEST(meta[2].type() == column_type::tinyint);
 }
 
-void check_meta_empty(metadata_collection_view meta) { BOOST_TEST(meta.size() == 0); }
+void check_meta_empty(metadata_collection_view meta) { BOOST_TEST(meta.size() == 0u); }
 
 // OK packet data checking
 boost::mysql::detail::ok_packet create_ok_r1(bool more_results = false)
@@ -138,27 +138,27 @@ boost::mysql::detail::ok_packet create_ok_r3()
 
 void check_ok_r1(const execution_state_impl& st, std::size_t idx)
 {
-    BOOST_TEST(st.get_affected_rows(idx) == 1);
-    BOOST_TEST(st.get_last_insert_id(idx) == 2);
-    BOOST_TEST(st.get_warning_count(idx) == 4);
+    BOOST_TEST(st.get_affected_rows(idx) == 1u);
+    BOOST_TEST(st.get_last_insert_id(idx) == 2u);
+    BOOST_TEST(st.get_warning_count(idx) == 4u);
     BOOST_TEST(st.get_info(idx) == "Information");
     BOOST_TEST(st.get_is_out_params(idx) == false);
 }
 
 void check_ok_r2(const execution_state_impl& st, std::size_t idx)
 {
-    BOOST_TEST(st.get_affected_rows(idx) == 5);
-    BOOST_TEST(st.get_last_insert_id(idx) == 6);
-    BOOST_TEST(st.get_warning_count(idx) == 8);
+    BOOST_TEST(st.get_affected_rows(idx) == 5u);
+    BOOST_TEST(st.get_last_insert_id(idx) == 6u);
+    BOOST_TEST(st.get_warning_count(idx) == 8u);
     BOOST_TEST(st.get_info(idx) == "more_info");
     BOOST_TEST(st.get_is_out_params(idx) == true);
 }
 
 void check_ok_r3(const execution_state_impl& st, std::size_t idx)
 {
-    BOOST_TEST(st.get_affected_rows(idx) == 10);
-    BOOST_TEST(st.get_last_insert_id(idx) == 11);
-    BOOST_TEST(st.get_warning_count(idx) == 12);
+    BOOST_TEST(st.get_affected_rows(idx) == 10u);
+    BOOST_TEST(st.get_last_insert_id(idx) == 11u);
+    BOOST_TEST(st.get_warning_count(idx) == 12u);
     BOOST_TEST(st.get_info(idx) == "");
     BOOST_TEST(st.get_is_out_params(idx) == false);
 }

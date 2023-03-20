@@ -57,9 +57,9 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(st.complete());
     BOOST_TEST(st.meta()[0].type() == column_type::bit);
-    BOOST_TEST(st.affected_rows() == 1);
-    BOOST_TEST(st.last_insert_id() == 2);
-    BOOST_TEST(st.warning_count() == 4);
+    BOOST_TEST(st.affected_rows() == 1u);
+    BOOST_TEST(st.last_insert_id() == 2u);
+    BOOST_TEST(st.warning_count() == 4u);
     BOOST_TEST(st.info() == "abc");
     BOOST_TEST(!st.is_out_params());
 }

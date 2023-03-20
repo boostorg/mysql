@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE(empty_collection)
 {
     row_impl r;
     field_view* storage = r.add_fields(2);
-    BOOST_TEST(r.fields().size() == 2);
+    BOOST_TEST(r.fields().size() == 2u);
     BOOST_TEST(storage == r.fields().data());
 }
 
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(non_empty_collection)
 {
     row_impl r = makerwimpl(nullptr, nullptr);
     field_view* storage = r.add_fields(3);
-    BOOST_TEST(r.fields().size() == 5);
+    BOOST_TEST(r.fields().size() == 5u);
     BOOST_TEST(storage == r.fields().data() + 2);
 }
 
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(zero_fields)
 {
     row_impl r = makerwimpl(nullptr, nullptr);
     field_view* storage = r.add_fields(0);
-    BOOST_TEST(r.fields().size() == 2);
+    BOOST_TEST(r.fields().size() == 2u);
     BOOST_TEST(storage == r.fields().data() + 2);
 }
 
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(empty_collection_zero_fields)
 {
     row_impl r;
     field_view* storage = r.add_fields(0);
-    BOOST_TEST(r.fields().size() == 0);
+    BOOST_TEST(r.fields().size() == 0u);
     BOOST_TEST(storage == r.fields().data());
 }
 BOOST_AUTO_TEST_SUITE_END()
