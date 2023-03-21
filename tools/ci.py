@@ -95,7 +95,7 @@ def _install_boost(
     copytree(
         str(source_dir),
         str(lib_dir),
-        ignore=ignore_patterns('__build*__'),
+        ignore=ignore_patterns('__build*__', '.git'),
         **({ 'dirs_exist_ok': True } if _supports_dir_exist_ok else {})
     )
 

@@ -7,6 +7,8 @@
 
 import os ;
 
+path-constant this_dir : . ;
+
 # The hostname to use for examples
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
 if $(hostname) = ""
@@ -56,15 +58,10 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
 
 # Stored procedures. The example is a command line tool that must be run
 # several times in order, so we do this through a Python script
-path-constant this_dir : . ;
-exe boost_mysql_example_stored_procedures_exe
+unit-test boost_mysql_example_stored_procedures
     :
         stored_procedures.cpp
         /boost/mysql/test//mysql
-    ;
-
-run boost_mysql_example_stored_procedures_exe
-    : target-name boost_mysql_example_stored_procedures
     : requirements
         <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
         <testing.arg>$(hostname)
@@ -72,15 +69,10 @@ run boost_mysql_example_stored_procedures_exe
 
 
 # Source script. unit-test doesn't support input-file correctly
-exe boost_mysql_example_source_script_exe
+unit-test boost_mysql_example_source_script
     :
         source_script.cpp
         /boost/mysql/test//mysql
-    ;
-
-run boost_mysql_example_source_script_exe
-    : target-name boost_mysql_example_source_script
     : requirements
-        <testing.arg>"example_user example_password $(hostname)"
-        <testing.input-file>private/test_script.sql
+        <testing.arg>"example_user example_password $(hostname) $(this_dir)/private/test_script.sql"
     ;

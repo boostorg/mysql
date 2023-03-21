@@ -19,6 +19,7 @@
 #include <boost/asio/bind_executor.hpp>
 
 #include <functional>
+#include <tuple>
 
 namespace boost {
 namespace mysql {
