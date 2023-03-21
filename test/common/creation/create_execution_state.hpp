@@ -104,7 +104,7 @@ public:
 
     exec_builder& resultset(const resultset_spec& spec, bool is_last = false)
     {
-        detail::ok_packet actual_ok{spec.ok};
+        detail::ok_packet actual_ok = spec.ok;
         if (!is_last)
         {
             actual_ok.status_flags |= detail::SERVER_MORE_RESULTS_EXISTS;

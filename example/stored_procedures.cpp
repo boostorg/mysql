@@ -105,9 +105,9 @@ using any_command = boost::variant2::variant<
 // In-memory representation of the command-line arguments once parsed.
 struct cmdline_args
 {
-    string_view username;
-    string_view password;
-    string_view host;
+    const char* username;
+    const char* password;
+    const char* host;
     any_command cmd;
 };
 

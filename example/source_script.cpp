@@ -15,6 +15,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 /**
@@ -30,15 +31,20 @@
  */
 
 // Reads a file into memory
-std::string read_file(const char* file_name)
+std::vector<char> read_file(const char* file_name)
 {
-    std::ifstream t(file_name);
-    t.exceptions(std::ios::badbit | std::ios::failbit);
-    t.seekg(0, std::ios::end);
-    size_t size = t.tellg();
-    std::string buffer(size, 0);
-    t.seekg(0);
-    t.read(buffer.data(), size);
+    std::ifstream ifs(file_name);
+    if (!ifs)
+    {
+        throw std::runtime_error("Cannot open file: " + std::string(file_name));
+    }
+
+    ifs.exceptions(std::ios::badbit | std::ios::failbit);
+    ifs.seekg(0, std::ios::end);
+    auto size = ifs.tellg();
+    std::vector<char> buffer(size, 0);
+    ifs.seekg(0);
+    ifs.read(buffer.data(), size);
     return buffer;
 }
 
@@ -96,7 +102,8 @@ void main_impl(int argc, char** argv)
     }
 
     // Read the script file into memory
-    std::string file_contents = read_file(argv[4]);
+    std::vector<char> file_buffer = read_file(argv[4]);
+    boost::mysql::string_view queries(file_buffer.data(), file_buffer.size());
 
     // Set up the io_context, SSL context and connection required to
     // connect to the server.
@@ -128,7 +135,7 @@ void main_impl(int argc, char** argv)
     // The executed commands may generate a lot of output, so we're going to
     // use multi-function operations (i.e. start_query) to read it in batches.
     boost::mysql::execution_state st;
-    conn.start_query(file_contents, st);
+    conn.start_query(queries, st);
 
     // The main read loop. Each executed command will yield a resultset.
     // st.comoplete() returns true once all resultsets have been read.

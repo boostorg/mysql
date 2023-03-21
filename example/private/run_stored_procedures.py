@@ -24,10 +24,6 @@ def _parse_line_item_id(output: str) -> str:
 
 
 class Runner:
-    _exe: str
-    _host: str
-
-
     def __init__(self, exe: str, host: str) -> None:
         self._exe = exe
         self._host = host
