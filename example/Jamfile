@@ -54,20 +54,25 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     ;
 }
 
-
-# Source script. unit-test doesn't support input-file correctly
-exe source_script 
+# Stored procedures. The example is a command line tool that must be run
+# several times in order, so we do this through a Python script
+path-constant this_dir : . ;
+run boost_mysql_example_stored_procedures
     :
-        source_script.cpp
+        stored_procedures.cpp
         /boost/mysql/test//mysql
+    : requirements
+        <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
+        <testing.arg>$(hostname)
     ;
 
-run source_script
-    : target-name boost_mysql_example_source_script
+
+# Source script. unit-test doesn't support input-file correctly
+run boost_mysql_example_source_script
+    : 
+        source_script.cpp
+        /boost/mysql/test//mysql
     : requirements
         <testing.arg>"example_user example_password $(hostname)"
         <testing.input-file>test_script.sql
     ;
-
-
-

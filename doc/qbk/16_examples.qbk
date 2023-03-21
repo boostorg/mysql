@@ -229,4 +229,22 @@ __assume_setup__
 
 [endsect]
 
+
+[section:stored_procedures Using stored procedures]
+
+This example demonstrates how to use stored procedures to
+implement a minimal order management system for an online store.
+
+The example employs synchronous functions with
+exceptions as error handling. __see_error_handling__
+
+This examples requires you to run [link_to_file example/db_setup_stored_procedures.sql].
+You can find table and procedure definitions in this file.
+
+[import ../../example/stored_procedures.cpp]
+
+[example_stored_procedures]
+
+[endsect]
+
 [endsect] [/ examples]
