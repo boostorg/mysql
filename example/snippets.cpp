@@ -34,6 +34,7 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/this_coro.hpp>
 #include <boost/config.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <iostream>
@@ -73,6 +74,8 @@ using boost::mysql::tcp_ssl_connection;
     }
 
 const char* get_value_from_user() { return ""; }
+std::int64_t get_employee_id() { return 42; }
+std::string get_company_id() { return "HGS"; }
 
 //[prepared_statements_execute
 // description, price and show_in_store are not trusted, since they may
@@ -448,6 +451,8 @@ void main_impl(int argc, char** argv)
         run_overview_coro(conn);
     }
 #endif
+
+    // prepared statements
     {
         //[prepared_statements_prepare
         // Table setup
@@ -477,6 +482,134 @@ void main_impl(int argc, char** argv)
 #endif
         conn.query("DROP TABLE products", result);
     }
+
+    // multi-resultset
+    {
+        results result;
+        conn.query("DROP PROCEDURE IF EXISTS get_employee", result);
+
+        //[multi_resultset_procedure
+        conn.query(
+            R"(
+                CREATE PROCEDURE get_employee(IN pin_employee_id INT)
+                BEGIN
+                    SELECT * FROM employee WHERE id = pin_employee_id;
+                END
+            )",
+            result
+        );
+        //]
+
+        //[multi_resultset_call
+        // The procedure parameter, employe_id, will likely be obtained from an untrusted source,
+        // so we will use a prepared statement
+        statement get_employee_stmt = conn.prepare_statement("CALL get_employee(?)");
+
+        // Obtain the parameters required to call the statement, e.g. from a file or HTTP message
+        std::int64_t employee_id = get_employee_id();
+
+        // Call the statement
+        conn.execute_statement(get_employee_stmt, std::make_tuple(employee_id), result);
+        //]
+
+        //[multi_resultset_first_resultset
+        rows_view matched_employee = result.at(0).rows();
+        // Use matched_employee as required
+        //]
+
+        boost::ignore_unused(matched_employee);
+    }
+    {
+        results result;
+        conn.query("DROP PROCEDURE IF EXISTS create_employee", result);
+
+        //[multi_resultset_out_params
+        // Setup the stored procedure
+        conn.query(
+            R"(
+                CREATE PROCEDURE create_employee(
+                    IN  pin_company_id CHAR(10),
+                    IN  pin_first_name VARCHAR(100),
+                    IN  pin_last_name VARCHAR(100),
+                    OUT pout_employee_id INT
+                )
+                BEGIN
+                    START TRANSACTION;
+                    INSERT INTO employee (company_id, first_name, last_name)
+                        VALUES (pin_company_id, pin_first_name, pin_last_name);
+                    SET pout_employee_id = LAST_INSERT_ID();
+                    INSERT INTO audit_log (msg) VALUES ("Created new employee...");
+                    COMMIT;
+                END
+            )",
+            result
+        );
+
+        // To retrieve output parameters, you must use prepared statements. Text queries don't support this
+        // We specify placeholders for both IN and OUT parameters
+        statement stmt = conn.prepare_statement("CALL create_employee(?, ?, ?, ?)");
+
+        // When executing the statement, we provide an actual value for the IN parameters,
+        // and a dummy value for the OUT parameter. This value will be ignored, but it's required by the
+        // protocol
+        conn.execute_statement(stmt, std::make_tuple("HGS", "John", "Doe", nullptr), result);
+
+        // Retrieve output parameters. This row_view has an element per
+        // OUT or INOUT parameter that used a ? placeholder
+        row_view output_params = result.out_params();
+        std::int64_t new_employee_id = output_params.at(0).as_int64();
+        //]
+
+        boost::ignore_unused(new_employee_id);
+    }
+    {
+        boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
+        auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
+
+        //[multi_resultset_multi_queries
+        // The username and password to use
+        boost::mysql::handshake_params params(
+            argv[1],                // username
+            argv[2],                // password
+            "boost_mysql_examples"  // database
+        );
+
+        // Allows running multiple semicolon-separated in a single call.
+        // We must set this before calling connect
+        params.set_multi_queries(true);
+
+        // Connect to the server using the first endpoint returned by the resolver
+        conn.connect(*endpoints.begin(), params);
+
+        // We can now use the multi-query feature.
+        // This will result in three resultsets, one per query.
+        results result;
+        conn.query(
+            R"(
+                CREATE TEMPORARY TABLE posts (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    title VARCHAR (256),
+                    body TEXT
+                );
+                INSERT INTO posts (title, body) VALUES ('Breaking news', 'Something happened!');
+                SELECT COUNT(*) FROM posts;
+            )",
+            result
+        );
+
+        // We can access information about any operation. Given that the INSERT
+        // is the 2nd query, we can access the inserted ID accessing the 2nd resultset:
+        std::int64_t post_id = result.at(1).last_insert_id();
+
+        // The SELECT is the third resultset. It has a single row with a single element:
+        std::int64_t num_posts = result.at(2).rows().at(0).at(0).as_int64();
+        //]
+
+        boost::ignore_unused(post_id);
+        boost::ignore_unused(num_posts);
+    }
+
+    // multi-function
     {
         //[multi_function_setup
         results result;
@@ -540,6 +673,62 @@ void main_impl(int argc, char** argv)
 
             read_all_rows(st);  // don't compromise further operations
             conn.query("DROP TABLE posts", result);
+        }
+
+        {
+            results result;
+            conn.query("DROP PROCEDURE IF EXISTS get_company", result);
+
+            //[multi_function_stored_procedure
+            // Setup the stored procedure
+            conn.query(
+                R"(
+                    CREATE PROCEDURE get_company(IN pin_company_id CHAR(10))
+                    BEGIN
+                        START TRANSACTION READ ONLY;
+                        SELECT * FROM company WHERE id = pin_company_id;
+                        SELECT * FROM employee WHERE company_id = pin_company_id;
+                        COMMIT;
+                    END
+                )",
+                result
+            );
+
+            // Get the company ID to retrieve, possibly from the user
+            std::string company_id = get_company_id();
+
+            // Call the procedure
+            execution_state st;
+            statement stmt = conn.prepare_statement("CALL get_company(?)");
+            conn.start_statement_execution(stmt, std::make_tuple(company_id), st);
+
+            // The above code will generate 3 resultsets
+            // Read the 1st one, which contains the matched companies
+            while (st.should_read_rows())
+            {
+                rows_view company_batch = conn.read_some_rows(st);
+                // Use the retrieved companies as required
+                //<-
+                boost::ignore_unused(company_batch);
+                //->
+            }
+
+            // Move on to the 2nd one, containing the employees for these companies
+            conn.read_resultset_head(st);
+            while (st.should_read_rows())
+            {
+                rows_view employee_batch = conn.read_some_rows(st);
+                // Use the retrieved employees as required
+                //<-
+                boost::ignore_unused(employee_batch);
+                //->
+            }
+
+            // The last one is an empty resultset containing information about the
+            // CALL statement itself. We're not interested in this
+            conn.read_resultset_head(st);
+            assert(st.complete());
+            //]
         }
     }
 

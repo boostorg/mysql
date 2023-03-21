@@ -126,46 +126,7 @@ The message exchange is as follows:
 
 This can be translated into the following code:
 
-```
-    // Setup the stored procedure
-    results result;
-    conn.query(R"(
-        CREATE STORED PROCEDURE get_orders(IN pin_order_id INT)
-        BEGIN
-            SELECT * FROM orders WHERE id = pin_order_id;
-            SELECT * FROM order_items WHERE order_id = pin_order_id;
-        END
-    )", result);
-
-    // Get the order ID to retrieve, possibly from the user
-    std::int64_t order_id = get_order_id();
-
-    // Call the procedure
-    execution_state st;
-    statement stmt = conn.prepare_statement("CALL get_orders(?)");
-    conn.start_statement_execution(stmt, std::make_tuple(order_id), st);
-
-    // The above code will generate 3 resultsets
-    // Read the 1st one, which contains the matched orders
-    while (st.should_read_rows())
-    {
-        rows_view orders = conn.read_some_rows(st);
-        // Use orders as required
-    }
-
-    // Move on to the 2nd one, containing line order items
-    conn.read_resultset_head(st);
-    while (st.should_read_rows())
-    {
-        rows_view order_items = conn.read_some_rows(st);
-        // Use order items as required
-    }
-
-    // The last one is an empty resultset containing information about the
-    // CALL statement itself. We're not interested in this
-    conn.read_resultset_head(st);
-    assert(st.complete());
-```
+[multi_function_stored_procedure]
 
 Note that we're using [refmem execution_state should_read_rows] instead of [refmem execution_state complete]
 as our loop termination condition. `complete()` returns true when all the resultsets have been read,
