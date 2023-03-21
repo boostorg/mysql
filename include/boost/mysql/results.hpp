@@ -346,7 +346,7 @@ public:
         assert(has_value());
         if (i >= size())
             throw std::out_of_range("results::at: out of range");
-        return resultset_view(impl_, i);
+        return detail::resultset_view_access::construct(impl_, i);
     }
 
     /**
@@ -368,7 +368,7 @@ public:
     {
         assert(has_value());
         assert(i < size());
-        return resultset_view(impl_, i);
+        return detail::resultset_view_access::construct(impl_, i);
     }
 
     /**
