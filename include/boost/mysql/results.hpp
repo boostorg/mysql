@@ -28,7 +28,10 @@ namespace mysql {
 
 /**
  * \brief Holds the results of a SQL query.
- * \details The results (rows, metadata and additional info) are held in-memory.
+ * \details
+ * This object can store the results of single and multi resultset queries.
+ * For the former, you use \ref meta, \ref rows, \ref affected_rows and so on.
+ * For the latter, this class is a random-access collection of \ref resultset objects.
  * \n
  * \par Thread safety
  * Distinct objects: safe. \n
@@ -37,7 +40,15 @@ namespace mysql {
 class results
 {
 public:
+#ifdef BOOST_MYSQL_DOXYGEN
+    /**
+     * \brief A random access iterator to an element.
+     * \details The exact type of the iterator is unspecified.
+     */
+    using iterator = __see_below__;
+#else
     using iterator = detail::results_iterator;
+#endif
 
     /// \copydoc iterator
     using const_iterator = iterator;
@@ -79,7 +90,8 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * View objects obtained from `other` remain valid.
+     * View objects obtained from `other` using \ref rows and \ref meta remain valid.
+     * Any other views and iterators referencing `other` are invalidated.
      */
     results(results&& other) = default;
 
@@ -89,7 +101,7 @@ public:
      * Basic guarantee. Internal allocations may throw.
      *
      * \par Object lifetimes
-     * View objects referencing `*this` are invalidated.
+     * Views and iterators referencing `*this` are invalidated.
      */
     results& operator=(const results& other) = default;
 
@@ -99,7 +111,8 @@ public:
      * Basic guarantee. Internal allocations may throw.
      *
      * \par Object lifetimes
-     * View objects referencing `other` remain valid. View objects
+     * View objects obtained from `other` using \ref rows and \ref meta remain valid.
+     * Any other views and iterators referencing `other` are invalidated. Views and iterators
      * referencing `*this` are invalidated.
      */
     results& operator=(results&& other) = default;
@@ -115,11 +128,18 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     bool has_value() const noexcept { return impl_.complete(); }
 
     /**
      * \brief Returns the rows retrieved by the SQL query.
+     * \details
+     * For operations returning more than one resultset, returns the rows
+     * for the first resultset.
+     *
      * \par Preconditions
      * `this->has_value() == true`
      *
@@ -130,6 +150,9 @@ public:
      * This function returns a view object, with reference semantics. The returned view points into
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
+     *
+     * \par Complexity
+     * Constant.
      */
     rows_view rows() const noexcept
     {
@@ -142,6 +165,9 @@ public:
      * \details
      * The returned collection will have as many \ref metadata objects as columns retrieved by
      * the SQL query, and in the same order.
+     * \n
+     * For operations returning more than one resultset, returns metadata
+     * for the first resultset.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -153,6 +179,9 @@ public:
      * This function returns a view object, with reference semantics. The returned view points into
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
+     *
+     * \par Complexity
+     * Constant.
      */
     metadata_collection_view meta() const noexcept
     {
@@ -162,11 +191,18 @@ public:
 
     /**
      * \brief Returns the number of rows affected by the executed SQL statement.
+     * \details
+     * For operations returning more than one resultset, returns the
+     * first resultset's affected rows.
+     *
      * \par Preconditions
      * `this->has_value() == true`
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     std::uint64_t affected_rows() const noexcept
     {
@@ -176,11 +212,18 @@ public:
 
     /**
      * \brief Returns the last insert ID produced by the executed SQL statement.
+     * \details
+     * For operations returning more than one resultset, returns the
+     * first resultset's last insert ID.
+     *
      * \par Preconditions
      * `this->has_value() == true`
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     std::uint64_t last_insert_id() const noexcept
     {
@@ -190,11 +233,18 @@ public:
 
     /**
      * \brief Returns the number of warnings produced by the executed SQL statement.
+     * \details
+     * For operations returning more than one resultset, returns the
+     * first resultset's warning count.
+     *
      * \par Preconditions
      * `this->has_value() == true`
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
      */
     unsigned warning_count() const noexcept
     {
@@ -209,6 +259,9 @@ public:
      * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
      * \n
      * The returned string always uses ASCII encoding, regardless of the connection's character set.
+     * \n
+     * For operations returning more than one resultset, returns the
+     * first resultset's info.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -220,6 +273,9 @@ public:
      * This function returns a view object, with reference semantics. The returned view points into
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
+     *
+     * \par Complexity
+     * Constant.
      */
     string_view info() const noexcept
     {
@@ -227,16 +283,64 @@ public:
         return impl_.get_info(0);
     }
 
+    /**
+     * \brief Returns an iterator pointing to the first resultset that this object contains.
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned iterator and any reference obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate iterators.
+     *
+     * \par Complexity
+     * Constant.
+     */
     iterator begin() const noexcept
     {
         assert(has_value());
         return iterator(&impl_, 0);
     }
+
+    /**
+     * \brief Returns an iterator pointing to one-past-the-last resultset that this object contains.
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned iterator and any reference obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate iterators.
+     *
+     * \par Complexity
+     * Constant.
+     */
     iterator end() const noexcept
     {
         assert(has_value());
         return iterator(&impl_, size());
     }
+
+    /**
+     * \brief Returns the i-th resultset or throws an exception.
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * Strong guranatee. Throws on invalid input.
+     * \throws std::out_of_range `i >= this->size()`
+     *
+     * \par Object lifetimes
+     * The returned reference and any other references obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate references.
+     *
+     * \par Complexity
+     * Constant.
+     */
     inline resultset_view at(std::size_t i) const
     {
         assert(has_value());
@@ -245,6 +349,21 @@ public:
         return resultset_view(impl_, i);
     }
 
+    /**
+     * \brief Returns the i-th resultset (unchecked access).
+     * \par Preconditions
+     * `this->has_value() == true && i < this->size()`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference and any other references obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate references.
+     *
+     * \par Complexity
+     * Constant.
+     */
     resultset_view operator[](std::size_t i) const noexcept
     {
         assert(has_value());
@@ -252,22 +371,100 @@ public:
         return resultset_view(impl_, i);
     }
 
+    /**
+     * \brief Returns the first resultset.
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference and any other references obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate references.
+     *
+     * \par Complexity
+     * Constant.
+     */
     resultset_view front() const noexcept { return (*this)[0]; }
 
+    /**
+     * \brief Returns the last resultset.
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference and any other references obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate references.
+     *
+     * \par Complexity
+     * Constant.
+     */
     resultset_view back() const noexcept { return (*this)[size() - 1]; }
 
+    /**
+     * \brief Returns whether the collection contains any resultset.
+     * \details
+     * This function is provided for compatibility with standard collections,
+     * and always returns false, since any valid `results` contains at least one resultset.
+     *
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
+     */
     bool empty() const noexcept
     {
         assert(has_value());
         return false;
     }
 
+    /**
+     * \brief Returns the number of resultsets that this collection contains.
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Complexity
+     * Constant.
+     */
     std::size_t size() const noexcept
     {
         assert(has_value());
         return impl_.num_resultsets();
     }
 
+    /**
+     * \brief Returns the output parameters of a stored procedure call.
+     * \details
+     * Relevant for `CALL` operations performed using prepared statements that
+     * bind placeholders to `OUT` or `INOUT` parameters. Returns a row containing a field per
+     * bound output parameter.
+     * \n
+     * If this operation had no output parameters (e.g. it wasn't a `CALL`), returns an empty row.
+     *
+     * \par Preconditions
+     * `this->has_value() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference and any other references obtained from it are valid as long as
+     * `*this` is alive. Move operations invalidate references.
+     *
+     * \par Complexity
+     * Linear on `this->size()`.
+     */
     row_view out_params() const noexcept
     {
         assert(has_value());
