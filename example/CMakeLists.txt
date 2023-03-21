@@ -96,7 +96,7 @@ add_example(default_completion_tokens   example_user example_password ${SERVER_H
 add_example(metadata                    example_user example_password ${SERVER_HOST})
 add_example(ssl                         example_user example_password ${SERVER_HOST})
 add_example(timeouts                    example_user example_password ${SERVER_HOST})
-add_example(source_script               example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/test_script.sql)
+add_example(source_script               example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql)
 add_example_stored_procedures()
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     add_example(unix_socket             example_user example_password)

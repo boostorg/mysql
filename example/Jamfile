@@ -82,5 +82,5 @@ run boost_mysql_example_source_script_exe
     : target-name boost_mysql_example_source_script
     : requirements
         <testing.arg>"example_user example_password $(hostname)"
-        <testing.input-file>test_script.sql
+        <testing.input-file>private/test_script.sql
     ;
