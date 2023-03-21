@@ -49,6 +49,8 @@ public:
      * `utf8mb4_general_ci` (see \ref default_collation), which is compatible with MySQL 5.x, 8.x and MariaDB.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection's `Stream` does not support SSL.
+     * \param multi_queries Whether to enable support for executing semicolon-separated
+     * queries using \ref connection::query. Disabled by default.
      */
     handshake_params(
         string_view username,
@@ -137,7 +139,18 @@ public:
      */
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
 
+    /**
+     * \brief Retrieves whether multi-query support is enabled.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool multi_queries() const noexcept { return multi_queries_; }
+
+    /**
+     * \brief Enables or disables support for the multi-query feature.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void set_multi_queries(bool v) noexcept { multi_queries_ = v; }
 };
 
