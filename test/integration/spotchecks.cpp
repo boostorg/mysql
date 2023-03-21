@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -71,7 +72,7 @@ BOOST_MYSQL_NETWORK_TEST(start_query_success, network_fixture, all_network_sampl
 
     execution_state st;
     conn->start_query("SELECT * FROM empty_table", st).get();
-    BOOST_TEST(!st.complete());
+    BOOST_TEST(st.should_read_rows());
     validate_2fields_meta(st.meta(), "empty_table");
 }
 
@@ -135,7 +136,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_success, network_fixture, 
     std::forward_list<field_view> params{field_view("item"), field_view(42)};
     conn->start_statement_execution(stmt, params.begin(), params.end(), st).validate_no_error();
     validate_2fields_meta(st.meta(), "empty_table");
-    BOOST_TEST(!st.complete());
+    BOOST_TEST(st.should_read_rows());
 }
 
 BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, err_net_samples)
@@ -169,7 +170,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_success, network_fixtur
     execution_state st;
     conn->start_statement_execution(stmt, field_view(42), field_view(40), st).validate_no_error();
     validate_2fields_meta(st.meta(), "empty_table");
-    BOOST_TEST(!st.complete());
+    BOOST_TEST(st.should_read_rows());
 }
 
 BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_error, network_fixture, err_net_samples)
@@ -246,7 +247,7 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_success, network_fixture, all_network_sa
     // Generate an execution state
     execution_state st;
     conn->start_query("SELECT * FROM one_row_table", st);
-    BOOST_TEST_REQUIRE(!st.complete());
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read once. st may or may not be complete, depending
     // on how the buffer reallocated memory
@@ -262,6 +263,55 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_success, network_fixture, all_network_sa
     rows = conn->read_some_rows(st).get();
     BOOST_TEST(rows.empty());
     validate_eof(st);
+}
+
+// Read resultset head
+BOOST_MYSQL_NETWORK_TEST(read_resultset_head_success, network_fixture, all_network_samples())
+{
+    params.set_multi_queries(true);
+    setup_and_connect(sample.net);
+
+    // Generate an execution state
+    execution_state st;
+    conn->start_query("SELECT * FROM empty_table; SELECT * FROM one_row_table", st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // Read the OK packet to finish 1st resultset
+    conn->read_some_rows(st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_head());
+
+    // Read head
+    conn->read_resultset_head(st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // Reading head again does nothing
+    conn->read_resultset_head(st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // We can read rows now
+    auto rows = conn->read_some_rows(st).get();
+    BOOST_TEST((rows == makerows(2, 1, "f0")));
+}
+
+BOOST_MYSQL_NETWORK_TEST(read_resultset_head_error, network_fixture, all_network_samples())
+{
+    params.set_multi_queries(true);
+    setup_and_connect(sample.net);
+
+    // Generate an execution state
+    execution_state st;
+    conn->start_query("SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // Read the OK packet to finish 1st resultset
+    conn->read_some_rows(st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_head());
+
+    // Read head for the 2nd resultset. This one contains an error, which is detected when reading head.
+    conn->read_resultset_head(st).validate_error_exact(
+        common_server_errc::er_bad_field_error,
+        "Unknown column 'bad_field' in 'field list'"
+    );
 }
 
 // Ping
