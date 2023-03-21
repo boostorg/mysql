@@ -22,6 +22,7 @@
 
 [template nochunk[] [block '''<?dbhtml stop-chunking?>''']]
 [template mdash[] '''&mdash; ''']
+[template link_to_file[path][^'''<ulink url="https://github.com/boostorg/mysql/blob/master/'''[path]'''"'''[path]'''</ulink>'''>]]
 [template include_file[path][^<'''<ulink url="https://github.com/boostorg/mysql/blob/master/include/'''[path]'''">'''[path]'''</ulink>'''>]]
 [template indexterm1[term1] '''<indexterm><primary>'''[term1]'''</primary></indexterm>''']
 [template indexterm2[term1 term2] '''<indexterm><primary>'''[term1]'''</primary><secondary>'''[term2]'''</secondary></indexterm>''']

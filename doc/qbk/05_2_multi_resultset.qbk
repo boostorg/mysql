@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:multi_resultset Stored procedures (multi-resultset)]
+[section:multi_resultset Multi-resultset: stored procedures and multi-queries]
 
 [heading Using stored procedures]
 
@@ -122,6 +122,12 @@ To simplify things, you can use [refmem results out_params] to retrieve them:
     row_view output_params = result.out_params();
     std::int64_t new_order_id = output_params.at(0);
 ```
+
+[warning
+    Due to a bug in MySQL, some `OUT` parameters are sent with wrong types.
+    Concretely, string parameters are always sent as blobs, so you will have to
+    use [refmem field_view as_blob] instead of [refmem field_view as_string].
+]
 
 [heading Using results as a collection]
 

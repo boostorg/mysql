@@ -109,6 +109,81 @@ You can access OK packet data using functions like [refmem execution_state last_
 and [refmem execution_state affected_rows]. As this information is contained in the OK packet,
 [*these functions have `st.complete() == true` as precondition].
 
+[heading Using multi-function operations with stored procedures and multi-queries]
+
+When using operations that return more than one resultset (e.g. when calling stored procedures),
+the protocol is slightly more complex:
+
+[$mysql/images/protocol_multi_resultset.svg [align center]]
+
+The message exchange is as follows:
+
+* A single execution request is sent to the server.
+* The server sends a first resultset, as in the single resultset case.
+  The OK packet contains a flag indicating that another resultset follows.
+* Another resultset is sent, with the same structure as the previous one. The process is
+  repeated until an OK packet indicates that no more resultsets follow.
+
+This can be translated into the following code:
+
+```
+    // Setup the stored procedure
+    results result;
+    conn.query(R"(
+        CREATE STORED PROCEDURE get_orders(IN pin_order_id INT)
+        BEGIN
+            SELECT * FROM orders WHERE id = pin_order_id;
+            SELECT * FROM order_items WHERE order_id = pin_order_id;
+        END
+    )", result);
+
+    // Get the order ID to retrieve, possibly from the user
+    std::int64_t order_id = get_order_id();
+
+    // Call the procedure
+    execution_state st;
+    statement stmt = conn.prepare_statement("CALL get_orders(?)");
+    conn.start_statement_execution(stmt, std::make_tuple(order_id), st);
+
+    // The above code will generate 3 resultsets
+    // Read the 1st one, which contains the matched orders
+    while (st.should_read_rows())
+    {
+        rows_view orders = conn.read_some_rows(st);
+        // Use orders as required
+    }
+
+    // Move on to the 2nd one, containing line order items
+    conn.read_resultset_head(st);
+    while (st.should_read_rows())
+    {
+        rows_view order_items = conn.read_some_rows(st);
+        // Use order items as required
+    }
+
+    // The last one is an empty resultset containing information about the
+    // CALL statement itself. We're not interested in this
+    conn.read_resultset_head(st);
+    assert(st.complete());
+```
+
+Note that we're using [refmem execution_state should_read_rows] instead of [refmem execution_state complete]
+as our loop termination condition. `complete()` returns true when all the resultsets have been read,
+while `should_read_rows()` will return false once an individual result has been fully read.
+
+[heading Multi-resultset in the general case]
+
+`execution_state` can be seen as a state machine with three states. Each state
+describes which reading function should be invoked next:
+
+* [refmem execution_state should_read_head]: the next operation should be [refmem connection read_resultset_head],
+  to read the next resultset metadata.
+* [refmem execution_state should_read_rows]: the next operation should be [refmem connection read_some_rows],
+  to read the generated rows.
+* [refmem execution_state complete]: no more operations are required.
+
+[link mysql.examples.source_script This example] shows this general case. It uses
+multi-queries to run an arbitrary SQL script file.
 
 [heading:read_some_rows More on read_some_rows]
 
