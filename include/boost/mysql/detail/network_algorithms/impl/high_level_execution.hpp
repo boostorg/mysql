@@ -76,7 +76,7 @@ inline error_code check_num_params(const statement& stmt, std::size_t param_coun
 }
 
 template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
-error_code check_num_params(
+error_code check_num_params_it(
     const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last
@@ -86,7 +86,7 @@ error_code check_num_params(
 }
 
 template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
-error_code check_num_params(const statement& stmt, const FieldLikeTuple&)
+error_code check_num_params_tuple(const statement& stmt, const FieldLikeTuple&)
 {
     return check_num_params(stmt, std::tuple_size<FieldLikeTuple>::value);
 }
@@ -145,7 +145,7 @@ struct initiate_execute_statement
         diagnostics& diag
     )
     {
-        auto ec = check_num_params(stmt, params);
+        auto ec = check_num_params_tuple(stmt, params);
         if (ec)
         {
             diag.clear();
@@ -177,7 +177,7 @@ struct initiate_start_statement_execution
         diagnostics& diag
     )
     {
-        auto ec = check_num_params(stmt, params);
+        auto ec = check_num_params_tuple(stmt, params);
         if (ec)
         {
             diag.clear();
@@ -207,7 +207,7 @@ struct initiate_start_statement_execution
         diagnostics& diag
     )
     {
-        auto ec = check_num_params(stmt, first, last);
+        auto ec = check_num_params_it(stmt, first, last);
         if (ec)
         {
             diag.clear();
@@ -307,7 +307,7 @@ void boost::mysql::detail::execute_statement(
     diagnostics& diag
 )
 {
-    err = check_num_params(stmt, params);
+    err = check_num_params_tuple(stmt, params);
     if (err)
         return;
 
@@ -350,7 +350,7 @@ void boost::mysql::detail::start_statement_execution(
     diagnostics& diag
 )
 {
-    err = check_num_params(stmt, params);
+    err = check_num_params_tuple(stmt, params);
     if (err)
         return;
 
@@ -394,7 +394,7 @@ void boost::mysql::detail::start_statement_execution(
     diagnostics& diag
 )
 {
-    err = check_num_params(stmt, params_first, params_last);
+    err = check_num_params_it(stmt, params_first, params_last);
     if (err)
         return;
 
