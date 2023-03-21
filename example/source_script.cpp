@@ -31,21 +31,12 @@
  */
 
 // Reads a file into memory
-std::vector<char> read_file(const char* file_name)
+std::string read_file(const char* file_name)
 {
     std::ifstream ifs(file_name);
     if (!ifs)
-    {
         throw std::runtime_error("Cannot open file: " + std::string(file_name));
-    }
-
-    ifs.exceptions(std::ios::badbit | std::ios::failbit);
-    ifs.seekg(0, std::ios::end);
-    auto size = ifs.tellg();
-    std::vector<char> buffer(size, 0);
-    ifs.seekg(0);
-    ifs.read(buffer.data(), size);
-    return buffer;
+    return std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
 }
 
 void print_column_names(boost::mysql::metadata_collection_view meta_collection)
@@ -102,8 +93,7 @@ void main_impl(int argc, char** argv)
     }
 
     // Read the script file into memory
-    std::vector<char> file_buffer = read_file(argv[4]);
-    boost::mysql::string_view queries(file_buffer.data(), file_buffer.size());
+    std::string script_contents = read_file(argv[4]);
 
     // Set up the io_context, SSL context and connection required to
     // connect to the server.
@@ -135,7 +125,7 @@ void main_impl(int argc, char** argv)
     // The executed commands may generate a lot of output, so we're going to
     // use multi-function operations (i.e. start_query) to read it in batches.
     boost::mysql::execution_state st;
-    conn.start_query(queries, st);
+    conn.start_query(script_contents, st);
 
     // The main read loop. Each executed command will yield a resultset.
     // st.comoplete() returns true once all resultsets have been read.
