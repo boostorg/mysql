@@ -72,6 +72,16 @@ BOOST_AUTO_TEST_CASE(ctor_from_view)
     BOOST_TEST(!r.is_out_params());
 }
 
+BOOST_AUTO_TEST_CASE(assignment_from_view_empty)
+{
+    results result = create_initial_results();
+    resultset r{result.at(0)};
+    r = resultset();
+    result = results();
+
+    BOOST_TEST(!r.has_value());
+}
+
 BOOST_AUTO_TEST_CASE(assignment_from_view)
 {
     results result = create_initial_results();

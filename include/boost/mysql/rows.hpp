@@ -154,7 +154,7 @@ public:
     rows(const rows_view& r) : impl_(r.fields_, r.num_fields_), num_columns_(r.num_columns_) {}
 
     /**
-     * \brief Replaces the contents with a \ref rows_view.
+     * \brief Replaces the contents of `*this` with a \ref rows_view.
      * \par Exception safety
      * Basic guarantee. Internal allocations may throw.
      *
