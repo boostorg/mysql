@@ -34,6 +34,7 @@ BOOST_FIXTURE_TEST_CASE(query_empty_select, tcp_network_fixture)
     conn.query("SELECT * FROM empty_table", result);
 
     // Verify results
+    BOOST_TEST(result.size() == 1u);
     validate_2fields_meta(result.meta(), "empty_table");
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 0u);
@@ -71,6 +72,7 @@ BOOST_FIXTURE_TEST_CASE(query_insert, tcp_network_fixture)
     conn.query("INSERT INTO inserts_table (field_varchar, field_date) VALUES ('v0', '2010-10-11')", result);
 
     // Verify results
+    BOOST_TEST(result.size() == 1u);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 1u);
@@ -93,6 +95,7 @@ BOOST_FIXTURE_TEST_CASE(query_update, tcp_network_fixture)
     conn.query("UPDATE updates_table SET field_int = field_int+10", result);
 
     // Validate results
+    BOOST_TEST(result.size() == 1u);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 2u);  // there are 3 rows, but 1 has field_int = NULL
@@ -115,6 +118,7 @@ BOOST_FIXTURE_TEST_CASE(query_delete, tcp_network_fixture)
     conn.query("DELETE FROM updates_table", result);
 
     // Validate results
+    BOOST_TEST(result.size() == 1u);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 3u);
@@ -139,6 +143,7 @@ BOOST_FIXTURE_TEST_CASE(statement_update, tcp_network_fixture)
     // Execute it
     results result;
     conn.execute_statement(stmt, std::make_tuple(200, "f0"), result);
+    BOOST_TEST(result.size() == 1u);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 1u);
@@ -166,6 +171,7 @@ BOOST_FIXTURE_TEST_CASE(statement_delete, tcp_network_fixture)
     // Execute it
     results result;
     conn.execute_statement(stmt, std::make_tuple("f0"), result);
+    BOOST_TEST(result.size() == 1u);
     BOOST_TEST(result.meta().empty());
     BOOST_TEST(result.rows().empty());
     BOOST_TEST(result.affected_rows() == 1u);
