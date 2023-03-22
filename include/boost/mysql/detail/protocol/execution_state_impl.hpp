@@ -247,6 +247,12 @@ public:
         );
     }
 
+    bool has_ok_data() const noexcept
+    {
+        assert(!append_mode_);
+        return per_result_.size() == 1u && per_result_[0].has_ok_packet_data;
+    }
+
     std::uint64_t get_affected_rows(std::size_t index) const noexcept
     {
         return get_resultset_with_ok_packet(index).affected_rows;

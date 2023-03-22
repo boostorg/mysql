@@ -107,7 +107,7 @@ of useful information in this object, like the column name, its type, whether it
 
 You can access OK packet data using functions like [refmem execution_state last_insert_id]
 and [refmem execution_state affected_rows]. As this information is contained in the OK packet,
-[*these functions have `st.complete() == true` as precondition].
+it can only be accessed once it's received. You can check for this using [refmem execution_state has_ok_data].
 
 [heading Using multi-function operations with stored procedures and multi-queries]
 
@@ -134,14 +134,19 @@ while `should_read_rows()` will return false once an individual result has been 
 
 [heading Multi-resultset in the general case]
 
-`execution_state` can be seen as a state machine with three states. Each state
+`execution_state` can be seen as a state machine with four states. Each state
 describes which reading function should be invoked next:
 
-* [refmem execution_state should_read_head]: the next operation should be [refmem connection read_resultset_head],
-  to read the next resultset metadata.
+* [refmem execution_state should_start_op]: the initial state, after you default-construct an `execution_state`.
+  You should call functions like `start_query` or `start_statement_execution` to start the operation.
 * [refmem execution_state should_read_rows]: the next operation should be [refmem connection read_some_rows],
   to read the generated rows.
+* [refmem execution_state should_read_head]: the next operation should be [refmem connection read_resultset_head],
+  to read the next resultset metadata. Only operations that generate multiple resultsets go into this state.
 * [refmem execution_state complete]: no more operations are required.
+
+[refmem execution_state has_ok_data] will return true after an OK packet has been read, and before
+the next resultset head is processed.
 
 [link mysql.examples.source_script This example] shows this general case. It uses
 multi-queries to run an arbitrary SQL script file.

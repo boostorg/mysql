@@ -27,6 +27,11 @@ namespace mysql {
 
 /**
  * \brief Holds state for multi-function SQL execution operations.
+ * \details
+ * This class behaves like a state machine. The current state can be accessed using
+ * \ref should_read_head, \ref should_read_rows, and \ref complete. They are mutually exclusive.
+ * More states may be added in the future as more protocol features are implemented.
+ *
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe.
@@ -37,14 +42,19 @@ public:
     /**
      * \brief Default constructor.
      * \details The constructed object is guaranteed to have `meta().empty()` and
-     * `!complete()`.
+     * `should_read_head() == true`.
      *
      * \par Exception safety
      * No-throw guarantee.
      */
     execution_state() noexcept : impl_(false){};
 
-    bool should_read_head() const noexcept { return impl_.should_read_head() || impl_.should_read_meta(); }
+    bool should_start_op() const noexcept { return impl_.num_resultsets() == 0u; }
+
+    bool should_read_head() const noexcept
+    {
+        return impl_.num_resultsets() == 1u && (impl_.should_read_head() || impl_.should_read_meta());
+    }
 
     bool should_read_rows() const noexcept { return impl_.should_read_rows(); }
 
@@ -58,6 +68,8 @@ public:
      * No-throw guarantee.
      */
     bool complete() const noexcept { return impl_.complete(); }
+
+    bool has_ok_data() const noexcept { return impl_.has_ok_data(); }
 
     /**
      * \brief Returns metadata about the columns in the query.
@@ -83,7 +95,11 @@ public:
      * \par Preconditions
      * `this->complete() == true`
      */
-    std::uint64_t affected_rows() const noexcept { return impl_.get_affected_rows(0); }
+    std::uint64_t affected_rows() const noexcept
+    {
+        assert(has_ok_data());
+        return impl_.get_affected_rows(0);
+    }
 
     /**
      * \brief Returns the last insert ID produced by the executed SQL statement.
@@ -93,7 +109,11 @@ public:
      * \par Preconditions
      * `this->complete() == true`
      */
-    std::uint64_t last_insert_id() const noexcept { return impl_.get_last_insert_id(0); }
+    std::uint64_t last_insert_id() const noexcept
+    {
+        assert(has_ok_data());
+        return impl_.get_last_insert_id(0);
+    }
 
     /**
      * \brief Returns the number of warnings produced by the executed SQL statement.
@@ -103,7 +123,11 @@ public:
      * \par Preconditions
      * `this->complete() == true`
      */
-    unsigned warning_count() const noexcept { return impl_.get_warning_count(0); }
+    unsigned warning_count() const noexcept
+    {
+        assert(has_ok_data());
+        return impl_.get_warning_count(0);
+    }
 
     /**
      * \brief Returns additionat text information about the execution of the SQL statement.
@@ -124,9 +148,17 @@ public:
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
      */
-    string_view info() const noexcept { return impl_.get_info(0); }
+    string_view info() const noexcept
+    {
+        assert(has_ok_data());
+        return impl_.get_info(0);
+    }
 
-    bool is_out_params() const noexcept { return impl_.get_is_out_params(0); }
+    bool is_out_params() const noexcept
+    {
+        assert(has_ok_data());
+        return impl_.get_is_out_params(0);
+    }
 
 private:
     detail::execution_state_impl impl_;

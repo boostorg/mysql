@@ -10,18 +10,18 @@
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
+#include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::column_type;
-using boost::mysql::execution_state;
-using boost::mysql::metadata_mode;
-using boost::mysql::detail::protocol_field_type;
+using namespace boost::mysql;
+using detail::protocol_field_type;
 
 namespace {
 BOOST_AUTO_TEST_SUITE(test_execution_state)
@@ -30,37 +30,100 @@ BOOST_AUTO_TEST_SUITE(test_execution_state)
 // Just spotchecks here
 BOOST_AUTO_TEST_CASE(spotchecks)
 {
+    std::vector<field_view> fields;
     execution_state st;
     auto& impl = boost::mysql::detail::execution_state_access::get_impl(st);
 
     // Initial
-    BOOST_TEST(st.should_read_head());
+    BOOST_TEST(st.should_start_op());
+    BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
+    BOOST_TEST(!st.has_ok_data());
+
+    // Reset
+    impl.reset(detail::resultset_encoding::text, &fields);
+    BOOST_TEST(st.should_start_op());
+    BOOST_TEST(!st.should_read_head());
+    BOOST_TEST(!st.should_read_rows());
+    BOOST_TEST(!st.complete());
+    BOOST_TEST(!st.has_ok_data());
 
     // Reading meta
     impl.on_num_meta(1);
+    BOOST_TEST(!st.should_start_op());
     BOOST_TEST(st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
+    BOOST_TEST(!st.has_ok_data());
 
     // Reading rows
     impl.on_meta(create_coldef(protocol_field_type::bit), metadata_mode::full);
+    BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(st.meta()[0].type() == column_type::bit);
+    BOOST_TEST(!st.has_ok_data());
+    check_meta(st.meta(), {column_type::bit});
 
-    // Complete
-    impl.on_row_ok_packet(ok_builder().affected_rows(1).last_insert_id(2).warnings(4).info("abc").build());
+    // Reading a row leaves it in the same state
+    impl.on_row_batch_start();
+    *impl.add_row() = field_view(42u);
+    impl.on_row_batch_finish();
+    BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
+    BOOST_TEST(st.should_read_rows());
+    BOOST_TEST(!st.complete());
+    BOOST_TEST(!st.has_ok_data());
+    BOOST_TEST(fields == make_fv_vector(42u));
+
+    // End of first resultset
+    impl.on_row_batch_start();
+    impl.on_row_ok_packet(ok_builder()
+                              .affected_rows(1)
+                              .last_insert_id(2)
+                              .warnings(4)
+                              .info("abc")
+                              .more_results(true)
+                              .out_params(true)
+                              .build());
+    impl.on_row_batch_finish();
+    BOOST_TEST(!st.should_start_op());
+    BOOST_TEST(st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
-    BOOST_TEST(st.complete());
-    BOOST_TEST(st.meta()[0].type() == column_type::bit);
+    BOOST_TEST(!st.complete());
+    BOOST_TEST(st.has_ok_data());
+    check_meta(st.meta(), {column_type::bit});
     BOOST_TEST(st.affected_rows() == 1u);
     BOOST_TEST(st.last_insert_id() == 2u);
     BOOST_TEST(st.warning_count() == 4u);
     BOOST_TEST(st.info() == "abc");
+    BOOST_TEST(st.is_out_params());
+
+    // Second resultset meta
+    impl.on_num_meta(1);
+    impl.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::full);
+    BOOST_TEST(!st.should_start_op());
+    BOOST_TEST(!st.should_read_head());
+    BOOST_TEST(st.should_read_rows());
+    BOOST_TEST(!st.complete());
+    BOOST_TEST(!st.has_ok_data());
+    check_meta(st.meta(), {column_type::tinyint});
+
+    // Complete
+    impl.on_row_batch_start();
+    impl.on_row_ok_packet(ok_builder().affected_rows(5).last_insert_id(6).warnings(7).info("bhu").build());
+    impl.on_row_batch_finish();
+    BOOST_TEST(!st.should_start_op());
+    BOOST_TEST(!st.should_read_head());
+    BOOST_TEST(!st.should_read_rows());
+    BOOST_TEST(st.complete());
+    BOOST_TEST(st.has_ok_data());
+    check_meta(st.meta(), {column_type::tinyint});
+    BOOST_TEST(st.affected_rows() == 5u);
+    BOOST_TEST(st.last_insert_id() == 6u);
+    BOOST_TEST(st.warning_count() == 7u);
+    BOOST_TEST(st.info() == "bhu");
     BOOST_TEST(!st.is_out_params());
 }
 
