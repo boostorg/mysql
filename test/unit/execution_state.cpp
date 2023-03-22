@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(!st.has_ok_data());
+    BOOST_TEST(st.meta().size() == 0u);
 
     // Reset
     impl.reset(detail::resultset_encoding::text, &fields);
@@ -47,7 +47,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(!st.has_ok_data());
 
     // Reading meta
     impl.on_num_meta(1);
@@ -55,7 +54,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(!st.has_ok_data());
 
     // Reading rows
     impl.on_meta(create_coldef(protocol_field_type::bit), metadata_mode::full);
@@ -63,7 +61,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(!st.has_ok_data());
     check_meta(st.meta(), {column_type::bit});
 
     // Reading a row leaves it in the same state
@@ -74,7 +71,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(!st.has_ok_data());
     BOOST_TEST(fields == make_fv_vector(42u));
 
     // End of first resultset
@@ -92,7 +88,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(st.has_ok_data());
     check_meta(st.meta(), {column_type::bit});
     BOOST_TEST(st.affected_rows() == 1u);
     BOOST_TEST(st.last_insert_id() == 2u);
@@ -107,7 +102,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(!st.has_ok_data());
     check_meta(st.meta(), {column_type::tinyint});
 
     // Complete
@@ -118,7 +112,6 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(st.complete());
-    BOOST_TEST(st.has_ok_data());
     check_meta(st.meta(), {column_type::tinyint});
     BOOST_TEST(st.affected_rows() == 5u);
     BOOST_TEST(st.last_insert_id() == 6u);

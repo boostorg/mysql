@@ -107,7 +107,7 @@ of useful information in this object, like the column name, its type, whether it
 
 You can access OK packet data using functions like [refmem execution_state last_insert_id]
 and [refmem execution_state affected_rows]. As this information is contained in the OK packet,
-it can only be accessed once it's received. You can check for this using [refmem execution_state has_ok_data].
+[*it can only be accessed once [refmem execution_state complete] returns `true`]. 
 
 [heading Using multi-function operations with stored procedures and multi-queries]
 
@@ -145,8 +145,8 @@ describes which reading function should be invoked next:
   to read the next resultset metadata. Only operations that generate multiple resultsets go into this state.
 * [refmem execution_state complete]: no more operations are required.
 
-[refmem execution_state has_ok_data] will return true after an OK packet has been read, and before
-the next resultset head is processed.
+For multi-function operations, you may also access OK packet data ever time a resultset has completely
+been read, i.e. when [refmem execution_state should_read_head] returns `true`.
 
 [link mysql.examples.source_script This example] shows this general case. It uses
 multi-queries to run an arbitrary SQL script file.
