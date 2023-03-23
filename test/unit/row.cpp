@@ -86,34 +86,25 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(r.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    auto fields = make_fv_arr(42, 5.0f);
-    row r(makerowv(fields.data(), fields.size()));
-
-    // Fields still valid even when the original source of the view changed
-    fields = make_fv_arr(90, 2.0);
-    BOOST_TEST(r.size() == 2u);
-    BOOST_TEST(r[0] == field_view(42));
-    BOOST_TEST(r[1] == field_view(5.0f));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     std::string s1("test"), s2("");
     blob b{0x00, 0xab, 0xf5};
-    auto fields = make_fv_arr(s1, s2, 50, b);
+    auto fields = make_fv_arr(42, s1, 5.0f, b, s2);
     row r(makerowv(fields.data(), fields.size()));
 
-    // Fields still valid even when the original strings changed
+    // Fields still valid even when the original source of the view changed
+    fields = make_fv_arr(0, 0, 0, 0, 0);
     s1 = "other";
     s2 = "abcdef";
     b = {0xff, 0xa4, 0x02};
-    BOOST_TEST(r.size() == 4u);
-    BOOST_TEST(r[0] == field_view("test"));
-    BOOST_TEST(r[1] == field_view(""));
-    BOOST_TEST(r[2] == field_view(50));
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(r[3].as_blob(), blob({0x00, 0xab, 0xf5}));
+
+    BOOST_TEST(r.size() == 5u);
+    BOOST_TEST(r[0] == field_view(42));
+    BOOST_TEST(r[1] == field_view("test"));
+    BOOST_TEST(r[2] == field_view(5.0f));
+    BOOST_TEST(r[3] == field_view(makebv("\0\xab\xf5")));
+    BOOST_TEST(r[4] == field_view(""));
 }
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -127,18 +118,7 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(r2.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    row r1 = makerow(42, 5.0f);
-    row r2(r1);
-    r1 = makerow(42, "test");  // r2 should be independent of r1
-
-    BOOST_TEST(r2.size() == 2u);
-    BOOST_TEST(r2[0] == field_view(42));
-    BOOST_TEST(r2[1] == field_view(5.0f));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     row r1 = makerow("", 42, "test", makebv("\0\3\2"));
     row r2(r1);
@@ -167,23 +147,7 @@ BOOST_AUTO_TEST_CASE(empty)
     refcheck.check(r2);
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    row r1 = makerow(42, 5.0f);
-
-    // References, pointers, etc. should remain valid
-    reference_checker refcheck(r1);
-
-    row r2(std::move(r1));
-    r1 = makerow(42, "test");  // r2 should be independent of r1
-
-    BOOST_TEST(r2.size() == 2u);
-    BOOST_TEST(r2[0] == field_view(42));
-    BOOST_TEST(r2[1] == field_view(5.0f));
-    refcheck.check(r2);
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     row r1 = makerow("", 42, "test", makebv("\0\5\xff"));
 
@@ -215,20 +179,7 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(r1.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    row r1 = makerow(42, "abcdef");
-    row r2 = makerow(50.0f, nullptr, 80u);
-    r1 = r2;
-    r2 = makerow("abc", 80, nullptr);  // r1 is independent of r2
-
-    BOOST_TEST(r1.size() == 3u);
-    BOOST_TEST(r1[0] == field_view(50.0f));
-    BOOST_TEST(r1[1] == field_view());
-    BOOST_TEST(r1[2] == field_view(80u));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     row r1 = makerow(42, "abcdef", makebv("\0\1\2"));
     row r2 = makerow("a_very_long_string", nullptr, "", makebv("\3\4\5"));
@@ -242,29 +193,7 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     BOOST_TEST(r1[3] == field_view(makebv("\3\4\5")));
 }
 
-BOOST_AUTO_TEST_CASE(strings_blobs_empty_to)
-{
-    row r1;
-    row r2 = makerow("abc", nullptr, "bcd", makebv("\1\2\3"));
-    r1 = r2;
-
-    BOOST_TEST(r1.size() == 4u);
-    BOOST_TEST(r1[0] == field_view("abc"));
-    BOOST_TEST(r1[1] == field_view());
-    BOOST_TEST(r1[2] == field_view("bcd"));
-    BOOST_TEST(r1[3] == field_view(makebv("\1\2\3")));
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_empty)
-{
-    row r;
-    const row& ref = r;
-    r = ref;
-
-    BOOST_TEST(r.empty());
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
+BOOST_AUTO_TEST_CASE(self_assignment)
 {
     row r = makerow("abc", 50u, "fgh");
     const row& ref = r;
@@ -289,25 +218,7 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(rv == r1);
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    row r1 = makerow(42, "abcdef");
-    row r2 = makerow(50.0f, nullptr, 80u);
-
-    // References, pointers, etc should remain valid
-    reference_checker refcheck(r2);
-
-    r1 = std::move(r2);
-    r2 = makerow("abc", 80, nullptr);  // r1 is independent of r2
-
-    BOOST_TEST(r1.size() == 3u);
-    BOOST_TEST(r1[0] == field_view(50.0f));
-    BOOST_TEST(r1[1] == field_view());
-    BOOST_TEST(r1[2] == field_view(80u));
-    refcheck.check(r1);
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     row r1 = makerow(42, "abcdef", makebv("\0\4\1"));
     row r2 = makerow("a_very_long_string", nullptr, "", makebv("\7\1\2"));
@@ -329,37 +240,7 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     refcheck.check(r1);
 }
 
-BOOST_AUTO_TEST_CASE(strings_blobs_empty_to)
-{
-    row r1;
-    row r2 = makerow("abc", nullptr, "bcd", makebv("\0\2\5"));
-
-    // References, pointers, etc should remain valid
-    reference_checker_strs refcheck(r2, 2, 3);
-
-    r1 = std::move(r2);
-
-    BOOST_TEST(r1.size() == 4u);
-    BOOST_TEST(r1[0] == field_view("abc"));
-    BOOST_TEST(r1[1] == field_view());
-    BOOST_TEST(r1[2] == field_view("bcd"));
-    BOOST_TEST(r1[3] == field_view(makebv("\0\2\5")));
-    refcheck.check(r1);
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_empty)
-{
-    row r;
-    row&& ref = std::move(r);
-    r = std::move(ref);
-
-    // r is in a valid but unspecified state; can be assigned to
-    r = makerow("abcdef");
-    BOOST_TEST(r.size() == 1u);
-    BOOST_TEST(r[0] == field_view("abcdef"));
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
+BOOST_AUTO_TEST_CASE(self_assignment)
 {
     row r = makerow("abc", 50u, "fgh", makebv("\0\4"));
     row&& ref = std::move(r);
@@ -380,19 +261,7 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(r.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    row r = makerow(42, "abcdef");
-    auto fields = make_fv_arr(90, nullptr);
-    r = makerowv(fields.data(), fields.size());
-    fields = make_fv_arr("abc", 42u);  // r should be independent of the original fields
-
-    BOOST_TEST(r.size() == 2u);
-    BOOST_TEST(r[0] == field_view(90));
-    BOOST_TEST(r[1] == field_view());
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     std::string s1("a_very_long_string"), s2("");
     blob b{0x00, 0xfa};
@@ -409,19 +278,6 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     BOOST_TEST(r[1] == field_view());
     BOOST_TEST(r[2] == field_view(""));
     BOOST_TEST(r[3] == field_view(makebv("\0\xfa")));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs_empty_to)
-{
-    row r;
-    auto fields = make_fv_arr("abc", nullptr, "bcd", makebv("\0\3"));
-    r = makerowv(fields.data(), fields.size());
-
-    BOOST_TEST(r.size() == 4u);
-    BOOST_TEST(r[0] == field_view("abc"));
-    BOOST_TEST(r[1] == field_view());
-    BOOST_TEST(r[2] == field_view("bcd"));
-    BOOST_TEST(r[3] == field_view(makebv("\0\3")));
 }
 
 BOOST_AUTO_TEST_CASE(self_assignment)

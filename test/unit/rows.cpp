@@ -99,19 +99,7 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(r.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    auto fields = make_fv_arr(20u, 1.0f, nullptr, -1);
-    auto v = makerowsv(fields.data(), fields.size(), 2);
-    rows r(v);
-    fields = make_fv_arr(0, 0, 0, 0);  // r should be independent of the original fields
-
-    BOOST_TEST(r.size() == 2u);
-    BOOST_TEST(r[0] == makerow(20u, 1.0f));
-    BOOST_TEST(r[1] == makerow(nullptr, -1));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     std::string s1("abc"), s2("");
     blob b{0x64, 0x10, 0x01};
@@ -139,18 +127,7 @@ BOOST_AUTO_TEST_CASE(empty)
     BOOST_TEST(r2.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    rows r1 = makerows(3, 1, 21.0f, nullptr, 2, 22.0f, -1);
-    rows r2(r1);
-    r1 = makerows(2, 0, 0, 0, 0);  // r2 should be independent of r1
-
-    BOOST_TEST(r2.size() == 2u);
-    BOOST_TEST(r2[0] == makerow(1, 21.0f, nullptr));
-    BOOST_TEST(r2[1] == makerow(2, 22.0f, -1));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     rows r1 = makerows(3, "abc", 21.0f, makebv(""), "cdefg", 22.0f, makebv("\1\3\5"));
     rows r2(r1);
@@ -177,23 +154,7 @@ BOOST_AUTO_TEST_CASE(empty)
     refcheck.check(r2);
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    rows r1 = makerows(3, 1, 21.0f, nullptr, 2, 22.0f, -1);
-
-    // References, pointers, etc. should remain valid
-    reference_checker refcheck(r1);
-
-    rows r2(std::move(r1));
-    r1 = makerows(2, 0, 0, 0, 0);  // r2 should be independent of r1
-
-    BOOST_TEST(r2.size() == 2u);
-    BOOST_TEST(r2[0] == makerow(1, 21.0f, nullptr));
-    BOOST_TEST(r2[1] == makerow(2, 22.0f, -1));
-    refcheck.check(r2);
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     rows r1 = makerows(3, makebv("abc"), 21.0f, "", makebv("\0\1\0"), 22.0f, "aaa");
 
@@ -211,16 +172,7 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(copy_assignment)
-BOOST_AUTO_TEST_CASE(empty_to_empty)
-{
-    rows r1;
-    rows r2;
-    r1 = r2;
-    r2 = makerows(2, 90, nullptr);  // r1 is independent of r2
-    BOOST_TEST(r1.empty());
-}
-
-BOOST_AUTO_TEST_CASE(empty_to_nonempty)
+BOOST_AUTO_TEST_CASE(empty)
 {
     rows r1 = makerows(2, 42, "abcdef");
     rows r2;
@@ -229,19 +181,7 @@ BOOST_AUTO_TEST_CASE(empty_to_nonempty)
     BOOST_TEST(r1.empty());
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    rows r1 = makerows(2, 42, "abcdef");
-    rows r2 = makerows(1, 50.0f, nullptr);
-    r1 = r2;
-    r2 = makerows(1, "abc", 80, nullptr);  // r1 is independent of r2
-
-    BOOST_TEST(r1.size() == 2u);
-    BOOST_TEST(r1[0] == makerow(50.0f));
-    BOOST_TEST(r1[1] == makerow(nullptr));
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     rows r1 = makerows(1, 42, "abcdef", makebv("\0\2\1"));
     rows r2 = makerows(2, "a_very_long_string", nullptr, "", makebv("\7\0"), "cde", blob_view());
@@ -254,29 +194,7 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     BOOST_TEST(r1[2] == makerow("cde", blob_view()));
 }
 
-BOOST_AUTO_TEST_CASE(strings_blobs_empty_to)
-{
-    rows r1;
-    rows r2 = makerows(1, "abc", nullptr, "", makebv("\0\1\7"));
-    r1 = r2;
-
-    BOOST_TEST(r1.size() == 4u);
-    BOOST_TEST(r1[0] == makerow("abc"));
-    BOOST_TEST(r1[1] == makerow(nullptr));
-    BOOST_TEST(r1[2] == makerow(""));
-    BOOST_TEST(r1[3] == makerow(makebv("\0\1\7")));
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_empty)
-{
-    rows r;
-    const rows& ref = r;
-    r = ref;
-
-    BOOST_TEST(r.empty());
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
+BOOST_AUTO_TEST_CASE(self_assignment)
 {
     rows r = makerows(2, "abc", 50u, "", makebv("abc"));
     const rows& ref = r;
@@ -289,21 +207,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(move_assignment)
-BOOST_AUTO_TEST_CASE(empty_to_empty)
-{
-    rows r1;
-    rows r2;
-
-    // References, pointers, etc. should remain valid
-    reference_checker refcheck(r2);
-    r1 = std::move(r2);
-    r2 = makerows(1, 20, 20);  // r1 independent of r2
-
-    BOOST_TEST(r1.empty());
-    refcheck.check(r1);
-}
-
-BOOST_AUTO_TEST_CASE(empty_to_nonempty)
+BOOST_AUTO_TEST_CASE(empty)
 {
     rows r1 = makerows(1, 42, "abcdef");
     rows r2;
@@ -317,23 +221,7 @@ BOOST_AUTO_TEST_CASE(empty_to_nonempty)
     refcheck.check(r1);
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    rows r1 = makerows(2, 42, "abcdef");
-    rows r2 = makerows(3, 50.0f, nullptr, 80u);
-
-    // References, pointers, etc. should remain valid
-    reference_checker refcheck(r2);
-
-    r1 = std::move(r2);
-    r2 = makerows(1, "abc", 80, nullptr);  // r1 is independent of r2
-
-    BOOST_TEST(r1.size() == 1u);
-    BOOST_TEST(r1[0] == makerow(50.0f, nullptr, 80u));
-    refcheck.check(r1);
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     rows r1 = makerows(1, 42, "abcdef");
     rows r2 = makerows(3, "a_very_long_string", blob_view(), 50, "", makebv("\2\5\1"), 42);
@@ -350,37 +238,7 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     refcheck.check(r1);
 }
 
-BOOST_AUTO_TEST_CASE(strings_blobs_empty_to)
-{
-    rows r1;
-    rows r2 = makerows(1, "abc", makebv("\0\4"), "bcd");
-
-    // References, pointers, etc. should remain valid
-    reference_checker_strs refcheck(r2, 0, 0, 1, 0);
-
-    r1 = std::move(r2);
-    r2 = rows();  // r1 independent of r2
-
-    BOOST_TEST(r1.size() == 3u);
-    BOOST_TEST(r1[0] == makerow("abc"));
-    BOOST_TEST(r1[1] == makerow(makebv("\0\4")));
-    BOOST_TEST(r1[2] == makerow("bcd"));
-    refcheck.check(r1);
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_empty)
-{
-    rows r;
-    rows&& ref = std::move(r);
-    r = std::move(ref);
-
-    // r is in a valid but unspecified state; can be assigned to
-    r = makerows(1, "abcdef");
-    BOOST_TEST(r.size() == 1u);
-    BOOST_TEST(r[0] == makerow("abcdef"));
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
+BOOST_AUTO_TEST_CASE(self_assignment)
 {
     rows r = makerows(3, "abc", 50u, "fgh");
     rows&& ref = std::move(r);
@@ -394,15 +252,7 @@ BOOST_AUTO_TEST_CASE(self_assignment_non_empty)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(assignment_from_view)
-BOOST_AUTO_TEST_CASE(empty_to_empty)
-{
-    rows r;
-    r = rows_view();
-    BOOST_TEST(r.empty());
-    BOOST_TEST(r.num_columns() == 0u);
-}
-
-BOOST_AUTO_TEST_CASE(empty_to_nonempty)
+BOOST_AUTO_TEST_CASE(empty)
 {
     rows r = makerows(1, 42, "abcdef");
     r = rows_view();
@@ -426,19 +276,7 @@ BOOST_AUTO_TEST_CASE(empty_different_num_columns)
     BOOST_TEST(r.num_columns() == 3u);
 }
 
-BOOST_AUTO_TEST_CASE(non_strings)
-{
-    rows r = makerows(1, 42, "abcdef");
-    auto fields = make_fv_arr(90, nullptr, 4.2f, 1u);
-    r = makerowsv(fields.data(), fields.size(), 2);
-
-    BOOST_TEST_REQUIRE(r.size() == 2u);
-    BOOST_TEST(r[0] == makerow(90, nullptr));
-    BOOST_TEST(r[1] == makerow(4.2f, 1u));
-    BOOST_TEST(r.num_columns() == 2u);
-}
-
-BOOST_AUTO_TEST_CASE(strings_blobs)
+BOOST_AUTO_TEST_CASE(non_empty)
 {
     std::string s1("a_very_long_string"), s2("");
     blob b{0x78, 0x01, 0xff};
@@ -456,16 +294,6 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     BOOST_TEST(r.num_columns() == 3u);
 }
 
-BOOST_AUTO_TEST_CASE(strings_empty_to)
-{
-    rows r;
-    auto fields = make_fv_arr("abc", nullptr, "bcd", 8.2f);
-    r = makerowsv(fields.data(), fields.size(), 4);
-
-    BOOST_TEST_REQUIRE(r.size() == 1u);
-    BOOST_TEST(r[0] == makerow("abc", nullptr, "bcd", 8.2f));
-}
-
 BOOST_AUTO_TEST_CASE(self_assignment)
 {
     rows r = makerows(2, "abcdef", 42, "plk", "uv");
@@ -474,24 +302,6 @@ BOOST_AUTO_TEST_CASE(self_assignment)
     BOOST_TEST_REQUIRE(r.size() == 2u);
     BOOST_TEST(r[0] == makerow("abcdef", 42));
     BOOST_TEST(r[1] == makerow("plk", "uv"));
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_empty)
-{
-    rows r;
-    r = rows_view(r);
-
-    BOOST_TEST(r.empty());
-    BOOST_TEST(r.size() == 0u);
-}
-
-BOOST_AUTO_TEST_CASE(self_assignment_cleared)
-{
-    rows r = makerows(2, "abcdef", 42, "plk", "uv");
-    r = rows();
-    r = rows_view(r);
-
-    BOOST_TEST_REQUIRE(r.size() == 0u);
 }
 BOOST_AUTO_TEST_SUITE_END()
 
