@@ -364,13 +364,13 @@ public:
      * \brief Starts a text query as a multi-function operation.
      * \details
      * Writes the query request and reads the initial server response and the column
-     * metadata, but not the generated rows, if any. After this operation completes, `st` will have
-     * \ref execution_state::meta populated, and may become \ref execution_state::complete
-     * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     * metadata, but not the generated rows or subsequent resultsets, if any.
+     * After this operation completes, `st` will have
+     * \ref execution_state::meta populated.
      * Metadata will be populated according to `this->meta_mode()`.
      * \n
-     * If the operation generated any rows, these <b>must</b> be read (by using
-     * \ref read_some_rows) before engaging in any further network operation.
+     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
+     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
      * Otherwise, the results are undefined.
      * \n
      * `query_string` should be encoded using the connection's character set.
@@ -545,14 +545,13 @@ public:
      * \brief Starts a statement execution as a multi-function operation.
      * \details
      * Writes the execute request and reads the initial server response and the column
-     * metadata, but not the generated rows, if any. After this operation completes, `st` will have
-     * \ref execution_state::meta populated, and may become \ref execution_state::complete
-     * if the operation did not generate any rows (e.g. it was an `UPDATE`).
-     * Metadata will be populated according to `this->meta_mode()`.
+     * metadata, but not the generated rows or subsequent resultsets, if any. After this operation completes,
+     * `st` will have \ref execution_state::meta populated. Metadata will be populated according to
+     * `this->meta_mode()`.
      * \n
-     * If the operation generated any rows, these <b>must</b> be read (by using
-     * \ref read_some_rows) before engaging in any further
-     * operation involving server communication. Otherwise, the results are undefined.
+     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
+     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
+     * Otherwise, the results are undefined.
      * \n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
      * String parameters should be encoded using the connection's character set.
@@ -630,13 +629,12 @@ public:
      * \brief Starts a statement execution as a multi-function operation.
      * \details
      * Writes the execute request and reads the initial server response and the column
-     * metadata, but not the generated rows, if any. After this operation completes, `st` will have
-     * \ref execution_state::meta populated, and may become \ref execution_state::complete
-     * if the operation did not generate any rows (e.g. it was an `UPDATE`).
+     * metadata, but not the generated rows or any subsequent resultsets, if any. After this operation
+     * completes, `st` will have \ref execution_state::meta populated.
      * \n
-     * If the operation generated any rows, these <b>must</b> be read (by using
-     * \ref connection::read_some_rows) before engaging in any further
-     * operation involving server communication. Otherwise, the results are undefined.
+     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
+     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
+     * Otherwise, the results are undefined.
      * \n
      * The statement actual parameters are passed as an iterator range.
      * String parameters should be encoded using the connection's character set.
@@ -754,35 +752,12 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    void read_resultset_head(execution_state& st, error_code& err, diagnostics& info);
-    void read_resultset_head(execution_state& st);
-
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_resultset_head(
-        execution_state& st,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_read_resultset_head(st, shared_diag(), std::forward<CompletionToken>(token));
-    }
-
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_resultset_head(
-        execution_state& st,
-        diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    );
-
     /**
      * \brief Reads a batch of rows.
      * \details
-     * The number of rows that will be read is unspecified. If the resultset being read
-     * has still rows to read, at least one will be read. If there are no more
-     * rows to be read, returns an empty `rows_view`.
+     * The number of rows that will be read is unspecified. If the operation represented by `st`
+     * has still rows to read, at least one will be read. If there are no more rows, or
+     * `st.should_read_rows() == false`, returns an empty `rows_view`.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
@@ -820,6 +795,51 @@ public:
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
     async_read_some_rows(
+        execution_state& st,
+        diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Reads metadata for subsequent resultsets in a multi-resultset operation.
+     * \details
+     * If `st.should_read_head() == true`, this function will read the next resultset's
+     * initial response message and metadata, if any. If the resultset indicates a failure
+     * (e.g. the query associated to this resultset contained an error), this function will fail
+     * with that error.
+     * \n
+     * If `st.should_read_head() == false`, this function is a no-op.
+     * \n
+     * This function is only relevant when using multi-function operations with statements
+     * that return more than one resultset.
+     */
+    void read_resultset_head(execution_state& st, error_code& err, diagnostics& info);
+
+    /// \copydoc read_resultset_head
+    void read_resultset_head(execution_state& st);
+
+    /**
+     * \copydoc read_resultset_head
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code)`.
+     */
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_read_resultset_head(
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_read_resultset_head(st, shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_read_resultset_head
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_read_resultset_head(
         execution_state& st,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
