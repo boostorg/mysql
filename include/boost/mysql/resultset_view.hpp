@@ -25,10 +25,7 @@ class resultset_view
 {
 public:
     /**
-     * \brief Constructs a null view.
-     * \details
-     * The constructed object has `this->has_value() == false`.
-     *
+     * \brief Constructs a view with `this->has_value() == false`.
      * \par Exception safety
      * No-throw guarantee.
      */

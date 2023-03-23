@@ -22,7 +22,7 @@ namespace mysql {
 /**
  * \brief An owning resultset, containing metadata, rows and additional info.
  * \details
- * Similar to \ref results, but can only represent a single resultset (where `results` can hold
+ * Similar to \ref results, but can only represent a single resultset (while `results` can hold
  * multiple resultsets). Can be used to take ownership of a \ref resultset_view.
  */
 class resultset

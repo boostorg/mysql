@@ -9,7 +9,7 @@
 
 [heading Using stored procedures]
 
-[mysqllink create-procedure.html Stored procedures] cal be called using the `CALL` SQL statement.
+[mysqllink create-procedure.html Stored procedures] can be called using the `CALL` SQL statement.
 You can use `CALL` statements from both text queries and prepared statements, in a similar way
 to other SQL statements. Contrary to other statements, `CALL` may generate more than one resultset.
 
@@ -23,11 +23,11 @@ You can call it using a prepared statement, with the usual syntax:
 
 MySQL responds here with two resultsets:
 
-* A first resultset containing the order matched by the `SELECT` query in the procedure.
+* A first resultset containing the employee matched by the `SELECT` query in the procedure.
 * A second, empty resultset containing information about the `CALL` statement.
 
 The [reflink results] class can store any number of resultsets.
-It can be understood as a random-access collection. To obtain the first resultset, we can write:
+It can be understood as a random-access collection of resultsets. To obtain the first resultset, we can write:
 
 [multi_resultset_first_resultset]
 

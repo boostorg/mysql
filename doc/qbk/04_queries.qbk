@@ -38,8 +38,7 @@ instead, which perform composition server-side in a safe way.
 
 You can run several semicolon-separated queries in a single call by enabling
 the [refmem handshake_params multi_queries] option. You can find an example
-[link mysql.multi_resultset.multi_queries here]. You can use this to run
-setup code more conveniently.
+[link mysql.multi_resultset.multi_queries here].
 
 [warning
     [*SQL injection warning]: do not use this feature if any of your queries contains

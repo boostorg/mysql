@@ -28,6 +28,8 @@
           <member><link linkend="mysql.ref.boost__mysql__handshake_params">handshake_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
           <member><link linkend="mysql.ref.boost__mysql__results">results</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__resultset_view">resultset_view</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__resultset">resultset</link></member>
           <member><link linkend="mysql.ref.boost__mysql__row">row</link></member>
           <member><link linkend="mysql.ref.boost__mysql__row_view">row_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows">rows</link></member>

@@ -513,11 +513,11 @@ void main_impl(int argc, char** argv)
         //]
 
         //[multi_resultset_first_resultset
-        rows_view matched_employee = result.at(0).rows();
-        // Use matched_employee as required
+        rows_view matched_employees = result.at(0).rows();
+        // Use matched_employees as required
         //]
 
-        boost::ignore_unused(matched_employee);
+        boost::ignore_unused(matched_employees);
     }
     {
         results result;
@@ -538,7 +538,7 @@ void main_impl(int argc, char** argv)
                     INSERT INTO employee (company_id, first_name, last_name)
                         VALUES (pin_company_id, pin_first_name, pin_last_name);
                     SET pout_employee_id = LAST_INSERT_ID();
-                    INSERT INTO audit_log (msg) VALUES ("Created new employee...");
+                    INSERT INTO audit_log (msg) VALUES ('Created new employee...');
                     COMMIT;
                 END
             )",
@@ -564,7 +564,7 @@ void main_impl(int argc, char** argv)
     }
     {
         boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
-        auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
+        auto endpoint = *resolver.resolve(argv[3], boost::mysql::default_port_string).begin();
 
         //[multi_resultset_multi_queries
         // The username and password to use
@@ -578,8 +578,8 @@ void main_impl(int argc, char** argv)
         // We must set this before calling connect
         params.set_multi_queries(true);
 
-        // Connect to the server using the first endpoint returned by the resolver
-        conn.connect(*endpoints.begin(), params);
+        // Connect to the server specifying that we want support for multi-queries
+        conn.connect(endpoint, params);
 
         // We can now use the multi-query feature.
         // This will result in three resultsets, one per query.

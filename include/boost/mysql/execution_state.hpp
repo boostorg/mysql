@@ -29,7 +29,8 @@ namespace mysql {
  * \brief Holds state for multi-function SQL execution operations.
  * \details
  * This class behaves like a state machine. The current state can be accessed using
- * \ref should_read_head, \ref should_read_rows, and \ref complete. They are mutually exclusive.
+ * \ref should_start_op, \ref should_read_rows, \ref should_read_head
+ * and \ref complete. They are mutually exclusive.
  * More states may be added in the future as more protocol features are implemented.
  *
  * \par Thread safety
@@ -48,6 +49,47 @@ public:
      * No-throw guarantee.
      */
     execution_state() noexcept : impl_(false){};
+
+    /**
+     * \brief Copy constructor.
+     * \par Exception safety
+     * Strong guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `other`'s.
+     */
+    execution_state(const execution_state& other) = default;
+
+    /**
+     * \brief Move constructor.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Views obtained from `other` remain valid.
+     */
+    execution_state(execution_state&& other) = default;
+
+    /**
+     * \brief Copy assignment.
+     * \par Exception safety
+     * Basic guarantee. Internal allocations may throw.
+     *
+     * \par Object lifetimes
+     * `*this` lifetime will be independent of `other`'s. Views obtained from `*this`
+     * are invalidated.
+     */
+    execution_state& operator=(const execution_state& other) = default;
+
+    /**
+     * \brief Move assignment.
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Views obtained from `*this` are invalidated. Views obtained from `other` remain valid.
+     */
+    execution_state& operator=(execution_state&& other) = default;
 
     /**
      * \brief Returns whether `*this` is in the initial state.
