@@ -21,8 +21,6 @@
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/impl/rows_view.hpp>
 
-#include <boost/container/small_vector.hpp>
-
 #include <cassert>
 #include <cstddef>
 
@@ -98,6 +96,70 @@ public:
     {
         finish_batch();
         impl_.offsets_to_string_views();
+    }
+};
+
+struct per_resultset_data
+{
+    std::size_t num_columns{};       // Number of columns this resultset has
+    std::size_t meta_offset{};       // Offset into the vector of metadata
+    std::size_t field_offset;        // Offset into the vector of fields (append mode only)
+    std::size_t num_rows{};          // Number of rows this resultset has (append mode only)
+    std::uint64_t affected_rows{};   // OK packet data
+    std::uint64_t last_insert_id{};  // OK packet data
+    std::uint16_t warnings{};        // OK packet data
+    std::size_t info_offset{};       // Offset into the vector of info characters
+    std::size_t info_size{};         // Number of characters that this resultset's info string has
+    bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
+    bool is_out_params{false};       // Does this resultset contain OUT param information?
+};
+
+// A container similar to a vector with SBO. To avoid depending on Boost.Container
+class resultset_container
+{
+    bool first_has_data_{false};
+    per_resultset_data first_;
+    std::vector<per_resultset_data> rest_;
+
+public:
+    resultset_container() = default;
+    std::size_t size() const noexcept { return !first_has_data_ ? 0 : rest_.size() + 1; }
+    bool empty() const noexcept { return !first_has_data_; }
+    void clear() noexcept
+    {
+        first_has_data_ = false;
+        rest_.clear();
+    }
+    per_resultset_data& operator[](std::size_t i) noexcept
+    {
+        return const_cast<per_resultset_data&>(const_cast<const resultset_container&>(*this)[i]);
+    }
+    const per_resultset_data& operator[](std::size_t i) const noexcept
+    {
+        assert(i < size());
+        return i == 0 ? first_ : rest_[i - 1];
+    }
+    per_resultset_data& back() noexcept
+    {
+        return const_cast<per_resultset_data&>(const_cast<const resultset_container&>(*this).back());
+    }
+    const per_resultset_data& back() const noexcept
+    {
+        assert(first_has_data_);
+        return rest_.empty() ? first_ : rest_.back();
+    }
+    per_resultset_data& emplace_back()
+    {
+        if (!first_has_data_)
+        {
+            first_ = per_resultset_data();
+            first_has_data_ = true;
+            return first_;
+        }
+        else
+        {
+            return rest_.emplace_back();
+        }
     }
 };
 
@@ -223,7 +285,7 @@ public:
     rows_view get_rows(std::size_t index) const noexcept
     {
         assert(append_mode_);
-        const auto& resultset_data = get_resultset(index);
+        const auto& resultset_data = per_result_[index];
         return rows_
             .rows_slice(resultset_data.field_offset, resultset_data.num_columns, resultset_data.num_rows);
     }
@@ -240,7 +302,7 @@ public:
 
     metadata_collection_view get_meta(std::size_t index) const noexcept
     {
-        const auto& resultset_data = get_resultset(index);
+        const auto& resultset_data = per_result_[index];
         return metadata_collection_view(
             meta_.data() + resultset_data.meta_offset,
             resultset_data.num_columns
@@ -296,21 +358,6 @@ private:
         complete
     };
 
-    struct per_resultset_data
-    {
-        std::size_t num_columns{};       // Number of columns this resultset has
-        std::size_t meta_offset{};       // Offset into the vector of metadata
-        std::size_t field_offset;        // Offset into the vector of fields (append mode only)
-        std::size_t num_rows{};          // Number of rows this resultset has (append mode only)
-        std::uint64_t affected_rows{};   // OK packet data
-        std::uint64_t last_insert_id{};  // OK packet data
-        std::uint16_t warnings{};        // OK packet data
-        std::size_t info_offset{};       // Offset into the vector of info characters
-        std::size_t info_size{};         // Number of characters that this resultset's info string has
-        bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
-        bool is_out_params{false};       // Does this resultset contain OUT param information?
-    };
-
     void on_new_resultset() noexcept
     {
         // Clean stuff from previous resultsets if we're not in append mode
@@ -364,15 +411,9 @@ private:
         return per_result_.back();
     }
 
-    const per_resultset_data& get_resultset(std::size_t index) const noexcept
-    {
-        assert(index < per_result_.size());
-        return per_result_[index];
-    }
-
     const per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
     {
-        const auto& res = get_resultset(index);
+        const auto& res = per_result_[index];
         assert(res.has_ok_packet_data);
         return res;
     }
@@ -383,7 +424,7 @@ private:
     detail::resultset_encoding encoding_{detail::resultset_encoding::text};
     std::size_t remaining_meta_{};
     std::vector<metadata> meta_;
-    boost::container::small_vector<per_resultset_data, 1> per_result_;
+    resultset_container per_result_;
     std::vector<char> info_;
     multi_rows rows_;                           // if append_mode
     std::vector<field_view>* external_rows_{};  // if !append_mode

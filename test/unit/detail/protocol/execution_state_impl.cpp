@@ -37,6 +37,7 @@ using boost::mysql::rows_view;
 using boost::mysql::string_view;
 using boost::mysql::detail::execution_state_impl;
 using boost::mysql::detail::protocol_field_type;
+using boost::mysql::detail::resultset_container;
 using boost::mysql::detail::resultset_encoding;
 
 using namespace boost::mysql::test;
@@ -178,6 +179,108 @@ void add_row(execution_state_impl& st, const Args&... args)
 }
 
 BOOST_AUTO_TEST_SUITE(test_execution_state_impl)
+
+BOOST_AUTO_TEST_SUITE(test_resultset_container)
+BOOST_AUTO_TEST_CASE(append_from_empty)
+{
+    // Initial
+    resultset_container c;
+    BOOST_TEST(c.empty());
+    BOOST_TEST(c.size() == 0u);
+
+    // Append first
+    c.emplace_back().num_rows = 1;
+    BOOST_TEST(!c.empty());
+    BOOST_TEST(c.size() == 1u);
+    BOOST_TEST(c[0].num_rows == 1u);
+    BOOST_TEST(c.back().num_rows == 1u);
+
+    // Append second
+    c.emplace_back().num_rows = 2;
+    BOOST_TEST(!c.empty());
+    BOOST_TEST(c.size() == 2u);
+    BOOST_TEST(c[0].num_rows == 1u);
+    BOOST_TEST(c[1].num_rows == 2u);
+    BOOST_TEST(c.back().num_rows == 2u);
+
+    // Append third
+    c.emplace_back().num_rows = 3;
+    BOOST_TEST(!c.empty());
+    BOOST_TEST(c.size() == 3u);
+    BOOST_TEST(c[0].num_rows == 1u);
+    BOOST_TEST(c[1].num_rows == 2u);
+    BOOST_TEST(c[2].num_rows == 3u);
+    BOOST_TEST(c.back().num_rows == 3u);
+}
+
+BOOST_AUTO_TEST_CASE(append_from_cleared)
+{
+    // Initial
+    resultset_container c;
+    c.emplace_back().num_rows = 42u;
+    c.emplace_back().num_rows = 43u;
+
+    // Clear
+    c.clear();
+    BOOST_TEST(c.empty());
+    BOOST_TEST(c.size() == 0u);
+
+    // Append first
+    c.emplace_back().num_rows = 1;
+    BOOST_TEST(!c.empty());
+    BOOST_TEST(c.size() == 1u);
+    BOOST_TEST(c[0].num_rows == 1u);
+    BOOST_TEST(c.back().num_rows == 1u);
+
+    // Append second
+    c.emplace_back().num_rows = 2;
+    BOOST_TEST(!c.empty());
+    BOOST_TEST(c.size() == 2u);
+    BOOST_TEST(c[0].num_rows == 1u);
+    BOOST_TEST(c[1].num_rows == 2u);
+    BOOST_TEST(c.back().num_rows == 2u);
+
+    // Append third
+    c.emplace_back().num_rows = 3;
+    BOOST_TEST(!c.empty());
+    BOOST_TEST(c.size() == 3u);
+    BOOST_TEST(c[0].num_rows == 1u);
+    BOOST_TEST(c[1].num_rows == 2u);
+    BOOST_TEST(c[2].num_rows == 3u);
+    BOOST_TEST(c.back().num_rows == 3u);
+}
+
+BOOST_AUTO_TEST_CASE(clear_empty)
+{
+    // Initial
+    resultset_container c;
+    c.clear();
+    BOOST_TEST(c.empty());
+    BOOST_TEST(c.size() == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(several_clears)
+{
+    // Initial
+    resultset_container c;
+    c.emplace_back().num_rows = 42u;
+
+    // Clear
+    c.clear();
+    BOOST_TEST(c.empty());
+    BOOST_TEST(c.size() == 0u);
+
+    // Append again
+    c.emplace_back().num_rows = 1;
+    c.emplace_back().num_rows = 2;
+
+    // Clear again
+    c.clear();
+    BOOST_TEST(c.empty());
+    BOOST_TEST(c.size() == 0u);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(append_false)
 
