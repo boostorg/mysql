@@ -20,11 +20,11 @@ password is provided to __Self__ in plain text,
 but it is not sent like that to the server (see below for more info).
 If your password is empty, just provide an empty string.
 
-MySQL implements several ways of authentication with the server,
+MySQL implements several methods of authentication with the server,
 in what is called [mysqllink pluggable-authentication.html
-pluggable authentication]. The decission of which authentication
-plugin to use is made in a per-user basis. This information
-is stored in the `mysql.user` table. In addition to this,
+pluggable authentication]. The authentication
+plugin used is chosen on a per-user basis. This information
+is stored in the `mysql.user` table. Additionally,
 servers define a default authentication plugin
 (see [mysqllink server-system-variables.html#sysvar_authentication_policy `authentication_policy`] and
 [mysqllink server-system-variables.html#sysvar_default_authentication_plugin
