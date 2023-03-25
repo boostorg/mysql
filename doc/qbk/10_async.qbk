@@ -8,7 +8,7 @@
 [section:async Going async]
 [nochunk]
 
-Following __Asio__'s convetion, all network operations have
+Following __Asio__'s convention, all network operations have
 asynchronous versions with the same name prefixed by `async_`.
 The last parameter to async operations is a __CompletionToken__,
 which dictates how the asynchronous operation will be managed
