@@ -18,6 +18,8 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/resultset.hpp>
+#include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
@@ -596,13 +598,25 @@ void main_impl(int argc, char** argv)
             )",
             result
         );
+        //]
 
-        // We can access information about any operation. Given that the INSERT
-        // is the 2nd query, we can access the inserted ID accessing the 2nd resultset:
-        std::int64_t post_id = result.at(1).last_insert_id();
+        //[multi_resultset_results_as_collection
+        // result is actually a random-access collection of resultsets.
+        // The INSERT is the 2nd query, so we can access its resultset like this:
+        boost::mysql::resultset_view insert_result = result.at(1);
 
-        // The SELECT is the third resultset. It has a single row with a single element:
-        std::int64_t num_posts = result.at(2).rows().at(0).at(0).as_int64();
+        // A resultset has metadata, rows, and additional data, like the last insert ID:
+        std::int64_t post_id = insert_result.last_insert_id();
+
+        // The SELECT result is the third one, so we can access it like this:
+        boost::mysql::resultset_view select_result = result.at(2);
+
+        // select_result is a view that points into result.
+        // We can take ownership of it using the resultse class:
+        boost::mysql::resultset owning_select_result(select_result);  // valid even after result is destroyed
+
+        // We can access rows of resultset objects as usual:
+        std::int64_t num_posts = owning_select_result.rows().at(0).at(0).as_int64();
         //]
 
         boost::ignore_unused(post_id);
