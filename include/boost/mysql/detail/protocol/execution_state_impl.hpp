@@ -158,7 +158,8 @@ public:
         }
         else
         {
-            return rest_.emplace_back();
+            rest_.emplace_back();
+            return rest_.back();
         }
     }
 };
