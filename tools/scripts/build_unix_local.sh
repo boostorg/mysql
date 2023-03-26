@@ -8,19 +8,20 @@
 
 set -e
 
-BK=b2
+BK=cmake
 IMAGE=build-gcc11
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
+DB=mysql8
 
-docker start mariadb
+docker start $DB
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
     -v ~/workspace/mysql:/opt/boost-mysql \
     -v /var/run/mysqld:/var/run/mysqld \
     $FULL_IMAGE
 docker network connect my-net $CONTAINER || echo "Network already connected"
-docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boost-mysql --server-host=mysql \
+docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boost-mysql \
     --build-kind=$BK \
     --build-shared-libs=1 \
     --valgrind=0 \
@@ -28,14 +29,14 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --clean=0 \
     --toolset=gcc \
     --cxxstd=17 \
-    --variant=release \
+    --variant=debug \
     --cmake-standalone-tests=1 \
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \
-    --cmake-build-type=Release \
+    --cmake-build-type=Debug \
     --stdlib=native \
-    --server-host=mariadb \
-    --db=mariadb
+    --server-host=$DB \
+    --db=$DB
 
 if [ "$BK" == "docs" ]; then
     cp -r ~/workspace/mysql/doc/html ~/workspace/boost-root/libs/mysql/doc/

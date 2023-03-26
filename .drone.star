@@ -5,15 +5,23 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-_triggers = { "branch": [ "master", "develop", "drone*", "bugfix/*", "feature/*", "fix/*", "pr/*" ] }
-_container_tag = '65e51d3af7132dcb1001249629c24cc59b934cb6'
+_triggers = { "branch": [ "master", "develop", "drone*", "feature/*", "bugfix/*", "fix/*", "pr/*" ] }
+_container_tag = 'a6ccc56343736f8b4edea3686c92d9856469fa36'
 
 
 def _image(name):
     return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _container_tag)
 
 
-def _b2_command(source_dir, toolset, cxxstd, variant, stdlib='native', address_model='64', server_host='localhost'):
+def _b2_command(
+    source_dir,
+    toolset,
+    cxxstd,
+    variant,
+    stdlib='native',
+    address_model='64',
+    server_host='localhost'
+):
     return 'python tools/ci.py ' + \
                 '--clean=1 ' + \
                 '--build-kind=b2 ' + \
@@ -57,15 +65,22 @@ def _cmake_command(
                 '--server-host={} '.format(server_host)
 
 
-def _linux_pipeline(name, image, command, db):
+def _pipeline(
+    name,
+    image,
+    os,
+    command,
+    db,
+    arch='amd64'
+):
     return {
         "name": name,
         "kind": "pipeline",
         "type": "docker",
         "trigger": _triggers,
         "platform": {
-            "os": "linux",
-            "arch": "amd64"
+            "os": os,
+            "arch": arch
         },
         "clone": {
             "retries": 5
@@ -75,10 +90,10 @@ def _linux_pipeline(name, image, command, db):
             "name": "Everything",
             "image": image,
             "pull": "if-not-exists",
-            "volumes": [{
+            "volumes":[{
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
-            }],
+            }] if db != None else [],
             "commands": [command],
             "environment": {
                 "CODECOV_TOKEN": {
@@ -93,34 +108,11 @@ def _linux_pipeline(name, image, command, db):
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
             }]
-        }],
+        }] if db != None else [],
         "volumes": [{
             "name": "mysql-socket",
             "temp": {}
-        }]
-    }
-
-
-def _windows_pipeline(name, image, command):
-    return {
-        "name": name,
-        "kind": "pipeline",
-        "type": "docker",
-        "trigger": _triggers,
-        "platform": {
-            "os": "windows",
-            "arch": "amd64"
-        },
-        "clone": {
-            "retries": 5
-        },
-        "node": {},
-        "steps": [{
-            "name": "Everything",
-            "image": image,
-            "pull": "if-not-exists",
-            "commands": [command]
-        }]
+        }] if db != None else []
     }
 
 
@@ -130,7 +122,8 @@ def linux_b2(
     toolset,
     cxxstd,
     variant='debug,release',
-    stdlib='native'
+    stdlib='native',
+    arch='amd64'
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -140,7 +133,14 @@ def linux_b2(
         stdlib=stdlib,
         server_host='mysql'
     )
-    return _linux_pipeline(name, image, command, db='mysql8')
+    return _pipeline(
+        name=name,
+        image=image,
+        os='linux',
+        command=command,
+        db='mysql8',
+        arch=arch
+    )
 
 
 def windows_b2(
@@ -159,7 +159,7 @@ def windows_b2(
         address_model=address_model,
         server_host='localhost'
     )
-    return _windows_pipeline(name, image, command)
+    return _pipeline(name=name, image=image, os='windows', command=command, db=None)
 
 
 def linux_cmake(
@@ -188,7 +188,7 @@ def linux_cmake(
         db=db,
         server_host='mysql'
     )
-    return _linux_pipeline(name, image, command, db=db)
+    return _pipeline(name=name, image=image, os='linux', command=command, db=db)
 
 
 def windows_cmake(
@@ -202,32 +202,23 @@ def windows_cmake(
         db='mysql8',
         server_host='localhost'
     )
-    return _windows_pipeline(name, _image('build-msvc14_3'), command)
+    return _pipeline(
+        name=name,
+        image=_image('build-msvc14_3'),
+        os='windows',
+        command=command,
+        db=None
+    )
 
 
 def docs():
-    return {
-        "name": "Linux docs",
-        "kind": "pipeline",
-        "type": "docker",
-        "trigger": _triggers,
-        "platform": {
-            "os": "linux",
-            "arch": "amd64"
-        },
-        "clone": {
-            "retries": 5
-        },
-        "node": {},
-        "steps": [{
-            "name": "Everything",
-            "image": _image('build-docs'),
-            "pull": "if-not-exists",
-            "commands": [
-                'python tools/ci.py --build-kind=docs --clean=1 --source-dir=$(pwd)'
-            ]
-        }]
-    }
+    return _pipeline(
+        name='Linux docs',
+        image=_image('build-docs'),
+        os='linux',
+        command='python tools/ci.py --build-kind=docs --clean=1 --source-dir=$(pwd)',
+        db=None
+    )
 
 
 def main(ctx):
@@ -247,15 +238,17 @@ def main(ctx):
         windows_cmake('Windows CMake shared', build_shared_libs=1),
 
         # B2 Linux
-        linux_b2('Linux B2 clang-3.6',    _image('build-clang3_6'), toolset='clang-3.6', cxxstd='11,14'),
-        linux_b2('Linux B2 clang-7',      _image('build-clang7'),   toolset='clang-7',   cxxstd='14,17'),
-        linux_b2('Linux B2 clang-11',     _image('build-clang11'),  toolset='clang-11',  cxxstd='20'),
-        linux_b2('Linux B2 clang-14',     _image('build-clang14'),  toolset='clang-14',  cxxstd='17,20'),
-        linux_b2('Linux B2 clang-libc++', _image('build-clang14'),  toolset='clang-14',  cxxstd='20', stdlib='libc++'),
-        linux_b2('Linux B2 gcc-5',        _image('build-gcc5'),     toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
-        linux_b2('Linux B2 gcc-6',        _image('build-gcc6'),     toolset='gcc-6',     cxxstd='14,17'),
-        linux_b2('Linux B2 gcc-10',       _image('build-gcc10'),    toolset='gcc-10',    cxxstd='17,20'),
-        linux_b2('Linux B2 gcc-11',       _image('build-gcc11'),    toolset='gcc-11',    cxxstd='17,20'),
+        linux_b2('Linux B2 clang-3.6',      _image('build-clang3_6'), toolset='clang-3.6', cxxstd='11,14'),
+        linux_b2('Linux B2 clang-7',        _image('build-clang7'),   toolset='clang-7',   cxxstd='14,17'),
+        linux_b2('Linux B2 clang-11',       _image('build-clang11'),  toolset='clang-11',  cxxstd='20'),
+        linux_b2('Linux B2 clang-14',       _image('build-clang14'),  toolset='clang-14',  cxxstd='17,20'),
+        linux_b2('Linux B2 clang-libc++',   _image('build-clang14'),  toolset='clang-14',  cxxstd='20', stdlib='libc++'),
+        linux_b2('Linux B2 clang-14-arm64', _image('build-clang14'),  toolset='clang-14',  cxxstd='20', arch='arm64'),
+        linux_b2('Linux B2 gcc-5',          _image('build-gcc5'),     toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
+        linux_b2('Linux B2 gcc-6',          _image('build-gcc6'),     toolset='gcc-6',     cxxstd='14,17'),
+        linux_b2('Linux B2 gcc-10',         _image('build-gcc10'),    toolset='gcc-10',    cxxstd='17,20'),
+        linux_b2('Linux B2 gcc-11',         _image('build-gcc11'),    toolset='gcc-11',    cxxstd='17,20'),
+        linux_b2('Linux B2 gcc-11-arm64',   _image('build-gcc11'),    toolset='gcc-11',    cxxstd='20', arch='arm64'),
 
         # B2 Windows
         windows_b2('Windows B2 msvc14.1 32-bit', _image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),

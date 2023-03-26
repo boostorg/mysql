@@ -267,7 +267,7 @@ def _cmake_build(
             '--with-date_time',
             '--with-test',
             '-d0',
-            'cxxstd={}'.format(cxxstd),
+        ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
         ])
 
@@ -283,7 +283,7 @@ def _cmake_build(
         generator,
         '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path)),
         '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DCMAKE_CXX_STANDARD={}'.format(cxxstd),
+    ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
         '-DBOOST_INCLUDE_LIBRARIES=mysql',
         '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
         '-DBUILD_TESTING=ON',
@@ -300,7 +300,7 @@ def _cmake_build(
             'cmake',
             '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(b2_distro, *cmake_prefix_path)),
             '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-            '-DCMAKE_CXX_STANDARD={}'.format(cxxstd),
+        ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
             '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
             '-DBOOST_MYSQL_VALGRIND_TESTS={}'.format(_cmake_bool(valgrind)),
             '-DBOOST_MYSQL_COVERAGE={}'.format(_cmake_bool(coverage)),
