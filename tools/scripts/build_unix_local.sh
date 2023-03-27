@@ -8,8 +8,8 @@
 
 set -e
 
-BK=docs
-IMAGE=build-docs
+BK=cmake
+IMAGE=build-gcc11
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
 DB=mysql8
@@ -33,7 +33,7 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --cmake-standalone-tests=1 \
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \
-    --cmake-build-type=Release \
+    --cmake-build-type=Debug \
     --stdlib=native \
     --server-host=$DB \
     --db=$DB

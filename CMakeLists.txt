@@ -152,6 +152,11 @@ if(BUILD_TESTING)
         PUBLIC
         BOOST_ASIO_SEPARATE_COMPILATION
     )
+    target_compile_features(
+        boost_mysql_asio
+        PUBLIC
+        cxx_std_11
+    )
 
     # All examples require a real server to run
     if (BOOST_MYSQL_INTEGRATION_TESTS)
