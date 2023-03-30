@@ -9,12 +9,13 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_HPP
 
 #pragma once
-
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row.hpp>
 
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
+#include <boost/mysql/detail/network_algorithms/helpers.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 
@@ -28,63 +29,13 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-inline rows_view process_some_rows(
-    channel<Stream>& channel,
-    execution_state& st,
-    error_code& err,
-    diagnostics& diag
-)
-{
-    // Process all read messages until they run out, an error happens
-    // or an EOF is received
-    std::size_t num_rows = 0;
-    channel.shared_fields().clear();
-    while (channel.has_read_messages())
-    {
-        // Get the row message
-        auto message = channel.next_read_message(execution_state_access::get_sequence_number(st), err);
-        if (err)
-            return rows_view();
-
-        // Deserialize the row. Values are stored in a vector owned by the channel
-        deserialize_row(
-            message,
-            channel.current_capabilities(),
-            channel.flavor(),
-            channel.buffer_first(),
-            st,
-            channel.shared_fields(),
-            err,
-            diag
-        );
-        if (err)
-            return rows_view();
-
-        // There is no need to copy strings values anywhere; the returned values
-        // will point into the channel's internal buffer
-
-        // If we received an EOF, we're done
-        if (st.complete())
-            break;
-        ++num_rows;
-    }
-    offsets_to_string_views(channel.shared_fields(), channel.buffer_first());
-
-    return rows_view_access::construct(
-        channel.shared_fields().data(),
-        num_rows * st.meta().size(),
-        st.meta().size()
-    );
-}
-
-template <class Stream>
 struct read_some_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     diagnostics& diag_;
-    execution_state& st_;
+    execution_state_impl& st_;
 
-    read_some_rows_op(channel<Stream>& chan, diagnostics& diag, execution_state& st) noexcept
+    read_some_rows_op(channel<Stream>& chan, diagnostics& diag, execution_state_impl& st) noexcept
         : chan_(chan), diag_(diag), st_(st)
     {
     }
@@ -100,13 +51,12 @@ struct read_some_rows_op : boost::asio::coroutine
         }
 
         // Normal path
-        rows_view output;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             diag_.clear();
 
-            // If the op is already complete, we don't need to read anything
-            if (st_.complete())
+            // If we are not reading rows, return
+            if (!st_.should_read_rows())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code(), rows_view());
@@ -117,9 +67,14 @@ struct read_some_rows_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            output = process_some_rows(chan_, st_, err, diag_);
+            process_available_rows(chan_, st_, err, diag_);
+            if (err)
+            {
+                self.complete(err, rows_view());
+                BOOST_ASIO_CORO_YIELD break;
+            }
 
-            self.complete(err, output);
+            self.complete(error_code(), st_.get_external_rows());
         }
     }
 };
@@ -136,8 +91,10 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     diagnostics& diag
 )
 {
-    // If the op is already complete, we don't need to read anything
-    if (st.complete())
+    auto& impl = execution_state_access::get_impl(st);
+
+    // If we are not reading rows, just return
+    if (!impl.should_read_rows())
     {
         return rows_view();
     }
@@ -148,7 +105,11 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
         return rows_view();
 
     // Process read messages
-    return process_some_rows(channel, st, err, diag);
+    process_available_rows(channel, impl, err, diag);
+    if (err)
+        return rows_view();
+
+    return impl.get_external_rows();
 }
 
 template <
@@ -164,7 +125,7 @@ boost::mysql::detail::async_read_some_rows(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
-        read_some_rows_op<Stream>(channel, diag, st),
+        read_some_rows_op<Stream>(channel, diag, execution_state_access::get_impl(st)),
         token,
         channel
     );

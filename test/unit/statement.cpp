@@ -9,7 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "create_statement.hpp"
+#include "creation/create_statement.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(default_ctor)
 
 BOOST_AUTO_TEST_CASE(member_fns)
 {
-    auto stmt = create_statement(3, 1);
+    auto stmt = statement_builder().id(1).num_params(3).build();
 
     BOOST_TEST(stmt.valid());
     BOOST_TEST(stmt.num_params() == 3u);

@@ -125,13 +125,13 @@ BOOST_FIXTURE_TEST_CASE(multifn, tcp_network_fixture)
     // Execute it
     execution_state st;
     conn.start_statement_execution(stmt, std::make_tuple(), st);
-    BOOST_TEST_REQUIRE(!st.complete());
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // We don't know how many rows there will be in each batch,
     // but they will come in order
     std::size_t call_count = 0;
     std::vector<row> all_rows;
-    while (!st.complete() && call_count <= 4)
+    while (st.should_read_rows() && call_count <= 4)
     {
         ++call_count;
         for (row_view rv : conn.read_some_rows(st))

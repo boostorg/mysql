@@ -14,6 +14,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/results_iterator.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/detail/auxiliar/static_string.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -127,6 +128,11 @@ inline std::ostream& operator<<(std::ostream& os, deserialize_errc v)
     case deserialize_errc::server_unsupported: return os << "server_unsupported";
     default: return os << "unknown";
     }
+}
+
+inline std::ostream& operator<<(std::ostream& os, results_iterator it)
+{
+    return os << "results_iterator(" << static_cast<const void*>(it.obj()) << ", index=" << it.index() << ")";
 }
 
 }  // namespace detail

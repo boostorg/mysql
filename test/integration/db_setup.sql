@@ -484,5 +484,42 @@ CREATE USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED WITH 'mysql_native_pass
 ALTER USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED BY '';
 GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_empty_password_user'@'%';
 
+-- Stored procedures
+DELIMITER //
+
+CREATE PROCEDURE sp_insert(IN pin VARCHAR(255))
+BEGIN
+    INSERT INTO inserts_table (field_varchar) VALUES (pin);
+END //
+
+CREATE PROCEDURE sp_select_1(IN pin VARCHAR(255))
+BEGIN
+    SELECT * FROM one_row_table;
+END //
+
+CREATE PROCEDURE sp_select_2(IN pin1 VARCHAR(255), IN pin2 INT)
+BEGIN
+    SELECT * FROM one_row_table;
+    SELECT pin1, pin2;
+END //
+
+CREATE PROCEDURE sp_outparams(
+    IN pin INT,
+    OUT pout INT,
+    INOUT pinout INT
+)
+BEGIN
+    SELECT * FROM one_row_table;
+    SET pout = pin;
+    SET pinout = pinout + 1;
+END //
+
+CREATE PROCEDURE sp_signal()
+BEGIN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1002;
+END //
+
+DELIMITER ;
+
 COMMIT;
 FLUSH PRIVILEGES;

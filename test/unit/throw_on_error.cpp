@@ -14,7 +14,7 @@
 #include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "create_diagnostics.hpp"
+#include "creation/create_diagnostics.hpp"
 
 using boost::mysql::error_code;
 using boost::mysql::error_with_diagnostics;

@@ -14,7 +14,7 @@
 #include <boost/mysql/rows_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/row_base.hpp>
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 namespace boost {
@@ -35,7 +35,7 @@ namespace mysql {
  * \n
  * Although owning, `rows` is read-only. It's optimized for memory re-use.
  */
-class rows : private detail::row_base
+class rows
 {
 public:
 #ifdef BOOST_MYSQL_DOXYGEN
@@ -151,10 +151,10 @@ public:
      * \par Complexity
      * Linear on `r.size() * r.num_columns()`.
      */
-    rows(const rows_view& r) : detail::row_base(r.fields_, r.num_fields_), num_columns_(r.num_columns_) {}
+    rows(const rows_view& r) : impl_(r.fields_, r.num_fields_), num_columns_(r.num_columns_) {}
 
     /**
-     * \brief Replaces the contents with a \ref rows_view.
+     * \brief Replaces the contents of `*this` with a \ref rows_view.
      * \par Exception safety
      * Basic guarantee. Internal allocations may throw.
      *
@@ -169,10 +169,10 @@ public:
     inline rows& operator=(const rows_view& r);
 
     /// \copydoc rows_view::begin
-    iterator begin() const noexcept { return iterator(fields_.data(), num_columns_, 0); }
+    iterator begin() const noexcept { return iterator(impl_.fields().data(), num_columns_, 0); }
 
     /// \copydoc rows_view::end
-    iterator end() const noexcept { return iterator(fields_.data(), num_columns_, size()); }
+    iterator end() const noexcept { return iterator(impl_.fields().data(), num_columns_, size()); }
 
     /// \copydoc rows_view::at
     inline row_view at(std::size_t i) const;
@@ -187,10 +187,10 @@ public:
     row_view back() const noexcept { return (*this)[size() - 1]; }
 
     /// \copydoc rows_view::empty
-    bool empty() const noexcept { return fields_.empty(); }
+    bool empty() const noexcept { return impl_.fields().empty(); }
 
     /// \copydoc rows_view::size
-    std::size_t size() const noexcept { return num_columns_ == 0 ? 0 : fields_.size() / num_columns_; }
+    std::size_t size() const noexcept { return num_columns_ == 0 ? 0 : impl_.fields().size() / num_columns_; }
 
     /// \copydoc rows_view::num_columns
     std::size_t num_columns() const noexcept { return num_columns_; }
@@ -207,14 +207,14 @@ public:
      * \par Complexity
      * Constant.
      */
-    operator rows_view() const noexcept { return rows_view(fields_.data(), fields_.size(), num_columns_); }
+    operator rows_view() const noexcept
+    {
+        return rows_view(impl_.fields().data(), impl_.fields().size(), num_columns_);
+    }
 
 private:
+    detail::row_impl impl_;
     std::size_t num_columns_{};
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::rows_access;
-#endif
 };
 
 /**

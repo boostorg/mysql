@@ -53,7 +53,7 @@ struct quit_connection_op : boost::asio::coroutine
             }
 
             // SSL shutdown error ignored, as MySQL doesn't always gracefully
-            // close SSL connections. TODO: was this because of a missing if?
+            // close SSL connections.
             if (chan_.stream().ssl_active())
             {
                 BOOST_ASIO_CORO_YIELD chan_.stream().async_shutdown(std::move(self));

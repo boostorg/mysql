@@ -50,7 +50,6 @@ public:
     channel_base(std::size_t read_buffer_size) : reader_(read_buffer_size) {}
 
     // Reading
-    const std::uint8_t* buffer_first() const noexcept { return reader_.buffer_first(); }
     bool has_read_messages() const noexcept { return reader_.has_message(); }
     boost::asio::const_buffer next_read_message(std::uint8_t& seqnum, error_code& err) noexcept
     {
@@ -107,28 +106,25 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // Reading
-    void read_some(error_code& code, bool keep_messages = false)
-    {
-        return reader_.read_some(stream_, code, keep_messages);
-    }
+    void read_some(error_code& code) { return reader_.read_some(stream_, code); }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_some(CompletionToken&& token, bool keep_messages = false)
+    async_read_some(CompletionToken&& token)
     {
-        return reader_.async_read_some(stream_, std::forward<CompletionToken>(token), keep_messages);
+        return reader_.async_read_some(stream_, std::forward<CompletionToken>(token));
     }
 
-    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec, bool keep_messages = false)
+    boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec)
     {
-        return reader_.read_one(stream_, seqnum, ec, keep_messages);
+        return reader_.read_one(stream_, seqnum, ec);
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
-    async_read_one(std::uint8_t& seqnum, CompletionToken&& token, bool keep_messages = false)
+    async_read_one(std::uint8_t& seqnum, CompletionToken&& token)
     {
-        return reader_.async_read_one(stream_, seqnum, std::forward<CompletionToken>(token), keep_messages);
+        return reader_.async_read_one(stream_, seqnum, std::forward<CompletionToken>(token));
     }
 
     // Writing

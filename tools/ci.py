@@ -95,7 +95,7 @@ def _install_boost(
     copytree(
         str(source_dir),
         str(lib_dir),
-        ignore=ignore_patterns('__build*__'),
+        ignore=ignore_patterns('__build*__', '.git'),
         **({ 'dirs_exist_ok': True } if _supports_dir_exist_ok else {})
     )
 
@@ -137,6 +137,7 @@ def _db_setup(
     db: str = 'mysql8'
 ) -> None:
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
+    _run_sql_file(source_dir.joinpath('example', 'db_setup_stored_procedures.sql'))
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
     if db == 'mysql8':
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
@@ -210,7 +211,7 @@ def _b2_build(
         '-j4',
         'libs/mysql/test',
         'libs/mysql/test/integration//boost_mysql_integrationtests',
-        'libs/mysql/example//boost_mysql_all_examples'
+        'libs/mysql/example'
     ])
 
 

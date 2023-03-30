@@ -13,7 +13,7 @@
 #include <boost/mysql/row_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/row_base.hpp>
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 
 #include <cstddef>
 #include <iosfwd>
@@ -35,8 +35,10 @@ namespace mysql {
  * `row`'s internal storage. These views behave like references, and are valid as long as pointers,
  * iterators and references into the `row` remain valid.
  */
-class row : private detail::row_base
+class row
 {
+    detail::row_impl impl_;
+
 public:
 #ifdef BOOST_MYSQL_DOXYGEN
     /**
@@ -146,7 +148,7 @@ public:
      * \par Complexity
      * Linear on `r.size()`.
      */
-    row(row_view r) : detail::row_base(r.begin(), r.size()) {}
+    row(row_view r) : impl_(r.begin(), r.size()) {}
 
     /**
      * \brief Replaces the contents with a \ref row_view.
@@ -163,42 +165,33 @@ public:
      */
     row& operator=(row_view r)
     {
-        // Protect against self-assignment. This is valid as long as we
-        // don't implement sub-range operators (e.g. row_view[2:4])
-        if (r.fields_ == fields_.data())
-        {
-            assert(r.size() == fields_.size());
-        }
-        else
-        {
-            assign(r.begin(), r.size());
-        }
+        impl_.assign(r.begin(), r.size());
         return *this;
     }
 
     /// \copydoc row_view::begin
-    const_iterator begin() const noexcept { return fields_.data(); }
+    const_iterator begin() const noexcept { return impl_.fields().data(); }
 
     /// \copydoc row_view::end
-    const_iterator end() const noexcept { return fields_.data() + fields_.size(); }
+    const_iterator end() const noexcept { return impl_.fields().data() + impl_.fields().size(); }
 
     /// \copydoc row_view::at
-    field_view at(std::size_t i) const { return fields_.at(i); }
+    field_view at(std::size_t i) const { return impl_.fields().at(i); }
 
     /// \copydoc row_view::operator[]
-    field_view operator[](std::size_t i) const noexcept { return fields_[i]; }
+    field_view operator[](std::size_t i) const noexcept { return impl_.fields()[i]; }
 
     /// \copydoc row_view::front
-    field_view front() const noexcept { return fields_.front(); }
+    field_view front() const noexcept { return impl_.fields().front(); }
 
     /// \copydoc row_view::back
-    field_view back() const noexcept { return fields_.back(); }
+    field_view back() const noexcept { return impl_.fields().back(); }
 
     /// \copydoc row_view::empty
-    bool empty() const noexcept { return fields_.empty(); }
+    bool empty() const noexcept { return impl_.fields().empty(); }
 
     /// \copydoc row_view::size
-    std::size_t size() const noexcept { return fields_.size(); }
+    std::size_t size() const noexcept { return impl_.fields().size(); }
 
     /**
      * \brief Creates a \ref row_view that references `*this`.
@@ -212,7 +205,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    operator row_view() const noexcept { return row_view(fields_.data(), fields_.size()); }
+    operator row_view() const noexcept { return row_view(impl_.fields().data(), impl_.fields().size()); }
 
     /// \copydoc row_view::as_vector
     template <class Allocator>

@@ -8,13 +8,14 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
-#include "create_meta.hpp"
+#include <boost/mysql/impl/metadata.hpp>
+
+#include "creation/create_message_struct.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
 using boost::mysql::column_type;
-using boost::mysql::metadata;
 using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
@@ -33,7 +34,7 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
         protocol_field_type::long_,
         column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
         0};
-    auto meta = create_meta(msg, true);
+    auto meta = boost::mysql::detail::metadata_access::construct(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -68,7 +69,7 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
         protocol_field_type::var_string,
         0,
         0};
-    auto meta = create_meta(msg, true);
+    auto meta = boost::mysql::detail::metadata_access::construct(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "child");
@@ -103,7 +104,7 @@ BOOST_AUTO_TEST_CASE(float_)
         protocol_field_type::float_,
         0,
         31};
-    auto meta = create_meta(msg, true);
+    auto meta = boost::mysql::detail::metadata_access::construct(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -138,7 +139,7 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
         protocol_field_type::var_string,
         0,
         0};
-    auto meta = create_meta(msg, false);
+    auto meta = boost::mysql::detail::metadata_access::construct(msg, false);
 
     BOOST_TEST(meta.database() == "");
     BOOST_TEST(meta.table() == "");
@@ -157,6 +158,18 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
     BOOST_TEST(!meta.is_auto_increment());
     BOOST_TEST(!meta.has_no_default_value());
     BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(string_ownership)
+{
+    // Create the meta object
+    std::string colname = "col1";
+    auto msg = create_coldef(protocol_field_type::float_, colname);
+    auto meta = boost::mysql::detail::metadata_access::construct(msg, true);
+
+    // Check that we actually copy the data
+    colname = "abcd";
+    BOOST_TEST(meta.column_name() == "col1");
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_metadata

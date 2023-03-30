@@ -9,7 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "create_diagnostics.hpp"
+#include "creation/create_diagnostics.hpp"
 #include "printing.hpp"
 
 using boost::mysql::diagnostics;

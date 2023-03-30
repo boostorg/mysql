@@ -8,15 +8,15 @@
 #ifndef BOOST_MYSQL_IMPL_RESULTS_HPP
 #define BOOST_MYSQL_IMPL_RESULTS_HPP
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #pragma once
 
 #include <boost/mysql/results.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+
 struct boost::mysql::detail::results_access
 {
-    static execution_state& get_state(results& result) noexcept { return result.st_; }
-    static rows& get_rows(results& result) noexcept { return result.rows_; }
+    static execution_state_impl& get_impl(results& result) noexcept { return result.impl_; }
 };
 
 #endif

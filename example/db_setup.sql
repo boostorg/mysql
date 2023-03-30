@@ -26,6 +26,11 @@ CREATE TABLE employee(
     company_id CHAR(10) NOT NULL,
     FOREIGN KEY (company_id) REFERENCES company(id)
 );
+CREATE TABLE audit_log(
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    t TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    msg TEXT
+);
     
 INSERT INTO company (name, id) VALUES
     ("Award Winning Company, Inc.", "AWC"),

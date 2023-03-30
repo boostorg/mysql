@@ -20,8 +20,9 @@
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "test_stream.hpp"
+#include "unit_netfun_maker.hpp"
 
 using boost::asio::buffer;
 using boost::mysql::client_errc;
@@ -39,18 +40,12 @@ class reader_fns
 {
 public:
     virtual ~reader_fns() {}
-    virtual void read_some(
-        message_reader&,
-        test_stream&,
-        error_code&,
-        bool keep_messages = false
-    ) = 0;
+    virtual void read_some(message_reader&, test_stream&, error_code&) = 0;
     virtual boost::asio::const_buffer read_one(
         message_reader&,
         test_stream&,
         std::uint8_t& seqnum,
-        error_code& ec,
-        bool keep_messages = false
+        error_code& ec
     ) = 0;
     virtual const char* name() const noexcept = 0;
 };
@@ -58,24 +53,18 @@ public:
 class sync_reader_fns : public reader_fns
 {
 public:
-    void read_some(
-        message_reader& reader,
-        test_stream& stream,
-        error_code& err,
-        bool keep_messages = false
-    ) final override
+    void read_some(message_reader& reader, test_stream& stream, error_code& err) final override
     {
-        reader.read_some(stream, err, keep_messages);
+        reader.read_some(stream, err);
     }
     boost::asio::const_buffer read_one(
         message_reader& reader,
         test_stream& stream,
         std::uint8_t& seqnum,
-        error_code& ec,
-        bool keep_messages = false
+        error_code& ec
     ) final override
     {
-        return reader.read_one(stream, seqnum, ec, keep_messages);
+        return reader.read_one(stream, seqnum, ec);
     }
     const char* name() const noexcept final override { return "sync"; };
 };
@@ -83,27 +72,19 @@ public:
 class async_reader_fns : public reader_fns
 {
 public:
-    void read_some(
-        message_reader& reader,
-        test_stream& stream,
-        error_code& err,
-        bool keep_messages = false
-    ) final override
+    void read_some(message_reader& reader, test_stream& stream, error_code& err) final override
     {
         boost::asio::io_context ctx;
-        reader.async_read_some(
-            stream,
-            boost::asio::bind_executor(ctx.get_executor(), [&](error_code ec) { err = ec; }),
-            keep_messages
-        );
+        reader.async_read_some(stream, boost::asio::bind_executor(ctx.get_executor(), [&](error_code ec) {
+                                   err = ec;
+                               }));
         ctx.run();
     }
     boost::asio::const_buffer read_one(
         message_reader& reader,
         test_stream& stream,
         std::uint8_t& seqnum,
-        error_code& err,
-        bool keep_messages = false
+        error_code& err
     ) final override
     {
         boost::asio::io_context ctx;
@@ -117,8 +98,7 @@ public:
                     err = ec;
                     res = b;
                 }
-            ),
-            keep_messages
+            )
         );
         ctx.run();
         return res;
@@ -282,7 +262,7 @@ BOOST_AUTO_TEST_CASE(two_messages)
     }
 }
 
-BOOST_AUTO_TEST_CASE(previous_message_keep_messages_false)
+BOOST_AUTO_TEST_CASE(previous_message)
 {
     for (auto* fns : all_reader_fns)
     {
@@ -299,14 +279,14 @@ BOOST_AUTO_TEST_CASE(previous_message_keep_messages_false)
             error_code err(client_errc::server_unsupported);
 
             // Read and get 1st message
-            fns->read_some(reader, stream, err, false);
+            fns->read_some(reader, stream, err);
             BOOST_TEST(err == error_code());
             BOOST_REQUIRE(reader.has_message());
             auto msg1 = reader.get_next_message(seqnum1, err);
             BOOST_REQUIRE(err == error_code());
 
             // Read and get 2nd message
-            fns->read_some(reader, stream, err, false);
+            fns->read_some(reader, stream, err);
             BOOST_TEST(err == error_code());
             BOOST_REQUIRE(reader.has_message());
             auto msg2 = reader.get_next_message(seqnum2, err);
@@ -318,46 +298,6 @@ BOOST_AUTO_TEST_CASE(previous_message_keep_messages_false)
 
             // The 2nd message is located where the 1st message was
             BOOST_TEST(msg1.data() == msg2.data());
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(previous_message_keep_messages_true)
-{
-    for (auto* fns : all_reader_fns)
-    {
-        BOOST_TEST_CONTEXT(fns->name())
-        {
-            message_reader reader(512);
-            std::uint8_t seqnum1 = 2;
-            std::uint8_t seqnum2 = 5;
-            std::vector<std::uint8_t> msg1_body{0x01, 0x02, 0x03};
-            std::vector<std::uint8_t> msg2_body{0x05, 0x06, 0x07};
-            test_stream stream;
-            stream.add_message(create_message(seqnum1, msg1_body));
-            stream.add_message(create_message(seqnum2, msg2_body));
-            error_code err(client_errc::server_unsupported);
-
-            // Read and get 1st message
-            fns->read_some(reader, stream, err, true);
-            BOOST_TEST(err == error_code());
-            BOOST_REQUIRE(reader.has_message());
-            auto msg1 = reader.get_next_message(seqnum1, err);
-            BOOST_REQUIRE(err == error_code());
-
-            // Read and get 2nd message
-            fns->read_some(reader, stream, err, true);
-            BOOST_TEST(err == error_code());
-            BOOST_REQUIRE(reader.has_message());
-            auto msg2 = reader.get_next_message(seqnum2, err);
-            BOOST_REQUIRE(err == error_code());
-            BOOST_TEST(stream.num_unread_bytes() == 0u);
-            BOOST_TEST(seqnum2 == 6u);
-            BOOST_TEST(!reader.has_message());
-
-            // Both messages are valid
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg1, buffer(msg1_body));
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, buffer(msg2_body));
         }
     }
 }
@@ -392,8 +332,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     test_stream stream(
         create_message(seqnum, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, 3, {0x09, 0x0a})
     );
-    std::vector<std::uint8_t>
-        expected_msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a};
+    std::vector<std::uint8_t> expected_msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a};
     error_code err(client_errc::server_unsupported);
 
     // Read succesfully

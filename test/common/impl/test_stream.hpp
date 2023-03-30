@@ -24,8 +24,7 @@
 #include "../test_stream.hpp"
 #include "buffer_concat.hpp"
 
-boost::mysql::test::test_stream::test_stream(fail_count fc, executor_type ex)
-    : fail_count_(fc), executor_(ex)
+boost::mysql::test::test_stream::test_stream(fail_count fc, executor_type ex) : fail_count_(fc), executor_(ex)
 {
 }
 
@@ -46,7 +45,7 @@ boost::mysql::test::test_stream::test_stream(read_behavior b, fail_count fc, exe
 {
 }
 
-void boost::mysql::test::test_stream::add_message(
+boost::mysql::test::test_stream& boost::mysql::test::test_stream::add_message(
     const std::vector<std::uint8_t>& bytes,
     bool separate_reads
 )
@@ -56,12 +55,14 @@ void boost::mysql::test::test_stream::add_message(
         read_break_offsets_.insert(bytes_to_read_.size());
     }
     concat(bytes_to_read_, bytes);
+    return *this;
 }
 
-void boost::mysql::test::test_stream::set_read_behavior(read_behavior b)
+boost::mysql::test::test_stream& boost::mysql::test::test_stream::set_read_behavior(read_behavior b)
 {
     bytes_to_read_ = std::move(b.bytes_to_read);
     read_break_offsets_ = std::move(b.break_offsets);
+    return *this;
 }
 
 template <class MutableBufferSequence>
@@ -70,8 +71,7 @@ struct boost::mysql::test::test_stream::read_op : boost::asio::coroutine
     test_stream& stream_;
     MutableBufferSequence buffers_;
 
-    read_op(test_stream& stream, const MutableBufferSequence& buffers)
-        : stream_(stream), buffers_(buffers){};
+    read_op(test_stream& stream, const MutableBufferSequence& buffers) : stream_(stream), buffers_(buffers){};
 
     template <class Self>
     void operator()(Self& self)
@@ -110,8 +110,7 @@ struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
     test_stream& stream_;
     ConstBufferSequence buffers_;
 
-    write_op(test_stream& stream, const ConstBufferSequence& buffers)
-        : stream_(stream), buffers_(buffers){};
+    write_op(test_stream& stream, const ConstBufferSequence& buffers) : stream_(stream), buffers_(buffers){};
 
     template <class Self>
     void operator()(Self& self)
@@ -132,10 +131,7 @@ template <
     class ConstBufferSequence,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
-boost::mysql::test::test_stream::async_write_some(
-    const ConstBufferSequence& buffers,
-    CompletionToken&& token
-)
+boost::mysql::test::test_stream::async_write_some(const ConstBufferSequence& buffers, CompletionToken&& token)
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
         write_op<ConstBufferSequence>(*this, buffers),
@@ -153,10 +149,7 @@ std::size_t boost::mysql::test::test_stream::get_size_to_read(std::size_t buffer
 }
 
 template <class MutableBufferSequence>
-std::size_t boost::mysql::test::test_stream::do_read(
-    const MutableBufferSequence& buffers,
-    error_code& ec
-)
+std::size_t boost::mysql::test::test_stream::do_read(const MutableBufferSequence& buffers, error_code& ec)
 {
     // Fail count
     error_code err = fail_count_.maybe_fail();
@@ -200,10 +193,7 @@ std::size_t boost::mysql::test::test_stream::do_read(
 }
 
 template <class ConstBufferSequence>
-std::size_t boost::mysql::test::test_stream::do_write(
-    const ConstBufferSequence& buffers,
-    error_code& ec
-)
+std::size_t boost::mysql::test::test_stream::do_write(const ConstBufferSequence& buffers, error_code& ec)
 {
     // Fail count
     error_code err = fail_count_.maybe_fail();
@@ -220,8 +210,7 @@ std::size_t boost::mysql::test::test_stream::do_write(
     for (auto it = first; it != last && num_bytes_written < write_break_size_; ++it)
     {
         boost::asio::const_buffer buff = *it;
-        std::size_t num_bytes_to_transfer = (std::min
-        )(buff.size(), write_break_size_ - num_bytes_written);
+        std::size_t num_bytes_to_transfer = (std::min)(buff.size(), write_break_size_ - num_bytes_written);
         concat(bytes_written_, buff.data(), num_bytes_to_transfer);
         num_bytes_written += num_bytes_to_transfer;
     }

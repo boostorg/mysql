@@ -18,7 +18,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "buffer_concat.hpp"
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "test_stream.hpp"
 
 using boost::asio::buffer;

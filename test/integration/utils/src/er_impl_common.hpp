@@ -26,6 +26,7 @@
 #include "er_connection.hpp"
 #include "er_network_variant.hpp"
 #include "get_endpoint.hpp"
+#include "network_result.hpp"
 #include "streams.hpp"
 
 namespace boost {
@@ -58,6 +59,7 @@ struct function_table
     using start_stmt_execution_it_sig =
         network_result<void>(conn_type&, const statement&, fv_list_it, fv_list_it, execution_state&);
     using close_stmt_sig = network_result<void>(conn_type&, const statement&);
+    using read_resultset_head_sig = network_result<void>(conn_type&, execution_state&);
     using read_some_rows_sig = network_result<rows_view>(conn_type&, execution_state&);
     using ping_sig = network_result<void>(conn_type&);
     using quit_sig = network_result<void>(conn_type&);
@@ -72,6 +74,7 @@ struct function_table
     std::function<start_stmt_execution_tuple_sig> start_stmt_execution_tuple;
     std::function<start_stmt_execution_it_sig> start_stmt_execution_it;
     std::function<close_stmt_sig> close_stmt;
+    std::function<read_resultset_head_sig> read_resultset_head;
     std::function<read_some_rows_sig> read_some_rows;
     std::function<ping_sig> ping;
     std::function<quit_sig> quit;
@@ -100,6 +103,7 @@ function_table<Stream> create_sync_table()
         Netmaker::template type<typename table_t::start_stmt_execution_tuple_sig>::call(&conn_type::start_statement_execution),
         Netmaker::template type<typename table_t::start_stmt_execution_it_sig>::call(&conn_type::start_statement_execution),
         Netmaker::template type<typename table_t::close_stmt_sig>::call(&conn_type::close_statement),
+        Netmaker::template type<typename table_t::read_resultset_head_sig>::call(&conn_type::read_resultset_head),
         Netmaker::template type<typename table_t::read_some_rows_sig>::call(&conn_type::read_some_rows),
         Netmaker::template type<typename table_t::ping_sig>::call(&conn_type::ping),
         Netmaker::template type<typename table_t::quit_sig>::call(&conn_type::quit),
@@ -126,6 +130,7 @@ function_table<Stream> create_async_table()
         Netmaker::template type<typename table_t::start_stmt_execution_tuple_sig>::call(&conn_type::async_start_statement_execution),
         Netmaker::template type<typename table_t::start_stmt_execution_it_sig>::call(&conn_type::async_start_statement_execution),
         Netmaker::template type<typename table_t::close_stmt_sig>::call(&conn_type::async_close_statement),
+        Netmaker::template type<typename table_t::read_resultset_head_sig>::call(&conn_type::async_read_resultset_head),
         Netmaker::template type<typename table_t::read_some_rows_sig>::call(&conn_type::async_read_some_rows),
         Netmaker::template type<typename table_t::ping_sig>::call(&conn_type::async_ping),
         Netmaker::template type<typename table_t::quit_sig>::call(&conn_type::async_quit),
@@ -253,6 +258,10 @@ public:
         return table_.start_stmt_execution_it(conn_, stmt, params_first, params_last, st);
     }
     network_result<void> close_statement(statement& stmt) override { return table_.close_stmt(conn_, stmt); }
+    network_result<void> read_resultset_head(execution_state& st) override
+    {
+        return table_.read_resultset_head(conn_, st);
+    }
     network_result<rows_view> read_some_rows(execution_state& st) override
     {
         return table_.read_some_rows(conn_, st);

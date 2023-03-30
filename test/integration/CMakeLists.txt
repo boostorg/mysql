@@ -29,6 +29,8 @@ add_executable(
     crud.cpp
     handshake.cpp
     prepared_statements.cpp
+    stored_procedures.cpp
+    multi_queries.cpp
     reconnect.cpp
     db_specific.cpp
     database_types.cpp

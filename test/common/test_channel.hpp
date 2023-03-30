@@ -20,10 +20,7 @@ namespace test {
 
 using test_channel = detail::channel<test_stream>;
 
-inline test_channel create_channel(
-    std::vector<std::uint8_t> messages = {},
-    std::size_t buffer_size = 0
-)
+inline test_channel create_channel(std::vector<std::uint8_t> messages = {}, std::size_t buffer_size = 1024)
 {
     return test_channel(buffer_size, std::move(messages));
 }

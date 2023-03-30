@@ -10,6 +10,7 @@
 
 #include <boost/mysql/connection.hpp>
 
+#include "test_channel.hpp"
 #include "test_stream.hpp"
 
 namespace boost {
@@ -17,6 +18,11 @@ namespace mysql {
 namespace test {
 
 using test_connection = connection<test_stream>;
+
+inline test_channel& get_channel(test_connection& conn) noexcept
+{
+    return boost::mysql::detail::connection_access::get_channel(conn);
+}
 
 }  // namespace test
 }  // namespace mysql

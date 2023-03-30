@@ -21,15 +21,13 @@
 #include <boost/mysql/detail/network_algorithms/close_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/close_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/connect.hpp>
-#include <boost/mysql/detail/network_algorithms/execute_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
+#include <boost/mysql/detail/network_algorithms/high_level_execution.hpp>
 #include <boost/mysql/detail/network_algorithms/ping.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
-#include <boost/mysql/detail/network_algorithms/query.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
+#include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
-#include <boost/mysql/detail/network_algorithms/start_query.hpp>
-#include <boost/mysql/detail/network_algorithms/start_statement_execution.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/assert/source_location.hpp>
@@ -414,6 +412,53 @@ boost::mysql::connection<Stream>::async_close_statement(
 )
 {
     return detail::async_close_statement(get_channel(), stmt, diag, std::forward<CompletionToken>(token));
+}
+
+// read resultset head
+template <class Stream>
+void boost::mysql::connection<Stream>::read_resultset_head(
+    execution_state& st,
+    error_code& err,
+    diagnostics& diag
+)
+{
+    detail::clear_errors(err, diag);
+    return detail::read_resultset_head(
+        get_channel(),
+        detail::execution_state_access::get_impl(st),
+        err,
+        diag
+    );
+}
+
+template <class Stream>
+void boost::mysql::connection<Stream>::read_resultset_head(execution_state& st)
+{
+    detail::error_block blk;
+    detail::read_resultset_head(
+        get_channel(),
+        detail::execution_state_access::get_impl(st),
+        blk.err,
+        blk.diag
+    );
+    blk.check(BOOST_CURRENT_LOCATION);
+}
+
+template <class Stream>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
+boost::mysql::connection<Stream>::async_read_resultset_head(
+    execution_state& st,
+    diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    return detail::async_read_resultset_head(
+        get_channel(),
+        detail::execution_state_access::get_impl(st),
+        diag,
+        std::forward<CompletionToken>(token)
+    );
 }
 
 // read some rows

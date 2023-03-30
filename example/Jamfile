@@ -7,6 +7,8 @@
 
 import os ;
 
+path-constant this_dir : . ;
+
 # The hostname to use for examples
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
 if $(hostname) = ""
@@ -15,7 +17,7 @@ if $(hostname) = ""
 }
 
 # Example list
-local examples_no_unix =
+local regular_examples =
     snippets
     tutorial
     text_queries
@@ -30,10 +32,7 @@ local examples_no_unix =
     timeouts
 ;
 
-local example_targets ;
-
-# Non-UNIX
-for local example in $(examples_no_unix)
+for local example in $(regular_examples)
 {
     local example_name = "boost_mysql_example_$(example)" ;
     unit-test $(example_name)
@@ -44,23 +43,36 @@ for local example in $(examples_no_unix)
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;
-    explicit $(example_name) ;
-    example_targets += $(example_name) ;
 }
 
 # UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
 if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     unit-test boost_mysql_example_unix_socket
-        :
-            unix_socket.cpp
-            /boost/mysql/test//mysql
-        :
-            <testing.arg>"example_user example_password"
-        ;
-    explicit boost_mysql_example_unix_socket ;
-    example_targets += boost_mysql_example_unix_socket ;
+    :
+        unix_socket.cpp
+        /boost/mysql/test//mysql
+    :
+        <testing.arg>"example_user example_password"
+    ;
 }
 
-# Helper to run all of them in one go
-alias boost_mysql_all_examples : $(example_targets) ;
-explicit boost_mysql_all_examples ;
+# Stored procedures. The example is a command line tool that must be run
+# several times in order, so we do this through a Python script
+unit-test boost_mysql_example_stored_procedures
+    :
+        stored_procedures.cpp
+        /boost/mysql/test//mysql
+    : requirements
+        <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
+        <testing.arg>$(hostname)
+    ;
+
+
+# Source script. unit-test doesn't support input-file correctly
+unit-test boost_mysql_example_source_script
+    :
+        source_script.cpp
+        /boost/mysql/test//mysql
+    : requirements
+        <testing.arg>"example_user example_password $(hostname) $(this_dir)/private/test_script.sql"
+    ;
