@@ -12,15 +12,19 @@
 
 #include <boost/mysql/detail/auxiliar/row_base.hpp>
 
+#include <functional>
+
 namespace boost {
 namespace mysql {
 namespace detail {
 
 inline bool overlaps(const void* first1, const void* first2, std::size_t size) noexcept
 {
+    std::greater_equal<const void*> gte;
+    std::less<const void*> lt;
     const void* last1 = static_cast<const unsigned char*>(first1) + size;
     const void* last2 = static_cast<const unsigned char*>(first2) + size;
-    return (first1 >= first2 && first1 < last2) || (last1 >= first2 && last1 < last2);
+    return (gte(first1, first2) && lt(first1, last2)) || (gte(last1, first2) && lt(last1, last2));
 }
 
 inline std::size_t get_string_size(field_view f) noexcept
