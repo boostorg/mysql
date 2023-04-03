@@ -64,6 +64,12 @@ public:
         fv_list_it params_last,
         execution_state& st
     ) = 0;
+    virtual network_result<void> execute(string_view, results&) = 0;
+    virtual network_result<void> execute(bound_statement_tuple<std::tuple<field_view, field_view>>, results&) = 0;
+    virtual network_result<void> execute(bound_statement_iterator_range<fv_list_it>, results&) = 0;
+    virtual network_result<void> start_execution(string_view, execution_state&) = 0;
+    virtual network_result<void> start_execution(bound_statement_tuple<std::tuple<field_view, field_view>>, execution_state&) = 0;
+    virtual network_result<void> start_execution(bound_statement_iterator_range<fv_list_it>, execution_state&) = 0;
     virtual network_result<void> close_statement(statement&) = 0;
     virtual network_result<void> read_resultset_head(execution_state& st) = 0;
     virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;

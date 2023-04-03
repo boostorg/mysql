@@ -33,7 +33,7 @@ struct reconnect_fixture : network_fixture
     void do_query_ok()
     {
         results result;
-        conn->query("SELECT * FROM empty_table", result).get();
+        conn->execute("SELECT * FROM empty_table", result).get();
         BOOST_TEST(result.rows().empty());
     }
 };

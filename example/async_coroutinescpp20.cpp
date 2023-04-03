@@ -91,9 +91,7 @@ boost::asio::awaitable<void> coro_main(
 
     // Execute the statement
     boost::mysql::results result;
-    std::tie(ec
-    ) = co_await conn
-            .async_execute_statement(stmt, std::make_tuple(company_id), result, diag, tuple_awaitable);
+    std::tie(ec) = co_await conn.async_execute(stmt.bind(company_id), result, diag, tuple_awaitable);
     boost::mysql::throw_on_error(ec, diag);
 
     // Print all employees

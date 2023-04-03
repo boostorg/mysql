@@ -91,11 +91,7 @@ void insert_product(
 )
 {
     results result;
-    conn.execute_statement(
-        stmt,
-        std::make_tuple(description, price, static_cast<int>(show_in_store)),
-        result
-    );
+    conn.execute(stmt.bind(description, price, static_cast<int>(show_in_store)), result);
 }
 //]
 
@@ -117,14 +113,18 @@ void insert_product(
 
     // Execute the insert
     results result;
-    conn.execute_statement(
-        stmt,
-        std::make_tuple(description_param, price, static_cast<int>(show_in_store)),
-        result
-    );
+    conn.execute(stmt.bind(description_param, price, static_cast<int>(show_in_store)), result);
 }
 //]
 #endif
+
+//[prepared_statements_execute_iterator_range
+void exec_statement(tcp_ssl_connection& conn, const statement& stmt, const std::vector<field>& params)
+{
+    results result;
+    conn.execute(stmt.bind(params.begin(), params.end()), result);
+}
+//]
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 boost::asio::awaitable<void> overview_coro(tcp_ssl_connection& conn)
@@ -137,7 +137,7 @@ boost::asio::awaitable<void> overview_coro(tcp_ssl_connection& conn)
     // Run our query as a coroutine
     diagnostics diag;
     results result;
-    auto [ec] = co_await conn.async_query("SELECT 'Hello world!'", result, diag, token);
+    auto [ec] = co_await conn.async_execute("SELECT 'Hello world!'", result, diag, token);
 
     // This will throw an error_with_diagnostics in case of failure
     boost::mysql::throw_on_error(ec, diag);
@@ -172,8 +172,8 @@ boost::asio::awaitable<void> dont_run()
     // DO NOT DO THIS!!!!
     results result1, result2;
     co_await (
-        conn.async_query("SELECT 1", result1, boost::asio::use_awaitable) &&
-        conn.async_query("SELECT 2", result2, boost::asio::use_awaitable)
+        conn.async_execute("SELECT 1", result1, boost::asio::use_awaitable) &&
+        conn.async_execute("SELECT 2", result2, boost::asio::use_awaitable)
     );
     //]
 }
@@ -218,7 +218,7 @@ void main_impl(int argc, char** argv)
     {
         //[overview_query_use_case
         results result;
-        conn.query("START TRANSACTION", result);
+        conn.execute("START TRANSACTION", result);
         //]
     }
     {
@@ -228,14 +228,14 @@ void main_impl(int argc, char** argv)
         );
 
         results result;
-        conn.execute_statement(stmt, std::make_tuple("HGS", 30000), result);
+        conn.execute(stmt.bind("HGS", 30000), result);
         //]
     }
     {
         //[overview_views
         // Populate a results object
         results result;
-        conn.query("SELECT 'Hello world'", result);
+        conn.execute("SELECT 'Hello world'", result);
 
         // results::rows() returns a rows_view. The underlying memory is owned by the results object
         rows_view all_rows = result.rows();
@@ -263,7 +263,7 @@ void main_impl(int argc, char** argv)
     {
         //[overview_using_fields
         results result;
-        conn.query("SELECT 'abc', 42", result);
+        conn.execute("SELECT 'abc', 42", result);
 
         // Obtain a field's underlying value using the is_xxx and get_xxx accessors
         field_view f = result.rows().at(0).at(0);  // f points to the string "abc"
@@ -290,7 +290,7 @@ void main_impl(int argc, char** argv)
         results result;
 
         // Create some test data
-        conn.query(
+        conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE products (
                     id VARCHAR(50) PRIMARY KEY,
@@ -299,10 +299,10 @@ void main_impl(int argc, char** argv)
             )%",
             result
         );
-        conn.query("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', NULL)", result);
+        conn.execute("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', NULL)", result);
 
         // Retrieve the data. Note that some fields are NULL
-        conn.query("SELECT id, description FROM products", result);
+        conn.execute("SELECT id, description FROM products", result);
 
         for (row_view r : result.rows())
         {
@@ -327,12 +327,12 @@ void main_impl(int argc, char** argv)
         }
         //]
 
-        conn.query("DROP TABLE products", result);
+        conn.execute("DROP TABLE products", result);
     }
     {
         //[overview_statements_setup
         results result;
-        conn.query(
+        conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE products (
                     id VARCHAR(50) PRIMARY KEY,
@@ -341,7 +341,7 @@ void main_impl(int argc, char** argv)
             )%",
             result
         );
-        conn.query("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', 'Carrots')", result);
+        conn.execute("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', 'Carrots')", result);
         //]
     }
     {
@@ -355,19 +355,19 @@ void main_impl(int argc, char** argv)
 
         // Execute the statement
         results result;
-        conn.execute_statement(stmt, std::make_tuple(product_id), result);
+        conn.execute(stmt.bind(product_id), result);
 
         // Use result as required
         //]
 
-        conn.query("DROP TABLE products", result);
+        conn.execute("DROP TABLE products", result);
     }
     {
         //[overview_multifn
         // Create the table and some sample data
         // In a real system, body may be megabaytes long.
         results result;
-        conn.query(
+        conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE posts (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -377,7 +377,7 @@ void main_impl(int argc, char** argv)
             )%",
             result
         );
-        conn.query(
+        conn.execute(
             R"%(
                 INSERT INTO posts (title, body) VALUES
                     ('Post 1', 'A very long post body'),
@@ -390,7 +390,7 @@ void main_impl(int argc, char** argv)
         execution_state st;
 
         // Writes the query request and reads the server response, but not the rows
-        conn.start_query("SELECT title, body FROM posts", st);
+        conn.start_execution("SELECT title, body FROM posts", st);
 
         // Reads all the returned rows, in batches.
         // st.complete() returns true once there are no more rows to read
@@ -407,7 +407,7 @@ void main_impl(int argc, char** argv)
         }
         //]
 
-        conn.query("DROP TABLE posts", result);
+        conn.execute("DROP TABLE posts", result);
     }
     {
         //[overview_errors_sync_errc
@@ -417,7 +417,7 @@ void main_impl(int argc, char** argv)
 
         // The provided SQL is invalid. The server will return an error.
         // ec will be set to a non-zero value
-        conn.query("this is not SQL!", result, ec, diag);
+        conn.execute("this is not SQL!", result, ec, diag);
 
         if (ec)
         {
@@ -437,7 +437,7 @@ void main_impl(int argc, char** argv)
         {
             // The provided SQL is invalid. This function will throw an exception.
             results result;
-            conn.query("this is not SQL!", result);
+            conn.execute("this is not SQL!", result);
         }
         catch (const error_with_diagnostics& err)
         {
@@ -459,7 +459,7 @@ void main_impl(int argc, char** argv)
         //[prepared_statements_prepare
         // Table setup
         results result;
-        conn.query(
+        conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE products (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -482,16 +482,17 @@ void main_impl(int argc, char** argv)
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
         insert_product(conn, stmt, std::optional<string_view>(), 2000, true);
 #endif
-        conn.query("DROP TABLE products", result);
+        exec_statement(conn, stmt, {field_view("abc"), field_view(2000), field_view(1)});
+        conn.execute("DROP TABLE products", result);
     }
 
     // multi-resultset
     {
         results result;
-        conn.query("DROP PROCEDURE IF EXISTS get_employee", result);
+        conn.execute("DROP PROCEDURE IF EXISTS get_employee", result);
 
         //[multi_resultset_procedure
-        conn.query(
+        conn.execute(
             R"(
                 CREATE PROCEDURE get_employee(IN pin_employee_id INT)
                 BEGIN
@@ -511,7 +512,7 @@ void main_impl(int argc, char** argv)
         std::int64_t employee_id = get_employee_id();
 
         // Call the statement
-        conn.execute_statement(get_employee_stmt, std::make_tuple(employee_id), result);
+        conn.execute(get_employee_stmt.bind(employee_id), result);
         //]
 
         //[multi_resultset_first_resultset
@@ -523,11 +524,11 @@ void main_impl(int argc, char** argv)
     }
     {
         results result;
-        conn.query("DROP PROCEDURE IF EXISTS create_employee", result);
+        conn.execute("DROP PROCEDURE IF EXISTS create_employee", result);
 
         //[multi_resultset_out_params
         // Setup the stored procedure
-        conn.query(
+        conn.execute(
             R"(
                 CREATE PROCEDURE create_employee(
                     IN  pin_company_id CHAR(10),
@@ -554,7 +555,7 @@ void main_impl(int argc, char** argv)
         // When executing the statement, we provide an actual value for the IN parameters,
         // and a dummy value for the OUT parameter. This value will be ignored, but it's required by the
         // protocol
-        conn.execute_statement(stmt, std::make_tuple("HGS", "John", "Doe", nullptr), result);
+        conn.execute(stmt.bind("HGS", "John", "Doe", nullptr), result);
 
         // Retrieve output parameters. This row_view has an element per
         // OUT or INOUT parameter that used a ? placeholder
@@ -586,7 +587,7 @@ void main_impl(int argc, char** argv)
         // We can now use the multi-query feature.
         // This will result in three resultsets, one per query.
         results result;
-        conn.query(
+        conn.execute(
             R"(
                 CREATE TEMPORARY TABLE posts (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -627,7 +628,7 @@ void main_impl(int argc, char** argv)
     {
         //[multi_function_setup
         results result;
-        conn.query(
+        conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE posts (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -637,7 +638,7 @@ void main_impl(int argc, char** argv)
             )%",
             result
         );
-        conn.query(
+        conn.execute(
             R"%(
                 INSERT INTO posts (title, body) VALUES
                     ('Post 1', 'A very long post body'),
@@ -667,35 +668,34 @@ void main_impl(int argc, char** argv)
         };
 
         {
-            //[multi_function_start_query
+            //[multi_function_text_queries
             execution_state st;
-            conn.start_query("SELECT title, body FROM posts", st);
+            conn.start_execution("SELECT title, body FROM posts", st);
             //]
 
             read_all_rows(st);  // don't compromise further operations
         }
 
         {
-            //[multi_function_start_statement_execution
+            //[multi_function_statements
             execution_state st;
-            conn.start_statement_execution(
-                stmt,
-                std::make_tuple(),  // The statement has no params, so an empty tuple is passed
+            conn.start_execution(
+                stmt.bind(),  // The statement has no params, so an empty bind is performed
                 st
             );
             //]
 
             read_all_rows(st);  // don't compromise further operations
-            conn.query("DROP TABLE posts", result);
+            conn.execute("DROP TABLE posts", result);
         }
 
         {
             results result;
-            conn.query("DROP PROCEDURE IF EXISTS get_company", result);
+            conn.execute("DROP PROCEDURE IF EXISTS get_company", result);
 
             //[multi_function_stored_procedure
             // Setup the stored procedure
-            conn.query(
+            conn.execute(
                 R"(
                     CREATE PROCEDURE get_company(IN pin_company_id CHAR(10))
                     BEGIN
@@ -714,7 +714,7 @@ void main_impl(int argc, char** argv)
             // Call the procedure
             execution_state st;
             statement stmt = conn.prepare_statement("CALL get_company(?)");
-            conn.start_statement_execution(stmt, std::make_tuple(company_id), st);
+            conn.start_execution(stmt.bind(company_id), st);
 
             // The above code will generate 3 resultsets
             // Read the 1st one, which contains the matched companies
@@ -750,7 +750,7 @@ void main_impl(int argc, char** argv)
     {
         //[fields_field_views
         results result;
-        conn.query("SELECT 'Hello world!'", result);
+        conn.execute("SELECT 'Hello world!'", result);
 
         // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
         field_view fv = result.rows().at(0).at(0);
@@ -764,7 +764,7 @@ void main_impl(int argc, char** argv)
     {
         //[fields_field_views_scalars
         results result;
-        conn.query("SELECT 42", result);
+        conn.execute("SELECT 42", result);
 
         // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
         field_view fv = result.rows().at(0).at(0);
@@ -778,7 +778,7 @@ void main_impl(int argc, char** argv)
     {
         //[fields_taking_ownership
         results result;
-        conn.query("SELECT 'Hello world!'", result);
+        conn.execute("SELECT 'Hello world!'", result);
 
         // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
         field_view fv = result.rows().at(0).at(0);
@@ -864,7 +864,7 @@ void main_impl(int argc, char** argv)
     {
         //[field_timestamp_setup
         results result;
-        conn.query(
+        conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE events (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -885,7 +885,7 @@ void main_impl(int argc, char** argv)
         // This change has session scope. All operations after this query
         // will now use UTC for TIMESTAMPs. Other sessions will not see the change.
         // If you need to reconnect the connection, you need to run this again.
-        conn.query("SET @time_zone = 'UTC'", result);
+        conn.execute("SET @time_zone = 'UTC'", result);
         //]
 
         //[fields_timestamp_insert
@@ -894,7 +894,7 @@ void main_impl(int argc, char** argv)
         datetime event_timestamp = datetime::now();
 
         // event_timestamp will be interpreted as UTC if you have run SET @time_zone
-        conn.execute_statement(insert_stmt, std::make_tuple(event_timestamp, "Something happened"), result);
+        conn.execute(insert_stmt.bind(event_timestamp, "Something happened"), result);
         //]
 
         //[fields_timestamp_select
@@ -903,14 +903,14 @@ void main_impl(int argc, char** argv)
 
         // threshold will be interpreted as UTC. The retrieved events will have their
         // `t` column in UTC
-        conn.execute_statement(select_stmt, std::make_tuple(threshold), result);
+        conn.execute(select_stmt.bind(threshold), result);
         //]
     }
     {
         //[metadata
         // By default, a connection has metadata_mode::minimal
         results result;
-        conn.query("SELECT 1 AS my_field", result);
+        conn.execute("SELECT 1 AS my_field", result);
         string_view colname = result.meta()[0].column_name();
 
         // colname will be empty because conn.meta_mode() == metadata_mode::minimal
@@ -918,9 +918,16 @@ void main_impl(int argc, char** argv)
 
         // If you are using metadata names, set the connection's metadata_mode
         conn.set_meta_mode(metadata_mode::full);
-        conn.query("SELECT 1 AS my_field", result);
+        conn.execute("SELECT 1 AS my_field", result);
         colname = result.meta()[0].column_name();
         ASSERT(colname == "my_field");
+        //]
+    }
+    {
+        //[charsets_set_names
+        results result;
+        conn.execute("SET NAMES utf8mb4", result);
+        // Further operations can assume utf8mb4 as conn's charset
         //]
     }
 

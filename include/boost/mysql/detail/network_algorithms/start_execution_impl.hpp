@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_HPP
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_IMPL_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -25,7 +25,7 @@ namespace detail {
 // before calling these
 
 template <class Stream>
-void start_execution(
+void start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding encoding,
     execution_state& st,
@@ -35,7 +35,7 @@ void start_execution(
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_start_execution(
+async_start_execution_impl(
     channel<Stream>& chan,
     resultset_encoding encoding,
     execution_state& st,
@@ -47,6 +47,6 @@ async_start_execution(
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/detail/network_algorithms/impl/start_execution.hpp>
+#include <boost/mysql/detail/network_algorithms/impl/start_execution_impl.hpp>
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_HPP_ */

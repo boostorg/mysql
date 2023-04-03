@@ -36,7 +36,7 @@ BOOST_FIXTURE_TEST_CASE(without_selects, tcp_network_fixture)
 
     // Call the procedure
     results result;
-    conn.execute_statement(stmt, std::make_tuple("abc"), result);
+    conn.execute(stmt.bind("abc"), result);
 
     // Verify results
     BOOST_TEST_REQUIRE(result.size() == 1u);
@@ -49,7 +49,7 @@ BOOST_FIXTURE_TEST_CASE(without_selects, tcp_network_fixture)
     BOOST_TEST(result.out_params() == row_view());
 
     // Verify it took place
-    conn.query("SELECT field_varchar FROM inserts_table", result);
+    conn.execute("SELECT field_varchar FROM inserts_table", result);
     BOOST_TEST(result.rows().at(0).at(0).as_string() == "abc");
 }
 
@@ -62,7 +62,7 @@ BOOST_FIXTURE_TEST_CASE(with_one_select, tcp_network_fixture)
 
     // Call the procedure
     results result;
-    conn.execute_statement(stmt, std::make_tuple("abc"), result);
+    conn.execute(stmt.bind("abc"), result);
 
     // Verify results
     BOOST_TEST_REQUIRE(result.size() == 2u);
@@ -90,7 +90,7 @@ BOOST_FIXTURE_TEST_CASE(with_two_selects, tcp_network_fixture)
 
     // Call the procedure
     results result;
-    conn.execute_statement(stmt, std::make_tuple("abc", 42), result);
+    conn.execute(stmt.bind("abc", 42), result);
 
     // Verify results
     BOOST_TEST_REQUIRE(result.size() == 3u);
@@ -124,7 +124,7 @@ BOOST_FIXTURE_TEST_CASE(with_two_selects_multifn, tcp_network_fixture)
 
     // Call the procedure
     execution_state st;
-    conn.start_statement_execution(stmt, std::make_tuple("abc", 42), st);
+    conn.start_execution(stmt.bind("abc", 42), st);
     BOOST_TEST_REQUIRE(st.should_read_rows());
     validate_2fields_meta(st.meta(), "one_row_table");
 
@@ -173,7 +173,7 @@ BOOST_FIXTURE_TEST_CASE(output_params_not_bound, tcp_network_fixture)
 
     // Call the procedure
     results result;
-    conn.execute_statement(stmt, std::make_tuple(10), result);
+    conn.execute(stmt.bind(10), result);
 
     // Verify results
     BOOST_TEST_REQUIRE(result.size() == 2u);
@@ -197,7 +197,7 @@ BOOST_FIXTURE_TEST_CASE(output_params_bound, tcp_network_fixture)
 
     // Call the procedure
     results result;
-    conn.execute_statement(stmt, std::make_tuple(10, nullptr, 30), result);
+    conn.execute(stmt.bind(10, nullptr, 30), result);
 
     // Verify results
     BOOST_TEST_REQUIRE(result.size() == 3u);
@@ -230,7 +230,7 @@ BOOST_FIXTURE_TEST_CASE(output_params_bound_multifn, tcp_network_fixture)
 
     // Call the procedure
     execution_state st;
-    conn.start_statement_execution(stmt, std::make_tuple(10, nullptr, 30), st);
+    conn.start_execution(stmt.bind(10, nullptr, 30), st);
     BOOST_TEST_REQUIRE(st.should_read_rows());
     validate_2fields_meta(st.meta(), "one_row_table");
 
@@ -277,7 +277,7 @@ BOOST_FIXTURE_TEST_CASE(with_signal, tcp_network_fixture)
     results result;
     error_code err;
     diagnostics diag;
-    conn.execute_statement(stmt, std::make_tuple(), result, err, diag);
+    conn.execute(stmt.bind(), result, err, diag);
 
     // Verify results
     BOOST_TEST(err == common_server_errc::er_no);
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(with_query, tcp_network_fixture)
 
     // Call the procedure
     results result;
-    conn.query("CALL sp_outparams(42, @var1, @var2)", result);
+    conn.execute("CALL sp_outparams(42, @var1, @var2)", result);
 
     // Verify results
     BOOST_TEST_REQUIRE(result.size() == 2u);

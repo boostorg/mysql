@@ -7,12 +7,13 @@
 
 [section:queries Text queries]
 
-To run a text query, use any of the following functions:
+To run a text query, use any of the following functions, passing a string-like
+object (convertible to [reflink string_view]) containing valid SQL as the first parameter:
 
-* [refmem connection query] or [refmem connection async_query], which execute the query and
-  read the generated results.
-* [refmem connection start_query] and [refmem connection async_start_query], which initiate a
-  text query as a multi-function operation.
+* [refmem connection execute] or [refmem connection async_execute]: these functions run the query and
+  read the generated results into memory.
+* [refmem connection start_execution] and [refmem connection async_start_execution]: these functions
+  initiate a text query as a multi-function operation.
 
 Almost any query that may be issued in the `mysql` command line
 can be executed using this method. This includes `SELECT`s,
@@ -36,7 +37,7 @@ instead, which perform composition server-side in a safe way.
 
 [heading Running multiple queries at once]
 
-You can run several semicolon-separated queries in a single call by enabling
+You can run several semicolon-separated queries in a single `execute()` call by enabling
 the [refmem handshake_params multi_queries] option. You can find an example
 [link mysql.multi_resultset.multi_queries here].
 

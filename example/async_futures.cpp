@@ -109,7 +109,7 @@ void main_impl(int argc, char** argv)
 
     // Execute the statement
     boost::mysql::results result;
-    fut = conn.async_execute_statement(stmt, std::make_tuple(company_id), result, use_future);
+    fut = conn.async_execute(stmt.bind(company_id), result, use_future);
     fut.get();
 
     // Print employees

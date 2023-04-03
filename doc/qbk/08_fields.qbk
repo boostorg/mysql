@@ -492,7 +492,7 @@ column shows what [refmem metadata type] would return for a column of that type.
 
 [section:cpp_to_mysql C++ to MySQL type mapping reference]
 
-This section shows how a parameter `v` in a expression `conn.execute_statement(stmt, std::make_tuple(v), result)`
+This section shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
 is interpreted by MySQL, depeding on `v`'s type:
 
 [table

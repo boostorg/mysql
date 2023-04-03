@@ -47,6 +47,7 @@ docca.reference reference.qbk
             \"BOOST_CXX14_CONSTEXPR=constexpr\" \\
             \"BOOST_MYSQL_FIELD_LIKE_TUPLE=class\" \\
             \"BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR=class\" \\
+            \"BOOST_MYSQL_EXECUTION_REQUEST=class\" \\
             "
         <doxygen:param>SKIP_FUNCTION_MACROS=NO
         <doxygen:param>OUTPUT_LANGUAGE=English

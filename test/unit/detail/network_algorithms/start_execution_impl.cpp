@@ -12,7 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
+#include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -47,8 +47,8 @@ struct
     typename netfun_maker::signature start_execution;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&boost::mysql::detail::start_execution),           "sync" },
-    {netfun_maker::async_errinfo(&boost::mysql::detail::async_start_execution), "async"}
+    {netfun_maker::sync_errc(&boost::mysql::detail::start_execution_impl),           "sync" },
+    {netfun_maker::async_errinfo(&boost::mysql::detail::async_start_execution_impl), "async"}
 };
 
 BOOST_AUTO_TEST_SUITE(test_start_execution)

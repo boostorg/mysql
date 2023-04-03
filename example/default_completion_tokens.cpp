@@ -69,7 +69,7 @@ boost::asio::awaitable<void> coro_main(
 
     // Execute it
     boost::mysql::results result;
-    std::tie(ec) = co_await conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag);
+    std::tie(ec) = co_await conn.async_execute(stmt.bind(company_id), result, diag);
     boost::mysql::throw_on_error(ec, diag);
 
     // Use the received rows

@@ -109,7 +109,7 @@ void main_impl(int argc, char** argv)
     // We can now use the connection as we would normally do.
     const char* sql = "SELECT first_name, last_name, salary FROM employee";
     boost::mysql::results result;
-    conn.query(sql, result);
+    conn.execute(sql, result);
 
     for (auto employee : result.rows())
     {

@@ -29,9 +29,9 @@ will use these values to run the statement.
 
 To execute a statement, use any of the following functions:
 
-* [refmem connection execute_statement] or [refmem connection async_execute_statement],
+* [refmem connection execute] or [refmem connection async_execute],
   which execute the statement and read the generated rows.
-* [refmem connection start_statement_execution] and [refmem connection async_start_statement_execution], which initiate a
+* [refmem connection start_execution] and [refmem connection async_start_execution], which initiate a
   statement execution as a multi-function operation.
 
 For example:
@@ -47,9 +47,9 @@ Some observations:
 * Parameters are passed as a `std::tuple`. You can pass in built-in integers,
   `float`, `double`, [reflink date], [reflink datetime], [reflink time],
   [reflink field_view] and [reflink field] objects as parameters.
-* `show_in_store` is passed as an `int` to `execute_statement()`, but is defined as a `TINYINT`
+* `show_in_store` is passed as an `int` to `statement::bind()`, but is defined as a `TINYINT`
   (1 byte integer) in the table. As long as the passed integer is in range, MySQL
-  will perform the required conversions. Otherwise, `execute_statement()` will fail with an error
+  will perform the required conversions. Otherwise, `execute()` will fail with an error
   (no undefined behavior is invoked).
 
 You can also pass [reflink field_view]s and [reflink field]s as parameters. This is handy
@@ -59,6 +59,14 @@ to insert `NULL` values:
 
 For a full reference on the types you can pass as parameters when
 executing a statement, see [link mysql.fields.cpp_to_mysql this section].
+
+[heading Executing a statement with a variable number of parameters]
+
+The above approach works when you know at compile time how many parameters the statement has.
+In some scenarios (e.g. a graphical interface), this may not be the case. For these cases, you can
+`bind` a statement to a `field` or `field_view` iterator range:
+
+[prepared_statements_execute_iterator_range]
 
 [heading Closing a statement]
 

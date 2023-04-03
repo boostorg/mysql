@@ -32,22 +32,22 @@ using detail::protocol_field_type;
 
 namespace {
 
-using start_query_netm = netfun_maker_mem<void, test_connection, string_view, execution_state&>;
+using start_query_netm = netfun_maker_mem<void, test_connection, const string_view&, execution_state&>;
 using read_resultset_head_netm = netfun_maker_mem<void, test_connection, execution_state&>;
 using read_some_rows_netm = netfun_maker_mem<rows_view, test_connection, execution_state&>;
 
 struct
 {
-    start_query_netm::signature start_query;
+    start_query_netm::signature start_execution;
     read_resultset_head_netm::signature read_resultset_head;
     read_some_rows_netm::signature read_some_rows;
     const char* name;
 } all_fns[] = {
-    {start_query_netm::sync_errc(&test_connection::start_query),
+    {start_query_netm::sync_errc(&test_connection::start_execution),
      read_resultset_head_netm::sync_errc(&test_connection::read_resultset_head),
      read_some_rows_netm::sync_errc(&test_connection::read_some_rows),
      "sync" },
-    {start_query_netm::async_errinfo(&test_connection::async_start_query),
+    {start_query_netm::async_errinfo(&test_connection::async_start_execution),
      read_resultset_head_netm::async_errinfo(&test_connection::async_read_resultset_head),
      read_some_rows_netm::async_errinfo(&test_connection::async_read_some_rows),
      "async"},
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(separate_batches)
                 ));
 
             // Start
-            fns.start_query(conn, "SELECT 1", st).validate_no_error();
+            fns.start_execution(conn, "SELECT 1", st).validate_no_error();
             BOOST_TEST_REQUIRE(st.should_read_rows());
             check_meta(st.meta(), {column_type::varchar});
 
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(single_read)
             conn.stream().add_message(std::move(msgs));
 
             // Start
-            fns.start_query(conn, "SELECT 1", st).validate_no_error();
+            fns.start_execution(conn, "SELECT 1", st).validate_no_error();
             BOOST_TEST_REQUIRE(st.should_read_rows());
             check_meta(st.meta(), {column_type::varchar});
 
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(empty_resultsets)
             conn.stream().add_message(std::move(msgs));
 
             // Start
-            fns.start_query(conn, "SELECT 1", st).validate_no_error();
+            fns.start_execution(conn, "SELECT 1", st).validate_no_error();
             BOOST_TEST_REQUIRE(st.should_read_head());
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 10u);

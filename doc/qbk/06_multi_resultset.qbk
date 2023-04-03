@@ -86,7 +86,7 @@ To simplify things, you can use [refmem results out_params] to retrieve them:
 
 [heading:multi_queries Semicolon-separated queries]
 
-It is possible to run several semicolon-separated text queries in a single [refmem connection query] call.
+It is possible to run several semicolon-separated text queries in a single [refmem connection execute] call.
 For security, this capability is disabled by default. Enabling it requires setting [refmem handshake_params multi_queries]
 before connecting:
 

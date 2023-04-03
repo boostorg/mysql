@@ -82,7 +82,7 @@ inline std::size_t boost::mysql::detail::serialization_traits<
         res += get_size(ctx, com_stmt_execute_param_meta_packet{}) * num_params;
         for (auto it = value.params_begin; it != value.params_end; ++it)
         {
-            res += get_size(ctx, *it);
+            res += get_size(ctx, field_view(*it));
         }
     }
 
@@ -113,7 +113,8 @@ inline void boost::mysql::detail::serialization_traits<
         std::memset(ctx.first(), 0, traits.byte_count());  // Initialize to zeroes
         for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
         {
-            if (it->is_null())
+            field_view fv(*it);
+            if (fv.is_null())
             {
                 traits.set_null(ctx.first(), i);
             }
@@ -135,7 +136,7 @@ inline void boost::mysql::detail::serialization_traits<
         // actual values
         for (auto it = input.params_begin; it != input.params_end; ++it)
         {
-            serialize(ctx, *it);
+            serialize(ctx, field_view(*it));
         }
     }
 }

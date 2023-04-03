@@ -9,12 +9,33 @@
 #define BOOST_MYSQL_STATEMENT_HPP
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 
 #include <cassert>
 #include <cstdint>
+#include <tuple>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
+
+/**
+ * \brief A statement with bound parameters, represented as a `std::tuple`.
+ * \details
+ * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
+ * \ref connection::start_execution or their async counterparts.
+ */
+template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+class bound_statement_tuple;
+
+/**
+ * \brief A statement with bound parameters, represented as an iterator range.
+ * \details
+ * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
+ * \ref connection::start_execution or their async counterparts.
+ */
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+class bound_statement_iterator_range;
 
 /**
  * \brief Represents a server-side prepared statement.
@@ -81,6 +102,84 @@ public:
         assert(valid());
         return num_params_;
     }
+
+    /**
+     * \brief Binds parameters to a statement.
+     * \details
+     * Creates an object that packages `*this` and the statement actual parameters `params`.
+     * This object can be passed to \ref connection::execute, \ref connection::start_execution
+     * and their async counterparts.
+     * \n
+     * The parameters are copied into a `std::tuple` by using `std::make_tuple`. This function
+     * only participates in overload resolution if `std::make_tuple(FWD(args)...)` yields a
+     * `FieldLikeTuple`. Equivalent to `this->bind(std::make_tuple(std::forward<T>(params)...))`.
+     * \n
+     * This function doesn't involve communication with the server.
+     *
+     * \par Preconditions
+     * `this->valid() == true`
+     * \n
+     * \par Exception safety
+     * Strong guarantee. Only throws if constructing any of the internal tuple elements throws.
+     */
+    template <class... T>
+#ifdef BOOST_MYSQL_DOXYGEN
+    bound_statement_tuple<std::tuple<__see_below__>>
+#else
+    auto
+#endif
+    bind(T&&... params) const->typename std::enable_if<
+        detail::is_field_like_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>::value,
+        bound_statement_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>>::type
+    {
+        return bind(std::make_tuple(std::forward<T>(params)...));
+    }
+
+    /**
+     * \brief Binds parameters to a statement.
+     * \details
+     * Creates an object that packages `*this` and the statement actual parameters `params`.
+     * This object can be passed to \ref connection::execute, \ref connection::start_execution
+     * or their async counterparts.
+     * \n
+     * The `params` tuple is decay-copied into the returned object.
+     * \n
+     * This function doesn't involve communication with the server.
+     *
+     * \par Preconditions
+     * `this->valid() == true`
+     * \n
+     * \par Exception safety
+     * Strong guarantee. Only throws if the decay-copy of the tuple throws.
+     */
+    template <
+        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        typename EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+    bound_statement_tuple<typename std::decay<FieldLikeTuple>::type> bind(FieldLikeTuple&& params) const;
+
+    /**
+     * \brief Binds parameters to a statement (iterator range overload).
+     * \details
+     * Creates an object that packages `*this` and the statement actual parameters, represented
+     * as the iterator range `[params_first, params_last)`.
+     * This object can be passed to \ref connection::execute, \ref connection::start_execution
+     * or their async counterparts.
+     * \n
+     * This function doesn't involve communication with the server.
+     *
+     * \par Preconditions
+     * `this->valid() == true`
+     * \n
+     * \par Exception safety
+     * Strong guarantee. Only throws if copy-constructing iterators throws.
+     */
+    template <
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
+        typename EnableIf = detail::enable_if_field_view_forward_iterator<FieldViewFwdIterator>>
+    bound_statement_iterator_range<FieldViewFwdIterator> bind(
+        FieldViewFwdIterator params_first,
+        FieldViewFwdIterator params_last
+    ) const;
 
 private:
     bool valid_{false};

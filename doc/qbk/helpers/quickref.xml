@@ -16,6 +16,8 @@
         <bridgehead renderas="sect3">Classes</bridgehead>
         <simplelist type="vert" columns="1">
           <member><link linkend="mysql.ref.boost__mysql__bad_field_access">bad_field_access</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__bound_statement_tuple">bound_statement_tuple</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__bound_statement_iterator_range">bound_statement_iterator_range</link></member>
           <member><link linkend="mysql.ref.boost__mysql__buffer_params">buffer_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connection">connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__date">date</link></member>
@@ -87,6 +89,7 @@
         </simplelist>
         <bridgehead renderas="sect3">Concepts</bridgehead>
         <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__ExecutionRequest">ExecutionRequest</link></member>
           <member><link linkend="mysql.ref.boost__mysql__FieldLikeTuple">FieldLikeTuple</link></member>
           <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
           <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>

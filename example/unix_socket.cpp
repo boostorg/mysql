@@ -78,7 +78,7 @@ void main_impl(int argc, char** argv)
 
     // Execute the statement
     boost::mysql::results result;
-    conn.execute_statement(stmt, std::make_tuple(company_id), result);
+    conn.execute(stmt.bind(company_id), result);
 
     // Print employees
     for (boost::mysql::row_view employee : result.rows())

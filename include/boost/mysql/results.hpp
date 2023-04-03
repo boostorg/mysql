@@ -123,8 +123,8 @@ public:
     /**
      * \brief Returns whether the object holds a valid result.
      * \details Having `this->has_value()` is a precondition to call all data accessors.
-     * Objects populated by \ref connection::query, \ref connection::execute_statement or their async
-     * counterparts are guaranteed to have `this->has_value() == true`.
+     * Objects populated by \ref connection::execute and \ref connection::async_execute
+     * are guaranteed to have `this->has_value() == true`.
      *
      * \par Exception safety
      * No-throw guarantee.

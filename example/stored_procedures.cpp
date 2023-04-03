@@ -273,7 +273,7 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL get_products(?)");
 
         boost::mysql::results result;
-        conn.execute_statement(stmt, std::make_tuple(args.search), result);
+        conn.execute(stmt.bind(args.search), result);
         auto products = result.front();
         std::cout << "Your search returned the following products:\n";
         for (auto product : products.rows())
@@ -289,9 +289,9 @@ struct visitor
     // create-order: creates a new order
     void operator()(const create_order_args&) const
     {
-        // Since create_order doesn't have user-supplied params, we can use query()
+        // Since create_order doesn't have user-supplied params, we can use a text query
         boost::mysql::results result;
-        conn.query("CALL create_order()", result);
+        conn.execute("CALL create_order()", result);
 
         // Print the result to stdout. create_order() returns a resultset for
         // the newly created order, with only 1 row.
@@ -307,12 +307,12 @@ struct visitor
 
         // Execute the statement
         boost::mysql::results result;
-        conn.execute_statement(stmt, std::make_tuple(args.order_id), result);
+        conn.execute(stmt.bind(args.order_id), result);
 
         // Print the result to stdout. get_order() returns a resultset for
         // the retrieved order and another for the line items. If the order can't
         // be found, get_order() raises an error using SIGNAL, which will make
-        // execute_statement() fail with an exception.
+        // execute() fail with an exception.
         std::cout << "Retrieved order\n";
         print_order_with_items(result.at(0), result.at(1));
     }
@@ -320,9 +320,9 @@ struct visitor
     // get-orders: lists all orders
     void operator()(const get_orders_args&) const
     {
-        // Since get_orders doesn't have user-supplied params, we can use query()
+        // Since get_orders doesn't have user-supplied params, we can use a text query
         boost::mysql::results result;
-        conn.query("CALL get_orders()", result);
+        conn.execute("CALL get_orders()", result);
 
         // Print results to stdout. get_orders() succeeds even if no order is found.
         // get_orders() only lists orders, not line items.
@@ -351,11 +351,7 @@ struct visitor
         // We still have to pass a value to the 4th argument, even if it's an OUT parameter.
         // The value will be ignored, so we can pass nullptr.
         boost::mysql::results result;
-        conn.execute_statement(
-            stmt,
-            std::make_tuple(args.order_id, args.product_id, args.quantity, nullptr),
-            result
-        );
+        conn.execute(stmt.bind(args.order_id, args.product_id, args.quantity, nullptr), result);
 
         // We can use results::out_params() to access the extra resultset containing
         // the OUT parameter
@@ -374,7 +370,7 @@ struct visitor
 
         // Run the procedure
         boost::mysql::results result;
-        conn.execute_statement(stmt, std::make_tuple(args.line_item_id), result);
+        conn.execute(stmt.bind(args.line_item_id), result);
 
         // Print results to stdout
         std::cout << "Removed line item from order\n";
@@ -390,7 +386,7 @@ struct visitor
 
         // Execute the statement
         boost::mysql::results result;
-        conn.execute_statement(stmt, std::make_tuple(args.order_id, nullptr), result);
+        conn.execute(stmt.bind(args.order_id, nullptr), result);
 
         // We can use results::out_params() to access the extra resultset containing
         // the OUT parameter
@@ -409,7 +405,7 @@ struct visitor
 
         // Execute the statement
         boost::mysql::results result;
-        conn.execute_statement(stmt, std::make_tuple(args.order_id), result);
+        conn.execute(stmt.bind(args.order_id), result);
 
         // Print the results to stdout
         std::cout << "Completed order\n";

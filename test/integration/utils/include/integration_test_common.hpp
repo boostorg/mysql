@@ -105,7 +105,7 @@ struct network_fixture : network_fixture_base
     void start_transaction()
     {
         results result;
-        conn->query("START TRANSACTION", result).get();
+        conn->execute("START TRANSACTION", result).get();
     }
 };
 

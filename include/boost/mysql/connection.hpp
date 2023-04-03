@@ -23,6 +23,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
@@ -307,7 +308,152 @@ public:
     );
 
     /**
-     * \brief Executes a SQL text query.
+     * \brief Executes a text query or prepared statement.
+     * \details
+     * Sends `req` to the server for execution and reads the response into `result`.
+     * `req` should may be either a type convertible to \ref string_view containing valid SQL
+     * or a bound prepared statement, obtained by calling \ref statement::bind.
+     * If a string, it must be encoded using the connection's character set.
+     * Any string parameters provided to \ref statement::bind should also be encoded
+     * using the connection's character set.
+     * \n
+     * After this operation completes successfully, `result.has_value() == true`.
+     * \n
+     * Metadata in `result` will be populated according to `this->meta_mode()`.
+     */
+    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+    void execute(const ExecutionRequest& req, results& result, error_code&, diagnostics&);
+
+    /// \copydoc execute
+    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+    void execute(const ExecutionRequest& req, results& result);
+
+    /**
+     * \copydoc execute
+     * \par Object lifetimes
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the caller is
+     * responsible for managing `req`'s validity following these rules:
+     * \n
+     * \li If `req` is `string_view`, the string pointed to by `req`
+     *     must be kept alive by the caller until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_tuple, and any of the parameters is a reference
+     *     type (like `string_view`), the caller must keep the values pointed by these references alive
+     *     until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_iterator_range, the caller must keep objects in
+     *     the iterator range passed to \ref statement::bind alive until the  operation is initiated.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute(
+        ExecutionRequest&& req,
+        results& result,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_execute(
+            std::forward<ExecutionRequest>(req),
+            result,
+            shared_diag(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_execute
+    template <
+        BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_execute(
+        ExecutionRequest&& req,
+        results& result,
+        diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief Starts a SQL execution as a multi-function operation.
+     * \details
+     * Writes the execution request and reads the initial server response and the column
+     * metadata, but not the generated rows or subsequent resultsets, if any.
+     * After this operation completes, `st` will have
+     * \ref execution_state::meta populated.
+     * Metadata will be populated according to `this->meta_mode()`.
+     * \n
+     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
+     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
+     * Otherwise, the results are undefined.
+     * \n
+     * req may be either a type convertible to \ref string_view containing valid SQL
+     * or a bound prepared statement, obtained by calling \ref statement::bind.
+     * If a string, it must be encoded using the connection's character set.
+     * Any string parameters provided to \ref statement::bind should also be encoded
+     * using the connection's character set.
+     */
+    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+    void start_execution(const ExecutionRequest& req, execution_state& st, error_code&, diagnostics&);
+
+    /// \copydoc start_execution
+    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+    void start_execution(const ExecutionRequest& req, execution_state& st);
+
+    /**
+     * \copydoc start_execution
+     * \par Object lifetimes
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the caller is
+     * responsible for managing `req`'s validity following these rules:
+     * \n
+     * \li If `req` is `string_view`, the string pointed to by `req`
+     *     must be kept alive by the caller until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_tuple, and any of the parameters is a reference
+     *     type (like `string_view`), the caller must keep the values pointed by these references alive
+     *     until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_iterator_range, the caller must keep objects in
+     *     the iterator range passed to \ref statement::bind alive until the  operation is initiated.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <
+        BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_execution(
+        ExecutionRequest&& req,
+        execution_state& st,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    )
+    {
+        return async_start_execution(
+            std::forward<ExecutionRequest>(req),
+            st,
+            shared_diag(),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /// \copydoc async_start_execution
+    template <
+        BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_start_execution(
+        ExecutionRequest&& req,
+        execution_state& st,
+        diagnostics& diag,
+        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
+    );
+
+    /**
+     * \brief (Deprecated) Executes a SQL text query.
      * \details
      * Sends `query_string` to the server for execution and reads the response into `result`.
      * query_string should be encoded using the connection's character set.
@@ -320,6 +466,10 @@ public:
      * If you compose `query_string` by concatenating strings manually, <b>your code is
      * vulnerable to SQL injection attacks</b>. If your query contains patameters unknown at
      * compile time, use prepared statements instead of this function.
+     *
+     * \par Deprecation notice
+     * This function is only provided for backwards-compatibility. For new code, please
+     * use \ref execute or \ref async_execute instead.
      */
     void query(string_view query_string, results& result, error_code&, diagnostics&);
 
@@ -361,7 +511,7 @@ public:
     );
 
     /**
-     * \brief Starts a text query as a multi-function operation.
+     * \brief (Deprecated) Starts a text query as a multi-function operation.
      * \details
      * Writes the query request and reads the initial server response and the column
      * metadata, but not the generated rows or subsequent resultsets, if any.
@@ -374,6 +524,10 @@ public:
      * Otherwise, the results are undefined.
      * \n
      * `query_string` should be encoded using the connection's character set.
+     *
+     * \par Deprecation notice
+     * This function is only provided for backwards-compatibility. For new code, please
+     * use \ref start_execution or \ref async_start_execution instead.
      */
     void start_query(string_view query_string, execution_state& st, error_code&, diagnostics&);
 
@@ -459,7 +613,7 @@ public:
     );
 
     /**
-     * \brief Executes a prepared statement.
+     * \brief (Deprecated) Executes a prepared statement.
      * \details
      * Executes a statement with the given parameters and reads the response into `result`.
      * \n
@@ -472,6 +626,10 @@ public:
      * \n
      * Metadata in `result` will be populated according to `conn.meta_mode()`, where `conn`
      * is the connection that prepared this statement.
+     *
+     * \par Deprecation notice
+     * This function is only provided for backwards-compatibility. For new code, please
+     * use \ref execute or \ref async_execute instead.
      *
      * \par Preconditions
      *    `stmt.valid() == true`
@@ -542,7 +700,7 @@ public:
     );
 
     /**
-     * \brief Starts a statement execution as a multi-function operation.
+     * \brief (Deprecated) Starts a statement execution as a multi-function operation.
      * \details
      * Writes the execute request and reads the initial server response and the column
      * metadata, but not the generated rows or subsequent resultsets, if any. After this operation completes,
@@ -555,6 +713,10 @@ public:
      * \n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
      * String parameters should be encoded using the connection's character set.
+     *
+     * \par Deprecation notice
+     * This function is only provided for backwards-compatibility. For new code, please
+     * use \ref start_execution or \ref async_start_execution instead.
      *
      * \par Preconditions
      *    `stmt.valid() == true`
@@ -626,7 +788,7 @@ public:
     );
 
     /**
-     * \brief Starts a statement execution as a multi-function operation.
+     * \brief (Deprecated) Starts a statement execution as a multi-function operation.
      * \details
      * Writes the execute request and reads the initial server response and the column
      * metadata, but not the generated rows or any subsequent resultsets, if any. After this operation
@@ -638,6 +800,10 @@ public:
      * \n
      * The statement actual parameters are passed as an iterator range.
      * String parameters should be encoded using the connection's character set.
+     *
+     * \par Deprecation notice
+     * This function is only provided for backwards-compatibility. For new code, please
+     * use \ref start_execution or \ref async_start_execution instead.
      *
      * \par Preconditions
      *    `stmt.valid() == true`

@@ -94,7 +94,7 @@ public:
     /**
      * \brief Returns whether `*this` is in the initial state.
      * \details
-     * Call `start_query`, `start_statement_execution` or their async countrparts to move
+     * Call \ref connection::start_execution or \ref connection::async_start_execution to move
      * forward. No data is available in this state.
      *
      * \par Exception safety

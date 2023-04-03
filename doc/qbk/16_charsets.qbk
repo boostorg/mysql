@@ -46,13 +46,9 @@ character set and collation. You can specify this in two ways:
 * At any time, issuing a __SET_NAMES__ SQL statement. For example, `"SET NAMES utf8mb4"` will set the current
   connection's character set to `utf8mb4` and the connection's collation to utf8mb4's default collation.
   If the character set is unknown, the `SET NAMES` statement will fail.
-  You can use [refmem connection query] to issue the statement:
+  You can use [refmem connection execute] to issue the statement:
 
-```
-    results result;
-    conn.query("SET NAMES utf8mb4", result);
-    // Further operations can assume utf8mb4 as conn's charset
-```
+[charsets_set_names]
 
 [endsect]
 
@@ -63,14 +59,14 @@ The ones that impact this library's behavior are:
 
 * [mysqllink server-system-variables.html#sysvar_character_set_client character_set_client]
   determines the encoding that SQL statements sent to the server should have. This includes
-  the SQL strings in [refmem connection query], [refmem connection prepare_statement], and
-  string parameters passed to [refmem connection execute_statement].
+  the SQL strings passed to [refmem connection execute] and [refmem connection prepare_statement], and
+  string parameters passed to [refmem statement bind].
 
   Not all character sets are permissible in `character_set_client`. The server will accept setting
   this variable to any UTF-8 character set, but won't accept UTF-16.
 * [mysqllink server-system-variables.html#sysvar_character_set_results character_set_results]
   determines the encoding that the server will use to send any kind of result, including
-  string fields retrieved by [refmem connection query] and [refmem connection execute_statement], metadata
+  string fields retrieved by [refmem connection execute], metadata
   like [refmem metadata column_name] and error messages.
 
   Note that, when you define a string column with a character set (e.g.
@@ -90,16 +86,16 @@ The table below summarizes the encoding used by each piece of functionality in t
         [Encoding given by...]
     ]
     [
-        [SQL query strings passed to [refmem connection query] and [refmem connection prepare_statement]]
+        [SQL query strings passed to [refmem connection execute] and [refmem connection prepare_statement]]
         [`character_set_client`]
     ]
     [
-        [String values passed as parameters to [refmem connection execute_statement]]
+        [String values passed as parameters to [refmem statement bind]]
         [`character_set_client`]
     ]
     [
         [
-            String fields retrieved by [refmem connection query] or [refmem connection execute_statement]:[br][br]
+            String fields retrieved by [refmem connection execute] or [refmem connection read_some_rows]:[br][br]
             [refmem field_view as_string][br]
             [refmem field_view get_string]
         ]

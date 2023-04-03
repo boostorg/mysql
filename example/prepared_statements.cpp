@@ -95,12 +95,13 @@ void main_impl(int argc, char** argv)
 
     /*
      * Once a statement has been prepared, it can be executed by calling
-     * connection::execute_statement(). Parameter actual values are provided
-     * as a std::tuple. Executing a statement yields a results object.
+     * connection::execute(). Parameters are provided to statement::bind(),
+     * which creates a bound statement object that can be passed to execute().
+     * Executing a statement yields a results object.
      */
     //[prepared_statements_execute
     boost::mysql::results select_result, update_result;
-    conn.execute_statement(salary_getter, std::make_tuple(first_name), select_result);
+    conn.execute(salary_getter.bind(first_name), select_result);
     //]
 
     // First row, first column, cast to double
@@ -109,7 +110,7 @@ void main_impl(int argc, char** argv)
 
     // Run the update. In this case, we must pass in two parameters.
     double payrise = generate_random_payrise();
-    conn.execute_statement(salary_updater, std::make_tuple(payrise, first_name), update_result);
+    conn.execute(salary_updater.bind(payrise, first_name), update_result);
     ASSERT(update_result.rows().empty());  // an UPDATE never returns rows
 
     /**
@@ -117,7 +118,7 @@ void main_impl(int argc, char** argv)
      * as many times as we want. We do NOT need to call
      * connection::prepare_statement() again.
      */
-    conn.execute_statement(salary_getter, std::make_tuple(first_name), select_result);
+    conn.execute(salary_getter.bind(first_name), select_result);
     double new_salary = select_result.rows().at(0).at(0).as_double();
     ASSERT(new_salary > old_salary);  // Our update took place
     std::cout << "The salary after the payrise was: " << new_salary << std::endl;

@@ -123,9 +123,9 @@ void main_impl(int argc, char** argv)
     conn.connect(*endpoints.begin(), params);
 
     // The executed commands may generate a lot of output, so we're going to
-    // use multi-function operations (i.e. start_query) to read it in batches.
+    // use multi-function operations (i.e. start_execution) to read it in batches.
     boost::mysql::execution_state st;
-    conn.start_query(script_contents, st);
+    conn.start_execution(script_contents, st);
 
     // The main read loop. Each executed command will yield a resultset.
     // st.comoplete() returns true once all resultsets have been read.

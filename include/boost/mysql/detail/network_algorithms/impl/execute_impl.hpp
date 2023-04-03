@@ -5,15 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_HPP
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_IMPL_HPP
 
 #pragma once
 
-#include <boost/mysql/detail/network_algorithms/execute.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/helpers.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
@@ -24,14 +23,14 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-struct execute_op : boost::asio::coroutine
+struct execute_impl_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     resultset_encoding enc_;
     execution_state_impl& st_;
     diagnostics& diag_;
 
-    execute_op(
+    execute_impl_op(
         channel<Stream>& chan,
         resultset_encoding enc,
         execution_state_impl& st,
@@ -94,7 +93,7 @@ struct execute_op : boost::asio::coroutine
 }  // namespace boost
 
 template <class Stream>
-void boost::mysql::detail::execute(
+void boost::mysql::detail::execute_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
     results& result,
@@ -141,7 +140,7 @@ void boost::mysql::detail::execute(
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_execute(
+boost::mysql::detail::async_execute_impl(
     channel<Stream>& chan,
     resultset_encoding enc,
     results& result,
@@ -150,7 +149,7 @@ boost::mysql::detail::async_execute(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        execute_op<Stream>(chan, enc, results_access::get_impl(result), diag),
+        execute_impl_op<Stream>(chan, enc, results_access::get_impl(result), diag),
         token,
         chan
     );

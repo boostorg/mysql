@@ -8,7 +8,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
 
-#include <boost/mysql/detail/network_algorithms/execute.hpp>
+#include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -38,8 +38,8 @@ struct
     typename netfun_maker::signature execute;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&detail::execute<test_stream>),           "sync" },
-    {netfun_maker::async_errinfo(&detail::async_execute<test_stream>), "async"}
+    {netfun_maker::sync_errc(&detail::execute_impl<test_stream>),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_execute_impl<test_stream>), "async"}
 };
 
 // Verify that we clear any previous result

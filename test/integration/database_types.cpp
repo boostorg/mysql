@@ -65,13 +65,13 @@ struct database_types_fixture : tcp_network_fixture
     void set_time_zone()
     {
         results result;
-        conn.query("SET session time_zone = '+02:00'", result);
+        conn.execute("SET session time_zone = '+02:00'", result);
     }
 
     void set_sql_mode()
     {
         results result;
-        conn.query("SET session sql_mode = 'ALLOW_INVALID_DATES'", result);
+        conn.execute("SET session sql_mode = 'ALLOW_INVALID_DATES'", result);
     }
 
     database_types_fixture()
@@ -663,7 +663,7 @@ BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
         {
             // Execute the query
             results result;
-            conn.query(table.select_sql(), result);
+            conn.execute(table.select_sql(), result);
 
             // Validate the received contents
             validate_meta(result.meta(), table.metas);
@@ -683,7 +683,7 @@ BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
 
             // Execute it with the provided parameters
             results result;
-            conn.execute_statement(stmt, std::make_tuple(), result);
+            conn.execute(stmt.bind(), result);
 
             // Validate the received contents
             validate_meta(result.meta(), table.metas);
@@ -706,18 +706,18 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
 
             // Remove all contents from the table
             results result;
-            conn.query(table.delete_sql(), result);
+            conn.execute(table.delete_sql(), result);
 
             // Insert all the contents again
             boost::mysql::execution_state st;
             for (const auto& row : table.rws)
             {
-                conn.start_statement_execution(insert_stmt, row.begin(), row.end(), st);
+                conn.start_execution(insert_stmt.bind(row.begin(), row.end()), st);
                 BOOST_TEST_REQUIRE(st.complete());
             }
 
             // Query them again and verify the insertion was okay
-            conn.execute_statement(query_stmt, std::make_tuple(), result);
+            conn.execute(query_stmt.bind(), result);
             validate_meta(result.meta(), table.metas);
             table.validate_rows(result.rows());
         }

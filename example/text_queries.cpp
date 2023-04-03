@@ -83,14 +83,14 @@ void main_impl(int argc, char** argv)
     conn.connect(*endpoints.begin(), params);
 
     /**
-     * To issue a SQL query to the database server, use tcp_ssl_connection::query, which takes
-     * the SQL to be executed as parameter and returns a results object by lvalue reference.
-     * Resultset objects contain the retrieved rows, among other info.
-     * We will get all employees working for 'High Growth Startup'.
+     * To issue a SQL query to the database server, use tcp_ssl_connection::execute, passing
+     * a string with the SQL to be executed as first parameter. execute returns a results object by lvalue
+     * reference. Resultset objects contain the retrieved rows, among other info. We will get all employees
+     * working for 'High Growth Startup'.
      */
     const char* sql = "SELECT first_name, last_name, salary FROM employee WHERE company_id = 'HGS'";
     boost::mysql::results result;
-    conn.query(sql, result);
+    conn.execute(sql, result);
 
     // We can access the rows using results::rows
     for (boost::mysql::row_view employee : result.rows())
@@ -101,11 +101,11 @@ void main_impl(int argc, char** argv)
     // We can issue any SQL statement, not only SELECTs. In this case, the returned
     // results will have no fields and no rows
     sql = "UPDATE employee SET salary = 10000 WHERE first_name = 'Underpaid'";
-    conn.query(sql, result);
+    conn.execute(sql, result);
     ASSERT(result.rows().empty());  // UPDATEs don't retrieve rows
 
     // Check we have updated our poor intern salary
-    conn.query("SELECT salary FROM employee WHERE first_name = 'Underpaid'", result);
+    conn.execute("SELECT salary FROM employee WHERE first_name = 'Underpaid'", result);
     double salary = result.rows().at(0).at(0).as_double();
     ASSERT(salary == 10000.0);
 

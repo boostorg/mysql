@@ -65,8 +65,8 @@ BOOST_MYSQL_NETWORK_TEST(connect_error, network_fixture, err_net_samples)
     BOOST_TEST(!conn->is_open());
 }
 
-// Start query
-BOOST_MYSQL_NETWORK_TEST(start_query_success, network_fixture, all_network_samples())
+// Start query (legacy)
+BOOST_MYSQL_NETWORK_TEST(start_query_legacy_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
@@ -76,7 +76,7 @@ BOOST_MYSQL_NETWORK_TEST(start_query_success, network_fixture, all_network_sampl
     validate_2fields_meta(st.meta(), "empty_table");
 }
 
-BOOST_MYSQL_NETWORK_TEST(start_query_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(start_query_legacy_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
 
@@ -85,8 +85,28 @@ BOOST_MYSQL_NETWORK_TEST(start_query_error, network_fixture, err_net_samples)
         .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
-// Query
-BOOST_MYSQL_NETWORK_TEST(query_success, network_fixture, all_network_samples())
+// Start execution (query)
+BOOST_MYSQL_NETWORK_TEST(start_execution_query_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    execution_state st;
+    conn->start_execution("SELECT * FROM empty_table", st).get();
+    BOOST_TEST(st.should_read_rows());
+    validate_2fields_meta(st.meta(), "empty_table");
+}
+
+BOOST_MYSQL_NETWORK_TEST(start_execution_query_error, network_fixture, err_net_samples)
+{
+    setup_and_connect(sample.net);
+
+    execution_state st;
+    conn->start_execution("SELECT field_varchar, field_bad FROM one_row_table", st)
+        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
+}
+
+// Query (legacy)
+BOOST_MYSQL_NETWORK_TEST(query_legacy_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
@@ -97,12 +117,33 @@ BOOST_MYSQL_NETWORK_TEST(query_success, network_fixture, all_network_samples())
     BOOST_TEST(result.meta().size() == 2u);
 }
 
-BOOST_MYSQL_NETWORK_TEST(query_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(query_legacy_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
 
     results result;
     conn->query("SELECT field_varchar, field_bad FROM one_row_table", result)
+        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
+}
+
+// execute (query)
+BOOST_MYSQL_NETWORK_TEST(execute_query_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    results result;
+    conn->execute("SELECT 'hello', 42", result).get();
+    BOOST_TEST(result.rows().size() == 1u);
+    BOOST_TEST(result.rows()[0] == makerow("hello", 42));
+    BOOST_TEST(result.meta().size() == 2u);
+}
+
+BOOST_MYSQL_NETWORK_TEST(execute_query_error, network_fixture, err_net_samples)
+{
+    setup_and_connect(sample.net);
+
+    results result;
+    conn->execute("SELECT field_varchar, field_bad FROM one_row_table", result)
         .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
@@ -123,8 +164,8 @@ BOOST_MYSQL_NETWORK_TEST(prepare_statement_error, network_fixture, err_net_sampl
         .validate_error(common_server_errc::er_no_such_table, {"table", "doesn't exist", "bad_table"});
 }
 
-// Start statement execution (iterator version)
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_success, network_fixture, all_network_samples())
+// Start statement execution (legacy, iterator)
+BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_it_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
@@ -139,7 +180,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_success, network_fixture, 
     BOOST_TEST(st.should_read_rows());
 }
 
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_it_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -158,8 +199,28 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_it_error, network_fixture, er
         );
 }
 
-// Start statement execution (tuple version)
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_success, network_fixture, all_network_samples())
+// Start execution (statement, iterator). No error spotcheck, since it's the same underlying function
+BOOST_MYSQL_NETWORK_TEST(start_execution_stmt_it_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    // Prepare
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Execute
+    execution_state st;
+    std::forward_list<field_view> params{field_view("item"), field_view(42)};
+    conn->start_execution(stmt.bind(params.cbegin(), params.cend()), st).validate_no_error();
+    validate_2fields_meta(st.meta(), "empty_table");
+    BOOST_TEST(st.should_read_rows());
+}
+
+// Start statement execution (legacy, tuple)
+BOOST_MYSQL_NETWORK_TEST(
+    start_statement_execution_legacy_tuple_success,
+    network_fixture,
+    all_network_samples()
+)
 {
     setup_and_connect(sample.net);
 
@@ -173,7 +234,7 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_success, network_fixtur
     BOOST_TEST(st.should_read_rows());
 }
 
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_tuple_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -191,8 +252,23 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_tuple_error, network_fixture,
         );
 }
 
-// Execute statement
-BOOST_MYSQL_NETWORK_TEST(execute_statement_success, network_fixture, all_network_samples())
+// start execution (statement, tuple). No error spotcheck since it's the same underlying fn
+BOOST_MYSQL_NETWORK_TEST(start_execution_statement_tuple_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    // Prepare
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Execute
+    execution_state st;
+    conn->start_execution(stmt.bind(field_view(42), field_view(40)), st).validate_no_error();
+    validate_2fields_meta(st.meta(), "empty_table");
+    BOOST_TEST(st.should_read_rows());
+}
+
+// Execute statement (legacy)
+BOOST_MYSQL_NETWORK_TEST(execute_statement_legacy_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
 
@@ -205,7 +281,7 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_success, network_fixture, all_network
     BOOST_TEST(result.rows().size() == 0u);
 }
 
-BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(execute_statement_legacy_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -221,6 +297,35 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_sampl
             common_server_errc::er_truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
         );
+}
+
+// Execute (statement, iterator). No error spotcheck since it's the same underlying fn
+BOOST_MYSQL_NETWORK_TEST(execute_statement_iterator_success, network_fixture, err_net_samples)
+{
+    setup_and_connect(sample.net);
+
+    // Prepare
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Execute
+    results result;
+    std::forward_list<field_view> params{field_view("item"), field_view(42)};
+    conn->execute(stmt.bind(params.cbegin(), params.cend()), result).validate_no_error();
+    BOOST_TEST(result.rows().size() == 0u);
+}
+
+// Execute (statement, tuple). No error spotcheck since it's the same underlying fn
+BOOST_MYSQL_NETWORK_TEST(execute_statement_tuple_success, network_fixture, err_net_samples)
+{
+    setup_and_connect(sample.net);
+
+    // Prepare
+    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Execute
+    results result;
+    conn->execute(stmt.bind(field_view("item"), field_view(42)), result).validate_no_error();
+    BOOST_TEST(result.rows().size() == 0u);
 }
 
 // Close statement: no server error spotcheck

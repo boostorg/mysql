@@ -45,19 +45,29 @@ template <class Stream>
 struct function_table
 {
     using conn_type = connection<Stream>;
+    using stmt_tuple = bound_statement_tuple<std::tuple<field_view, field_view>>;
+    using stmt_it = bound_statement_iterator_range<fv_list_it>;
 
     using connect_sig = network_result<
         void>(conn_type&, const typename Stream::lowest_layer_type::endpoint_type&, const handshake_params&);
     using handshake_sig = network_result<void>(conn_type&, const handshake_params&);
-    using query_sig = network_result<void>(conn_type&, string_view, results&);
-    using start_query_sig = network_result<void>(conn_type&, string_view, execution_state&);
+    using query_legacy_sig = network_result<void>(conn_type&, string_view, results&);
+    using start_query_legacy_sig = network_result<void>(conn_type&, string_view, execution_state&);
     using prepare_statement_sig = network_result<statement>(conn_type&, string_view);
-    using execute_stmt_sig = network_result<
+    using execute_stmt_legacy_sig = network_result<
         void>(conn_type&, const statement&, const std::tuple<field_view, field_view>&, results&);
-    using start_stmt_execution_tuple_sig = network_result<
+    using start_stmt_execution_legacy_tuple_sig = network_result<
         void>(conn_type&, const statement&, const std::tuple<field_view, field_view>&, execution_state&);
-    using start_stmt_execution_it_sig =
+    using start_stmt_execution_legacy_it_sig =
         network_result<void>(conn_type&, const statement&, fv_list_it, fv_list_it, execution_state&);
+    using execute_query_sig = network_result<void>(conn_type&, const string_view&, results&);
+    using execute_stmt_tuple_sig = network_result<void>(conn_type&, const stmt_tuple&, results&);
+    using execute_stmt_it_sig = network_result<void>(conn_type&, const stmt_it&, results&);
+    using start_execution_query_sig = network_result<void>(conn_type&, const string_view&, execution_state&);
+    using start_execution_stmt_tuple_sig =
+        network_result<void>(conn_type&, const stmt_tuple&, execution_state&);
+    using start_execution_stmt_it_sig = network_result<void>(conn_type&, const stmt_it&, execution_state&);
+
     using close_stmt_sig = network_result<void>(conn_type&, const statement&);
     using read_resultset_head_sig = network_result<void>(conn_type&, execution_state&);
     using read_some_rows_sig = network_result<rows_view>(conn_type&, execution_state&);
@@ -67,12 +77,18 @@ struct function_table
 
     std::function<connect_sig> connect;
     std::function<handshake_sig> handshake;
-    std::function<query_sig> query;
-    std::function<start_query_sig> start_query;
+    std::function<query_legacy_sig> query_legacy;
+    std::function<start_query_legacy_sig> start_query_legacy;
     std::function<prepare_statement_sig> prepare_statement;
-    std::function<execute_stmt_sig> execute_stmt;
-    std::function<start_stmt_execution_tuple_sig> start_stmt_execution_tuple;
-    std::function<start_stmt_execution_it_sig> start_stmt_execution_it;
+    std::function<execute_stmt_legacy_sig> execute_stmt_legacy;
+    std::function<start_stmt_execution_legacy_tuple_sig> start_stmt_execution_legacy_tuple;
+    std::function<start_stmt_execution_legacy_it_sig> start_stmt_execution_legacy_it;
+    std::function<execute_query_sig> execute_query;
+    std::function<execute_stmt_tuple_sig> execute_stmt_tuple;
+    std::function<execute_stmt_it_sig> execute_stmt_it;
+    std::function<start_execution_query_sig> start_execution_query;
+    std::function<start_execution_stmt_tuple_sig> start_execution_stmt_tuple;
+    std::function<start_execution_stmt_it_sig> start_execution_stmt_it;
     std::function<close_stmt_sig> close_stmt;
     std::function<read_resultset_head_sig> read_resultset_head;
     std::function<read_some_rows_sig> read_some_rows;
@@ -96,12 +112,18 @@ function_table<Stream> create_sync_table()
     return function_table<Stream>{
         Netmaker::template type<typename table_t::connect_sig>::call(&conn_type::connect),
         Netmaker::template type<typename table_t::handshake_sig>::call(&conn_type::handshake),
-        Netmaker::template type<typename table_t::query_sig>::call(&conn_type::query),
-        Netmaker::template type<typename table_t::start_query_sig>::call(&conn_type::start_query),
+        Netmaker::template type<typename table_t::query_legacy_sig>::call(&conn_type::query),
+        Netmaker::template type<typename table_t::start_query_legacy_sig>::call(&conn_type::start_query),
         Netmaker::template type<typename table_t::prepare_statement_sig>::call(&conn_type::prepare_statement),
-        Netmaker::template type<typename table_t::execute_stmt_sig>::call(&conn_type::execute_statement),
-        Netmaker::template type<typename table_t::start_stmt_execution_tuple_sig>::call(&conn_type::start_statement_execution),
-        Netmaker::template type<typename table_t::start_stmt_execution_it_sig>::call(&conn_type::start_statement_execution),
+        Netmaker::template type<typename table_t::execute_stmt_legacy_sig>::call(&conn_type::execute_statement),
+        Netmaker::template type<typename table_t::start_stmt_execution_legacy_tuple_sig>::call(&conn_type::start_statement_execution),
+        Netmaker::template type<typename table_t::start_stmt_execution_legacy_it_sig>::call(&conn_type::start_statement_execution),
+        Netmaker::template type<typename table_t::execute_query_sig>::call(&conn_type::execute),
+        Netmaker::template type<typename table_t::execute_stmt_tuple_sig>::call(&conn_type::execute),
+        Netmaker::template type<typename table_t::execute_stmt_it_sig>::call(&conn_type::execute),
+        Netmaker::template type<typename table_t::start_execution_query_sig>::call(&conn_type::start_execution),
+        Netmaker::template type<typename table_t::start_execution_stmt_tuple_sig>::call(&conn_type::start_execution),
+        Netmaker::template type<typename table_t::start_execution_stmt_it_sig>::call(&conn_type::start_execution),
         Netmaker::template type<typename table_t::close_stmt_sig>::call(&conn_type::close_statement),
         Netmaker::template type<typename table_t::read_resultset_head_sig>::call(&conn_type::read_resultset_head),
         Netmaker::template type<typename table_t::read_some_rows_sig>::call(&conn_type::read_some_rows),
@@ -123,12 +145,18 @@ function_table<Stream> create_async_table()
     return function_table<Stream>{
         Netmaker::template type<typename table_t::connect_sig>::call(&conn_type::async_connect),
         Netmaker::template type<typename table_t::handshake_sig>::call(&conn_type::async_handshake),
-        Netmaker::template type<typename table_t::query_sig>::call(&conn_type::async_query),
-        Netmaker::template type<typename table_t::start_query_sig>::call(&conn_type::async_start_query),
+        Netmaker::template type<typename table_t::query_legacy_sig>::call(&conn_type::async_query),
+        Netmaker::template type<typename table_t::start_query_legacy_sig>::call(&conn_type::async_start_query),
         Netmaker::template type<typename table_t::prepare_statement_sig>::call(&conn_type::async_prepare_statement),
-        Netmaker::template type<typename table_t::execute_stmt_sig>::call(&conn_type::async_execute_statement),
-        Netmaker::template type<typename table_t::start_stmt_execution_tuple_sig>::call(&conn_type::async_start_statement_execution),
-        Netmaker::template type<typename table_t::start_stmt_execution_it_sig>::call(&conn_type::async_start_statement_execution),
+        Netmaker::template type<typename table_t::execute_stmt_legacy_sig>::call(&conn_type::async_execute_statement),
+        Netmaker::template type<typename table_t::start_stmt_execution_legacy_tuple_sig>::call(&conn_type::async_start_statement_execution),
+        Netmaker::template type<typename table_t::start_stmt_execution_legacy_it_sig>::call(&conn_type::async_start_statement_execution),
+        Netmaker::template type<typename table_t::execute_query_sig>::call(&conn_type::async_execute),
+        Netmaker::template type<typename table_t::execute_stmt_tuple_sig>::call(&conn_type::async_execute),
+        Netmaker::template type<typename table_t::execute_stmt_it_sig>::call(&conn_type::async_execute),
+        Netmaker::template type<typename table_t::start_execution_query_sig>::call(&conn_type::async_start_execution),
+        Netmaker::template type<typename table_t::start_execution_stmt_tuple_sig>::call(&conn_type::async_start_execution),
+        Netmaker::template type<typename table_t::start_execution_stmt_it_sig>::call(&conn_type::async_start_execution),
         Netmaker::template type<typename table_t::close_stmt_sig>::call(&conn_type::async_close_statement),
         Netmaker::template type<typename table_t::read_resultset_head_sig>::call(&conn_type::async_read_resultset_head),
         Netmaker::template type<typename table_t::read_some_rows_sig>::call(&conn_type::async_read_some_rows),
@@ -220,11 +248,11 @@ public:
     }
     network_result<void> query(string_view query, results& result) override
     {
-        return table_.query(conn_, query, result);
+        return table_.query_legacy(conn_, query, result);
     }
     network_result<void> start_query(string_view query, execution_state& st) override
     {
-        return table_.start_query(conn_, query, st);
+        return table_.start_query_legacy(conn_, query, st);
     }
     network_result<statement> prepare_statement(string_view stmt_sql) override
     {
@@ -237,7 +265,7 @@ public:
         results& result
     ) override
     {
-        return table_.execute_stmt(conn_, stmt, std::make_tuple(param1, param2), result);
+        return table_.execute_stmt_legacy(conn_, stmt, std::make_tuple(param1, param2), result);
     }
     network_result<void> start_statement_execution(
         const statement& stmt,
@@ -246,7 +274,7 @@ public:
         execution_state& st
     ) override
     {
-        return table_.start_stmt_execution_tuple(conn_, stmt, std::make_tuple(param1, param2), st);
+        return table_.start_stmt_execution_legacy_tuple(conn_, stmt, std::make_tuple(param1, param2), st);
     }
     network_result<void> start_statement_execution(
         const statement& stmt,
@@ -255,8 +283,41 @@ public:
         execution_state& st
     ) override
     {
-        return table_.start_stmt_execution_it(conn_, stmt, params_first, params_last, st);
+        return table_.start_stmt_execution_legacy_it(conn_, stmt, params_first, params_last, st);
     }
+
+    network_result<void> execute(string_view query, results& result) override
+    {
+        return table_.execute_query(conn_, query, result);
+    }
+    network_result<void> execute(
+        bound_statement_tuple<std::tuple<field_view, field_view>> req,
+        results& result
+    ) override
+    {
+        return table_.execute_stmt_tuple(conn_, req, result);
+    }
+    network_result<void> execute(bound_statement_iterator_range<fv_list_it> req, results& result) override
+    {
+        return table_.execute_stmt_it(conn_, req, result);
+    }
+    network_result<void> start_execution(string_view query, execution_state& st) override
+    {
+        return table_.start_execution_query(conn_, query, st);
+    }
+    network_result<void> start_execution(
+        bound_statement_tuple<std::tuple<field_view, field_view>> req,
+        execution_state& st
+    ) override
+    {
+        return table_.start_execution_stmt_tuple(conn_, req, st);
+    }
+    network_result<void> start_execution(bound_statement_iterator_range<fv_list_it> req, execution_state& st)
+        override
+    {
+        return table_.start_execution_stmt_it(conn_, req, st);
+    }
+
     network_result<void> close_statement(statement& stmt) override { return table_.close_stmt(conn_, stmt); }
     network_result<void> read_resultset_head(execution_state& st) override
     {

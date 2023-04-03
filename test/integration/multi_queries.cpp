@@ -31,7 +31,7 @@ BOOST_FIXTURE_TEST_CASE(empty_results, tcp_network_fixture)
     start_transaction();
 
     results result;
-    conn.query(
+    conn.execute(
         R"%(
             INSERT INTO inserts_table (field_varchar) VALUES ('abc');
             INSERT INTO inserts_table (field_varchar) VALUES ('def');
@@ -75,7 +75,7 @@ BOOST_FIXTURE_TEST_CASE(data_results, tcp_network_fixture)
     start_transaction();
 
     results result;
-    conn.query(
+    conn.execute(
         R"%(
             SELECT * FROM one_row_table;
             SELECT * FROM empty_table;
@@ -120,7 +120,7 @@ BOOST_FIXTURE_TEST_CASE(error_not_enabled, tcp_network_fixture)
     error_code err;
     diagnostics diag;
 
-    conn.query("SELECT 1; SELECT 2", result, err, diag);
+    conn.execute("SELECT 1; SELECT 2", result, err, diag);
     BOOST_TEST(err == common_server_errc::er_parse_error);
     validate_string_contains(diag.server_message(), {"you have an error in your sql syntax"});
 }

@@ -50,7 +50,7 @@ public:
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection's `Stream` does not support SSL.
      * \param multi_queries Whether to enable support for executing semicolon-separated
-     * queries using \ref connection::query. Disabled by default.
+     * queries using \ref connection::execute and \ref connection::start_execution. Disabled by default.
      */
     handshake_params(
         string_view username,

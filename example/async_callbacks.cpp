@@ -85,7 +85,7 @@ public:
 
     void query_employees()
     {
-        conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag, [this](error_code err) {
+        conn.async_execute(stmt.bind(company_id), result, diag, [this](error_code err) {
             boost::mysql::throw_on_error(err, diag);
             for (boost::mysql::row_view employee : result.rows())
             {

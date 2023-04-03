@@ -5,13 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_START_EXECUTION_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_START_EXECUTION_HPP
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_START_EXECUTION_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_START_EXECUTION_IMPL_HPP
 
 #pragma once
 
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
+#include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 #include <boost/asio/coroutine.hpp>
@@ -21,14 +21,14 @@ namespace mysql {
 namespace detail {
 
 template <class Stream>
-struct start_execution_op : boost::asio::coroutine
+struct start_execution_impl_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     resultset_encoding enc_;
     execution_state_impl& st_;
     diagnostics& diag_;
 
-    start_execution_op(
+    start_execution_impl_op(
         channel<Stream>& chan,
         resultset_encoding enc,
         execution_state_impl& st,
@@ -73,7 +73,7 @@ struct start_execution_op : boost::asio::coroutine
 }  // namespace boost
 
 template <class Stream>
-void boost::mysql::detail::start_execution(
+void boost::mysql::detail::start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
     execution_state& st,
@@ -100,7 +100,7 @@ void boost::mysql::detail::start_execution(
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_start_execution(
+boost::mysql::detail::async_start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
     execution_state& st,
@@ -109,7 +109,7 @@ boost::mysql::detail::async_start_execution(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        start_execution_op<Stream>(channel, enc, execution_state_access::get_impl(st), diag),
+        start_execution_impl_op<Stream>(channel, enc, execution_state_access::get_impl(st), diag),
         token,
         channel
     );
