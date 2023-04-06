@@ -7,6 +7,7 @@
 
 //[example_stored_procedures
 
+#include <boost/mysql/basic_results.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -15,6 +16,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/describe/class.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <iostream>
@@ -39,6 +41,7 @@
  * In the real world, flow would be much more complex, but this is enough for an example.
  */
 
+using boost::mysql::empty;
 using boost::mysql::resultset_view;
 using boost::mysql::row_view;
 using boost::mysql::rows_view;
@@ -222,6 +225,31 @@ cmdline_args parse_cmdline_args(int argc, char** argv)
     };
 }
 
+// Types for the received rows
+struct order
+{
+    std::int64_t id;
+    std::string status;
+};
+BOOST_DESCRIBE_STRUCT(order, (), (id, status));
+
+struct order_item
+{
+    std::int64_t id;
+    std::int64_t quantity;
+    std::int64_t unit_price;
+};
+BOOST_DESCRIBE_STRUCT(order_item, (), (id, quantity, unit_price));
+
+struct product
+{
+    std::int64_t id;
+    std::string short_name;
+    std::string description;
+    std::int64_t price;
+};
+BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
+
 /**
  * We'll be using the variant using visit().
  * This visitor executes a sub-command and prints the results to stdout.
@@ -231,35 +259,34 @@ struct visitor
     boost::mysql::tcp_ssl_connection& conn;
 
     // Prints the details of an order to stdout. An order here is represented as a row
-    static void print_order(row_view order)
+    static void print_order(const order& ord)
     {
-        std::cout << "Order: id=" << order.at(0) << ", status=" << order.at(1) << '\n';
+        std::cout << "Order: id=" << ord.id << ", status=" << ord.status << '\n';
     }
 
     // Prints the details of an order line item, again represented as a row
-    static void print_line_item(row_view item)
+    static void print_line_item(const order_item& item)
     {
-        std::cout << "  Line item: id=" << item.at(0) << ", quantity=" << item.at(1)
-                  << ", unit_price=" << item.at(2).as_int64() / 100.0 << "$\n";
+        std::cout << "  Line item: id=" << item.id << ", quantity=" << item.quantity
+                  << ", unit_price=" << item.unit_price / 100.0 << "$\n";
     }
 
     // Procedures that manipulate orders return two resultsets: one describing
     // the order and another with the line items the order has. Some of them
     // return only the order resultset. These functions print order details to stdout
-    static void print_order_with_items(resultset_view order_resultset, resultset_view line_items_resultset)
+    static void print_order_with_items(boost::span<const order> ord, boost::span<const order_item> items)
     {
         // First resultset: order information. Always a single row
-        print_order(order_resultset.rows().at(0));
+        print_order(ord[0]);
 
         // Second resultset: all order line items
-        rows_view line_items = line_items_resultset.rows();
-        if (line_items.empty())
+        if (items.empty())
         {
             std::cout << "No line items\n";
         }
         else
         {
-            for (row_view item : line_items)
+            for (const auto& item : items)
             {
                 print_line_item(item);
             }
@@ -272,16 +299,15 @@ struct visitor
         // We need to pass user-supplied params to CALL, so we use a statement
         auto stmt = conn.prepare_statement("CALL get_products(?)");
 
-        boost::mysql::results result;
-        conn.execute(stmt.bind(args.search), result);
-        auto products = result.front();
+        boost::mysql::basic_results<product, empty> products;
+        conn.execute(stmt.bind(args.search), products);
         std::cout << "Your search returned the following products:\n";
-        for (auto product : products.rows())
+        for (const product& prod : products.rows())
         {
-            std::cout << "* ID: " << product.at(0) << '\n'
-                      << "  Short name: " << product.at(1) << '\n'
-                      << "  Description: " << product.at(2) << '\n'
-                      << "  Price: " << product.at(3).as_int64() / 100.0 << "$" << std::endl;
+            std::cout << "* ID: " << prod.id << '\n'
+                      << "  Short name: " << prod.short_name << '\n'
+                      << "  Description: " << prod.description << '\n'
+                      << "  Price: " << prod.price / 100.0 << "$" << std::endl;
         }
         std::cout << std::endl;
     }
@@ -290,13 +316,13 @@ struct visitor
     void operator()(const create_order_args&) const
     {
         // Since create_order doesn't have user-supplied params, we can use a text query
-        boost::mysql::results result;
+        boost::mysql::basic_results<order, empty> result;
         conn.execute("CALL create_order()", result);
 
         // Print the result to stdout. create_order() returns a resultset for
         // the newly created order, with only 1 row.
         std::cout << "Created order\n";
-        print_order(result.at(0).rows().at(0));
+        print_order(result.rows()[0]);
     }
 
     // get-order <order-id>: retrieves order details
@@ -306,7 +332,7 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL get_order(?)");
 
         // Execute the statement
-        boost::mysql::results result;
+        boost::mysql::basic_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.order_id), result);
 
         // Print the result to stdout. get_order() returns a resultset for
@@ -314,28 +340,27 @@ struct visitor
         // be found, get_order() raises an error using SIGNAL, which will make
         // execute() fail with an exception.
         std::cout << "Retrieved order\n";
-        print_order_with_items(result.at(0), result.at(1));
+        print_order_with_items(result.rows<0>(), result.rows<1>());
     }
 
     // get-orders: lists all orders
     void operator()(const get_orders_args&) const
     {
         // Since get_orders doesn't have user-supplied params, we can use a text query
-        boost::mysql::results result;
+        boost::mysql::basic_results<order, empty> result;
         conn.execute("CALL get_orders()", result);
 
         // Print results to stdout. get_orders() succeeds even if no order is found.
         // get_orders() only lists orders, not line items.
-        rows_view orders = result.front().rows();
-        if (orders.empty())
+        if (result.rows().empty())
         {
             std::cout << "No orders found" << std::endl;
         }
         else
         {
-            for (row_view order : result.front().rows())
+            for (const order& ord : result.rows())
             {
-                print_order(order);
+                print_order(ord);
             }
         }
     }
@@ -350,16 +375,17 @@ struct visitor
 
         // We still have to pass a value to the 4th argument, even if it's an OUT parameter.
         // The value will be ignored, so we can pass nullptr.
-        boost::mysql::results result;
+        using out_params_t = std::tuple<std::int64_t>;
+        boost::mysql::basic_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, args.product_id, args.quantity, nullptr), result);
 
         // We can use results::out_params() to access the extra resultset containing
         // the OUT parameter
-        auto new_line_item_id = result.out_params().at(0).as_int64();
+        auto new_line_item_id = std::get<0>(*result.out_params());
 
         // Print the results to stdout
         std::cout << "Created line item: id=" << new_line_item_id << "\n";
-        print_order_with_items(result.at(0), result.at(1));
+        print_order_with_items(result.rows<0>(), result.rows<1>());
     }
 
     // remove-line-item <line-item-id>: removes an item from an order
@@ -369,12 +395,12 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL remove_line_item(?)");
 
         // Run the procedure
-        boost::mysql::results result;
+        boost::mysql::basic_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.line_item_id), result);
 
         // Print results to stdout
         std::cout << "Removed line item from order\n";
-        print_order_with_items(result.at(0), result.at(1));
+        print_order_with_items(result.rows<0>(), result.rows<1>());
     }
 
     // checkout-order <order-id>: marks an order as ready for checkout

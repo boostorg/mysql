@@ -183,10 +183,10 @@ boost::mysql::connection<Stream>::async_query(
 }
 
 template <class Stream>
-template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
 void boost::mysql::connection<Stream>::execute(
     const ExecutionRequest& req,
-    results& result,
+    ResultsType& result,
     error_code& err,
     diagnostics& diag
 )
@@ -196,8 +196,8 @@ void boost::mysql::connection<Stream>::execute(
 }
 
 template <class Stream>
-template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
-void boost::mysql::connection<Stream>::execute(const ExecutionRequest& req, results& result)
+template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
+void boost::mysql::connection<Stream>::execute(const ExecutionRequest& req, ResultsType& result)
 {
     detail::error_block blk;
     detail::execute(get_channel(), req, result, blk.err, blk.diag);
@@ -207,11 +207,12 @@ void boost::mysql::connection<Stream>::execute(const ExecutionRequest& req, resu
 template <class Stream>
 template <
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+    class ResultsType,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_execute(
     ExecutionRequest&& req,
-    results& result,
+    ResultsType& result,
     diagnostics& diag,
     CompletionToken&& token
 )

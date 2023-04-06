@@ -186,13 +186,10 @@ public:
 #endif
 
 private:
-    const detail::execution_state_impl* st_{};
+    const detail::results_impl* st_{};
     std::size_t index_{};
 
-    resultset_view(const detail::execution_state_impl& st, std::size_t index) noexcept
-        : st_(&st), index_(index)
-    {
-    }
+    resultset_view(const detail::results_impl& st, std::size_t index) noexcept : st_(&st), index_(index) {}
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::resultset_view_access;

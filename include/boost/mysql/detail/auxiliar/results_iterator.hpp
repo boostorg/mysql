@@ -19,7 +19,7 @@ namespace detail {
 
 class results_iterator
 {
-    const execution_state_impl* self_{};
+    const results_impl* self_{};
     std::size_t index_{};
 
 public:
@@ -30,10 +30,7 @@ public:
     using iterator_category = std::random_access_iterator_tag;
 
     results_iterator() = default;
-    results_iterator(const execution_state_impl* self, std::size_t index) noexcept
-        : self_(self), index_(index)
-    {
-    }
+    results_iterator(const results_impl* self, std::size_t index) noexcept : self_(self), index_(index) {}
 
     results_iterator& operator++() noexcept
     {
@@ -89,7 +86,7 @@ public:
     bool operator>=(results_iterator rhs) const noexcept { return index_ >= rhs.index_; }
 
     std::size_t index() const noexcept { return index_; }
-    const execution_state_impl* obj() const noexcept { return self_; }
+    const results_impl* obj() const noexcept { return self_; }
 };
 
 inline results_iterator operator+(std::ptrdiff_t n, results_iterator it) noexcept { return it + n; }

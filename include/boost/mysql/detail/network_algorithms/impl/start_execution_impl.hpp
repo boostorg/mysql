@@ -25,13 +25,13 @@ struct start_execution_impl_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     resultset_encoding enc_;
-    execution_state_impl& st_;
+    execution_state_iface& st_;
     diagnostics& diag_;
 
     start_execution_impl_op(
         channel<Stream>& chan,
         resultset_encoding enc,
-        execution_state_impl& st,
+        execution_state_iface& st,
         diagnostics& diag
     )
         : chan_(chan), enc_(enc), st_(st), diag_(diag)
@@ -53,7 +53,7 @@ struct start_execution_impl_op : boost::asio::coroutine
         {
             // Setup
             diag_.clear();
-            st_.reset(enc_, &chan_.shared_fields());
+            st_.reset(enc_);
 
             // Send the execution request (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
@@ -76,24 +76,22 @@ template <class Stream>
 void boost::mysql::detail::start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    execution_state& st,
+    execution_state_iface& st,
     error_code& err,
     diagnostics& diag
 )
 {
     // Setup
-    auto& impl = execution_state_access::get_impl(st);
     diag.clear();
-
-    impl.reset(enc, &channel.shared_fields());
+    st.reset(enc);
 
     // Send the execution request (already serialized at this point)
-    channel.write(channel.shared_buffer(), impl.sequence_number(), err);
+    channel.write(channel.shared_buffer(), st.sequence_number(), err);
     if (err)
         return;
 
     // Read the first resultset's head
-    read_resultset_head(channel, impl, err, diag);
+    read_resultset_head(channel, st, err, diag);
     if (err)
         return;
 }
@@ -103,13 +101,13 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    execution_state& st,
+    execution_state_iface& st,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        start_execution_impl_op<Stream>(channel, enc, execution_state_access::get_impl(st), diag),
+        start_execution_impl_op<Stream>(channel, enc, st, diag),
         token,
         channel
     );

@@ -24,11 +24,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
 void execute(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    results& output,
+    ResultsType& output,
     error_code& err,
     diagnostics& diag
 );
@@ -36,12 +36,13 @@ void execute(
 template <
     class Stream,
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+    class ResultsType,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    results& output,
+    ResultsType& output,
     diagnostics& diag,
     CompletionToken&& token
 );

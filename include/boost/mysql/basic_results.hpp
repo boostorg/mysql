@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_RESULTS_HPP
-#define BOOST_MYSQL_RESULTS_HPP
+#ifndef BOOST_MYSQL_BASIC_RESULTS_HPP
+#define BOOST_MYSQL_BASIC_RESULTS_HPP
 
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
@@ -20,53 +20,27 @@
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
+#include <boost/describe/class.hpp>
+
 #include <cassert>
+#include <cstddef>
 #include <stdexcept>
 
 namespace boost {
 namespace mysql {
 
-/**
- * \brief Holds the results of a SQL query.
- * \details
- * This object can store the results of single and multi resultset queries.
- * For the former, you use \ref meta, \ref rows, \ref affected_rows and so on.
- * For the latter, this class is a random-access collection of \ref resultset objects.
- * \n
- * \par Thread safety
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
- */
-class results
+// TODO: this does not belong here
+struct empty
+{
+};
+BOOST_DESCRIBE_STRUCT(empty, (), ())
+
+template <class... RowType>
+class basic_results
 {
 public:
-#ifdef BOOST_MYSQL_DOXYGEN
-    /**
-     * \brief A random access iterator to an element.
-     * \details The exact type of the iterator is unspecified.
-     */
-    using iterator = __see_below__;
-#else
-    using iterator = detail::results_iterator;
-#endif
-
-    /// \copydoc iterator
-    using const_iterator = iterator;
-
-    /// A type that can hold elements in this collection with value semantics.
-    using value_type = resultset;
-
-    /// The reference type.
-    using reference = resultset_view;
-
-    /// \copydoc reference
-    using const_reference = resultset_view;
-
-    /// An unsigned integer type to represent sizes.
-    using size_type = std::size_t;
-
-    /// A signed integer type used to represent differences.
-    using difference_type = std::ptrdiff_t;
+    template <std::size_t I>
+    using row_type = boost::span<const typename std::tuple_element<I, std::tuple<RowType...>>::type>;
 
     /**
      * \brief Default constructor.
@@ -75,14 +49,14 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    results() = default;
+    basic_results() = default;
 
     /**
      * \brief Copy constructor.
      * \par Exception safety
      * Strong guarantee. Internal allocations may throw.
      */
-    results(const results& other) = default;
+    basic_results(const basic_results& other) = default;
 
     /**
      * \brief Move constructor.
@@ -93,7 +67,7 @@ public:
      * View objects obtained from `other` using \ref rows and \ref meta remain valid.
      * Any other views and iterators referencing `other` are invalidated.
      */
-    results(results&& other) = default;
+    basic_results(basic_results&& other) = default;
 
     /**
      * \brief Copy assignment.
@@ -103,7 +77,7 @@ public:
      * \par Object lifetimes
      * Views and iterators referencing `*this` are invalidated.
      */
-    results& operator=(const results& other) = default;
+    basic_results& operator=(const basic_results& other) = default;
 
     /**
      * \brief Move assignment.
@@ -115,10 +89,10 @@ public:
      * Any other views and iterators referencing `other` are invalidated. Views and iterators
      * referencing `*this` are invalidated.
      */
-    results& operator=(results&& other) = default;
+    basic_results& operator=(basic_results&& other) = default;
 
     /// Destructor
-    ~results() = default;
+    ~basic_results() = default;
 
     /**
      * \brief Returns whether the object holds a valid result.
@@ -154,10 +128,11 @@ public:
      * \par Complexity
      * Constant.
      */
-    rows_view rows() const noexcept
+    template <std::size_t I = 0>
+    row_type<I> rows() const noexcept
     {
         assert(has_value());
-        return impl_.get_rows(0);
+        return impl_.template get_rows<I>();
     }
 
     /**
@@ -183,10 +158,12 @@ public:
      * \par Complexity
      * Constant.
      */
+    template <std::size_t I = 0>
     metadata_collection_view meta() const noexcept
     {
+        static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_meta(0);
+        return impl_.get_meta(I);
     }
 
     /**
@@ -204,10 +181,12 @@ public:
      * \par Complexity
      * Constant.
      */
+    template <std::size_t I = 0>
     std::uint64_t affected_rows() const noexcept
     {
+        static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_affected_rows(0);
+        return impl_.get_affected_rows(I);
     }
 
     /**
@@ -225,10 +204,12 @@ public:
      * \par Complexity
      * Constant.
      */
+    template <std::size_t I = 0>
     std::uint64_t last_insert_id() const noexcept
     {
+        static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_last_insert_id(0);
+        return impl_.get_last_insert_id(I);
     }
 
     /**
@@ -246,10 +227,12 @@ public:
      * \par Complexity
      * Constant.
      */
+    template <std::size_t I = 0>
     unsigned warning_count() const noexcept
     {
+        static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_warning_count(0);
+        return impl_.get_warning_count(I);
     }
 
     /**
@@ -277,170 +260,12 @@ public:
      * \par Complexity
      * Constant.
      */
+    template <std::size_t I = 0>
     string_view info() const noexcept
     {
+        static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_info(0);
-    }
-
-    /**
-     * \brief Returns an iterator pointing to the first resultset that this object contains.
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * The returned iterator and any reference obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate iterators.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    iterator begin() const noexcept
-    {
-        assert(has_value());
-        return iterator(&impl_, 0);
-    }
-
-    /**
-     * \brief Returns an iterator pointing to one-past-the-last resultset that this object contains.
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * The returned iterator and any reference obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate iterators.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    iterator end() const noexcept
-    {
-        assert(has_value());
-        return iterator(&impl_, size());
-    }
-
-    /**
-     * \brief Returns the i-th resultset or throws an exception.
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * Strong guranatee. Throws on invalid input.
-     * \throws std::out_of_range `i >= this->size()`
-     *
-     * \par Object lifetimes
-     * The returned reference and any other references obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate references.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    inline resultset_view at(std::size_t i) const
-    {
-        assert(has_value());
-        if (i >= size())
-            throw std::out_of_range("results::at: out of range");
-        return detail::resultset_view_access::construct(impl_, i);
-    }
-
-    /**
-     * \brief Returns the i-th resultset (unchecked access).
-     * \par Preconditions
-     * `this->has_value() == true && i < this->size()`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * The returned reference and any other references obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate references.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    resultset_view operator[](std::size_t i) const noexcept
-    {
-        assert(has_value());
-        assert(i < size());
-        return detail::resultset_view_access::construct(impl_, i);
-    }
-
-    /**
-     * \brief Returns the first resultset.
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * The returned reference and any other references obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate references.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    resultset_view front() const noexcept { return (*this)[0]; }
-
-    /**
-     * \brief Returns the last resultset.
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * The returned reference and any other references obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate references.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    resultset_view back() const noexcept { return (*this)[size() - 1]; }
-
-    /**
-     * \brief Returns whether the collection contains any resultset.
-     * \details
-     * This function is provided for compatibility with standard collections,
-     * and always returns false, since any valid `results` contains at least one resultset.
-     *
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    bool empty() const noexcept
-    {
-        assert(has_value());
-        return false;
-    }
-
-    /**
-     * \brief Returns the number of resultsets that this collection contains.
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Complexity
-     * Constant.
-     */
-    std::size_t size() const noexcept
-    {
-        assert(has_value());
-        return impl_.num_resultsets();
+        return impl_.get_info(I);
     }
 
     /**
@@ -465,7 +290,8 @@ public:
      * \par Complexity
      * Linear on `this->size()`.
      */
-    row_view out_params() const noexcept
+    // TODO: this shouldn't be detail
+    typename detail::get_out_params<RowType...>::type out_params() const noexcept
     {
         assert(has_value());
         return impl_.get_out_params();
@@ -475,15 +301,22 @@ public:
     detail::execution_state_iface& impl() noexcept { return impl_; }
 
 private:
-    detail::results_impl impl_;
+    detail::basic_results_impl<RowType...> impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::results_access;
+    friend struct detail::basic_results_access;
 #endif
+};
+
+struct detail::basic_results_access
+{
+    template <typename... RowType>
+    static detail::basic_results_impl<RowType...>& get_impl(basic_results<RowType...>& obj) noexcept
+    {
+        return obj.impl_;
+    }
 };
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/results.hpp>
 
 #endif

@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_HPP
 
+#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #pragma once
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -28,12 +30,22 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline rows_view get_some_rows(const channel_base& ch, const execution_state_impl& st)
+{
+    return rows_view_access::construct(
+        ch.shared_fields().data(),
+        ch.shared_fields().size(),
+        st.meta().size()
+    );
+}
+
 template <class Stream>
 struct read_some_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     diagnostics& diag_;
     execution_state_impl& st_;
+    std::unique_ptr<row_reader> reader_;  // TODO: change this
 
     read_some_rows_op(channel<Stream>& chan, diagnostics& diag, execution_state_impl& st) noexcept
         : chan_(chan), diag_(diag), st_(st)
@@ -46,6 +58,7 @@ struct read_some_rows_op : boost::asio::coroutine
         // Error checking
         if (err)
         {
+            reader_.reset();
             self.complete(err, rows_view());
             return;
         }
@@ -63,6 +76,10 @@ struct read_some_rows_op : boost::asio::coroutine
                 BOOST_ASIO_CORO_YIELD break;
             }
 
+            // Set up reader
+            reader_.reset(new field_row_reader(chan_.shared_fields()));
+            st_.set_reader(*reader_);
+
             // Read at least one message
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
@@ -70,11 +87,13 @@ struct read_some_rows_op : boost::asio::coroutine
             process_available_rows(chan_, st_, err, diag_);
             if (err)
             {
+                reader_.reset();
                 self.complete(err, rows_view());
                 BOOST_ASIO_CORO_YIELD break;
             }
 
-            self.complete(error_code(), st_.get_external_rows());
+            reader_.reset();
+            self.complete(error_code(), get_some_rows(chan_, st_));
         }
     }
 };
@@ -91,7 +110,9 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     diagnostics& diag
 )
 {
+    field_row_reader reader(channel.shared_fields());
     auto& impl = execution_state_access::get_impl(st);
+    impl.set_reader(reader);
 
     // If we are not reading rows, just return
     if (!impl.should_read_rows())
@@ -109,7 +130,7 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     if (err)
         return rows_view();
 
-    return impl.get_external_rows();
+    return get_some_rows(channel, impl);
 }
 
 template <

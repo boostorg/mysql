@@ -28,11 +28,11 @@ namespace detail {
 class read_resultset_head_processor
 {
     channel_base& chan_;
-    execution_state_impl& st_;
+    execution_state_iface& st_;
     diagnostics& diag_;
 
 public:
-    read_resultset_head_processor(channel_base& chan, execution_state_impl& st, diagnostics& diag) noexcept
+    read_resultset_head_processor(channel_base& chan, execution_state_iface& st, diagnostics& diag) noexcept
         : chan_(chan), st_(st), diag_(diag)
     {
     }
@@ -47,8 +47,8 @@ public:
         switch (response.type)
         {
         case execute_response::type_t::error: err = response.data.err; break;
-        case execute_response::type_t::ok_packet: st_.on_head_ok_packet(response.data.ok_pack); break;
-        case execute_response::type_t::num_fields: st_.on_num_meta(response.data.num_fields); break;
+        case execute_response::type_t::ok_packet: err = st_.on_head_ok_packet(response.data.ok_pack); break;
+        case execute_response::type_t::num_fields: err = st_.on_num_meta(response.data.num_fields); break;
         }
         return err;
     }
@@ -74,8 +74,10 @@ public:
         return error_code();
     }
 
+    error_code meta_check() { return st_.meta_check(diag_); }
+
     channel_base& get_channel() noexcept { return chan_; }
-    execution_state_impl& state() noexcept { return st_; }
+    execution_state_iface& state() noexcept { return st_; }
 };
 
 template <class Stream>
@@ -83,7 +85,7 @@ struct read_resultset_head_op : boost::asio::coroutine
 {
     read_resultset_head_processor processor_;
 
-    read_resultset_head_op(channel<Stream>& chan, execution_state_impl& st, diagnostics& diag)
+    read_resultset_head_op(channel<Stream>& chan, execution_state_iface& st, diagnostics& diag)
         : processor_(chan, st, diag)
     {
     }
@@ -149,8 +151,11 @@ struct read_resultset_head_op : boost::asio::coroutine
                 }
             }
 
+            // Perform metadata check
+            err = processor_.meta_check();
+
             // No EOF packet is expected here, as we require deprecate EOF capabilities
-            self.complete(error_code());
+            self.complete(err);
         }
     }
 };
@@ -162,7 +167,7 @@ struct read_resultset_head_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::read_resultset_head(
     channel<Stream>& chan,
-    execution_state_impl& st,
+    execution_state_iface& st,
     error_code& err,
     diagnostics& diag
 )
@@ -202,13 +207,16 @@ void boost::mysql::detail::read_resultset_head(
         if (err)
             return;
     }
+
+    // Perform metadata check
+    err = processor.meta_check();
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_read_resultset_head(
     channel<Stream>& channel,
-    execution_state_impl& st,
+    execution_state_iface& st,
     diagnostics& diag,
     CompletionToken&& token
 )

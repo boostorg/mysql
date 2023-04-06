@@ -8,14 +8,14 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_ROW_IPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_ROW_IPP
 
-#include <boost/mysql/metadata_collection_view.hpp>
-
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #pragma once
+
+#include <boost/mysql/metadata_collection_view.hpp>
 
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
@@ -124,7 +124,7 @@ void boost::mysql::detail::deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     db_flavor flavor,
-    execution_state_impl& st,
+    execution_state_iface& st,
     error_code& err,
     diagnostics& diag
 )
@@ -148,7 +148,7 @@ void boost::mysql::detail::deserialize_row(
         err = deserialize_message(ctx, ok_pack);
         if (err)
             return;
-        st.on_row_ok_packet(ok_pack);
+        err = st.on_row_ok_packet(ok_pack);
     }
     else if (msg_type == error_packet_header)
     {
@@ -159,8 +159,9 @@ void boost::mysql::detail::deserialize_row(
     {
         // An actual row
         ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        field_view* storage = st.add_row();
+        field_view* storage = st.add_row_storage();
         deserialize_row(st.encoding(), ctx, st.current_resultset_meta(), storage, err);
+        err = st.parse_row();
     }
 }
 

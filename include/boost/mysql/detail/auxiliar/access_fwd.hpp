@@ -20,6 +20,7 @@ struct execution_state_access;
 struct field_view_access;
 struct metadata_access;
 struct results_access;
+struct basic_results_access;
 struct resultset_view_access;
 struct row_view_access;
 struct rows_view_access;

@@ -41,7 +41,7 @@ inline void deserialize_row(
     boost::asio::const_buffer read_message,
     capabilities current_capabilities,
     db_flavor flavor,
-    execution_state_impl& st,
+    execution_state_iface& st,
     error_code& err,
     diagnostics& diag
 );

@@ -21,7 +21,7 @@ namespace detail {
 
 inline void process_available_rows(
     channel_base& channel,
-    execution_state_impl& st,
+    execution_state_iface& st,
     error_code& err,
     diagnostics& diag
 )
@@ -29,7 +29,7 @@ inline void process_available_rows(
     // Process all read messages until they run out, an error happens
     // or an EOF is received
     st.on_row_batch_start();
-    while (channel.has_read_messages() && st.should_read_rows())
+    while (channel.has_read_messages() && st.should_read_rows() && st.can_add_row())
     {
         // Get the row message
         auto message = channel.next_read_message(st.sequence_number(), err);

@@ -13,6 +13,7 @@
 #include <boost/mysql/results.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/async_result.hpp>
@@ -28,7 +29,7 @@ template <class Stream>
 void execute_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    results& output,
+    execution_state_iface& output,
     error_code& err,
     diagnostics& diag
 );
@@ -38,7 +39,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_impl(
     channel<Stream>& chan,
     resultset_encoding enc,
-    results& output,
+    execution_state_iface& output,
     diagnostics& diag,
     CompletionToken&& token
 );

@@ -48,7 +48,11 @@ enum class client_errc : int
     wrong_num_params,
 
     /// The connection mandatory SSL, but the server doesn't accept SSL connections.
-    server_doesnt_support_ssl
+    server_doesnt_support_ssl,
+
+    type_mismatch,
+    num_resultsets_mismatch,
+    num_columns_mismatch
 };
 
 /// Creates an \ref error_code from a \ref client_errc.

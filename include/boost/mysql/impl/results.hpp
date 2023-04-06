@@ -13,10 +13,11 @@
 #include <boost/mysql/results.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 struct boost::mysql::detail::results_access
 {
-    static execution_state_impl& get_impl(results& result) noexcept { return result.impl_; }
+    static results_impl& get_impl(results& result) noexcept { return result.impl_; }
 };
 
 #endif

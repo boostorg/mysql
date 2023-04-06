@@ -48,7 +48,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    execution_state() noexcept : impl_(false){};
+    execution_state() = default;
 
     /**
      * \brief Copy constructor.
@@ -100,7 +100,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool should_start_op() const noexcept { return impl_.num_resultsets() == 0u; }
+    bool should_start_op() const noexcept { return impl_.initial(); }
 
     /**
      * \brief Returns whether the next operation should be read resultset head.
@@ -111,10 +111,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool should_read_head() const noexcept
-    {
-        return impl_.num_resultsets() == 1u && (impl_.should_read_head() || impl_.should_read_meta());
-    }
+    bool should_read_head() const noexcept { return impl_.should_read_head_subsequent(); }
 
     /**
      * \brief Returns whether the next operation should be read some rows.
@@ -152,10 +149,7 @@ public:
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
      */
-    metadata_collection_view meta() const noexcept
-    {
-        return impl_.num_resultsets() == 0u ? metadata_collection_view() : impl_.get_meta(0);
-    }
+    metadata_collection_view meta() const noexcept { return impl_.meta(); }
 
     /**
      * \brief Returns the number of rows affected by the SQL statement associated to this resultset.
@@ -165,7 +159,7 @@ public:
      * \par Preconditions
      * `this->complete() == true || this->should_read_head() == true`
      */
-    std::uint64_t affected_rows() const noexcept { return impl_.get_affected_rows(0); }
+    std::uint64_t affected_rows() const noexcept { return impl_.get_affected_rows(); }
 
     /**
      * \brief Returns the last insert ID produced by the SQL statement associated to this resultset.
@@ -175,7 +169,7 @@ public:
      * \par Preconditions
      * `this->complete() == true || this->should_read_head() == true`
      */
-    std::uint64_t last_insert_id() const noexcept { return impl_.get_last_insert_id(0); }
+    std::uint64_t last_insert_id() const noexcept { return impl_.get_last_insert_id(); }
 
     /**
      * \brief Returns the number of warnings produced by the SQL statement associated to this resultset.
@@ -185,7 +179,7 @@ public:
      * \par Preconditions
      * `this->complete() == true || this->should_read_head() == true`
      */
-    unsigned warning_count() const noexcept { return impl_.get_warning_count(0); }
+    unsigned warning_count() const noexcept { return impl_.get_warning_count(); }
 
     /**
      * \brief Returns additionat text information about this resultset.
@@ -206,7 +200,7 @@ public:
      * memory owned by `*this`, and will be valid as long as `*this` or an object move-constructed
      * from `*this` are alive.
      */
-    string_view info() const noexcept { return impl_.get_info(0); }
+    string_view info() const noexcept { return impl_.get_info(); }
 
     /**
      * \brief Returns whether the current resultset represents a procedure OUT params.
@@ -216,7 +210,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool is_out_params() const noexcept { return impl_.get_is_out_params(0); }
+    bool is_out_params() const noexcept { return impl_.get_is_out_params(); }
 
 private:
     detail::execution_state_impl impl_;

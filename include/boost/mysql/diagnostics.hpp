@@ -35,6 +35,8 @@ public:
      */
     diagnostics() = default;
 
+    string_view client_message() const noexcept { return is_server_ ? string_view() : string_view(msg_); }
+
     /**
      * \brief Gets the server-generated error message.
      * \details
@@ -48,7 +50,7 @@ public:
      * The returned view is valid as long as `*this` is alive, hasn't been assigned-to
      * or moved-from, and \ref clear hasn't been called. Moving `*this` invalidates the view.
      */
-    string_view server_message() const noexcept { return msg_; }
+    string_view server_message() const noexcept { return is_server_ ? string_view(msg_) : string_view(); }
 
     /**
      * \brief Clears the error message.
@@ -58,6 +60,7 @@ public:
     void clear() noexcept { msg_.clear(); }
 
 private:
+    bool is_server_{};
     std::string msg_;
 
 #ifndef BOOST_MYSQL_DOXYGEN

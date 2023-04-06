@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HIGH_LEVEL_EXECUTION_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_HIGH_LEVEL_EXECUTION_HPP
 
+#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #pragma once
 
 #include <boost/mysql/execution_state.hpp>
@@ -19,6 +20,7 @@
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/impl/execution_state.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 
@@ -157,7 +159,7 @@ struct initiate_execute
         Handler&& handler,
         std::reference_wrapper<channel<Stream>> chan,
         const ExecutionRequest& req,
-        results& result,
+        detail::execution_state_iface& result,
         diagnostics& diag
     )
     {
@@ -170,7 +172,13 @@ struct initiate_execute
         else
         {
             serialize_execution_request(req, chan);
-            async_execute_impl(chan.get(), get_encoding(req), result, diag, std::forward<Handler>(handler));
+            async_execute_impl(
+                chan.get(),
+                get_encoding(req),
+                result,
+                diag,
+                std::forward<Handler>(handler)
+            );
         }
     }
 };
@@ -198,7 +206,7 @@ struct initiate_start_execution
             async_start_execution_impl(
                 chan.get(),
                 get_encoding(req),
-                st,
+                execution_state_access::get_impl(st),
                 diag,
                 std::forward<Handler>(handler)
             );
@@ -210,11 +218,11 @@ struct initiate_start_execution
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
 void boost::mysql::detail::execute(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    results& result,
+    ResultsType& result,
     error_code& err,
     diagnostics& diag
 )
@@ -224,18 +232,19 @@ void boost::mysql::detail::execute(
         return;
 
     serialize_execution_request(req, channel);
-    execute_impl(channel, get_encoding(req), result, err, diag);
+    execute_impl(channel, get_encoding(req), result.impl(), err, diag);
 }
 
 template <
     class Stream,
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+    class ResultsType,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    results& result,
+    ResultsType& result,
     diagnostics& diag,
     CompletionToken&& token
 )
@@ -245,7 +254,7 @@ boost::mysql::detail::async_execute(
         token,
         std::ref(chan),
         std::forward<ExecutionRequest>(req),
-        std::ref(result),
+        std::ref(result.impl()),
         std::ref(diag)
     );
 }
@@ -264,7 +273,7 @@ void boost::mysql::detail::start_execution(
         return;
 
     serialize_execution_request(req, channel);
-    start_execution_impl(channel, get_encoding(req), st, err, diag);
+    start_execution_impl(channel, get_encoding(req), execution_state_access::get_impl(st), err, diag);
 }
 
 template <

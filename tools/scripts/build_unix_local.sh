@@ -8,7 +8,7 @@
 
 set -e
 
-BK=cmake
+BK=b2
 IMAGE=build-gcc11
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
