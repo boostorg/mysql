@@ -80,7 +80,7 @@ local requirements =
         <define>BOOST_ASIO_DISABLE_BOOST_REGEX=1
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
-        <toolset>msvc:<cxxflags>"/bigobj /Zc:__cplusplus"
+        <toolset>msvc:<cxxflags>"/bigobj"
         <toolset>msvc-14.1:<cxxflags>"/permissive-"
         <toolset>msvc-14.2:<cxxflags>"/permissive-"
         <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS=1

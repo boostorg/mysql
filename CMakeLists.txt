@@ -116,12 +116,6 @@ target_link_libraries(
     OpenSSL::SSL
 )
 
-# Asio bases C++ feature detection on __cplusplus. Make MSVC
-# define it correctly
-if (MSVC)
-    target_compile_options(boost_mysql INTERFACE /Zc:__cplusplus)
-endif()
-
 # Examples and tests
 if(BUILD_TESTING)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
