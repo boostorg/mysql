@@ -52,7 +52,8 @@ enum class client_errc : int
 
     type_mismatch,
     num_resultsets_mismatch,
-    num_columns_mismatch
+    num_columns_mismatch,
+    is_null,
 };
 
 /// Creates an \ref error_code from a \ref client_errc.

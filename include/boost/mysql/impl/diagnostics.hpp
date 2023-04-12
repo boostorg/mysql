@@ -8,16 +8,15 @@
 #ifndef BOOST_MYSQL_IMPL_DIAGNOSTICS_HPP
 #define BOOST_MYSQL_IMPL_DIAGNOSTICS_HPP
 
-#include <boost/mysql/string_view.hpp>
 #pragma once
 
 #include <boost/mysql/diagnostics.hpp>
 
 struct boost::mysql::detail::diagnostics_access
 {
-    static void assign(diagnostics& obj, string_view from, bool is_server = true)
+    static void assign(diagnostics& obj, std::string from, bool is_server = true)
     {
-        obj.msg_.assign(from.begin(), from.end());
+        obj.msg_ = std::move(from);
         obj.is_server_ = is_server;
     }
 };

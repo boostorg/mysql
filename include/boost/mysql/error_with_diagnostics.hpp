@@ -29,7 +29,7 @@ class error_with_diagnostics : public boost::system::system_error
 public:
     /// Initializing constructor.
     error_with_diagnostics(const error_code& err, const diagnostics& diag)
-        : boost::system::system_error(err), diag_(diag)
+        : boost::system::system_error(err, diag.client_message()), diag_(diag)
     {
     }
 

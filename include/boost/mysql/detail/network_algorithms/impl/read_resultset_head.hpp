@@ -70,11 +70,8 @@ public:
             return err;
 
         // Notify the state object
-        st_.on_meta(field_definition, chan_.meta_mode());
-        return error_code();
+        return st_.on_meta(field_definition, chan_.meta_mode(), diag_);
     }
-
-    error_code meta_check() { return st_.meta_check(diag_); }
 
     channel_base& get_channel() noexcept { return chan_; }
     execution_state_iface& state() noexcept { return st_; }
@@ -151,9 +148,6 @@ struct read_resultset_head_op : boost::asio::coroutine
                 }
             }
 
-            // Perform metadata check
-            err = processor_.meta_check();
-
             // No EOF packet is expected here, as we require deprecate EOF capabilities
             self.complete(err);
         }
@@ -207,9 +201,6 @@ void boost::mysql::detail::read_resultset_head(
         if (err)
             return;
     }
-
-    // Perform metadata check
-    err = processor.meta_check();
 }
 
 template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>

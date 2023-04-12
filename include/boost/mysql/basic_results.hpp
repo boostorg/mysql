@@ -29,12 +29,6 @@
 namespace boost {
 namespace mysql {
 
-// TODO: this does not belong here
-struct empty
-{
-};
-BOOST_DESCRIBE_STRUCT(empty, (), ())
-
 template <class... RowType>
 class basic_results
 {
@@ -266,35 +260,6 @@ public:
         static_assert(I < sizeof...(RowType));
         assert(has_value());
         return impl_.get_info(I);
-    }
-
-    /**
-     * \brief Returns the output parameters of a stored procedure call.
-     * \details
-     * Relevant for `CALL` operations performed using prepared statements that
-     * bind placeholders to `OUT` or `INOUT` parameters. Returns a row containing a field per
-     * bound output parameter.
-     * \n
-     * If this operation had no output parameters (e.g. it wasn't a `CALL`), returns an empty row.
-     *
-     * \par Preconditions
-     * `this->has_value() == true`
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * The returned reference and any other references obtained from it are valid as long as
-     * `*this` is alive. Move operations invalidate references.
-     *
-     * \par Complexity
-     * Linear on `this->size()`.
-     */
-    // TODO: this shouldn't be detail
-    typename detail::get_out_params<RowType...>::type out_params() const noexcept
-    {
-        assert(has_value());
-        return impl_.get_out_params();
     }
 
     // TODO: hide this

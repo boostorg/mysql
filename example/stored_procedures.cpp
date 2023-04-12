@@ -41,13 +41,11 @@
  * In the real world, flow would be much more complex, but this is enough for an example.
  */
 
-using boost::mysql::empty;
 using boost::mysql::resultset_view;
-using boost::mysql::row_view;
-using boost::mysql::rows_view;
-using boost::mysql::string_view;
 
 namespace {
+
+using empty = std::tuple<>;
 
 /**
  * Our command line tool implements several sub-commands. Each sub-command
@@ -245,7 +243,7 @@ struct product
 {
     std::int64_t id;
     std::string short_name;
-    std::string description;
+    std::optional<std::string> description;
     std::int64_t price;
 };
 BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
@@ -306,7 +304,7 @@ struct visitor
         {
             std::cout << "* ID: " << prod.id << '\n'
                       << "  Short name: " << prod.short_name << '\n'
-                      << "  Description: " << prod.description << '\n'
+                      << "  Description: " << (prod.description ? *prod.description : "") << '\n'
                       << "  Price: " << prod.price / 100.0 << "$" << std::endl;
         }
         std::cout << std::endl;
@@ -381,7 +379,7 @@ struct visitor
 
         // We can use results::out_params() to access the extra resultset containing
         // the OUT parameter
-        auto new_line_item_id = std::get<0>(*result.out_params());
+        auto new_line_item_id = std::get<0>(result.rows<2>()[0]);
 
         // Print the results to stdout
         std::cout << "Created line item: id=" << new_line_item_id << "\n";
@@ -411,16 +409,17 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL checkout_order(?, ?)");
 
         // Execute the statement
-        boost::mysql::results result;
+        using out_params_t = std::tuple<std::int64_t>;
+        boost::mysql::basic_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, nullptr), result);
 
         // We can use results::out_params() to access the extra resultset containing
         // the OUT parameter
-        auto total_amount = result.out_params().at(0).as_int64();
+        auto total_amount = std::get<0>(result.rows<2>()[0]);
 
         // Print the results to stdout
         std::cout << "Checked out order. The total amount to pay is: " << total_amount / 100.0 << "$\n";
-        print_order_with_items(result.at(0), result.at(1));
+        print_order_with_items(result.rows<0>(), result.rows<1>());
     }
 
     // complete-order <order-id>: marks an order as completed
@@ -430,12 +429,12 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL complete_order(?)");
 
         // Execute the statement
-        boost::mysql::results result;
+        boost::mysql::basic_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.order_id), result);
 
         // Print the results to stdout
         std::cout << "Completed order\n";
-        print_order_with_items(result.at(0), result.at(1));
+        print_order_with_items(result.rows<0>(), result.rows<1>());
     }
 };
 

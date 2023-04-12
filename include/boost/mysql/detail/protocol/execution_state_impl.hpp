@@ -17,20 +17,18 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/typed.hpp>
 
 #include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/impl/rows_view.hpp>
+#include <boost/mysql/detail/typed/row_traits.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/integral.hpp>
 
-#include <bits/utility.h>
 #include <cassert>
 #include <cstddef>
 #include <vector>
@@ -193,8 +191,11 @@ public:
 
     virtual void reset(resultset_encoding enc) noexcept = 0;
     virtual error_code on_num_meta(std::size_t num_meta) = 0;
-    virtual void on_meta(const column_definition_packet& pack, metadata_mode mode) = 0;
-    virtual error_code meta_check(diagnostics& diag) const = 0;
+    virtual error_code on_meta(
+        const column_definition_packet& pack,
+        metadata_mode mode,
+        diagnostics& diag
+    ) = 0;
     virtual void on_row_batch_start() = 0;
     virtual bool can_add_row() const = 0;
     virtual field_view* add_row_storage() = 0;
@@ -298,7 +299,7 @@ public:
         return error_code();
     }
 
-    void on_meta(const column_definition_packet& pack, metadata_mode mode) override
+    error_code on_meta(const column_definition_packet& pack, metadata_mode mode, diagnostics&) override
     {
         assert(should_read_meta());
         meta_.push_back(metadata_access::construct(pack, mode == metadata_mode::full));
@@ -306,9 +307,8 @@ public:
         {
             set_state(state_t::reading_rows);
         }
+        return error_code();
     }
-
-    error_code meta_check(diagnostics&) const override { return error_code(); }
 
     void on_row_batch_start() override
     {
@@ -544,7 +544,7 @@ public:
         return error_code();
     }
 
-    void on_meta(const column_definition_packet& pack, metadata_mode mode) override
+    error_code on_meta(const column_definition_packet& pack, metadata_mode mode, diagnostics&) override
     {
         assert(should_read_meta());
         meta_.push_back(metadata_access::construct(pack, mode == metadata_mode::full));
@@ -552,9 +552,8 @@ public:
         {
             set_state(state_t::reading_rows);
         }
+        return error_code();
     }
-
-    error_code meta_check(diagnostics&) const override { return error_code(); }
 
     void on_row_batch_start() override
     {
@@ -645,7 +644,8 @@ struct vtable_entry
     template <std::size_t I>
     static error_code meta_check_fn(metadata_collection_view meta, diagnostics& diag)
     {
-        return do_meta_check<typename std::tuple_element<I, tuple_t>::type>(meta, diag);
+        using T = typename std::tuple_element<I, tuple_t>::type::value_type;
+        return detail::meta_check<T>(meta, diag);
     }
 
     template <std::size_t I>
@@ -653,11 +653,11 @@ struct vtable_entry
     {
         auto& v = std::get<I>(to);
         v.emplace_back();
-        return do_parse_impl(from, v.back());
+        return detail::parse(from, v.back());
     }
 
     template <std::size_t I>
-    static vtable_entry create()
+    static constexpr vtable_entry create()
     {
         return {&meta_check_fn<I>, &parse_fn<I>};
     }
@@ -678,25 +678,12 @@ constexpr vtable_t<RowType...> make_vtable()
     return make_vtable_impl<RowType...>(boost::mp11::make_index_sequence<sizeof...(RowType)>());
 }
 
-template <class... RowType>
-struct get_out_params
-{
-    using type = void;
-};
-
-template <class RowType0, class RowType1, class... Rest>
-struct get_out_params<RowType0, RowType1, Rest...>
-{
-    using type = const typename std::tuple_element<sizeof...(Rest), std::tuple<RowType0, RowType1, Rest...>>::
-        type*;
-};
-
 struct basic_per_resultset_data
 {
     std::size_t meta_offset{};
     std::size_t info_offset{};
     std::size_t info_size{};
-    bool has_ok_data{false};         // The OK packet information is default constructed, or actual data?
+    bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
     std::uint64_t affected_rows{};   // OK packet data
     std::uint64_t last_insert_id{};  // OK packet data
     std::uint16_t warnings{};        // OK packet data
@@ -765,6 +752,7 @@ class basic_results_impl : public execution_state_iface
         {
             resultset_index_++;
         }
+        meta_index_ = 0;
         auto& resultset_data = current_resultset();
         std::size_t offset = 0;
         for (std::size_t i = 0; i < resultset_index_; ++i)
@@ -793,7 +781,7 @@ class basic_results_impl : public execution_state_iface
         }
     }
 
-    const basic_per_resultset_data& current_resultset() const noexcept
+    basic_per_resultset_data& current_resultset() noexcept
     {
         check_resultset_index();
         return per_resultset_[resultset_index_];
@@ -803,8 +791,16 @@ class basic_results_impl : public execution_state_iface
     {
         assert(index < num_resultsets);
         const auto& res = per_resultset_[index];
-        assert(res.has_ok_data);
+        assert(res.has_ok_packet_data);
         return res;
+    }
+
+    error_code meta_check(diagnostics& diag) const
+    {
+        constexpr auto vtab = make_vtable<RowType...>();
+        assert(should_read_rows());
+        check_resultset_index();
+        return vtab[resultset_index_].meta_check(current_resultset_meta(), diag);
     }
 
 public:
@@ -835,7 +831,7 @@ public:
         return error_code();
     }
 
-    void on_meta(const column_definition_packet& pack, metadata_mode mode) override
+    error_code on_meta(const column_definition_packet& pack, metadata_mode mode, diagnostics& diag) override
     {
         assert(should_read_meta());
         assert(meta_index_ < current_num_columns());
@@ -846,14 +842,9 @@ public:
         if (++meta_index_ == current_num_columns())
         {
             set_state(state_t::reading_rows);
+            return meta_check(diag);
         }
-    }
-
-    error_code meta_check(diagnostics& diag) const override
-    {
-        constexpr auto vtab = make_vtable<RowType...>();
-        check_resultset_index();
-        return vtab[resultset_index_].meta_check(current_resultset_meta(), diag);
+        return error_code();
     }
 
     void on_row_batch_start() override {}
@@ -880,6 +871,10 @@ public:
         assert(should_read_head());
         add_resultset();
         on_ok_packet_impl(pack);
+        if (current_num_columns() != 0)
+        {
+            return client_errc::num_columns_mismatch;
+        }
         return error_code();
     }
 
@@ -897,23 +892,6 @@ public:
     }
 
     // User facing
-    using out_params_t = typename get_out_params<RowType...>::type;
-    out_params_t get_out_params() const noexcept
-    {
-        static_assert(sizeof...(RowType) > 1, "out_params is only available for multi-resultset operations");
-        constexpr std::size_t index = sizeof...(RowType) - 2;
-
-        if (get_is_out_params(index))
-        {
-            const auto& result = std::get<sizeof...(RowType) - 2>(rows_);
-            return result.empty() ? nullptr : &result.front();
-        }
-        else
-        {
-            return nullptr;
-        }
-    }
-
     template <std::size_t I>
     boost::span<const typename std::tuple_element<I, std::tuple<RowType...>>::type> get_rows() const noexcept
     {
