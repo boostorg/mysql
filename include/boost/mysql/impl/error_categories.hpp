@@ -50,7 +50,8 @@ inline const char* error_to_string(client_errc error) noexcept
                "server returned. Verify your type definitions.";
     case boost::mysql::client_errc::num_resultsets_mismatch:
         return "The typed interface detected a mismatch between the number of resultsets passed as template "
-               "arguments to basic_results<T1, T2...> and the number of results returned by server";
+               "arguments to static_results<T1, T2...>/static_execution_state<T1, T2...> and the number of "
+               "results returned by server";
     case boost::mysql::client_errc::num_columns_mismatch:
         return "The typed interface detected a mismatch between the number of columns in your declared row "
                "type and what the "

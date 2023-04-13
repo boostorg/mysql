@@ -13,35 +13,29 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
+#include <boost/mysql/detail/protocol/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void process_available_rows(
-    channel_base& channel,
-    execution_state_iface& st,
-    error_code& err,
-    diagnostics& diag
-)
+inline error_code process_row_message(channel_base& channel, execution_processor& proc, diagnostics& diag)
 {
-    // Process all read messages until they run out, an error happens
-    // or an EOF is received
-    st.on_row_batch_start();
-    while (channel.has_read_messages() && st.should_read_rows() && st.can_add_row())
-    {
-        // Get the row message
-        auto message = channel.next_read_message(st.sequence_number(), err);
-        if (err)
-            return;
+    // Get the row message
+    error_code err;
+    auto buff = channel.next_read_message(proc.sequence_number(), err);
+    if (err)
+        return err;
 
-        // Deserialize the row
-        deserialize_row(message, channel.current_capabilities(), channel.flavor(), st, err, diag);
-        if (err)
-            return;
+    // Deserialize it
+    auto msg = deserialize_row_message(buff, channel.current_capabilities(), channel.flavor(), diag);
+    switch (msg.type)
+    {
+    case row_response::type_t::error: return msg.data.err;
+    case row_response::type_t::ok_packet: return proc.on_row_ok_packet(msg.data.ok_pack);
+    case row_response::type_t::row: return proc.on_row(msg.data.ctx);
     }
-    st.on_row_batch_finish();
 }
 
 }  // namespace detail

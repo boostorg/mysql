@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_RESULTS_HPP
 #define BOOST_MYSQL_RESULTS_HPP
 
-#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
@@ -18,7 +17,7 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/results_impl.hpp>
 
 #include <cassert>
 #include <stdexcept>
@@ -471,19 +470,14 @@ public:
         return impl_.get_out_params();
     }
 
-    // TODO: hide this
-    detail::execution_state_iface& impl() noexcept { return impl_; }
-
 private:
     detail::results_impl impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::results_access;
+    friend struct detail::impl_access;
 #endif
 };
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/results.hpp>
 
 #endif

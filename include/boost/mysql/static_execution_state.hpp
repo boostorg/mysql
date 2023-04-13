@@ -5,20 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_EXECUTION_STATE_HPP
-#define BOOST_MYSQL_EXECUTION_STATE_HPP
+#ifndef BOOST_MYSQL_STATIC_EXECUTION_STATE_HPP
+#define BOOST_MYSQL_STATIC_EXECUTION_STATE_HPP
 
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
-
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <vector>
+#include <boost/mysql/detail/protocol/static_execution_state_impl.hpp>
 
 namespace boost {
 namespace mysql {
@@ -35,7 +30,8 @@ namespace mysql {
  * Distinct objects: safe. \n
  * Shared objects: unsafe.
  */
-class execution_state
+template <class... RowType>
+class static_execution_state
 {
 public:
     /**
@@ -46,7 +42,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    execution_state() = default;
+    static_execution_state() = default;
 
     /**
      * \brief Copy constructor.
@@ -56,7 +52,7 @@ public:
      * \par Object lifetimes
      * `*this` lifetime will be independent of `other`'s.
      */
-    execution_state(const execution_state& other) = default;
+    static_execution_state(const static_execution_state& other) = default;
 
     /**
      * \brief Move constructor.
@@ -66,7 +62,7 @@ public:
      * \par Object lifetimes
      * Views obtained from `other` remain valid.
      */
-    execution_state(execution_state&& other) = default;
+    static_execution_state(static_execution_state&& other) = default;
 
     /**
      * \brief Copy assignment.
@@ -77,7 +73,7 @@ public:
      * `*this` lifetime will be independent of `other`'s. Views obtained from `*this`
      * are invalidated.
      */
-    execution_state& operator=(const execution_state& other) = default;
+    static_execution_state& operator=(const static_execution_state& other) = default;
 
     /**
      * \brief Move assignment.
@@ -87,7 +83,7 @@ public:
      * \par Object lifetimes
      * Views obtained from `*this` are invalidated. Views obtained from `other` remain valid.
      */
-    execution_state& operator=(execution_state&& other) = default;
+    static_execution_state& operator=(static_execution_state&& other) = default;
 
     /**
      * \brief Returns whether `*this` is in the initial state.
@@ -211,7 +207,7 @@ public:
     bool is_out_params() const noexcept { return impl_.get_is_out_params(); }
 
 private:
-    detail::execution_state_impl impl_;
+    detail::static_execution_state_impl<RowType...> impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::impl_access;

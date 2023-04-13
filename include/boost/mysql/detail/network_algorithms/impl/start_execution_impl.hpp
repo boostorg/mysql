@@ -12,7 +12,6 @@
 
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
@@ -25,13 +24,13 @@ struct start_execution_impl_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     resultset_encoding enc_;
-    execution_state_iface& st_;
+    execution_state_base& st_;
     diagnostics& diag_;
 
     start_execution_impl_op(
         channel<Stream>& chan,
         resultset_encoding enc,
-        execution_state_iface& st,
+        execution_state_base& st,
         diagnostics& diag
     )
         : chan_(chan), enc_(enc), st_(st), diag_(diag)
@@ -53,7 +52,7 @@ struct start_execution_impl_op : boost::asio::coroutine
         {
             // Setup
             diag_.clear();
-            st_.reset(enc_);
+            st_.reset(enc_, chan_.meta_mode());
 
             // Send the execution request (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
@@ -76,14 +75,14 @@ template <class Stream>
 void boost::mysql::detail::start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    execution_state_iface& st,
+    execution_state_base& st,
     error_code& err,
     diagnostics& diag
 )
 {
     // Setup
     diag.clear();
-    st.reset(enc);
+    st.reset(enc, channel.meta_mode());
 
     // Send the execution request (already serialized at this point)
     channel.write(channel.shared_buffer(), st.sequence_number(), err);
@@ -101,7 +100,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_start_execution_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    execution_state_iface& st,
+    execution_state_base& st,
     diagnostics& diag,
     CompletionToken&& token
 )

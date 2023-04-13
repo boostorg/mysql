@@ -113,14 +113,20 @@ void boost::mysql::connection<Stream>::start_query(
 )
 {
     detail::clear_errors(err, diag);
-    detail::start_execution(get_channel(), query_string, result, err, diag);
+    detail::start_execution(get_channel(), query_string, detail::impl_access::get_impl(result), err, diag);
 }
 
 template <class Stream>
 void boost::mysql::connection<Stream>::start_query(string_view query_string, execution_state& result)
 {
     detail::error_block blk;
-    detail::start_execution(get_channel(), query_string, result, blk.err, blk.diag);
+    detail::start_execution(
+        get_channel(),
+        query_string,
+        detail::impl_access::get_impl(result),
+        blk.err,
+        blk.diag
+    );
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
@@ -137,7 +143,7 @@ boost::mysql::connection<Stream>::async_start_query(
     return detail::async_start_execution(
         get_channel(),
         query_string,
-        result,
+        detail::impl_access::get_impl(result),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -152,14 +158,14 @@ void boost::mysql::connection<Stream>::query(
 )
 {
     detail::clear_errors(err, diag);
-    detail::execute(get_channel(), query_string, result, err, diag);
+    detail::execute(get_channel(), query_string, detail::impl_access::get_impl(result), err, diag);
 }
 
 template <class Stream>
 void boost::mysql::connection<Stream>::query(string_view query_string, results& result)
 {
     detail::error_block blk;
-    detail::execute(get_channel(), query_string, result, blk.err, blk.diag);
+    detail::execute(get_channel(), query_string, detail::impl_access::get_impl(result), blk.err, blk.diag);
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
@@ -176,7 +182,7 @@ boost::mysql::connection<Stream>::async_query(
     return detail::async_execute(
         get_channel(),
         query_string,
-        result,
+        detail::impl_access::get_impl(result),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -192,7 +198,7 @@ void boost::mysql::connection<Stream>::execute(
 )
 {
     detail::clear_errors(err, diag);
-    detail::execute(get_channel(), req, result, err, diag);
+    detail::execute(get_channel(), req, detail::impl_access::get_impl(result), err, diag);
 }
 
 template <class Stream>
@@ -200,7 +206,7 @@ template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
 void boost::mysql::connection<Stream>::execute(const ExecutionRequest& req, ResultsType& result)
 {
     detail::error_block blk;
-    detail::execute(get_channel(), req, result, blk.err, blk.diag);
+    detail::execute(get_channel(), req, detail::impl_access::get_impl(result), blk.err, blk.diag);
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
@@ -220,42 +226,43 @@ boost::mysql::connection<Stream>::async_execute(
     return detail::async_execute(
         get_channel(),
         std::forward<ExecutionRequest>(req),
-        result,
+        detail::impl_access::get_impl(result),
         diag,
         std::forward<CompletionToken>(token)
     );
 }
 
 template <class Stream>
-template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ExecutionState>
 void boost::mysql::connection<Stream>::start_execution(
     const ExecutionRequest& req,
-    execution_state& st,
+    ExecutionState& st,
     error_code& err,
     diagnostics& diag
 )
 {
     detail::clear_errors(err, diag);
-    detail::start_execution(get_channel(), req, st, err, diag);
+    detail::start_execution(get_channel(), req, detail::impl_access::get_impl(st), err, diag);
 }
 
 template <class Stream>
-template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
-void boost::mysql::connection<Stream>::start_execution(const ExecutionRequest& req, execution_state& st)
+template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ExecutionState>
+void boost::mysql::connection<Stream>::start_execution(const ExecutionRequest& req, ExecutionState& st)
 {
     detail::error_block blk;
-    detail::start_execution(get_channel(), req, st, blk.err, blk.diag);
+    detail::start_execution(get_channel(), req, detail::impl_access::get_impl(st), blk.err, blk.diag);
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
 template <
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+    class ExecutionState,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_start_execution(
     ExecutionRequest&& req,
-    execution_state& st,
+    ExecutionState& st,
     diagnostics& diag,
     CompletionToken&& token
 )
@@ -263,7 +270,7 @@ boost::mysql::connection<Stream>::async_start_execution(
     return detail::async_start_execution(
         get_channel(),
         std::forward<ExecutionRequest>(req),
-        st,
+        detail::impl_access::get_impl(st),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -315,7 +322,7 @@ void boost::mysql::connection<Stream>::execute_statement(
 )
 {
     detail::clear_errors(err, diag);
-    detail::execute(get_channel(), stmt.bind(params), result, err, diag);
+    detail::execute(get_channel(), stmt.bind(params), detail::impl_access::get_impl(result), err, diag);
 }
 
 template <class Stream>
@@ -327,7 +334,13 @@ void boost::mysql::connection<Stream>::execute_statement(
 )
 {
     detail::error_block blk;
-    detail::execute(get_channel(), stmt.bind(params), result, blk.err, blk.diag);
+    detail::execute(
+        get_channel(),
+        stmt.bind(params),
+        detail::impl_access::get_impl(result),
+        blk.err,
+        blk.diag
+    );
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
@@ -348,7 +361,7 @@ boost::mysql::connection<Stream>::async_execute_statement(
     return detail::async_execute(
         get_channel(),
         stmt.bind(std::forward<FieldLikeTuple>(params)),
-        result,
+        detail::impl_access::get_impl(result),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -365,7 +378,13 @@ void boost::mysql::connection<Stream>::start_statement_execution(
 )
 {
     detail::clear_errors(err, diag);
-    detail::start_execution(get_channel(), stmt.bind(params), result, err, diag);
+    detail::start_execution(
+        get_channel(),
+        stmt.bind(params),
+        detail::impl_access::get_impl(result),
+        err,
+        diag
+    );
 }
 
 template <class Stream>
@@ -377,7 +396,13 @@ void boost::mysql::connection<Stream>::start_statement_execution(
 )
 {
     detail::error_block blk;
-    detail::start_execution(get_channel(), stmt.bind(params), result, blk.err, blk.diag);
+    detail::start_execution(
+        get_channel(),
+        stmt.bind(params),
+        detail::impl_access::get_impl(result),
+        blk.err,
+        blk.diag
+    );
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
@@ -398,7 +423,7 @@ boost::mysql::connection<Stream>::async_start_statement_execution(
     return detail::async_start_execution(
         get_channel(),
         stmt.bind(std::forward<FieldLikeTuple>(params)),
-        result,
+        detail::impl_access::get_impl(result),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -430,7 +455,13 @@ void boost::mysql::connection<Stream>::start_statement_execution(
 )
 {
     detail::error_block blk;
-    detail::start_execution(get_channel(), stmt.bind(params_first, params_last), result, blk.err, blk.diag);
+    detail::start_execution(
+        get_channel(),
+        stmt.bind(params_first, params_last),
+        detail::impl_access::get_impl(result),
+        blk.err,
+        blk.diag
+    );
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
@@ -451,7 +482,7 @@ boost::mysql::connection<Stream>::async_start_statement_execution(
     return detail::async_start_execution(
         get_channel(),
         stmt.bind(params_first, params_last),
-        result,
+        detail::impl_access::get_impl(result),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -491,46 +522,40 @@ boost::mysql::connection<Stream>::async_close_statement(
 
 // read resultset head
 template <class Stream>
+template <class ExecutionState>
 void boost::mysql::connection<Stream>::read_resultset_head(
-    execution_state& st,
+    ExecutionState& st,
     error_code& err,
     diagnostics& diag
 )
 {
     detail::clear_errors(err, diag);
-    return detail::read_resultset_head(
-        get_channel(),
-        detail::execution_state_access::get_impl(st),
-        err,
-        diag
-    );
+    return detail::read_resultset_head(get_channel(), detail::impl_access::get_impl(st), err, diag);
 }
 
 template <class Stream>
-void boost::mysql::connection<Stream>::read_resultset_head(execution_state& st)
+template <class ExecutionState>
+void boost::mysql::connection<Stream>::read_resultset_head(ExecutionState& st)
 {
     detail::error_block blk;
-    detail::read_resultset_head(
-        get_channel(),
-        detail::execution_state_access::get_impl(st),
-        blk.err,
-        blk.diag
-    );
+    detail::read_resultset_head(get_channel(), detail::impl_access::get_impl(st), blk.err, blk.diag);
     blk.check(BOOST_CURRENT_LOCATION);
 }
 
 template <class Stream>
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <
+    class ExecutionState,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_read_resultset_head(
-    execution_state& st,
+    ExecutionState& st,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return detail::async_read_resultset_head(
         get_channel(),
-        detail::execution_state_access::get_impl(st),
+        detail::impl_access::get_impl(st),
         diag,
         std::forward<CompletionToken>(token)
     );
@@ -568,6 +593,63 @@ boost::mysql::connection<Stream>::async_read_some_rows(
 )
 {
     return detail::async_read_some_rows(get_channel(), st, diag, std::forward<CompletionToken>(token));
+}
+
+template <class Stream>
+template <class SpanRowType, class... RowType>
+std::size_t boost::mysql::connection<Stream>::read_some_rows(
+    static_execution_state<RowType...>& st,
+    span<SpanRowType> output,
+    error_code& err,
+    diagnostics& diag
+)
+{
+    constexpr std::size_t index = boost::mp11::mp_find<boost::mp11::mp_list<RowType...>, SpanRowType>::value;
+    static_assert(index < sizeof...(RowType), "SpanRowType must be one of the types returned by the query");
+    return detail::read_some_rows(
+        get_channel(),
+        detail::impl_access::get_impl(st),
+        detail::output_ref{output.data(), output.size(), index},
+        err,
+        diag
+    );
+}
+
+template <class Stream>
+template <class SpanRowType, class... RowType>
+std::size_t boost::mysql::connection<Stream>::read_some_rows(
+    static_execution_state<RowType...>& st,
+    span<SpanRowType> output
+)
+{
+    detail::error_block blk;
+    auto res = read_some_rows(st, output, blk.err, blk.diag);
+    blk.check(BOOST_CURRENT_LOCATION);
+    return res;
+}
+
+template <class Stream>
+template <
+    class SpanRowType,
+    class... RowType,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+boost::mysql::connection<Stream>::async_read_some_rows(
+    static_execution_state<RowType...>& st,
+    span<SpanRowType> output,
+    diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    constexpr std::size_t index = boost::mp11::mp_find<boost::mp11::mp_list<RowType...>, SpanRowType>::value;
+    static_assert(index < sizeof...(RowType), "SpanRowType must be one of the types returned by the query");
+    return detail::async_read_some_rows(
+        get_channel(),
+        detail::impl_access::get_impl(st),
+        detail::output_ref{output.data(), output.size(), index},
+        diag,
+        std::forward<CompletionToken>(token)
+    );
 }
 
 // ping

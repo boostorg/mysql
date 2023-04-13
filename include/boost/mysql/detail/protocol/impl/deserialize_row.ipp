@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
@@ -108,61 +107,15 @@ inline error_code deserialize_binary_row(
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::detail::deserialize_row(
+boost::mysql::error_code boost::mysql::detail::deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
     metadata_collection_view meta,
-    field_view* output,
-    error_code& err
+    field_view* output
 )
 {
-    err = encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output)
-                                                       : deserialize_binary_row(ctx, meta, output);
-}
-
-void boost::mysql::detail::deserialize_row(
-    boost::asio::const_buffer read_message,
-    capabilities current_capabilities,
-    db_flavor flavor,
-    execution_state_iface& st,
-    error_code& err,
-    diagnostics& diag
-)
-{
-    assert(st.should_read_rows());
-
-    // Message type: row, error or eof?
-    std::uint8_t msg_type = 0;
-    deserialization_context ctx(read_message, current_capabilities);
-    auto deser_errc = deserialize(ctx, msg_type);
-    if (deser_errc != deserialize_errc::ok)
-    {
-        err = to_error_code(deser_errc);
-        return;
-    }
-
-    if (msg_type == eof_packet_header)
-    {
-        // end of resultset => this is a ok_packet, not a row
-        ok_packet ok_pack;
-        err = deserialize_message(ctx, ok_pack);
-        if (err)
-            return;
-        err = st.on_row_ok_packet(ok_pack);
-    }
-    else if (msg_type == error_packet_header)
-    {
-        // An error occurred during the generation of the rows
-        err = process_error_packet(ctx, flavor, diag);
-    }
-    else
-    {
-        // An actual row
-        ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
-        field_view* storage = st.add_row_storage();
-        deserialize_row(st.encoding(), ctx, st.current_resultset_meta(), storage, err);
-        err = st.parse_row();
-    }
+    return encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output)
+                                                        : deserialize_binary_row(ctx, meta, output);
 }
 
 #endif

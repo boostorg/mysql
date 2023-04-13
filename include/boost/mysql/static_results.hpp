@@ -5,32 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_BASIC_RESULTS_HPP
-#define BOOST_MYSQL_BASIC_RESULTS_HPP
+#ifndef BOOST_MYSQL_STATIC_RESULTS_HPP
+#define BOOST_MYSQL_STATIC_RESULTS_HPP
 
-#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/resultset.hpp>
-#include <boost/mysql/resultset_view.hpp>
-#include <boost/mysql/rows.hpp>
-#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/results_iterator.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
-
-#include <boost/describe/class.hpp>
-
-#include <cassert>
-#include <cstddef>
-#include <stdexcept>
+#include <boost/mysql/detail/protocol/static_results_impl.hpp>
 
 namespace boost {
 namespace mysql {
 
 template <class... RowType>
-class basic_results
+class static_results
 {
 public:
     template <std::size_t I>
@@ -43,14 +31,14 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    basic_results() = default;
+    static_results() = default;
 
     /**
      * \brief Copy constructor.
      * \par Exception safety
      * Strong guarantee. Internal allocations may throw.
      */
-    basic_results(const basic_results& other) = default;
+    static_results(const static_results& other) = default;
 
     /**
      * \brief Move constructor.
@@ -61,7 +49,7 @@ public:
      * View objects obtained from `other` using \ref rows and \ref meta remain valid.
      * Any other views and iterators referencing `other` are invalidated.
      */
-    basic_results(basic_results&& other) = default;
+    static_results(static_results&& other) = default;
 
     /**
      * \brief Copy assignment.
@@ -71,7 +59,7 @@ public:
      * \par Object lifetimes
      * Views and iterators referencing `*this` are invalidated.
      */
-    basic_results& operator=(const basic_results& other) = default;
+    static_results& operator=(const static_results& other) = default;
 
     /**
      * \brief Move assignment.
@@ -83,10 +71,10 @@ public:
      * Any other views and iterators referencing `other` are invalidated. Views and iterators
      * referencing `*this` are invalidated.
      */
-    basic_results& operator=(basic_results&& other) = default;
+    static_results& operator=(static_results&& other) = default;
 
     /// Destructor
-    ~basic_results() = default;
+    ~static_results() = default;
 
     /**
      * \brief Returns whether the object holds a valid result.
@@ -262,23 +250,11 @@ public:
         return impl_.get_info(I);
     }
 
-    // TODO: hide this
-    detail::execution_state_iface& impl() noexcept { return impl_; }
-
 private:
-    detail::basic_results_impl<RowType...> impl_;
+    detail::static_results_impl<RowType...> impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::basic_results_access;
+    friend struct detail::impl_access;
 #endif
-};
-
-struct detail::basic_results_access
-{
-    template <typename... RowType>
-    static detail::basic_results_impl<RowType...>& get_impl(basic_results<RowType...>& obj) noexcept
-    {
-        return obj.impl_;
-    }
 };
 
 }  // namespace mysql

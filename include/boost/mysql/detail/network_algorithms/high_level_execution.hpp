@@ -10,13 +10,10 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/results.hpp>
-#include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
-#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/execution_processor.hpp>
 
 #include <boost/asio/async_result.hpp>
 
@@ -24,11 +21,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
+template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void execute(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    ResultsType& output,
+    results_base& output,
     error_code& err,
     diagnostics& diag
 );
@@ -36,13 +33,12 @@ void execute(
 template <
     class Stream,
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
-    class ResultsType,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    ResultsType& output,
+    results_base& output,
     diagnostics& diag,
     CompletionToken&& token
 );
@@ -51,7 +47,7 @@ template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void start_execution(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    execution_state& st,
+    execution_state_base& st,
     error_code& err,
     diagnostics& diag
 );
@@ -64,7 +60,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_execution(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    execution_state& st,
+    execution_state_base& st,
     diagnostics& diag,
     CompletionToken&& token
 );

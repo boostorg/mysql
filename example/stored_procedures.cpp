@@ -7,10 +7,10 @@
 
 //[example_stored_procedures
 
-#include <boost/mysql/basic_results.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql.hpp>
@@ -298,7 +298,7 @@ struct visitor
         // We need to pass user-supplied params to CALL, so we use a statement
         auto stmt = conn.prepare_statement("CALL get_products(?)");
 
-        boost::mysql::basic_results<product, empty> products;
+        boost::mysql::static_results<product, empty> products;
         conn.execute(stmt.bind(args.search), products);
         std::cout << "Your search returned the following products:\n";
         for (const product& prod : products.rows())
@@ -315,7 +315,7 @@ struct visitor
     void operator()(const create_order_args&) const
     {
         // Since create_order doesn't have user-supplied params, we can use a text query
-        boost::mysql::basic_results<order, empty> result;
+        boost::mysql::static_results<order, empty> result;
         conn.execute("CALL create_order()", result);
 
         // Print the result to stdout. create_order() returns a resultset for
@@ -331,7 +331,7 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL get_order(?)");
 
         // Execute the statement
-        boost::mysql::basic_results<order, order_item, empty> result;
+        boost::mysql::static_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.order_id), result);
 
         // Print the result to stdout. get_order() returns a resultset for
@@ -346,7 +346,7 @@ struct visitor
     void operator()(const get_orders_args&) const
     {
         // Since get_orders doesn't have user-supplied params, we can use a text query
-        boost::mysql::basic_results<order, empty> result;
+        boost::mysql::static_results<order, empty> result;
         conn.execute("CALL get_orders()", result);
 
         // Print results to stdout. get_orders() succeeds even if no order is found.
@@ -375,7 +375,7 @@ struct visitor
         // We still have to pass a value to the 4th argument, even if it's an OUT parameter.
         // The value will be ignored, so we can pass nullptr.
         using out_params_t = std::tuple<std::int64_t>;
-        boost::mysql::basic_results<order, order_item, out_params_t, empty> result;
+        boost::mysql::static_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, args.product_id, args.quantity, nullptr), result);
 
         // We can use results::out_params() to access the extra resultset containing
@@ -394,7 +394,7 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL remove_line_item(?)");
 
         // Run the procedure
-        boost::mysql::basic_results<order, order_item, empty> result;
+        boost::mysql::static_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.line_item_id), result);
 
         // Print results to stdout
@@ -411,7 +411,7 @@ struct visitor
 
         // Execute the statement
         using out_params_t = std::tuple<std::int64_t>;
-        boost::mysql::basic_results<order, order_item, out_params_t, empty> result;
+        boost::mysql::static_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, nullptr), result);
 
         // We can use results::out_params() to access the extra resultset containing
@@ -430,7 +430,7 @@ struct visitor
         auto stmt = conn.prepare_statement("CALL complete_order(?)");
 
         // Execute the statement
-        boost::mysql::basic_results<order, order_item, empty> result;
+        boost::mysql::static_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.order_id), result);
 
         // Print the results to stdout

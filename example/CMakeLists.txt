@@ -101,6 +101,7 @@ add_example_stored_procedures()
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     add_example(unix_socket             example_user example_password)
 endif()
+add_example(typed_multi                 example_user example_password ${SERVER_HOST})
 
 
 

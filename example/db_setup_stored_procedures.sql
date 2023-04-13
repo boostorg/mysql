@@ -145,7 +145,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MYSQL_ERRNO = 1329, MESSAGE_TEXT = 'The given order does not exist';
     END IF;
     IF order_status <> 'draft' THEN
-        SIGNAL SQLSTATE '45000' SET MYSQL_ERRNO = 1000, MESSAGE_TEXT = 'The given is not editable';
+        SIGNAL SQLSTATE '45000' SET MYSQL_ERRNO = 1000, MESSAGE_TEXT = 'The given order is not editable';
     END IF;
 
     -- Insert the new item

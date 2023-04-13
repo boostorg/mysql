@@ -10,8 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 #include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
 namespace boost {
@@ -70,6 +70,44 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
         }
 
         return static_cast<std::size_t>(num_fields.value);
+    }
+}
+
+inline boost::mysql::detail::row_response boost::mysql::detail::deserialize_row_message(
+    boost::asio::const_buffer msg,
+    capabilities caps,
+    db_flavor flavor,
+    diagnostics& diag
+)
+{
+    // Message type: row, error or eof?
+    std::uint8_t msg_type = 0;
+    deserialization_context ctx(msg, caps);
+    auto deser_errc = deserialize(ctx, msg_type);
+    if (deser_errc != deserialize_errc::ok)
+    {
+        return to_error_code(deser_errc);
+    }
+
+    if (msg_type == eof_packet_header)
+    {
+        // end of resultset => this is a ok_packet, not a row
+        ok_packet ok_pack;
+        auto err = deserialize_message(ctx, ok_pack);
+        if (err)
+            return err;
+        return ok_pack;
+    }
+    else if (msg_type == error_packet_header)
+    {
+        // An error occurred during the generation of the rows
+        return process_error_packet(ctx, flavor, diag);
+    }
+    else
+    {
+        // An actual row
+        ctx.rewind(1);  // keep the 'message type' byte, as it is part of the actual message
+        return ctx;
     }
 }
 

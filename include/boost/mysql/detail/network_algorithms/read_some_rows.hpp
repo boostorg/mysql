@@ -15,6 +15,7 @@
 #include <boost/mysql/rows_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/protocol/execution_processor.hpp>
 
 namespace boost {
 namespace mysql {
@@ -31,6 +32,27 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
 async_read_some_rows(
     channel<Stream>& channel,
     execution_state& result,
+    diagnostics& diag,
+    CompletionToken&& token
+);
+
+template <class Stream>
+std::size_t read_some_rows(
+    channel<Stream>& channel,
+    typed_execution_state_base& st,
+    output_ref output,
+    error_code& err,
+    diagnostics& diag
+);
+
+template <
+    class Stream,
+    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+async_read_some_rows(
+    channel<Stream>& channel,
+    typed_execution_state_base& st,
+    output_ref output,
     diagnostics& diag,
     CompletionToken&& token
 );

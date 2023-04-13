@@ -8,8 +8,11 @@
 #ifndef BOOST_MYSQL_RESULTSET_VIEW_HPP
 #define BOOST_MYSQL_RESULTSET_VIEW_HPP
 
+#include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/rows_view.hpp>
+
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/results_impl.hpp>
 
 namespace boost {
 namespace mysql {
@@ -42,7 +45,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    bool has_value() const noexcept { return st_ != nullptr; }
+    bool has_value() const noexcept { return impl_ != nullptr; }
 
     /**
      * \brief Returns the rows for this resultset.
@@ -62,7 +65,7 @@ public:
     rows_view rows() const noexcept
     {
         assert(has_value());
-        return st_->get_rows(index_);
+        return impl_->get_rows(index_);
     }
 
     /**
@@ -83,7 +86,7 @@ public:
     metadata_collection_view meta() const noexcept
     {
         assert(has_value());
-        return st_->get_meta(index_);
+        return impl_->get_meta(index_);
     }
 
     /**
@@ -100,7 +103,7 @@ public:
     std::uint64_t affected_rows() const noexcept
     {
         assert(has_value());
-        return st_->get_affected_rows(index_);
+        return impl_->get_affected_rows(index_);
     }
 
     /**
@@ -117,7 +120,7 @@ public:
     std::uint64_t last_insert_id() const noexcept
     {
         assert(has_value());
-        return st_->get_last_insert_id(index_);
+        return impl_->get_last_insert_id(index_);
     }
 
     /**
@@ -134,7 +137,7 @@ public:
     unsigned warning_count() const noexcept
     {
         assert(has_value());
-        return st_->get_warning_count(index_);
+        return impl_->get_warning_count(index_);
     }
 
     /**
@@ -161,7 +164,7 @@ public:
     string_view info() const noexcept
     {
         assert(has_value());
-        return st_->get_info(index_);
+        return impl_->get_info(index_);
     }
 
     /**
@@ -178,7 +181,7 @@ public:
     bool is_out_params() const noexcept
     {
         assert(has_value());
-        return st_->get_is_out_params(index_);
+        return impl_->get_is_out_params(index_);
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -186,10 +189,12 @@ public:
 #endif
 
 private:
-    const detail::results_impl* st_{};
+    const detail::results_impl* impl_{};
     std::size_t index_{};
 
-    resultset_view(const detail::results_impl& st, std::size_t index) noexcept : st_(&st), index_(index) {}
+    resultset_view(const detail::results_impl& impl, std::size_t index) noexcept : impl_(&impl), index_(index)
+    {
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::resultset_view_access;

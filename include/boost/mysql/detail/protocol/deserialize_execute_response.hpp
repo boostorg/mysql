@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 
 namespace boost {
 namespace mysql {
@@ -52,6 +53,41 @@ inline execute_response deserialize_execute_response(
     db_flavor flavor,
     diagnostics& diag
 ) noexcept;
+
+struct row_response
+{
+    enum class type_t
+    {
+        row,
+        ok_packet,
+        error
+    } type;
+    union data_t
+    {
+        static_assert(std::is_trivially_destructible<deserialization_context>::value, "");
+        static_assert(std::is_trivially_destructible<ok_packet>::value, "");
+        static_assert(std::is_trivially_destructible<error_code>::value, "");
+
+        deserialization_context ctx;  // if row
+        ok_packet ok_pack;
+        error_code err;
+
+        data_t(const deserialization_context& ctx) noexcept : ctx(ctx) {}
+        data_t(const ok_packet& ok_pack) noexcept : ok_pack(ok_pack) {}
+        data_t(error_code err) noexcept : err(err) {}
+    } data;
+
+    row_response(const deserialization_context& ctx) noexcept : type(type_t::row), data(ctx) {}
+    row_response(const ok_packet& ok_pack) noexcept : type(type_t::ok_packet), data(ok_pack) {}
+    row_response(error_code v) noexcept : type(type_t::error), data(v) {}
+};
+
+inline row_response deserialize_row_message(
+    boost::asio::const_buffer msg,
+    capabilities caps,
+    db_flavor flavor,
+    diagnostics& diag
+);
 
 }  // namespace detail
 }  // namespace mysql
