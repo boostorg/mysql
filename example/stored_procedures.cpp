@@ -11,6 +11,7 @@
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql.hpp>
 
@@ -41,7 +42,7 @@
  * In the real world, flow would be much more complex, but this is enough for an example.
  */
 
-using boost::mysql::resultset_view;
+using boost::mysql::string_view;
 
 namespace {
 
