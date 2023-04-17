@@ -25,23 +25,27 @@ target_link_libraries(
     boost_mysql_asio
 )
 
+# Declare an example target
+function (add_example_target EXAMPLE_NAME EXAMPLE_PATH)
+    add_executable(${EXAMPLE_NAME} ${EXAMPLE_PATH})
+    target_link_libraries(${EXAMPLE_NAME} PRIVATE boost_mysql_examples_common ${ARGN})
+    common_target_settings(${EXAMPLE_NAME})
+endfunction()
+
 # Build and run an example
-function (add_example EXAMPLE_NAME)
-    set(EXECUTABLE_NAME "boost_mysql_example_${EXAMPLE_NAME}")
-    add_executable(${EXECUTABLE_NAME} "${EXAMPLE_NAME}.cpp")
-    target_link_libraries(${EXECUTABLE_NAME} PRIVATE boost_mysql_examples_common)
-    common_target_settings(${EXECUTABLE_NAME})
+function (add_example EXAMPLE_NAME EXAMPLE_PATH)
+    add_example_target(${EXAMPLE_NAME} ${EXAMPLE_PATH})
 
     if (BOOST_MYSQL_VALGRIND_TESTS)
         add_memcheck_test(
-            NAME "${EXECUTABLE_NAME}_memcheck"
-            TARGET ${EXECUTABLE_NAME}
+            NAME "${EXAMPLE_NAME}_memcheck"
+            TARGET ${EXAMPLE_NAME}
             ARGUMENTS ${ARGN}
         )
     else()
         add_test(
-            NAME ${EXECUTABLE_NAME}
-            COMMAND ${EXECUTABLE_NAME} ${ARGN}
+            NAME ${EXAMPLE_NAME}
+            COMMAND ${EXAMPLE_NAME} ${ARGN}
         )
     endif()
 endfunction()
@@ -49,60 +53,77 @@ endfunction()
 # Coroutines needs Boost.Context and shouldn't be memchecked
 function (add_example_coroutines)
     set(EXECUTABLE_NAME boost_mysql_example_async_coroutines)
-    add_executable(${EXECUTABLE_NAME} async_coroutines.cpp)
-    target_link_libraries(
-        ${EXECUTABLE_NAME}
-        PRIVATE
-        boost_mysql_examples_common
-        Boost::context
-    )
-    common_target_settings(${EXECUTABLE_NAME})
+    add_example_target(${EXECUTABLE_NAME} async_coroutines.cpp Boost::context)
     add_test(
         NAME ${EXECUTABLE_NAME}
         COMMAND ${EXECUTABLE_NAME} example_user example_password ${SERVER_HOST}
     )
 endfunction()
 
-# The stored procedures example must be run several times through a Python script
-function (add_example_stored_procedures)
-    set(EXECUTABLE_NAME boost_mysql_example_stored_procedures)
-    add_executable(${EXECUTABLE_NAME} stored_procedures.cpp)
-    target_link_libraries(
-        ${EXECUTABLE_NAME}
-        PRIVATE
-        boost_mysql_examples_common
-    )
-    common_target_settings(${EXECUTABLE_NAME})
+# The order management examples must be run several times through a Python script
+function (add_example_order_management EXAMPLE_NAME EXAMPLE_PATH)
+    add_example_target(${EXAMPLE_NAME} ${EXAMPLE_PATH})
     add_test(
-        NAME ${EXECUTABLE_NAME}
+        NAME ${EXAMPLE_NAME}
         COMMAND
             python
             ${CMAKE_CURRENT_SOURCE_DIR}/private/run_stored_procedures.py
-            $<TARGET_FILE:${EXECUTABLE_NAME}>
+            $<TARGET_FILE:${EXAMPLE_NAME}>
             ${SERVER_HOST}
     )
 endfunction()
 
-# Build and run all the examples
-add_example(snippets                    example_user example_password ${SERVER_HOST})
-add_example(tutorial                    example_user example_password ${SERVER_HOST})
-add_example(text_queries                example_user example_password ${SERVER_HOST})
-add_example(prepared_statements         example_user example_password ${SERVER_HOST})
-add_example(async_callbacks             example_user example_password ${SERVER_HOST})
+# Regular examples are the ones that require no extra linking libs and can be run
+# with example_user example_password
+set (REGULAR_EXAMPLES
+    snippets
+    tutorial
+    async_callbacks
+    async_coroutinescpp20
+    async_futures
+    default_completion_tokens
+    metadata
+    ssl
+    timeouts
+)
+foreach (FILE_NAME ${REGULAR_EXAMPLES})
+    add_example(
+        "boost_mysql_${FILE_NAME}"
+        "${FILE_NAME}.cpp"
+        example_user example_password ${SERVER_HOST}
+    )
+endforeach()
+
+# Order management examples must be run several times through a Python script
+set(ORDER_EXAMPLES
+    prepared_statements_cpp11
+    prepared_statements_cpp14
+    stored_procedures_cpp11
+    stored_procedures_cpp14
+)
+foreach (FILE_NAME ${ORDER_EXAMPLES})
+    add_example_order_management(
+        "boost_mysql_example_${FILE_NAME}"
+        "order_management/${FILE_NAME}.cpp"
+    )
+endforeach()
+
+# Rest of the examples
 add_example_coroutines()
-add_example(async_coroutinescpp20       example_user example_password ${SERVER_HOST})
-add_example(async_futures               example_user example_password ${SERVER_HOST})
-add_example(default_completion_tokens   example_user example_password ${SERVER_HOST})
-add_example(metadata                    example_user example_password ${SERVER_HOST})
-add_example(ssl                         example_user example_password ${SERVER_HOST})
-add_example(timeouts                    example_user example_password ${SERVER_HOST})
-add_example(source_script               example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql)
-add_example_stored_procedures()
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
-    add_example(unix_socket             example_user example_password)
+    add_example(
+        boost_mysql_example_unix_socket
+        unix_socket.cpp
+        example_user example_password
+    )
 endif()
-add_example(typed_multi                 example_user example_password ${SERVER_HOST})
-
-
-
-
+add_example(
+    boost_mysql_example_source_script
+    source_script.cpp
+    example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql
+)
+add_example(
+    boost_mysql_example_typed_multi
+    typed_multi.cpp
+    example_user example_password ${SERVER_HOST}
+)

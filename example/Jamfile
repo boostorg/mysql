@@ -16,14 +16,11 @@ if $(hostname) = ""
     hostname = "localhost" ;
 }
 
-# Example list
+# "Regular" examples
 local regular_examples =
     snippets
     tutorial
-    text_queries
-    prepared_statements
     async_callbacks
-    async_coroutines
     async_coroutinescpp20
     async_futures
     default_completion_tokens
@@ -39,11 +36,41 @@ for local example in $(regular_examples)
         :
             "$(example).cpp"
             /boost/mysql/test//mysql
-            /boost/context//boost_context
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;
 }
+
+# Order management examples. These must be run several times through a Python script
+local order_examples =
+    prepared_statements_cpp11
+    prepared_statements_cpp14
+    stored_procedures_cpp11
+    stored_procedures_cpp14
+;
+
+for local example in $(order_examples)
+{
+    local example_name = "boost_mysql_example_$(example)" ;
+    unit-test $(example_name)
+        :
+            "order_management/$(example).cpp"
+            /boost/mysql/test//mysql
+        : requirements
+            <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
+            <testing.arg>$(hostname)
+    ;
+}
+
+# Coroutines, which requires Boost.Context
+unit-test boost_mysql_example_async_coroutines
+    :
+        "$(example).cpp"
+        /boost/mysql/test//mysql
+        /boost/context//boost_context
+    :
+        <testing.arg>"example_user example_password $(hostname)"
+    ;
 
 # UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
 if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
@@ -55,18 +82,6 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
         <testing.arg>"example_user example_password"
     ;
 }
-
-# Stored procedures. The example is a command line tool that must be run
-# several times in order, so we do this through a Python script
-unit-test boost_mysql_example_stored_procedures
-    :
-        stored_procedures.cpp
-        /boost/mysql/test//mysql
-    : requirements
-        <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
-        <testing.arg>$(hostname)
-    ;
-
 
 # Source script. unit-test doesn't support input-file correctly
 unit-test boost_mysql_example_source_script

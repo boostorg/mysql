@@ -9,15 +9,15 @@
 SET NAMES utf8;
 
 -- Database
-DROP DATABASE IF EXISTS boost_mysql_stored_procedures;
-CREATE DATABASE boost_mysql_stored_procedures;
-USE boost_mysql_stored_procedures;
+DROP DATABASE IF EXISTS boost_mysql_order_management;
+CREATE DATABASE boost_mysql_order_management;
+USE boost_mysql_order_management;
 
 -- User
-DROP USER IF EXISTS 'sp_user'@'%';
-CREATE USER 'sp_user'@'%' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'sp_user'@'%' IDENTIFIED BY 'sp_password';
-GRANT ALL PRIVILEGES ON boost_mysql_stored_procedures.* TO 'sp_user'@'%';
+DROP USER IF EXISTS 'orders_user'@'%';
+CREATE USER 'orders_user'@'%' IDENTIFIED WITH 'mysql_native_password';
+ALTER USER 'orders_user'@'%' IDENTIFIED BY 'orders_password';
+GRANT ALL PRIVILEGES ON boost_mysql_order_management.* TO 'orders_user'@'%';
 FLUSH PRIVILEGES;
 
 -- Table definitions
@@ -46,7 +46,7 @@ CREATE TABLE order_items(
 -- Procedures
 DELIMITER //
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE get_products(IN p_search VARCHAR(50))
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE get_products(IN p_search VARCHAR(50))
 BEGIN
     DECLARE max_products INT DEFAULT 20;
     IF p_search IS NULL THEN
@@ -77,7 +77,7 @@ BEGIN
     COMMIT;
 END //
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE get_order(
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE get_order(
     IN p_order_id INT
 )
 BEGIN
@@ -112,12 +112,12 @@ BEGIN
     COMMIT;
 END //
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE get_orders()
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE get_orders()
 BEGIN
     SELECT id, `status` FROM orders;
 END //
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE add_line_item(
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE add_line_item(
     IN p_order_id INT,
     IN p_product_id INT,
     IN p_quantity INT,
@@ -168,7 +168,7 @@ BEGIN
     COMMIT;
 END //
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE remove_line_item(
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE remove_line_item(
     IN p_line_item_id INT
 )
 BEGIN
@@ -213,7 +213,7 @@ BEGIN
     COMMIT;
 END //
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE checkout_order(
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE checkout_order(
     IN p_order_id INT,
     OUT pout_order_total INT
 )
@@ -263,7 +263,7 @@ BEGIN
 END //
 
 
-CREATE DEFINER = 'sp_user'@'%' PROCEDURE complete_order(
+CREATE DEFINER = 'orders_user'@'%' PROCEDURE complete_order(
     IN p_order_id INT
 )
 BEGIN

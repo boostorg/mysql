@@ -5,24 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_stored_procedures
-
-#include <boost/mysql/resultset_view.hpp>
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/static_results.hpp>
-#include <boost/mysql/string_view.hpp>
-
-#include <boost/mysql.hpp>
-
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/describe/class.hpp>
-#include <boost/variant2/variant.hpp>
-
-#include <iostream>
-#include <string>
-#include <tuple>
+//[example_stored_procedures_cpp14
 
 /**
  * This example implements a ver simple command-line order manager
@@ -40,214 +23,95 @@
  * After that, payment would happen through an external system. Once completed, an
  * order is confirmed, transitioning it to the complete status.
  * In the real world, flow would be much more complex, but this is enough for an example.
+ *
+ * We'll be using the typed interface to retrieve results from MySQL.
+ * This makes use of the static_results<T1, T2...> class template.
+ * To use it, we need to define a set of structs/tuples describing the shape
+ * of our rows. Boost.MySQL will parse the received rows into these types.
+ *
+ * Row types may be plain structs or std::tuple's. If we use plain structs, we need
+ * to use BOOST_DESCRIBE_STRUCT on them. This adds the structs the required reflection
+ * data, so Boost.MySQL knows how to parse rows into them.
+ *
+ * Boost.Describe requires C++14 to work. You can also use std::tuple, which only requires
+ * C++11 - but the resulting code is usually less readable.
  */
 
-using boost::mysql::string_view;
+#include <boost/describe/class.hpp>
+
+#include <iostream>
+
+// This example makes use of Boost.Describe, so it needs C++14 or higher to work
+#if defined(BOOST_DESCRIBE_CXX14)
+
+#include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/static_results.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/optional/optional.hpp>
+
+#include <string>
+#include <tuple>
+
+// This header contains boilerplate code to parse the command line
+// arguments into structs.
+#include "parse_cmdline.hpp"
+
+namespace mysql = boost::mysql;
 
 namespace {
 
-using empty = std::tuple<>;
-
-/**
- * Our command line tool implements several sub-commands. Each sub-command
- * has a set of arguments. We define a struct for each sub-command.
- */
-
-struct get_products_args
-{
-    std::string search;
-};
-
-struct create_order_args
-{
-};
-
-struct get_order_args
-{
-    std::int64_t order_id;
-};
-
-struct get_orders_args
-{
-};
-
-struct add_line_item_args
-{
-    std::int64_t order_id;
-    std::int64_t product_id;
-    std::int64_t quantity;
-};
-
-struct remove_line_item_args
-{
-    std::int64_t line_item_id;
-};
-
-struct checkout_order_args
-{
-    std::int64_t order_id;
-};
-
-struct complete_order_args
-{
-    std::int64_t order_id;
-};
-
-// A variant type that can represent arguments for any of the sub-commands
-using any_command = boost::variant2::variant<
-    get_products_args,
-    get_order_args,
-    get_orders_args,
-    create_order_args,
-    add_line_item_args,
-    remove_line_item_args,
-    checkout_order_args,
-    complete_order_args>;
-
-// In-memory representation of the command-line arguments once parsed.
-struct cmdline_args
-{
-    const char* username;
-    const char* password;
-    const char* host;
-    any_command cmd;
-};
-
-// Call on error to print usage and exit
-[[noreturn]] void usage(string_view program_name)
-{
-    std::cerr << "Usage: " << program_name << " <username> <password> <server-hostname> <command> args...\n"
-              << "Available commands:\n"
-                 "    get-products <search-term>\n"
-                 "    create-order\n"
-                 "    get-order <order-id>\n"
-                 "    get-orders\n"
-                 "    add-line-item <order-id> <product-id> <quantity>\n"
-                 "    remove-line-item <line-item-id>\n"
-                 "    checkout-order <order-id>\n"
-                 "    complete-order <order-id>"
-              << std::endl;
-    exit(1);
-}
-
-// Helper function to parse a sub-command
-any_command parse_subcommand(string_view program_name, string_view cmd_name, int argc_rest, char** argv_rest)
-{
-    if (cmd_name == "get-products")
-    {
-        if (argc_rest != 1)
-        {
-            usage(program_name);
-        }
-        return get_products_args{argv_rest[0]};
-    }
-    else if (cmd_name == "create-order")
-    {
-        if (argc_rest != 0)
-        {
-            usage(program_name);
-        }
-        return create_order_args{};
-    }
-    else if (cmd_name == "get-order")
-    {
-        if (argc_rest != 1)
-        {
-            usage(program_name);
-        }
-        return get_order_args{std::stoi(argv_rest[0])};
-    }
-    else if (cmd_name == "get-orders")
-    {
-        if (argc_rest != 0)
-        {
-            usage(program_name);
-        }
-        return get_orders_args{};
-    }
-    else if (cmd_name == "add-line-item")
-    {
-        if (argc_rest != 3)
-        {
-            usage(program_name);
-        }
-        return add_line_item_args{
-            std::stoi(argv_rest[0]),
-            std::stoi(argv_rest[1]),
-            std::stoi(argv_rest[2]),
-        };
-    }
-    else if (cmd_name == "remove-line-item")
-    {
-        if (argc_rest != 1)
-        {
-            usage(program_name);
-        }
-        return remove_line_item_args{
-            std::stoi(argv_rest[0]),
-        };
-    }
-    else if (cmd_name == "checkout-order")
-    {
-        if (argc_rest != 1)
-        {
-            usage(program_name);
-        }
-        return checkout_order_args{std::stoi(argv_rest[0])};
-    }
-    else if (cmd_name == "complete-order")
-    {
-        if (argc_rest != 1)
-        {
-            usage(program_name);
-        }
-        return complete_order_args{std::stoi(argv_rest[0])};
-    }
-    else
-    {
-        usage(program_name);
-    }
-}
-
-// Parses the entire command line
-cmdline_args parse_cmdline_args(int argc, char** argv)
-{
-    if (argc < 5)
-    {
-        usage(argv[0]);
-    }
-    return cmdline_args{
-        argv[1],
-        argv[2],
-        argv[3],
-        parse_subcommand(argv[0], argv[4], argc - 5, argv + 5),
-    };
-}
-
-// Types for the received rows
+// An order retrieved by our system.
 struct order
 {
+    // The unique database ID of the object.
     std::int64_t id;
+
+    // The order status (draft, pending_payment, complete).
     std::string status;
 };
 BOOST_DESCRIBE_STRUCT(order, (), (id, status));
 
+// A line item, associated to an order and to a product.
+// Our queries don't retrieve the order or product ID, so
+// we don't include them in this struct.
 struct order_item
 {
+    // The unique database ID of the object.
     std::int64_t id;
+
+    // The number of units of this product that the user wants to buy.
     std::int64_t quantity;
+
+    // The product's unit price, in cents of USD.
     std::int64_t unit_price;
 };
 BOOST_DESCRIBE_STRUCT(order_item, (), (id, quantity, unit_price));
 
+// A product, as listed in the store product catalog.
 struct product
 {
+    // The unique database ID of the object.
     std::int64_t id;
+
+    // A short name for the product. Can be used as a title.
     std::string short_name;
-    std::optional<std::string> description;
+
+    // The product's description. This field can be NULL in the DB,
+    // so we use boost::optional<T> for it. If you're using C++17 or higher,
+    // you can use std::optional instead.
+    boost::optional<std::string> description;
+
+    // The product's unit price, in cents of USD.
     std::int64_t price;
 };
 BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
+
+// An empty row type. This can be used to describe empty resultsets,
+// like the ones returned by INSERT or CALL.
+using empty = std::tuple<>;
 
 /**
  * We'll be using the variant using visit().
@@ -255,30 +119,26 @@ BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
  */
 struct visitor
 {
-    boost::mysql::tcp_ssl_connection& conn;
+    mysql::tcp_ssl_connection& conn;
 
-    // Prints the details of an order to stdout. An order here is represented as a row
+    // Prints the details of an order to stdout
     static void print_order(const order& ord)
     {
         std::cout << "Order: id=" << ord.id << ", status=" << ord.status << '\n';
     }
 
-    // Prints the details of an order line item, again represented as a row
+    // Prints the details of an order line item
     static void print_line_item(const order_item& item)
     {
         std::cout << "  Line item: id=" << item.id << ", quantity=" << item.quantity
                   << ", unit_price=" << item.unit_price / 100.0 << "$\n";
     }
 
-    // Procedures that manipulate orders return two resultsets: one describing
-    // the order and another with the line items the order has. Some of them
-    // return only the order resultset. These functions print order details to stdout
-    static void print_order_with_items(boost::span<const order> ord, boost::span<const order_item> items)
+    // Prints an order with its line items to stdout
+    static void print_order_with_items(const order& ord, boost::span<const order_item> items)
     {
-        // First resultset: order information. Always a single row
-        print_order(ord[0]);
+        print_order(ord);
 
-        // Second resultset: all order line items
         if (items.empty())
         {
             std::cout << "No line items\n";
@@ -292,14 +152,20 @@ struct visitor
         }
     }
 
-    // get-products <search-term>: full text search of the products table
+    // get-products <search-term>: full text search of the products table.
+    // use this command to search the store for available products
     void operator()(const get_products_args& args) const
     {
         // We need to pass user-supplied params to CALL, so we use a statement
         auto stmt = conn.prepare_statement("CALL get_products(?)");
 
-        boost::mysql::static_results<product, empty> products;
+        // get_products returns two resultsets:
+        //   1. A collection of products
+        //   2. An empty resultset describing the effects of the CALL statement
+        mysql::static_results<product, empty> products;
         conn.execute(stmt.bind(args.search), products);
+
+        // Print the results to stdout. By default, rows() returns the rows for the 1st resultset.
         std::cout << "Your search returned the following products:\n";
         for (const product& prod : products.rows())
         {
@@ -311,11 +177,15 @@ struct visitor
         std::cout << std::endl;
     }
 
-    // create-order: creates a new order
+    // create-order: creates a new order. Orders are always created empty. This command
+    // requires no arguments
     void operator()(const create_order_args&) const
     {
-        // Since create_order doesn't have user-supplied params, we can use a text query
-        boost::mysql::static_results<order, empty> result;
+        // Since create_order doesn't have user-supplied params, we can use a text query.
+        // create_order returns two resultsets:
+        //   1. The created order. This is always a single row.
+        //   2. An empty resultset describing the effects of the CALL statement
+        mysql::static_results<order, empty> result;
         conn.execute("CALL create_order()", result);
 
         // Print the result to stdout. create_order() returns a resultset for
@@ -330,23 +200,30 @@ struct visitor
         // The order_id is supplied by the user, so we use a prepared statement
         auto stmt = conn.prepare_statement("CALL get_order(?)");
 
-        // Execute the statement
-        boost::mysql::static_results<order, order_item, empty> result;
+        // get_order returns three resultsets:
+        //   1. The retrieved order. This is always a single row.
+        //   2. A collection of line items for this order.
+        //   3. An empty resultset describing the effects of the CALL statement
+        // If the order can't be found, get_order() raises an error using SIGNAL, which will make
+        // execute() fail with an exception.
+        mysql::static_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.order_id), result);
 
-        // Print the result to stdout. get_order() returns a resultset for
-        // the retrieved order and another for the line items. If the order can't
-        // be found, get_order() raises an error using SIGNAL, which will make
-        // execute() fail with an exception.
+        // Print the result to stdout.
+        // rows<i>() can be used to access rows for the i-th resultset.
+        // rows() means rows<0>().
         std::cout << "Retrieved order\n";
-        print_order_with_items(result.rows<0>(), result.rows<1>());
+        print_order_with_items(result.rows<0>()[0], result.rows<1>());
     }
 
     // get-orders: lists all orders
     void operator()(const get_orders_args&) const
     {
         // Since get_orders doesn't have user-supplied params, we can use a text query
-        boost::mysql::static_results<order, empty> result;
+        // get_orders returns two resultsets:
+        //   1. A collection of orders.
+        //   2. An empty resultset describing the effects of the CALL statement
+        mysql::static_results<order, empty> result;
         conn.execute("CALL get_orders()", result);
 
         // Print results to stdout. get_orders() succeeds even if no order is found.
@@ -372,19 +249,24 @@ struct visitor
         // we will get an extra resultset with just its value.
         auto stmt = conn.prepare_statement("CALL add_line_item(?, ?, ?, ?)");
 
+        // add_line_item returns four resultsets:
+        //   1. The affected order. Always a single row.
+        //   2. A collection of line items for the affected order.
+        //   3. An OUT params resultset, containing the ID of the newly created line item. Single row.
+        //   4. An empty resultset describing the effects of the CALL statement
+        using out_params_t = std::tuple<std::int64_t>;
+        mysql::static_results<order, order_item, out_params_t, empty> result;
+
         // We still have to pass a value to the 4th argument, even if it's an OUT parameter.
         // The value will be ignored, so we can pass nullptr.
-        using out_params_t = std::tuple<std::int64_t>;
-        boost::mysql::static_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, args.product_id, args.quantity, nullptr), result);
 
-        // We can use results::out_params() to access the extra resultset containing
-        // the OUT parameter
+        // We can access the OUT param as we access any other resultset
         auto new_line_item_id = std::get<0>(result.rows<2>()[0]);
 
         // Print the results to stdout
         std::cout << "Created line item: id=" << new_line_item_id << "\n";
-        print_order_with_items(result.rows<0>(), result.rows<1>());
+        print_order_with_items(result.rows<0>()[0], result.rows<1>());
     }
 
     // remove-line-item <line-item-id>: removes an item from an order
@@ -393,13 +275,16 @@ struct visitor
         // remove_line_item has user-supplied parameters, so we use a statement
         auto stmt = conn.prepare_statement("CALL remove_line_item(?)");
 
-        // Run the procedure
-        boost::mysql::static_results<order, order_item, empty> result;
+        // remove_line_item returns three resultsets:
+        //   1. The affected order. Always a single row.
+        //   2. A collection of line items for the affected order.
+        //   3. An empty resultset describing the effects of the CALL statement
+        mysql::static_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.line_item_id), result);
 
         // Print results to stdout
         std::cout << "Removed line item from order\n";
-        print_order_with_items(result.rows<0>(), result.rows<1>());
+        print_order_with_items(result.rows<0>()[0], result.rows<1>());
     }
 
     // checkout-order <order-id>: marks an order as ready for checkout
@@ -409,18 +294,21 @@ struct visitor
         // The 2nd parameter represents the total order amount and is an OUT parameter.
         auto stmt = conn.prepare_statement("CALL checkout_order(?, ?)");
 
-        // Execute the statement
+        // checkout_order returns four resultsets:
+        //   1. The affected order. Always a single row.
+        //   2. A collection of line items for the affected order.
+        //   3. An OUT params resultset, containing the total amount to pay, in USD cents. Single row.
+        //   4. An empty resultset describing the effects of the CALL statement
         using out_params_t = std::tuple<std::int64_t>;
-        boost::mysql::static_results<order, order_item, out_params_t, empty> result;
+        mysql::static_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, nullptr), result);
 
-        // We can use results::out_params() to access the extra resultset containing
-        // the OUT parameter
+        // We can access the OUT param as we access any other resultset
         auto total_amount = std::get<0>(result.rows<2>()[0]);
 
         // Print the results to stdout
         std::cout << "Checked out order. The total amount to pay is: " << total_amount / 100.0 << "$\n";
-        print_order_with_items(result.rows<0>(), result.rows<1>());
+        print_order_with_items(result.rows<0>()[0], result.rows<1>());
     }
 
     // complete-order <order-id>: marks an order as completed
@@ -429,13 +317,16 @@ struct visitor
         // complete_order has user-supplied parameters, so we use a statement.
         auto stmt = conn.prepare_statement("CALL complete_order(?)");
 
-        // Execute the statement
-        boost::mysql::static_results<order, order_item, empty> result;
+        // complete_order returns three resultsets:
+        //   1. The affected order. Always a single row.
+        //   2. A collection of line items for the affected order.
+        //   3. An empty resultset describing the effects of the CALL statement
+        mysql::static_results<order, order_item, empty> result;
         conn.execute(stmt.bind(args.order_id), result);
 
         // Print the results to stdout
         std::cout << "Completed order\n";
-        print_order_with_items(result.rows<0>(), result.rows<1>());
+        print_order_with_items(result.rows<0>()[0], result.rows<1>());
     }
 };
 
@@ -447,20 +338,20 @@ void main_impl(int argc, char** argv)
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
     boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
+    mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
 
     // Resolver for hostname resolution
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     // Connection params
-    boost::mysql::handshake_params params(
-        args.username,                   // username
-        args.password,                   // password
-        "boost_mysql_stored_procedures"  // database to use
+    mysql::handshake_params params(
+        args.username,                  // username
+        args.password,                  // password
+        "boost_mysql_order_management"  // database to use
     );
 
     // Hostname resolution
-    auto endpoints = resolver.resolve(args.host, boost::mysql::default_port_string);
+    auto endpoints = resolver.resolve(args.host, mysql::default_port_string);
 
     // TCP and MySQL level connect
     conn.connect(*endpoints.begin(), params);
@@ -480,7 +371,7 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::error_with_diagnostics& err)
+    catch (const mysql::error_with_diagnostics& err)
     {
         // Some errors include additional diagnostics, like server-provided error messages.
         // If a store procedure fails (e.g. because a SIGNAL statement was executed), an error
@@ -498,5 +389,15 @@ int main(int argc, char** argv)
         return 1;
     }
 }
+
+#else
+
+int main()
+{
+    std::cout << "Sorry, your compiler doesn't have the required capabilities to run this example"
+              << std::endl;
+}
+
+#endif
 
 //]

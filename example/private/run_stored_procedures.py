@@ -29,7 +29,7 @@ class Runner:
         self._host = host
     
     def run(self, subcmd: str, *args: str) -> str:
-        cmdline = [self._exe, 'sp_user', 'sp_password', self._host, subcmd, *args]
+        cmdline = [self._exe, 'orders_user', 'orders_password', self._host, subcmd, *args]
         print(' + ', cmdline)
         res = run(cmdline, check=True, stdout=PIPE)
         print(res.stdout.decode())

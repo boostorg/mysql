@@ -196,7 +196,7 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
         return rows_view();
 
     // Process read messages
-    process_some_rows(channel, impl, err, diag);
+    err = process_some_rows(channel, impl, diag);
     if (err)
         return rows_view();
 
