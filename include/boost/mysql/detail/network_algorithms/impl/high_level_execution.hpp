@@ -156,7 +156,7 @@ struct initiate_execute
         Handler&& handler,
         std::reference_wrapper<channel<Stream>> chan,
         const ExecutionRequest& req,
-        detail::results_base& result,
+        execution_processor& result,
         diagnostics& diag
     )
     {
@@ -181,7 +181,7 @@ struct initiate_start_execution
         Handler&& handler,
         std::reference_wrapper<channel<Stream>> chan,
         const ExecutionRequest& req,
-        execution_state_base& st,
+        execution_processor_with_output& st,
         diagnostics& diag
     )
     {
@@ -213,7 +213,7 @@ template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void boost::mysql::detail::execute(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    results_base& result,
+    execution_processor& result,
     error_code& err,
     diagnostics& diag
 )
@@ -234,7 +234,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_execute(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    results_base& result,
+    execution_processor& result,
     diagnostics& diag,
     CompletionToken&& token
 )
@@ -253,7 +253,7 @@ template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void boost::mysql::detail::start_execution(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    execution_state_base& st,
+    execution_processor_with_output& st,
     error_code& err,
     diagnostics& diag
 )
@@ -274,7 +274,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_start_execution(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    execution_state_base& st,
+    execution_processor_with_output& st,
     diagnostics& diag,
     CompletionToken&& token
 )

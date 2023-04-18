@@ -25,7 +25,7 @@ template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void execute(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    results_base& output,
+    execution_processor& output,
     error_code& err,
     diagnostics& diag
 );
@@ -38,7 +38,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    results_base& output,
+    execution_processor& output,
     diagnostics& diag,
     CompletionToken&& token
 );
@@ -47,7 +47,7 @@ template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void start_execution(
     channel<Stream>& channel,
     const ExecutionRequest& req,
-    execution_state_base& st,
+    execution_processor_with_output& st,
     error_code& err,
     diagnostics& diag
 );
@@ -60,7 +60,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_start_execution(
     channel<Stream>& chan,
     ExecutionRequest&& req,
-    execution_state_base& st,
+    execution_processor_with_output& st,
     diagnostics& diag,
     CompletionToken&& token
 );

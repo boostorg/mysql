@@ -35,10 +35,10 @@ constexpr std::size_t get_sum(const std::size_t (&arr)[N], std::size_t i = 0)
     return i >= N ? 0 : arr[i] + get_sum(arr, i + 1);
 }
 
+using meta_check_fn = error_code (*)(metadata_collection_view, diagnostics&);
+
 struct meta_check_table_helper
 {
-    using meta_check_fn = error_code (*)(metadata_collection_view, diagnostics&);
-
     template <class... RowType>
     using meta_check_table = std::array<meta_check_fn, sizeof...(RowType)>;
 

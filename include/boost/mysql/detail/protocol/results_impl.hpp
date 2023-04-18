@@ -162,7 +162,7 @@ public:
     }
 };
 
-class results_impl : public results_base
+class results_impl : public execution_processor
 {
     std::size_t remaining_meta_{};
     std::vector<metadata> meta_;
@@ -278,13 +278,9 @@ public:
         return error_code();
     }
 
-    void on_row_batch_start() override
-    {
-        assert(should_read_rows());
-        rows_.start_batch();
-    }
+    void on_row_batch_start_impl() override final { rows_.start_batch(); }
 
-    void on_row_batch_finish() override { rows_.finish_batch(); }
+    void on_row_batch_finish_impl() override final { rows_.finish_batch(); }
 
     // User facing
     row_view get_out_params() const noexcept
@@ -343,6 +339,8 @@ public:
     {
         return get_resultset_with_ok_packet(index).is_out_params;
     }
+
+    results_impl& get_interface() noexcept { return *this; }
 };
 
 }  // namespace detail

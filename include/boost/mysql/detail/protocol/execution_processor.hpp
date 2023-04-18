@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
+#include <cstddef>
 #include <cstdint>
 
 namespace boost {
@@ -32,8 +33,9 @@ public:
     {
         state_ = state_t::initial;
         encoding_ = enc;
-        seqnum_ = 0;
         mode_ = mode;
+        seqnum_ = 0;
+        read_rows_ = 0;
         reset_impl();
     }
 
@@ -55,6 +57,15 @@ public:
         return on_meta_impl(pack, diag);
     }
 
+    void on_row_batch_start()
+    {
+        assert(should_read_rows());
+        read_rows_ = 0;
+        on_row_batch_start_impl();
+    }
+
+    void on_row_batch_finish() { on_row_batch_finish_impl(); }
+
     error_code on_row_ok_packet(const ok_packet& pack)
     {
         assert(should_read_rows());
@@ -64,7 +75,11 @@ public:
     error_code on_row(deserialization_context& ctx)
     {
         assert(should_read_rows());
-        return on_row_impl(ctx);
+        error_code ec = on_row_impl(ctx);
+        if (ec)
+            return ec;
+        ++read_rows_;
+        return error_code();
     }
 
     bool initial() const noexcept { return state_ == state_t::initial; }
@@ -76,6 +91,8 @@ public:
     bool should_read_meta() const noexcept { return state_ == state_t::reading_metadata; }
     bool should_read_rows() const noexcept { return state_ == state_t::reading_rows; }
     bool complete() const noexcept { return state_ == state_t::complete; }
+
+    std::size_t num_read_rows() const noexcept { return read_rows_; }
 
     resultset_encoding encoding() const noexcept { return encoding_; }
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
@@ -100,41 +117,43 @@ protected:
     virtual error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
     virtual error_code on_row_impl(deserialization_context& ctx) = 0;
+    virtual void on_row_batch_start_impl() = 0;
+    virtual void on_row_batch_finish_impl() = 0;
 
 private:
     state_t state_;
     resultset_encoding encoding_{resultset_encoding::text};
     std::uint8_t seqnum_{};
     metadata_mode mode_{metadata_mode::minimal};
+    std::size_t read_rows_{};
 };
 
-class results_base : public execution_processor
-{
-public:
-    virtual void on_row_batch_start() = 0;
-    virtual void on_row_batch_finish() = 0;
-};
-
+// A type-erased reference to be used as the output range for execution states.
+// For static_execution_state, this is a span-like class.
+// For execution_state, this holds a pointer to the field vector to use
 struct output_ref
 {
+    // Pointer to the first element of the span (static_execution_state)
+    // Pointer to a vector<field_view> to use as output (execution_state)
     void* data{};
+
+    // Number of elements in the span (static_execution_state). Otherwise unused
     std::size_t max_size{};
-    std::size_t resultset_number{};
+
+    // Identifier for the type of elements. Index in the resultset type list (static_execution_state).
+    // Otherwise unused
+    std::size_t resultset_index{};
 
     bool has_value() const noexcept { return data != nullptr; }
 };
 
-class execution_state_base : public execution_processor
+class execution_processor_with_output : public execution_processor
 {
-public:
-    virtual bool has_space() const = 0;
-};
+    output_ref output_;
 
-class typed_execution_state_base : public execution_state_base
-{
 public:
-    virtual error_code set_output(output_ref ref) = 0;
-    virtual std::size_t num_read_rows() const noexcept = 0;
+    void set_output(const output_ref& output) noexcept { output_ = output; }
+    const output_ref& output() const noexcept { return output_; }
 };
 
 }  // namespace detail

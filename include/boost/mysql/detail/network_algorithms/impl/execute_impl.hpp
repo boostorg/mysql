@@ -21,18 +21,22 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline error_code process_available_rows(channel_base& channel, results_base& result, diagnostics& diag)
+inline error_code process_available_rows(
+    channel_base& channel,
+    execution_processor& output,
+    diagnostics& diag
+)
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
-    result.on_row_batch_start();
-    while (channel.has_read_messages() && result.should_read_rows())
+    output.on_row_batch_start();
+    while (channel.has_read_messages() && output.should_read_rows())
     {
-        auto err = process_row_message(channel, result, diag);
+        auto err = process_row_message(channel, output, diag);
         if (err)
             return err;
     }
-    result.on_row_batch_finish();
+    output.on_row_batch_finish();
     return error_code();
 }
 
@@ -41,16 +45,16 @@ struct execute_impl_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     resultset_encoding enc_;
-    results_base& result_;
+    execution_processor& output_;
     diagnostics& diag_;
 
     execute_impl_op(
         channel<Stream>& chan,
         resultset_encoding enc,
-        results_base& result,
+        execution_processor& output,
         diagnostics& diag
     ) noexcept
-        : chan_(chan), enc_(enc), result_(result), diag_(diag)
+        : chan_(chan), enc_(enc), output_(output), diag_(diag)
     {
     }
 
@@ -69,17 +73,17 @@ struct execute_impl_op : boost::asio::coroutine
         {
             // Setup
             diag_.clear();
-            result_.reset(enc_, chan_.meta_mode());
+            output_.reset(enc_, chan_.meta_mode());
 
             // Send the execution request (already serialized at this point)
             BOOST_ASIO_CORO_YIELD chan_
-                .async_write(chan_.shared_buffer(), result_.sequence_number(), std::move(self));
+                .async_write(chan_.shared_buffer(), output_.sequence_number(), std::move(self));
 
-            while (!result_.complete())
+            while (!output_.complete())
             {
-                BOOST_ASIO_CORO_YIELD async_read_resultset_head(chan_, result_, diag_, std::move(self));
+                BOOST_ASIO_CORO_YIELD async_read_resultset_head(chan_, output_, diag_, std::move(self));
 
-                while (result_.should_read_rows())
+                while (output_.should_read_rows())
                 {
                     // Ensure we have messages to be read
                     if (!chan_.has_read_messages())
@@ -88,7 +92,7 @@ struct execute_impl_op : boost::asio::coroutine
                     }
 
                     // Process read messages
-                    err = process_available_rows(chan_, result_, diag_);
+                    err = process_available_rows(chan_, output_, diag_);
                     if (err)
                     {
                         self.complete(err);
@@ -110,30 +114,30 @@ template <class Stream>
 void boost::mysql::detail::execute_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    results_base& result,
+    execution_processor& output,
     error_code& err,
     diagnostics& diag
 )
 {
     // Setup
     diag.clear();
-    result.reset(enc, channel.meta_mode());
+    output.reset(enc, channel.meta_mode());
 
     // Send the execution request (already serialized at this point)
-    channel.write(channel.shared_buffer(), result.sequence_number(), err);
+    channel.write(channel.shared_buffer(), output.sequence_number(), err);
     if (err)
         return;
 
-    while (!result.complete())
+    while (!output.complete())
     {
-        if (result.should_read_head())
+        if (output.should_read_head())
         {
-            read_resultset_head(channel, result, err, diag);
+            read_resultset_head(channel, output, err, diag);
             if (err)
                 return;
         }
 
-        while (result.should_read_rows())
+        while (output.should_read_rows())
         {
             // Ensure we have messages to be read
             if (!channel.has_read_messages())
@@ -144,7 +148,7 @@ void boost::mysql::detail::execute_impl(
             }
 
             // Process read messages
-            err = process_available_rows(channel, result, diag);
+            err = process_available_rows(channel, output, diag);
             if (err)
                 return;
         }
@@ -156,13 +160,13 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_cod
 boost::mysql::detail::async_execute_impl(
     channel<Stream>& chan,
     resultset_encoding enc,
-    results_base& result,
+    execution_processor& output,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        execute_impl_op<Stream>(chan, enc, result, diag),
+        execute_impl_op<Stream>(chan, enc, output, diag),
         token,
         chan
     );

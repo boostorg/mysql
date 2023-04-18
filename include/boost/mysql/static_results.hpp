@@ -88,7 +88,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    bool has_value() const noexcept { return impl_.complete(); }
+    bool has_value() const noexcept { return impl_.get_interface().complete(); }
 
     /**
      * \brief Returns the rows retrieved by the SQL query.
@@ -145,7 +145,7 @@ public:
     {
         static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_meta(I);
+        return impl_.get_interface().get_meta(I);
     }
 
     /**
@@ -168,7 +168,7 @@ public:
     {
         static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_affected_rows(I);
+        return impl_.get_interface().get_affected_rows(I);
     }
 
     /**
@@ -191,7 +191,7 @@ public:
     {
         static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_last_insert_id(I);
+        return impl_.get_interface().get_last_insert_id(I);
     }
 
     /**
@@ -214,7 +214,7 @@ public:
     {
         static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_warning_count(I);
+        return impl_.get_interface().get_warning_count(I);
     }
 
     /**
@@ -247,7 +247,7 @@ public:
     {
         static_assert(I < sizeof...(RowType));
         assert(has_value());
-        return impl_.get_info(I);
+        return impl_.get_interface().get_info(I);
     }
 
 private:

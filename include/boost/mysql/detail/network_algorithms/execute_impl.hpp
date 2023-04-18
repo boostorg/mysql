@@ -28,7 +28,7 @@ template <class Stream>
 void execute_impl(
     channel<Stream>& channel,
     resultset_encoding enc,
-    results_base& output,
+    execution_processor& output,
     error_code& err,
     diagnostics& diag
 );
@@ -38,7 +38,7 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_execute_impl(
     channel<Stream>& chan,
     resultset_encoding enc,
-    results_base& output,
+    execution_processor& output,
     diagnostics& diag,
     CompletionToken&& token
 );

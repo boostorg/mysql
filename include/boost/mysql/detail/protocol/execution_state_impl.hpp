@@ -26,7 +26,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class execution_state_impl : public execution_state_base
+class execution_state_impl : public execution_processor_with_output
 {
     struct ok_data
     {
@@ -41,7 +41,6 @@ class execution_state_impl : public execution_state_base
     std::vector<metadata> meta_;
     ok_data eof_data_;
     std::vector<char> info_;
-    std::vector<field_view>* fields_{};
 
     void clear_previous_resultset() noexcept
     {
@@ -68,6 +67,12 @@ class execution_state_impl : public execution_state_base
         }
     }
 
+    std::vector<field_view>& fields() noexcept
+    {
+        assert(output().data);
+        return *static_cast<std::vector<field_view>*>(output().data);
+    }
+
 public:
     execution_state_impl() = default;
 
@@ -77,7 +82,7 @@ public:
         meta_.clear();
         eof_data_ = ok_data();
         info_.clear();
-        fields_ = nullptr;
+        set_output(output_ref());
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack) override
@@ -114,18 +119,16 @@ public:
 
     error_code on_row_impl(deserialization_context& ctx) override
     {
-        assert(fields_);
-
         // add row storage
-        field_view* storage = add_fields(*fields_, meta_.size());
+        field_view* storage = add_fields(fields(), meta_.size());
 
         // deserialize the row
         return deserialize_row(encoding(), ctx, meta_, storage);
     }
 
-    bool has_space() const override { return true; }
+    void on_row_batch_start_impl() noexcept override final { fields().clear(); }
 
-    void set_fields(std::vector<field_view>& fields) noexcept { fields_ = &fields; }
+    void on_row_batch_finish_impl() noexcept override final {}
 
     // User facing
     metadata_collection_view meta() const noexcept { return meta_; }
@@ -159,6 +162,8 @@ public:
         assert(eof_data_.has_value);
         return eof_data_.is_out_params;
     }
+
+    execution_state_impl& get_interface() noexcept { return *this; }
 };
 
 }  // namespace detail
