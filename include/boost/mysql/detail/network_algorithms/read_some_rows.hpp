@@ -15,9 +15,7 @@
 #include <boost/mysql/rows_view.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
-#include <boost/mysql/detail/protocol/static_execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 namespace boost {
 namespace mysql {
@@ -70,4 +68,4 @@ async_read_some_rows(
 
 #include <boost/mysql/detail/network_algorithms/impl/read_some_rows.hpp>
 
-#endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_HPP_ */
+#endif

@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_EXECUTE_RESPONSE_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_EXECUTE_RESPONSE_HPP
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_EXECUTION_MESSAGES_HPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_DESERIALIZE_EXECUTION_MESSAGES_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -20,7 +20,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Exposed here for the sake of testing
 struct execute_response
 {
     enum class type_t
@@ -93,6 +92,6 @@ inline row_response deserialize_row_message(
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/detail/protocol/impl/deserialize_execute_response.ipp>
+#include <boost/mysql/detail/protocol/impl/deserialize_execution_messages.ipp>
 
 #endif

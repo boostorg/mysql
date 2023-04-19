@@ -5,36 +5,79 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_TYPED_FIELD_TRAITS_HPP
-#define BOOST_MYSQL_DETAIL_TYPED_FIELD_TRAITS_HPP
+#ifndef BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
+#define BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
 
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/detail/typed/meta_check_context.hpp>
-
-#include <boost/config.hpp>
-#include <boost/optional/optional.hpp>
+#include <boost/mysql/detail/config.hpp>
 
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <sstream>
 #include <string>
-
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-#include <optional>
-#endif
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 // Helpers
+class meta_check_context
+{
+    std::unique_ptr<std::ostringstream> errors_;
+    std::size_t current_index_{};
+    const metadata* meta_{};
+    const char* cpp_type_name_{};
+
+    std::ostringstream& error_stream()
+    {
+        if (!errors_)
+            errors_.reset(new std::ostringstream);
+        return *errors_;
+    }
+
+public:
+    meta_check_context() = default;
+    meta_check_context(const metadata* meta) : meta_(meta) {}
+    const metadata& current_meta() const noexcept { return meta_[current_index_]; }
+    void set_cpp_type_name(const char* v) noexcept { cpp_type_name_ = v; }
+    void advance() noexcept { ++current_index_; }
+    std::size_t current_index() const noexcept { return current_index_; }
+
+    void add_error(const char* reason)
+    {
+        error_stream() << "Incompatible types for field in position " << current_index_ << ": C++ type "
+                       << cpp_type_name_ << " is not compatible with DB type " << current_meta().type()
+                       << ": " << reason << "\n";
+    }
+
+    bool has_errors() const noexcept { return errors_ != nullptr; }
+
+    std::string errors() const
+    {
+        assert(errors_);
+        return errors_->str();
+    }
+
+    error_code check_errors(diagnostics& diag) const
+    {
+        if (has_errors())
+        {
+            diagnostics_access::assign(diag, errors(), false);
+            return client_errc::type_mismatch;
+        }
+        return error_code();
+    }
+};
+
 template <class SignedInt, class UnsignedInt>
 error_code parse_signed_int(field_view input, SignedInt& output)
 {
@@ -91,57 +134,6 @@ template <typename T>
 struct field_traits
 {
     static constexpr bool is_supported = false;
-};
-
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-template <class T>
-struct field_traits<std::optional<T>>
-{
-    static constexpr bool is_supported = field_traits<T>::is_supported;
-    static constexpr const char* type_name = "std::optional<T>";
-    static void meta_check(meta_check_context& ctx)
-    {
-        ctx.set_cpp_type_name(field_traits<T>::type_name);
-        field_traits<T>::meta_check(ctx);
-    }
-    static error_code parse(field_view input, std::optional<T>& output)
-    {
-        if (input.is_null())
-        {
-            output = std::optional<T>{};
-            return error_code();
-        }
-        else
-        {
-            return field_traits<T>::parse(input, output.emplace());
-        }
-    }
-};
-#endif
-
-template <class T>
-struct field_traits<boost::optional<T>>
-{
-    static constexpr bool is_supported = field_traits<T>::is_supported;
-    static constexpr const char* type_name = "boost::optional<T>";
-    static void meta_check(meta_check_context& ctx)
-    {
-        ctx.set_cpp_type_name(field_traits<T>::type_name);
-        field_traits<T>::meta_check(ctx);
-    }
-    static error_code parse(field_view input, boost::optional<T>& output)
-    {
-        if (input.is_null())
-        {
-            output = boost::optional<T>{};
-            return error_code();
-        }
-        else
-        {
-            output.emplace();
-            return field_traits<T>::parse(input, *output);
-        }
-    }
 };
 
 template <>

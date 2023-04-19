@@ -13,7 +13,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
 #include <cassert>
 #include <cstddef>

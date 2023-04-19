@@ -5,14 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_TYPED_HELPERS_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_TYPED_HELPERS_HPP
+#ifndef BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_CONSTEXPR_MAX_SUM_HPP
+#define BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_CONSTEXPR_MAX_SUM_HPP
 
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
-#include <boost/mysql/metadata_collection_view.hpp>
-
-#include <boost/mysql/detail/typed/row_traits.hpp>
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -34,20 +30,6 @@ constexpr std::size_t get_sum(const std::size_t (&arr)[N], std::size_t i = 0)
 {
     return i >= N ? 0 : arr[i] + get_sum(arr, i + 1);
 }
-
-using meta_check_fn = error_code (*)(metadata_collection_view, diagnostics&);
-
-struct meta_check_table_helper
-{
-    template <class... RowType>
-    using meta_check_table = std::array<meta_check_fn, sizeof...(RowType)>;
-
-    template <class... RowType>
-    constexpr static meta_check_table<RowType...> create() noexcept
-    {
-        return {&meta_check<RowType>...};
-    }
-};
 
 }  // namespace detail
 }  // namespace mysql

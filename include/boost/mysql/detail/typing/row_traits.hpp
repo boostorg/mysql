@@ -5,17 +5,23 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_TYPED_ROW_TRAITS_HPP
-#define BOOST_MYSQL_DETAIL_TYPED_ROW_TRAITS_HPP
+#ifndef BOOST_MYSQL_DETAIL_TYPING_ROW_TRAITS_HPP
+#define BOOST_MYSQL_DETAIL_TYPING_ROW_TRAITS_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 
-#include <boost/mysql/detail/typed/field_traits.hpp>
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/typing/field_traits.hpp>
 
 #include <boost/describe/members.hpp>
+#include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/utility.hpp>
+
+#include <tuple>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -41,7 +47,6 @@ public:
     error_code error() const noexcept { return ec_; }
 };
 
-// Traits
 template <class RowType, bool is_describe_struct = boost::describe::has_describe_members<RowType>::value>
 struct row_traits
 {
@@ -50,7 +55,7 @@ struct row_traits
 
 // Describe structs
 template <class RowType>
-struct row_traits<RowType, true>
+class row_traits<RowType, true>
 {
     using members = boost::describe::
         describe_members<RowType, boost::describe::mod_public | boost::describe::mod_inherited>;
@@ -72,8 +77,7 @@ struct row_traits<RowType, true>
         "Some types in your struct are not valid field types"
     );
 
-    // Interface
-    static constexpr bool is_supported = true;
+public:
     static constexpr std::size_t size = boost::mp11::mp_size<members>::value;
 
     static void meta_check(meta_check_context& ctx)
@@ -103,7 +107,7 @@ struct tuple_meta_check_fn
 };
 
 template <class... FieldType>
-struct row_traits<std::tuple<FieldType...>, false>
+class row_traits<std::tuple<FieldType...>, false>
 {
     using tuple_type = std::tuple<FieldType...>;
     static_assert(
@@ -111,8 +115,7 @@ struct row_traits<std::tuple<FieldType...>, false>
         "Some types in your std::tuple<...> are not valid field types"
     );
 
-    // Interface
-    static constexpr bool is_supported = true;
+public:
     static constexpr std::size_t size = std::tuple_size<tuple_type>::value;
 
     static void meta_check(meta_check_context& ctx)
@@ -124,10 +127,10 @@ struct row_traits<std::tuple<FieldType...>, false>
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
 };
 
-template <class T>
+template <class RowType>
 struct is_row_type
 {
-    static constexpr bool value = row_traits<T>::is_supported;
+    static constexpr bool value = row_traits<RowType>::is_supported;
 };
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -143,6 +146,12 @@ concept row_type = is_row_type<T>::value;
 
 // External interface
 template <class RowType>
+constexpr std::size_t get_row_size()
+{
+    return row_traits<RowType>::size;
+}
+
+template <class RowType>
 error_code meta_check(metadata_collection_view meta, diagnostics& diag)
 {
     meta_check_context ctx(meta.data());
@@ -157,6 +166,8 @@ error_code parse(const field_view* from, RowType& to)
     row_traits<RowType>::parse(ctx, to);
     return ctx.error();
 }
+
+using meta_check_fn = error_code (*)(metadata_collection_view, diagnostics&);
 
 }  // namespace detail
 }  // namespace mysql

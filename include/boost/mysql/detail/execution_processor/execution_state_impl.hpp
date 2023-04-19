@@ -5,20 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_EXECUTION_STATE_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_EXECUTION_STATE_IMPL_HPP
+#ifndef BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_EXECUTION_STATE_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_EXECUTION_STATE_IMPL_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/row_impl.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
 
 #include <vector>
 
@@ -26,7 +26,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class execution_state_impl : public execution_processor_with_output
+class execution_state_impl final : public execution_processor_with_output
 {
     struct ok_data
     {

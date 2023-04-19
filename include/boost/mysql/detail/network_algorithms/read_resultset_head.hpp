@@ -13,7 +13,7 @@
 #include <boost/mysql/metadata.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 namespace boost {
 namespace mysql {

@@ -11,7 +11,7 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
 namespace boost {
 namespace mysql {

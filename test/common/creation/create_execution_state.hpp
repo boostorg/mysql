@@ -16,9 +16,7 @@
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/impl/execution_state.hpp>
 #include <boost/mysql/impl/results.hpp>
 
 #include <cstddef>

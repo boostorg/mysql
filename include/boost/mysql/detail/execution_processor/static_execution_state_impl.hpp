@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_STATIC_EXECUTION_STATE_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_STATIC_EXECUTION_STATE_IMPL_HPP
+#ifndef BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_STATIC_EXECUTION_STATE_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_STATIC_EXECUTION_STATE_IMPL_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -14,13 +14,12 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 
+#include <boost/mysql/detail/execution_processor/constexpr_max_sum.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/typed_helpers.hpp>
-#include <boost/mysql/detail/typed/row_traits.hpp>
+#include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <array>
 #include <cstddef>
@@ -30,7 +29,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class static_execution_state_erased_impl : public execution_processor_with_output
+class static_execution_state_erased_impl final : public execution_processor_with_output
 {
 public:
     using parse_fn_t = error_code (*)(void*, std::size_t offset, const field_view* from);
@@ -264,11 +263,11 @@ static error_code static_execution_state_parse_fn(void* data, std::size_t offset
 template <class... RowType>
 class static_execution_state_impl
 {
-    using parse_vtable_t = std::array<static_execution_state_erased_impl::parse_fn_t, sizeof...(RowType)>;
-
     static constexpr std::size_t num_resultsets = sizeof...(RowType);
-    static constexpr std::size_t num_columns[num_resultsets]{row_traits<RowType>::size...};
-    static constexpr auto meta_check_vtable = meta_check_table_helper::create<RowType...>();
+    using meta_check_vtable_t = std::array<meta_check_fn, num_resultsets>;
+    using parse_vtable_t = std::array<static_execution_state_erased_impl::parse_fn_t, num_resultsets>;
+    static constexpr std::size_t num_columns[num_resultsets]{get_row_size<RowType>()...};
+    static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
     static constexpr parse_vtable_t parse_vtable{&static_execution_state_parse_fn<RowType>...};
 
     // Storage for our data, which requires knowing the template args

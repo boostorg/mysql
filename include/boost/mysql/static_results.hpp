@@ -12,7 +12,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/protocol/static_results_impl.hpp>
+#include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
 
 namespace boost {
 namespace mysql {

@@ -5,13 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_EXECUTE_RESPONSE_IPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_EXECUTE_RESPONSE_IPP
+#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_EXECUTION_MESSAGES_IPP
+#define BOOST_MYSQL_DETAIL_PROTOCOL_IMPL_DESERIALIZE_EXECUTION_MESSAGES_IPP
 
 #pragma once
 
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
 namespace boost {

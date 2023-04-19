@@ -12,9 +12,8 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 namespace boost {
 namespace mysql {

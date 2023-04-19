@@ -17,7 +17,7 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
-#include <boost/mysql/detail/protocol/results_impl.hpp>
+#include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
 #include <cassert>
 #include <stdexcept>

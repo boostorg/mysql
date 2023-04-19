@@ -466,13 +466,19 @@ void boost::mysql::connection<Stream>::start_statement_execution(
     const statement& stmt,
     FieldViewFwdIterator params_first,
     FieldViewFwdIterator params_last,
-    execution_state& result,
+    execution_state& st,
     error_code& err,
     diagnostics& diag
 )
 {
     detail::clear_errors(err, diag);
-    detail::start_execution(get_channel(), stmt.bind(params_first, params_last), result, err, diag);
+    detail::start_execution(
+        get_channel(),
+        stmt.bind(params_first, params_last),
+        detail::impl_access::get_impl(st).get_interface(),
+        err,
+        diag
+    );
 }
 
 template <class Stream>
@@ -610,14 +616,24 @@ boost::mysql::rows_view boost::mysql::connection<Stream>::read_some_rows(
 )
 {
     detail::clear_errors(err, diag);
-    return detail::read_some_rows(get_channel(), st, err, diag);
+    return detail::read_some_rows(
+        get_channel(),
+        detail::impl_access::get_impl(st).get_interface(),
+        err,
+        diag
+    );
 }
 
 template <class Stream>
 boost::mysql::rows_view boost::mysql::connection<Stream>::read_some_rows(execution_state& st)
 {
     detail::error_block blk;
-    rows_view res = detail::read_some_rows(get_channel(), st, blk.err, blk.diag);
+    rows_view res = detail::read_some_rows(
+        get_channel(),
+        detail::impl_access::get_impl(st).get_interface(),
+        blk.err,
+        blk.diag
+    );
     blk.check(BOOST_CURRENT_LOCATION);
     return res;
 }
@@ -632,7 +648,12 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     CompletionToken&& token
 )
 {
-    return detail::async_read_some_rows(get_channel(), st, diag, std::forward<CompletionToken>(token));
+    return detail::async_read_some_rows(
+        get_channel(),
+        detail::impl_access::get_impl(st).get_interface(),
+        diag,
+        std::forward<CompletionToken>(token)
+    );
 }
 
 template <class Stream>

@@ -10,10 +10,10 @@
 
 #pragma once
 
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/helpers.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
 
 #include <boost/asio/coroutine.hpp>
 

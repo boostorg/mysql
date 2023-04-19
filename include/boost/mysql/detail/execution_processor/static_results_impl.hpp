@@ -5,19 +5,19 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_STATIC_RESULTS_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_STATIC_RESULTS_IMPL_HPP
+#ifndef BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_STATIC_RESULTS_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_STATIC_RESULTS_IMPL_HPP
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 
+#include <boost/mysql/detail/execution_processor/constexpr_max_sum.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/typed_helpers.hpp>
-#include <boost/mysql/detail/typed/row_traits.hpp>
+#include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/mp11/integer_sequence.hpp>
 
@@ -27,7 +27,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class static_results_erased_impl : public execution_processor
+class static_results_erased_impl final : public execution_processor
 {
 public:
     using reset_fn_t = void (*)(void*);
@@ -273,15 +273,17 @@ private:
 template <class... RowType>
 class static_results_impl
 {
+    static constexpr std::size_t num_resultsets = sizeof...(RowType);
     using rows_t = std::tuple<std::vector<RowType>...>;
-    using parse_vtable_t = std::array<static_results_erased_impl::parse_fn_t, sizeof...(RowType)>;
+    using meta_check_vtable_t = std::array<meta_check_fn, num_resultsets>;
+    using parse_vtable_t = std::array<static_results_erased_impl::parse_fn_t, num_resultsets>;
 
     template <std::size_t I>
     static error_code parse_fn(void* to, const field_view* from)
     {
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
         v.emplace_back();
-        return detail::parse(from, v.back());
+        return parse(from, v.back());
     }
 
     template <std::size_t... N>
@@ -295,9 +297,8 @@ class static_results_impl
         return create_parse_vtable_impl(boost::mp11::make_index_sequence<sizeof...(RowType)>());
     }
 
-    static constexpr std::size_t num_resultsets = sizeof...(RowType);
-    static constexpr std::size_t num_columns[num_resultsets]{row_traits<RowType>::size...};
-    static constexpr auto meta_check_vtable = meta_check_table_helper::create<RowType...>();
+    static constexpr std::size_t num_columns[num_resultsets]{get_row_size<RowType>()...};
+    static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
     static constexpr parse_vtable_t parse_vtable = create_parse_vtable();
 
     // Storage for our data, which requires knowing the template args.
@@ -358,7 +359,7 @@ public:
     }
 
     static_results_impl(static_results_impl&& rhs) noexcept
-        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_, storage_table()))
+        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_), storage_table())
     {
     }
 

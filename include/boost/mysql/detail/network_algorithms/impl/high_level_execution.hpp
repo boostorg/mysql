@@ -11,10 +11,10 @@
 #pragma once
 
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/high_level_execution.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>

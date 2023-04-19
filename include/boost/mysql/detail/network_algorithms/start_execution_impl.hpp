@@ -12,7 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/async_result.hpp>

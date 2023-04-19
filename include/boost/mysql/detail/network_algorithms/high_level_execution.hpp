@@ -13,7 +13,7 @@
 
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 #include <boost/asio/async_result.hpp>
 

@@ -14,9 +14,9 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/helpers.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
-#include <boost/mysql/detail/protocol/execution_processor.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/post.hpp>
