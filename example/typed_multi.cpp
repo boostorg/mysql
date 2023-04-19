@@ -10,6 +10,8 @@
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
+#include <boost/mysql/typing/fields/boost_optional.hpp>
+
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/describe/class.hpp>
@@ -44,7 +46,7 @@ struct product
 {
     std::int64_t id;
     std::string short_name;
-    std::optional<std::string> description;
+    boost::optional<std::string> description;
     std::int64_t price;
 };
 BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));

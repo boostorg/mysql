@@ -11,8 +11,10 @@
 #include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -35,9 +37,6 @@ namespace mysql {
 // Forward declarations
 template <class... RowType>
 class static_execution_state;
-
-class results;
-class execution_state;
 
 /**
  * \brief A connection to a MySQL server.

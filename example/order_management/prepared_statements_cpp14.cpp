@@ -48,6 +48,8 @@
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
+#include <boost/mysql/typing/fields/boost_optional.hpp>
+
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/optional/optional.hpp>
