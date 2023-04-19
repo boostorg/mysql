@@ -88,7 +88,7 @@ set (REGULAR_EXAMPLES
 )
 foreach (FILE_NAME ${REGULAR_EXAMPLES})
     add_example(
-        "boost_mysql_${FILE_NAME}"
+        "boost_mysql_example_${FILE_NAME}"
         "${FILE_NAME}.cpp"
         example_user example_password ${SERVER_HOST}
     )
