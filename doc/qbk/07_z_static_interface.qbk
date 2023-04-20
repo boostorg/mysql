@@ -1,0 +1,354 @@
+[/
+    Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:static The statically-typed interface]
+[nochunk]
+
+[heading Row types]
+
+As we discussed in the overview section, the static interface requires us to define
+the shape of our rows at compile-time. The library will use this definition to validate
+data returned from the server, and will place this data into the defined data structures.
+
+[@boost:/libs/describe/index.html Boost.Describe structs] are the preferred way to define
+row types. These are regular structs annotated with `BOOST_DESCRIBE_STRUCT`:
+
+```
+    struct post
+    {
+        int id;
+        std::string title;
+        std::string body;
+    };
+
+    // Add reflection capabilities to post. You must list all the fields
+    // that will appear in your query, and in the same order.
+    BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
+    conn.execute("SELECT id, title, body FROM posts", result);
+
+    for (const post& p: result.rows())
+    {
+        // Process post as required
+        std::cout << "Title: " << p.title << "\n" << p.body << std::endl;
+    }
+```
+
+Note that using Describe requires C++14.
+
+TODO: note on field ordering
+
+You can also use `std::tuple`s as row types, which only require C++11 to work. For example:
+
+```
+    using row_t = std::tuple<
+        int, // id
+        std::string, // title
+        std::string // body
+    >;
+    static_results<row_t> result;
+    conn.execute("SELECT id, title, body FROM posts", result);
+
+    for (const row_t& post: result.rows())
+    {
+        // Process post as required
+        std::cout << "Title: " << std::get<1>(post) << "\n" << std::get<2>(post) << std::endl;
+    }
+```
+
+[heading Field types]
+
+Both Boost.Describe structs and tuples should be composed of valid field types.
+These include built-in integral and floating point types, `std::string`, `blob`
+and time types, among others. Full reference [link mysql.static.field_types in the table below].
+
+You can use `boost::optional` and `std::optional` for fields that may be `NULL`.
+For example:
+
+```
+    struct post
+    {
+        int id;
+        std::string title;
+        std::optional<std::string> body;
+    };
+    BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
+    
+    // When retrieving rows, post::body::has_value() == false
+    // if body is NULL in the database
+```
+
+[note
+    Optional types are not included by default. [*You must explicitly `#include`
+    `<boost/mysql/typing/std_optional.hpp>` or `<boost/mysql/typing/boost_optional.hpp>`] to use them.
+]
+
+TODO: metadata checking. What happens with nullability
+
+[heading Multi-resultset]
+
+You can use the static interface when working with stored procedures or batched queries.
+For example, given this procedure definition:
+
+```
+    const char* proc = R"%(
+        CREATE PROCEDURE get_employees(pin_company_id IN CHAR(10))
+        BEGIN
+            START TRANSACTION READ ONLY;
+            SELECT name, tax_id FROM company WHERE id = pin_company_id; 
+            SELECT first_name, last_name FROM employee WHERE company_id = pin_employee_id;
+        END
+    )%";
+```
+
+We will get 3 resultsets here: one for each `SELECT` statement, and a final
+empty resultset containing info about the `CALL` statement. We can call this
+procedure like this:
+
+```
+    // Describes the first resultset
+    struct company
+    {
+        std::string name;
+        std::string tax_id;
+    };
+    BOOST_DESCRIBE_STRUCT(company, (), (name, tax_id));
+
+    // Describes the second resultset
+    struct employee
+    {
+        std::string first_name;
+        std::string last_name;
+    };
+    BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name));
+
+    // The last resultset will always be empty.
+    // We can use an empty tuple to represent it.
+    using empty = std::tuple<>;
+
+    // We must list all the resultset types the operation returns as template arguments
+    static_results<company, employee, empty> result;
+    conn.execute("CALL get_employees('HGS')", result);
+
+    // We can use rows<0>() to access the rows for the first resultset
+    if (result.rows<0>().empty())
+    {
+        std::cout << "Company not found" << std::endl;
+    }
+    else
+    {
+        const company& comp = result.rows<0>()[0];
+        std::cout << "Company name: " << comp.name << ", tax_id: " << comp.tax_id << std::endl;
+    }
+
+    // rows<1>() will return the rows for the second resultset
+    for (const employee& emp : result.rows<1>())
+    {
+        std::cout << "Employee " << emp.first_name << " " << emp.last_name << std::endl;
+    }
+```
+
+Use [refmem static_results rows] with an explicit index to access each resultset's data.
+You can also use explicit indices with the other accessor functions,
+like [refmem static_results meta] and [refmem static_results last_insert_id].
+
+[heading Multi-function operations]
+
+The [reflink static_execution_state] class is the static equivalent of `execution_state`.
+Like `static_results`, we must pass `static_execution_state` the row types returned by our query
+at compile time:
+
+```
+    const char* query = "SELECT first_name, last_name FROM employee WHERE company_id = pin_employee_id";
+    
+    struct employee
+    {
+        std::string first_name;
+        std::string last_name;
+    };
+    BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name));
+
+    static_execution_state<employee> st;
+```
+
+Like with `execution_state`, we use [refmem connection start_execution] to start the operation
+and [refmem connection read_some_rows] to read rows. However, in this case we must pass in a
+`boost::span` pointing to storage where our rows will live:
+
+```
+    std::array<employee, 20> employees;
+    while (st.should_read_rows())
+    {
+        std::size_t read_rows = conn.read_some_rows(st, boost::span<employee>(ord));
+        for (std::size_t i = 0; i < read_rows; ++i)
+        {
+            std::cout << "Employee " << employees[i].first_name << " " << employees[i].last_name << '\n';
+        }
+    }
+```
+
+`static_execution_state` can also be used with operations that return multiple resultsets.
+
+TODO: point to examples
+
+[heading Field type reference]
+
+[table:field_types
+    [
+        [C++ type]
+        [Compatible with...]
+        [Header]
+    ]
+    [
+        [`std::int8_t`]
+        [
+            __TINYINT__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::uint8_t`]
+        [
+            __TINYINT__ `UNSIGNED`
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::int16_t`]
+        [
+            __TINYINT__[br]
+            __TINYINT__ `UNSIGNED`[br]
+            __SMALLINT__ [br]
+            __YEAR__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::uint16_t`]
+        [
+            __TINYINT__ `UNSIGNED`[br]
+            __SMALLINT__ `UNSIGNED` [br]
+            __YEAR__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::int32_t`]
+        [
+            __TINYINT__, __TINYINT__ `UNSIGNED`[br]
+            __SMALLINT__, __SMALLINT__ `UNSIGNED`[br]
+            __MEDIUMINT__, __MEDIUMINT__ `UNSIGNED`[br]
+            __INT__[br]
+            __YEAR__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::uint32_t`]
+        [
+            __TINYINT__ `UNSIGNED`[br]
+            __SMALLINT__ `UNSIGNED`[br]
+            __MEDIUMINT__ `UNSIGNED`[br]
+            __INT__ `UNSIGNED`[br]
+            __YEAR__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::int64_t`]
+        [
+            __TINYINT__,  __TINYINT__ `UNSIGNED`[br]
+            __SMALLINT__, __SMALLINT__ `UNSIGNED`[br]
+            __MEDIUMINT__, __MEDIUMINT__ `UNSIGNED`[br]
+            __INT__, __INT__ `UNSIGNED`[br]
+            __BIGINT__[br]
+            __YEAR__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::uint64_t`]
+        [
+            __TINYINT__ `UNSIGNED`[br]
+            __SMALLINT__ `UNSIGNED`[br]
+            __MEDIUMINT__ `UNSIGNED`[br]
+            __INT__ `UNSIGNED`[br]
+            __BIGINT__ `UNSIGNED`[br]
+            __YEAR__[br]
+            __BIT__
+        ]
+        [Included by default]
+    ]
+    [
+        [`float`]
+        [
+            __FLOAT__
+        ]
+        [Included by default]
+    ]
+    [
+        [`double`]
+        [
+            __FLOAT__, __DOUBLE__[br]
+        ]
+        [Included by default]
+    ]
+    [
+        [`date`]
+        [
+            __DATE__
+        ]
+        [Included by default]
+    ]
+    [
+        [`datetime`]
+        [
+            __DATETIME__, __TIMESTAMP__
+        ]
+        [Included by default]
+    ]
+    [
+        [`time`]
+        [
+            __TIME__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::basic_string<char, Traits, Allocator>`]
+        [
+            __CHAR__, __VARCHAR__, __TEXT__[br]
+            __ENUM__, __SET__[br]
+            __JSON__[br]
+            __DECIMAL__/__NUMERIC__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::basic_vector<unsigned char, Allocator>`]
+        [
+            __BINARY__, __VARBINARY__, __BLOB__[br]
+            __GEOMETRY__
+        ]
+        [Included by default]
+    ]
+    [
+        [`std::optional<T>`]
+        [
+            Any type compatible with `T`
+        ]
+        [[include_file boost/mysql/typing/std_optional.hpp]]
+    ]
+    [
+        [`boost::optional<T>`]
+        [
+            Any type compatible with `T`
+        ]
+        [[include_file boost/mysql/typing/std_optional.hpp]]
+    ]
+]
+
+[endsect]

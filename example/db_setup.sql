@@ -16,7 +16,8 @@ USE boost_mysql_examples;
 -- Tables
 CREATE TABLE company(
     id CHAR(10) NOT NULL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL
+    name VARCHAR(100) NOT NULL,
+    tax_id VARCHAR(50) NOT NULL
 );
 CREATE TABLE employee(
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -33,9 +34,9 @@ CREATE TABLE audit_log(
 );
     
 INSERT INTO company (name, id) VALUES
-    ("Award Winning Company, Inc.", "AWC"),
-    ("Sector Global Leader Plc", "SGL"),
-    ("High Growth Startup, Ltd", "HGS")
+    ("Award Winning Company, Inc.", "AWC", "IE1234567V"),
+    ("Sector Global Leader Plc", "SGL", "IE1234568V"),
+    ("High Growth Startup, Ltd", "HGS", "IE1234569V")
 ;
 INSERT INTO employee (first_name, last_name, salary, company_id) VALUES
     ("Efficient", "Developer", 30000, "AWC"),
