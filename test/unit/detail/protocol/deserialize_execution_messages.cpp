@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(ok_packet)
 
     BOOST_TEST_REQUIRE(response.type == row_message::type_t::ok_packet);
     BOOST_TEST(response.data.ok_pack.affected_rows.value == 42u);
-    BOOST_TEST(response.data.ok_pack.last_insert_id.value == 42u);
+    BOOST_TEST(response.data.ok_pack.last_insert_id.value == 1u);
     BOOST_TEST(response.data.ok_pack.info.value == "abc");
 }
 

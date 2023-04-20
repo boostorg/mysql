@@ -175,6 +175,12 @@ class results_impl final : public execution_processor
         return per_result_.back();
     }
 
+    const per_resultset_data& current_resultset() const noexcept
+    {
+        assert(!per_result_.empty());
+        return per_result_.back();
+    }
+
     per_resultset_data& add_resultset()
     {
         // Allocate a new per-resultset object
@@ -280,6 +286,8 @@ public:
     void on_row_batch_start_impl() override final { rows_.start_batch(); }
 
     void on_row_batch_finish_impl() override final { rows_.finish_batch(); }
+
+    std::size_t num_meta_impl() const noexcept override { return current_resultset().num_columns; }
 
     // User facing
     row_view get_out_params() const noexcept

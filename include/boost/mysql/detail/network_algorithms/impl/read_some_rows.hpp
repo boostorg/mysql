@@ -29,11 +29,7 @@ namespace detail {
 
 inline rows_view get_some_rows(const channel_base& ch, const execution_processor& st)
 {
-    return rows_view_access::construct(
-        ch.shared_fields().data(),
-        ch.shared_fields().size(),
-        ch.shared_fields().size() / st.num_read_rows()
-    );
+    return rows_view_access::construct(ch.shared_fields().data(), ch.shared_fields().size(), st.num_meta());
 }
 
 inline error_code process_some_rows(

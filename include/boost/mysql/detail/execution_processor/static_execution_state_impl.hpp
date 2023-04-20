@@ -156,6 +156,8 @@ public:
 
     void on_row_batch_finish_impl() noexcept override final {}
 
+    std::size_t num_meta_impl() const noexcept override { return current_num_columns(); }
+
     // User facing
     metadata_collection_view meta() const noexcept
     {

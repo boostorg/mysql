@@ -122,8 +122,8 @@ add_example(
     source_script.cpp
     example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql
 )
-add_example(
-    boost_mysql_example_typed_multi
-    typed_multi.cpp
-    example_user example_password ${SERVER_HOST}
-)
+# add_example(
+#     boost_mysql_example_typed_multi
+#     typed_multi.cpp
+#     example_user example_password ${SERVER_HOST}
+# )

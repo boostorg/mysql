@@ -130,6 +130,8 @@ public:
 
     void on_row_batch_finish_impl() noexcept override final {}
 
+    std::size_t num_meta_impl() const noexcept override { return meta_.size(); }
+
     // User facing
     metadata_collection_view meta() const noexcept { return meta_; }
 

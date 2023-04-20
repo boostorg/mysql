@@ -93,6 +93,7 @@ public:
     bool complete() const noexcept { return state_ == state_t::complete; }
 
     std::size_t num_read_rows() const noexcept { return read_rows_; }
+    std::size_t num_meta() const noexcept { return num_meta_impl(); }
 
     resultset_encoding encoding() const noexcept { return encoding_; }
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
@@ -119,6 +120,7 @@ protected:
     virtual error_code on_row_impl(deserialization_context& ctx) = 0;
     virtual void on_row_batch_start_impl() = 0;
     virtual void on_row_batch_finish_impl() = 0;
+    virtual std::size_t num_meta_impl() const noexcept = 0;
 
 private:
     state_t state_;

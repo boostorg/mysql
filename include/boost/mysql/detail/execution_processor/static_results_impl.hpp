@@ -128,10 +128,8 @@ public:
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
     {
         assert(data_.meta_index < current_num_columns());
-        ext_.meta[current_resultset().meta_offset + data_.meta_index] = metadata_access::construct(
-            pack,
-            meta_mode() == metadata_mode::full
-        );
+        std::size_t global_meta_index = current_resultset().meta_offset + data_.meta_index;
+        ext_.meta[global_meta_index] = metadata_access::construct(pack, meta_mode() == metadata_mode::full);
         if (++data_.meta_index == current_num_columns())
         {
             set_state(state_t::reading_rows);
@@ -155,6 +153,8 @@ public:
 
     void on_row_batch_start_impl() override final {}
     void on_row_batch_finish_impl() override final {}
+
+    std::size_t num_meta_impl() const noexcept override { return current_num_columns(); }
 
     // User facing
     metadata_collection_view get_meta(std::size_t index) const noexcept
@@ -209,14 +209,16 @@ private:
     void add_resultset()
     {
         assert(data_.resultset_index < desc_.num_resultsets);
+
+        // Compute meta offset. If this is the first result, that's 0. Otherwise,
+        // it's the previous offset plus the number of columns of the resultset we've just finished parsing
+        std::size_t meta_offset = data_.resultset_index == 0u
+                                      ? 0u
+                                      : current_resultset().meta_offset + current_num_columns();
         ++data_.resultset_index;
         data_.meta_index = 0;
         auto& resultset_data = current_resultset();
-        // TODO: we can do this constant
-        std::size_t offset = 0;
-        for (std::size_t i = 0; i < data_.resultset_index; ++i)
-            offset += desc_.num_columns[i];
-        resultset_data.meta_offset = offset;
+        resultset_data.meta_offset = meta_offset;
         resultset_data.info_offset = data_.info.size();
     }
 
