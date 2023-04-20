@@ -51,14 +51,14 @@ add_executable(
     mariadb_server_errc.cpp
     diagnostics.cpp
     statement.cpp
-    execution_state.cpp
-    results.cpp
-    resultset_view.cpp
-    resultset.cpp
+    # execution_state.cpp
+    # results.cpp
+    # resultset_view.cpp
+    # resultset.cpp
     connection.cpp
     throw_on_error.cpp
     regressions.cpp
-    multifn.cpp
+    # multifn.cpp
     entry_point.cpp
 )
 target_link_libraries(
