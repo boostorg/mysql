@@ -21,8 +21,7 @@ cpp-pch unittests_pch
         <include>unit
     ;
 
-unit-test boost_mysql_unittests
-    :
+run
         unittests_pch
         unittests_entry_point
 
@@ -79,6 +78,7 @@ unit-test boost_mysql_unittests
         regressions.cpp
         # multifn.cpp
         entry_point.cpp
-    :
+    : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+    : target-name boost_mysql_unittests
     ;

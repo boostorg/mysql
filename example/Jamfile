@@ -31,9 +31,7 @@ local regular_examples =
 
 for local example in $(regular_examples)
 {
-    local example_name = "boost_mysql_example_$(example)" ;
-    unit-test $(example_name)
-        :
+    run
             "$(example).cpp"
             /boost/mysql/test//mysql
         :
@@ -51,20 +49,18 @@ local order_examples =
 
 for local example in $(order_examples)
 {
-    local example_name = "boost_mysql_example_$(example)" ;
-    unit-test $(example_name)
-        :
+    run
             "order_management/$(example).cpp"
             /boost/mysql/test//mysql
         : requirements
             <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
             <testing.arg>$(hostname)
+        : target-name "boost_mysql_example_$(example)"
     ;
 }
 
 # Coroutines, which requires Boost.Context
-unit-test boost_mysql_example_async_coroutines
-    :
+run
         async_coroutines.cpp
         /boost/mysql/test//mysql
         /boost/context//boost_context
@@ -74,8 +70,7 @@ unit-test boost_mysql_example_async_coroutines
 
 # UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
 if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
-    unit-test boost_mysql_example_unix_socket
-    :
+    run
         unix_socket.cpp
         /boost/mysql/test//mysql
     :
@@ -83,9 +78,8 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     ;
 }
 
-# Source script. unit-test doesn't support input-file correctly
-unit-test boost_mysql_example_source_script
-    :
+# Source script
+run
         source_script.cpp
         /boost/mysql/test//mysql
     : requirements
