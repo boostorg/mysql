@@ -33,12 +33,14 @@ inline error_code process_execution_response(
 )
 {
     auto response = deserialize_execute_response(msg, chan.current_capabilities(), chan.flavor(), diag);
+    error_code err;
     switch (response.type)
     {
-    case execute_response::type_t::error: return response.data.err;
-    case execute_response::type_t::ok_packet: return proc.on_head_ok_packet(response.data.ok_pack);
-    case execute_response::type_t::num_fields: return proc.on_num_meta(response.data.num_fields);
+    case execute_response::type_t::error: err = response.data.err; break;
+    case execute_response::type_t::ok_packet: err = proc.on_head_ok_packet(response.data.ok_pack); break;
+    case execute_response::type_t::num_fields: err = proc.on_num_meta(response.data.num_fields); break;
     }
+    return err;
 }
 
 inline error_code process_field_definition(channel_base& chan, execution_processor& proc, diagnostics& diag)

@@ -33,7 +33,7 @@ CREATE TABLE audit_log(
     msg TEXT
 );
     
-INSERT INTO company (name, id) VALUES
+INSERT INTO company (name, id, tax_id) VALUES
     ("Award Winning Company, Inc.", "AWC", "IE1234567V"),
     ("Sector Global Leader Plc", "SGL", "IE1234568V"),
     ("High Growth Startup, Ltd", "HGS", "IE1234569V")

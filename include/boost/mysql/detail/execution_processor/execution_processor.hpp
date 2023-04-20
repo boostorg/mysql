@@ -146,6 +146,15 @@ struct output_ref
     // Otherwise unused
     std::size_t resultset_index{};
 
+    constexpr output_ref() noexcept = default;
+
+    constexpr output_ref(void* data, std::size_t max_size, std::size_t resultset_index) noexcept
+        : data(data), max_size(max_size), resultset_index(resultset_index)
+    {
+    }
+
+    constexpr output_ref(void* data) noexcept : data(data) {}
+
     bool has_value() const noexcept { return data != nullptr; }
 };
 

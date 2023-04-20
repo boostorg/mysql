@@ -40,7 +40,7 @@ inline error_code process_some_rows(
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
-    proc.set_output(output_ref{&channel.shared_fields()});
+    proc.set_output(output_ref(&channel.shared_fields()));
     proc.on_row_batch_start();
     while (channel.has_read_messages() && proc.should_read_rows())
     {

@@ -670,7 +670,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     return detail::read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref{output.data(), output.size(), index},
+        detail::output_ref(output.data(), output.size(), index),
         err,
         diag
     );
@@ -694,7 +694,7 @@ template <
     class SpanRowType,
     class... RowType,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::connection<Stream>::async_read_some_rows(
     static_execution_state<RowType...>& st,
     span<SpanRowType> output,
@@ -707,7 +707,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     return detail::async_read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref{output.data(), output.size(), index},
+        detail::output_ref(output.data(), output.size(), index),
         diag,
         std::forward<CompletionToken>(token)
     );

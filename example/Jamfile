@@ -65,7 +65,7 @@ for local example in $(order_examples)
 # Coroutines, which requires Boost.Context
 unit-test boost_mysql_example_async_coroutines
     :
-        "$(example).cpp"
+        async_coroutines.cpp
         /boost/mysql/test//mysql
         /boost/context//boost_context
     :
