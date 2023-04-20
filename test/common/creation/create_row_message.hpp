@@ -23,7 +23,7 @@ namespace mysql {
 namespace test {
 
 template <class... Args>
-std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Args&... args)
+std::vector<std::uint8_t> create_text_row_body(const Args&... args)
 {
     auto fields = make_fv_arr(args...);
     std::vector<std::uint8_t> res;
@@ -45,7 +45,13 @@ std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Arg
             throw std::runtime_error("create_text_row_message: type not implemented");
         }
     }
-    return create_message(seqnum, std::move(res));
+    return res;
+}
+
+template <class... Args>
+std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Args&... args)
+{
+    return create_message(seqnum, create_text_row_body(args...));
 }
 
 }  // namespace test

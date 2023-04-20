@@ -53,7 +53,7 @@ inline execute_response deserialize_execute_response(
     diagnostics& diag
 ) noexcept;
 
-struct row_response
+struct row_message
 {
     enum class type_t
     {
@@ -76,12 +76,12 @@ struct row_response
         data_t(error_code err) noexcept : err(err) {}
     } data;
 
-    row_response(const deserialization_context& ctx) noexcept : type(type_t::row), data(ctx) {}
-    row_response(const ok_packet& ok_pack) noexcept : type(type_t::ok_packet), data(ok_pack) {}
-    row_response(error_code v) noexcept : type(type_t::error), data(v) {}
+    row_message(const deserialization_context& ctx) noexcept : type(type_t::row), data(ctx) {}
+    row_message(const ok_packet& ok_pack) noexcept : type(type_t::ok_packet), data(ok_pack) {}
+    row_message(error_code v) noexcept : type(type_t::error), data(v) {}
 };
 
-inline row_response deserialize_row_message(
+inline row_message deserialize_row_message(
     boost::asio::const_buffer msg,
     capabilities caps,
     db_flavor flavor,

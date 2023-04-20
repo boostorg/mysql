@@ -12,26 +12,30 @@
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
+#include "creation/create_message.hpp"
+#include "creation/create_row_message.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
+using namespace boost::mysql::detail;
 using boost::mysql::client_errc;
 using boost::mysql::common_server_errc;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
-using boost::mysql::detail::capabilities;
-using boost::mysql::detail::db_flavor;
-using boost::mysql::detail::execute_response;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(execute_response::type_t)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(row_message::type_t)
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_deserialize_execute_response)
+BOOST_AUTO_TEST_SUITE(test_deserialize_execution_messages)
+
+BOOST_AUTO_TEST_SUITE(deserialize_execute_response_)
 
 BOOST_AUTO_TEST_CASE(ok_packet)
 {
@@ -43,7 +47,7 @@ BOOST_AUTO_TEST_CASE(ok_packet)
         db_flavor::mariadb,
         diag
     );
-    BOOST_TEST(response.type == execute_response::type_t::ok_packet);
+    BOOST_TEST_REQUIRE(response.type == execute_response::type_t::ok_packet);
     BOOST_TEST(response.data.ok_pack.affected_rows.value == 0u);
     BOOST_TEST(response.data.ok_pack.status_flags == 2u);
 }
@@ -77,7 +81,7 @@ BOOST_AUTO_TEST_CASE(num_fields)
                 db_flavor::mysql,
                 diag
             );
-            BOOST_TEST(response.type == execute_response::type_t::num_fields);
+            BOOST_TEST_REQUIRE(response.type == execute_response::type_t::num_fields);
             BOOST_TEST(response.data.num_fields == 0xffu);
             BOOST_TEST(diag.server_message() == "");
         }
@@ -121,12 +125,109 @@ BOOST_AUTO_TEST_CASE(error)
                 db_flavor::mysql,
                 diag
             );
-            BOOST_TEST(response.type == execute_response::type_t::error);
+            BOOST_TEST_REQUIRE(response.type == execute_response::type_t::error);
             BOOST_TEST(response.data.err == tc.err);
             BOOST_TEST(diag.server_message() == tc.expected_info);
         }
     }
 }
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(deserialize_row_message_)
+
+BOOST_AUTO_TEST_CASE(row)
+{
+    auto rowbuff = create_text_row_body("abc", 10);
+    diagnostics diag;
+
+    auto response = deserialize_row_message(
+        boost::asio::const_buffer(rowbuff.data(), rowbuff.size()),
+        capabilities(),
+        db_flavor::mysql,
+        diag
+    );
+
+    BOOST_TEST_REQUIRE(response.type == row_message::type_t::row);
+    BOOST_TEST(response.data.ctx.first() == rowbuff.data());
+    BOOST_TEST(response.data.ctx.size() == rowbuff.size());
+}
+
+BOOST_AUTO_TEST_CASE(ok_packet)
+{
+    auto buff = ok_msg_builder().affected_rows(42).last_insert_id(1).info("abc").build_body(0xfe);
+    diagnostics diag;
+
+    auto
+        response = deserialize_row_message(boost::asio::buffer(buff), capabilities(), db_flavor::mysql, diag);
+
+    BOOST_TEST_REQUIRE(response.type == row_message::type_t::ok_packet);
+    BOOST_TEST(response.data.ok_pack.affected_rows.value == 42u);
+    BOOST_TEST(response.data.ok_pack.last_insert_id.value == 42u);
+    BOOST_TEST(response.data.ok_pack.info.value == "abc");
+}
+
+BOOST_AUTO_TEST_CASE(error)
+{
+    // clang-format off
+    struct
+    {
+        const char* name;
+        std::vector<std::uint8_t> buffer;
+        error_code expected_error;
+        const char* expected_info;
+    } test_cases [] = {
+        {
+            "invalid_ok_packet",
+            { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00 }, // 1 byte missing
+            client_errc::incomplete_message,
+            ""
+        },
+        {
+            "error_packet",
+            {
+                0xff, 0x19, 0x04, 0x23, 0x34, 0x32, 0x30, 0x30, 0x30, 0x55, 0x6e, 0x6b,
+                0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
+                0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
+            },
+            common_server_errc::er_bad_db_error,
+            "Unknown database 'a'"
+        },
+        {
+            "invalid_error_packet",
+            { 0xff, 0x19 }, // bytes missing
+            client_errc::incomplete_message,
+            ""
+        },
+        {
+            "empty_message",
+            {},
+            client_errc::incomplete_message,
+            ""
+        }
+    };
+    // clang-format on
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            diagnostics diag;
+
+            auto msg = deserialize_row_message(
+                boost::asio::buffer(tc.buffer),
+                capabilities(),
+                db_flavor::mysql,
+                diag
+            );
+
+            BOOST_TEST_REQUIRE(msg.type == row_message::type_t::error);
+            BOOST_TEST(msg.data.err == tc.expected_error);
+            BOOST_TEST(diag.server_message() == tc.expected_info);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 

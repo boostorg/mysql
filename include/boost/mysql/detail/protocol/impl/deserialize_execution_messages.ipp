@@ -73,7 +73,7 @@ inline boost::mysql::detail::execute_response boost::mysql::detail::deserialize_
     }
 }
 
-inline boost::mysql::detail::row_response boost::mysql::detail::deserialize_row_message(
+inline boost::mysql::detail::row_message boost::mysql::detail::deserialize_row_message(
     boost::asio::const_buffer msg,
     capabilities caps,
     db_flavor flavor,

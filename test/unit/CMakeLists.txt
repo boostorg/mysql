@@ -26,14 +26,14 @@ add_executable(
     detail/protocol/deserialize_text_field.cpp
     detail/protocol/deserialize_binary_field.cpp
     detail/protocol/deserialize_row.cpp
-    detail/protocol/deserialize_execute_response.cpp
+    detail/protocol/deserialize_execution_messages.cpp
     detail/protocol/process_error_packet.cpp
-    detail/protocol/execution_state_impl.cpp
-    detail/network_algorithms/start_execution_impl.cpp
-    detail/network_algorithms/read_resultset_head.cpp
-    detail/network_algorithms/read_some_rows.cpp
-    detail/network_algorithms/execute_impl.cpp
-    detail/network_algorithms/high_level_execution.cpp
+    # detail/protocol/execution_state_impl.cpp
+    # detail/network_algorithms/start_execution_impl.cpp
+    # detail/network_algorithms/read_resultset_head.cpp
+    # detail/network_algorithms/read_some_rows.cpp
+    # detail/network_algorithms/execute_impl.cpp
+    # detail/network_algorithms/high_level_execution.cpp
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
     date.cpp

@@ -31,9 +31,9 @@ inline error_code process_row_message(channel_base& channel, execution_processor
     auto msg = deserialize_row_message(buff, channel.current_capabilities(), channel.flavor(), diag);
     switch (msg.type)
     {
-    case row_response::type_t::error: return msg.data.err;
-    case row_response::type_t::ok_packet: return proc.on_row_ok_packet(msg.data.ok_pack);
-    case row_response::type_t::row: return proc.on_row(msg.data.ctx);
+    case row_message::type_t::error: return msg.data.err;
+    case row_message::type_t::ok_packet: return proc.on_row_ok_packet(msg.data.ok_pack);
+    case row_message::type_t::row: return proc.on_row(msg.data.ctx);
     }
 }
 
