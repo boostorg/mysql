@@ -21,12 +21,6 @@ namespace detail {
 
 // TODO: this requires C++14, assert it somehow
 
-template <std::size_t N>
-constexpr std::size_t get_max(const std::size_t (&arr)[N])
-{
-    return (std::max)(arr, arr + N);
-}
-
 inline void reset_pos_map(std::size_t* pos_map, std::size_t size) noexcept
 {
     for (std::size_t i = 0; i < size; ++i)

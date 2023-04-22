@@ -21,6 +21,7 @@
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <vector>
@@ -291,17 +292,18 @@ class static_execution_state_impl
     static constexpr std::size_t num_resultsets = sizeof...(RowType);
     using meta_check_vtable_t = std::array<meta_check_fn, num_resultsets>;
     using parse_vtable_t = std::array<static_execution_state_erased_impl::parse_fn_t, num_resultsets>;
-    static constexpr std::size_t num_columns[num_resultsets]{get_row_size<RowType>()...};
+    static constexpr std::array<std::size_t, num_resultsets> num_columns{get_row_size<RowType>()...};
     static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
     static constexpr parse_vtable_t parse_vtable{&static_execution_state_parse_fn<RowType>...};
     static constexpr std::array<const string_view*, num_resultsets> name_table{
         row_traits<RowType>::field_names...};
+    static constexpr std::size_t max_num_columns = (std::max)({get_row_size<RowType>()...});
 
     // Storage for our data, which requires knowing the template args
     struct data_t
     {
-        std::array<field_view, get_max(num_columns)> temp_fields{};
-        std::array<std::size_t, get_max(num_columns)> pos_map{};
+        std::array<field_view, max_num_columns> temp_fields{};
+        std::array<std::size_t, max_num_columns> pos_map{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -311,7 +313,7 @@ class static_execution_state_impl
     {
         return {
             num_resultsets,
-            num_columns,
+            num_columns.data(),
             name_table.data(),
             meta_check_vtable.data(),
             parse_vtable.data(),

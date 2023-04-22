@@ -65,14 +65,17 @@ public:
 
     bool check_field_present()
     {
-        bool ok = pos_map_[current_index_] == pos_map_field_absent;
-        if (!ok)
+        if (pos_map_[current_index_] == pos_map_field_absent)
         {
             assert(field_names_);
-            error_stream() << "Field " << field_names_[current_index_]
-                           << " is not present in the data returned by the server\n";
+            error_stream() << "Field '" << field_names_[current_index_]
+                           << "' is not present in the data returned by the server\n";
+            return false;
         }
-        return ok;
+        else
+        {
+            return true;
+        }
     }
 
     void add_type_mismatch_error(const char* reason)
@@ -81,7 +84,7 @@ public:
         stream << "Incompatible types for field ";
         if (field_names_)
         {
-            stream << field_names_[current_index_];
+            stream << "'" << field_names_[current_index_] << "'";
         }
         else
         {

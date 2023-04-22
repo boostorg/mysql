@@ -24,6 +24,7 @@
 
 #include <boost/mp11/integer_sequence.hpp>
 
+#include <algorithm>
 #include <array>
 
 namespace boost {
@@ -230,7 +231,6 @@ private:
         ++data_.resultset_index;
         auto& resultset_data = current_resultset();
         resultset_data.meta_offset = data_.meta.size();
-        resultset_data.meta_offset = 0;
         data_.meta_index = 0;
         reset_pos_map(ext_.pos_map, current_num_columns());
         return resultset_data;
@@ -318,19 +318,20 @@ class static_results_impl
         return create_parse_vtable_impl(boost::mp11::make_index_sequence<sizeof...(RowType)>());
     }
 
-    static constexpr std::size_t num_columns[num_resultsets]{get_row_size<RowType>()...};
+    static constexpr std::array<std::size_t, num_resultsets> num_columns{get_row_size<RowType>()...};
     static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
     static constexpr parse_vtable_t parse_vtable = create_parse_vtable();
     static constexpr std::array<const string_view*, num_resultsets> name_table{
         row_traits<RowType>::field_names...};
+    static constexpr std::size_t max_num_columns = (std::max)({get_row_size<RowType>()...});
 
     // Storage for our data, which requires knowing the template args.
     struct data_t
     {
         rows_t rows;
         std::array<static_results_erased_impl::basic_per_resultset_data, num_resultsets> per_resultset{};
-        std::array<field_view, get_max(num_columns)> temp_fields{};
-        std::array<std::size_t, get_max(num_columns)> pos_table{};
+        std::array<field_view, max_num_columns> temp_fields{};
+        std::array<std::size_t, max_num_columns> pos_table{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -357,7 +358,7 @@ class static_results_impl
     {
         return {
             num_resultsets,
-            num_columns,
+            num_columns.data(),
             name_table.data(),
             &reset_tuple,
             meta_check_vtable.data(),

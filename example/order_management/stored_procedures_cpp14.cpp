@@ -104,12 +104,12 @@ struct product
     // The product's description. This field can be NULL in the DB,
     // so we use boost::optional<T> for it. If you're using C++17 or higher,
     // you can use std::optional instead.
-    boost::optional<std::string> description;
+    boost::optional<std::string> descr;
 
     // The product's unit price, in cents of USD.
     std::int64_t price;
 };
-BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
+BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price));
 
 // An empty row type. This can be used to describe empty resultsets,
 // like the ones returned by INSERT or CALL.
@@ -173,7 +173,7 @@ struct visitor
         {
             std::cout << "* ID: " << prod.id << '\n'
                       << "  Short name: " << prod.short_name << '\n'
-                      << "  Description: " << (prod.description ? *prod.description : "") << '\n'
+                      << "  Description: " << (prod.descr ? *prod.descr : "") << '\n'
                       << "  Price: " << prod.price / 100.0 << "$" << std::endl;
         }
         std::cout << std::endl;

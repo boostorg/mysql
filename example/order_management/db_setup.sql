@@ -252,7 +252,7 @@ BEGIN
     SELECT id, `status`
     FROM orders WHERE id = p_order_id;
     SELECT
-        item.id AS item_id,
+        item.id AS id,
         item.quantity AS quantity,
         prod.price AS unit_price
     FROM order_items item
@@ -294,7 +294,7 @@ BEGIN
     SELECT id, `status`
     FROM orders WHERE id = p_order_id;
     SELECT
-        item.id AS item_id,
+        item.id AS id,
         item.quantity AS quantity,
         prod.price AS unit_price
     FROM order_items item
