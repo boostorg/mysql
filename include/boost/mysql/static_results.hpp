@@ -189,7 +189,7 @@ public:
     template <std::size_t I = 0>
     std::uint64_t last_insert_id() const noexcept
     {
-        static_assert(I < sizeof...(RowType));
+        static_assert(I < sizeof...(RowType), "I index out of range");
         assert(has_value());
         return impl_.get_interface().get_last_insert_id(I);
     }
@@ -212,7 +212,7 @@ public:
     template <std::size_t I = 0>
     unsigned warning_count() const noexcept
     {
-        static_assert(I < sizeof...(RowType));
+        static_assert(I < sizeof...(RowType), "I index out of range");
         assert(has_value());
         return impl_.get_interface().get_warning_count(I);
     }
@@ -245,7 +245,7 @@ public:
     template <std::size_t I = 0>
     string_view info() const noexcept
     {
-        static_assert(I < sizeof...(RowType));
+        static_assert(I < sizeof...(RowType), "I index out of range");
         assert(has_value());
         return impl_.get_interface().get_info(I);
     }
