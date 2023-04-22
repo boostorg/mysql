@@ -52,7 +52,8 @@ enum class client_errc : int
 
     type_mismatch,
     num_resultsets_mismatch,
-    num_columns_mismatch,
+    not_enough_columns,
+    missing_column,
     is_null,
 };
 

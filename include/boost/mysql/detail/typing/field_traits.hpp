@@ -15,6 +15,7 @@
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
 #include <boost/mysql/detail/config.hpp>
@@ -30,11 +31,15 @@ namespace mysql {
 namespace detail {
 
 // Helpers
+constexpr auto pos_map_field_absent = static_cast<std::size_t>(-1);
+
 class meta_check_context
 {
     std::unique_ptr<std::ostringstream> errors_;
     std::size_t current_index_{};
     const metadata* meta_{};
+    const string_view* field_names_{};
+    const std::size_t* pos_map_{};
     const char* cpp_type_name_{};
 
     std::ostringstream& error_stream()
@@ -45,18 +50,45 @@ class meta_check_context
     }
 
 public:
-    meta_check_context() = default;
-    meta_check_context(const metadata* meta) : meta_(meta) {}
-    const metadata& current_meta() const noexcept { return meta_[current_index_]; }
+    meta_check_context(
+        const metadata* meta,
+        const string_view* field_names,
+        const std::size_t* pos_map
+    ) noexcept
+        : meta_(meta), field_names_(field_names), pos_map_(pos_map)
+    {
+    }
+    const metadata& current_meta() const noexcept { return meta_[pos_map_[current_index_]]; }
     void set_cpp_type_name(const char* v) noexcept { cpp_type_name_ = v; }
     void advance() noexcept { ++current_index_; }
     std::size_t current_index() const noexcept { return current_index_; }
 
-    void add_error(const char* reason)
+    bool check_field_present()
     {
-        error_stream() << "Incompatible types for field in position " << current_index_ << ": C++ type "
-                       << cpp_type_name_ << " is not compatible with DB type " << current_meta().type()
-                       << ": " << reason << "\n";
+        bool ok = pos_map_[current_index_] == pos_map_field_absent;
+        if (!ok)
+        {
+            assert(field_names_);
+            error_stream() << "Field " << field_names_[current_index_]
+                           << " is not present in the data returned by the server\n";
+        }
+        return ok;
+    }
+
+    void add_type_mismatch_error(const char* reason)
+    {
+        auto& stream = error_stream();
+        stream << "Incompatible types for field ";
+        if (field_names_)
+        {
+            stream << field_names_[current_index_];
+        }
+        else
+        {
+            stream << "in position " << current_index_;
+        }
+        stream << ": C++ type " << cpp_type_name_ << " is not compatible with DB type "
+               << current_meta().type() << ": " << reason << "\n";
     }
 
     bool has_errors() const noexcept { return errors_ != nullptr; }
@@ -121,7 +153,7 @@ error_code parse_unsigned_int(field_view input, UnsignedInt& output)
 inline void add_on_error(meta_check_context& ctx, bool ok)
 {
     if (!ok)
-        ctx.add_error("types are incompatible");
+        ctx.add_type_mismatch_error("types are incompatible");
 }
 
 struct valid_field_traits
@@ -542,7 +574,10 @@ void meta_check_impl(meta_check_context& ctx)
 {
     using traits_t = field_traits<FieldType>;
     ctx.set_cpp_type_name(traits_t::type_name);
-    traits_t::meta_check(ctx);
+    if (ctx.check_field_present())
+    {
+        traits_t::meta_check(ctx);
+    }
     ctx.advance();
 }
 

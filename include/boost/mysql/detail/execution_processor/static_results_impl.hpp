@@ -11,12 +11,15 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/execution_processor/constexpr_max_sum.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/static_helpers.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
+#include <boost/mysql/detail/typing/field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/mp11/integer_sequence.hpp>
@@ -31,11 +34,12 @@ class static_results_erased_impl final : public execution_processor
 {
 public:
     using reset_fn_t = void (*)(void*);
-    using parse_fn_t = error_code (*)(void* to, const field_view* from);
+    using parse_fn_t = error_code (*)(const field_view* from, const std::size_t* pos_map, void* to);
 
     struct basic_per_resultset_data
     {
         std::size_t meta_offset{};
+        std::size_t meta_size{};
         std::size_t info_offset{};
         std::size_t info_size{};
         bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
@@ -50,6 +54,7 @@ public:
     {
         std::size_t num_resultsets{};
         const std::size_t* num_columns{};
+        const string_view* const* name_table{};
         reset_fn_t reset_fn{};
         const meta_check_fn* meta_check_vtable{};
         const parse_fn_t* parse_vtable{};
@@ -59,9 +64,9 @@ public:
     struct external_storage
     {
         void* rows{};
-        metadata* meta{};
         basic_per_resultset_data* per_resultset{};
         field_view* temp_fields{};
+        std::size_t* pos_map{};
     };
 
     // Both descriptor and storage must be provided on initialization
@@ -101,6 +106,7 @@ public:
     void reset_impl() noexcept override
     {
         desc_.reset_fn(ext_.rows);
+        data_.meta.clear();
         data_.meta_index = 0;
         data_.resultset_index = 0;
     }
@@ -111,32 +117,40 @@ public:
         auto err = on_ok_packet_impl(pack);
         if (err)
             return err;
-        return current_num_columns() == 0 ? error_code() : client_errc::num_columns_mismatch;
+        return current_num_columns() == 0 ? error_code() : client_errc::not_enough_columns;
     }
 
     error_code on_num_meta_impl(std::size_t num_columns) override final
     {
-        add_resultset();
-        if (num_columns != current_num_columns())
-        {
-            return client_errc::num_columns_mismatch;
-        }
+        auto& resultset_data = add_resultset();
+        data_.meta.reserve(data_.meta.size() + num_columns);
+        resultset_data.meta_size = num_columns;
         set_state(state_t::reading_metadata);
         return error_code();
     }
 
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
     {
-        assert(data_.meta_index < current_num_columns());
-        std::size_t global_meta_index = current_resultset().meta_offset + data_.meta_index;
-        ext_.meta[global_meta_index] = metadata_access::construct(pack, meta_mode() == metadata_mode::full);
-        if (++data_.meta_index == current_num_columns())
+        // Fill the pos map entry for this field, if any
+        fill_pos_map(
+            current_name_table(),
+            ext_.pos_map,
+            current_num_columns(),
+            data_.meta_index,
+            pack.name.value
+        );
+
+        // Store the meta object anyway
+        data_.meta.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
+        if (++data_.meta_index == current_resultset().meta_size)
         {
             set_state(state_t::reading_rows);
             return meta_check(diag);
         }
         return error_code();
     }
+
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
     error_code on_row_impl(deserialization_context& ctx) override final
     {
@@ -146,10 +160,8 @@ public:
             return err;
 
         // parse it against the appropriate tuple element
-        return desc_.parse_vtable[data_.resultset_index - 1](ext_.rows, ext_.temp_fields);
+        return desc_.parse_vtable[data_.resultset_index - 1](ext_.temp_fields, ext_.pos_map, ext_.rows);
     }
-
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
     void on_row_batch_start_impl() override final {}
     void on_row_batch_finish_impl() override final {}
@@ -160,9 +172,10 @@ public:
     metadata_collection_view get_meta(std::size_t index) const noexcept
     {
         assert(index < desc_.num_resultsets);
+        const auto& resultset_data = ext_.per_resultset[index];
         return metadata_collection_view(
-            ext_.meta + ext_.per_resultset[index].meta_offset,
-            desc_.num_columns[index]
+            data_.meta.data() + resultset_data.meta_offset,
+            resultset_data.meta_size
         );
     }
 
@@ -198,28 +211,29 @@ private:
 
     struct
     {
+        std::vector<metadata> meta;
         std::vector<char> info;
         std::size_t meta_index{};
-        bool first{true};
         std::size_t resultset_index{0};
     } data_;
 
     std::size_t current_num_columns() const noexcept { return desc_.num_columns[data_.resultset_index - 1]; }
+    const string_view* current_name_table() const noexcept
+    {
+        assert(desc_.name_table);
+        return desc_.name_table[data_.resultset_index - 1];
+    }
 
-    void add_resultset()
+    basic_per_resultset_data& add_resultset()
     {
         assert(data_.resultset_index < desc_.num_resultsets);
-
-        // Compute meta offset. If this is the first result, that's 0. Otherwise,
-        // it's the previous offset plus the number of columns of the resultset we've just finished parsing
-        std::size_t meta_offset = data_.resultset_index == 0u
-                                      ? 0u
-                                      : current_resultset().meta_offset + current_num_columns();
         ++data_.resultset_index;
-        data_.meta_index = 0;
         auto& resultset_data = current_resultset();
-        resultset_data.meta_offset = meta_offset;
-        resultset_data.info_offset = data_.info.size();
+        resultset_data.meta_offset = data_.meta.size();
+        resultset_data.meta_offset = 0;
+        data_.meta_index = 0;
+        reset_pos_map(ext_.pos_map, current_num_columns());
+        return resultset_data;
     }
 
     error_code on_ok_packet_impl(const ok_packet& pack)
@@ -262,7 +276,12 @@ private:
     error_code meta_check(diagnostics& diag) const
     {
         assert(should_read_rows());
-        return desc_.meta_check_vtable[data_.resultset_index - 1](current_resultset_meta(), diag);
+        return desc_.meta_check_vtable[data_.resultset_index - 1](
+            current_resultset_meta(),
+            current_name_table(),
+            ext_.pos_map,
+            diag
+        );
     }
 
     metadata_collection_view current_resultset_meta() const noexcept
@@ -281,11 +300,11 @@ class static_results_impl
     using parse_vtable_t = std::array<static_results_erased_impl::parse_fn_t, num_resultsets>;
 
     template <std::size_t I>
-    static error_code parse_fn(void* to, const field_view* from)
+    static error_code parse_fn(const field_view* from, const std::size_t* pos_map, void* to)
     {
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
         v.emplace_back();
-        return parse(from, v.back());
+        return parse(from, pos_map, v.back());
     }
 
     template <std::size_t... N>
@@ -302,14 +321,16 @@ class static_results_impl
     static constexpr std::size_t num_columns[num_resultsets]{get_row_size<RowType>()...};
     static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
     static constexpr parse_vtable_t parse_vtable = create_parse_vtable();
+    static constexpr std::array<const string_view*, num_resultsets> name_table{
+        row_traits<RowType>::field_names...};
 
     // Storage for our data, which requires knowing the template args.
     struct data_t
     {
         rows_t rows;
-        std::array<metadata, get_sum(num_columns)> meta{};
         std::array<static_results_erased_impl::basic_per_resultset_data, num_resultsets> per_resultset{};
         std::array<field_view, get_max(num_columns)> temp_fields{};
+        std::array<std::size_t, get_max(num_columns)> pos_table{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -337,6 +358,7 @@ class static_results_impl
         return {
             num_resultsets,
             num_columns,
+            name_table.data(),
             &reset_tuple,
             meta_check_vtable.data(),
             parse_vtable.data(),
@@ -347,9 +369,9 @@ class static_results_impl
     {
         return {
             &data_.rows,
-            data_.meta.data(),
             data_.per_resultset.data(),
             data_.temp_fields.data(),
+            data_.pos_table.data(),
         };
     }
 

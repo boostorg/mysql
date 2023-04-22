@@ -82,19 +82,18 @@ struct product
 {
     // The unique database ID of the object.
     std::int64_t id;
-
     // A short name for the product. Can be used as a title.
     std::string short_name;
 
     // The product's description. This field can be NULL in the DB,
     // so we use boost::optional<T> for it. If you're using C++17 or higher,
     // you can use std::optional instead.
-    boost::optional<std::string> description;
+    boost::optional<std::string> descr;
 
     // The product's unit price, in cents of USD.
     std::int64_t price;
 };
-BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
+BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price));
 
 // An order with its line items. This record type is returned by JOINs
 // from the orders and order_items tables. We use this type to retrieve both
@@ -218,7 +217,7 @@ struct visitor
         {
             std::cout << "* ID: " << prod.id << '\n'
                       << "  Short name: " << prod.short_name << '\n'
-                      << "  Description: " << (prod.description ? *prod.description : "") << '\n'
+                      << "  Description: " << (prod.descr ? *prod.descr : "") << '\n'
                       << "  Price: " << prod.price / 100.0 << "$" << std::endl;
         }
         std::cout << std::endl;

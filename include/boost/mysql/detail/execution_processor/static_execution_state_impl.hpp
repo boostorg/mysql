@@ -14,8 +14,8 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 
-#include <boost/mysql/detail/execution_processor/constexpr_max_sum.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/static_helpers.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
@@ -32,13 +32,15 @@ namespace detail {
 class static_execution_state_erased_impl final : public execution_processor_with_output
 {
 public:
-    using parse_fn_t = error_code (*)(void*, std::size_t offset, const field_view* from);
+    using parse_fn_t =
+        error_code (*)(const field_view* from, const std::size_t* pos_map, void* to, std::size_t offset);
 
     // These only depend on the type of the rows we're parsing
     struct resultset_descriptor
     {
         std::size_t num_resultsets{};
         const std::size_t* num_columns{};
+        const string_view* const* name_table{};
         const meta_check_fn* meta_check_vtable{};
         const parse_fn_t* parse_vtable{};
     };
@@ -46,8 +48,8 @@ public:
     // These point to storage owned by an object that knows the row types
     struct external_storage
     {
-        metadata* meta{};
         field_view* temp_fields{};
+        std::size_t* pos_map{};
     };
 
     // Both descriptor and storage must be provided on initialization
@@ -88,6 +90,7 @@ public:
     {
         data_.resultset_index = 0;
         data_.meta_index = 0;
+        data_.meta_size = 0;
         data_.ok_data = ok_packet_data();
         data_.info.clear();
         set_output(output_ref());
@@ -99,24 +102,31 @@ public:
         auto err = on_ok_packet_impl(pack);
         if (err)
             return err;
-        return current_num_columns() == 0 ? error_code() : client_errc::num_columns_mismatch;
+        return current_num_columns() == 0 ? error_code() : client_errc::not_enough_columns;
     }
 
     error_code on_num_meta_impl(std::size_t num_columns) override final
     {
         on_new_resultset();
-        if (num_columns != current_num_columns())
-        {
-            return client_errc::num_columns_mismatch;
-        }
+        data_.meta.reserve(num_columns);
+        data_.meta_size = num_columns;
         set_state(state_t::reading_metadata);
         return error_code();
     }
 
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
     {
-        ext_.meta[data_.meta_index++] = metadata_access::construct(pack, meta_mode() == metadata_mode::full);
-        if (data_.meta_index == current_num_columns())
+        fill_pos_map(
+            current_name_table(),
+            ext_.pos_map,
+            current_num_columns(),
+            data_.meta_index,
+            pack.name.value
+        );
+
+        // Store the meta object anyway
+        data_.meta.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
+        if (++data_.meta_index == data_.meta_size)
         {
             set_state(state_t::reading_rows);
             return meta_check(diag);
@@ -124,11 +134,7 @@ public:
         return error_code();
     }
 
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final
-    {
-        on_ok_packet_impl(pack);
-        return error_code();
-    }
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
     error_code on_row_impl(deserialization_context& ctx) override final
     {
@@ -145,7 +151,12 @@ public:
             return err;
 
         // parse it into the output ref
-        err = desc_.parse_vtable[data_.resultset_index - 1](ref.data, num_read_rows(), ext_.temp_fields);
+        err = desc_.parse_vtable[data_.resultset_index - 1](
+            ext_.temp_fields,
+            ext_.pos_map,
+            ref.data,
+            num_read_rows()
+        );
         if (err)
             return err;
 
@@ -159,10 +170,7 @@ public:
     std::size_t num_meta_impl() const noexcept override { return current_num_columns(); }
 
     // User facing
-    metadata_collection_view meta() const noexcept
-    {
-        return metadata_collection_view(ext_.meta, current_num_columns());
-    }
+    metadata_collection_view meta() const noexcept { return data_.meta; }
 
     std::uint64_t get_affected_rows() const noexcept
     {
@@ -206,21 +214,30 @@ private:
 
     resultset_descriptor desc_;
     external_storage ext_;
-    struct
+
+    struct data_t
     {
         std::size_t resultset_index{};
         std::size_t meta_index{};
+        std::size_t meta_size{};
         ok_packet_data ok_data;
         std::vector<char> info;
+        std::vector<metadata> meta;
     } data_;
 
     std::size_t current_num_columns() const noexcept { return desc_.num_columns[data_.resultset_index - 1]; }
+    const string_view* current_name_table() const noexcept
+    {
+        assert(desc_.name_table);
+        return desc_.name_table[data_.resultset_index - 1];
+    }
 
     error_code meta_check(diagnostics& diag) const
     {
         assert(should_read_rows());
         assert(data_.resultset_index <= desc_.num_resultsets);
-        return desc_.meta_check_vtable[data_.resultset_index - 1](meta(), diag);
+        return desc_
+            .meta_check_vtable[data_.resultset_index - 1](meta(), current_name_table(), ext_.pos_map, diag);
     }
 
     void on_new_resultset() noexcept
@@ -230,6 +247,7 @@ private:
         data_.meta_index = 0;
         data_.ok_data = ok_packet_data{};
         data_.info.clear();
+        reset_pos_map(ext_.pos_map, current_num_columns());
     }
 
     error_code on_ok_packet_impl(const ok_packet& pack)
@@ -256,10 +274,15 @@ private:
 };
 
 template <class RowType>
-static error_code static_execution_state_parse_fn(void* data, std::size_t offset, const field_view* from)
+static error_code static_execution_state_parse_fn(
+    const field_view* from,
+    const std::size_t* pos_map,
+    void* to,
+    std::size_t offset
+)
 {
-    RowType& obj = static_cast<RowType*>(data)[offset];
-    return parse(from, obj);
+    RowType& obj = static_cast<RowType*>(to)[offset];
+    return parse(from, pos_map, obj);
 }
 
 template <class... RowType>
@@ -271,12 +294,14 @@ class static_execution_state_impl
     static constexpr std::size_t num_columns[num_resultsets]{get_row_size<RowType>()...};
     static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
     static constexpr parse_vtable_t parse_vtable{&static_execution_state_parse_fn<RowType>...};
+    static constexpr std::array<const string_view*, num_resultsets> name_table{
+        row_traits<RowType>::field_names...};
 
     // Storage for our data, which requires knowing the template args
     struct data_t
     {
-        std::array<metadata, get_max(num_columns)> meta{};
         std::array<field_view, get_max(num_columns)> temp_fields{};
+        std::array<std::size_t, get_max(num_columns)> pos_map{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -287,6 +312,7 @@ class static_execution_state_impl
         return {
             num_resultsets,
             num_columns,
+            name_table.data(),
             meta_check_vtable.data(),
             parse_vtable.data(),
         };
@@ -295,8 +321,8 @@ class static_execution_state_impl
     static_execution_state_erased_impl::external_storage storage_table() noexcept
     {
         return {
-            data_.meta.data(),
             data_.temp_fields.data(),
+            data_.pos_map.data(),
         };
     }
 

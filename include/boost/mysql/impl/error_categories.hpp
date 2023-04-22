@@ -52,7 +52,7 @@ inline const char* error_to_string(client_errc error) noexcept
         return "The typed interface detected a mismatch between the number of resultsets passed as template "
                "arguments to static_results<T1, T2...>/static_execution_state<T1, T2...> and the number of "
                "results returned by server";
-    case boost::mysql::client_errc::num_columns_mismatch:
+    case boost::mysql::client_errc::not_enough_columns:
         return "The typed interface detected a mismatch between the number of columns in your declared row "
                "type and what the "
                "server returned. Verify your type definitions.";
