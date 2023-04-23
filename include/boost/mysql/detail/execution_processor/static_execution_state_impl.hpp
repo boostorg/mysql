@@ -287,23 +287,17 @@ static error_code static_execution_state_parse_fn(
 }
 
 template <class... RowType>
+constexpr std::array<static_execution_state_erased_impl::parse_fn_t, sizeof...(RowType)>
+    static_execution_state_parse_vtable{&static_execution_state_parse_fn<RowType>...};
+
+template <class... RowType>
 class static_execution_state_impl
 {
-    static constexpr std::size_t num_resultsets = sizeof...(RowType);
-    using meta_check_vtable_t = std::array<meta_check_fn, num_resultsets>;
-    using parse_vtable_t = std::array<static_execution_state_erased_impl::parse_fn_t, num_resultsets>;
-    static constexpr std::array<std::size_t, num_resultsets> num_columns{get_row_size<RowType>()...};
-    static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
-    static constexpr parse_vtable_t parse_vtable{&static_execution_state_parse_fn<RowType>...};
-    static constexpr std::array<const string_view*, num_resultsets> name_table{
-        row_traits<RowType>::field_names...};
-    static constexpr std::size_t max_num_columns = (std::max)({get_row_size<RowType>()...});
-
     // Storage for our data, which requires knowing the template args
     struct data_t
     {
-        std::array<field_view, max_num_columns> temp_fields{};
-        std::array<std::size_t, max_num_columns> pos_map{};
+        std::array<field_view, max_num_columns<RowType...>> temp_fields{};
+        std::array<std::size_t, max_num_columns<RowType...>> pos_map{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -312,11 +306,11 @@ class static_execution_state_impl
     static static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
-            num_resultsets,
-            num_columns.data(),
-            name_table.data(),
-            meta_check_vtable.data(),
-            parse_vtable.data(),
+            sizeof...(RowType),
+            (num_columns_table<RowType...>).data(),
+            (name_table<RowType...>.data()),
+            (meta_check_vtable<RowType...>).data(),
+            (static_execution_state_parse_vtable<RowType...>).data(),
         };
     }
 

@@ -292,46 +292,44 @@ private:
 };
 
 template <class... RowType>
-class static_results_impl
-{
-    static constexpr std::size_t num_resultsets = sizeof...(RowType);
-    using rows_t = std::tuple<std::vector<RowType>...>;
-    using meta_check_vtable_t = std::array<meta_check_fn, num_resultsets>;
-    using parse_vtable_t = std::array<static_results_erased_impl::parse_fn_t, num_resultsets>;
+using static_results_rows_t = std::tuple<std::vector<RowType>...>;
 
+template <class... RowType>
+struct static_results_parse_vtable_helper
+{
     template <std::size_t I>
     static error_code parse_fn(const field_view* from, const std::size_t* pos_map, void* to)
     {
-        auto& v = std::get<I>(*static_cast<rows_t*>(to));
+        auto& v = std::get<I>(*static_cast<static_results_rows_t<RowType...>*>(to));
         v.emplace_back();
         return parse(from, pos_map, v.back());
     }
 
     template <std::size_t... N>
-    static constexpr parse_vtable_t create_parse_vtable_impl(boost::mp11::index_sequence<N...>)
+    static constexpr std::array<static_results_erased_impl::parse_fn_t, sizeof...(RowType)> create_table(boost::mp11::index_sequence<
+                                                                                                         N...>)
     {
         return {&parse_fn<N>...};
     }
+};
 
-    static constexpr parse_vtable_t create_parse_vtable()
-    {
-        return create_parse_vtable_impl(boost::mp11::make_index_sequence<sizeof...(RowType)>());
-    }
+template <class... RowType>
+constexpr auto static_results_parse_vtable = static_results_parse_vtable_helper<RowType...>::create_table(
+    boost::mp11::make_index_sequence<sizeof...(RowType)>()
+);
 
-    static constexpr std::array<std::size_t, num_resultsets> num_columns{get_row_size<RowType>()...};
-    static constexpr meta_check_vtable_t meta_check_vtable{&meta_check<RowType>...};
-    static constexpr parse_vtable_t parse_vtable = create_parse_vtable();
-    static constexpr std::array<const string_view*, num_resultsets> name_table{
-        row_traits<RowType>::field_names...};
-    static constexpr std::size_t max_num_columns = (std::max)({get_row_size<RowType>()...});
+template <class... RowType>
+class static_results_impl
+{
+    using rows_t = static_results_rows_t<RowType...>;
 
     // Storage for our data, which requires knowing the template args.
     struct data_t
     {
         rows_t rows;
-        std::array<static_results_erased_impl::basic_per_resultset_data, num_resultsets> per_resultset{};
-        std::array<field_view, max_num_columns> temp_fields{};
-        std::array<std::size_t, max_num_columns> pos_table{};
+        std::array<static_results_erased_impl::basic_per_resultset_data, sizeof...(RowType)> per_resultset{};
+        std::array<field_view, max_num_columns<RowType...>> temp_fields{};
+        std::array<std::size_t, max_num_columns<RowType...>> pos_table{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -351,18 +349,18 @@ class static_results_impl
     static void reset_tuple(void* rows_ptr) noexcept
     {
         auto& rows = *static_cast<rows_t*>(rows_ptr);
-        boost::mp11::mp_for_each<boost::mp11::mp_iota_c<num_resultsets>>(reset_fn{rows});
+        boost::mp11::mp_for_each<boost::mp11::mp_iota_c<sizeof...(RowType)>>(reset_fn{rows});
     }
 
     static static_results_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
-            num_resultsets,
-            num_columns.data(),
-            name_table.data(),
+            sizeof...(RowType),
+            (num_columns_table<RowType...>).data(),
+            (name_table<RowType...>).data(),
             &reset_tuple,
-            meta_check_vtable.data(),
-            parse_vtable.data(),
+            (meta_check_vtable<RowType...>).data(),
+            (static_results_parse_vtable<RowType...>).data(),
         };
     }
 
