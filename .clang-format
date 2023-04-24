@@ -28,19 +28,19 @@ IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: '^<boost/mysql/detail/.*>|^<boost/mysql/impl/.*'
     Priority: -9
-    SortPriority: 0
+    SortPriority: 1
   - Regex: '^<boost/mysql.*\.hpp>'
     Priority: -8
     SortPriority: 0
   - Regex: '^<boost/.*\.hpp>'
     Priority: -7
-    SortPriority: 0
+    SortPriority: 2
   - Regex: "^<.*"
     Priority: -6
-    SortPriority: 0
+    SortPriority: 3
   - Regex: ".*"
     Priority: -5
-    SortPriority: 0
+    SortPriority: 4
 IndentCaseLabels: false
 AllowShortCaseLabelsOnASingleLine: true
 AllowAllArgumentsOnNextLine: false

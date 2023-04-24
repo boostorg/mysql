@@ -94,7 +94,7 @@ template <template <class...> class ListType, class... MemberDescriptor>
 constexpr array_wrapper<string_view, sizeof...(MemberDescriptor)> get_describe_names(ListType<
                                                                                      MemberDescriptor...>)
 {
-    return {get_member_name(MemberDescriptor())...};
+    return {{get_member_name(MemberDescriptor())...}};
 }
 
 template <class RowType>

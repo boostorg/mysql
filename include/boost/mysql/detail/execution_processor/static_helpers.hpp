@@ -71,16 +71,17 @@ inline void fill_pos_map(
 }
 
 template <class... RowType>
-constexpr array_wrapper<std::size_t, sizeof...(RowType)> num_columns_table{get_row_size<RowType>()...};
+constexpr array_wrapper<std::size_t, sizeof...(RowType)> num_columns_table{{get_row_size<RowType>()...}};
 
 template <class... RowType>
 constexpr std::size_t max_num_columns = (std::max)({get_row_size<RowType>()...});
 
 template <class... RowType>
-constexpr array_wrapper<meta_check_fn, sizeof...(RowType)> meta_check_vtable{&meta_check<RowType>...};
+constexpr array_wrapper<meta_check_fn, sizeof...(RowType)> meta_check_vtable{{&meta_check<RowType>...}};
 
 template <class... RowType>
-constexpr array_wrapper<const string_view*, sizeof...(RowType)> name_table{get_row_field_names<RowType>()...};
+constexpr array_wrapper<const string_view*, sizeof...(RowType)> name_table{
+    {get_row_field_names<RowType>()...}};
 
 }  // namespace detail
 }  // namespace mysql

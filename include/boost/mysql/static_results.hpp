@@ -143,7 +143,7 @@ public:
     template <std::size_t I = 0>
     metadata_collection_view meta() const noexcept
     {
-        static_assert(I < sizeof...(RowType));
+        static_assert(I < sizeof...(RowType), "Index I out of range");
         assert(has_value());
         return impl_.get_interface().get_meta(I);
     }
@@ -166,7 +166,7 @@ public:
     template <std::size_t I = 0>
     std::uint64_t affected_rows() const noexcept
     {
-        static_assert(I < sizeof...(RowType));
+        static_assert(I < sizeof...(RowType), "Index I out of range");
         assert(has_value());
         return impl_.get_interface().get_affected_rows(I);
     }

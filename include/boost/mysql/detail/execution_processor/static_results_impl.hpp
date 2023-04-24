@@ -72,7 +72,7 @@ public:
 
     // Both descriptor and storage must be provided on initialization
     static_results_erased_impl(resultset_descriptor desc, external_storage ext) noexcept
-        : desc_{desc}, ext_{ext}
+        : desc_(desc), ext_(ext)
     {
     }
 
@@ -309,7 +309,7 @@ struct static_results_parse_vtable_helper
     static constexpr array_wrapper<static_results_erased_impl::parse_fn_t, sizeof...(RowType)> create_table(boost::mp11::index_sequence<
                                                                                                             N...>)
     {
-        return {&parse_fn<N>...};
+        return {{&parse_fn<N>...}};
     }
 };
 

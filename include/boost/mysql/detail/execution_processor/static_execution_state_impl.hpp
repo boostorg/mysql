@@ -55,7 +55,7 @@ public:
 
     // Both descriptor and storage must be provided on initialization
     static_execution_state_erased_impl(resultset_descriptor desc, external_storage ext) noexcept
-        : desc_{desc}, ext_{ext}
+        : desc_(desc), ext_(ext)
     {
     }
 
@@ -288,7 +288,7 @@ static error_code static_execution_state_parse_fn(
 
 template <class... RowType>
 constexpr array_wrapper<static_execution_state_erased_impl::parse_fn_t, sizeof...(RowType)>
-    static_execution_state_parse_vtable{&static_execution_state_parse_fn<RowType>...};
+    static_execution_state_parse_vtable{{&static_execution_state_parse_fn<RowType>...}};
 
 template <class... RowType>
 class static_execution_state_impl
