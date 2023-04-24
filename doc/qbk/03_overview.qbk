@@ -142,7 +142,8 @@ and the library will parse the retrieved values for you.
             [reflink results]
         ]
         [
-            Dynamically-typed interface (variant based)
+            Dynamically-typed interface (variant based)[br]
+            Available in C++11
         ]
         [
             ```
@@ -157,7 +158,8 @@ and the library will parse the retrieved values for you.
             [reflink static_results]
         ]
         [
-            Statically-typed interface
+            Statically-typed interface[br]
+            Requires C++14
         ]
         [
             ```
@@ -440,9 +442,6 @@ To run the query, we can write:
         std::cout << "Title: " << p.title << "\n" << p.body << std::endl;
     }
 ```
-
-Boost.Describe requires C++14. You can also use `std::tuple`s as row
-types, which only require C++11.
 
 [link mysql.static This section] contains more information about this topic.
 

@@ -14,6 +14,9 @@ As we discussed in the overview section, the static interface requires us to def
 the shape of our rows at compile-time. The library will use this definition to validate
 data returned from the server, and will place this data into the defined data structures.
 
+You may use Boost.Describe structs or `std::tuple`s for this purpose.
+In any case, using the static interface requires C++14.
+
 [@boost:/libs/describe/index.html Boost.Describe structs] are the preferred way to define
 row types. These are regular structs annotated with `BOOST_DESCRIBE_STRUCT`:
 
@@ -25,9 +28,9 @@ row types. These are regular structs annotated with `BOOST_DESCRIBE_STRUCT`:
         std::string body;
     };
 
-    // Add reflection capabilities to post. You must list all the fields
-    // that will appear in your query, and in the same order.
+    // Add reflection capabilities to post
     BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
+
     conn.execute("SELECT id, title, body FROM posts", result);
 
     for (const post& p: result.rows())
@@ -37,35 +40,61 @@ row types. These are regular structs annotated with `BOOST_DESCRIBE_STRUCT`:
     }
 ```
 
-Note that using Describe requires C++14.
+Columns in the query are matched to fields in the struct by name.
+If a struct field cannot be matched to any query column, an error is issued.
+Extra columns in the query are ignored.
 
-TODO: note on field ordering
-
-You can also use `std::tuple`s as row types, which only require C++11 to work. For example:
+If your query contains columns with names that don't qualify as C++ identifiers,
+you can use SQL aliases. For example:
 
 ```
-    using row_t = std::tuple<
-        int, // id
-        std::string, // title
-        std::string // body
-    >;
-    static_results<row_t> result;
-    conn.execute("SELECT id, title, body FROM posts", result);
-
-    for (const row_t& post: result.rows())
+    struct statistics
     {
-        // Process post as required
-        std::cout << "Title: " << std::get<1>(post) << "\n" << std::get<2>(post) << std::endl;
-    }
+        std::string company;
+        std::int64_t average;
+        std::int64_t max_value;
+    };
+    BOOST_DESCRIBE_STRUCT(statistics, (), (average, max_value));
+
+    static_results<statistics> result;
+    conn.execute(R"%(
+        SELECT
+            AVG(salary) AS average,
+            MAX(salary) AS max_value,
+            company_id AS company
+        FROM employees
+        GROUP BY company_id
+    )%", result);
 ```
 
-[heading Field types]
+You can also use `std::tuple`s as row types. This can be handy for simple queries:
 
-Both Boost.Describe structs and tuples should be composed of valid field types.
-These include built-in integral and floating point types, `std::string`, `blob`
-and time types, among others. Full reference [link mysql.static.field_types in the table below].
+```
+    static_results<std::tuple<std::int64_t>> result;
+    conn.execute("SELECT COUNT(*) FROM posts", result);
+    std::cout << "Number of posts: " << std::get<0>(result.rows()[0]) << std::endl;
+```
 
-You can use `boost::optional` and `std::optional` for fields that may be `NULL`.
+Fields in tuples are matched to query columns by order. The query must return as many
+columns as fields the tuple has, at least. Any extra trailing columns in the query are ignored.
+
+[heading Metadata checking]
+
+The static interface will try to validate as soon as possible that the provided row type 
+is compatible with the schema returned by the server. This process is known as [*metadata checking],
+and is performed before reading any data.
+
+* [*Type compatibility]: the C++ type must be able to represent any value that the MySQL type can represent.
+  For example, `std::int32_t` is compatible with `TINYINT` (1 byte integer), but not with `BIGINT` (8 byte integer).
+  For a full list of allowable field types, [link mysql.static.field_types refer to this table].
+* [*Nullability]: if MySQL reports that a column can be `NULL`, your type must account for it. You can use
+  `std::optional` or `boost::optional`, for example.
+
+[note
+    Optional types are not included by default. [*You must explicitly `#include`
+    `<boost/mysql/typing/std_optional.hpp>` or `<boost/mysql/typing/boost_optional.hpp>`] to use them.
+]
+
 For example:
 
 ```
@@ -81,12 +110,9 @@ For example:
     // if body is NULL in the database
 ```
 
-[note
-    Optional types are not included by default. [*You must explicitly `#include`
-    `<boost/mysql/typing/std_optional.hpp>` or `<boost/mysql/typing/boost_optional.hpp>`] to use them.
-]
-
-TODO: metadata checking. What happens with nullability
+You can also use [reflink non_null] to tell the static interface to disable
+the nullability check for a certain field. For a usage example, see
+TODO: link to the stored procedures example.
 
 [heading Multi-resultset]
 
@@ -348,6 +374,13 @@ TODO: point to examples
             Any type compatible with `T`
         ]
         [[include_file boost/mysql/typing/std_optional.hpp]]
+    ]
+    [
+        [[reflink2 non_null `non_null<T>`]]
+        [
+            Any type compatible with `T`
+        ]
+        [Included by default]
     ]
 ]
 

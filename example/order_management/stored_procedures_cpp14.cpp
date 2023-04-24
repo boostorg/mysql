@@ -24,17 +24,15 @@
  * order is confirmed, transitioning it to the complete status.
  * In the real world, flow would be much more complex, but this is enough for an example.
  *
- * We'll be using the typed interface to retrieve results from MySQL.
+ * We'll be using the static interface to retrieve results from MySQL.
  * This makes use of the static_results<T1, T2...> class template.
  * To use it, we need to define a set of structs/tuples describing the shape
  * of our rows. Boost.MySQL will parse the received rows into these types.
+ * The static interface requires C++14 to work.
  *
  * Row types may be plain structs or std::tuple's. If we use plain structs, we need
  * to use BOOST_DESCRIBE_STRUCT on them. This adds the structs the required reflection
  * data, so Boost.MySQL knows how to parse rows into them.
- *
- * Boost.Describe requires C++14 to work. You can also use std::tuple, which only requires
- * C++11 - but the resulting code is usually less readable.
  */
 
 #include <boost/describe/class.hpp>
