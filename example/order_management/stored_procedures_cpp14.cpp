@@ -55,7 +55,9 @@
 #include <tuple>
 
 // This header contains boilerplate code to parse the command line
-// arguments into structs.
+// arguments into structs. Parsing the command line yields a cmdline_args,
+// an alias for a boost::variant2::variant holding the command line
+// arguments for any of the subcommands. We will use it via visit().
 #include "parse_cmdline.hpp"
 
 namespace mysql = boost::mysql;
@@ -112,10 +114,7 @@ BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price));
 // like the ones returned by INSERT or CALL.
 using empty = std::tuple<>;
 
-/**
- * We'll be using the variant using visit().
- * This visitor executes a sub-command and prints the results to stdout.
- */
+// This visitor executes a sub-command and prints the results to stdout.
 struct visitor
 {
     mysql::tcp_ssl_connection& conn;
