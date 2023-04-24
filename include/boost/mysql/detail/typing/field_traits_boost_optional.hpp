@@ -24,6 +24,7 @@ struct field_traits<boost::optional<T>>
     static void meta_check(meta_check_context& ctx)
     {
         ctx.set_cpp_type_name(field_traits<T>::type_name);
+        ctx.set_nullability_checked(true);
         field_traits<T>::meta_check(ctx);
     }
     static error_code parse(field_view input, boost::optional<T>& output)

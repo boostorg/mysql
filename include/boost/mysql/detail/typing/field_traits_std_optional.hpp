@@ -29,6 +29,7 @@ struct field_traits<std::optional<T>>
     static void meta_check(meta_check_context& ctx)
     {
         ctx.set_cpp_type_name(field_traits<T>::type_name);
+        ctx.set_nullability_checked(true);
         field_traits<T>::meta_check(ctx);
     }
     static error_code parse(field_view input, std::optional<T>& output)

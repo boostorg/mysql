@@ -62,17 +62,15 @@ END //
 
 CREATE PROCEDURE create_order()
 BEGIN
-    DECLARE new_order_id INT;
     START TRANSACTION;
 
     -- Create the order
     INSERT INTO orders () VALUES ();
-    SET new_order_id = LAST_INSERT_ID();
 
     -- Return the order
-    SELECT
-        new_order_id AS id,
-        'draft' AS `status`;
+    SELECT id, `status`
+    FROM orders
+    WHERE id = LAST_INSERT_ID();
 
     COMMIT;
 END //
@@ -97,10 +95,10 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MYSQL_ERRNO = 1329, MESSAGE_TEXT = 'The given order does not exist';
     END IF;
 
-    -- Return the order
+    -- Return the order. The IFNULL statements make MySQL correctly report the fields as non-NULL
     SELECT
-        p_order_id AS id,
-        order_status AS `status`;
+        IFNULL(p_order_id, 0) AS id,
+        IFNULL(order_status, 'draft') AS `status`;
     SELECT
         item.id AS id,
         item.quantity AS quantity,

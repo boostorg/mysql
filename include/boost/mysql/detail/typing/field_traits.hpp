@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
 
+#include <boost/mysql/detail/config.hpp>
+
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -17,8 +19,7 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
-
-#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/typing/non_null.hpp>
 
 #include <cstdint>
 #include <limits>
@@ -41,6 +42,7 @@ class meta_check_context
     const string_view* field_names_{};
     const std::size_t* pos_map_{};
     const char* cpp_type_name_{};
+    bool nullability_checked_{};
 
     std::ostringstream& error_stream()
     {
@@ -94,6 +96,8 @@ public:
     void set_cpp_type_name(const char* v) noexcept { cpp_type_name_ = v; }
     void advance() noexcept { ++current_index_; }
     std::size_t current_index() const noexcept { return current_index_; }
+    void set_nullability_checked(bool v) noexcept { nullability_checked_ = v; }
+    bool nullability_checked() const noexcept { return nullability_checked_; }
 
     bool check_field_present()
     {
@@ -604,6 +608,30 @@ struct field_traits<time> : valid_field_traits
     }
 };
 
+template <class T>
+struct field_traits<non_null<T>>
+{
+    static constexpr bool is_supported = field_traits<T>::is_supported;
+    static constexpr const char* type_name = "non_null<T>";
+    static void meta_check(meta_check_context& ctx)
+    {
+        ctx.set_cpp_type_name(field_traits<T>::type_name);
+        ctx.set_nullability_checked(true);
+        field_traits<T>::meta_check(ctx);
+    }
+    static error_code parse(field_view input, non_null<T>& output)
+    {
+        if (input.is_null())
+        {
+            return client_errc::type_mismatch;
+        }
+        else
+        {
+            return field_traits<T>::parse(input, output.value);
+        }
+    }
+};
+
 template <typename FieldType>
 void meta_check_impl(meta_check_context& ctx)
 {
@@ -613,6 +641,11 @@ void meta_check_impl(meta_check_context& ctx)
     {
         traits_t::meta_check(ctx);
     }
+    if (!ctx.nullability_checked() && !ctx.current_meta().is_not_null())
+    {
+        ctx.add_type_mismatch_error("nullability");
+    }
+    ctx.set_nullability_checked(false);
     ctx.advance();
 }
 
