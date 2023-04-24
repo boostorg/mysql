@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
 
-#include <boost/mysql/detail/config.hpp>
-
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -20,6 +18,8 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 #include <boost/mysql/typing/non_null.hpp>
+
+#include <boost/mysql/detail/config.hpp>
 
 #include <cstdint>
 #include <limits>
@@ -168,7 +168,7 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     else
     {
         auto v = input.get_uint64();
-        assert(v <= std::numeric_limits<SignedInt>::max());
+        assert(v <= static_cast<UnsignedInt>(std::numeric_limits<SignedInt>::max()));
         output = static_cast<SignedInt>(v);
     }
     return error_code();
