@@ -49,6 +49,38 @@ class meta_check_context
         return *errors_;
     }
 
+    static const char* column_type_to_str(const metadata& meta) noexcept
+    {
+        switch (meta.type())
+        {
+        case column_type::tinyint: return meta.is_unsigned() ? "TINYINT UNSIGNED" : "TINYINT";
+        case column_type::smallint: return meta.is_unsigned() ? "SMALLINT UNSIGNED" : "SMALLINT";
+        case column_type::mediumint: return meta.is_unsigned() ? "MEDIUMINT UNSIGNED" : "MEDIUMINT";
+        case column_type::int_: return meta.is_unsigned() ? "INT UNSIGNED" : "INT";
+        case column_type::bigint: return meta.is_unsigned() ? "BIGINT UNSIGNED" : "BIGINT";
+        case column_type::float_: return "FLOAT";
+        case column_type::double_: return "DOUBLE";
+        case column_type::decimal: return "DECIMAL";
+        case column_type::bit: return "BIT";
+        case column_type::year: return "YEAR";
+        case column_type::time: return "TIME";
+        case column_type::date: return "DATE";
+        case column_type::datetime: return "DATETIME";
+        case column_type::timestamp: return "TIMESTAMP";
+        case column_type::char_: return "CHAR";
+        case column_type::varchar: return "VARCHAR";
+        case column_type::binary: return "BINARY";
+        case column_type::varbinary: return "VARBINARY";
+        case column_type::text: return "TEXT";
+        case column_type::blob: return "BLOB";
+        case column_type::enum_: return "ENUM";
+        case column_type::set: return "SET";
+        case column_type::json: return "JSON";
+        case column_type::geometry: return "GEOMETRY";
+        default: return "<unknown column type>";
+        }
+    }
+
 public:
     meta_check_context(
         const metadata* meta,
@@ -91,7 +123,7 @@ public:
             stream << "in position " << current_index_;
         }
         stream << ": C++ type " << cpp_type_name_ << " is not compatible with DB type "
-               << current_meta().type() << ": " << reason << "\n";
+               << column_type_to_str(current_meta()) << ": " << reason << "\n";
     }
 
     bool has_errors() const noexcept { return errors_ != nullptr; }
