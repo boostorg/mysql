@@ -33,6 +33,13 @@ namespace detail {
 
 // TODO: this requires C++14, assert it somehow
 
+// Workaround std::array::data not being constexpr in C++14
+template <class T, std::size_t N>
+struct array_wrapper
+{
+    T data[N];
+};
+
 // Helpers
 class parse_functor
 {
@@ -73,6 +80,10 @@ struct row_traits
 };
 
 // Describe structs
+template <class RowType>
+using row_members = boost::describe::
+    describe_members<RowType, boost::describe::mod_public | boost::describe::mod_inherited>;
+
 template <class MemberDescriptor>
 constexpr string_view get_member_name(MemberDescriptor d) noexcept
 {
@@ -80,17 +91,19 @@ constexpr string_view get_member_name(MemberDescriptor d) noexcept
 }
 
 template <template <class...> class ListType, class... MemberDescriptor>
-static constexpr std::array<string_view, sizeof...(MemberDescriptor)> get_describe_names(ListType<
-                                                                                         MemberDescriptor...>)
+constexpr array_wrapper<string_view, sizeof...(MemberDescriptor)> get_describe_names(ListType<
+                                                                                     MemberDescriptor...>)
 {
     return {get_member_name(MemberDescriptor())...};
 }
 
 template <class RowType>
+constexpr auto describe_names_storage = get_describe_names(row_members<RowType>{});
+
+template <class RowType>
 class row_traits<RowType, true>
 {
-    using members = boost::describe::
-        describe_members<RowType, boost::describe::mod_public | boost::describe::mod_inherited>;
+    using members = row_members<RowType>;
 
     template <class D>
     struct descriptor_to_type
@@ -108,15 +121,15 @@ class row_traits<RowType, true>
         boost::mp11::mp_all_of<members, is_field_type_helper>::value,
         "Some types in your struct are not valid field types"
     );
-    static constexpr std::size_t num_members = boost::mp11::mp_size<members>::value;
-
-    static constexpr std::array<string_view, num_members> field_names_storage = get_describe_names(members{});
 
 public:
-    static constexpr std::size_t size = num_members;
+    static constexpr std::size_t size() noexcept { return boost::mp11::mp_size<members>::value; }
 
     // TODO: allow disabling matching by name
-    static constexpr const string_view* field_names = field_names_storage.data();
+    static constexpr const string_view* field_names() noexcept
+    {
+        return describe_names_storage<RowType>.data;
+    }
 
     static void meta_check(meta_check_context& ctx)
     {
@@ -154,8 +167,8 @@ class row_traits<std::tuple<FieldType...>, false>
     );
 
 public:
-    static constexpr std::size_t size = std::tuple_size<tuple_type>::value;
-    static constexpr const string_view* field_names = nullptr;
+    static constexpr std::size_t size() noexcept { return std::tuple_size<tuple_type>::value; }
+    static constexpr const string_view* field_names() noexcept { return nullptr; }
 
     static void meta_check(meta_check_context& ctx)
     {
@@ -187,7 +200,13 @@ concept row_type = is_row_type<T>::value;
 template <class RowType>
 constexpr std::size_t get_row_size()
 {
-    return row_traits<RowType>::size;
+    return row_traits<RowType>::size();
+}
+
+template <class RowType>
+constexpr const string_view* get_row_field_names()
+{
+    return row_traits<RowType>::field_names();
 }
 
 template <class RowType>

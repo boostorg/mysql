@@ -306,8 +306,8 @@ struct static_results_parse_vtable_helper
     }
 
     template <std::size_t... N>
-    static constexpr std::array<static_results_erased_impl::parse_fn_t, sizeof...(RowType)> create_table(boost::mp11::index_sequence<
-                                                                                                         N...>)
+    static constexpr array_wrapper<static_results_erased_impl::parse_fn_t, sizeof...(RowType)> create_table(boost::mp11::index_sequence<
+                                                                                                            N...>)
     {
         return {&parse_fn<N>...};
     }
@@ -352,15 +352,15 @@ class static_results_impl
         boost::mp11::mp_for_each<boost::mp11::mp_iota_c<sizeof...(RowType)>>(reset_fn{rows});
     }
 
-    static static_results_erased_impl::resultset_descriptor descriptor() noexcept
+    static constexpr static_results_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
             sizeof...(RowType),
-            (num_columns_table<RowType...>).data(),
-            (name_table<RowType...>).data(),
+            num_columns_table<RowType...>.data,
+            name_table<RowType...>.data,
             &reset_tuple,
-            (meta_check_vtable<RowType...>).data(),
-            (static_results_parse_vtable<RowType...>).data(),
+            meta_check_vtable<RowType...>.data,
+            static_results_parse_vtable<RowType...>.data,
         };
     }
 

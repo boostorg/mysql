@@ -287,7 +287,7 @@ static error_code static_execution_state_parse_fn(
 }
 
 template <class... RowType>
-constexpr std::array<static_execution_state_erased_impl::parse_fn_t, sizeof...(RowType)>
+constexpr array_wrapper<static_execution_state_erased_impl::parse_fn_t, sizeof...(RowType)>
     static_execution_state_parse_vtable{&static_execution_state_parse_fn<RowType>...};
 
 template <class... RowType>
@@ -303,14 +303,14 @@ class static_execution_state_impl
     // The type-erased impl, that will use pointers to the above storage
     static_execution_state_erased_impl impl_;
 
-    static static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
+    static constexpr static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
             sizeof...(RowType),
-            (num_columns_table<RowType...>).data(),
-            (name_table<RowType...>.data()),
-            (meta_check_vtable<RowType...>).data(),
-            (static_execution_state_parse_vtable<RowType...>).data(),
+            num_columns_table<RowType...>.data,
+            name_table<RowType...>.data,
+            meta_check_vtable<RowType...>.data,
+            static_execution_state_parse_vtable<RowType...>.data,
         };
     }
 
