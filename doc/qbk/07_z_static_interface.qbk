@@ -92,12 +92,7 @@ and is performed before reading any data.
   For example, `std::int32_t` is compatible with `TINYINT` (1 byte integer), but not with `BIGINT` (8 byte integer).
   For a full list of allowable field types, [link mysql.static.field_types refer to this table].
 * [*Nullability]: if MySQL reports that a column can be `NULL`, your type must account for it. You can use
-  `std::optional` or `boost::optional`, for example.
-
-[note
-    Optional types are not included by default. [*You must explicitly `#include`
-    `<boost/mysql/typing/std_optional.hpp>` or `<boost/mysql/typing/boost_optional.hpp>`] to use them.
-]
+  `std::optional` or `boost::optional` for columns that may be `NULL`.
 
 For example:
 
@@ -231,21 +226,18 @@ TODO: point to examples
     [
         [C++ type]
         [Compatible with...]
-        [Header]
     ]
     [
         [`std::int8_t`]
         [
             __TINYINT__
         ]
-        [Included by default]
     ]
     [
         [`std::uint8_t`]
         [
             __TINYINT__ `UNSIGNED`
         ]
-        [Included by default]
     ]
     [
         [`std::int16_t`]
@@ -255,7 +247,6 @@ TODO: point to examples
             __SMALLINT__ [br]
             __YEAR__
         ]
-        [Included by default]
     ]
     [
         [`std::uint16_t`]
@@ -264,7 +255,6 @@ TODO: point to examples
             __SMALLINT__ `UNSIGNED` [br]
             __YEAR__
         ]
-        [Included by default]
     ]
     [
         [`std::int32_t`]
@@ -275,7 +265,6 @@ TODO: point to examples
             __INT__[br]
             __YEAR__
         ]
-        [Included by default]
     ]
     [
         [`std::uint32_t`]
@@ -286,7 +275,6 @@ TODO: point to examples
             __INT__ `UNSIGNED`[br]
             __YEAR__
         ]
-        [Included by default]
     ]
     [
         [`std::int64_t`]
@@ -298,7 +286,6 @@ TODO: point to examples
             __BIGINT__[br]
             __YEAR__
         ]
-        [Included by default]
     ]
     [
         [`std::uint64_t`]
@@ -311,42 +298,36 @@ TODO: point to examples
             __YEAR__[br]
             __BIT__
         ]
-        [Included by default]
     ]
     [
         [`float`]
         [
             __FLOAT__
         ]
-        [Included by default]
     ]
     [
         [`double`]
         [
             __FLOAT__, __DOUBLE__[br]
         ]
-        [Included by default]
     ]
     [
         [`date`]
         [
             __DATE__
         ]
-        [Included by default]
     ]
     [
         [`datetime`]
         [
             __DATETIME__, __TIMESTAMP__
         ]
-        [Included by default]
     ]
     [
         [`time`]
         [
             __TIME__
         ]
-        [Included by default]
     ]
     [
         [`std::basic_string<char, Traits, Allocator>`]
@@ -356,7 +337,6 @@ TODO: point to examples
             __JSON__[br]
             __DECIMAL__/__NUMERIC__
         ]
-        [Included by default]
     ]
     [
         [`std::basic_vector<unsigned char, Allocator>`]
@@ -364,28 +344,24 @@ TODO: point to examples
             __BINARY__, __VARBINARY__, __BLOB__[br]
             __GEOMETRY__
         ]
-        [Included by default]
     ]
     [
         [`std::optional<T>`]
         [
             Any type compatible with `T`
         ]
-        [[include_file boost/mysql/typing/std_optional.hpp]]
     ]
     [
         [`boost::optional<T>`]
         [
             Any type compatible with `T`
         ]
-        [[include_file boost/mysql/typing/std_optional.hpp]]
     ]
     [
         [[reflink2 non_null `non_null<T>`]]
         [
             Any type compatible with `T`
         ]
-        [Included by default]
     ]
 ]
 

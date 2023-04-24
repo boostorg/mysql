@@ -43,9 +43,9 @@
 #if defined(BOOST_DESCRIBE_CXX14)
 
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/non_null.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/typing/boost_optional.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
