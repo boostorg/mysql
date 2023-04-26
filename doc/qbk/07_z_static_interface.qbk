@@ -5,24 +5,30 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:static The statically-typed interface]
+[section:static_interface The static interface]
 [nochunk]
 
-This section dives deeper on the static interface.
-If you prefer learning by example, checkout these examples on [link mysql.examples.prepared_statements_cpp14 prepared statements]
-and [link mysql.examples.stored_procedures_cpp14 stored procedures] that use the static interface.
+--> TODO: review this
 
-[heading Row types]
+To use the static interface, we must first define a data structure that describes the shape of
+your rows. We recommend using [@boost:/libs/describe/index.html Boost.Describe] for this.
+We define a plain `struct` with the fields returned by your our and annotate it with
+`BOOST_DESCRIBE_STRUCT` to enable reflection on it.
 
-As we discussed in the overview section, the static interface requires us to define
-the shape of our rows at compile-time. The library will use this definition to validate
-data returned from the server, and will place this data into the defined data structures.
+For example, given the following table definition and query:
 
-You may use Boost.Describe structs or `std::tuple`s for this purpose.
-In any case, using the static interface requires C++14.
+```
+    const char* table_definition = R"%(
+        CREATE TEMPORARY TABLE posts (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            title VARCHAR (256) DEFAULT "",
+            body TEXT DEFAULT ""
+        )
+    )%";
+    const char* query = "SELECT id, title, body FROM posts";
+```
 
-[@boost:/libs/describe/index.html Boost.Describe structs] are the preferred way to define
-row types. These are regular structs annotated with `BOOST_DESCRIBE_STRUCT`:
+We can define our row type like this:
 
 ```
     struct post
@@ -34,12 +40,17 @@ row types. These are regular structs annotated with `BOOST_DESCRIBE_STRUCT`:
 
     // Add reflection capabilities to post
     BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
+```
 
-    conn.execute("SELECT id, title, body FROM posts", result);
+To run the query, we can write:
 
-    for (const post& p: result.rows())
+```
+    static_results<post> result;
+    conn.execute(query, result);
+
+    for (const post& p : result.rows())
     {
-        // Process post as required
+        // Process the post as required
         std::cout << "Title: " << p.title << "\n" << p.body << std::endl;
     }
 ```
@@ -90,7 +101,7 @@ and is performed before reading any data.
 
 * [*Type compatibility]: the C++ type must be able to represent any value that the MySQL type can represent.
   For example, `std::int32_t` is compatible with `TINYINT` (1 byte integer), but not with `BIGINT` (8 byte integer).
-  For a full list of allowable field types, [link mysql.static.field_types refer to this table].
+  For a full list of allowable field types, [link mysql.static_interface.static_type_mappings refer to this table].
 * [*Nullability]: if MySQL reports that a column can be `NULL`, your type must account for it. You can use
   `std::optional` or `boost::optional` for columns that may be `NULL`.
 
@@ -220,9 +231,9 @@ and [refmem connection read_some_rows] to read rows. However, in this case we mu
 
 TODO: point to examples
 
-[heading Field type reference]
+[heading Type mapping reference]
 
-[table:field_types
+[table:static_type_mappings
     [
         [C++ type]
         [Compatible with...]

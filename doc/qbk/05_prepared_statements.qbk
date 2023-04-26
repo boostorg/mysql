@@ -44,21 +44,18 @@ Some observations:
   as the statement has]. Failing to do so will result in an error.
 * You don't need to sanitize the parameters anyhow. The server takes care of it.
 * Actual parameters are matched to `?` placeholders by order. 
-* Parameters are passed as a `std::tuple`. You can pass in built-in integers,
-  `float`, `double`, [reflink date], [reflink datetime], [reflink time],
-  [reflink field_view] and [reflink field] objects as parameters.
+* You can pass types like built-in integers, `float`, [reflink date], `std::string`,
+  with the expected effects. [link mysql.prepared_statements.stmt_type_mappings This table]
+  contains a reference with all the allowed types.
 * `show_in_store` is passed as an `int` to `statement::bind()`, but is defined as a `TINYINT`
   (1 byte integer) in the table. As long as the passed integer is in range, MySQL
   will perform the required conversions. Otherwise, `execute()` will fail with an error
   (no undefined behavior is invoked).
 
-You can also pass [reflink field_view]s and [reflink field]s as parameters. This is handy
-to insert `NULL` values:
+You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`.
+If the optional doesn't have a value, `NULL` will be sent to the server. For example:
 
 [prepared_statements_execute_null]
-
-For a full reference on the types you can pass as parameters when
-executing a statement, see [link mysql.fields.cpp_to_mysql this section].
 
 [heading Executing a statement with a variable number of parameters]
 
@@ -90,5 +87,95 @@ Finally, note that [reflink statement]'s destructor
 does not perform any server-side deallocation of the statement.
 This is because closing a statement involves a network
 operation that may block or fail.
+
+
+[heading Type mapping reference for prepared statement parameters]
+
+The following table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
+is interpreted by MySQL, depeding on `v`'s type:
+
+[table:stmt_type_mappings
+    [
+        [C++ type]
+        [MySQL type]
+        [Compatible with...]
+    ]
+    [
+        [`signed char`, `short`, `int`, `long`, `long long`]
+        [`BIGINT`]
+        [Signed `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`]
+    ]
+    [
+        [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
+        [`UNSIGNED BIGINT`]
+        [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
+    ]
+    [
+        [`std::basic_string<char, Traits, Allocator>` (including `std::string`), [reflink string_view], `std::string_view`, `const char*`]
+        [`VARCHAR`]
+        [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `JSON`, `DECIMAL`, `NUMERIC`]
+    ]
+    [
+        [`std::basic_vector<unsigned char, Allocator>` (including [reflink blob]), [reflink blob_view]]
+        [`BLOB`]
+        [`BINARY`, `VARBINARY`, `BLOB` (all sizes), `GEOMETRY`]
+    ]
+    [
+        [`float`]
+        [`FLOAT`]
+        [`FLOAT`]
+    ]
+    [
+        [`double`]
+        [`DOUBLE`]
+        [`DOUBLE`]
+    ]
+    [
+        [[reflink date]]
+        [`DATE`]
+        [`DATE`]
+    ]
+    [
+        [[reflink datetime]]
+        [`DATETIME`]
+        [`DATETIME`, `TIMESTAMP`]
+    ]
+    [
+        [[reflink time]]
+        [`TIME`]
+        [`TIME`]
+    ]
+    [
+        [`std::nullptr_t`]
+        [`NULL`]
+        [Any of the other types. Used to insert `NULL`s, for example.]
+    ]
+    [
+        [`std::optional<T>`]
+        [
+            Applies `T`'s type mapping if the optional has a value.[br]
+            `NULL` otherwise
+        ]
+        []
+    ]
+    [
+        [`boost::optional<T>`]
+        [
+            Applies `T`'s type mapping if the optional has a value.[br]
+            `NULL` otherwise
+        ]
+        []
+    ]
+    [
+        [[reflink field_view]]
+        [Depends on the actual type stored by the field]
+        []
+    ]
+    [
+        [[reflink field]]
+        [Depends on the actual type stored by the field]
+        []
+    ]
+]
 
 [endsect]

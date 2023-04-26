@@ -107,13 +107,9 @@ void insert_product(
     bool show_in_store
 )
 {
-    // if description has a value, description_param will have kind() == field_kind::string
-    // and will point to it. Otherwise, description_param.kind() == field_kind::null
-    auto description_param = description ? field_view(*description) : field_view();
-
-    // Execute the insert
+    // If description has a value, a string will be sent to the server; otherwise, a NULL will
     results result;
-    conn.execute(stmt.bind(description_param, price, static_cast<int>(show_in_store)), result);
+    conn.execute(stmt.bind(description, price, static_cast<int>(show_in_store)), result);
 }
 //]
 #endif
@@ -747,48 +743,6 @@ void main_impl(int argc, char** argv)
     }
 
     // fields
-    {
-        //[fields_field_views
-        results result;
-        conn.execute("SELECT 'Hello world!'", result);
-
-        // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-        field_view fv = result.rows().at(0).at(0);
-
-        // sv also points into result; if result goes out of scope, sv becomes invalid
-        string_view sv = fv.as_string();
-        //]
-
-        ASSERT(sv == "Hello world!");
-    }
-    {
-        //[fields_field_views_scalars
-        results result;
-        conn.execute("SELECT 42", result);
-
-        // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-        field_view fv = result.rows().at(0).at(0);
-
-        // intv is valid even after result goes out of scope
-        std::int64_t intv = fv.as_int64();
-        //]
-
-        ASSERT(intv == 42);
-    }
-    {
-        //[fields_taking_ownership
-        results result;
-        conn.execute("SELECT 'Hello world!'", result);
-
-        // fv doesn't own its memory; if result goes out of scope, fv becomes invalid
-        field_view fv = result.rows().at(0).at(0);
-
-        // f takes ownership of fv's contents. f is valid even after result goes out of scope
-        field f(fv);
-        //]
-
-        ASSERT(f.as_string() == "Hello world!");
-    }
     {
         //[field_accessor_references
         field f("my_string");            // constructs a field that owns the string "my_string"

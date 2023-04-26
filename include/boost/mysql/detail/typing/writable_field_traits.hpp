@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_DETAIL_TYPING_WRITABLE_FIELD_TRAITS_HPP
 
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/non_null.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/is_optional.hpp>
@@ -44,12 +43,6 @@ template <class Allocator>
 field_view to_field(const std::vector<unsigned char, Allocator>& value) noexcept
 {
     return field_view(blob_view(value));
-}
-
-template <class T>
-field_view to_field(const non_null<T>& value) noexcept
-{
-    return to_field(value.value);
 }
 
 // Optional types
