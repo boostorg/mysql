@@ -8,7 +8,7 @@
 [section:static_interface The static interface]
 [nochunk]
 
---> TODO: review this
+--> TODO: review this. Take multifn & multiresult out of here
 
 To use the static interface, we must first define a data structure that describes the shape of
 your rows. We recommend using [@boost:/libs/describe/index.html Boost.Describe] for this.
