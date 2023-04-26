@@ -21,10 +21,10 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
-#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
+#include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
 #include <type_traits>
 #include <utility>
@@ -625,7 +625,7 @@ public:
      * After this operation completes successfully, `result.has_value() == true`.
      * \n
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
-     * See the `FieldLikeTuple` concept defition for more info. You should pass exactly as many
+     * See the `WritableFieldTuple` concept defition for more info. You should pass exactly as many
      * parameters as `this->num_params()`, or the operation will fail with an error.
      * String parameters should be encoded using the connection's character set.
      * \n
@@ -640,11 +640,12 @@ public:
      *    `stmt.valid() == true`
      */
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
     void execute_statement(
         const statement& stmt,
-        const FieldLikeTuple& params,
+        const WritableFieldTuple& params,
         results& result,
         error_code& err,
         diagnostics& diag
@@ -652,9 +653,10 @@ public:
 
     /// \copydoc execute_statement
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
-    void execute_statement(const statement& stmt, const FieldLikeTuple& params, results& result);
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    void execute_statement(const statement& stmt, const WritableFieldTuple& params, results& result);
 
     /**
      * \copydoc execute_statement
@@ -668,21 +670,22 @@ public:
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute_statement(
         const statement& stmt,
-        FieldLikeTuple&& params,
+        WritableFieldTuple&& params,
         results& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
         return async_execute_statement(
             stmt,
-            std::forward<FieldLikeTuple>(params),
+            std::forward<WritableFieldTuple>(params),
             result,
             shared_diag(),
             std::forward<CompletionToken>(token)
@@ -691,14 +694,15 @@ public:
 
     /// \copydoc async_execute_statement
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_execute_statement(
         const statement& stmt,
-        FieldLikeTuple&& params,
+        WritableFieldTuple&& params,
         results& result,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -727,24 +731,30 @@ public:
      *    `stmt.valid() == true`
      */
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
     void start_statement_execution(
         const statement& stmt,
-        const FieldLikeTuple& params,
+        const WritableFieldTuple& params,
         execution_state& ex,
         error_code& err,
         diagnostics& diag
     );
 
-    /// \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,diagnostics&)
+    /// \copydoc start_statement_execution(const statement&,const WritableFieldTuple&,execution_state&,error_code&,diagnostics&)
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
-    void start_statement_execution(const statement& stmt, const FieldLikeTuple& params, execution_state& st);
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    void start_statement_execution(
+        const statement& stmt,
+        const WritableFieldTuple& params,
+        execution_state& st
+    );
 
     /**
-     * \copydoc start_statement_execution(const statement&,const FieldLikeTuple&,execution_state&,error_code&,diagnostics&)
+     * \copydoc start_statement_execution(const statement&,const WritableFieldTuple&,execution_state&,error_code&,diagnostics&)
      * \details
      * \par Object lifetimes
      * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
@@ -756,37 +766,39 @@ public:
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_start_statement_execution(
         const statement& stmt,
-        FieldLikeTuple&& params,
+        WritableFieldTuple&& params,
         execution_state& st,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
         return async_start_statement_execution(
             stmt,
-            std::forward<FieldLikeTuple>(params),
+            std::forward<WritableFieldTuple>(params),
             st,
             get_channel().shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
 
-    /// \copydoc async_start_statement_execution(const statement&,FieldLikeTuple&&,execution_state&,CompletionToken&&)
+    /// \copydoc async_start_statement_execution(const statement&,WritableFieldTuple&&,execution_state&,CompletionToken&&)
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
+        class EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_start_statement_execution(
         const statement& stmt,
-        FieldLikeTuple&& params,
+        WritableFieldTuple&& params,
         execution_state& st,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)

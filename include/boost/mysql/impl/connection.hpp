@@ -336,10 +336,10 @@ boost::mysql::connection<Stream>::async_prepare_statement(
 
 // execute statement
 template <class Stream>
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple, class>
 void boost::mysql::connection<Stream>::execute_statement(
     const statement& stmt,
-    const FieldLikeTuple& params,
+    const WritableFieldTuple& params,
     results& result,
     error_code& err,
     diagnostics& diag
@@ -356,10 +356,10 @@ void boost::mysql::connection<Stream>::execute_statement(
 }
 
 template <class Stream>
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple, class>
 void boost::mysql::connection<Stream>::execute_statement(
     const statement& stmt,
-    const FieldLikeTuple& params,
+    const WritableFieldTuple& params,
     results& result
 )
 {
@@ -376,13 +376,13 @@ void boost::mysql::connection<Stream>::execute_statement(
 
 template <class Stream>
 template <
-    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken,
     class>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_execute_statement(
     const statement& stmt,
-    FieldLikeTuple&& params,
+    WritableFieldTuple&& params,
     results& result,
     diagnostics& diag,
     CompletionToken&& token
@@ -390,7 +390,7 @@ boost::mysql::connection<Stream>::async_execute_statement(
 {
     return detail::async_execute(
         get_channel(),
-        stmt.bind(std::forward<FieldLikeTuple>(params)),
+        stmt.bind(std::forward<WritableFieldTuple>(params)),
         detail::impl_access::get_impl(result).get_interface(),
         diag,
         std::forward<CompletionToken>(token)
@@ -398,10 +398,10 @@ boost::mysql::connection<Stream>::async_execute_statement(
 }
 
 template <class Stream>
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple, class>
 void boost::mysql::connection<Stream>::start_statement_execution(
     const statement& stmt,
-    const FieldLikeTuple& params,
+    const WritableFieldTuple& params,
     execution_state& result,
     error_code& err,
     diagnostics& diag
@@ -418,10 +418,10 @@ void boost::mysql::connection<Stream>::start_statement_execution(
 }
 
 template <class Stream>
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, class>
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple, class>
 void boost::mysql::connection<Stream>::start_statement_execution(
     const statement& stmt,
-    const FieldLikeTuple& params,
+    const WritableFieldTuple& params,
     execution_state& result
 )
 {
@@ -438,13 +438,13 @@ void boost::mysql::connection<Stream>::start_statement_execution(
 
 template <class Stream>
 template <
-    BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
+    BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken,
     class>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::connection<Stream>::async_start_statement_execution(
     const statement& stmt,
-    FieldLikeTuple&& params,
+    WritableFieldTuple&& params,
     execution_state& result,
     diagnostics& diag,
     CompletionToken&& token
@@ -452,7 +452,7 @@ boost::mysql::connection<Stream>::async_start_statement_execution(
 {
     return detail::async_start_execution(
         get_channel(),
-        stmt.bind(std::forward<FieldLikeTuple>(params)),
+        stmt.bind(std::forward<WritableFieldTuple>(params)),
         detail::impl_access::get_impl(result).get_interface(),
         diag,
         std::forward<CompletionToken>(token)

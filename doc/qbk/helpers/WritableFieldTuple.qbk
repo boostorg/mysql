@@ -5,11 +5,11 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:boost__mysql__FieldLikeTuple FieldLikeTuple concept]
+[section:boost__mysql__WritableFieldTuple WritableFieldTuple concept]
 
-A type `T` is a `FieldLikeTuple` if it's a `std::tuple` specialization,
+A type `T` is a `WritableFieldTuple` if it's a `std::tuple` specialization,
 or a reference to one, and all element types fulfill the exposition-only
-concept `FieldLike`. Empty tuples satisfy `FieldLikeTuple`.
+concept `FieldLike`. Empty tuples satisfy `WritableFieldTuple`.
 
 Currently, a type `T2` satisfies `FieldLike` if a [reflink field_view]
 can be constructed from `T2`. The exact definition may change in future releases.

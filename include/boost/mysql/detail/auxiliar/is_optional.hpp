@@ -16,7 +16,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class T, class = void, class = void, class = void>
+template <class T, class = void>
 struct is_optional : std::false_type
 {
 };
@@ -24,13 +24,15 @@ struct is_optional : std::false_type
 template <class T>
 struct is_optional<
     T,
-    typename std::enable_if<
-        std::is_same<decltype(std::declval<const T&>().has_value()), bool>::value &&
-        std::is_same<decltype(std::declval<const T&>().value()), const typename T::value_type&>::value &&
-        std::is_same<decltype(std::declval<T&>().value()), typename T::value_type&>::value>::type,
-    // we currently require all of our field types to be default-constructible, so this is good enough
-    void_t<decltype(std::declval<T&>().emplace())>,
-    void_t<decltype(std::declval<T&>().reset())> > : std::true_type
+    void_t<
+        typename std::enable_if<
+            std::is_same<decltype(std::declval<const T&>().has_value()), bool>::value &&
+            std::is_same<decltype(std::declval<const T&>().value()), const typename T::value_type&>::value &&
+            std::is_same<decltype(std::declval<T&>().value()), typename T::value_type&>::value>::type,
+        // we currently require all of our field types to be default-constructible, so this is good enough.
+        // TODO: could be improved for writable types
+        decltype(std::declval<T&>().emplace()),
+        decltype(std::declval<T&>().reset())>> : std::true_type
 {
 };
 

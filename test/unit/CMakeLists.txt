@@ -15,7 +15,6 @@ add_executable(
     detail/auth/auth_calculator.cpp
     detail/auxiliar/static_string.cpp
     detail/auxiliar/rows_iterator.cpp
-    detail/auxiliar/field_type_traits.cpp
     detail/auxiliar/execution_request.cpp
     detail/auxiliar/datetime.cpp
     detail/auxiliar/row_impl.cpp
@@ -36,6 +35,7 @@ add_executable(
     # detail/network_algorithms/high_level_execution.cpp
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
+    detail/typing/writable_field_traits.cpp
     date.cpp
     datetime.cpp
     field_view.cpp

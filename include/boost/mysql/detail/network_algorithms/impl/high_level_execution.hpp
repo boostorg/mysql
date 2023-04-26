@@ -18,6 +18,7 @@
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 
@@ -74,13 +75,13 @@ void serialize_stmt_exec_req(
     serialize_message(request, chan.current_capabilities(), chan.shared_buffer());
 }
 
-template <BOOST_MYSQL_FIELD_LIKE... T, std::size_t... I>
+template <class... T, std::size_t... I>
 std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, boost::mp11::index_sequence<I...>) noexcept
 {
-    return std::array<field_view, sizeof...(T)>{{field_view(std::get<I>(t))...}};
+    return std::array<field_view, sizeof...(T)>{{to_field(std::get<I>(t))...}};
 }
 
-template <BOOST_MYSQL_FIELD_LIKE... T>
+template <class... T>
 std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
 {
     return tuple_to_array_impl(t, boost::mp11::make_index_sequence<sizeof...(T)>());
@@ -92,26 +93,26 @@ inline error_code check_num_params(const statement& stmt, std::size_t param_coun
 }
 
 // Statement, tuple
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
-resultset_encoding get_encoding(const bound_statement_tuple<FieldLikeTuple>&)
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
+resultset_encoding get_encoding(const bound_statement_tuple<WritableFieldTuple>&)
 {
     return resultset_encoding::binary;
 }
 
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
-void serialize_execution_request(const bound_statement_tuple<FieldLikeTuple>& req, channel_base& chan)
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
+void serialize_execution_request(const bound_statement_tuple<WritableFieldTuple>& req, channel_base& chan)
 {
     const auto& impl = statement_access::get_impl_tuple(req);
     auto arr = tuple_to_array(impl.params);
     serialize_stmt_exec_req(chan, impl.stmt, arr.begin(), arr.end());
 }
 
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
-error_code check_client_errors(const bound_statement_tuple<FieldLikeTuple>& req)
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
+error_code check_client_errors(const bound_statement_tuple<WritableFieldTuple>& req)
 {
     return check_num_params(
         statement_access::get_impl_tuple(req).stmt,
-        std::tuple_size<FieldLikeTuple>::value
+        std::tuple_size<WritableFieldTuple>::value
     );
 }
 

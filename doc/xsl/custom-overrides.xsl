@@ -33,7 +33,7 @@
     'Stream',
     'SocketStream',
     'Executor',
-    'FieldLikeTuple',
+    'WritableFieldTuple',
     'FieldViewFwdIterator',
     'ExecutionRequest'
   "/>

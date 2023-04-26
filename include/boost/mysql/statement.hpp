@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_STATEMENT_HPP
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/field_type_traits.hpp>
+#include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
 #include <cassert>
 #include <cstdint>
@@ -25,7 +25,7 @@ namespace mysql {
  * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
  * \ref connection::start_execution or their async counterparts.
  */
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
 class bound_statement_tuple;
 
 /**
@@ -112,7 +112,7 @@ public:
      * \n
      * The parameters are copied into a `std::tuple` by using `std::make_tuple`. This function
      * only participates in overload resolution if `std::make_tuple(FWD(args)...)` yields a
-     * `FieldLikeTuple`. Equivalent to `this->bind(std::make_tuple(std::forward<T>(params)...))`.
+     * `WritableFieldTuple`. Equivalent to `this->bind(std::make_tuple(std::forward<T>(params)...))`.
      * \n
      * This function doesn't involve communication with the server.
      *
@@ -129,7 +129,7 @@ public:
     auto
 #endif
     bind(T&&... params) const->typename std::enable_if<
-        detail::is_field_like_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>::value,
+        detail::is_writable_field_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>::value,
         bound_statement_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>>::type
     {
         return bind(std::make_tuple(std::forward<T>(params)...));
@@ -153,9 +153,11 @@ public:
      * Strong guarantee. Only throws if the decay-copy of the tuple throws.
      */
     template <
-        BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple,
-        typename EnableIf = detail::enable_if_field_like_tuple<FieldLikeTuple>>
-    bound_statement_tuple<typename std::decay<FieldLikeTuple>::type> bind(FieldLikeTuple&& params) const;
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        typename EnableIf =
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    bound_statement_tuple<typename std::decay<WritableFieldTuple>::type> bind(WritableFieldTuple&& params
+    ) const;
 
     /**
      * \brief Binds parameters to a statement (iterator range overload).
@@ -175,7 +177,8 @@ public:
      */
     template <
         BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
-        typename EnableIf = detail::enable_if_field_view_forward_iterator<FieldViewFwdIterator>>
+        typename EnableIf = typename std::enable_if<
+            detail::is_field_view_forward_iterator<FieldViewFwdIterator>::value>::type>
     bound_statement_iterator_range<FieldViewFwdIterator> bind(
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last
