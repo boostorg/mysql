@@ -91,7 +91,7 @@ void insert_product(
 )
 {
     results result;
-    conn.execute(stmt.bind(description, price, static_cast<int>(show_in_store)), result);
+    conn.execute(stmt.bind(description, price, show_in_store), result);
 }
 //]
 
@@ -109,7 +109,7 @@ void insert_product(
 {
     // If description has a value, a string will be sent to the server; otherwise, a NULL will
     results result;
-    conn.execute(stmt.bind(description, price, static_cast<int>(show_in_store)), result);
+    conn.execute(stmt.bind(description, price, show_in_store), result);
 }
 //]
 #endif
@@ -485,37 +485,49 @@ void main_impl(int argc, char** argv)
     // multi-resultset
     {
         results result;
-        conn.execute("DROP PROCEDURE IF EXISTS get_employee", result);
+        conn.execute("DROP PROCEDURE IF EXISTS get_employees", result);
 
         //[multi_resultset_procedure
         conn.execute(
             R"(
-                CREATE PROCEDURE get_employee(IN pin_employee_id INT)
+                CREATE PROCEDURE get_employees(pin_company_id IN CHAR(10))
                 BEGIN
-                    SELECT * FROM employee WHERE id = pin_employee_id;
+                    START TRANSACTION READ ONLY;
+                    SELECT name, tax_id FROM company WHERE id = pin_company_id; 
+                    SELECT first_name, last_name FROM employee WHERE company_id = pin_employee_id;
                 END
             )",
             result
         );
         //]
+    }
+    {
+        //[multi_resultset_call_dynamic
 
-        //[multi_resultset_call
+        // We're using the dynamic interface. results can stored multiple resultsets
+        results result;
+
         // The procedure parameter, employe_id, will likely be obtained from an untrusted source,
         // so we will use a prepared statement
-        statement get_employee_stmt = conn.prepare_statement("CALL get_employee(?)");
+        statement get_employee_stmt = conn.prepare_statement("CALL get_employees(?)");
 
         // Obtain the parameters required to call the statement, e.g. from a file or HTTP message
         std::int64_t employee_id = get_employee_id();
 
         // Call the statement
         conn.execute(get_employee_stmt.bind(employee_id), result);
+
+        // results can be used as a random-access collection of resultsets.
+        // result.at(0).rows() returns the matched companies, if any
+        rows_view matched_company = result.at(0).rows();
+
+        // We can do the same to access the matched employees
+        rows_view matched_employees = result.at(1).rows();
+
+        // Use matched_company and matched_employees as required
         //]
 
-        //[multi_resultset_first_resultset
-        rows_view matched_employees = result.at(0).rows();
-        // Use matched_employees as required
-        //]
-
+        boost::ignore_unused(matched_company);
         boost::ignore_unused(matched_employees);
     }
     {

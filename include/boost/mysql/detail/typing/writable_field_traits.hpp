@@ -33,6 +33,8 @@ typename std::enable_if<std::is_constructible<field_view, const T&>::value, fiel
     return field_view(value);
 }
 
+inline field_view to_field(bool value) noexcept { return field_view(value ? 1 : 0); }
+
 template <class Traits, class Allocator>
 field_view to_field(const std::basic_string<char, Traits, Allocator>& value) noexcept
 {

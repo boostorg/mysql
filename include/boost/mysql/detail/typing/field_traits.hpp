@@ -253,6 +253,26 @@ struct field_traits<std::uint8_t, false> : valid_field_traits
 };
 
 template <>
+struct field_traits<bool, false> : valid_field_traits
+{
+    static constexpr const char* type_name = "bool";
+    static void meta_check(meta_check_context& ctx)
+    {
+        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
+    }
+    static bool meta_check_impl(const metadata& meta)
+    {
+        return meta.type() == column_type::tinyint && !meta.is_unsigned();
+    }
+    static error_code parse(field_view input, bool& output)
+    {
+        assert(input.kind() == field_kind::int64);
+        output = input.get_int64() != 0;
+        return error_code();
+    }
+};
+
+template <>
 struct field_traits<std::int16_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "int16_t";
