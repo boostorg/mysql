@@ -17,19 +17,90 @@ For example, given a stored procedure like this:
 
 [multi_resultset_procedure]
 
-You can call it using a prepared statement, with the usual syntax:
+A statement like `CALL get_employees('my_company')` will generate three resultsets:
 
-[multi_resultset_call]
+* A first resultset containing the company matched by the first `SELECT`.
+* A second resultset containing the employees matched by the second `SELECT`.
+* A third, empty resultset containing information about the `CALL` statement.
 
-MySQL responds here with two resultsets:
+Every resultset contains its own rows, metadata, last insert ID, affected rows and so on.
 
-* A first resultset containing the employee matched by the `SELECT` query in the procedure.
-* A second, empty resultset containing information about the `CALL` statement.
 
-The [reflink results] class can store any number of resultsets.
-It can be understood as a random-access collection of resultsets. To obtain the first resultset, we can write:
+[heading Calling procedures using the dynamic interface]
 
-[multi_resultset_first_resultset]
+The same [reflink results] class we've been using supports storing more than one resultset.
+You can execute a `CALL` statement as any other SQL statement:
+
+[multi_resultset_call_dynamic]
+
+In this context, `results` can be seen as a random-access collection of resultsets. You can access
+resultsets by index using [refmem results at] and [reflink2 results.operator_lb__rb_ results::operator[]].
+These operations yield a [reflink resultset_view], which is a lightweight object pointing into memory owned by the `results`
+object. You can take ownserhip of a `resultset_view` using the [reflink resultset] class. For example:
+
+[multi_resultset_results_as_collection]
+
+[heading Calling procedures using the static interface]
+
+The [reflink static_results] class supports operations that return multiple
+resultsets, too. As with other SQL statements, we need to define the row types
+in our resultsets in advance:
+
+```
+    // Describes the first resultset
+    struct company
+    {
+        std::string name;
+        std::string tax_id;
+    };
+    BOOST_DESCRIBE_STRUCT(company, (), (name, tax_id));
+
+    // Describes the second resultset
+    struct employee
+    {
+        std::string first_name;
+        std::string last_name;
+    };
+    BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name));
+
+    // The last resultset will always be empty.
+    // We can use an empty tuple to represent it.
+    using empty = std::tuple<>;
+```
+
+We can now use `static_results`, passing it as many template arguments as
+resultsets we expect. The library will check that the correct number of
+resultsets are actually returned by the server, and will parse them into
+the row types that we provided:
+
+```
+    // We must list all the resultset types the operation returns as template arguments
+    static_results<company, employee, empty> result;
+    conn.execute("CALL get_employees('HGS')", result);
+
+    // We can use rows<0>() to access the rows for the first resultset
+    if (result.rows<0>().empty())
+    {
+        std::cout << "Company not found" << std::endl;
+    }
+    else
+    {
+        const company& comp = result.rows<0>()[0];
+        std::cout << "Company name: " << comp.name << ", tax_id: " << comp.tax_id << std::endl;
+    }
+
+    // rows<1>() will return the rows for the second resultset
+    for (const employee& emp : result.rows<1>())
+    {
+        std::cout << "Employee " << emp.first_name << " " << emp.last_name << std::endl;
+    }
+```
+
+Use [refmem static_results rows] with an explicit index to access each resultset's data.
+You can also use explicit indices with the other accessor functions,
+like [refmem static_results meta] and [refmem static_results last_insert_id].
+
+For more information about the static interface, please refer to [link mysql.static_interface this section].
 
 [heading Determining the number of resultsets]
 
@@ -92,13 +163,9 @@ before connecting:
 
 [multi_resultset_multi_queries]
 
-You can access the resultsets produced by individual queries using [refmem results at] and [reflink2 results.operator_lb__rb_ results::operator[]].
-These operations yield a [reflink resultset_view], which is a lighteight object pointing into memory owned by the `results`
-object. You can take ownserhip of a `resultset_view` using the [reflink resultset] class. For example:
-
-[multi_resultset_results_as_collection]
-
 Note that statements like `DELIMITER` [*do not work] using this feature. This is because
 `DELIMITER` is a pseudo-command for the `mysql` command line tool, not actual SQL.
+
+You can also use the static interface with multi-queries. It works the same as with stored procedures.
 
 [endsect]

@@ -127,70 +127,7 @@ For a usage example, see [link mysql.examples.stored_procedures_cpp14].
 
 [heading Multi-resultset]
 
-You can use the static interface when working with stored procedures or batched queries.
-For example, given this procedure definition:
 
-```
-    const char* proc = R"%(
-        CREATE PROCEDURE get_employees(pin_company_id IN CHAR(10))
-        BEGIN
-            START TRANSACTION READ ONLY;
-            SELECT name, tax_id FROM company WHERE id = pin_company_id; 
-            SELECT first_name, last_name FROM employee WHERE company_id = pin_employee_id;
-        END
-    )%";
-```
-
-We will get 3 resultsets here: one for each `SELECT` statement, and a final
-empty resultset containing info about the `CALL` statement. We can call this
-procedure like this:
-
-```
-    // Describes the first resultset
-    struct company
-    {
-        std::string name;
-        std::string tax_id;
-    };
-    BOOST_DESCRIBE_STRUCT(company, (), (name, tax_id));
-
-    // Describes the second resultset
-    struct employee
-    {
-        std::string first_name;
-        std::string last_name;
-    };
-    BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name));
-
-    // The last resultset will always be empty.
-    // We can use an empty tuple to represent it.
-    using empty = std::tuple<>;
-
-    // We must list all the resultset types the operation returns as template arguments
-    static_results<company, employee, empty> result;
-    conn.execute("CALL get_employees('HGS')", result);
-
-    // We can use rows<0>() to access the rows for the first resultset
-    if (result.rows<0>().empty())
-    {
-        std::cout << "Company not found" << std::endl;
-    }
-    else
-    {
-        const company& comp = result.rows<0>()[0];
-        std::cout << "Company name: " << comp.name << ", tax_id: " << comp.tax_id << std::endl;
-    }
-
-    // rows<1>() will return the rows for the second resultset
-    for (const employee& emp : result.rows<1>())
-    {
-        std::cout << "Employee " << emp.first_name << " " << emp.last_name << std::endl;
-    }
-```
-
-Use [refmem static_results rows] with an explicit index to access each resultset's data.
-You can also use explicit indices with the other accessor functions,
-like [refmem static_results meta] and [refmem static_results last_insert_id].
 
 [heading Multi-function operations]
 
@@ -308,6 +245,12 @@ TODO: point to examples
             __BIGINT__ `UNSIGNED`[br]
             __YEAR__[br]
             __BIT__
+        ]
+    ]
+    [
+        [`bool`]
+        [
+            `BOOL` or `BOOLEAN` (alias for __TINYINT__).
         ]
     ]
     [
