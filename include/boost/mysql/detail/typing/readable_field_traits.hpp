@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
-#define BOOST_MYSQL_DETAIL_TYPING_FIELD_TRAITS_HPP
+#ifndef BOOST_MYSQL_DETAIL_TYPING_READABLE_FIELD_TRAITS_HPP
+#define BOOST_MYSQL_DETAIL_TYPING_READABLE_FIELD_TRAITS_HPP
 
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
@@ -203,13 +203,13 @@ struct valid_field_traits
 
 // Traits
 template <typename T, bool is_optional_flag = is_optional<T>::value>
-struct field_traits
+struct readable_field_traits
 {
     static constexpr bool is_supported = false;
 };
 
 template <>
-struct field_traits<std::int8_t, false> : valid_field_traits
+struct readable_field_traits<std::int8_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "int8_t";
     static void meta_check(meta_check_context& ctx)
@@ -231,7 +231,7 @@ struct field_traits<std::int8_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::uint8_t, false> : valid_field_traits
+struct readable_field_traits<std::uint8_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "uint8_t";
     static void meta_check(meta_check_context& ctx)
@@ -253,7 +253,7 @@ struct field_traits<std::uint8_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<bool, false> : valid_field_traits
+struct readable_field_traits<bool, false> : valid_field_traits
 {
     static constexpr const char* type_name = "bool";
     static void meta_check(meta_check_context& ctx)
@@ -273,7 +273,7 @@ struct field_traits<bool, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::int16_t, false> : valid_field_traits
+struct readable_field_traits<std::int16_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "int16_t";
     static void meta_check(meta_check_context& ctx)
@@ -297,7 +297,7 @@ struct field_traits<std::int16_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::uint16_t, false> : valid_field_traits
+struct readable_field_traits<std::uint16_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "uint16_t";
     static void meta_check(meta_check_context& ctx)
@@ -321,7 +321,7 @@ struct field_traits<std::uint16_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::int32_t, false> : valid_field_traits
+struct readable_field_traits<std::int32_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "int32_t";
     static void meta_check(meta_check_context& ctx)
@@ -347,7 +347,7 @@ struct field_traits<std::int32_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::uint32_t, false> : valid_field_traits
+struct readable_field_traits<std::uint32_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "uint32_t";
     static void meta_check(meta_check_context& ctx)
@@ -373,7 +373,7 @@ struct field_traits<std::uint32_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::int64_t, false> : valid_field_traits
+struct readable_field_traits<std::int64_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "int64_t";
     static void meta_check(meta_check_context& ctx)
@@ -400,7 +400,7 @@ struct field_traits<std::int64_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<std::uint64_t, false> : valid_field_traits
+struct readable_field_traits<std::uint64_t, false> : valid_field_traits
 {
     static constexpr const char* type_name = "uint64_t";
     static void meta_check(meta_check_context& ctx)
@@ -428,7 +428,7 @@ struct field_traits<std::uint64_t, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<float, false> : valid_field_traits
+struct readable_field_traits<float, false> : valid_field_traits
 {
     static constexpr const char* type_name = "float";
     static void meta_check(meta_check_context& ctx)
@@ -450,7 +450,7 @@ struct field_traits<float, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<double, false> : valid_field_traits
+struct readable_field_traits<double, false> : valid_field_traits
 {
     static constexpr const char* type_name = "double";
     static void meta_check(meta_check_context& ctx)
@@ -487,7 +487,7 @@ struct field_traits<double, false> : valid_field_traits
 };
 
 template <class Traits, class Allocator>
-struct field_traits<std::basic_string<char, Traits, Allocator>, false> : valid_field_traits
+struct readable_field_traits<std::basic_string<char, Traits, Allocator>, false> : valid_field_traits
 {
     static constexpr const char* type_name = "string";
     static void meta_check(meta_check_context& ctx)
@@ -522,7 +522,7 @@ struct field_traits<std::basic_string<char, Traits, Allocator>, false> : valid_f
 };
 
 template <class Allocator>
-struct field_traits<std::vector<unsigned char, Allocator>, false> : valid_field_traits
+struct readable_field_traits<std::vector<unsigned char, Allocator>, false> : valid_field_traits
 {
     static constexpr const char* type_name = "blob";
     static void meta_check(meta_check_context& ctx)
@@ -556,7 +556,7 @@ struct field_traits<std::vector<unsigned char, Allocator>, false> : valid_field_
 };
 
 template <>
-struct field_traits<date, false> : valid_field_traits
+struct readable_field_traits<date, false> : valid_field_traits
 {
     static constexpr const char* type_name = "date";
     static void meta_check(meta_check_context& ctx)
@@ -578,7 +578,7 @@ struct field_traits<date, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<datetime, false> : valid_field_traits
+struct readable_field_traits<datetime, false> : valid_field_traits
 {
     static constexpr const char* type_name = "datetime";
     static void meta_check(meta_check_context& ctx)
@@ -608,7 +608,7 @@ struct field_traits<datetime, false> : valid_field_traits
 };
 
 template <>
-struct field_traits<time, false> : valid_field_traits
+struct readable_field_traits<time, false> : valid_field_traits
 {
     static constexpr const char* type_name = "time";
     static void meta_check(meta_check_context& ctx)
@@ -632,16 +632,16 @@ struct field_traits<time, false> : valid_field_traits
 // std::optional<T> and boost::optional<T>. To avoid dependencies,
 // this is achieved through a "concept"
 template <class T>
-struct field_traits<T, true>
+struct readable_field_traits<T, true>
 {
     using value_type = typename T::value_type;
-    static constexpr bool is_supported = field_traits<value_type>::is_supported;
-    static constexpr const char* type_name = field_traits<value_type>::type_name;
+    static constexpr bool is_supported = readable_field_traits<value_type>::is_supported;
+    static constexpr const char* type_name = readable_field_traits<value_type>::type_name;
     static void meta_check(meta_check_context& ctx)
     {
         ctx.set_cpp_type_name(type_name);
         ctx.set_nullability_checked(true);
-        field_traits<value_type>::meta_check(ctx);
+        readable_field_traits<value_type>::meta_check(ctx);
     }
     static error_code parse(field_view input, T& output)
     {
@@ -653,21 +653,21 @@ struct field_traits<T, true>
         else
         {
             output.emplace();
-            return field_traits<value_type>::parse(input, output.value());
+            return readable_field_traits<value_type>::parse(input, output.value());
         }
     }
 };
 
 template <class T>
-struct field_traits<non_null<T>, false>
+struct readable_field_traits<non_null<T>, false>
 {
-    static constexpr bool is_supported = field_traits<T>::is_supported;
-    static constexpr const char* type_name = field_traits<T>::type_name;
+    static constexpr bool is_supported = readable_field_traits<T>::is_supported;
+    static constexpr const char* type_name = readable_field_traits<T>::type_name;
     static void meta_check(meta_check_context& ctx)
     {
         ctx.set_cpp_type_name(type_name);
         ctx.set_nullability_checked(true);
-        field_traits<T>::meta_check(ctx);
+        readable_field_traits<T>::meta_check(ctx);
     }
     static error_code parse(field_view input, non_null<T>& output)
     {
@@ -677,7 +677,7 @@ struct field_traits<non_null<T>, false>
         }
         else
         {
-            return field_traits<T>::parse(input, output.value);
+            return readable_field_traits<T>::parse(input, output.value);
         }
     }
 };
@@ -685,7 +685,7 @@ struct field_traits<non_null<T>, false>
 template <typename FieldType>
 void meta_check_impl(meta_check_context& ctx)
 {
-    using traits_t = field_traits<FieldType>;
+    using traits_t = readable_field_traits<FieldType>;
     ctx.set_cpp_type_name(traits_t::type_name);
     if (ctx.check_field_present())
     {
@@ -700,20 +700,20 @@ void meta_check_impl(meta_check_context& ctx)
 }
 
 template <class T>
-struct is_field_type
+struct is_readable_field
 {
-    static constexpr bool value = field_traits<T>::is_supported;
+    static constexpr bool value = readable_field_traits<T>::is_supported;
 };
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
 template <class T>
-concept field_type = is_field_type<T>::value;
+concept readable_field = is_readable_field<T>::value;
 
-#define BOOST_MYSQL_FIELD_TYPE ::boost::mysql::detail::field_type
+#define BOOST_MYSQL_READABLE_FIELD ::boost::mysql::detail::readable_field
 
 #else
-#define BOOST_MYSQL_FIELD_TYPE class
+#define BOOST_MYSQL_READABLE_FIELD class
 #endif
 
 }  // namespace detail

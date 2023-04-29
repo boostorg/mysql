@@ -10,7 +10,7 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/typing/field_traits.hpp>
+#include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <algorithm>

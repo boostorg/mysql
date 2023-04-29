@@ -19,7 +19,7 @@
 #include <boost/mysql/detail/execution_processor/static_helpers.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/typing/field_traits.hpp>
+#include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/mp11/integer_sequence.hpp>

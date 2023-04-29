@@ -16,7 +16,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/typing/field_traits.hpp>
+#include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/impl/diagnostics.hpp>
 
 #include <boost/describe/members.hpp>
@@ -53,7 +53,7 @@ public:
     {
     }
 
-    template <BOOST_MYSQL_FIELD_TYPE FieldType>
+    template <BOOST_MYSQL_READABLE_FIELD FieldType>
     void operator()(FieldType& output)
     {
         auto ec = field_traits<FieldType>::parse(fields_[*pos_map_++], output);

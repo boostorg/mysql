@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TYPING_NON_NULL_HPP
-#define BOOST_MYSQL_TYPING_NON_NULL_HPP
+#ifndef BOOST_MYSQL_NON_NULL_HPP
+#define BOOST_MYSQL_NON_NULL_HPP
 
 namespace boost {
 namespace mysql {
