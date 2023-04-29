@@ -109,15 +109,7 @@ You can use both interfaces with text queries and prepared statements.
 
 For example, given the following table:
 
-```
-    const char* create_table_sql = R"%(
-        CREATE TEMPORARY TABLE posts (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            title VARCHAR (256) DEFAULT "",
-            body TEXT DEFAULT ""
-        )
-    )%";
-```
+[overview_ifaces_table]
 
 This is how you would access its contents using either of the interfaces:
 
@@ -138,19 +130,7 @@ This is how you would access its contents using either of the interfaces:
             [link mysql.examples.prepared_statements_cpp11 Example code]
         ]
         [
-            ```
-                // Passing a results object to connection::execute selects the dynamic interface
-                results result;
-                conn.execute("SELECT title, body FROM posts", result);
-
-                // Every row is a collection of fields, which are variant-like objects
-                // that represent data. We use as_string() to cast them to the appropriate type
-                for (row_view post : result.rows())
-                {
-                    std::cout << "Title: " << post.at(0).as_string()
-                              << "Body: " << post.at(1).as_string() << std::endl;
-                }
-            ```
+            [overview_ifaces_dynamic]
         ]
     ]
     [
@@ -164,29 +144,8 @@ This is how you would access its contents using either of the interfaces:
             [link mysql.examples.prepared_statements_cpp14 Example code]
         ]
         [
-            ```
-                // We define our row type at compile-time
-                struct post
-                {
-                    std::string title;
-                    std::string body;
-                };
-
-                // This uses Boost.Describe to add reflection capabilities to the struct,
-                // so that Boost.MySQL knows how to use your row type
-                BOOST_DESCRIBE_STRUCT(post, (), (title, body));
-
-                // Passing a static_results to execute() selects the static interface
-                static_results<post> result;
-                conn.execute("SELECT title, body FROM posts", result);
-
-                // Query results are parsed directly into your own type
-                for (const post& p: result.rows())
-                {
-                    std::cout << "Title: " << p.title
-                              << "Body: " << p.body << std::endl;
-                }
-            ```
+            [describe_post][br]
+            [overview_ifaces_static]
         ]
     ]
 ]
@@ -201,8 +160,6 @@ and [reflink static_results] classes are in-memory representations of a resultse
 
 A resultset contains the generated rows, plus some extra information. The following diagram shows 
 what a resultset looks like:
-
-TODO: update the drawing
 
 [$mysql/images/resultset.svg [align center] [scale 125]]
 
@@ -307,7 +264,7 @@ If you need to perform queries in parallel, open more connections to the server.
 [section Multi-function operations]
 
 Until now, we've been using [refmem connection execute], which
-executes some SQL and reads all generated data into an in-memory `results` object.
+executes some SQL and reads all generated data into an in-memory object.
 
 Some use cases may not fit in this simple pattern. For example:
 
@@ -329,6 +286,7 @@ table in batches, which can be the case in an ETL process:
 ]
 
 Multi-function operations are powerful but complex. Only use them when there is a strong reason to do so.
+Multi-function operations also work with the static interface.
 Please refer to [link mysql.multi_function this section] for more information on these operations.
 
 [endsect]

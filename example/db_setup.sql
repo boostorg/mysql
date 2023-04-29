@@ -48,11 +48,26 @@ INSERT INTO employee (first_name, last_name, salary, company_id) VALUES
 ;
 
 -- Stored procedures
-CREATE PROCEDURE get_company(IN pin_company_id CHAR(10))
+CREATE PROCEDURE get_employees(IN pin_company_id CHAR(10))
 BEGIN
     START TRANSACTION READ ONLY;
     SELECT id, name, tax_id FROM company WHERE id = pin_company_id;
     SELECT first_name, last_name, salary FROM employee WHERE company_id = pin_company_id;
+    COMMIT;
+END
+
+CREATE PROCEDURE create_employee(
+    IN  pin_company_id CHAR(10),
+    IN  pin_first_name VARCHAR(100),
+    IN  pin_last_name VARCHAR(100),
+    OUT pout_employee_id INT
+)
+BEGIN
+    START TRANSACTION;
+    INSERT INTO employee (company_id, first_name, last_name)
+        VALUES (pin_company_id, pin_first_name, pin_last_name);
+    SET pout_employee_id = LAST_INSERT_ID();
+    INSERT INTO audit_log (msg) VALUES ('Created new employee...');
     COMMIT;
 END
 

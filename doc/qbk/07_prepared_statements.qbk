@@ -47,15 +47,26 @@ Some observations:
 * You can pass types like built-in integers, `float`, [reflink date], `std::string`,
   with the expected effects. [link mysql.prepared_statements.stmt_type_mappings This table]
   contains a reference with all the allowed types.
-* `show_in_store` is passed as an `int` to `statement::bind()`, but is defined as a `TINYINT`
-  (1 byte integer) in the table. As long as the passed integer is in range, MySQL
-  will perform the required conversions. Otherwise, `execute()` will fail with an error
-  (no undefined behavior is invoked).
 
 You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`.
 If the optional doesn't have a value, `NULL` will be sent to the server. For example:
 
 [prepared_statements_execute_null]
+
+[heading Type casting with statement parameters]
+
+MySQL is quite permissive with the type of statement parameters. In most cases,
+it will perform the required casts for you. For example, given this table definition:
+
+[prepared_statements_casting_table]
+
+We can write:
+
+[prepared_statements_casting_execute]
+
+MySQL expects a `TINYINT`, but we're sending an `int`, which is bigger.
+As long as the value is in range, this won't cause any trouble.
+If the value is out-of-range, `execute` will fail with an error.
 
 [heading Executing a statement with a variable number of parameters]
 
@@ -92,7 +103,8 @@ operation that may block or fail.
 [heading Type mapping reference for prepared statement parameters]
 
 The following table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
-is interpreted by MySQL, depeding on `v`'s type:
+is interpreted by MySQL, depeding on `v`'s type.
+
 
 [table:stmt_type_mappings
     [
@@ -109,6 +121,11 @@ is interpreted by MySQL, depeding on `v`'s type:
         [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
         [`UNSIGNED BIGINT`]
         [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
+    ]
+    [
+        [`bool`]
+        [`BIGINT` (`1` if `true`, `0` if `false`)]
+        [`TINYINT`]
     ]
     [
         [`std::basic_string<char, Traits, Allocator>` (including `std::string`), [reflink string_view], `std::string_view`, `const char*`]

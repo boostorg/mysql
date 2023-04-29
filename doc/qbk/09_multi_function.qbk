@@ -99,7 +99,7 @@ The mechanics are similar to what's been exposed above. The static interface use
 [reflink static_execution_state] to carry state. As with [reflink static_results], we must define and
 pass a type describing our rows:
 
-[multi_function_static_types]
+[describe_post]
 
 We can now start our operation using the same [refmem connection start_execution]:
 

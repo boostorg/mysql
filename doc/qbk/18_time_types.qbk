@@ -23,18 +23,18 @@ Unless dealing with these special values, we recommend converting `date`s to a `
 The member type [refmem date time_point] is a system-clock `time_point` that can represent the entire
 MySQL `DATE` range without problems. You can use [refmem date as_time_point] to perform the cast:
 
-[field_date_as_time_point]
+[time_types_date_as_time_point]
 
 If the date is not valid, `as_time_point` will throw an exception.
 
 You can query whether a `date` contains a valid date or not using [refmem date valid]:
 
-[field_date_valid]
+[time_types_date_valid]
 
 You can combine it with [refmem date get_time_point], which performs an unchecked
 conversion:
 
-[field_date_get_time_point]
+[time_types_date_get_time_point]
 
 You can also construct a `date` from a `time_point`. If the `time_point` is
 out of range, an exception is thrown.
@@ -49,7 +49,7 @@ having year, month, day, hour, minute, second and microseconds.
 MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`). The same considerations for
 `date` apply:
 
-[field_datetime]
+[time_types_datetime]
 
 The `datetime` object doesn't carry any time zone information with it. The time zone semantics
 depend on the actual MySQL type:
@@ -66,27 +66,27 @@ depend on the actual MySQL type:
 When using `TIMESTAMP`, we recommend setting the __time_zone__ to a known value. To illustrate this,
 consider an event-logging system with the following table definition:
 
-[field_timestamp_setup]
+[time_types_timestamp_setup]
 
 We will be inserting events with an explicit timestamp. We may also want to retrieve events with
 a timestamp filter. This is what our prepared statements would look like:
 
-[field_timestamp_stmts]
+[time_types_timestamp_stmts]
 
 These statements may be run from different parts of our code, or even from different applications.
 To get consistent results, we must make sure that the time zones used during insertion and retrieval are the same.
 By default, __time_zone__ gets set to `SYSTEM`, which will use the server's time zone settings.
 This is not what we want here, so let's change it:
 
-[fields_timestamp_set_time_zone]
+[time_types_timestamp_set_time_zone]
 
 With this, the insertion code can look like:
 
-[fields_timestamp_insert]
+[time_types_timestamp_insert]
 
 The querying code would be:
 
-[fields_timestamp_select]
+[time_types_timestamp_select]
     
 If you don't set __time_zone__, you may apparently get the right results if you run
 both insertions and queries from clients that don't set `time_zone` and the server doesn't

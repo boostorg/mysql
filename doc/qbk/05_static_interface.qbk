@@ -8,8 +8,6 @@
 [section:static_interface The static interface]
 [nochunk]
 
---> TODO: review this. Take multifn & multiresult out of here
-
 To use the static interface, we must first define a data structure that describes the shape of
 your rows. We recommend using [@boost:/libs/describe/index.html Boost.Describe] for this.
 We define a plain `struct` with the fields returned by your our and annotate it with
@@ -17,78 +15,32 @@ We define a plain `struct` with the fields returned by your our and annotate it 
 
 For example, given the following table definition and query:
 
-```
-    const char* table_definition = R"%(
-        CREATE TEMPORARY TABLE posts (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            title VARCHAR (256) DEFAULT "",
-            body TEXT DEFAULT ""
-        )
-    )%";
-    const char* query = "SELECT id, title, body FROM posts";
-```
+[static_setup]
 
 We can define our row type like this:
 
-```
-    struct post
-    {
-        int id;
-        std::string title;
-        std::string body;
-    };
-
-    // Add reflection capabilities to post
-    BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
-```
+[describe_post]
 
 To run the query, we can write:
 
-```
-    static_results<post> result;
-    conn.execute(query, result);
-
-    for (const post& p : result.rows())
-    {
-        // Process the post as required
-        std::cout << "Title: " << p.title << "\n" << p.body << std::endl;
-    }
-```
+[static_query]
 
 Columns in the query are matched to fields in the struct by name.
 If a struct field cannot be matched to any query column, an error is issued.
 Extra columns in the query are ignored.
 
 If your query contains columns with names that don't qualify as C++ identifiers,
-you can use SQL aliases. For example:
+you can use SQL aliases. For example, given this struct:
 
-```
-    struct statistics
-    {
-        std::string company;
-        std::int64_t average;
-        std::int64_t max_value;
-    };
-    BOOST_DESCRIBE_STRUCT(statistics, (), (average, max_value));
+[describe_statistics]
 
-    static_results<statistics> result;
-    conn.execute(R"%(
-        SELECT
-            AVG(salary) AS average,
-            MAX(salary) AS max_value,
-            company_id AS company
-        FROM employees
-        GROUP BY company_id
-    )%", result);
-```
+You can write your query as:
+
+[static_field_order]
 
 You can also use `std::tuple`s as row types. This can be handy for simple queries:
 
-```
-    static_results<std::tuple<std::int64_t>> result;
-    conn.execute("SELECT COUNT(*) FROM posts", result);
-    std::cout << "Number of posts: " << std::get<0>(result.rows()[0]) << std::endl;
-```
+[static_tuples]
 
 Fields in tuples are matched to query columns by order. The query must return as many
 columns as fields the tuple has, at least. Any extra trailing columns in the query are ignored.
@@ -105,20 +57,15 @@ and is performed before reading any data.
 * [*Nullability]: if MySQL reports that a column can be `NULL`, your type must account for it. You can use
   `std::optional` or `boost::optional` for columns that may be `NULL`.
 
-For example:
+For example, if your table is defined like this:
 
-```
-    struct post
-    {
-        int id;
-        std::string title;
-        std::optional<std::string> body;
-    };
-    BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
-    
-    // When retrieving rows, post::body::has_value() == false
-    // if body is NULL in the database
-```
+[static_nulls_table]
+
+Using the `post` type we defined above will cause an error, because
+the `body` field may be `NULL`, but our type doesn't account for it.
+In this case, the correct definition would be:
+
+[describe_post_v2]
 
 You can also use [reflink non_null] to tell the static interface to disable
 the nullability check for a certain field. This can be handy when using
@@ -127,6 +74,9 @@ For a usage example, see [link mysql.examples.stored_procedures_cpp14].
 
 
 [heading Type mapping reference]
+
+The following table is a reference on which C++ types can be used in your
+row types and their compatibility with MySQL database types:
 
 [table:static_type_mappings
     [

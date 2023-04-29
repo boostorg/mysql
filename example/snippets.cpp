@@ -27,6 +27,7 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_execution_state.hpp>
+#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 #include <boost/mysql/throw_on_error.hpp>
@@ -70,6 +71,7 @@ using boost::mysql::rows;
 using boost::mysql::rows_view;
 using boost::mysql::statement;
 using boost::mysql::static_execution_state;
+using boost::mysql::static_results;
 using boost::mysql::string_view;
 using boost::mysql::tcp_ssl_connection;
 
@@ -81,11 +83,15 @@ using boost::mysql::tcp_ssl_connection;
     }
 
 const char* get_value_from_user() { return ""; }
+int get_int_value_from_user() { return 42; }
 std::int64_t get_employee_id() { return 42; }
 std::string get_company_id() { return "HGS"; }
 
-//[multi_function_static_types
-// We can use a plain struct with ints and strings to describe our rows
+// Describe types
+
+//[describe_post
+// We can use a plain struct with ints and strings to describe our rows.
+// This must be placed at the namespace level
 struct post
 {
     int id;
@@ -98,6 +104,28 @@ struct post
 BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
 //]
 
+//[describe_post_v2
+struct post_v2
+{
+    int id;
+    std::string title;
+    std::optional<std::string> body;  // body may be NULL
+};
+BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body));
+//]
+
+//[describe_statistics
+struct statistics
+{
+    std::string company;
+    std::int64_t average;
+    std::int64_t max_value;
+};
+BOOST_DESCRIBE_STRUCT(statistics, (), (company, average, max_value));
+//]
+
+//[describe_stored_procedures
+// Describes the first resultset
 struct company
 {
     std::string id;
@@ -106,6 +134,7 @@ struct company
 };
 BOOST_DESCRIBE_STRUCT(company, (), (id, name, tax_id));
 
+// Describes the second resultset
 struct employee
 {
     int id;
@@ -114,6 +143,11 @@ struct employee
     double salary;
 };
 BOOST_DESCRIBE_STRUCT(employee, (), (id, first_name, last_name, salary));
+
+// The last resultset will always be empty.
+// We can use an empty tuple to represent it.
+using empty = std::tuple<>;
+//]
 
 //[prepared_statements_execute
 // description, price and show_in_store are not trusted, since they may
@@ -148,6 +182,12 @@ void insert_product(
     conn.execute(stmt.bind(description, price, show_in_store), result);
 }
 //]
+void run_insert_product_optional(tcp_ssl_connection& conn, const statement& stmt)
+{
+    insert_product(conn, stmt, std::optional<string_view>(), 2000, true);
+}
+#else
+void run_insert_product_optional(tcp_ssl_connection&, const statement&) {}
 #endif
 
 //[prepared_statements_execute_iterator_range
@@ -209,44 +249,12 @@ boost::asio::awaitable<void> dont_run()
     );
     //]
 }
+#else
+void run_overview_coro(tcp_ssl_connection&) {}
 #endif
 
-void main_impl(int argc, char** argv)
+void section_overview(tcp_ssl_connection& conn)
 {
-    if (argc != 4)
-    {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
-        exit(1);
-    }
-
-    //[overview_connection
-    // The execution context, required to run I/O operations.
-    boost::asio::io_context ctx;
-
-    // The SSL context, required to establish TLS connections.
-    // The default SSL options are good enough for us at this point.
-    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-
-    // Represents a connection to the MySQL server.
-    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
-    //]
-
-    //[overview_connect
-    // Resolve the hostname to get a collection of endpoints
-    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
-    auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
-
-    // The username and password to use
-    boost::mysql::handshake_params params(
-        argv[1],                // username
-        argv[2],                // password
-        "boost_mysql_examples"  // database
-    );
-
-    // Connect to the server using the first endpoint returned by the resolver
-    conn.connect(*endpoints.begin(), params);
-    //]
-
     {
         //[overview_query_use_case
         results result;
@@ -264,103 +272,53 @@ void main_impl(int argc, char** argv)
         //]
     }
     {
-        //[overview_views
-        // Populate a results object
-        results result;
-        conn.execute("SELECT 'Hello world'", result);
-
-        // results::rows() returns a rows_view. The underlying memory is owned by the results object
-        rows_view all_rows = result.rows();
-
-        // Indexing a rows_view yields a row_view. The underlying memory is owned by the results object
-        row_view first_row = all_rows.at(0);
-
-        // Indexing a row_view yields a field_view. The underlying memory is owned by the results object
-        field_view first_field = first_row.at(0);  // Contains the string "Hello world"
-
+        //[overview_ifaces_table
+        const char* table_definition = R"%(
+            CREATE TEMPORARY TABLE posts (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                title VARCHAR (256) DEFAULT "",
+                body TEXT DEFAULT ""
+            )
+        )%";
         //]
-        ASSERT(first_field.as_string() == "Hello world");
 
-        //[overview_taking_ownership
-        // You may use all_rows_owning after result has gone out of scope
-        rows all_rows_owning{all_rows};
+        results result;
+        conn.execute(table_definition, result);
+    }
+    {
+        //[overview_ifaces_dynamic
+        // Passing a results object to connection::execute selects the dynamic interface
+        results result;
+        conn.execute("SELECT id, title, body FROM posts", result);
 
-        // You may use first_row_owning after result has gone out of scope
-        row first_row_owning{first_row};
-
-        // You may use first_field_owning after result has gone out of scope
-        field first_field_owning{first_field};
+        // Every row is a collection of fields, which are variant-like objects
+        // that represent data. We use as_string() to cast them to the appropriate type
+        for (row_view post : result.rows())
+        {
+            std::cout << "Title: " << post.at(1).as_string() << "Body: " << post.at(2).as_string()
+                      << std::endl;
+        }
         //]
     }
     {
-        //[overview_using_fields
-        results result;
-        conn.execute("SELECT 'abc', 42", result);
+        // The struct definition is included above this
+        //[overview_ifaces_static
+        //
+        // This must be placed inside your function or method:
+        //
 
-        // Obtain a field's underlying value using the is_xxx and get_xxx accessors
-        field_view f = result.rows().at(0).at(0);  // f points to the string "abc"
-        if (f.is_string())
+        // Passing a static_results to execute() selects the static interface
+        static_results<post> result;
+        conn.execute("SELECT id, title, body FROM posts", result);
+
+        // Query results are parsed directly into your own type
+        for (const post& p : result.rows())
         {
-            // we know it's a string, unchecked access
-            string_view s = f.get_string();
-            std::cout << s << std::endl;  // Use the string as required
-        }
-        else
-        {
-            // Oops, something went wrong - schema msimatch?
-        }
-
-        // Alternative: use the as_xxx accessor
-        f = result.rows().at(0).at(1);
-        std::int64_t value = f.as_int64();  // Checked access. Throws if f doesn't contain an int
-        std::cout << value << std::endl;    // Use the int as required
-
-        //]
-    }
-    {
-        //[overview_handling_nulls
-        results result;
-
-        // Create some test data
-        conn.execute(
-            R"%(
-                CREATE TEMPORARY TABLE products (
-                    id VARCHAR(50) PRIMARY KEY,
-                    description VARCHAR(256)
-                )
-            )%",
-            result
-        );
-        conn.execute("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', NULL)", result);
-
-        // Retrieve the data. Note that some fields are NULL
-        conn.execute("SELECT id, description FROM products", result);
-
-        for (row_view r : result.rows())
-        {
-            field_view description_fv = r.at(1);
-            if (description_fv.is_null())
-            {
-                // Handle the NULL value
-                // Note: description_fv.is_string() will return false here; NULL is represented as a separate
-                // type
-                std::cout << "No description for product_id " << r.at(0) << std::endl;
-            }
-            else
-            {
-                // Handle the non-NULL case. Get the underlying value and use it as you want
-                // If there is any schema mismatch (and description was not defined as VARCHAR), this will
-                // throw
-                string_view description = description_fv.as_string();
-
-                // Use description as required
-                std::cout << "product_id " << r.at(0) << ": " << description << std::endl;
-            }
+            std::cout << "Title: " << p.title << "Body: " << p.body << std::endl;
         }
         //]
-
-        conn.execute("DROP TABLE products", result);
     }
+
     {
         //[overview_statements_setup
         results result;
@@ -383,7 +341,7 @@ void main_impl(int argc, char** argv)
 
         //[overview_statements_execute
         // Obtain the product_id from the user. product_id is untrusted input
-        const char* product_id = argv[2];
+        const char* product_id = get_value_from_user();
 
         // Execute the statement
         results result;
@@ -393,6 +351,48 @@ void main_impl(int argc, char** argv)
         //]
 
         conn.execute("DROP TABLE products", result);
+    }
+    {
+        //[overview_errors_sync_errc
+        error_code ec;
+        diagnostics diag;
+        results result;
+
+        // The provided SQL is invalid. The server will return an error.
+        // ec will be set to a non-zero value
+        conn.execute("this is not SQL!", result, ec, diag);
+
+        if (ec)
+        {
+            // The error code will likely report a syntax error
+            std::cout << "Operation failed with error code: " << ec << '\n';
+
+            // diag.server_message() will contain the classic phrase
+            // "You have an error in your SQL syntax; check the manual..."
+            // Bear in mind that server_message() may contain user input, so treat it with caution
+            std::cout << "Server diagnostics: " << diag.server_message() << std::endl;
+        }
+        //]
+    }
+    {
+        //[overview_errors_sync_exc
+        try
+        {
+            // The provided SQL is invalid. This function will throw an exception.
+            results result;
+            conn.execute("this is not SQL!", result);
+        }
+        catch (const error_with_diagnostics& err)
+        {
+            // error_with_diagnostics contains an error_code and a diagnostics object.
+            // It inherits from boost::system::system_error.
+            std::cout << "Operation failed with error code: " << err.code() << '\n'
+                      << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
+        }
+        //]
+    }
+    {
+        run_overview_coro(conn);
     }
     {
         //[overview_multifn
@@ -441,67 +441,216 @@ void main_impl(int argc, char** argv)
 
         conn.execute("DROP TABLE posts", result);
     }
+}
+
+void section_dynamic(tcp_ssl_connection& conn)
+{
     {
-        //[overview_errors_sync_errc
-        error_code ec;
-        diagnostics diag;
+        //[dynamic_views
+        // Populate a results object
         results result;
+        conn.execute("SELECT 'Hello world'", result);
 
-        // The provided SQL is invalid. The server will return an error.
-        // ec will be set to a non-zero value
-        conn.execute("this is not SQL!", result, ec, diag);
+        // results::rows() returns a rows_view. The underlying memory is owned by the results object
+        rows_view all_rows = result.rows();
 
-        if (ec)
-        {
-            // The error code will likely report a syntax error
-            std::cout << "Operation failed with error code: " << ec << '\n';
+        // Indexing a rows_view yields a row_view. The underlying memory is owned by the results object
+        row_view first_row = all_rows.at(0);
 
-            // diag.server_message() will contain the classic phrase
-            // "You have an error in your SQL syntax; check the manual..."
-            // Bear in mind that server_message() may contain user input, so treat it with caution
-            std::cout << "Server diagnostics: " << diag.server_message() << std::endl;
-        }
+        // Indexing a row_view yields a field_view. The underlying memory is owned by the results object
+        field_view first_field = first_row.at(0);  // Contains the string "Hello world"
+
+        //]
+        ASSERT(first_field.as_string() == "Hello world");
+
+        //[dynamic_taking_ownership
+        // You may use all_rows_owning after result has gone out of scope
+        rows all_rows_owning{all_rows};
+
+        // You may use first_row_owning after result has gone out of scope
+        row first_row_owning{first_row};
+
+        // You may use first_field_owning after result has gone out of scope
+        field first_field_owning{first_field};
         //]
     }
     {
-        //[overview_errors_sync_exc
-        try
+        //[dynamic_using_fields
+        results result;
+        conn.execute("SELECT 'abc', 42", result);
+
+        // Obtain a field's underlying value using the is_xxx and get_xxx accessors
+        field_view f = result.rows().at(0).at(0);  // f points to the string "abc"
+        if (f.is_string())
         {
-            // The provided SQL is invalid. This function will throw an exception.
-            results result;
-            conn.execute("this is not SQL!", result);
+            // we know it's a string, unchecked access
+            string_view s = f.get_string();
+            std::cout << s << std::endl;  // Use the string as required
         }
-        catch (const error_with_diagnostics& err)
+        else
         {
-            // error_with_diagnostics contains an error_code and a diagnostics object.
-            // It inherits from boost::system::system_error.
-            std::cout << "Operation failed with error code: " << err.code() << '\n'
-                      << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
+            // Oops, something went wrong - schema msimatch?
         }
+
+        // Alternative: use the as_xxx accessor
+        f = result.rows().at(0).at(1);
+        std::int64_t value = f.as_int64();  // Checked access. Throws if f doesn't contain an int
+        std::cout << value << std::endl;    // Use the int as required
+
         //]
     }
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
     {
-        run_overview_coro(conn);
-    }
-#endif
-
-    // prepared statements
-    {
-        //[prepared_statements_prepare
-        // Table setup
+        //[dynamic_handling_nulls
         results result;
+
+        // Create some test data
         conn.execute(
             R"%(
                 CREATE TEMPORARY TABLE products (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    description VARCHAR(256),
-                    price INT NOT NULL,
-                    show_in_store TINYINT
+                    id VARCHAR(50) PRIMARY KEY,
+                    description VARCHAR(256)
                 )
             )%",
             result
         );
+        conn.execute("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', NULL)", result);
+
+        // Retrieve the data. Note that some fields are NULL
+        conn.execute("SELECT id, description FROM products", result);
+
+        for (row_view r : result.rows())
+        {
+            field_view description_fv = r.at(1);
+            if (description_fv.is_null())
+            {
+                // Handle the NULL value
+                // Note: description_fv.is_string() will return false here; NULL is represented as a separate
+                // type
+                std::cout << "No description for product_id " << r.at(0) << std::endl;
+            }
+            else
+            {
+                // Handle the non-NULL case. Get the underlying value and use it as you want
+                // If there is any schema mismatch (and description was not defined as VARCHAR), this will
+                // throw
+                string_view description = description_fv.as_string();
+
+                // Use description as required
+                std::cout << "product_id " << r.at(0) << ": " << description << std::endl;
+            }
+        }
+        //]
+
+        conn.execute("DROP TABLE products", result);
+    }
+    {
+        //[dynamic_field_accessor_references
+        field f("my_string");            // constructs a field that owns the string "my_string"
+        std::string& s = f.as_string();  // s points into f's storage
+        s.push_back('2');                // f now holds "my_string2"
+
+        //]
+
+        ASSERT(s == "my_string2");
+    }
+    {
+        //[dynamic_field_assignment
+        field f("my_string");  // constructs a field that owns the string "my_string"
+        f = 42;                // destroys "my_string" and stores the value 42 as an int64
+
+        //]
+
+        ASSERT(f.as_int64() == 42);
+    }
+}
+
+void section_static(tcp_ssl_connection& conn)
+{
+    {
+        //[static_setup
+        const char* table_definition = R"%(
+            CREATE TEMPORARY TABLE posts (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                title VARCHAR (256) DEFAULT "",
+                body TEXT DEFAULT ""
+            )
+        )%";
+        const char* query = "SELECT id, title, body FROM posts";
+        //]
+
+        results r;
+        conn.execute(table_definition, r);
+
+        //[static_query
+        static_results<post> result;
+        conn.execute(query, result);
+
+        for (const post& p : result.rows())
+        {
+            // Process the post as required
+            std::cout << "Title: " << p.title << "\n" << p.body << "\n";
+        }
+        //]
+
+        conn.execute("DROP TABLE posts", r);
+    }
+    {
+        //[static_field_order
+        const char* sql = R"%(
+            SELECT
+                AVG(salary) AS average,
+                MAX(salary) AS max_value,
+                company_id AS company
+            FROM employees
+            GROUP BY company_id
+        )%";
+
+        static_results<statistics> result;
+        conn.execute(sql, result);
+        //]
+    }
+    {
+        //[static_tuples
+        static_results<std::tuple<std::int64_t>> result;
+        conn.execute("SELECT COUNT(*) FROM posts", result);
+        std::cout << "Number of posts: " << std::get<0>(result.rows()[0]) << "\n";
+        //]
+    }
+    {
+        //[static_nulls_table
+        const char* table_definition = R"%(
+            CREATE TEMPORARY TABLE posts_v2 (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                title VARCHAR (256) DEFAULT "",
+                body TEXT DEFAULT NULL
+            )
+        )%";
+        //]
+
+        // Verify that post_v2's definition is correct
+        results r;
+        conn.execute(table_definition, r);
+        static_results<post_v2> result;
+        conn.execute("SELECT * FROM posts_v2", result);
+        conn.execute("DROP TABLE posts_v2", r);
+    }
+}
+
+void section_prepared_statements(tcp_ssl_connection& conn)
+{
+    {
+        //[prepared_statements_prepare
+        // Table setup
+        const char* table_definition = R"%(
+            CREATE TEMPORARY TABLE products (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                description VARCHAR(256),
+                price INT NOT NULL,
+                show_in_store TINYINT
+            )
+        )%";
+        results result;
+        conn.execute(table_definition, result);
 
         // Prepare a statement to insert into this table
         statement stmt = conn.prepare_statement(
@@ -509,34 +658,32 @@ void main_impl(int argc, char** argv)
         );
         //]
 
-        // Run the two functions, even if this is not shown in discussion
+        // Run the functions to verify that evth works
         insert_product(conn, stmt, string_view("This is a product"), 2000, true);
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-        insert_product(conn, stmt, std::optional<string_view>(), 2000, true);
-#endif
+        run_insert_product_optional(conn, stmt);
         exec_statement(conn, stmt, {field_view("abc"), field_view(2000), field_view(1)});
         conn.execute("DROP TABLE products", result);
     }
-
-    // multi-resultset
     {
-        results result;
-        conn.execute("DROP PROCEDURE IF EXISTS get_employees", result);
+        //[prepared_statements_casting_table
+        const char* table_definition = "CREATE TEMPORARY TABLE my_table(my_field TINYINT)";
+        //]
 
-        //[multi_resultset_procedure
-        conn.execute(
-            R"(
-                CREATE PROCEDURE get_employees(pin_company_id IN CHAR(10))
-                BEGIN
-                    START TRANSACTION READ ONLY;
-                    SELECT name, tax_id FROM company WHERE id = pin_company_id; 
-                    SELECT first_name, last_name FROM employee WHERE company_id = pin_employee_id;
-                END
-            )",
-            result
-        );
+        results r;
+        conn.execute(table_definition, r);
+
+        //[prepared_statements_casting_execute
+        int value = get_int_value_from_user();
+        auto stmt = conn.prepare_statement("INSERT INTO my_table VALUES (?)");
+
+        results result;
+        conn.execute(stmt.bind(value), result);
         //]
     }
+}
+
+void section_multi_resultset(tcp_ssl_connection& conn)
+{
     {
         //[multi_resultset_call_dynamic
 
@@ -567,31 +714,31 @@ void main_impl(int argc, char** argv)
         boost::ignore_unused(matched_employees);
     }
     {
-        results result;
-        conn.execute("DROP PROCEDURE IF EXISTS create_employee", result);
+        //[multi_resultset_call_static
+        // We must list all the resultset types the operation returns as template arguments
+        static_results<company, employee, empty> result;
+        conn.execute("CALL get_employees('HGS')", result);
 
+        // We can use rows<0>() to access the rows for the first resultset
+        if (result.rows<0>().empty())
+        {
+            std::cout << "Company not found" << std::endl;
+        }
+        else
+        {
+            const company& comp = result.rows<0>()[0];
+            std::cout << "Company name: " << comp.name << ", tax_id: " << comp.tax_id << std::endl;
+        }
+
+        // rows<1>() will return the rows for the second resultset
+        for (const employee& emp : result.rows<1>())
+        {
+            std::cout << "Employee " << emp.first_name << " " << emp.last_name << std::endl;
+        }
+        //]
+    }
+    {
         //[multi_resultset_out_params
-        // Setup the stored procedure
-        conn.execute(
-            R"(
-                CREATE PROCEDURE create_employee(
-                    IN  pin_company_id CHAR(10),
-                    IN  pin_first_name VARCHAR(100),
-                    IN  pin_last_name VARCHAR(100),
-                    OUT pout_employee_id INT
-                )
-                BEGIN
-                    START TRANSACTION;
-                    INSERT INTO employee (company_id, first_name, last_name)
-                        VALUES (pin_company_id, pin_first_name, pin_last_name);
-                    SET pout_employee_id = LAST_INSERT_ID();
-                    INSERT INTO audit_log (msg) VALUES ('Created new employee...');
-                    COMMIT;
-                END
-            )",
-            result
-        );
-
         // To retrieve output parameters, you must use prepared statements. Text queries don't support this
         // We specify placeholders for both IN and OUT parameters
         statement stmt = conn.prepare_statement("CALL create_employee(?, ?, ?, ?)");
@@ -599,6 +746,7 @@ void main_impl(int argc, char** argv)
         // When executing the statement, we provide an actual value for the IN parameters,
         // and a dummy value for the OUT parameter. This value will be ignored, but it's required by the
         // protocol
+        results result;
         conn.execute(stmt.bind("HGS", "John", "Doe", nullptr), result);
 
         // Retrieve output parameters. This row_view has an element per
@@ -609,30 +757,37 @@ void main_impl(int argc, char** argv)
 
         boost::ignore_unused(new_employee_id);
     }
-    {
-        boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
-        auto endpoint = *resolver.resolve(argv[3], boost::mysql::default_port_string).begin();
+}
 
-        //[multi_resultset_multi_queries
-        // The username and password to use
-        boost::mysql::handshake_params params(
-            argv[1],                // username
-            argv[2],                // password
-            "boost_mysql_examples"  // database
-        );
+void section_multi_resultset_multi_queries(char** argv)
+{
+    boost::asio::io_context ctx;
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
+    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
 
-        // Allows running multiple semicolon-separated in a single call.
-        // We must set this before calling connect
-        params.set_multi_queries(true);
+    auto endpoint = *resolver.resolve(argv[3], boost::mysql::default_port_string).begin();
 
-        // Connect to the server specifying that we want support for multi-queries
-        conn.connect(endpoint, params);
+    //[multi_resultset_multi_queries
+    // The username and password to use
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database
+    );
 
-        // We can now use the multi-query feature.
-        // This will result in three resultsets, one per query.
-        results result;
-        conn.execute(
-            R"(
+    // Allows running multiple semicolon-separated in a single call.
+    // We must set this before calling connect
+    params.set_multi_queries(true);
+
+    // Connect to the server specifying that we want support for multi-queries
+    conn.connect(endpoint, params);
+
+    // We can now use the multi-query feature.
+    // This will result in three resultsets, one per query.
+    results result;
+    conn.execute(
+        R"(
                 CREATE TEMPORARY TABLE posts (
                     id INT PRIMARY KEY AUTO_INCREMENT,
                     title VARCHAR (256),
@@ -641,34 +796,35 @@ void main_impl(int argc, char** argv)
                 INSERT INTO posts (title, body) VALUES ('Breaking news', 'Something happened!');
                 SELECT COUNT(*) FROM posts;
             )",
-            result
-        );
-        //]
+        result
+    );
+    //]
 
-        //[multi_resultset_results_as_collection
-        // result is actually a random-access collection of resultsets.
-        // The INSERT is the 2nd query, so we can access its resultset like this:
-        boost::mysql::resultset_view insert_result = result.at(1);
+    //[multi_resultset_results_as_collection
+    // result is actually a random-access collection of resultsets.
+    // The INSERT is the 2nd query, so we can access its resultset like this:
+    boost::mysql::resultset_view insert_result = result.at(1);
 
-        // A resultset has metadata, rows, and additional data, like the last insert ID:
-        std::int64_t post_id = insert_result.last_insert_id();
+    // A resultset has metadata, rows, and additional data, like the last insert ID:
+    std::int64_t post_id = insert_result.last_insert_id();
 
-        // The SELECT result is the third one, so we can access it like this:
-        boost::mysql::resultset_view select_result = result.at(2);
+    // The SELECT result is the third one, so we can access it like this:
+    boost::mysql::resultset_view select_result = result.at(2);
 
-        // select_result is a view that points into result.
-        // We can take ownership of it using the resultse class:
-        boost::mysql::resultset owning_select_result(select_result);  // valid even after result is destroyed
+    // select_result is a view that points into result.
+    // We can take ownership of it using the resultse class:
+    boost::mysql::resultset owning_select_result(select_result);  // valid even after result is destroyed
 
-        // We can access rows of resultset objects as usual:
-        std::int64_t num_posts = owning_select_result.rows().at(0).at(0).as_int64();
-        //]
+    // We can access rows of resultset objects as usual:
+    std::int64_t num_posts = owning_select_result.rows().at(0).at(0).as_int64();
+    //]
 
-        boost::ignore_unused(post_id);
-        boost::ignore_unused(num_posts);
-    }
+    boost::ignore_unused(post_id);
+    boost::ignore_unused(num_posts);
+}
 
-    // multi-function
+void section_multi_function(tcp_ssl_connection& conn)
+{
     {
         //[multi_function_setup
         const char* table_definition = R"%(
@@ -746,7 +902,6 @@ void main_impl(int argc, char** argv)
         results result;
         conn.execute("DROP TABLE posts", result);
     }
-
     {
         //[multi_function_stored_procedure_dynamic
         // Get the company ID to retrieve, possibly from the user
@@ -754,7 +909,7 @@ void main_impl(int argc, char** argv)
 
         // Call the procedure
         execution_state st;
-        statement stmt = conn.prepare_statement("CALL get_company(?)");
+        statement stmt = conn.prepare_statement("CALL get_employees(?)");
         conn.start_execution(stmt.bind(company_id), st);
 
         // The above code will generate 3 resultsets
@@ -801,7 +956,7 @@ void main_impl(int argc, char** argv)
         static_execution_state<company, employee, empty> st;
 
         // Call the procedure
-        statement stmt = conn.prepare_statement("CALL get_company(?)");
+        statement stmt = conn.prepare_statement("CALL get_employees(?)");
         conn.start_execution(stmt.bind(company_id), st);
 
         // Read the 1st one, which contains the matched companies
@@ -837,29 +992,40 @@ void main_impl(int argc, char** argv)
         assert(st.complete());
         //]
     }
+}
 
-    // fields
+void section_metadata(tcp_ssl_connection& conn)
+{
+    //[metadata
+    // By default, a connection has metadata_mode::minimal
+    results result;
+    conn.execute("SELECT 1 AS my_field", result);
+    string_view colname = result.meta()[0].column_name();
+
+    // colname will be empty because conn.meta_mode() == metadata_mode::minimal
+    ASSERT(colname == "");
+
+    // If you are using metadata names, set the connection's metadata_mode
+    conn.set_meta_mode(metadata_mode::full);
+    conn.execute("SELECT 1 AS my_field", result);
+    colname = result.meta()[0].column_name();
+    ASSERT(colname == "my_field");
+    //]
+}
+
+void section_charsets(tcp_ssl_connection& conn)
+{
+    //[charsets_set_names
+    results result;
+    conn.execute("SET NAMES utf8mb4", result);
+    // Further operations can assume utf8mb4 as conn's charset
+    //]
+}
+
+void section_time_types(tcp_ssl_connection& conn)
+{
     {
-        //[field_accessor_references
-        field f("my_string");            // constructs a field that owns the string "my_string"
-        std::string& s = f.as_string();  // s points into f's storage
-        s.push_back('2');                // f now holds "my_string2"
-
-        //]
-
-        ASSERT(s == "my_string2");
-    }
-    {
-        //[field_assignment
-        field f("my_string");  // constructs a field that owns the string "my_string"
-        f = 42;                // destroys "my_string" and stores the value 42 as an int64
-
-        //]
-
-        ASSERT(f.as_int64() == 42);
-    }
-    {
-        //[field_date_as_time_point
+        //[time_types_date_as_time_point
         date d(2020, 2, 19);                      // d holds "2020-02-19"
         date::time_point tp = d.as_time_point();  // now use tp normally
 
@@ -867,7 +1033,7 @@ void main_impl(int argc, char** argv)
         ASSERT(date(tp) == d);
     }
     {
-        //[field_date_valid
+        //[time_types_date_valid
         date d1(2020, 2, 19);  // regular date
         bool v1 = d1.valid();  // true
         date d2(2020, 0, 19);  // invalid date
@@ -878,7 +1044,7 @@ void main_impl(int argc, char** argv)
         ASSERT(!v2);
     }
     {
-        //[field_date_get_time_point
+        //[time_types_date_get_time_point
         date d = /* obtain a date somehow */ date(2020, 2, 29);
         if (d.valid())
         {
@@ -898,7 +1064,7 @@ void main_impl(int argc, char** argv)
         //]
     }
     {
-        //[field_datetime
+        //[time_types_datetime
         datetime dt1(2020, 10, 11, 10, 20, 59, 123456);  // regular datetime 2020-10-11 10:20:59.123456
         bool v1 = dt1.valid();                           // true
         datetime dt2(2020, 0, 11, 10, 20, 59);           // invalid datetime 2020-00-10 10:20:59.000000
@@ -912,7 +1078,7 @@ void main_impl(int argc, char** argv)
         ASSERT(datetime(tp) == dt1);
     }
     {
-        //[field_timestamp_setup
+        //[time_types_timestamp_setup
         results result;
         conn.execute(
             R"%(
@@ -926,19 +1092,19 @@ void main_impl(int argc, char** argv)
         );
         //]
 
-        //[field_timestamp_stmts
+        //[time_types_timestamp_stmts
         auto insert_stmt = conn.prepare_statement("INSERT INTO events (t, contents) VALUES (?, ?)");
         auto select_stmt = conn.prepare_statement("SELECT id, t, contents FROM events WHERE t > ?");
         //]
 
-        //[fields_timestamp_set_time_zone
+        //[time_types_timestamp_set_time_zone
         // This change has session scope. All operations after this query
         // will now use UTC for TIMESTAMPs. Other sessions will not see the change.
         // If you need to reconnect the connection, you need to run this again.
         conn.execute("SET @time_zone = 'UTC'", result);
         //]
 
-        //[fields_timestamp_insert
+        //[time_types_timestamp_insert
         // Get the timestamp of the event. This may have been provided by an external system
         // For the sake of example, we will use the current timestamp
         datetime event_timestamp = datetime::now();
@@ -947,7 +1113,7 @@ void main_impl(int argc, char** argv)
         conn.execute(insert_stmt.bind(event_timestamp, "Something happened"), result);
         //]
 
-        //[fields_timestamp_select
+        //[time_types_timestamp_select
         // Get the timestamp threshold from the user. We will use a constant for the sake of example
         datetime threshold = datetime(2022, 1, 1);  // get events that happened after 2022-01-01
 
@@ -956,32 +1122,59 @@ void main_impl(int argc, char** argv)
         conn.execute(select_stmt.bind(threshold), result);
         //]
     }
-    {
-        //[metadata
-        // By default, a connection has metadata_mode::minimal
-        results result;
-        conn.execute("SELECT 1 AS my_field", result);
-        string_view colname = result.meta()[0].column_name();
+}
 
-        // colname will be empty because conn.meta_mode() == metadata_mode::minimal
-        ASSERT(colname == "");
-
-        // If you are using metadata names, set the connection's metadata_mode
-        conn.set_meta_mode(metadata_mode::full);
-        conn.execute("SELECT 1 AS my_field", result);
-        colname = result.meta()[0].column_name();
-        ASSERT(colname == "my_field");
-        //]
-    }
+void main_impl(int argc, char** argv)
+{
+    if (argc != 4)
     {
-        //[charsets_set_names
-        results result;
-        conn.execute("SET NAMES utf8mb4", result);
-        // Further operations can assume utf8mb4 as conn's charset
-        //]
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
+        exit(1);
     }
 
-    // Close
+    //
+    // setup and connect - this is included in overview, too
+    //
+
+    //[overview_connection
+    // The execution context, required to run I/O operations.
+    boost::asio::io_context ctx;
+
+    // The SSL context, required to establish TLS connections.
+    // The default SSL options are good enough for us at this point.
+    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
+
+    // Represents a connection to the MySQL server.
+    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
+    //]
+
+    //[overview_connect
+    // Resolve the hostname to get a collection of endpoints
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
+    auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
+
+    // The username and password to use
+    boost::mysql::handshake_params params(
+        argv[1],                // username
+        argv[2],                // password
+        "boost_mysql_examples"  // database
+    );
+
+    // Connect to the server using the first endpoint returned by the resolver
+    conn.connect(*endpoints.begin(), params);
+    //]
+
+    section_overview(conn);
+    section_dynamic(conn);
+    section_static(conn);
+    section_prepared_statements(conn);
+    section_multi_resultset(conn);
+    section_multi_resultset_multi_queries(argv);
+    section_multi_function(conn);
+    section_metadata(conn);
+    section_charsets(conn);
+    section_time_types(conn);
+
     conn.close();
 }
 

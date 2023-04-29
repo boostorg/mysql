@@ -85,16 +85,19 @@
 [def __GEOMETRY__ [mysqllink spatial-type-overview.html `GEOMETRY`]]
 [def __USE__ [mysqllink use.html `USE`]]
 
+[/ Stored procedures ]
+[include helpers/stored_procedures.qbk]
+
 
 [import ../../example/snippets.cpp]
 
 [include 01_intro.qbk]
 [include 02_tutorial.qbk]
 [include 03_overview.qbk]
-[include 04_queries.qbk]
-[include 05_prepared_statements.qbk]
-[include 06_dynamic_interface.qbk]
-[include 07_static_interface.qbk]
+[include 04_dynamic_interface.qbk]
+[include 05_static_interface.qbk]
+[include 06_queries.qbk]
+[include 07_prepared_statements.qbk]
 [include 08_multi_resultset.qbk]
 [include 09_multi_function.qbk]
 [include 10_metadata.qbk]

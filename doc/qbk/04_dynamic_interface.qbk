@@ -43,7 +43,7 @@ The following classes are part of the dynamic interface:
 [refmem results rows] returns a [reflink rows_view] object. The memory for the rows is owned by the
 `results` object. Indexing the returned view also returns view objects:
 
-[overview_views]
+[dynamic_views]
 
 Views behave similarly to `std::string_view`. You must make sure that you don't use a view after the
 storage it points to has gone out of scope. In this case, you must not use any of the views after the
@@ -51,7 +51,7 @@ storage it points to has gone out of scope. In this case, you must not use any o
 
 As it happens with `std::string_view`, you can take ownership of a view using its owning counterpart:
 
-[overview_taking_ownership]
+[dynamic_taking_ownership]
 
 [heading Using fields]
 
@@ -69,13 +69,13 @@ you may find in a MySQL table. Once you obtain a field, you can access its conte
 
 For example:
 
-[overview_using_fields]
+[dynamic_using_fields]
 
 `NULL` values are represented as field objects having `kind() == field_kind::null`.
 You can check whether a value is `NULL` or not using [refmemunq field_view is_null].
 This is how `NULL`s are typically handled:
 
-[overview_handling_nulls]
+[dynamic_handling_nulls]
 
 [heading MySQL to C++ type mappings]
 
@@ -200,12 +200,12 @@ reference types [reflink string_view] and [reflink blob_view].
 
 `field` accessors return references, which allow you to mutate the underlying object:
 
-[field_accessor_references]
+[dynamic_field_accessor_references]
 
 You can also mutate a `field` using the assignment operator. This allows you to also
 change the underlying type of a `field`:
 
-[field_assignment]
+[dynamic_field_assignment]
 
 [heading MySQL to C++ type mapping reference]
 
