@@ -39,7 +39,27 @@ using std::tuple;
 
 namespace {
 
-struct test_char_traits : std::char_traits<char>
+template <class T>
+struct custom_allocator
+{
+    using value_type = T;
+    custom_allocator() noexcept;
+    template <class U>
+    custom_allocator(const custom_allocator<U>&) noexcept;
+    T* allocate(std::size_t n);
+    void deallocate(T* p, std::size_t n);
+};
+
+template <class T, class U>
+constexpr bool operator==(const custom_allocator<T>&, const custom_allocator<U>&) noexcept;
+
+template <class T, class U>
+constexpr bool operator!=(const custom_allocator<T>&, const custom_allocator<U>&) noexcept;
+
+using custom_string = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
+using custom_blob = std::vector<unsigned char, custom_allocator<unsigned char>>;
+
+struct unrelated
 {
 };
 
@@ -83,7 +103,6 @@ static_assert(is_writable_field<const int&>::value, "");
 static_assert(is_writable_field<int&&>::value, "");
 
 // string types accepted
-using custom_string = std::basic_string<char, test_char_traits, std::allocator<unsigned char>>;
 static_assert(is_writable_field<std::string>::value, "");
 static_assert(is_writable_field<std::string&>::value, "");
 static_assert(is_writable_field<const std::string&>::value, "");
@@ -97,18 +116,24 @@ static_assert(is_writable_field<blob>::value, "");
 static_assert(is_writable_field<blob&>::value, "");
 static_assert(is_writable_field<const blob&>::value, "");
 static_assert(is_writable_field<blob_view>::value, "");
-// TODO: blob with custom allocator
+static_assert(is_writable_field<custom_blob>::value, "");
 
 // optional types accepted
 static_assert(is_writable_field<std::optional<int>>::value, "");
 static_assert(is_writable_field<std::optional<std::string>>::value, "");
 static_assert(is_writable_field<boost::optional<string_view>>::value, "");
 static_assert(is_writable_field<boost::optional<blob_view>>::value, "");
-static_assert(!is_writable_field<boost::optional<void*>>::value, "");  // optional of other stuff not accepted
+
+// optional of other stuff not accepted
+static_assert(!is_writable_field<boost::optional<void*>>::value, "");
+static_assert(!is_writable_field<boost::optional<unrelated>>::value, "");
 
 // other stuff not accepted
+static_assert(!is_writable_field<void*>::value, "");
 static_assert(!is_writable_field<field*>::value, "");
 static_assert(!is_writable_field<field_view*>::value, "");
+static_assert(!is_writable_field<unrelated>::value, "");
+static_assert(!is_writable_field<unrelated*>::value, "");
 
 //
 // writable_field_tuple
@@ -122,7 +147,7 @@ static_assert(is_writable_field_tuple<tuple<>&&>::value, "");
 // Tuples of field likes accepted
 static_assert(is_writable_field_tuple<tuple<int, std::string&, const char*>>::value, "");
 static_assert(is_writable_field_tuple<tuple<field_view, string_view, int&&>>::value, "");
-static_assert(is_writable_field_tuple<tuple<boost::optional<int>, string_view, custom_string&&>>::value, "");
+static_assert(is_writable_field_tuple<tuple<boost::optional<int>, string_view, blob&&>>::value, "");
 
 // References accepted
 static_assert(is_writable_field_tuple<tuple<int, float&, std::string&&>&>::value, "");

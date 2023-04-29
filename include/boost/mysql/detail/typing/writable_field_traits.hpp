@@ -22,54 +22,43 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// A type is a writable field if to_field(const T&) yields a field_view
-
-// Types accepted by field_view's ctor.
-template <class T>
-typename std::enable_if<std::is_constructible<field_view, const T&>::value, field_view>::type to_field(
-    const T& value
-) noexcept
+template <class T, class En1 = void, class En2 = void>
+struct writable_field_traits
 {
-    return field_view(value);
-}
+    static constexpr bool is_supported = false;
+};
 
-inline field_view to_field(bool value) noexcept { return field_view(value ? 1 : 0); }
-
-template <class Traits, class Allocator>
-field_view to_field(const std::basic_string<char, Traits, Allocator>& value) noexcept
+template <>
+struct writable_field_traits<bool, void, void>
 {
-    return field_view(string_view(value));
-}
-
-template <class Allocator>
-field_view to_field(const std::vector<unsigned char, Allocator>& value) noexcept
-{
-    return field_view(blob_view(value));
-}
-
-// Optional types
-template <class T>
-typename std::enable_if<
-    is_optional<T>::value &&
-        std::is_same<decltype(to_field(std::declval<typename T::value_type>())), field_view>::value,
-    field_view>::type
-to_field(const T& value) noexcept
-{
-    if (value.has_value())
-        return to_field(value.value());
-    else
-        return field_view();
-}
-
-template <class T, class = void>
-struct is_writable_field : std::false_type
-{
+    static constexpr bool is_supported = true;
+    static field_view to_field(bool value) noexcept { return field_view(value ? 1 : 0); }
 };
 
 template <class T>
-struct is_writable_field<T, void_t<decltype(::boost::mysql::detail::to_field(std::declval<const T&>()))>>
-    : std::true_type
+struct writable_field_traits<
+    T,
+    typename std::enable_if<std::is_constructible<field_view, const T&>::value>::type,
+    void>
 {
+    static constexpr bool is_supported = true;
+    static field_view to_field(const T& value) noexcept { return field_view(value); }
+};
+
+template <class T>
+struct writable_field_traits<T, void, typename std::enable_if<is_optional<T>::value>::type>
+{
+    static constexpr bool is_supported = writable_field_traits<typename T::value_type>::is_supported;
+    static field_view to_field(const T& value) noexcept
+    {
+        return value.has_value() ? to_field(value.value()) : field_view();
+    }
+};
+
+template <class T>
+struct is_writable_field
+{
+    static constexpr bool value = writable_field_traits<T>::is_supported;
 };
 
 // field_view_forward_iterator
