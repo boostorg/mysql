@@ -97,6 +97,9 @@ struct boost::mysql::detail::metadata_access
     {
         return metadata(msg, copy_strings);
     }
+
+    // This is used by the tests
+    static void set_type(metadata& obj, column_type v) noexcept { obj.type_ = v; }
 };
 
 #endif
