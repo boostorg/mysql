@@ -16,11 +16,13 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/typing/meta_check_context.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/impl/diagnostics.hpp>
 
 #include <boost/describe/members.hpp>
 #include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/detail/mp_list.hpp>
 #include <boost/mp11/utility.hpp>
 
 #include <cstddef>
@@ -32,6 +34,21 @@ namespace mysql {
 namespace detail {
 
 // TODO: this requires C++14, assert it somehow
+
+// Helpers to check that all the fields satisfy ReadableField
+// and produce meaningful error messages, with the offending field type, at least
+template <class TypeList>
+static constexpr bool check_readable_field() noexcept
+{
+    mp11::mp_for_each<TypeList>([](auto type_identity) {
+        using T = typename decltype(type_identity)::type;
+        static_assert(
+            is_readable_field<T>::value,
+            "You're trying to use an unsupported field type in a row type. Review your row type definitions."
+        );
+    });
+    return true;
+}
 
 // Workaround std::array::data not being constexpr in C++14
 template <class T, std::size_t N>
@@ -53,10 +70,10 @@ public:
     {
     }
 
-    template <BOOST_MYSQL_READABLE_FIELD FieldType>
-    void operator()(FieldType& output)
+    template <class ReadableField>
+    void operator()(ReadableField& output)
     {
-        auto ec = field_traits<FieldType>::parse(fields_[*pos_map_++], output);
+        auto ec = readable_field_traits<ReadableField>::parse(fields_[*pos_map_++], output);
         if (!ec_)
             ec_ = ec;
     }
@@ -112,15 +129,9 @@ class row_traits<RowType, true>
         using type = typename std::remove_reference<helper>::type;
     };
 
-    template <class D>
-    struct is_field_type_helper : is_field_type<typename descriptor_to_type<D>::type>
-    {
-    };
+    using member_types = mp11::mp_transform<descriptor_to_type, members>;
 
-    static_assert(
-        boost::mp11::mp_all_of<members, is_field_type_helper>::value,
-        "Some types in your struct are not valid field types"
-    );
+    static_assert(check_readable_field<member_types>(), "");
 
 public:
     static constexpr std::size_t size() noexcept { return boost::mp11::mp_size<members>::value; }
@@ -133,9 +144,8 @@ public:
 
     static void meta_check(meta_check_context& ctx)
     {
-        boost::mp11::mp_for_each<members>([&](auto D) {
-            using T = typename descriptor_to_type<decltype(D)>::type;
-            meta_check_impl<T>(ctx);
+        boost::mp11::mp_for_each<member_types>([&](auto type_identity) {
+            meta_check_field<typename decltype(type_identity)::type>(ctx);
         });
     }
 
@@ -146,25 +156,13 @@ public:
 };
 
 // Tuples
-struct tuple_meta_check_fn
-{
-    meta_check_context& ctx;
-
-    template <class FieldType>
-    void operator()(boost::mp11::mp_identity<FieldType>) const
-    {
-        meta_check_impl<FieldType>(ctx);
-    }
-};
-
 template <class... FieldType>
 class row_traits<std::tuple<FieldType...>, false>
 {
     using tuple_type = std::tuple<FieldType...>;
-    static_assert(
-        boost::mp11::mp_all_of<tuple_type, is_field_type>::value,
-        "Some types in your std::tuple<...> are not valid field types"
-    );
+    using field_types = boost::mp11::mp_list<boost::mp11::mp_identity<FieldType>...>;
+
+    static_assert(check_readable_field<field_types>(), "");
 
 public:
     static constexpr std::size_t size() noexcept { return std::tuple_size<tuple_type>::value; }
@@ -172,8 +170,9 @@ public:
 
     static void meta_check(meta_check_context& ctx)
     {
-        using types = boost::mp11::mp_list<boost::mp11::mp_identity<FieldType>...>;
-        boost::mp11::mp_for_each<types>(tuple_meta_check_fn{ctx});
+        boost::mp11::mp_for_each<field_types>([&ctx](auto type_identity) {
+            meta_check_field<typename decltype(type_identity)::type>(ctx);
+        });
     }
 
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
@@ -218,10 +217,6 @@ error_code meta_check(
 )
 {
     meta_check_context ctx(meta.data(), field_names, pos_map);
-    if (meta.size() < get_row_size<RowType>())
-    {
-        return client_errc::not_enough_columns;
-    }
     row_traits<RowType>::meta_check(ctx);
     return ctx.check_errors(diag);
 }

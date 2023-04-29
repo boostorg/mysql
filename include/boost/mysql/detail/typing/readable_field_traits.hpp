@@ -21,134 +21,15 @@
 
 #include <boost/mysql/detail/auxiliar/is_optional.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/typing/meta_check_context.hpp>
 
 #include <cstdint>
 #include <limits>
-#include <memory>
-#include <sstream>
 #include <string>
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// Helpers
-constexpr auto pos_map_field_absent = static_cast<std::size_t>(-1);
-
-class meta_check_context
-{
-    std::unique_ptr<std::ostringstream> errors_;
-    std::size_t current_index_{};
-    const metadata* meta_{};
-    const string_view* field_names_{};
-    const std::size_t* pos_map_{};
-    const char* cpp_type_name_{};
-    bool nullability_checked_{};
-
-    std::ostringstream& error_stream()
-    {
-        if (!errors_)
-            errors_.reset(new std::ostringstream);
-        return *errors_;
-    }
-
-    static const char* column_type_to_str(const metadata& meta) noexcept
-    {
-        switch (meta.type())
-        {
-        case column_type::tinyint: return meta.is_unsigned() ? "TINYINT UNSIGNED" : "TINYINT";
-        case column_type::smallint: return meta.is_unsigned() ? "SMALLINT UNSIGNED" : "SMALLINT";
-        case column_type::mediumint: return meta.is_unsigned() ? "MEDIUMINT UNSIGNED" : "MEDIUMINT";
-        case column_type::int_: return meta.is_unsigned() ? "INT UNSIGNED" : "INT";
-        case column_type::bigint: return meta.is_unsigned() ? "BIGINT UNSIGNED" : "BIGINT";
-        case column_type::float_: return "FLOAT";
-        case column_type::double_: return "DOUBLE";
-        case column_type::decimal: return "DECIMAL";
-        case column_type::bit: return "BIT";
-        case column_type::year: return "YEAR";
-        case column_type::time: return "TIME";
-        case column_type::date: return "DATE";
-        case column_type::datetime: return "DATETIME";
-        case column_type::timestamp: return "TIMESTAMP";
-        case column_type::char_: return "CHAR";
-        case column_type::varchar: return "VARCHAR";
-        case column_type::binary: return "BINARY";
-        case column_type::varbinary: return "VARBINARY";
-        case column_type::text: return "TEXT";
-        case column_type::blob: return "BLOB";
-        case column_type::enum_: return "ENUM";
-        case column_type::set: return "SET";
-        case column_type::json: return "JSON";
-        case column_type::geometry: return "GEOMETRY";
-        default: return "<unknown column type>";
-        }
-    }
-
-public:
-    meta_check_context(
-        const metadata* meta,
-        const string_view* field_names,
-        const std::size_t* pos_map
-    ) noexcept
-        : meta_(meta), field_names_(field_names), pos_map_(pos_map)
-    {
-    }
-    const metadata& current_meta() const noexcept { return meta_[pos_map_[current_index_]]; }
-    void set_cpp_type_name(const char* v) noexcept { cpp_type_name_ = v; }
-    void advance() noexcept { ++current_index_; }
-    std::size_t current_index() const noexcept { return current_index_; }
-    void set_nullability_checked(bool v) noexcept { nullability_checked_ = v; }
-    bool nullability_checked() const noexcept { return nullability_checked_; }
-
-    bool check_field_present()
-    {
-        if (pos_map_[current_index_] == pos_map_field_absent)
-        {
-            assert(field_names_);
-            error_stream() << "Field '" << field_names_[current_index_]
-                           << "' is not present in the data returned by the server\n";
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    }
-
-    void add_type_mismatch_error(const char* reason)
-    {
-        auto& stream = error_stream();
-        stream << "Incompatible types for field ";
-        if (field_names_)
-        {
-            stream << "'" << field_names_[current_index_] << "'";
-        }
-        else
-        {
-            stream << "in position " << current_index_;
-        }
-        stream << ": C++ type " << cpp_type_name_ << " is not compatible with DB type "
-               << column_type_to_str(current_meta()) << ": " << reason << "\n";
-    }
-
-    bool has_errors() const noexcept { return errors_ != nullptr; }
-
-    std::string errors() const
-    {
-        assert(errors_);
-        return errors_->str();
-    }
-
-    error_code check_errors(diagnostics& diag) const
-    {
-        if (has_errors())
-        {
-            diagnostics_access::assign(diag, errors(), false);
-            return client_errc::type_mismatch;
-        }
-        return error_code();
-    }
-};
 
 template <class SignedInt, class UnsignedInt>
 error_code parse_signed_int(field_view input, SignedInt& output)
@@ -190,17 +71,6 @@ error_code parse_unsigned_int(field_view input, UnsignedInt& output)
     return error_code();
 }
 
-inline void add_on_error(meta_check_context& ctx, bool ok)
-{
-    if (!ok)
-        ctx.add_type_mismatch_error("types are incompatible");
-}
-
-struct valid_field_traits
-{
-    static constexpr bool is_supported = true;
-};
-
 // Traits
 template <typename T, bool is_optional_flag = is_optional<T>::value>
 struct readable_field_traits
@@ -209,18 +79,15 @@ struct readable_field_traits
 };
 
 template <>
-struct readable_field_traits<std::int8_t, false> : valid_field_traits
+struct readable_field_traits<std::int8_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int8_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
-        case column_type::tinyint: return meta.is_unsigned();
+        case column_type::tinyint: return ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -231,18 +98,15 @@ struct readable_field_traits<std::int8_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::uint8_t, false> : valid_field_traits
+struct readable_field_traits<std::uint8_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint8_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
-        case column_type::tinyint: return meta.is_unsigned();
+        case column_type::tinyint: return ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -253,16 +117,13 @@ struct readable_field_traits<std::uint8_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<bool, false> : valid_field_traits
+struct readable_field_traits<bool, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "bool";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        return meta.type() == column_type::tinyint && !meta.is_unsigned();
+        return ctx.current_meta().type() == column_type::tinyint && !ctx.current_meta().is_unsigned();
     }
     static error_code parse(field_view input, bool& output)
     {
@@ -273,20 +134,17 @@ struct readable_field_traits<bool, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::int16_t, false> : valid_field_traits
+struct readable_field_traits<std::int16_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int16_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::tinyint: return true;
         case column_type::smallint:
-        case column_type::year: return !meta.is_unsigned();
+        case column_type::year: return !ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -297,20 +155,17 @@ struct readable_field_traits<std::int16_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::uint16_t, false> : valid_field_traits
+struct readable_field_traits<std::uint16_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint16_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::tinyint:
         case column_type::smallint:
-        case column_type::year: return meta.is_unsigned();
+        case column_type::year: return ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -321,22 +176,19 @@ struct readable_field_traits<std::uint16_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::int32_t, false> : valid_field_traits
+struct readable_field_traits<std::int32_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int32_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::tinyint:
         case column_type::smallint:
         case column_type::year:
         case column_type::mediumint: return true;
-        case column_type::int_: return !meta.is_unsigned();
+        case column_type::int_: return !ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -347,22 +199,19 @@ struct readable_field_traits<std::int32_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::uint32_t, false> : valid_field_traits
+struct readable_field_traits<std::uint32_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint32_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::tinyint:
         case column_type::smallint:
         case column_type::year:
         case column_type::mediumint:
-        case column_type::int_: return meta.is_unsigned();
+        case column_type::int_: return ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -373,23 +222,20 @@ struct readable_field_traits<std::uint32_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::int64_t, false> : valid_field_traits
+struct readable_field_traits<std::int64_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int64_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::tinyint:
         case column_type::smallint:
         case column_type::year:
         case column_type::mediumint:
         case column_type::int_: return true;
-        case column_type::bigint: return !meta.is_unsigned();
+        case column_type::bigint: return !ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
@@ -400,23 +246,20 @@ struct readable_field_traits<std::int64_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<std::uint64_t, false> : valid_field_traits
+struct readable_field_traits<std::uint64_t, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint64_t";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::tinyint:
         case column_type::smallint:
         case column_type::year:
         case column_type::mediumint:
         case column_type::int_:
-        case column_type::bigint: return meta.is_unsigned();
+        case column_type::bigint: return ctx.current_meta().is_unsigned();
         case column_type::bit: return true;
         default: return false;
         }
@@ -428,14 +271,14 @@ struct readable_field_traits<std::uint64_t, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<float, false> : valid_field_traits
+struct readable_field_traits<float, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "float";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
+        return ctx.current_meta().type() == column_type::float_;
     }
-    static bool meta_check_impl(const metadata& meta) { return meta.type() == column_type::float_; }
     static error_code parse(field_view input, float& output)
     {
         auto kind = input.kind();
@@ -450,16 +293,13 @@ struct readable_field_traits<float, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<double, false> : valid_field_traits
+struct readable_field_traits<double, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "double";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::float_:
         case column_type::double_: return true;
@@ -487,16 +327,13 @@ struct readable_field_traits<double, false> : valid_field_traits
 };
 
 template <class Traits, class Allocator>
-struct readable_field_traits<std::basic_string<char, Traits, Allocator>, false> : valid_field_traits
+struct readable_field_traits<std::basic_string<char, Traits, Allocator>, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "string";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::decimal:
         case column_type::char_:
@@ -522,16 +359,13 @@ struct readable_field_traits<std::basic_string<char, Traits, Allocator>, false> 
 };
 
 template <class Allocator>
-struct readable_field_traits<std::vector<unsigned char, Allocator>, false> : valid_field_traits
+struct readable_field_traits<std::vector<unsigned char, Allocator>, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "blob";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::binary:
         case column_type::varbinary:
@@ -556,14 +390,11 @@ struct readable_field_traits<std::vector<unsigned char, Allocator>, false> : val
 };
 
 template <>
-struct readable_field_traits<date, false> : valid_field_traits
+struct readable_field_traits<date, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "date";
-    static void meta_check(meta_check_context& ctx)
-    {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta) { return meta.type() == column_type::date; }
+    static bool meta_check(meta_check_context& ctx) { return ctx.current_meta().type() == column_type::date; }
     static error_code parse(field_view input, date& output)
     {
         auto kind = input.kind();
@@ -578,16 +409,13 @@ struct readable_field_traits<date, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<datetime, false> : valid_field_traits
+struct readable_field_traits<datetime, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "datetime";
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta)
-    {
-        switch (meta.type())
+        switch (ctx.current_meta().type())
         {
         case column_type::datetime:
         case column_type::timestamp: return true;
@@ -608,14 +436,11 @@ struct readable_field_traits<datetime, false> : valid_field_traits
 };
 
 template <>
-struct readable_field_traits<time, false> : valid_field_traits
+struct readable_field_traits<time, false>
 {
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = "time";
-    static void meta_check(meta_check_context& ctx)
-    {
-        add_on_error(ctx, meta_check_impl(ctx.current_meta()));
-    }
-    static bool meta_check_impl(const metadata& meta) { return meta.type() == column_type::time; }
+    static bool meta_check(meta_check_context& ctx) { return ctx.current_meta().type() == column_type::time; }
     static error_code parse(field_view input, time& output)
     {
         auto kind = input.kind();
@@ -637,11 +462,10 @@ struct readable_field_traits<T, true>
     using value_type = typename T::value_type;
     static constexpr bool is_supported = readable_field_traits<value_type>::is_supported;
     static constexpr const char* type_name = readable_field_traits<value_type>::type_name;
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        ctx.set_cpp_type_name(type_name);
         ctx.set_nullability_checked(true);
-        readable_field_traits<value_type>::meta_check(ctx);
+        return readable_field_traits<value_type>::meta_check(ctx);
     }
     static error_code parse(field_view input, T& output)
     {
@@ -663,11 +487,10 @@ struct readable_field_traits<non_null<T>, false>
 {
     static constexpr bool is_supported = readable_field_traits<T>::is_supported;
     static constexpr const char* type_name = readable_field_traits<T>::type_name;
-    static void meta_check(meta_check_context& ctx)
+    static bool meta_check(meta_check_context& ctx)
     {
-        ctx.set_cpp_type_name(type_name);
         ctx.set_nullability_checked(true);
-        readable_field_traits<T>::meta_check(ctx);
+        return readable_field_traits<T>::meta_check(ctx);
     }
     static error_code parse(field_view input, non_null<T>& output)
     {
@@ -682,39 +505,48 @@ struct readable_field_traits<non_null<T>, false>
     }
 };
 
-template <typename FieldType>
-void meta_check_impl(meta_check_context& ctx)
-{
-    using traits_t = readable_field_traits<FieldType>;
-    ctx.set_cpp_type_name(traits_t::type_name);
-    if (ctx.check_field_present())
-    {
-        traits_t::meta_check(ctx);
-    }
-    if (!ctx.nullability_checked() && !ctx.current_meta().is_not_null())
-    {
-        ctx.add_type_mismatch_error("nullability");
-    }
-    ctx.set_nullability_checked(false);
-    ctx.advance();
-}
-
 template <class T>
 struct is_readable_field
 {
     static constexpr bool value = readable_field_traits<T>::is_supported;
 };
 
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
+template <typename ReadableField>
+void meta_check_field_impl(meta_check_context& ctx)
+{
+    using traits_t = readable_field_traits<ReadableField>;
 
-template <class T>
-concept readable_field = is_readable_field<T>::value;
+    // Setup
+    ctx.set_cpp_type_name(traits_t::type_name);
 
-#define BOOST_MYSQL_READABLE_FIELD ::boost::mysql::detail::readable_field
+    // Verify that the field is present
+    if (ctx.is_current_field_absent())
+    {
+        ctx.add_field_absent_error();
+        return;
+    }
 
-#else
-#define BOOST_MYSQL_READABLE_FIELD class
-#endif
+    // Perform the check
+    bool ok = traits_t::meta_check(ctx);
+    if (!ok)
+    {
+        ctx.add_type_mismatch_error();
+    }
+
+    // Check nullability
+    if (!ctx.nullability_checked() && !ctx.current_meta().is_not_null())
+    {
+        ctx.add_nullability_error();
+    }
+}
+
+template <typename ReadableField>
+void meta_check_field(meta_check_context& ctx)
+{
+    static_assert(is_readable_field<ReadableField>::value, "Should be a ReadableField");
+    meta_check_field_impl<ReadableField>(ctx);
+    ctx.advance();
+}
 
 }  // namespace detail
 }  // namespace mysql

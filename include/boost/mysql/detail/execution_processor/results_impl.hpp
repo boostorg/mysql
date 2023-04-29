@@ -245,7 +245,7 @@ public:
         return error_code();
     }
 
-    error_code on_head_ok_packet_impl(const ok_packet& pack) override
+    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
     {
         add_resultset();
         on_ok_packet_impl(pack);

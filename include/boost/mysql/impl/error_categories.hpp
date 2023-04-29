@@ -46,16 +46,13 @@ inline const char* error_to_string(client_errc error) noexcept
         return "The connection is configured to require SSL, but the server doesn't allow SSL connections. "
                "Configure SSL on your server or change your connection to not require SSL";
     case boost::mysql::client_errc::type_mismatch:
-        return "The typed interface detected a type mismatch between your declared row type and what the "
+        return "The static interface detected a type mismatch between your declared row type and what the "
                "server returned. Verify your type definitions.";
     case boost::mysql::client_errc::num_resultsets_mismatch:
-        return "The typed interface detected a mismatch between the number of resultsets passed as template "
+        return "The static interface detected a mismatch between the number of resultsets passed as template "
                "arguments to static_results<T1, T2...>/static_execution_state<T1, T2...> and the number of "
                "results returned by server";
-    case boost::mysql::client_errc::not_enough_columns:
-        return "The typed interface detected a mismatch between the number of columns in your declared row "
-               "type and what the "
-               "server returned. Verify your type definitions.";
+    case boost::mysql::client_errc::is_null: return "A field specified as non_null<T> was NULL";
 
     default: return "<unknown MySQL client error>";
     }

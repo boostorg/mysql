@@ -39,10 +39,10 @@ public:
         reset_impl();
     }
 
-    error_code on_head_ok_packet(const ok_packet& pack)
+    error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
     {
         assert(should_read_head());
-        return on_head_ok_packet_impl(pack);
+        return on_head_ok_packet_impl(pack, diag);
     }
 
     error_code on_num_meta(std::size_t num_columns)
@@ -113,7 +113,7 @@ protected:
     metadata_mode meta_mode() const noexcept { return mode_; }
 
     virtual void reset_impl() noexcept = 0;
-    virtual error_code on_head_ok_packet_impl(const ok_packet& pack) = 0;
+    virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
     virtual error_code on_num_meta_impl(std::size_t num_columns) = 0;
     virtual error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;

@@ -112,13 +112,13 @@ public:
         data_.resultset_index = 0;
     }
 
-    error_code on_head_ok_packet_impl(const ok_packet& pack) override final
+    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
     {
         add_resultset();
         auto err = on_ok_packet_impl(pack);
         if (err)
             return err;
-        return current_num_columns() == 0 ? error_code() : client_errc::not_enough_columns;
+        return meta_check(diag);
     }
 
     error_code on_num_meta_impl(std::size_t num_columns) override final

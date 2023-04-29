@@ -97,6 +97,9 @@ static_assert(is_writable_field<boost::mysql::date>::value, "");
 static_assert(is_writable_field<boost::mysql::datetime>::value, "");
 static_assert(is_writable_field<boost::mysql::time>::value, "");
 
+// bool accepted
+static_assert(is_writable_field<bool>::value, "");
+
 // references to scalars accepted
 static_assert(is_writable_field<int&>::value, "");
 static_assert(is_writable_field<const int&>::value, "");
