@@ -275,7 +275,6 @@ private:
 
     error_code meta_check(diagnostics& diag) const
     {
-        assert(should_read_rows());
         return desc_.meta_check_vtable[data_.resultset_index - 1](
             current_resultset_meta(),
             current_name_table(),
@@ -286,7 +285,6 @@ private:
 
     metadata_collection_view current_resultset_meta() const noexcept
     {
-        assert(should_read_rows());
         return get_meta(data_.resultset_index - 1);
     }
 };

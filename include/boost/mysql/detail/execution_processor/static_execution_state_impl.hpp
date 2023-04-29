@@ -235,7 +235,6 @@ private:
 
     error_code meta_check(diagnostics& diag) const
     {
-        assert(should_read_rows());
         assert(data_.resultset_index <= desc_.num_resultsets);
         return desc_
             .meta_check_vtable[data_.resultset_index - 1](meta(), current_name_table(), ext_.pos_map, diag);
