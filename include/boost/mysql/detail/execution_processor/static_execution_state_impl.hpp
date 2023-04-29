@@ -248,6 +248,7 @@ private:
         data_.meta_index = 0;
         data_.ok_data = ok_packet_data{};
         data_.info.clear();
+        data_.meta.clear();
         reset_pos_map(ext_.pos_map, current_num_columns());
     }
 

@@ -41,6 +41,7 @@
 #include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/describe/class.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/system/system_error.hpp>
 
 #include <array>
@@ -118,8 +119,8 @@ BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body));
 struct statistics
 {
     std::string company;
-    std::int64_t average;
-    std::int64_t max_value;
+    double average;
+    double max_value;
 };
 BOOST_DESCRIBE_STRUCT(statistics, (), (company, average, max_value));
 //]
@@ -137,12 +138,11 @@ BOOST_DESCRIBE_STRUCT(company, (), (id, name, tax_id));
 // Describes the second resultset
 struct employee
 {
-    int id;
     std::string first_name;
     std::string last_name;
-    double salary;
+    boost::optional<double> salary;
 };
-BOOST_DESCRIBE_STRUCT(employee, (), (id, first_name, last_name, salary));
+BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, salary));
 
 // The last resultset will always be empty.
 // We can use an empty tuple to represent it.
@@ -276,8 +276,8 @@ void section_overview(tcp_ssl_connection& conn)
         const char* table_definition = R"%(
             CREATE TEMPORARY TABLE posts (
                 id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) DEFAULT "",
-                body TEXT DEFAULT ""
+                title VARCHAR (256) NOT NULL,
+                body TEXT NOT NULL
             )
         )%";
         //]
@@ -393,6 +393,10 @@ void section_overview(tcp_ssl_connection& conn)
     }
     {
         run_overview_coro(conn);
+    }
+    {
+        results r;
+        conn.execute("DROP TABLE IF EXISTS posts", r);
     }
     {
         //[overview_multifn
@@ -571,8 +575,8 @@ void section_static(tcp_ssl_connection& conn)
         const char* table_definition = R"%(
             CREATE TEMPORARY TABLE posts (
                 id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) DEFAULT "",
-                body TEXT DEFAULT ""
+                title VARCHAR (256) NOT NULL,
+                body TEXT NOT NULL
             )
         )%";
         const char* query = "SELECT id, title, body FROM posts";
@@ -598,10 +602,10 @@ void section_static(tcp_ssl_connection& conn)
         //[static_field_order
         const char* sql = R"%(
             SELECT
-                AVG(salary) AS average,
-                MAX(salary) AS max_value,
+                IFNULL(AVG(salary), 0.0) AS average,
+                IFNULL(MAX(salary), 0.0) AS max_value,
                 company_id AS company
-            FROM employees
+            FROM employee
             GROUP BY company_id
         )%";
 
@@ -612,8 +616,8 @@ void section_static(tcp_ssl_connection& conn)
     {
         //[static_tuples
         static_results<std::tuple<std::int64_t>> result;
-        conn.execute("SELECT COUNT(*) FROM posts", result);
-        std::cout << "Number of posts: " << std::get<0>(result.rows()[0]) << "\n";
+        conn.execute("SELECT COUNT(*) FROM employee", result);
+        std::cout << "Number of employees: " << std::get<0>(result.rows()[0]) << "\n";
         //]
     }
     {
@@ -621,8 +625,8 @@ void section_static(tcp_ssl_connection& conn)
         const char* table_definition = R"%(
             CREATE TEMPORARY TABLE posts_v2 (
                 id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) DEFAULT "",
-                body TEXT DEFAULT NULL
+                title VARCHAR (256) NOT NULL,
+                body TEXT
             )
         )%";
         //]
@@ -830,8 +834,8 @@ void section_multi_function(tcp_ssl_connection& conn)
         const char* table_definition = R"%(
             CREATE TEMPORARY TABLE posts (
                 id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256),
-                body TEXT
+                title VARCHAR (256) NOT NULL,
+                body TEXT NOT NULL
             )
         )%";
         //]
@@ -880,7 +884,7 @@ void section_multi_function(tcp_ssl_connection& conn)
         // Sends the query and reads response and meta, but not the rows.
         // If there is any schema mismatch between the declared row type and
         // what the server returned, start_execution will detect it and fail
-        conn.start_execution("SELECT title, body FROM posts", st);
+        conn.start_execution("SELECT id, title, body FROM posts", st);
         //]
 
         //[multi_function_static_read
