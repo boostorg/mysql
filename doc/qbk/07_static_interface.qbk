@@ -125,48 +125,6 @@ the nullability check for a certain field. This can be handy when using
 stored procedures, since you may have more knowledge about nullability than MySQL.
 For a usage example, see [link mysql.examples.stored_procedures_cpp14].
 
-[heading Multi-resultset]
-
-
-
-[heading Multi-function operations]
-
-The [reflink static_execution_state] class is the static equivalent of `execution_state`.
-Like `static_results`, we must pass `static_execution_state` the row types returned by our query
-at compile time:
-
-```
-    const char* query = "SELECT first_name, last_name FROM employee WHERE company_id = pin_employee_id";
-    
-    struct employee
-    {
-        std::string first_name;
-        std::string last_name;
-    };
-    BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name));
-
-    static_execution_state<employee> st;
-```
-
-Like with `execution_state`, we use [refmem connection start_execution] to start the operation
-and [refmem connection read_some_rows] to read rows. However, in this case we must pass in a
-`boost::span` pointing to storage where our rows will live:
-
-```
-    std::array<employee, 20> employees;
-    while (st.should_read_rows())
-    {
-        std::size_t read_rows = conn.read_some_rows(st, boost::span<employee>(ord));
-        for (std::size_t i = 0; i < read_rows; ++i)
-        {
-            std::cout << "Employee " << employees[i].first_name << " " << employees[i].last_name << '\n';
-        }
-    }
-```
-
-`static_execution_state` can also be used with operations that return multiple resultsets.
-
-TODO: point to examples
 
 [heading Type mapping reference]
 

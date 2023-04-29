@@ -8,6 +8,7 @@
 // This file contains all the snippets that are used in the docs.
 // They're here so they are built and run, to ensure correctness
 
+#include <boost/mysql/connection.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -25,6 +26,7 @@
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
+#include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 #include <boost/mysql/throw_on_error.hpp>
@@ -37,8 +39,10 @@
 #include <boost/asio/this_coro.hpp>
 #include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/describe/class.hpp>
 #include <boost/system/system_error.hpp>
 
+#include <array>
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -65,6 +69,7 @@ using boost::mysql::row_view;
 using boost::mysql::rows;
 using boost::mysql::rows_view;
 using boost::mysql::statement;
+using boost::mysql::static_execution_state;
 using boost::mysql::string_view;
 using boost::mysql::tcp_ssl_connection;
 
@@ -78,6 +83,37 @@ using boost::mysql::tcp_ssl_connection;
 const char* get_value_from_user() { return ""; }
 std::int64_t get_employee_id() { return 42; }
 std::string get_company_id() { return "HGS"; }
+
+//[multi_function_static_types
+// We can use a plain struct with ints and strings to describe our rows
+struct post
+{
+    int id;
+    std::string title;
+    std::string body;
+};
+
+// We must use Boost.Describe to add reflection capabilities to post.
+// We must list all the fields that should be populated by Boost.MySQL
+BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
+//]
+
+struct company
+{
+    std::string id;
+    std::string name;
+    std::string tax_id;
+};
+BOOST_DESCRIBE_STRUCT(company, (), (id, name, tax_id));
+
+struct employee
+{
+    int id;
+    std::string first_name;
+    std::string last_name;
+    double salary;
+};
+BOOST_DESCRIBE_STRUCT(employee, (), (id, first_name, last_name, salary));
 
 //[prepared_statements_execute
 // description, price and show_in_store are not trusted, since they may
@@ -635,17 +671,17 @@ void main_impl(int argc, char** argv)
     // multi-function
     {
         //[multi_function_setup
+        const char* table_definition = R"%(
+            CREATE TEMPORARY TABLE posts (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                title VARCHAR (256),
+                body TEXT
+            )
+        )%";
+        //]
+
         results result;
-        conn.execute(
-            R"%(
-                CREATE TEMPORARY TABLE posts (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    title VARCHAR (256),
-                    body TEXT
-                )
-            )%",
-            result
-        );
+        conn.execute(table_definition, result);
         conn.execute(
             R"%(
                 INSERT INTO posts (title, body) VALUES
@@ -655,103 +691,151 @@ void main_impl(int argc, char** argv)
             result
         );
 
-        statement stmt = conn.prepare_statement("SELECT title, body FROM posts");
+        //[multi_function_dynamic_start
+        // st will hold information about the operation being executed.
+        // It must be passed to any successive operations for this execution
+        execution_state st;
+
+        // Sends the query and reads response and meta, but not the rows
+        conn.start_execution("SELECT title, body FROM posts", st);
         //]
 
-        auto read_all_rows = [&](execution_state& st) {
-            //[multi_function_read_some_rows
-            // st.complete() returns true once the OK packet is received
-            while (!st.complete())
-            {
-                // row_batch will be valid until conn performs the next network operation
-                rows_view row_batch = conn.read_some_rows(st);
-
-                for (row_view post : row_batch)
-                {
-                    // Process post as required
-                    std::cout << "Title:" << post.at(0) << std::endl;
-                }
-            }
-            //]
-        };
-
+        //[multi_function_dynamic_read
+        // st.complete() returns true once the OK packet is received
+        while (!st.complete())
         {
-            //[multi_function_text_queries
-            execution_state st;
-            conn.start_execution("SELECT title, body FROM posts", st);
-            //]
+            // row_batch will be valid until conn performs the next network operation
+            rows_view row_batch = conn.read_some_rows(st);
 
-            read_all_rows(st);  // don't compromise further operations
+            for (row_view post : row_batch)
+            {
+                // Process post as required
+                std::cout << "Title:" << post.at(0) << std::endl;
+            }
+        }
+        //]
+    }
+    {
+        //[multi_function_static_start
+        // st will hold information about the operation being executed.
+        // It must be passed to any successive operations for this execution
+        static_execution_state<post> st;
+
+        // Sends the query and reads response and meta, but not the rows.
+        // If there is any schema mismatch between the declared row type and
+        // what the server returned, start_execution will detect it and fail
+        conn.start_execution("SELECT title, body FROM posts", st);
+        //]
+
+        //[multi_function_static_read
+        // storage will be filled with the read rows. You can use any other contiguous range.
+        std::array<post, 20> posts;
+
+        // st.complete() returns true once the OK packet is received
+        while (!st.complete())
+        {
+            std::size_t read_rows = conn.read_some_rows(st, boost::span<post>(posts));
+            for (const post& p : boost::span<post>(posts.data(), read_rows))
+            {
+                // Process post as required
+                std::cout << "Title " << p.title << std::endl;
+            }
+        }
+        //]
+
+        results result;
+        conn.execute("DROP TABLE posts", result);
+    }
+
+    {
+        //[multi_function_stored_procedure_dynamic
+        // Get the company ID to retrieve, possibly from the user
+        std::string company_id = get_company_id();
+
+        // Call the procedure
+        execution_state st;
+        statement stmt = conn.prepare_statement("CALL get_company(?)");
+        conn.start_execution(stmt.bind(company_id), st);
+
+        // The above code will generate 3 resultsets
+        // Read the 1st one, which contains the matched companies
+        while (st.should_read_rows())
+        {
+            rows_view company_batch = conn.read_some_rows(st);
+
+            // Use the retrieved companies as required
+            for (row_view company : company_batch)
+            {
+                std::cout << "Company: " << company.at(1).as_string() << "\n";
+            }
         }
 
+        // Move on to the 2nd one, containing the employees for these companies
+        conn.read_resultset_head(st);
+        while (st.should_read_rows())
         {
-            //[multi_function_statements
-            execution_state st;
-            conn.start_execution(
-                stmt.bind(),  // The statement has no params, so an empty bind is performed
-                st
-            );
-            //]
+            rows_view employee_batch = conn.read_some_rows(st);
 
-            read_all_rows(st);  // don't compromise further operations
-            conn.execute("DROP TABLE posts", result);
+            // Use the retrieved employees as required
+            for (row_view employee : employee_batch)
+            {
+                std::cout << "Employee " << employee.at(0).as_string() << " " << employee.at(1).as_string()
+                          << "\n";
+            }
         }
 
+        // The last one is an empty resultset containing information about the
+        // CALL statement itself. We're not interested in this
+        conn.read_resultset_head(st);
+        assert(st.complete());
+        //]
+    }
+    {
+        //[multi_function_stored_procedure_static
+        // Get the company ID to retrieve, possibly from the user
+        std::string company_id = get_company_id();
+
+        // Our procedure generates three resultsets. We must pass each row type
+        // to static_execution_state as template parameters
+        using empty = std::tuple<>;
+        static_execution_state<company, employee, empty> st;
+
+        // Call the procedure
+        statement stmt = conn.prepare_statement("CALL get_company(?)");
+        conn.start_execution(stmt.bind(company_id), st);
+
+        // Read the 1st one, which contains the matched companies
+        std::array<company, 5> companies;
+        while (st.should_read_rows())
         {
-            results result;
-            conn.execute("DROP PROCEDURE IF EXISTS get_company", result);
+            std::size_t read_rows = conn.read_some_rows(st, boost::span<company>(companies));
 
-            //[multi_function_stored_procedure
-            // Setup the stored procedure
-            conn.execute(
-                R"(
-                    CREATE PROCEDURE get_company(IN pin_company_id CHAR(10))
-                    BEGIN
-                        START TRANSACTION READ ONLY;
-                        SELECT * FROM company WHERE id = pin_company_id;
-                        SELECT * FROM employee WHERE company_id = pin_company_id;
-                        COMMIT;
-                    END
-                )",
-                result
-            );
-
-            // Get the company ID to retrieve, possibly from the user
-            std::string company_id = get_company_id();
-
-            // Call the procedure
-            execution_state st;
-            statement stmt = conn.prepare_statement("CALL get_company(?)");
-            conn.start_execution(stmt.bind(company_id), st);
-
-            // The above code will generate 3 resultsets
-            // Read the 1st one, which contains the matched companies
-            while (st.should_read_rows())
+            // Use the retrieved companies as required
+            for (const company& c : boost::span<company>(companies.data(), read_rows))
             {
-                rows_view company_batch = conn.read_some_rows(st);
-                // Use the retrieved companies as required
-                //<-
-                boost::ignore_unused(company_batch);
-                //->
+                std::cout << "Company: " << c.name << "\n";
             }
-
-            // Move on to the 2nd one, containing the employees for these companies
-            conn.read_resultset_head(st);
-            while (st.should_read_rows())
-            {
-                rows_view employee_batch = conn.read_some_rows(st);
-                // Use the retrieved employees as required
-                //<-
-                boost::ignore_unused(employee_batch);
-                //->
-            }
-
-            // The last one is an empty resultset containing information about the
-            // CALL statement itself. We're not interested in this
-            conn.read_resultset_head(st);
-            assert(st.complete());
-            //]
         }
+
+        // Move on to the 2nd one, containing the employees for these companies
+        conn.read_resultset_head(st);
+        std::array<employee, 20> employees;
+        while (st.should_read_rows())
+        {
+            std::size_t read_rows = conn.read_some_rows(st, boost::span<employee>(employees));
+
+            // Use the retrieved companies as required
+            for (const employee& emp : boost::span<employee>(employees.data(), read_rows))
+            {
+                std::cout << "Employee " << emp.first_name << " " << emp.last_name << "\n";
+            }
+        }
+
+        // The last one is an empty resultset containing information about the
+        // CALL statement itself. We're not interested in this
+        conn.read_resultset_head(st);
+        assert(st.complete());
+        //]
     }
 
     // fields

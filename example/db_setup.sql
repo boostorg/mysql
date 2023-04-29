@@ -47,6 +47,15 @@ INSERT INTO employee (first_name, last_name, salary, company_id) VALUES
     ("Underpaid", "Intern", 15000, "AWC")
 ;
 
+-- Stored procedures
+CREATE PROCEDURE get_company(IN pin_company_id CHAR(10))
+BEGIN
+    START TRANSACTION READ ONLY;
+    SELECT id, name, tax_id FROM company WHERE id = pin_company_id;
+    SELECT first_name, last_name, salary FROM employee WHERE company_id = pin_company_id;
+    COMMIT;
+END
+
 -- User
 DROP USER IF EXISTS 'example_user'@'%';
 CREATE USER 'example_user'@'%' IDENTIFIED WITH 'mysql_native_password';
