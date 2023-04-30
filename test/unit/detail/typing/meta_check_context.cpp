@@ -39,6 +39,14 @@ using detail::pos_map_field_absent;
 
 namespace {
 
+// Get the error message from the context
+std::string get_errors(const meta_check_context& ctx)
+{
+    diagnostics diag;
+    ctx.check_errors(diag);
+    return diag.client_message();
+}
+
 BOOST_AUTO_TEST_SUITE(test_meta_check_context)
 
 BOOST_AUTO_TEST_CASE(column_type_to_str_)
@@ -93,42 +101,52 @@ BOOST_AUTO_TEST_CASE(column_type_to_str_)
     }
 }
 
-BOOST_AUTO_TEST_SUITE(meta_check_context_)
+// Common data
+const metadata meta[] = {
+    meta_builder().type(column_type::bigint).build(),
+    meta_builder().type(column_type::bit).build(),
+    meta_builder().type(column_type::varchar).build(),
+    meta_builder().type(column_type::blob).build(),
+};
+constexpr string_view names[] = {"f1", "f2", "f3"};
+
 BOOST_AUTO_TEST_CASE(accessors_fields_present)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
     const std::size_t pos_map[] = {2, 0, 1};
 
-    meta_check_context ctx(meta, nullptr, pos_map);
+    meta_check_context ctx(meta, names, pos_map);
+
+    // Field 0
     BOOST_TEST(ctx.current_meta().type() == column_type::varchar);
     BOOST_TEST(!ctx.is_current_field_absent());
     ctx.advance();
+
+    // Field 1
     BOOST_TEST(ctx.current_meta().type() == column_type::bigint);
     BOOST_TEST(!ctx.is_current_field_absent());
     ctx.advance();
+
+    // Field 2
     BOOST_TEST(ctx.current_meta().type() == column_type::bit);
     BOOST_TEST(!ctx.is_current_field_absent());
 }
 
 BOOST_AUTO_TEST_CASE(accessors_some_fields_absent)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
     const std::size_t pos_map[] = {1, pos_map_field_absent, 0};
 
     meta_check_context ctx(meta, nullptr, pos_map);
+
+    // Field 0
     BOOST_TEST(ctx.current_meta().type() == column_type::bit);
     BOOST_TEST(!ctx.is_current_field_absent());
     ctx.advance();
+
+    // Field 1
     BOOST_TEST(ctx.is_current_field_absent());
     ctx.advance();
+
+    // Field 2
     BOOST_TEST(ctx.current_meta().type() == column_type::bigint);
     BOOST_TEST(!ctx.is_current_field_absent());
 }
@@ -138,172 +156,116 @@ BOOST_AUTO_TEST_CASE(accessors_all_fields_absent)
     const std::size_t pos_map[] = {pos_map_field_absent, pos_map_field_absent, pos_map_field_absent};
 
     meta_check_context ctx(nullptr, nullptr, pos_map);
+
+    // Field 0
     BOOST_TEST(ctx.is_current_field_absent());
     ctx.advance();
+
+    // Field 1
     BOOST_TEST(ctx.is_current_field_absent());
     ctx.advance();
+
+    // Field 2
     BOOST_TEST(ctx.is_current_field_absent());
 }
 
 BOOST_AUTO_TEST_CASE(nullability)
 {
     const std::size_t pos_map[] = {0, 1, 2};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
 
     meta_check_context ctx(meta, nullptr, pos_map);
-    BOOST_TEST(!ctx.nullability_checked());
-    ctx.set_nullability_checked(true);
-    BOOST_TEST(ctx.nullability_checked());
-    ctx.advance();
-    BOOST_TEST(!ctx.nullability_checked());
-    ctx.advance();
-    BOOST_TEST(!ctx.nullability_checked());
-}
 
-std::string get_errors(const meta_check_context& ctx)
-{
-    diagnostics diag;
-    ctx.check_errors(diag);
-    return diag.client_message();
+    // Nullability not checked by default
+    BOOST_TEST(!ctx.nullability_checked());
+
+    // Explicitly setting it works
+    ctx.set_nullability_checked();
+    BOOST_TEST(ctx.nullability_checked());
+
+    // Advancing resets it
+    ctx.advance();
+    BOOST_TEST(!ctx.nullability_checked());
+
+    // Advancing again does nothing
+    ctx.advance();
+    BOOST_TEST(!ctx.nullability_checked());
 }
 
 BOOST_AUTO_TEST_CASE(add_field_absent_error_named)
 {
     const std::size_t pos_map[] = {1, pos_map_field_absent, 0};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
-    const string_view names[] = {"f1", "f2", "f3"};
+    const char* expected = "Field 'f2' is not present in the data returned by the server";
 
     meta_check_context ctx(meta, names, pos_map);
     ctx.advance();
     ctx.add_field_absent_error();
-    auto err = get_errors(ctx);
-    BOOST_TEST(err == "Field 'f2' is not present in the data returned by the server");
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_field_absent_error_unnamed)
 {
     const std::size_t pos_map[] = {0, pos_map_field_absent};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-    };
+    const char* expected =
+        "Field in position 1 can't be mapped: there are more fields in your C++ data type than in your query";
 
     meta_check_context ctx(meta, nullptr, pos_map);
     ctx.advance();
     ctx.add_field_absent_error();
-    auto err = get_errors(ctx);
-    BOOST_TEST(
-        err ==
-        "Field in position 1 can't be mapped: there are more fields in your C++ data type than in your query"
-    );
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_incompatible_types_error_named)
 {
     const std::size_t pos_map[] = {1, 2, 0};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
-    const string_view names[] = {"f1", "f2", "f3"};
+    const char* expected =
+        "Incompatible types for field 'f2': C++ type 'cpp_type' is not compatible with DB type 'VARCHAR'";
 
     meta_check_context ctx(meta, names, pos_map);
     ctx.advance();
     ctx.add_type_mismatch_error("cpp_type");
-    auto err = get_errors(ctx);
-    BOOST_TEST(
-        err ==
-        "Incompatible types for field 'f2': C++ type 'cpp_type' is not compatible with DB type 'VARCHAR'"
-    );
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_incompatible_types_error_unnamed)
 {
     const std::size_t pos_map[] = {0, 1, 2};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
+    const char* expected =
+        "Incompatible types for field in position 1: C++ type 'other_type' is not compatible with DB type "
+        "'BIT'";
 
     meta_check_context ctx(meta, nullptr, pos_map);
     ctx.advance();
     ctx.add_type_mismatch_error("other_type");
-    auto err = get_errors(ctx);
-    BOOST_TEST(
-        err ==
-        "Incompatible types for field in position 1: C++ type 'other_type' is not compatible with DB type "
-        "'BIT'"
-    );
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_nullability_error_named)
 {
     const std::size_t pos_map[] = {1, 2, 0};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
-    const string_view names[] = {"f1", "f2", "f3"};
+    const char* expected =
+        "NULL checks failed for field 'f1': the database type may be NULL, but the C++ type cannot. "
+        "Use std::optional<T> or boost::optional<T>";
 
     meta_check_context ctx(meta, names, pos_map);
     ctx.add_nullability_error();
-    auto err = get_errors(ctx);
-    BOOST_TEST(
-        err ==
-        "NULL checks failed for field 'f1': the database type may be NULL, but the C++ type cannot. "
-        "Use std::optional<T> or boost::optional<T>"
-    );
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(add_nullability_error_unnamed)
 {
     const std::size_t pos_map[] = {0, 1, 2};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-    };
+    const char* expected =
+        "NULL checks failed for field in position 0: the database type may be NULL, but the C++ type "
+        "cannot. Use std::optional<T> or boost::optional<T>";
 
     meta_check_context ctx(meta, nullptr, pos_map);
     ctx.add_nullability_error();
-    auto err = get_errors(ctx);
-    BOOST_TEST(
-        err ==
-        "NULL checks failed for field in position 0: the database type may be NULL, but the C++ type "
-        "cannot. Use std::optional<T> or boost::optional<T>"
-    );
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(several_errors)
 {
     const std::size_t pos_map[] = {3, pos_map_field_absent, 0};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-        meta_builder().type(column_type::varchar).build(),
-        meta_builder().type(column_type::blob).build(),
-    };
-    const string_view names[] = {"f1", "f2", "f3"};
-
-    meta_check_context ctx(meta, names, pos_map);
-    ctx.add_nullability_error();
-    ctx.advance();
-    ctx.add_field_absent_error();
-    ctx.advance();
-    ctx.add_type_mismatch_error("cpp_type");
-    ctx.add_nullability_error();
-    auto err = get_errors(ctx);
     // clang-format off
     const char* expected = 
         "NULL checks failed for field 'f1': the database type may be NULL, but the C++ type cannot. Use std::optional<T> or boost::optional<T>\n"
@@ -311,16 +273,20 @@ BOOST_AUTO_TEST_CASE(several_errors)
         "Incompatible types for field 'f3': C++ type 'cpp_type' is not compatible with DB type 'BIGINT'\n"
         "NULL checks failed for field 'f3': the database type may be NULL, but the C++ type cannot. Use std::optional<T> or boost::optional<T>";
     // clang-format on
-    BOOST_TEST(err == expected);
+
+    meta_check_context ctx(meta, names, pos_map);
+    ctx.add_nullability_error();
+    ctx.advance();
+    ctx.add_field_absent_error();
+    ctx.advance();
+    ctx.add_type_mismatch_error("cpp_type");
+    ctx.add_nullability_error();
+    BOOST_TEST(get_errors(ctx) == expected);
 }
 
 BOOST_AUTO_TEST_CASE(check_errors_no_error)
 {
     const std::size_t pos_map[] = {0, 1};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-    };
 
     meta_check_context ctx(meta, nullptr, pos_map);
     diagnostics diag;
@@ -333,10 +299,6 @@ BOOST_AUTO_TEST_CASE(check_errors_no_error)
 BOOST_AUTO_TEST_CASE(check_errors_with_error)
 {
     const std::size_t pos_map[] = {0, 1};
-    const metadata meta[] = {
-        meta_builder().type(column_type::bigint).build(),
-        meta_builder().type(column_type::bit).build(),
-    };
     const char* expected_msg =
         "Incompatible types for field in position 0: C++ type 'cpp_type' is not compatible with DB type "
         "'BIGINT'";
@@ -349,12 +311,6 @@ BOOST_AUTO_TEST_CASE(check_errors_with_error)
     BOOST_TEST(diag.client_message() == expected_msg);
     BOOST_TEST(diag.server_message() == "");
 }
-
-// current field present/absent
-// error messages for the 3 types of errors
-// several errors
-// advance: resets nullability
-BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 

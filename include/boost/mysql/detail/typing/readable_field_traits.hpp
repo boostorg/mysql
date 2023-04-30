@@ -464,7 +464,7 @@ struct readable_field_traits<T, true>
     static constexpr const char* type_name = readable_field_traits<value_type>::type_name;
     static bool meta_check(meta_check_context& ctx)
     {
-        ctx.set_nullability_checked(true);
+        ctx.set_nullability_checked();
         return readable_field_traits<value_type>::meta_check(ctx);
     }
     static error_code parse(field_view input, T& output)
@@ -489,7 +489,7 @@ struct readable_field_traits<non_null<T>, false>
     static constexpr const char* type_name = readable_field_traits<T>::type_name;
     static bool meta_check(meta_check_context& ctx)
     {
-        ctx.set_nullability_checked(true);
+        ctx.set_nullability_checked();
         return readable_field_traits<T>::meta_check(ctx);
     }
     static error_code parse(field_view input, non_null<T>& output)
