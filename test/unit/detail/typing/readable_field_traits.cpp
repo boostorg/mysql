@@ -32,6 +32,7 @@
 #include "creation/create_meta.hpp"
 #include "custom_allocator.hpp"
 #include "printing.hpp"
+#include "test_common.hpp"
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
@@ -363,12 +364,99 @@ BOOST_AUTO_TEST_CASE(optionals)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(parse_)
-BOOST_AUTO_TEST_CASE(int8)
+
+template <class T>
+struct parse_and_check
 {
-    std::int8_t val = 90;
-    auto err = readable_field_traits<std::int8_t>::parse(field_view(42), val);
-    BOOST_TEST(err == error_code());
-    BOOST_TEST(val == 42);
+    T expected;
+
+    parse_and_check(T expected) : expected(std::move(expected)) {}
+
+    void operator()(field_view from) const
+    {
+        T actual;
+        auto err = readable_field_traits<T>::parse(from, actual);
+        BOOST_TEST(err == error_code());
+        BOOST_TEST(actual == expected);
+    }
+};
+
+BOOST_AUTO_TEST_CASE(success)
+{
+    struct
+    {
+        const char* name;
+        field_view from;
+        std::function<void(field_view)> fn;
+    } test_cases[] = {
+        {"int8_signed_regular", field_view(42), parse_and_check<std::int8_t>(42)},
+        {"int8_signed_min", field_view(-0x80), parse_and_check<std::int8_t>(-0x80)},
+        {"int8_signed_max", field_view(0x7f), parse_and_check<std::int8_t>(0x7f)},
+        {"int8_unsigned_regular", field_view(42u), parse_and_check<std::int8_t>(42u)},
+        {"int8_unsigned_max", field_view(0x7fu), parse_and_check<std::int8_t>(0x7fu)},
+
+        {"uint8_regular", field_view(42u), parse_and_check<std::uint8_t>(42u)},
+        {"uint8_min", field_view(0u), parse_and_check<std::uint8_t>(0u)},
+        {"uint8_max", field_view(0xffu), parse_and_check<std::uint8_t>(0xffu)},
+
+        {"int16_signed_regular", field_view(42), parse_and_check<std::int16_t>(42)},
+        {"int16_signed_min", field_view(-0x8000), parse_and_check<std::int16_t>(-0x8000)},
+        {"int16_signed_max", field_view(0x7f00), parse_and_check<std::int16_t>(0x7f00)},
+        {"int16_unsigned_regular", field_view(42u), parse_and_check<std::int16_t>(42u)},
+        {"int16_unsigned_max", field_view(0x7f00u), parse_and_check<std::int16_t>(0x7f00u)},
+
+        {"uint16_regular", field_view(42u), parse_and_check<std::uint16_t>(42u)},
+        {"uint16_min", field_view(0u), parse_and_check<std::uint16_t>(0u)},
+        {"uint16_max", field_view(0xffffu), parse_and_check<std::uint16_t>(0xffffu)},
+
+        {"int32_signed_regular", field_view(42), parse_and_check<std::int32_t>(42)},
+        {"int32_signed_min", field_view(-0x80000000LL), parse_and_check<std::int32_t>(-0x80000000LL)},
+        {"int32_signed_max", field_view(0x7f000000), parse_and_check<std::int32_t>(0x7f000000)},
+        {"int32_unsigned_regular", field_view(42u), parse_and_check<std::int32_t>(42u)},
+        {"int32_unsigned_max", field_view(0x7f000000u), parse_and_check<std::int32_t>(0x7f000000u)},
+
+        {"uint32_regular", field_view(42u), parse_and_check<std::uint32_t>(42u)},
+        {"uint32_min", field_view(0u), parse_and_check<std::uint32_t>(0u)},
+        {"uint32_max", field_view(0xffffffffu), parse_and_check<std::uint32_t>(0xffffffffu)},
+
+        {"int64_signed_regular", field_view(42), parse_and_check<std::int64_t>(42)},
+        {"int64_signed_min",
+         field_view(-0x7fffffffffffffff - 1),
+         parse_and_check<std::int64_t>(-0x7fffffffffffffff - 1)},
+        {"int64_signed_max",
+         field_view(0x7f00000000000000),
+         parse_and_check<std::int64_t>(0x7f00000000000000)},
+        {"int64_unsigned_regular", field_view(42u), parse_and_check<std::int64_t>(42u)},
+        {"int64_unsigned_max",
+         field_view(0x7f00000000000000u),
+         parse_and_check<std::int64_t>(0x7f00000000000000u)},
+
+        {"uint64_regular", field_view(42u), parse_and_check<std::uint64_t>(42u)},
+        {"uint64_min", field_view(0u), parse_and_check<std::uint64_t>(0u)},
+        {"uint64_max", field_view(0xffffffffffffffffu), parse_and_check<std::uint64_t>(0xffffffffffffffffu)},
+
+        {"bool_zero", field_view(0), parse_and_check<bool>(false)},
+        {"bool_one", field_view(1), parse_and_check<bool>(true)},
+        {"bool_other", field_view(2), parse_and_check<bool>(true)},
+
+        {"float", field_view(4.2f), parse_and_check<float>(4.2f)},
+
+        {"double_float", field_view(4.2f), parse_and_check<double>(4.2f)},
+        {"double_double", field_view(4.2), parse_and_check<double>(4.2)},
+
+        {"date", field_view(date(2020, 1, 2)), parse_and_check<date>(date(2020, 1, 2))},
+        {"datetime", field_view(datetime(2020, 1, 2)), parse_and_check<datetime>(datetime(2020, 1, 2))},
+        {"time", field_view(maket(10, 1, 1)), parse_and_check<boost::mysql::time>(maket(10, 1, 1))},
+        {"string", field_view("abc"), parse_and_check<std::string>("abc")},
+        {"blob", field_view(makebv("\0\1")), parse_and_check<blob>({0, 1})},
+
+ // TODO: optionals
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name) { tc.fn(tc.from); }
+    }
 }
 
 template <class T>
@@ -455,10 +543,6 @@ BOOST_AUTO_TEST_CASE(errors)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-// int8_t: null, int64 regular, int64 min, int64 max, int64 OOR low, int64 OOR high, uint64 regular, uint64
-// min, uint64 max, uint64 OOR, NULL float: null, regular
-//     check for all valid types
-//     check for all invalid types
 
 BOOST_AUTO_TEST_SUITE_END()
 
