@@ -233,7 +233,7 @@ constexpr std::array<compat_matrix_row, db_type_descriptors_size> compat_matrix{
 }};
 // clang-format on
 
-BOOST_AUTO_TEST_CASE(nonnull_compatible)
+BOOST_AUTO_TEST_CASE(basic_types_compatible)
 {
     for (std::size_t i = 0; i < db_type_descriptors_size; ++i)
     {
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(nonnull_compatible)
     }
 }
 
-BOOST_AUTO_TEST_CASE(nonnull_incompatible)
+BOOST_AUTO_TEST_CASE(basic_types_incompatible)
 {
     for (std::size_t i = 0; i < db_type_descriptors_size; ++i)
     {
@@ -295,6 +295,64 @@ BOOST_AUTO_TEST_CASE(nonnull_incompatible)
                                   std::string(db_desc.name) + "'";
                 BOOST_TEST(diag.client_message() == msg);
             }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(nullable_error)
+{
+    // optional (x3) <-> non nullable
+    // optional (x3) <-> nullable
+    auto meta = meta_builder().type(column_type::float_).unsigned_flag(false).nullable(true).build();
+    const std::size_t pos_map[] = {0};
+    meta_check_context ctx(&meta, nullptr, pos_map);
+
+    meta_check_field<double>(ctx);
+    diagnostics diag;
+    auto err = ctx.check_errors(diag);
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(
+        diag.client_message() ==
+        "NULL checks failed for field in position 0: the database type may be NULL, but the C++ type cannot. "
+        "Use std::optional<T> or "
+        "boost::optional<T>"
+    );
+}
+
+BOOST_AUTO_TEST_CASE(optionals)
+{
+    struct
+    {
+        const char* name;
+        single_field_check_fn check_fn;
+        bool nullable;
+    } test_cases[] = {
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+        {"std_optional_not_nullable",   &meta_check_field<std::optional<double>>,   false},
+        {"std_optional_nullable",       &meta_check_field<std::optional<double>>,   true },
+#endif
+        {"boost_optional_not_nullable", &meta_check_field<boost::optional<double>>, false},
+        {"boost_optional_nullable",     &meta_check_field<boost::optional<double>>, true },
+        {"non_null_not_nullable",       &meta_check_field<non_null<double>>,        false},
+        {"non_null_nullable",           &meta_check_field<non_null<double>>,        true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            auto meta = meta_builder()
+                            .type(column_type::float_)
+                            .unsigned_flag(false)
+                            .nullable(tc.nullable)
+                            .build();
+            const std::size_t pos_map[] = {0};
+            meta_check_context ctx(&meta, nullptr, pos_map);
+
+            tc.check_fn(ctx);
+            diagnostics diag;
+            auto err = ctx.check_errors(diag);
+            BOOST_TEST(err == error_code());
         }
     }
 }
