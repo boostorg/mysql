@@ -128,7 +128,7 @@ is interpreted by MySQL, depeding on `v`'s type.
         [`TINYINT`]
     ]
     [
-        [`std::basic_string<char, Traits, Allocator>` (including `std::string`), [reflink string_view], `std::string_view`, `const char*`]
+        [`std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`), [reflink string_view], `std::string_view`, `const char*`]
         [`VARCHAR`]
         [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `JSON`, `DECIMAL`, `NUMERIC`]
     ]

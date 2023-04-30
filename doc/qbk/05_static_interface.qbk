@@ -192,7 +192,7 @@ row types and their compatibility with MySQL database types:
         ]
     ]
     [
-        [`std::basic_string<char, Traits, Allocator>`]
+        [`std::basic_string<char, std::char_traits<char>, Allocator>`]
         [
             __CHAR__, __VARCHAR__, __TEXT__[br]
             __ENUM__, __SET__[br]

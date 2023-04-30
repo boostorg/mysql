@@ -36,6 +36,7 @@ add_executable(
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
     detail/typing/meta_check_context.cpp
+    detail/typing/readable_field_traits.cpp
     detail/typing/writable_field_traits.cpp
     date.cpp
     datetime.cpp

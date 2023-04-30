@@ -31,6 +31,8 @@
 #include <optional>
 #endif
 
+#include "custom_allocator.hpp"
+
 using namespace boost::mysql;
 using boost::mysql::detail::is_field_view_forward_iterator;
 using boost::mysql::detail::is_writable_field;
@@ -39,25 +41,13 @@ using std::tuple;
 
 namespace {
 
-template <class T>
-struct custom_allocator
+struct other_traits : std::char_traits<char>
 {
-    using value_type = T;
-    custom_allocator() noexcept;
-    template <class U>
-    custom_allocator(const custom_allocator<U>&) noexcept;
-    T* allocate(std::size_t n);
-    void deallocate(T* p, std::size_t n);
 };
 
-template <class T, class U>
-constexpr bool operator==(const custom_allocator<T>&, const custom_allocator<U>&) noexcept;
-
-template <class T, class U>
-constexpr bool operator!=(const custom_allocator<T>&, const custom_allocator<U>&) noexcept;
-
-using custom_string = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
-using custom_blob = std::vector<unsigned char, custom_allocator<unsigned char>>;
+using string_with_alloc = std::basic_string<char, std::char_traits<char>, test::custom_allocator<char>>;
+using string_with_traits = std::basic_string<char, other_traits>;
+using blob_with_alloc = std::vector<unsigned char, test::custom_allocator<unsigned char>>;
 
 struct unrelated
 {
@@ -105,25 +95,28 @@ static_assert(is_writable_field<int&>::value, "");
 static_assert(is_writable_field<const int&>::value, "");
 static_assert(is_writable_field<int&&>::value, "");
 
-// string types accepted
+// string types
 static_assert(is_writable_field<std::string>::value, "");
 static_assert(is_writable_field<std::string&>::value, "");
 static_assert(is_writable_field<const std::string&>::value, "");
-static_assert(is_writable_field<custom_string>::value, "");
+static_assert(is_writable_field<string_with_alloc>::value, "");
 static_assert(is_writable_field<std::string&&>::value, "");
 static_assert(is_writable_field<string_view>::value, "");
-static_assert(!is_writable_field<std::wstring>::value, "");  // wstring not accepted
+static_assert(!is_writable_field<string_with_traits>::value, "");
+static_assert(!is_writable_field<std::wstring>::value, "");
 
 // blob types accepted
 static_assert(is_writable_field<blob>::value, "");
 static_assert(is_writable_field<blob&>::value, "");
 static_assert(is_writable_field<const blob&>::value, "");
 static_assert(is_writable_field<blob_view>::value, "");
-static_assert(is_writable_field<custom_blob>::value, "");
+static_assert(is_writable_field<blob_with_alloc>::value, "");
 
 // optional types accepted
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 static_assert(is_writable_field<std::optional<int>>::value, "");
 static_assert(is_writable_field<std::optional<std::string>>::value, "");
+#endif
 static_assert(is_writable_field<boost::optional<string_view>>::value, "");
 static_assert(is_writable_field<boost::optional<blob_view>>::value, "");
 

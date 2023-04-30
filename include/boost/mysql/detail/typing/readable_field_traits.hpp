@@ -326,8 +326,8 @@ struct readable_field_traits<double, false>
     }
 };
 
-template <class Traits, class Allocator>
-struct readable_field_traits<std::basic_string<char, Traits, Allocator>, false>
+template <class Allocator>
+struct readable_field_traits<std::basic_string<char, std::char_traits<char>, Allocator>, false>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "string";
@@ -345,7 +345,10 @@ struct readable_field_traits<std::basic_string<char, Traits, Allocator>, false>
         default: return false;
         }
     }
-    static error_code parse(field_view input, std::basic_string<char, Traits, Allocator>& output)
+    static error_code parse(
+        field_view input,
+        std::basic_string<char, std::char_traits<char>, Allocator>& output
+    )
     {
         auto kind = input.kind();
         if (kind == field_kind::null)
