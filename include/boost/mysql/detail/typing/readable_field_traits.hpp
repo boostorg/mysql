@@ -43,14 +43,19 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     if (kind == field_kind::int64)
     {
         auto v = input.get_int64();
-        assert(v >= std::numeric_limits<SignedInt>::min());
-        assert(v <= std::numeric_limits<SignedInt>::max());
+        if (v < std::numeric_limits<SignedInt>::min() || v > std::numeric_limits<SignedInt>::max())
+        {
+            return client_errc::protocol_value_error;
+        }
         output = static_cast<SignedInt>(v);
     }
     else
     {
         auto v = input.get_uint64();
-        assert(v <= static_cast<UnsignedInt>(std::numeric_limits<SignedInt>::max()));
+        if (v > static_cast<UnsignedInt>(std::numeric_limits<SignedInt>::max()))
+        {
+            return client_errc::protocol_value_error;
+        }
         output = static_cast<SignedInt>(v);
     }
     return error_code();
@@ -66,7 +71,10 @@ error_code parse_unsigned_int(field_view input, UnsignedInt& output)
     }
     assert(kind == field_kind::uint64);
     auto v = input.get_uint64();
-    assert(v <= std::numeric_limits<UnsignedInt>::max());
+    if (v > std::numeric_limits<UnsignedInt>::max())
+    {
+        return client_errc::protocol_value_error;
+    }
     output = static_cast<UnsignedInt>(v);
     return error_code();
 }
@@ -127,7 +135,12 @@ struct readable_field_traits<bool, false>
     }
     static error_code parse(field_view input, bool& output)
     {
-        assert(input.kind() == field_kind::int64);
+        auto k = input.kind();
+        if (k == field_kind::null)
+        {
+            return client_errc::is_null;
+        }
+        assert(k == field_kind::int64);
         output = input.get_int64() != 0;
         return error_code();
     }
