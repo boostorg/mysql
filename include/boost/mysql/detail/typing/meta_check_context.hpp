@@ -61,7 +61,6 @@ class meta_check_context
     const metadata* meta_{};
     const string_view* field_names_{};
     const std::size_t* pos_map_{};
-    const char* cpp_type_name_{};
     bool nullability_checked_{};
 
     std::ostringstream& add_error()
@@ -78,7 +77,7 @@ class meta_check_context
         if (field_names_)
             os << "'" << field_names_[current_index_] << "'";
         else
-            os << " in position " << current_index_;
+            os << "in position " << current_index_;
     }
 
 public:
@@ -90,17 +89,27 @@ public:
         : meta_(meta), field_names_(field_names), pos_map_(pos_map)
     {
     }
-    const metadata& current_meta() const noexcept { return meta_[pos_map_[current_index_]]; }
-    void set_cpp_type_name(const char* v) noexcept { cpp_type_name_ = v; }
+
+    // Accessors
+    const metadata& current_meta() const noexcept
+    {
+        assert(!is_current_field_absent());
+        return meta_[pos_map_[current_index_]];
+    }
+    bool is_current_field_absent() const noexcept { return pos_map_[current_index_] == pos_map_field_absent; }
+
+    // Iteration
     void advance() noexcept
     {
         nullability_checked_ = false;
         ++current_index_;
     }
-    bool is_current_field_absent() const noexcept { return pos_map_[current_index_] == pos_map_field_absent; }
+
+    // Nullability
     void set_nullability_checked(bool v) noexcept { nullability_checked_ = v; }
     bool nullability_checked() const noexcept { return nullability_checked_; }
 
+    // Error reporting
     void add_field_absent_error()
     {
         auto& stream = add_error();
@@ -116,13 +125,13 @@ public:
         }
     }
 
-    void add_type_mismatch_error()
+    void add_type_mismatch_error(const char* cpp_type_name)
     {
         auto& stream = add_error();
         stream << "Incompatible types for field ";
         insert_field_name(stream);
-        stream << ": C++ type " << cpp_type_name_ << " is not compatible with DB type "
-               << column_type_to_str(current_meta());
+        stream << ": C++ type '" << cpp_type_name << "' is not compatible with DB type '"
+               << column_type_to_str(current_meta()) << "'";
     }
 
     void add_nullability_error()
@@ -139,7 +148,7 @@ public:
         if (errors_ != nullptr)
         {
             diagnostics_access::assign(diag, errors_->str(), false);
-            return client_errc::type_mismatch;
+            return client_errc::metadata_check_failed;
         }
         return error_code();
     }

@@ -50,7 +50,7 @@ enum class client_errc : int
     /// The connection mandatory SSL, but the server doesn't accept SSL connections.
     server_doesnt_support_ssl,
 
-    type_mismatch,
+    metadata_check_failed,
     num_resultsets_mismatch,
     is_null,
 };

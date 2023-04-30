@@ -144,7 +144,7 @@ public:
 
         // check output
         if (ref.resultset_index != data_.resultset_index - 1)
-            return client_errc::type_mismatch;
+            return client_errc::metadata_check_failed;  // TODO: is this OK?
 
         // deserialize the row
         auto err = deserialize_row(encoding(), ctx, meta(), ext_.temp_fields);

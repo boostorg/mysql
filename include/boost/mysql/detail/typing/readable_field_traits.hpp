@@ -496,7 +496,7 @@ struct readable_field_traits<non_null<T>, false>
     {
         if (input.is_null())
         {
-            return client_errc::type_mismatch;
+            return client_errc::is_null;
         }
         else
         {
@@ -516,9 +516,6 @@ void meta_check_field_impl(meta_check_context& ctx)
 {
     using traits_t = readable_field_traits<ReadableField>;
 
-    // Setup
-    ctx.set_cpp_type_name(traits_t::type_name);
-
     // Verify that the field is present
     if (ctx.is_current_field_absent())
     {
@@ -530,7 +527,7 @@ void meta_check_field_impl(meta_check_context& ctx)
     bool ok = traits_t::meta_check(ctx);
     if (!ok)
     {
-        ctx.add_type_mismatch_error();
+        ctx.add_type_mismatch_error(traits_t::type_name);
     }
 
     // Check nullability

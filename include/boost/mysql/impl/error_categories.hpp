@@ -45,7 +45,7 @@ inline const char* error_to_string(client_errc error) noexcept
     case boost::mysql::client_errc::server_doesnt_support_ssl:
         return "The connection is configured to require SSL, but the server doesn't allow SSL connections. "
                "Configure SSL on your server or change your connection to not require SSL";
-    case boost::mysql::client_errc::type_mismatch:
+    case boost::mysql::client_errc::metadata_check_failed:
         return "The static interface detected a type mismatch between your declared row type and what the "
                "server returned. Verify your type definitions.";
     case boost::mysql::client_errc::num_resultsets_mismatch:
