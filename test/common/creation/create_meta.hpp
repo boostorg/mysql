@@ -61,6 +61,14 @@ public:
             pack_.flags &= ~detail::column_flags::unsigned_;
         return *this;
     }
+    meta_builder& nullable(bool v) noexcept
+    {
+        if (v)
+            pack_.flags &= ~detail::column_flags::not_null;
+        else
+            pack_.flags |= detail::column_flags::not_null;
+        return *this;
+    }
     metadata build()
     {
         auto res = detail::metadata_access::construct(pack_, false);

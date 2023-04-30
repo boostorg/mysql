@@ -87,7 +87,7 @@ struct readable_field_traits<std::int8_t, false>
     {
         switch (ctx.current_meta().type())
         {
-        case column_type::tinyint: return ctx.current_meta().is_unsigned();
+        case column_type::tinyint: return !ctx.current_meta().is_unsigned();
         default: return false;
         }
     }
