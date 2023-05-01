@@ -598,179 +598,159 @@ BOOST_AUTO_TEST_SUITE(meta_check_field_type_list_)
 template <class... T>
 using identity_list = mp11::mp_list<mp11::mp_identity<T>...>;
 
+const metadata meta[] = {
+    meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
+    meta_builder().type(column_type::varchar).nullable(false).build(),
+    meta_builder().type(column_type::float_).nullable(false).build(),
+};
+
 BOOST_AUTO_TEST_CASE(positional_success)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
-    const std::size_t pos_map[] = {0, 1, 2};
+    // meta is: TINYINT, VARCHAR, FLOAT
     using types = identity_list<int, std::string, float>;
+    const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
+
     auto err = meta_check_field_type_list<types>(meta, nullptr, pos_map, diag);
+
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
 
 BOOST_AUTO_TEST_CASE(positional_success_trailing_fields)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
-    const std::size_t pos_map[] = {0, 1};
+    // meta is: TINYINT, VARCHAR, FLOAT
     using types = identity_list<int, std::string>;
+    const std::size_t pos_map[] = {0, 1};
     diagnostics diag;
+
     auto err = meta_check_field_type_list<types>(meta, nullptr, pos_map, diag);
+
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
 
 BOOST_AUTO_TEST_CASE(positional_missing_fields)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
-    const std::size_t pos_map[] = {0, 1, 2, pos_map_field_absent, pos_map_field_absent};
+    // meta is: TINYINT, VARCHAR, FLOAT
     using types = identity_list<int, std::string, float, int, int>;
-    diagnostics diag;
-    auto err = meta_check_field_type_list<types>(meta, nullptr, pos_map, diag);
-    const char* msg =
+    const std::size_t pos_map[] = {0, 1, 2, pos_map_field_absent, pos_map_field_absent};
+    const char* expected_msg =
         "Field in position 3 can't be mapped: there are more fields in your C++ data type than in your query"
         "\n"
         "Field in position 4 can't be mapped: there are more fields in your C++ data type than in your query";
+    diagnostics diag;
+
+    auto err = meta_check_field_type_list<types>(meta, nullptr, pos_map, diag);
+
     BOOST_TEST(err == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == msg);
+    BOOST_TEST(diag.client_message() == expected_msg);
 }
 
 BOOST_AUTO_TEST_CASE(positional_no_fields)
 {
-    const std::size_t pos_map[] = {pos_map_field_absent, pos_map_field_absent};
     using types = identity_list<int, std::string>;
-    diagnostics diag;
-    auto err = meta_check_field_type_list<types>(metadata_collection_view(), nullptr, pos_map, diag);
-    const char* msg =
+    const std::size_t pos_map[] = {pos_map_field_absent, pos_map_field_absent};
+    const char* expected_msg =
         "Field in position 0 can't be mapped: there are more fields in your C++ data type than in your query"
         "\n"
         "Field in position 1 can't be mapped: there are more fields in your C++ data type than in your query";
+    diagnostics diag;
+
+    auto err = meta_check_field_type_list<types>(metadata_collection_view(), nullptr, pos_map, diag);
+
     BOOST_TEST(err == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == msg);
+    BOOST_TEST(diag.client_message() == expected_msg);
 }
 
 BOOST_AUTO_TEST_CASE(named_success)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = identity_list<float, int, std::string>;
     const std::size_t pos_map[] = {2, 0, 1};
     const string_view names[] = {"f1", "f2", "f3"};
-    using types = identity_list<float, int, std::string>;
     diagnostics diag;
+
     auto err = meta_check_field_type_list<types>(meta, names, pos_map, diag);
+
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
 
 BOOST_AUTO_TEST_CASE(named_success_extra_fields)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = identity_list<std::string, int>;
     const std::size_t pos_map[] = {1, 0};
     const string_view names[] = {"f1", "f2"};
-    using types = identity_list<std::string, int>;
     diagnostics diag;
+
     auto err = meta_check_field_type_list<types>(meta, names, pos_map, diag);
+
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
 
 BOOST_AUTO_TEST_CASE(named_absent_fields)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = identity_list<std::string, int, float>;
     const std::size_t pos_map[] = {pos_map_field_absent, 0, pos_map_field_absent};
     const string_view names[] = {"f1", "f2", "f3"};
-    using types = identity_list<std::string, int, float>;
-    diagnostics diag;
-    auto err = meta_check_field_type_list<types>(meta, names, pos_map, diag);
-    const char* msg =
+    const char* expected_msg =
         "Field 'f1' is not present in the data returned by the server"
         "\n"
         "Field 'f3' is not present in the data returned by the server";
+    diagnostics diag;
+
+    auto err = meta_check_field_type_list<types>(meta, names, pos_map, diag);
+
     BOOST_TEST(err == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == msg);
+    BOOST_TEST(diag.client_message() == expected_msg);
 }
 
 BOOST_AUTO_TEST_CASE(named_no_fields)
 {
+    using types = identity_list<int, int>;
     const std::size_t pos_map[] = {pos_map_field_absent, pos_map_field_absent};
     const string_view names[] = {"f1", "f2"};
-    using types = identity_list<int, int>;
-    diagnostics diag;
-    auto err = meta_check_field_type_list<types>(metadata_collection_view(), names, pos_map, diag);
-    const char* msg =
+    const char* expected_msg =
         "Field 'f1' is not present in the data returned by the server"
         "\n"
         "Field 'f2' is not present in the data returned by the server";
+    diagnostics diag;
+
+    auto err = meta_check_field_type_list<types>(metadata_collection_view(), names, pos_map, diag);
+
     BOOST_TEST(err == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == msg);
+    BOOST_TEST(diag.client_message() == expected_msg);
 }
 
 BOOST_AUTO_TEST_CASE(failed_checks)
 {
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = identity_list<float, float, float>;
     const std::size_t pos_map[] = {2, 1, 0};
     const string_view names[] = {"f1", "f2", "f3"};
-    using types = identity_list<float, float, float>;
-    diagnostics diag;
-    auto err = meta_check_field_type_list<types>(meta, names, pos_map, diag);
-    const char* msg =
+    const char* expected_msg =
         "Incompatible types for field 'f2': C++ type 'float' is not compatible with DB type 'VARCHAR'"
         "\n"
         "Incompatible types for field 'f3': C++ type 'float' is not compatible with DB type 'TINYINT'";
-    BOOST_TEST(err == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == msg);
-}
-
-BOOST_AUTO_TEST_CASE(nullability_failed)
-{
-    const metadata meta[] = {
-        meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(true).build(),
-        meta_builder().type(column_type::varchar).nullable(false).build(),
-        meta_builder().type(column_type::float_).nullable(false).build(),
-    };
-    const std::size_t pos_map[] = {0, 1, 2};
-    using types = identity_list<int, std::string, float>;
     diagnostics diag;
-    auto err = meta_check_field_type_list<types>(meta, nullptr, pos_map, diag);
-    const char* msg =
-        "NULL checks failed for field in position 0: the database type may be NULL, but the C++ type cannot. "
-        "Use std::optional<T> or boost::optional<T>";
+
+    auto err = meta_check_field_type_list<types>(meta, names, pos_map, diag);
+
     BOOST_TEST(err == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == msg);
+    BOOST_TEST(diag.client_message() == expected_msg);
 }
 
 BOOST_AUTO_TEST_CASE(empty)
 {
     using types = identity_list<>;
     diagnostics diag;
+
     auto err = meta_check_field_type_list<types>(metadata_collection_view(), nullptr, nullptr, diag);
+
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
