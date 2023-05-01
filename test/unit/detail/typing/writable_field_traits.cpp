@@ -16,12 +16,15 @@
 
 #include <boost/config.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <forward_list>
 #include <iosfwd>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <memory>
 #include <set>
@@ -32,14 +35,19 @@
 #endif
 
 #include "custom_allocator.hpp"
+#include "test_common.hpp"
 
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 using boost::mysql::detail::is_field_view_forward_iterator;
 using boost::mysql::detail::is_writable_field;
 using boost::mysql::detail::is_writable_field_tuple;
+using boost::mysql::detail::writable_field_traits;
 using std::tuple;
 
 namespace {
+
+BOOST_AUTO_TEST_SUITE(test_writable_field_traits)
 
 struct other_traits : std::char_traits<char>
 {
@@ -235,5 +243,66 @@ static_assert(!is_field_view_forward_iterator<std::vector<int>>::value, "");
 static_assert(!is_field_view_forward_iterator<field_view*&>::value, "");
 static_assert(!is_field_view_forward_iterator<row::iterator&>::value, "");
 static_assert(!is_field_view_forward_iterator<const row::iterator&>::value, "");
+
+BOOST_AUTO_TEST_CASE(to_field_)
+{
+    std::int64_t int64max = std::numeric_limits<std::int64_t>::max();
+    std::uint64_t uint64max = std::numeric_limits<std::uint64_t>::max();
+    datetime dt{2020, 1, 2, 23};
+    auto t = maket(45, 1, 2);
+    std::string s = "ljk";
+    blob b{3, 4, 5};
+    field f("tgh");
+
+    // Scalars
+    BOOST_TEST(writable_field_traits<std::int8_t>::to_field(90) == field_view(90));
+    BOOST_TEST(writable_field_traits<std::uint8_t>::to_field(90u) == field_view(90u));
+    BOOST_TEST(writable_field_traits<std::int16_t>::to_field(0xabc) == field_view(0xabc));
+    BOOST_TEST(writable_field_traits<std::uint16_t>::to_field(0xaabbu) == field_view(0xaabbu));
+    BOOST_TEST(writable_field_traits<std::int32_t>::to_field(90) == field_view(90));
+    BOOST_TEST(writable_field_traits<std::uint32_t>::to_field(90u) == field_view(90u));
+    BOOST_TEST(writable_field_traits<std::int64_t>::to_field(int64max) == field_view(int64max));
+    BOOST_TEST(writable_field_traits<std::uint64_t>::to_field(uint64max) == field_view(uint64max));
+    BOOST_TEST(writable_field_traits<bool>::to_field(false) == field_view(0));
+    BOOST_TEST(writable_field_traits<bool>::to_field(true) == field_view(1));
+    BOOST_TEST(writable_field_traits<float>::to_field(4.2f) == field_view(4.2f));
+    BOOST_TEST(writable_field_traits<double>::to_field(4.2) == field_view(4.2));
+    BOOST_TEST(writable_field_traits<date>::to_field(date(2020, 1, 2)) == field_view(date(2020, 1, 2)));
+    BOOST_TEST(writable_field_traits<datetime>::to_field(dt) == field_view(dt));
+    BOOST_TEST(writable_field_traits<boost::mysql::time>::to_field(t) == field_view(t));
+
+    // Strings
+    BOOST_TEST(writable_field_traits<std::string>::to_field(s) == field_view("ljk"));
+    BOOST_TEST(writable_field_traits<const std::string&>::to_field(s) == field_view("ljk"));
+    BOOST_TEST(writable_field_traits<string_view>::to_field("abc") == field_view("abc"));
+#if defined(__cpp_lib_string_view)
+    BOOST_TEST(writable_field_traits<std::string_view>::to_field("abc") == field_view("abc"));
+#endif
+    BOOST_TEST(writable_field_traits<const char*>::to_field("abc") == field_view("abc"));
+
+    // Blobs
+    BOOST_TEST(writable_field_traits<blob>::to_field(b) == field_view(makebv("\3\4\5")));
+    BOOST_TEST(writable_field_traits<const blob&>::to_field(b) == field_view(makebv("\3\4\5")));
+    BOOST_TEST(writable_field_traits<blob_view>::to_field(makebv("\1\2\3")) == field_view(makebv("\1\2\3")));
+
+    // Optionals
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+    BOOST_TEST(writable_field_traits<std::optional<int>>::to_field(std::optional<int>()) == field_view());
+    BOOST_TEST(writable_field_traits<std::optional<int>>::to_field(std::optional<int>(42)) == field_view(42));
+#endif
+    BOOST_TEST(
+        writable_field_traits<boost::optional<float>>::to_field(boost::optional<float>()) == field_view()
+    );
+    BOOST_TEST(
+        writable_field_traits<boost::optional<float>>::to_field(boost::optional<float>(4.2f)) ==
+        field_view(4.2f)
+    );
+
+    // Field types
+    BOOST_TEST(writable_field_traits<field>::to_field(f) == field_view("tgh"));
+    BOOST_TEST(writable_field_traits<field_view>::to_field(field_view(50)) == field_view(50));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
