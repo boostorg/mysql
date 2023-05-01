@@ -15,6 +15,7 @@
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/non_null.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
@@ -559,6 +560,21 @@ void meta_check_field(meta_check_context& ctx)
     static_assert(is_readable_field<ReadableField>::value, "Should be a ReadableField");
     meta_check_field_impl<ReadableField>(ctx);
     ctx.advance();
+}
+
+template <typename ReadableFieldList>
+error_code meta_check_field_type_list(
+    metadata_collection_view meta,
+    const string_view* field_names,
+    const std::size_t* pos_map,
+    diagnostics& diag
+)
+{
+    meta_check_context ctx(meta.data(), field_names, pos_map);
+    boost::mp11::mp_for_each<ReadableFieldList>([&ctx](auto type_identity) {
+        meta_check_field<typename decltype(type_identity)::type>(ctx);
+    });
+    return ctx.check_errors(diag);
 }
 
 }  // namespace detail

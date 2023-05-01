@@ -134,19 +134,14 @@ class row_traits<RowType, true>
     static_assert(check_readable_field<member_types>(), "");
 
 public:
+    using types = member_types;
+
     static constexpr std::size_t size() noexcept { return boost::mp11::mp_size<members>::value; }
 
     // TODO: allow disabling matching by name
     static constexpr const string_view* field_names() noexcept
     {
         return describe_names_storage<RowType>.data;
-    }
-
-    static void meta_check(meta_check_context& ctx)
-    {
-        boost::mp11::mp_for_each<member_types>([&](auto type_identity) {
-            meta_check_field<typename decltype(type_identity)::type>(ctx);
-        });
     }
 
     static void parse(parse_functor& parser, RowType& to)
@@ -165,16 +160,9 @@ class row_traits<std::tuple<FieldType...>, false>
     static_assert(check_readable_field<field_types>(), "");
 
 public:
+    using types = field_types;
     static constexpr std::size_t size() noexcept { return std::tuple_size<tuple_type>::value; }
     static constexpr const string_view* field_names() noexcept { return nullptr; }
-
-    static void meta_check(meta_check_context& ctx)
-    {
-        boost::mp11::mp_for_each<field_types>([&ctx](auto type_identity) {
-            meta_check_field<typename decltype(type_identity)::type>(ctx);
-        });
-    }
-
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
 };
 
@@ -216,9 +204,8 @@ error_code meta_check(
     diagnostics& diag
 )
 {
-    meta_check_context ctx(meta.data(), field_names, pos_map);
-    row_traits<RowType>::meta_check(ctx);
-    return ctx.check_errors(diag);
+    using fields = typename row_traits<RowType>::fields;
+    return meta_check_field_type_list<fields>(meta, field_names, pos_map, diag);
 }
 
 template <class RowType>
