@@ -35,7 +35,7 @@ namespace boost {
 namespace mysql {
 
 // Forward declarations
-template <class... RowType>
+template <class... StaticRow>
 class static_execution_state;
 
 /**
@@ -983,16 +983,16 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
-    template <class SpanRowType, class... RowType>
+    template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(
-        static_execution_state<RowType...>& st,
-        span<SpanRowType> output,
+        static_execution_state<StaticRow...>& st,
+        span<SpanStaticRow> output,
         error_code& err,
         diagnostics& info
     );
 
-    template <class SpanRowType, class... RowType>
-    std::size_t read_some_rows(static_execution_state<RowType...>& st, span<SpanRowType> output);
+    template <class SpanStaticRow, class... StaticRow>
+    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output);
 
     /**
      * \copydoc read_some_rows
@@ -1002,14 +1002,14 @@ public:
      * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
      */
     template <
-        class SpanRowType,
-        class... RowType,
+        class SpanStaticRow,
+        class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
-        static_execution_state<RowType...>& st,
-        span<SpanRowType> output,
+        static_execution_state<StaticRow...>& st,
+        span<SpanStaticRow> output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -1019,12 +1019,12 @@ public:
     /// \copydoc async_read_some_rows
     template <
         class SpanRowType,
-        class... RowType,
+        class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
-        static_execution_state<RowType...>& st,
+        static_execution_state<StaticRow...>& st,
         span<SpanRowType> output,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)

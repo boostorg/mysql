@@ -273,7 +273,7 @@ private:
     }
 };
 
-template <class RowType>
+template <class StaticRow>
 static error_code static_execution_state_parse_fn(
     const field_view* from,
     const std::size_t* pos_map,
@@ -281,22 +281,22 @@ static error_code static_execution_state_parse_fn(
     std::size_t offset
 )
 {
-    RowType& obj = static_cast<RowType*>(to)[offset];
+    StaticRow& obj = static_cast<StaticRow*>(to)[offset];
     return parse(from, pos_map, obj);
 }
 
-template <class... RowType>
-constexpr array_wrapper<static_execution_state_erased_impl::parse_fn_t, sizeof...(RowType)>
-    static_execution_state_parse_vtable{{&static_execution_state_parse_fn<RowType>...}};
+template <class... StaticRow>
+constexpr array_wrapper<static_execution_state_erased_impl::parse_fn_t, sizeof...(StaticRow)>
+    static_execution_state_parse_vtable{{&static_execution_state_parse_fn<StaticRow>...}};
 
-template <class... RowType>
+template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_execution_state_impl
 {
     // Storage for our data, which requires knowing the template args
     struct data_t
     {
-        std::array<field_view, max_num_columns<RowType...>> temp_fields{};
-        std::array<std::size_t, max_num_columns<RowType...>> pos_map{};
+        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
+        std::array<std::size_t, max_num_columns<StaticRow...>> pos_map{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -305,11 +305,11 @@ class static_execution_state_impl
     static constexpr static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
-            sizeof...(RowType),
-            num_columns_table<RowType...>.data(),
-            name_table<RowType...>.data(),
-            meta_check_vtable<RowType...>.data(),
-            static_execution_state_parse_vtable<RowType...>.data(),
+            sizeof...(StaticRow),
+            num_columns_table<StaticRow...>.data(),
+            name_table<StaticRow...>.data(),
+            meta_check_vtable<StaticRow...>.data(),
+            static_execution_state_parse_vtable<StaticRow...>.data(),
         };
     }
 

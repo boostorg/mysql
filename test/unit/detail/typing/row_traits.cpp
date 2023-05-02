@@ -26,18 +26,19 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::mysql::detail::get_row_field_names;
 using boost::mysql::detail::get_row_size;
+using boost::mysql::detail::is_static_row;
 using boost::mysql::detail::meta_check;
 using boost::mysql::detail::parse;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_row_traits)
-BOOST_AUTO_TEST_SUITE(describe_structs)
 
-struct empty
+// type definitions: describe structs
+struct sempty
 {
 };
-BOOST_DESCRIBE_STRUCT(empty, (), ())
+BOOST_DESCRIBE_STRUCT(sempty, (), ())
 
 struct s1
 {
@@ -58,8 +59,47 @@ struct sinherit : s2
 };
 BOOST_DESCRIBE_STRUCT(sinherit, (s2), (double_field))
 
+// a struct without any relationship with this lib and no describe data
+struct unrelated
+{
+};
+
+struct sbad
+{
+    int i;
+    unrelated f;
+    double d;
+};
+BOOST_DESCRIBE_STRUCT(sbad, (), (i, f, d))
+
+// type definitions: tuples
+using tempty = std::tuple<>;
+using t1 = std::tuple<double>;
+using t2 = std::tuple<std::int32_t, float>;
+using t3 = std::tuple<std::string, std::int32_t, double>;
+using tbad = std::tuple<int, unrelated, double>;
+
+// is_row_type concept: doesn't inspect individual fields
+static_assert(is_static_row<sempty>::value, "");
+static_assert(is_static_row<s1>::value, "");
+static_assert(is_static_row<s2>::value, "");
+static_assert(is_static_row<sinherit>::value, "");
+static_assert(is_static_row<sbad>::value, "");
+
+static_assert(is_static_row<tempty>::value, "");
+static_assert(is_static_row<t1>::value, "");
+static_assert(is_static_row<t2>::value, "");
+static_assert(is_static_row<t3>::value, "");
+static_assert(is_static_row<tbad>::value, "");
+
+static_assert(!is_static_row<unrelated>::value, "");
+static_assert(!is_static_row<int>::value, "");
+static_assert(!is_static_row<row>::value, "");
+
+BOOST_AUTO_TEST_SUITE(describe_structs)
+
 // size
-static_assert(get_row_size<empty>() == 0u, "");
+static_assert(get_row_size<sempty>() == 0u, "");
 static_assert(get_row_size<s1>() == 1u, "");
 static_assert(get_row_size<s2>() == 2u, "");
 static_assert(get_row_size<sinherit>() == 3u, "");
@@ -67,7 +107,7 @@ static_assert(get_row_size<sinherit>() == 3u, "");
 // names
 BOOST_AUTO_TEST_CASE(get_row_field_names_)
 {
-    BOOST_TEST(get_row_field_names<empty>() == nullptr);
+    BOOST_TEST(get_row_field_names<sempty>() == nullptr);
     BOOST_TEST(get_row_field_names<s1>()[0] == "i");
     BOOST_TEST(get_row_field_names<s2>()[0] == "i");
     BOOST_TEST(get_row_field_names<s2>()[1] == "f");
@@ -111,7 +151,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty_struct)
 {
     diagnostics diag;
-    auto err = meta_check<empty>(metadata_collection_view(), nullptr, diag);
+    auto err = meta_check<sempty>(metadata_collection_view(), nullptr, diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -153,7 +193,7 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
 
 BOOST_AUTO_TEST_CASE(parse_empty_struct)
 {
-    empty value;
+    sempty value;
     auto err = parse(nullptr, nullptr, value);
     BOOST_TEST(err == error_code());
 }
@@ -162,19 +202,14 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(tuples)
 
-using empty = std::tuple<>;
-using t1 = std::tuple<double>;
-using t2 = std::tuple<std::int32_t, float>;
-using t3 = std::tuple<std::string, std::int32_t, double>;
-
 // size
-static_assert(get_row_size<empty>() == 0, "");
+static_assert(get_row_size<tempty>() == 0, "");
 static_assert(get_row_size<t1>() == 1, "");
 static_assert(get_row_size<t2>() == 2, "");
 static_assert(get_row_size<t3>() == 3, "");
 
 // name tables
-static_assert(get_row_field_names<empty>() == nullptr, "");
+static_assert(get_row_field_names<tempty>() == nullptr, "");
 static_assert(get_row_field_names<t1>() == nullptr, "");
 static_assert(get_row_field_names<t2>() == nullptr, "");
 static_assert(get_row_field_names<t3>() == nullptr, "");
@@ -215,7 +250,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty)
 {
     diagnostics diag;
-    auto err = meta_check<empty>(metadata_collection_view(), nullptr, diag);
+    auto err = meta_check<tempty>(metadata_collection_view(), nullptr, diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -257,14 +292,12 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
 
 BOOST_AUTO_TEST_CASE(parse_empty_tuple)
 {
-    empty value;
+    tempty value;
     auto err = parse(nullptr, nullptr, value);
     BOOST_TEST(err == error_code());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-// is_row_type
 
 BOOST_AUTO_TEST_SUITE_END()
 

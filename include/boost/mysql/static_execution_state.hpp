@@ -30,7 +30,7 @@ namespace mysql {
  * Distinct objects: safe. \n
  * Shared objects: unsafe.
  */
-template <class... RowType>
+template <class... StaticRow>
 class static_execution_state
 {
 public:
@@ -207,7 +207,7 @@ public:
     bool is_out_params() const noexcept { return impl_.get_interface().get_is_out_params(); }
 
 private:
-    detail::static_execution_state_impl<RowType...> impl_;
+    detail::static_execution_state_impl<StaticRow...> impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::impl_access;

@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-// This is used for concept checks. Not implemented anywhere.
-
 #ifndef BOOST_MYSQL_TEST_COMMON_CUSTOM_ALLOCATOR_HPP
 #define BOOST_MYSQL_TEST_COMMON_CUSTOM_ALLOCATOR_HPP
+
+// This is used for concept checks. Not implemented anywhere.
 
 namespace boost {
 namespace mysql {

@@ -285,45 +285,46 @@ private:
     }
 };
 
-template <class... RowType>
-using static_results_rows_t = std::tuple<std::vector<RowType>...>;
+template <class... StaticRow>
+using static_results_rows_t = std::tuple<std::vector<StaticRow>...>;
 
-template <class... RowType>
+template <class... StaticRow>
 struct static_results_parse_vtable_helper
 {
     template <std::size_t I>
     static error_code parse_fn(const field_view* from, const std::size_t* pos_map, void* to)
     {
-        auto& v = std::get<I>(*static_cast<static_results_rows_t<RowType...>*>(to));
+        auto& v = std::get<I>(*static_cast<static_results_rows_t<StaticRow...>*>(to));
         v.emplace_back();
         return parse(from, pos_map, v.back());
     }
 
     template <std::size_t... N>
-    static constexpr array_wrapper<static_results_erased_impl::parse_fn_t, sizeof...(RowType)> create_table(boost::mp11::index_sequence<
-                                                                                                            N...>)
+    static constexpr array_wrapper<static_results_erased_impl::parse_fn_t, sizeof...(StaticRow)> create_table(boost::mp11::index_sequence<
+                                                                                                              N...>)
     {
         return {{&parse_fn<N>...}};
     }
 };
 
-template <class... RowType>
-constexpr auto static_results_parse_vtable = static_results_parse_vtable_helper<RowType...>::create_table(
-    boost::mp11::make_index_sequence<sizeof...(RowType)>()
+template <class... StaticRow>
+constexpr auto static_results_parse_vtable = static_results_parse_vtable_helper<StaticRow...>::create_table(
+    boost::mp11::make_index_sequence<sizeof...(StaticRow)>()
 );
 
-template <class... RowType>
+template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_results_impl
 {
-    using rows_t = static_results_rows_t<RowType...>;
+    using rows_t = static_results_rows_t<StaticRow...>;
 
     // Storage for our data, which requires knowing the template args.
     struct data_t
     {
         rows_t rows;
-        std::array<static_results_erased_impl::basic_per_resultset_data, sizeof...(RowType)> per_resultset{};
-        std::array<field_view, max_num_columns<RowType...>> temp_fields{};
-        std::array<std::size_t, max_num_columns<RowType...>> pos_table{};
+        std::array<static_results_erased_impl::basic_per_resultset_data, sizeof...(StaticRow)>
+            per_resultset{};
+        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
+        std::array<std::size_t, max_num_columns<StaticRow...>> pos_table{};
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -343,18 +344,18 @@ class static_results_impl
     static void reset_tuple(void* rows_ptr) noexcept
     {
         auto& rows = *static_cast<rows_t*>(rows_ptr);
-        boost::mp11::mp_for_each<boost::mp11::mp_iota_c<sizeof...(RowType)>>(reset_fn{rows});
+        boost::mp11::mp_for_each<boost::mp11::mp_iota_c<sizeof...(StaticRow)>>(reset_fn{rows});
     }
 
     static constexpr static_results_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
-            sizeof...(RowType),
-            num_columns_table<RowType...>.data(),
-            name_table<RowType...>.data(),
+            sizeof...(StaticRow),
+            num_columns_table<StaticRow...>.data(),
+            name_table<StaticRow...>.data(),
             &reset_tuple,
-            meta_check_vtable<RowType...>.data(),
-            static_results_parse_vtable<RowType...>.data(),
+            meta_check_vtable<StaticRow...>.data(),
+            static_results_parse_vtable<StaticRow...>.data(),
         };
     }
 
@@ -386,7 +387,8 @@ public:
 
     // User facing
     template <std::size_t I>
-    boost::span<const typename std::tuple_element<I, std::tuple<RowType...>>::type> get_rows() const noexcept
+    boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...>>::type> get_rows(
+    ) const noexcept
     {
         return std::get<I>(data_.rows);
     }
