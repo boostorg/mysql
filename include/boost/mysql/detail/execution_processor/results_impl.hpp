@@ -203,7 +203,7 @@ class results_impl final : public execution_processor
         info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
         if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
-            set_state(state_t::reading_first_packet);
+            set_state(state_t::reading_first_subseq);
         }
         else
         {
@@ -235,14 +235,13 @@ public:
         info_.clear();
     }
 
-    error_code on_num_meta_impl(std::size_t num_columns) override
+    void on_num_meta_impl(std::size_t num_columns) override
     {
         auto& resultset_data = add_resultset();
         meta_.reserve(meta_.size() + num_columns);
         resultset_data.num_columns = num_columns;
         remaining_meta_ = num_columns;
         set_state(state_t::reading_metadata);
-        return error_code();
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
@@ -292,7 +291,7 @@ public:
     // User facing
     row_view get_out_params() const noexcept
     {
-        assert(complete());
+        assert(is_complete());
         for (std::size_t i = 0; i < per_result_.size(); ++i)
         {
             if (per_result_[i].is_out_params)

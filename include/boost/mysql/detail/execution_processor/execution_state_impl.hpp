@@ -42,7 +42,7 @@ class execution_state_impl final : public execution_processor_with_output
     ok_data eof_data_;
     std::vector<char> info_;
 
-    void clear_previous_resultset() noexcept
+    void on_new_resultset() noexcept
     {
         meta_.clear();
         eof_data_ = ok_data{};
@@ -59,7 +59,7 @@ class execution_state_impl final : public execution_processor_with_output
         info_.assign(pack.info.value.begin(), pack.info.value.end());
         if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
-            set_state(state_t::reading_first_packet);
+            set_state(state_t::reading_first_subseq);
         }
         else
         {
@@ -87,18 +87,17 @@ public:
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
     {
-        clear_previous_resultset();
+        on_new_resultset();
         on_ok_packet_impl(pack);
         return error_code();
     }
 
-    error_code on_num_meta_impl(std::size_t num_columns) override
+    void on_num_meta_impl(std::size_t num_columns) override
     {
-        clear_previous_resultset();
+        on_new_resultset();
         remaining_meta_ = num_columns;
         meta_.reserve(num_columns);
         set_state(state_t::reading_metadata);
-        return error_code();
     }
 
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics&) override

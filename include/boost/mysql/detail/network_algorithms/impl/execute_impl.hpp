@@ -30,7 +30,7 @@ inline error_code process_available_rows(
     // Process all read messages until they run out, an error happens
     // or an EOF is received
     output.on_row_batch_start();
-    while (channel.has_read_messages() && output.should_read_rows())
+    while (channel.has_read_messages() && output.is_reading_rows())
     {
         auto err = process_row_message(channel, output, diag);
         if (err)
@@ -79,11 +79,11 @@ struct execute_impl_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_
                 .async_write(chan_.shared_buffer(), output_.sequence_number(), std::move(self));
 
-            while (!output_.complete())
+            while (!output_.is_complete())
             {
                 BOOST_ASIO_CORO_YIELD async_read_resultset_head(chan_, output_, diag_, std::move(self));
 
-                while (output_.should_read_rows())
+                while (output_.is_reading_rows())
                 {
                     // Ensure we have messages to be read
                     if (!chan_.has_read_messages())
@@ -128,16 +128,16 @@ void boost::mysql::detail::execute_impl(
     if (err)
         return;
 
-    while (!output.complete())
+    while (!output.is_complete())
     {
-        if (output.should_read_head())
+        if (output.is_reading_head())
         {
             read_resultset_head(channel, output, err, diag);
             if (err)
                 return;
         }
 
-        while (output.should_read_rows())
+        while (output.is_reading_rows())
         {
             // Ensure we have messages to be read
             if (!channel.has_read_messages())

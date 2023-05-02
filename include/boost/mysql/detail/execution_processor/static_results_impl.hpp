@@ -121,13 +121,12 @@ public:
         return meta_check(diag);
     }
 
-    error_code on_num_meta_impl(std::size_t num_columns) override final
+    void on_num_meta_impl(std::size_t num_columns) override final
     {
         auto& resultset_data = add_resultset();
         data_.meta.reserve(data_.meta.size() + num_columns);
         resultset_data.meta_size = num_columns;
         set_state(state_t::reading_metadata);
-        return error_code();
     }
 
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
@@ -248,7 +247,7 @@ private:
         data_.info.insert(data_.info.end(), pack.info.value.begin(), pack.info.value.end());
         if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
-            set_state(state_t::reading_first_packet);
+            set_state(state_t::reading_first_subseq);
             return data_.resultset_index < desc_.num_resultsets ? error_code()
                                                                 : client_errc::num_resultsets_mismatch;
         }

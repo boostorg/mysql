@@ -40,7 +40,7 @@ inline error_code process_execution_response(
     case execute_response::type_t::ok_packet:
         err = proc.on_head_ok_packet(response.data.ok_pack, diag);
         break;
-    case execute_response::type_t::num_fields: err = proc.on_num_meta(response.data.num_fields); break;
+    case execute_response::type_t::num_fields: proc.on_num_meta(response.data.num_fields); break;
     }
     return err;
 }
@@ -93,7 +93,7 @@ struct read_resultset_head_op : boost::asio::coroutine
             diag_.clear();
 
             // If we're not reading head, return
-            if (!proc_.should_read_head())
+            if (!proc_.is_reading_head())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code());
@@ -113,7 +113,7 @@ struct read_resultset_head_op : boost::asio::coroutine
             }
 
             // Read all of the field definitions
-            while (proc_.should_read_meta())
+            while (proc_.is_reading_meta())
             {
                 // Read from the stream if we need it
                 if (!chan_.has_read_messages())
@@ -152,7 +152,7 @@ void boost::mysql::detail::read_resultset_head(
     diag.clear();
 
     // If we're not reading head, return
-    if (!proc.should_read_head())
+    if (!proc.is_reading_head())
         return;
 
     // Read the response
@@ -167,7 +167,7 @@ void boost::mysql::detail::read_resultset_head(
         return;
 
     // Read all of the field definitions (zero if empty resultset)
-    while (proc.should_read_meta())
+    while (proc.is_reading_meta())
     {
         // Read from the stream if required
         if (!chan.has_read_messages())

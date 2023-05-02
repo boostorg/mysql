@@ -42,7 +42,7 @@ inline error_code process_some_rows(
     // or an EOF is received
     proc.set_output(output_ref(&channel.shared_fields()));
     proc.on_row_batch_start();
-    while (channel.has_read_messages() && proc.should_read_rows())
+    while (channel.has_read_messages() && proc.is_reading_rows())
     {
         auto err = process_row_message(channel, proc, diag);
         if (err)
@@ -63,7 +63,7 @@ inline error_code process_some_rows_static(
     // or an EOF is received
     proc.set_output(output);
     proc.on_row_batch_start();
-    while (channel.has_read_messages() && proc.should_read_rows() && proc.num_read_rows() < output.max_size)
+    while (channel.has_read_messages() && proc.is_reading_rows() && proc.num_read_rows() < output.max_size)
     {
         auto err = process_row_message(channel, proc, diag);
         if (err)
@@ -101,7 +101,7 @@ struct read_some_rows_op : boost::asio::coroutine
             diag_.clear();
 
             // If we are not reading rows, return
-            if (!st_.should_read_rows())
+            if (!st_.is_reading_rows())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code(), rows_view());
@@ -158,7 +158,7 @@ struct read_some_rows_typed_op : boost::asio::coroutine
             diag_.clear();
 
             // If we are not reading rows, return
-            if (!st_.should_read_rows())
+            if (!st_.is_reading_rows())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code(), 0);
@@ -194,7 +194,7 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
 )
 {
     // If we are not reading rows, just return
-    if (!st.should_read_rows())
+    if (!st.is_reading_rows())
     {
         return rows_view();
     }
@@ -241,7 +241,7 @@ std::size_t boost::mysql::detail::read_some_rows(
 )
 {
     // If we are not reading rows, just return
-    if (!st.should_read_rows())
+    if (!st.is_reading_rows())
     {
         return 0;
     }

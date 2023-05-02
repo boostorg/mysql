@@ -12,6 +12,8 @@
 
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <stdexcept>
 #include <string>
 
@@ -22,10 +24,8 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-template <class... Args>
-std::vector<std::uint8_t> create_text_row_body(const Args&... args)
+inline std::vector<std::uint8_t> create_text_row_body_span(boost::span<const field_view> fields)
 {
-    auto fields = make_fv_arr(args...);
     std::vector<std::uint8_t> res;
     for (field_view f : fields)
     {
@@ -46,6 +46,12 @@ std::vector<std::uint8_t> create_text_row_body(const Args&... args)
         }
     }
     return res;
+}
+
+template <class... Args>
+std::vector<std::uint8_t> create_text_row_body(const Args&... args)
+{
+    return create_text_row_body_span(make_fv_arr(args...));
 }
 
 template <class... Args>

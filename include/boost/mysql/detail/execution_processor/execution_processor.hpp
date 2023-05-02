@@ -31,7 +31,7 @@ public:
 
     void reset(resultset_encoding enc, metadata_mode mode) noexcept
     {
-        state_ = state_t::initial;
+        state_ = state_t::reading_first;
         encoding_ = enc;
         mode_ = mode;
         seqnum_ = 0;
@@ -41,25 +41,25 @@ public:
 
     error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
     {
-        assert(should_read_head());
+        assert(is_reading_head());
         return on_head_ok_packet_impl(pack, diag);
     }
 
-    error_code on_num_meta(std::size_t num_columns)
+    void on_num_meta(std::size_t num_columns)
     {
-        assert(should_read_head());
-        return on_num_meta_impl(num_columns);
+        assert(is_reading_head());
+        on_num_meta_impl(num_columns);
     }
 
     error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
     {
-        assert(should_read_meta());
+        assert(is_reading_meta());
         return on_meta_impl(pack, diag);
     }
 
     void on_row_batch_start()
     {
-        assert(should_read_rows());
+        assert(is_reading_rows());
         read_rows_ = 0;
         on_row_batch_start_impl();
     }
@@ -68,13 +68,13 @@ public:
 
     error_code on_row_ok_packet(const ok_packet& pack)
     {
-        assert(should_read_rows());
+        assert(is_reading_rows());
         return on_row_ok_packet_impl(pack);
     }
 
     error_code on_row(deserialization_context& ctx)
     {
-        assert(should_read_rows());
+        assert(is_reading_rows());
         error_code ec = on_row_impl(ctx);
         if (ec)
             return ec;
@@ -82,15 +82,15 @@ public:
         return error_code();
     }
 
-    bool initial() const noexcept { return state_ == state_t::initial; }
-    bool should_read_head() const noexcept
+    bool is_reading_first() const noexcept { return state_ == state_t::reading_first; }
+    bool is_reading_first_subseq() const noexcept { return state_ == state_t::reading_first_subseq; }
+    bool is_reading_head() const noexcept
     {
-        return state_ == state_t::initial || state_ == state_t::reading_first_packet;
+        return state_ == state_t::reading_first || state_ == state_t::reading_first_subseq;
     }
-    bool should_read_head_subsequent() const noexcept { return state_ == state_t::reading_first_packet; }
-    bool should_read_meta() const noexcept { return state_ == state_t::reading_metadata; }
-    bool should_read_rows() const noexcept { return state_ == state_t::reading_rows; }
-    bool complete() const noexcept { return state_ == state_t::complete; }
+    bool is_reading_meta() const noexcept { return state_ == state_t::reading_metadata; }
+    bool is_reading_rows() const noexcept { return state_ == state_t::reading_rows; }
+    bool is_complete() const noexcept { return state_ == state_t::complete; }
 
     std::size_t num_read_rows() const noexcept { return read_rows_; }
     std::size_t num_meta() const noexcept { return num_meta_impl(); }
@@ -101,20 +101,29 @@ public:
 protected:
     enum class state_t
     {
-        initial,
-        reading_first_packet,  // we're waiting for a subsequent resultset's 1st packet
+        // waiting for 1st packet, for the 1st resultset
+        reading_first,
+
+        // same, but for subsequent resultsets (distiguised to provide a cleaner xp to
+        // the user in (static_)execution_state)
+        reading_first_subseq,
+
+        // waiting for metadata packets
         reading_metadata,
+
+        // waiting for rows
         reading_rows,
+
+        // done
         complete
     };
-    state_t state() const noexcept { return state_; }
     void set_state(state_t v) noexcept { state_ = v; }
 
     metadata_mode meta_mode() const noexcept { return mode_; }
 
     virtual void reset_impl() noexcept = 0;
     virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
-    virtual error_code on_num_meta_impl(std::size_t num_columns) = 0;
+    virtual void on_num_meta_impl(std::size_t num_columns) = 0;
     virtual error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
     virtual error_code on_row_impl(deserialization_context& ctx) = 0;
@@ -123,7 +132,7 @@ protected:
     virtual std::size_t num_meta_impl() const noexcept = 0;
 
 private:
-    state_t state_;
+    state_t state_{state_t::reading_first};
     resultset_encoding encoding_{resultset_encoding::text};
     std::uint8_t seqnum_{};
     metadata_mode mode_{metadata_mode::minimal};
