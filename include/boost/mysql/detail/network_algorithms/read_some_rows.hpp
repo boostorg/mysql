@@ -16,15 +16,19 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
+// Note: it is OK depending on execution_state_impl, but
+// we want to avoid depending on the static one here, since it requires C++14 and Describe
+
 template <class Stream>
 rows_view read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
+    execution_state_impl& st,
     error_code& err,
     diagnostics& diag
 );
@@ -36,7 +40,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
 async_read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& result,
+    execution_state_impl& result,
     diagnostics& diag,
     CompletionToken&& token
 );
@@ -44,8 +48,8 @@ async_read_some_rows(
 template <class Stream>
 std::size_t read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
-    output_ref output,
+    execution_processor& st,
+    const output_ref& output,
     error_code& err,
     diagnostics& diag
 );
@@ -56,8 +60,8 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
 async_read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
-    output_ref output,
+    execution_processor& st,
+    const output_ref& output,
     diagnostics& diag,
     CompletionToken&& token
 );

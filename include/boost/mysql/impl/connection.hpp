@@ -670,7 +670,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     return detail::read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output.data(), output.size(), index),
+        detail::output_ref(output, index),
         err,
         diag
     );
@@ -707,7 +707,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     return detail::async_read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output.data(), output.size(), index),
+        detail::output_ref(output, index),
         diag,
         std::forward<CompletionToken>(token)
     );

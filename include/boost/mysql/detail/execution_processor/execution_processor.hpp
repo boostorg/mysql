@@ -10,6 +10,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -17,12 +18,67 @@
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstddef>
 #include <cstdint>
 
 namespace boost {
 namespace mysql {
 namespace detail {
+
+// A type-erased reference to be used as the output range for execution states.
+// For static_execution_state, this is a span-like class.
+// For execution_state, this holds a pointer to the field vector to use
+class output_ref
+{
+    // Pointer to the first element of the span (static_execution_state)
+    // Pointer to a vector<field_view> to use as output (execution_state)
+    void* data_{};
+
+    // Number of elements in the span (static_execution_state). Otherwise unused
+    std::size_t max_size_{};
+
+    // Identifier for the type of elements. Index in the resultset type list (static_execution_state).
+    // Otherwise unused
+    std::size_t resultset_index_{resultset_index_none};
+
+    // Offset into the span's data (static_execution_state). Otherwise unused
+    std::size_t offset_{};
+
+    static constexpr std::size_t resultset_index_none = static_cast<std::size_t>(-1);
+
+public:
+    constexpr output_ref() noexcept = default;
+
+    template <class T>
+    constexpr output_ref(boost::span<T> span, std::size_t resultset_index) noexcept
+        : data_(span.data()), max_size_(span.size()), resultset_index_(resultset_index)
+    {
+    }
+
+    output_ref(std::vector<field_view>& storage) noexcept : data_(&storage) {}
+
+    std::size_t max_size() const noexcept { return max_size_; }
+    std::size_t resultset_index() const noexcept { return resultset_index_; }
+    std::size_t offset() const noexcept { return offset_; }
+    void inc_offset() noexcept { ++offset_; }
+
+    template <class T>
+    T& span_element() const noexcept
+    {
+        assert(data_);
+        assert(resultset_index_ != resultset_index_none);
+        return static_cast<T*>(data_)[offset_];
+    }
+
+    std::vector<field_view>& fields() const noexcept
+    {
+        assert(data_);
+        assert(resultset_index_ == resultset_index_none);
+        return *static_cast<std::vector<field_view>*>(data_);
+    }
+};
 
 class execution_processor
 {
@@ -35,7 +91,6 @@ public:
         encoding_ = enc;
         mode_ = mode;
         seqnum_ = 0;
-        read_rows_ = 0;
         reset_impl();
     }
 
@@ -60,7 +115,6 @@ public:
     void on_row_batch_start()
     {
         assert(is_reading_rows());
-        read_rows_ = 0;
         on_row_batch_start_impl();
     }
 
@@ -72,14 +126,10 @@ public:
         return on_row_ok_packet_impl(pack);
     }
 
-    error_code on_row(deserialization_context& ctx)
+    error_code on_row(deserialization_context& ctx, const output_ref& ref)
     {
         assert(is_reading_rows());
-        error_code ec = on_row_impl(ctx);
-        if (ec)
-            return ec;
-        ++read_rows_;
-        return error_code();
+        return on_row_impl(ctx, ref);
     }
 
     bool is_reading_first() const noexcept { return state_ == state_t::reading_first; }
@@ -91,9 +141,6 @@ public:
     bool is_reading_meta() const noexcept { return state_ == state_t::reading_metadata; }
     bool is_reading_rows() const noexcept { return state_ == state_t::reading_rows; }
     bool is_complete() const noexcept { return state_ == state_t::complete; }
-
-    std::size_t num_read_rows() const noexcept { return read_rows_; }
-    std::size_t num_meta() const noexcept { return num_meta_impl(); }
 
     resultset_encoding encoding() const noexcept { return encoding_; }
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
@@ -126,54 +173,15 @@ protected:
     virtual void on_num_meta_impl(std::size_t num_columns) = 0;
     virtual error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
-    virtual error_code on_row_impl(deserialization_context& ctx) = 0;
+    virtual error_code on_row_impl(deserialization_context& ctx, const output_ref& ref) = 0;
     virtual void on_row_batch_start_impl() = 0;
     virtual void on_row_batch_finish_impl() = 0;
-    virtual std::size_t num_meta_impl() const noexcept = 0;
 
 private:
     state_t state_{state_t::reading_first};
     resultset_encoding encoding_{resultset_encoding::text};
     std::uint8_t seqnum_{};
     metadata_mode mode_{metadata_mode::minimal};
-    std::size_t read_rows_{};
-};
-
-// A type-erased reference to be used as the output range for execution states.
-// For static_execution_state, this is a span-like class.
-// For execution_state, this holds a pointer to the field vector to use
-struct output_ref
-{
-    // Pointer to the first element of the span (static_execution_state)
-    // Pointer to a vector<field_view> to use as output (execution_state)
-    void* data{};
-
-    // Number of elements in the span (static_execution_state). Otherwise unused
-    std::size_t max_size{};
-
-    // Identifier for the type of elements. Index in the resultset type list (static_execution_state).
-    // Otherwise unused
-    std::size_t resultset_index{};
-
-    constexpr output_ref() noexcept = default;
-
-    constexpr output_ref(void* data, std::size_t max_size, std::size_t resultset_index) noexcept
-        : data(data), max_size(max_size), resultset_index(resultset_index)
-    {
-    }
-
-    constexpr output_ref(void* data) noexcept : data(data) {}
-
-    bool has_value() const noexcept { return data != nullptr; }
-};
-
-class execution_processor_with_output : public execution_processor
-{
-    output_ref output_;
-
-public:
-    void set_output(const output_ref& output) noexcept { output_ = output; }
-    const output_ref& output() const noexcept { return output_; }
 };
 
 }  // namespace detail

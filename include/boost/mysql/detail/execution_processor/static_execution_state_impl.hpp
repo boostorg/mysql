@@ -30,11 +30,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class static_execution_state_erased_impl final : public execution_processor_with_output
+class static_execution_state_erased_impl final : public execution_processor
 {
 public:
     using parse_fn_t =
-        error_code (*)(const field_view* from, const std::size_t* pos_map, void* to, std::size_t offset);
+        error_code (*)(const field_view* from, const std::size_t* pos_map, const output_ref& ref);
 
     // These only depend on the type of the rows we're parsing
     struct resultset_descriptor
@@ -94,7 +94,6 @@ public:
         data_.meta_size = 0;
         data_.ok_data = ok_packet_data();
         data_.info.clear();
-        set_output(output_ref());
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
@@ -136,13 +135,10 @@ public:
 
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
-    error_code on_row_impl(deserialization_context& ctx) override final
+    error_code on_row_impl(deserialization_context& ctx, const output_ref& ref) override final
     {
-        auto ref = output();
-        assert(ref.has_value());
-
         // check output
-        if (ref.resultset_index != data_.resultset_index - 1)
+        if (ref.resultset_index() != data_.resultset_index - 1)
             return client_errc::metadata_check_failed;  // TODO: is this OK?
 
         // deserialize the row
@@ -151,12 +147,7 @@ public:
             return err;
 
         // parse it into the output ref
-        err = desc_.parse_vtable[data_.resultset_index - 1](
-            ext_.temp_fields,
-            ext_.pos_map,
-            ref.data,
-            num_read_rows()
-        );
+        err = desc_.parse_vtable[data_.resultset_index - 1](ext_.temp_fields, ext_.pos_map, ref);
         if (err)
             return err;
 
@@ -166,8 +157,6 @@ public:
     void on_row_batch_start_impl() noexcept override final {}
 
     void on_row_batch_finish_impl() noexcept override final {}
-
-    std::size_t num_meta_impl() const noexcept override { return current_num_columns(); }
 
     // User facing
     metadata_collection_view meta() const noexcept { return data_.meta; }
@@ -276,12 +265,10 @@ template <class StaticRow>
 static error_code static_execution_state_parse_fn(
     const field_view* from,
     const std::size_t* pos_map,
-    void* to,
-    std::size_t offset
+    const output_ref& ref
 )
 {
-    StaticRow& obj = static_cast<StaticRow*>(to)[offset];
-    return parse(from, pos_map, obj);
+    return parse(from, pos_map, ref.span_element<StaticRow>());
 }
 
 template <class... StaticRow>

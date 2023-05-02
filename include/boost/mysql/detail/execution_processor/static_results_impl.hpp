@@ -152,7 +152,7 @@ public:
 
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
-    error_code on_row_impl(deserialization_context& ctx) override final
+    error_code on_row_impl(deserialization_context& ctx, const output_ref&) override final
     {
         // deserialize the row
         auto err = deserialize_row(encoding(), ctx, current_resultset_meta(), ext_.temp_fields);
@@ -165,8 +165,6 @@ public:
 
     void on_row_batch_start_impl() override final {}
     void on_row_batch_finish_impl() override final {}
-
-    std::size_t num_meta_impl() const noexcept override { return current_num_columns(); }
 
     // User facing
     metadata_collection_view get_meta(std::size_t index) const noexcept

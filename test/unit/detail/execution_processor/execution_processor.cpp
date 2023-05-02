@@ -33,15 +33,14 @@ public:
     using execution_processor::set_state;
     using execution_processor::state_t;
 
-    virtual void reset_impl() noexcept {}
-    virtual error_code on_head_ok_packet_impl(const ok_packet&, diagnostics&) { return error_code(); }
-    virtual void on_num_meta_impl(std::size_t) {}
-    virtual error_code on_meta_impl(const column_definition_packet&, diagnostics&) { return error_code(); }
-    virtual error_code on_row_ok_packet_impl(const ok_packet&) { return error_code(); }
-    virtual error_code on_row_impl(deserialization_context&) { return error_code(); }
-    virtual void on_row_batch_start_impl() {}
-    virtual void on_row_batch_finish_impl() {}
-    virtual std::size_t num_meta_impl() const noexcept { return 0; }
+    void reset_impl() noexcept override {}
+    error_code on_head_ok_packet_impl(const ok_packet&, diagnostics&) override { return error_code(); }
+    void on_num_meta_impl(std::size_t) override {}
+    error_code on_meta_impl(const column_definition_packet&, diagnostics&) override { return error_code(); }
+    error_code on_row_ok_packet_impl(const ok_packet&) override { return error_code(); }
+    error_code on_row_impl(deserialization_context&, const output_ref&) override { return error_code(); }
+    void on_row_batch_start_impl() override {}
+    void on_row_batch_finish_impl() override {}
 };
 
 void check_reading_first(const execution_processor& st)

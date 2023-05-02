@@ -26,7 +26,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class execution_state_impl final : public execution_processor_with_output
+class execution_state_impl final : public execution_processor
 {
     struct ok_data
     {
@@ -67,12 +67,6 @@ class execution_state_impl final : public execution_processor_with_output
         }
     }
 
-    std::vector<field_view>& fields() noexcept
-    {
-        assert(output().data);
-        return *static_cast<std::vector<field_view>*>(output().data);
-    }
-
 public:
     execution_state_impl() = default;
 
@@ -82,7 +76,6 @@ public:
         meta_.clear();
         eof_data_ = ok_data();
         info_.clear();
-        set_output(output_ref());
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
@@ -116,20 +109,18 @@ public:
         return error_code();
     }
 
-    error_code on_row_impl(deserialization_context& ctx) override
+    error_code on_row_impl(deserialization_context& ctx, const output_ref& ref) override
     {
         // add row storage
-        field_view* storage = add_fields(fields(), meta_.size());
+        field_view* storage = add_fields(ref.fields(), meta_.size());
 
         // deserialize the row
         return deserialize_row(encoding(), ctx, meta_, storage);
     }
 
-    void on_row_batch_start_impl() noexcept override final { fields().clear(); }
+    void on_row_batch_start_impl() noexcept override final {}
 
     void on_row_batch_finish_impl() noexcept override final {}
-
-    std::size_t num_meta_impl() const noexcept override { return meta_.size(); }
 
     // User facing
     metadata_collection_view meta() const noexcept { return meta_; }

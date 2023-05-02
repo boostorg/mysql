@@ -19,7 +19,12 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline error_code process_row_message(channel_base& channel, execution_processor& proc, diagnostics& diag)
+inline error_code process_row_message(
+    channel_base& channel,
+    execution_processor& proc,
+    diagnostics& diag,
+    const output_ref& ref
+)
 {
     // Get the row message
     error_code err;
@@ -33,7 +38,7 @@ inline error_code process_row_message(channel_base& channel, execution_processor
     {
     case row_message::type_t::error: err = msg.data.err; break;
     case row_message::type_t::ok_packet: err = proc.on_row_ok_packet(msg.data.ok_pack); break;
-    case row_message::type_t::row: err = proc.on_row(msg.data.ctx); break;
+    case row_message::type_t::row: err = proc.on_row(msg.data.ctx, ref); break;
     }
 
     return err;

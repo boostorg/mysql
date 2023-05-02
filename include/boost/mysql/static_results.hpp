@@ -88,7 +88,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    bool has_value() const noexcept { return impl_.get_interface().complete(); }
+    bool has_value() const noexcept { return impl_.get_interface().is_complete(); }
 
     /**
      * \brief Returns the rows retrieved by the SQL query.

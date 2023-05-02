@@ -27,49 +27,49 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline rows_view get_some_rows(const channel_base& ch, const execution_processor& st)
+inline rows_view get_some_rows(const channel_base& ch, const execution_state_impl& st)
 {
-    return rows_view_access::construct(ch.shared_fields().data(), ch.shared_fields().size(), st.num_meta());
+    return rows_view_access::construct(
+        ch.shared_fields().data(),
+        ch.shared_fields().size(),
+        st.meta().size()
+    );
 }
 
-inline error_code process_some_rows(
-    channel_base& channel,
-    execution_processor_with_output& proc,
-    diagnostics& diag
-)
+inline error_code process_some_rows(channel_base& channel, execution_state_impl& st, diagnostics& diag)
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
-    proc.set_output(output_ref(&channel.shared_fields()));
-    proc.on_row_batch_start();
-    while (channel.has_read_messages() && proc.is_reading_rows())
+    channel.shared_fields().clear();
+    output_ref ref(channel.shared_fields());
+    while (channel.has_read_messages() && st.is_reading_first())
     {
-        auto err = process_row_message(channel, proc, diag);
+        auto err = process_row_message(channel, st, diag, ref);
         if (err)
             return err;
     }
-    proc.on_row_batch_finish();
     return error_code();
 }
 
 inline error_code process_some_rows_static(
     channel_base& channel,
-    execution_processor_with_output& proc,
-    const output_ref& output,
+    execution_processor& proc,
+    output_ref output,
+    std::size_t& read_rows,
     diagnostics& diag
 )
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
-    proc.set_output(output);
-    proc.on_row_batch_start();
-    while (channel.has_read_messages() && proc.is_reading_rows() && proc.num_read_rows() < output.max_size)
+    assert(output.offset() == 0u);
+    while (channel.has_read_messages() && proc.is_reading_rows() && output.offset() < output.max_size())
     {
-        auto err = process_row_message(channel, proc, diag);
+        auto err = process_row_message(channel, proc, diag, output);
         if (err)
             return err;
+        output.inc_offset();
     }
-    proc.on_row_batch_finish();
+    read_rows = output.offset();
     return error_code();
 }
 
@@ -78,9 +78,9 @@ struct read_some_rows_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     diagnostics& diag_;
-    execution_processor_with_output& st_;
+    execution_state_impl& st_;
 
-    read_some_rows_op(channel<Stream>& chan, diagnostics& diag, execution_processor_with_output& st) noexcept
+    read_some_rows_op(channel<Stream>& chan, diagnostics& diag, execution_state_impl& st) noexcept
         : chan_(chan), diag_(diag), st_(st)
     {
     }
@@ -125,17 +125,17 @@ struct read_some_rows_op : boost::asio::coroutine
 };
 
 template <class Stream>
-struct read_some_rows_typed_op : boost::asio::coroutine
+struct read_some_rows_static_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     diagnostics& diag_;
-    execution_processor_with_output& st_;
+    execution_processor& st_;
     output_ref output_;
 
-    read_some_rows_typed_op(
+    read_some_rows_static_op(
         channel<Stream>& chan,
         diagnostics& diag,
-        execution_processor_with_output& st,
+        execution_processor& st,
         output_ref output
     ) noexcept
         : chan_(chan), diag_(diag), st_(st), output_(output)
@@ -153,6 +153,7 @@ struct read_some_rows_typed_op : boost::asio::coroutine
         }
 
         // Normal path
+        std::size_t read_rows = 0;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             diag_.clear();
@@ -169,14 +170,14 @@ struct read_some_rows_typed_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            err = process_some_rows_static(chan_, st_, output_, diag_);
+            err = process_some_rows_static(chan_, st_, output_, read_rows, diag_);
             if (err)
             {
                 self.complete(err, 0);
                 BOOST_ASIO_CORO_YIELD break;
             }
 
-            self.complete(error_code(), st_.num_read_rows());
+            self.complete(error_code(), read_rows);
         }
     }
 };
@@ -188,7 +189,7 @@ struct read_some_rows_typed_op : boost::asio::coroutine
 template <class Stream>
 boost::mysql::rows_view boost::mysql::detail::read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
+    execution_state_impl& st,
     error_code& err,
     diagnostics& diag
 )
@@ -219,7 +220,7 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::rows_view))
 boost::mysql::detail::async_read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
+    execution_state_impl& st,
     diagnostics& diag,
     CompletionToken&& token
 )
@@ -234,8 +235,8 @@ boost::mysql::detail::async_read_some_rows(
 template <class Stream>
 std::size_t boost::mysql::detail::read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
-    output_ref output,
+    execution_processor& st,
+    const output_ref& output,
     error_code& err,
     diagnostics& diag
 )
@@ -252,11 +253,12 @@ std::size_t boost::mysql::detail::read_some_rows(
         return 0;
 
     // Process read messages
-    err = process_some_rows_static(channel, st, output, diag);
+    std::size_t read_rows = 0;
+    err = process_some_rows_static(channel, st, output, read_rows, diag);
     if (err)
         return 0;
 
-    return st.num_read_rows();
+    return read_rows;
 }
 
 template <
@@ -265,14 +267,14 @@ template <
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
 boost::mysql::detail::async_read_some_rows(
     channel<Stream>& channel,
-    execution_processor_with_output& st,
-    output_ref output,
+    execution_processor& st,
+    const output_ref& output,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
-        read_some_rows_typed_op<Stream>(channel, diag, st, output),
+        read_some_rows_static_op<Stream>(channel, diag, st, output),
         token,
         channel
     );

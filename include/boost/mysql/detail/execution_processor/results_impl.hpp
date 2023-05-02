@@ -267,7 +267,7 @@ public:
         return error_code();
     }
 
-    error_code on_row_impl(deserialization_context& ctx) override
+    error_code on_row_impl(deserialization_context& ctx, const output_ref&) override
     {
         // add row storage
         std::size_t num_fields = current_resultset().num_columns;
@@ -285,8 +285,6 @@ public:
     void on_row_batch_start_impl() override final { rows_.start_batch(); }
 
     void on_row_batch_finish_impl() override final { rows_.finish_batch(); }
-
-    std::size_t num_meta_impl() const noexcept override { return current_resultset().num_columns; }
 
     // User facing
     row_view get_out_params() const noexcept

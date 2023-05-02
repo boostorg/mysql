@@ -32,7 +32,7 @@ inline error_code process_available_rows(
     output.on_row_batch_start();
     while (channel.has_read_messages() && output.is_reading_rows())
     {
-        auto err = process_row_message(channel, output, diag);
+        auto err = process_row_message(channel, output, diag, output_ref());
         if (err)
             return err;
     }
