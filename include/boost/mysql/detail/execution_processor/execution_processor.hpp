@@ -126,7 +126,7 @@ public:
         return on_row_ok_packet_impl(pack);
     }
 
-    error_code on_row(deserialization_context& ctx, const output_ref& ref)
+    error_code on_row(deserialization_context ctx, const output_ref& ref)
     {
         assert(is_reading_rows());
         return on_row_impl(ctx, ref);
@@ -173,7 +173,7 @@ protected:
     virtual void on_num_meta_impl(std::size_t num_columns) = 0;
     virtual error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
-    virtual error_code on_row_impl(deserialization_context& ctx, const output_ref& ref) = 0;
+    virtual error_code on_row_impl(deserialization_context ctx, const output_ref& ref) = 0;
     virtual void on_row_batch_start_impl() = 0;
     virtual void on_row_batch_finish_impl() = 0;
 

@@ -67,10 +67,7 @@ class execution_state_impl final : public execution_processor
         }
     }
 
-public:
-    execution_state_impl() = default;
-
-    void reset_impl() noexcept override
+    void reset_impl() noexcept override final
     {
         remaining_meta_ = 0;
         meta_.clear();
@@ -78,14 +75,14 @@ public:
         info_.clear();
     }
 
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
+    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override final
     {
         on_new_resultset();
         on_ok_packet_impl(pack);
         return error_code();
     }
 
-    void on_num_meta_impl(std::size_t num_columns) override
+    void on_num_meta_impl(std::size_t num_columns) override final
     {
         on_new_resultset();
         remaining_meta_ = num_columns;
@@ -93,7 +90,7 @@ public:
         set_state(state_t::reading_metadata);
     }
 
-    error_code on_meta_impl(const column_definition_packet& pack, diagnostics&) override
+    error_code on_meta_impl(const column_definition_packet& pack, diagnostics&) override final
     {
         meta_.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
         if (--remaining_meta_ == 0)
@@ -103,13 +100,13 @@ public:
         return error_code();
     }
 
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final
     {
         on_ok_packet_impl(pack);
         return error_code();
     }
 
-    error_code on_row_impl(deserialization_context& ctx, const output_ref& ref) override
+    error_code on_row_impl(deserialization_context ctx, const output_ref& ref) override final
     {
         // add row storage
         field_view* storage = add_fields(ref.fields(), meta_.size());
@@ -122,7 +119,9 @@ public:
 
     void on_row_batch_finish_impl() noexcept override final {}
 
-    // User facing
+public:
+    execution_state_impl() = default;
+
     metadata_collection_view meta() const noexcept { return meta_; }
 
     std::uint64_t get_affected_rows() const noexcept

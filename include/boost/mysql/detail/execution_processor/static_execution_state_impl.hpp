@@ -135,7 +135,7 @@ public:
 
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
-    error_code on_row_impl(deserialization_context& ctx, const output_ref& ref) override final
+    error_code on_row_impl(deserialization_context ctx, const output_ref& ref) override final
     {
         // check output
         if (ref.resultset_index() != data_.resultset_index - 1)

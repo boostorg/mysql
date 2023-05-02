@@ -10,6 +10,8 @@
 
 #include <boost/mysql/field_view.hpp>
 
+#include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 
 #include <boost/core/span.hpp>
@@ -29,21 +31,18 @@ inline std::vector<std::uint8_t> create_text_row_body_span(boost::span<const fie
     std::vector<std::uint8_t> res;
     for (field_view f : fields)
     {
-        if (f.is_int64() || f.is_uint64())
+        std::string s;
+        switch (f.kind())
         {
-            auto s = f.is_int64() ? std::to_string(f.get_int64()) : std::to_string(f.get_uint64());
-            detail::string_lenenc slenenc{s};
-            serialize_to_vector(res, slenenc);
+        case field_kind::int64: s = std::to_string(f.get_int64()); break;
+        case field_kind::uint64: s = std::to_string(f.get_uint64()); break;
+        case field_kind::float_: s = std::to_string(f.get_float()); break;
+        case field_kind::double_: s = std::to_string(f.get_double()); break;
+        case field_kind::string: s = f.get_string(); break;
+        default: throw std::runtime_error("create_text_row_message: type not implemented");
         }
-        else if (f.is_string())
-        {
-            detail::string_lenenc slenenc{f.get_string()};
-            serialize_to_vector(res, slenenc);
-        }
-        else
-        {
-            throw std::runtime_error("create_text_row_message: type not implemented");
-        }
+        detail::string_lenenc slenenc{s};
+        serialize_to_vector(res, slenenc);
     }
     return res;
 }
@@ -59,6 +58,27 @@ std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Arg
 {
     return create_message(seqnum, create_text_row_body(args...));
 }
+
+// Helper to run execution_processor tests, since these expect long-lived row buffers
+class rowbuff
+{
+    std::vector<std::uint8_t> data_;
+
+public:
+    template <class... Args>
+    rowbuff(const Args&... args) : data_(create_text_row_body(args...))
+    {
+    }
+
+    detail::deserialization_context ctx() noexcept
+    {
+        return detail::deserialization_context(
+            data_.data(),
+            data_.data() + data_.size(),
+            detail::capabilities()
+        );
+    }
+};
 
 }  // namespace test
 }  // namespace mysql

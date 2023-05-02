@@ -267,7 +267,7 @@ public:
         return error_code();
     }
 
-    error_code on_row_impl(deserialization_context& ctx, const output_ref&) override
+    error_code on_row_impl(deserialization_context ctx, const output_ref&) override
     {
         // add row storage
         std::size_t num_fields = current_resultset().num_columns;

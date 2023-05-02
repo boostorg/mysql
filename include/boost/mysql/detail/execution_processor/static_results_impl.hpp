@@ -152,7 +152,7 @@ public:
 
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
-    error_code on_row_impl(deserialization_context& ctx, const output_ref&) override final
+    error_code on_row_impl(deserialization_context ctx, const output_ref&) override final
     {
         // deserialize the row
         auto err = deserialize_row(encoding(), ctx, current_resultset_meta(), ext_.temp_fields);

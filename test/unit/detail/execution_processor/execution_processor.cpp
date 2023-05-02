@@ -38,7 +38,7 @@ public:
     void on_num_meta_impl(std::size_t) override {}
     error_code on_meta_impl(const column_definition_packet&, diagnostics&) override { return error_code(); }
     error_code on_row_ok_packet_impl(const ok_packet&) override { return error_code(); }
-    error_code on_row_impl(deserialization_context&, const output_ref&) override { return error_code(); }
+    error_code on_row_impl(deserialization_context, const output_ref&) override { return error_code(); }
     void on_row_batch_start_impl() override {}
     void on_row_batch_finish_impl() override {}
 };

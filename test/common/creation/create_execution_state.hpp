@@ -8,24 +8,95 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_EXECUTION_STATE_HPP
 #define BOOST_MYSQL_TEST_COMMON_CREATION_CREATE_EXECUTION_STATE_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-#include <boost/mysql/impl/results.hpp>
 
 #include <cstddef>
 
 #include "creation/create_message_struct.hpp"
+#include "creation/create_row_message.hpp"
+#include "test_common.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
+
+// execution_state_impl
+class exec_builder
+{
+    detail::execution_state_impl res_;
+
+public:
+    exec_builder() = default;
+
+    exec_builder& reset(
+        detail::resultset_encoding enc = detail::resultset_encoding::text,
+        metadata_mode mode = metadata_mode::minimal
+    )
+    {
+        res_.reset(enc, mode);
+        return *this;
+    }
+    exec_builder& seqnum(std::uint8_t v)
+    {
+        res_.sequence_number() = v;
+        return *this;
+    }
+    exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
+    {
+        diagnostics diag;
+        res_.on_num_meta(types.size());
+        for (auto type : types)
+        {
+            auto err = res_.on_meta(create_coldef(type), diag);
+            throw_on_error(err, diag);
+        }
+        return *this;
+    }
+    // exec_builder& rows(const boost::mysql::rows& r)
+    // {
+    //     assert(res_.encoding() == detail::resultset_encoding::text);
+    //     assert(r.num_columns() == res_.meta().size());
+    //     res_.on_row_batch_start();
+    //     for (auto rv : r)
+    //     {
+    //         // TODO: this is wrong
+    //         auto s = create_text_row_body_span(boost::span<const field_view>(rv.begin(), rv.size()));
+    //         detail::deserialization_context ctx{s.data(), s.data() + s.size(), detail::capabilities()};
+    //         throw_on_error(res_.on_row(ctx, detail::output_ref()));
+    //     }
+    //     res_.on_row_batch_finish();
+    //     return *this;
+    // }
+
+    exec_builder& ok(const detail::ok_packet& pack)
+    {
+        diagnostics diag;
+        error_code err;
+        if (res_.is_reading_head())
+            err = res_.on_head_ok_packet(pack, diag);
+        else
+            err = res_.on_row_ok_packet(pack);
+        throw_on_error(err, diag);
+        return *this;
+    }
+
+    detail::execution_state_impl build() { return std::move(res_); }
+};
 
 struct resultset_spec
 {
@@ -36,118 +107,43 @@ struct resultset_spec
     bool empty() const noexcept { return types.empty(); }
 };
 
-// execution_state_impl
-class exec_builder
-{
-    detail::execution_state_impl res_;
+// inline results create_results(const std::vector<resultset_spec>& spec)
+// {
+//     exec_builder builder;
+//     for (std::size_t i = 0; i < spec.size(); ++i)
+//     {
+//         const auto& speci = spec[i];
 
-public:
-    exec_builder(bool append_mode) : res_(append_mode) {}
+//         // Meta
+//         if (!spec.empty())
+//         {
+//             builder.meta(speci.types);
+//         }
 
-    exec_builder& reset(std::vector<field_view>* storage)
-    {
-        res_.reset(res_.encoding(), storage);
-        return *this;
-    }
+//         // Rows
+//         if (!speci.r.empty())
+//         {
+//             builder.rows(speci.r);
+//         }
 
-    exec_builder& reset(
-        detail::resultset_encoding enc = detail::resultset_encoding::text,
-        std::vector<field_view>* storage = nullptr
-    )
-    {
-        res_.reset(enc, storage);
-        return *this;
-    }
-
-    exec_builder& seqnum(std::uint8_t v)
-    {
-        res_.sequence_number() = v;
-        return *this;
-    }
-
-    exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
-    {
-        res_.on_num_meta(types.size());
-        for (auto type : types)
-        {
-            res_.on_meta(create_coldef(type), metadata_mode::minimal);
-        }
-        return *this;
-    }
-
-    exec_builder& rows(const boost::mysql::rows& r)
-    {
-        assert(r.num_columns() == res_.current_resultset_meta().size());
-        res_.on_row_batch_start();
-        for (auto rv : r)
-        {
-            field_view* storage = res_.add_row();
-            for (auto f : rv)
-            {
-                *(storage++) = f;
-            }
-        }
-        res_.on_row_batch_finish();
-        return *this;
-    }
-
-    exec_builder& ok(const detail::ok_packet& pack)
-    {
-        if (res_.should_read_head())
-            res_.on_head_ok_packet(pack);
-        else
-            res_.on_row_ok_packet(pack);
-        return *this;
-    }
-
-    exec_builder& resultset(const resultset_spec& spec, bool is_last = false)
-    {
-        detail::ok_packet actual_ok = spec.ok;
-        if (!is_last)
-        {
-            actual_ok.status_flags |= detail::SERVER_MORE_RESULTS_EXISTS;
-        }
-        if (!spec.empty())
-        {
-            meta(spec.types);
-        }
-        if (!spec.r.empty())
-        {
-            rows(spec.r);
-        }
-        return ok(actual_ok);
-    }
-
-    exec_builder& last_resultset(const resultset_spec& spec) { return resultset(spec, true); }
-
-    detail::execution_state_impl build() { return std::move(res_); }
-
-    execution_state build_state()
-    {
-        execution_state res;
-        detail::execution_state_access::get_impl(res) = build();
-        return res;
-    }
-};
-
-inline results create_results(const std::vector<resultset_spec>& spec)
-{
-    exec_builder builder(true);
-    for (std::size_t i = 0; i < spec.size(); ++i)
-    {
-        builder.resultset(spec[i], i == spec.size() - 1);
-    }
-    results res;
-    detail::results_access::get_impl(res) = builder.build();
-    return res;
-}
+//         // OK packate
+//         bool is_last = i == spec.size() - 1;
+//         detail::ok_packet actual_ok = speci.ok;
+//         if (!is_last)
+//         {
+//             actual_ok.status_flags |= detail::SERVER_MORE_RESULTS_EXISTS;
+//         }
+//         builder.ok(actual_ok);
+//     }
+//     // TODO
+// }
 
 inline detail::execution_state_impl& get_impl(execution_state& st)
 {
-    return detail::execution_state_access::get_impl(st);
+    return detail::impl_access::get_impl(st);
 }
 
-inline detail::execution_state_impl& get_impl(results& r) { return detail::results_access::get_impl(r); }
+inline detail::results_impl& get_impl(results& r) { return detail::impl_access::get_impl(r); }
 
 }  // namespace test
 }  // namespace mysql

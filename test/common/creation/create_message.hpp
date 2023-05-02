@@ -70,8 +70,9 @@ void serialize_to_vector(std::vector<std::uint8_t>& res, const Args&... args)
 {
     detail::serialization_context ctx(detail::capabilities(0));
     std::size_t size = detail::get_size(ctx, args...);
-    res.resize(res.size() + size);
-    ctx.set_first(res.data());
+    std::size_t old_size = res.size();
+    res.resize(old_size + size);
+    ctx.set_first(res.data() + old_size);
     detail::serialize(ctx, args...);
 }
 
