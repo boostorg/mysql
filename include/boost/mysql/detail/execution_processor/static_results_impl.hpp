@@ -275,12 +275,8 @@ private:
 
     error_code meta_check(diagnostics& diag) const
     {
-        return desc_.meta_check_vtable[data_.resultset_index - 1](
-            current_resultset_meta(),
-            current_name_table(),
-            ext_.pos_map,
-            diag
-        );
+        return desc_
+            .meta_check_vtable[data_.resultset_index - 1](current_resultset_meta(), ext_.pos_map, diag);
     }
 
     metadata_collection_view current_resultset_meta() const noexcept
@@ -354,11 +350,11 @@ class static_results_impl
     {
         return {
             sizeof...(RowType),
-            num_columns_table<RowType...>.data,
-            name_table<RowType...>.data,
+            num_columns_table<RowType...>.data(),
+            name_table<RowType...>.data(),
             &reset_tuple,
-            meta_check_vtable<RowType...>.data,
-            static_results_parse_vtable<RowType...>.data,
+            meta_check_vtable<RowType...>.data(),
+            static_results_parse_vtable<RowType...>.data(),
         };
     }
 

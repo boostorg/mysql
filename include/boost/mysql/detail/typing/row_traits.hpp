@@ -54,7 +54,21 @@ static constexpr bool check_readable_field() noexcept
 template <class T, std::size_t N>
 struct array_wrapper
 {
-    T data[N];
+    T data_[N];
+
+    constexpr std::size_t size() const noexcept { return N; }
+    constexpr const T* data() const noexcept { return data_; }
+};
+
+template <class T>
+struct array_wrapper<T, 0>
+{
+    struct
+    {
+    } data_;  // allow empty brace initialization
+
+    constexpr std::size_t size() const noexcept { return 0; }
+    constexpr const T* data() const noexcept { return nullptr; }
 };
 
 // Helpers
@@ -141,7 +155,7 @@ public:
     // TODO: allow disabling matching by name
     static constexpr const string_view* field_names() noexcept
     {
-        return describe_names_storage<RowType>.data;
+        return describe_names_storage<RowType>.data();
     }
 
     static void parse(parse_functor& parser, RowType& to)
@@ -197,15 +211,10 @@ constexpr const string_view* get_row_field_names()
 }
 
 template <class RowType>
-error_code meta_check(
-    metadata_collection_view meta,
-    const string_view* field_names,
-    const std::size_t* pos_map,
-    diagnostics& diag
-)
+error_code meta_check(metadata_collection_view meta, const std::size_t* pos_map, diagnostics& diag)
 {
-    using fields = typename row_traits<RowType>::fields;
-    return meta_check_field_type_list<fields>(meta, field_names, pos_map, diag);
+    using fields = typename row_traits<RowType>::types;
+    return meta_check_field_type_list<fields>(meta, row_traits<RowType>::field_names(), pos_map, diag);
 }
 
 template <class RowType>
@@ -216,8 +225,7 @@ error_code parse(const field_view* from, const std::size_t* pos_map, RowType& to
     return ctx.error();
 }
 
-using meta_check_fn =
-    error_code (*)(metadata_collection_view, const string_view*, const std::size_t*, diagnostics&);
+using meta_check_fn = error_code (*)(metadata_collection_view, const std::size_t*, diagnostics&);
 
 }  // namespace detail
 }  // namespace mysql

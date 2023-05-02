@@ -236,8 +236,7 @@ private:
     error_code meta_check(diagnostics& diag) const
     {
         assert(data_.resultset_index <= desc_.num_resultsets);
-        return desc_
-            .meta_check_vtable[data_.resultset_index - 1](meta(), current_name_table(), ext_.pos_map, diag);
+        return desc_.meta_check_vtable[data_.resultset_index - 1](meta(), ext_.pos_map, diag);
     }
 
     void on_new_resultset() noexcept
@@ -307,10 +306,10 @@ class static_execution_state_impl
     {
         return {
             sizeof...(RowType),
-            num_columns_table<RowType...>.data,
-            name_table<RowType...>.data,
-            meta_check_vtable<RowType...>.data,
-            static_execution_state_parse_vtable<RowType...>.data,
+            num_columns_table<RowType...>.data(),
+            name_table<RowType...>.data(),
+            meta_check_vtable<RowType...>.data(),
+            static_execution_state_parse_vtable<RowType...>.data(),
         };
     }
 

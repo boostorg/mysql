@@ -38,6 +38,7 @@ add_executable(
     detail/typing/meta_check_context.cpp
     detail/typing/readable_field_traits.cpp
     detail/typing/writable_field_traits.cpp
+    detail/typing/row_traits.cpp
     date.cpp
     datetime.cpp
     field_view.cpp
