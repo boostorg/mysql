@@ -11,7 +11,10 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
+
+#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 
 #include <memory>
 #include <sstream>
@@ -19,8 +22,6 @@
 namespace boost {
 namespace mysql {
 namespace detail {
-
-constexpr auto pos_map_field_absent = static_cast<std::size_t>(-1);
 
 inline const char* column_type_to_str(const metadata& meta) noexcept
 {
@@ -58,9 +59,9 @@ class meta_check_context
 {
     std::unique_ptr<std::ostringstream> errors_;
     std::size_t current_index_{};
-    const metadata* meta_{};
-    const string_view* field_names_{};
-    const std::size_t* pos_map_{};
+    const_cpp2db_t pos_map_;
+    name_table_t name_table_;
+    metadata_collection_view meta_{};
     bool nullability_checked_{};
 
     std::ostringstream& add_error()
@@ -74,29 +75,25 @@ class meta_check_context
 
     void insert_field_name(std::ostringstream& os)
     {
-        if (field_names_)
-            os << "'" << field_names_[current_index_] << "'";
+        if (has_field_names(name_table_))
+            os << "'" << name_table_[current_index_] << "'";
         else
             os << "in position " << current_index_;
     }
 
 public:
     meta_check_context(
-        const metadata* meta,
-        const string_view* field_names,
-        const std::size_t* pos_map
+        const_cpp2db_t pos_map,
+        name_table_t name_table,
+        metadata_collection_view meta
     ) noexcept
-        : meta_(meta), field_names_(field_names), pos_map_(pos_map)
+        : pos_map_(pos_map), name_table_(name_table), meta_(meta)
     {
     }
 
     // Accessors
-    const metadata& current_meta() const noexcept
-    {
-        assert(!is_current_field_absent());
-        return meta_[pos_map_[current_index_]];
-    }
-    bool is_current_field_absent() const noexcept { return pos_map_[current_index_] == pos_map_field_absent; }
+    const metadata& current_meta() const noexcept { return map_metadata(pos_map_, current_index_, meta_); }
+    bool is_current_field_absent() const noexcept { return pos_map_[current_index_] == pos_absent; }
 
     // Iteration
     void advance() noexcept
@@ -115,7 +112,7 @@ public:
         auto& stream = add_error();
         stream << "Field ";
         insert_field_name(stream);
-        if (field_names_)
+        if (has_field_names(name_table_))
         {
             stream << " is not present in the data returned by the server";
         }

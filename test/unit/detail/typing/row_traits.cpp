@@ -11,6 +11,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/describe/class.hpp>
@@ -24,11 +25,14 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::detail::get_row_field_names;
+using boost::mysql::detail::const_cpp2db_t;
+using boost::mysql::detail::get_row_name_table;
 using boost::mysql::detail::get_row_size;
 using boost::mysql::detail::is_static_row;
 using boost::mysql::detail::meta_check;
+using boost::mysql::detail::name_table_t;
 using boost::mysql::detail::parse;
+using boost::mysql::detail::pos_absent;
 
 namespace {
 
@@ -96,6 +100,14 @@ static_assert(!is_static_row<unrelated>::value, "");
 static_assert(!is_static_row<int>::value, "");
 static_assert(!is_static_row<row>::value, "");
 
+// Helpers
+void compare_name_tables(name_table_t lhs, name_table_t rhs)
+{
+    std::vector<string_view> lhsvec(lhs.begin(), lhs.end());
+    std::vector<string_view> rhsvec(rhs.begin(), rhs.end());
+    BOOST_TEST(lhsvec == rhsvec);
+}
+
 BOOST_AUTO_TEST_SUITE(describe_structs)
 
 // size
@@ -105,15 +117,16 @@ static_assert(get_row_size<s2>() == 2u, "");
 static_assert(get_row_size<sinherit>() == 3u, "");
 
 // names
-BOOST_AUTO_TEST_CASE(get_row_field_names_)
+BOOST_AUTO_TEST_CASE(get_row_name_table_)
 {
-    BOOST_TEST(get_row_field_names<sempty>() == nullptr);
-    BOOST_TEST(get_row_field_names<s1>()[0] == "i");
-    BOOST_TEST(get_row_field_names<s2>()[0] == "i");
-    BOOST_TEST(get_row_field_names<s2>()[1] == "f");
-    BOOST_TEST(get_row_field_names<sinherit>()[0] == "i");
-    BOOST_TEST(get_row_field_names<sinherit>()[1] == "f");
-    BOOST_TEST(get_row_field_names<sinherit>()[2] == "double_field");
+    const string_view expected_s1[] = {"i"};
+    const string_view expected_s2[] = {"i", "f"};
+    const string_view expected_sinherit[] = {"i", "f", "double_field"};
+
+    compare_name_tables(get_row_name_table<sempty>(), name_table_t());
+    compare_name_tables(get_row_name_table<s1>(), expected_s1);
+    compare_name_tables(get_row_name_table<s2>(), expected_s2);
+    compare_name_tables(get_row_name_table<sinherit>(), expected_sinherit);
 }
 
 // meta check
@@ -126,7 +139,7 @@ BOOST_AUTO_TEST_CASE(meta_check_ok)
     };
     const std::size_t pos_map[] = {2, 0, 1};
     diagnostics diag;
-    auto err = meta_check<sinherit>(meta, pos_map, diag);
+    auto err = meta_check<sinherit>(pos_map, meta, diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -140,7 +153,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
     };
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
-    auto err = meta_check<sinherit>(meta, pos_map, diag);
+    auto err = meta_check<sinherit>(pos_map, meta, diag);
     BOOST_TEST(err == client_errc::metadata_check_failed);
     BOOST_TEST(
         diag.client_message() ==
@@ -151,7 +164,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty_struct)
 {
     diagnostics diag;
-    auto err = meta_check<sempty>(metadata_collection_view(), nullptr, diag);
+    auto err = meta_check<sempty>(const_cpp2db_t(), metadata_collection_view(), diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -160,10 +173,10 @@ BOOST_AUTO_TEST_CASE(meta_check_empty_struct)
 BOOST_AUTO_TEST_CASE(parse_success)
 {
     // int, float, double
-    auto fv = make_fv_arr(8.1, "abc", 42, 4.3f);
+    const auto fv = make_fv_arr(8.1, "abc", 42, 4.3f);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
-    auto err = parse(fv.data(), pos_map, value);
+    auto err = parse(pos_map, fv.data(), value);
     BOOST_TEST(err == error_code());
     BOOST_TEST(value.i == 42);
     BOOST_TEST(value.f == 4.3f);
@@ -173,10 +186,10 @@ BOOST_AUTO_TEST_CASE(parse_success)
 BOOST_AUTO_TEST_CASE(parse_one_error)
 {
     // int, float, double
-    auto fv = make_fv_arr(8.1, "abc", nullptr, 4.3f);
+    const auto fv = make_fv_arr(8.1, "abc", nullptr, 4.3f);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
-    auto err = parse(fv.data(), pos_map, value);
+    auto err = parse(pos_map, fv.data(), value);
     BOOST_TEST(err == client_errc::is_null);
 }
 
@@ -184,17 +197,17 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
 {
     // int, float, double
     // we return the first error only
-    auto fv = make_fv_arr(8.1, "abc", 0xffffffffffffffff, nullptr);
+    const auto fv = make_fv_arr(8.1, "abc", 0xffffffffffffffff, nullptr);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
-    auto err = parse(fv.data(), pos_map, value);
+    auto err = parse(pos_map, fv.data(), value);
     BOOST_TEST(err == client_errc::protocol_value_error);
 }
 
 BOOST_AUTO_TEST_CASE(parse_empty_struct)
 {
     sempty value;
-    auto err = parse(nullptr, nullptr, value);
+    auto err = parse(const_cpp2db_t(), nullptr, value);
     BOOST_TEST(err == error_code());
 }
 
@@ -209,10 +222,13 @@ static_assert(get_row_size<t2>() == 2, "");
 static_assert(get_row_size<t3>() == 3, "");
 
 // name tables
-static_assert(get_row_field_names<tempty>() == nullptr, "");
-static_assert(get_row_field_names<t1>() == nullptr, "");
-static_assert(get_row_field_names<t2>() == nullptr, "");
-static_assert(get_row_field_names<t3>() == nullptr, "");
+BOOST_AUTO_TEST_CASE(get_row_name_table_)
+{
+    compare_name_tables(get_row_name_table<tempty>(), name_table_t());
+    compare_name_tables(get_row_name_table<t1>(), name_table_t());
+    compare_name_tables(get_row_name_table<t2>(), name_table_t());
+    compare_name_tables(get_row_name_table<t3>(), name_table_t());
+}
 
 // meta check
 BOOST_AUTO_TEST_CASE(meta_check_ok)
@@ -224,7 +240,7 @@ BOOST_AUTO_TEST_CASE(meta_check_ok)
     };
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
-    auto err = meta_check<t3>(meta, pos_map, diag);
+    auto err = meta_check<t3>(pos_map, meta, diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -238,7 +254,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
     };
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
-    auto err = meta_check<t3>(meta, pos_map, diag);
+    auto err = meta_check<t3>(pos_map, meta, diag);
     BOOST_TEST(err == client_errc::metadata_check_failed);
     BOOST_TEST(
         diag.client_message() ==
@@ -250,7 +266,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty)
 {
     diagnostics diag;
-    auto err = meta_check<tempty>(metadata_collection_view(), nullptr, diag);
+    auto err = meta_check<tempty>(const_cpp2db_t(), metadata_collection_view(), diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -259,10 +275,10 @@ BOOST_AUTO_TEST_CASE(meta_check_empty)
 BOOST_AUTO_TEST_CASE(parse_success)
 {
     // string, int, double
-    auto fv = make_fv_arr("abc", 42, 9.1, "jkl");
+    const auto fv = make_fv_arr("abc", 42, 9.1, "jkl");
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
-    auto err = parse(fv.data(), pos_map, value);
+    auto err = parse(pos_map, fv.data(), value);
     BOOST_TEST(err == error_code());
     BOOST_TEST(std::get<0>(value) == "abc");
     BOOST_TEST(std::get<1>(value) == 42);
@@ -272,10 +288,10 @@ BOOST_AUTO_TEST_CASE(parse_success)
 BOOST_AUTO_TEST_CASE(parse_one_error)
 {
     // string, int, double
-    auto fv = make_fv_arr("abc", nullptr, 4.3, "jkl");
+    const auto fv = make_fv_arr("abc", nullptr, 4.3, "jkl");
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
-    auto err = parse(fv.data(), pos_map, value);
+    auto err = parse(pos_map, fv.data(), value);
     BOOST_TEST(err == client_errc::is_null);
 }
 
@@ -283,17 +299,17 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
 {
     // string, int, double
     // we return the first error only
-    auto fv = make_fv_arr(nullptr, 0xffffffffffffffff, 4.2);
+    const auto fv = make_fv_arr(nullptr, 0xffffffffffffffff, 4.2);
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
-    auto err = parse(fv.data(), pos_map, value);
+    auto err = parse(pos_map, fv.data(), value);
     BOOST_TEST(err == client_errc::is_null);
 }
 
 BOOST_AUTO_TEST_CASE(parse_empty_tuple)
 {
     tempty value;
-    auto err = parse(nullptr, nullptr, value);
+    auto err = parse(const_cpp2db_t(), nullptr, value);
     BOOST_TEST(err == error_code());
 }
 

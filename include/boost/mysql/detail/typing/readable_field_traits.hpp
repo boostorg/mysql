@@ -22,6 +22,7 @@
 
 #include <boost/mysql/detail/auxiliar/is_optional.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
 
 #include <cstdint>
@@ -564,13 +565,13 @@ void meta_check_field(meta_check_context& ctx)
 
 template <typename ReadableFieldList>
 error_code meta_check_field_type_list(
+    const_cpp2db_t field_map,
+    name_table_t name_table,
     metadata_collection_view meta,
-    const string_view* field_names,
-    const std::size_t* pos_map,
     diagnostics& diag
 )
 {
-    meta_check_context ctx(meta.data(), field_names, pos_map);
+    meta_check_context ctx(field_map, name_table, meta);
     boost::mp11::mp_for_each<ReadableFieldList>([&ctx](auto type_identity) {
         meta_check_field<typename decltype(type_identity)::type>(ctx);
     });

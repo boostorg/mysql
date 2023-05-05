@@ -16,9 +16,9 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/static_helpers.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
+#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
@@ -35,7 +35,7 @@ class static_results_erased_impl final : public execution_processor
 {
 public:
     using reset_fn_t = void (*)(void*);
-    using parse_fn_t = error_code (*)(const field_view* from, const std::size_t* pos_map, void* to);
+    using parse_fn_t = error_code (*)(const_cpp2db_t field_map, const field_view* from, void* to);
 
     struct basic_per_resultset_data
     {
@@ -55,7 +55,7 @@ public:
     {
         std::size_t num_resultsets{};
         const std::size_t* num_columns{};
-        const string_view* const* name_table{};
+        const name_table_t* name_table{};
         reset_fn_t reset_fn{};
         const meta_check_fn* meta_check_vtable{};
         const parse_fn_t* parse_vtable{};
@@ -107,6 +107,7 @@ public:
     void reset_impl() noexcept override
     {
         desc_.reset_fn(ext_.rows);
+        data_.info.clear();
         data_.meta.clear();
         data_.meta_index = 0;
         data_.resultset_index = 0;
@@ -132,13 +133,7 @@ public:
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
     {
         // Fill the pos map entry for this field, if any
-        fill_pos_map(
-            current_name_table(),
-            ext_.pos_map,
-            current_num_columns(),
-            data_.meta_index,
-            pack.name.value
-        );
+        cpp2db_add_field(current_pos_map(), current_name_table(), data_.meta_index, pack.name.value);
 
         // Store the meta object anyway
         data_.meta.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
@@ -160,7 +155,7 @@ public:
             return err;
 
         // parse it against the appropriate tuple element
-        return desc_.parse_vtable[data_.resultset_index - 1](ext_.temp_fields, ext_.pos_map, ext_.rows);
+        return desc_.parse_vtable[data_.resultset_index - 1](current_pos_map(), ext_.temp_fields, ext_.rows);
     }
 
     void on_row_batch_start_impl() override final {}
@@ -215,8 +210,14 @@ private:
         std::size_t resultset_index{0};
     } data_;
 
+    cpp2db_t current_pos_map() noexcept { return cpp2db_t(ext_.pos_map, current_num_columns()); }
+    const_cpp2db_t current_pos_map() const noexcept
+    {
+        return const_cpp2db_t(ext_.pos_map, current_num_columns());
+    }
+
     std::size_t current_num_columns() const noexcept { return desc_.num_columns[data_.resultset_index - 1]; }
-    const string_view* current_name_table() const noexcept
+    name_table_t current_name_table() const noexcept
     {
         assert(desc_.name_table);
         return desc_.name_table[data_.resultset_index - 1];
@@ -229,7 +230,7 @@ private:
         auto& resultset_data = current_resultset();
         resultset_data.meta_offset = data_.meta.size();
         data_.meta_index = 0;
-        reset_pos_map(ext_.pos_map, current_num_columns());
+        cpp2db_reset(current_pos_map());
         return resultset_data;
     }
 
@@ -273,7 +274,7 @@ private:
     error_code meta_check(diagnostics& diag) const
     {
         return desc_
-            .meta_check_vtable[data_.resultset_index - 1](current_resultset_meta(), ext_.pos_map, diag);
+            .meta_check_vtable[data_.resultset_index - 1](current_pos_map(), current_resultset_meta(), diag);
     }
 
     metadata_collection_view current_resultset_meta() const noexcept
@@ -289,16 +290,16 @@ template <class... StaticRow>
 struct static_results_parse_vtable_helper
 {
     template <std::size_t I>
-    static error_code parse_fn(const field_view* from, const std::size_t* pos_map, void* to)
+    static error_code parse_fn(const_cpp2db_t pos_map, const field_view* from, void* to)
     {
         auto& v = std::get<I>(*static_cast<static_results_rows_t<StaticRow...>*>(to));
         v.emplace_back();
-        return parse(from, pos_map, v.back());
+        return parse(pos_map, from, v.back());
     }
 
     template <std::size_t... N>
-    static constexpr array_wrapper<static_results_erased_impl::parse_fn_t, sizeof...(StaticRow)> create_table(boost::mp11::index_sequence<
-                                                                                                              N...>)
+    static constexpr std::array<static_results_erased_impl::parse_fn_t, sizeof...(StaticRow)> create_table(boost::mp11::index_sequence<
+                                                                                                           N...>)
     {
         return {{&parse_fn<N>...}};
     }
@@ -344,7 +345,7 @@ class static_results_impl
         boost::mp11::mp_for_each<boost::mp11::mp_iota_c<sizeof...(StaticRow)>>(reset_fn{rows});
     }
 
-    static constexpr static_results_erased_impl::resultset_descriptor descriptor() noexcept
+    static static_results_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
             sizeof...(StaticRow),

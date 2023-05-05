@@ -15,10 +15,10 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/static_helpers.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
+#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <algorithm>
@@ -33,15 +33,14 @@ namespace detail {
 class static_execution_state_erased_impl final : public execution_processor
 {
 public:
-    using parse_fn_t =
-        error_code (*)(const field_view* from, const std::size_t* pos_map, const output_ref& ref);
+    using parse_fn_t = error_code (*)(const_cpp2db_t, const field_view* from, const output_ref& ref);
 
     // These only depend on the type of the rows we're parsing
     struct resultset_descriptor
     {
         std::size_t num_resultsets{};
         const std::size_t* num_columns{};
-        const string_view* const* name_table{};
+        const name_table_t* name_table{};
         const meta_check_fn* meta_check_vtable{};
         const parse_fn_t* parse_vtable{};
     };
@@ -94,6 +93,7 @@ public:
         data_.meta_size = 0;
         data_.ok_data = ok_packet_data();
         data_.info.clear();
+        data_.meta.clear();
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
@@ -115,13 +115,7 @@ public:
 
     error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
     {
-        fill_pos_map(
-            current_name_table(),
-            ext_.pos_map,
-            current_num_columns(),
-            data_.meta_index,
-            pack.name.value
-        );
+        cpp2db_add_field(current_pos_map(), current_name_table(), data_.meta_index, pack.name.value);
 
         // Store the meta object anyway
         data_.meta.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
@@ -147,7 +141,7 @@ public:
             return err;
 
         // parse it into the output ref
-        err = desc_.parse_vtable[data_.resultset_index - 1](ext_.temp_fields, ext_.pos_map, ref);
+        err = desc_.parse_vtable[data_.resultset_index - 1](current_pos_map(), ext_.temp_fields, ref);
         if (err)
             return err;
 
@@ -215,16 +209,21 @@ private:
     } data_;
 
     std::size_t current_num_columns() const noexcept { return desc_.num_columns[data_.resultset_index - 1]; }
-    const string_view* current_name_table() const noexcept
+    name_table_t current_name_table() const noexcept
     {
         assert(desc_.name_table);
         return desc_.name_table[data_.resultset_index - 1];
+    }
+    cpp2db_t current_pos_map() noexcept { return cpp2db_t(ext_.pos_map, current_num_columns()); }
+    const_cpp2db_t current_pos_map() const noexcept
+    {
+        return const_cpp2db_t(ext_.pos_map, current_num_columns());
     }
 
     error_code meta_check(diagnostics& diag) const
     {
         assert(data_.resultset_index <= desc_.num_resultsets);
-        return desc_.meta_check_vtable[data_.resultset_index - 1](meta(), ext_.pos_map, diag);
+        return desc_.meta_check_vtable[data_.resultset_index - 1](current_pos_map(), data_.meta, diag);
     }
 
     void on_new_resultset() noexcept
@@ -235,7 +234,7 @@ private:
         data_.ok_data = ok_packet_data{};
         data_.info.clear();
         data_.meta.clear();
-        reset_pos_map(ext_.pos_map, current_num_columns());
+        cpp2db_reset(current_pos_map());
     }
 
     error_code on_ok_packet_impl(const ok_packet& pack)
@@ -263,16 +262,16 @@ private:
 
 template <class StaticRow>
 static error_code static_execution_state_parse_fn(
+    const_cpp2db_t pos_map,
     const field_view* from,
-    const std::size_t* pos_map,
     const output_ref& ref
 )
 {
-    return parse(from, pos_map, ref.span_element<StaticRow>());
+    return parse(pos_map, from, ref.span_element<StaticRow>());
 }
 
 template <class... StaticRow>
-constexpr array_wrapper<static_execution_state_erased_impl::parse_fn_t, sizeof...(StaticRow)>
+constexpr std::array<static_execution_state_erased_impl::parse_fn_t, sizeof...(StaticRow)>
     static_execution_state_parse_vtable{{&static_execution_state_parse_fn<StaticRow>...}};
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
@@ -288,7 +287,7 @@ class static_execution_state_impl
     // The type-erased impl, that will use pointers to the above storage
     static_execution_state_erased_impl impl_;
 
-    static constexpr static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
+    static static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
     {
         return {
             sizeof...(StaticRow),

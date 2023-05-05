@@ -12,10 +12,12 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/impl/diagnostics.hpp>
@@ -57,8 +59,7 @@ struct array_wrapper
 {
     T data_[N];
 
-    constexpr std::size_t size() const noexcept { return N; }
-    constexpr const T* data() const noexcept { return data_; }
+    constexpr boost::span<const T> span() const noexcept { return boost::span<const T>(data_); }
 };
 
 template <class T>
@@ -68,27 +69,30 @@ struct array_wrapper<T, 0>
     {
     } data_;  // allow empty brace initialization
 
-    constexpr std::size_t size() const noexcept { return 0; }
-    constexpr const T* data() const noexcept { return nullptr; }
+    constexpr boost::span<const T> span() const noexcept { return boost::span<const T>(); }
 };
 
 // Helpers
 class parse_functor
 {
+    const_cpp2db_t field_map_;
     const field_view* fields_;
-    const std::size_t* pos_map_;
+    std::size_t index_{};
     error_code ec_;
 
 public:
-    parse_functor(const field_view* fields, const std::size_t* pos_map) noexcept
-        : fields_(fields), pos_map_(pos_map)
+    parse_functor(const_cpp2db_t field_map, const field_view* fields) noexcept
+        : field_map_(field_map), fields_(fields)
     {
     }
 
     template <class ReadableField>
     void operator()(ReadableField& output)
     {
-        auto ec = readable_field_traits<ReadableField>::parse(fields_[*pos_map_++], output);
+        auto ec = readable_field_traits<ReadableField>::parse(
+            map_field_view(field_map_, index_++, fields_),
+            output
+        );
         if (!ec_)
             ec_ = ec;
     }
@@ -151,9 +155,9 @@ public:
     static constexpr std::size_t size() noexcept { return boost::mp11::mp_size<members>::value; }
 
     // TODO: allow disabling matching by name
-    static constexpr const string_view* field_names() noexcept
+    static constexpr name_table_t name_table() noexcept
     {
-        return describe_names_storage<DescribeStruct>.data();
+        return describe_names_storage<DescribeStruct>.span();
     }
 
     static void parse(parse_functor& parser, DescribeStruct& to)
@@ -183,7 +187,7 @@ class row_traits<std::tuple<ReadableField...>, false>
 public:
     using types = field_types;
     static constexpr std::size_t size() noexcept { return std::tuple_size<tuple_type>::value; }
-    static constexpr const string_view* field_names() noexcept { return nullptr; }
+    static constexpr name_table_t name_table() noexcept { return name_table_t(); }
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
 };
 
@@ -215,27 +219,43 @@ constexpr std::size_t get_row_size()
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-constexpr const string_view* get_row_field_names()
+constexpr name_table_t get_row_name_table()
 {
-    return row_traits<StaticRow>::field_names();
+    return row_traits<StaticRow>::name_table();
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code meta_check(metadata_collection_view meta, const std::size_t* pos_map, diagnostics& diag)
+error_code meta_check(const_cpp2db_t pos_map, metadata_collection_view meta, diagnostics& diag)
 {
     using fields = typename row_traits<StaticRow>::types;
-    return meta_check_field_type_list<fields>(meta, row_traits<StaticRow>::field_names(), pos_map, diag);
+    assert(pos_map.size() == get_row_size<StaticRow>());
+    return meta_check_field_type_list<fields>(pos_map, get_row_name_table<StaticRow>(), meta, diag);
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code parse(const field_view* from, const std::size_t* pos_map, StaticRow& to)
+error_code parse(const_cpp2db_t pos_map, const field_view* from, StaticRow& to)
 {
-    parse_functor ctx(from, pos_map);
+    assert(pos_map.size() == get_row_size<StaticRow>());
+    parse_functor ctx(pos_map, from);
     row_traits<StaticRow>::parse(ctx, to);
     return ctx.error();
 }
 
-using meta_check_fn = error_code (*)(metadata_collection_view, const std::size_t*, diagnostics&);
+using meta_check_fn =
+    error_code (*)(const_cpp2db_t field_map, metadata_collection_view meta, diagnostics& diag);
+
+// For multi-resultset - helpers
+template <class... StaticRow>
+constexpr std::array<std::size_t, sizeof...(StaticRow)> num_columns_table{{get_row_size<StaticRow>()...}};
+
+template <class... StaticRow>
+constexpr std::size_t max_num_columns = (std::max)({get_row_size<StaticRow>()...});
+
+template <class... StaticRow>
+constexpr std::array<meta_check_fn, sizeof...(StaticRow)> meta_check_vtable{{&meta_check<StaticRow>...}};
+
+template <class... StaticRow>
+constexpr std::array<name_table_t, sizeof...(StaticRow)> name_table{{get_row_name_table<StaticRow>()...}};
 
 }  // namespace detail
 }  // namespace mysql
