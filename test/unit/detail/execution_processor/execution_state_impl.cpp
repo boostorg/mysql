@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -18,8 +19,10 @@
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/core/span.hpp>
@@ -393,6 +396,24 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
     BOOST_TEST(err == error_code());
     info = "abcdfefgh";
     BOOST_TEST(st.get_info() == "other info");
+}
+
+BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
+{
+    st = exec_builder().meta(create_meta_r1()).build();
+    auto bad_row = create_text_row_body(42, "abc");
+    bad_row.push_back(0xff);
+
+    auto err = st.on_row(
+        detail::deserialization_context(
+            bad_row.data(),
+            bad_row.data() + bad_row.size(),
+            detail::capabilities()
+        ),
+        output_ref(fields)
+    );
+
+    BOOST_TEST(err == client_errc::extra_bytes);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

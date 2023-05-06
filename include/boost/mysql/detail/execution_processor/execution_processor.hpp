@@ -52,8 +52,8 @@ public:
     constexpr output_ref() noexcept = default;
 
     template <class T>
-    constexpr output_ref(boost::span<T> span, std::size_t resultset_index) noexcept
-        : data_(span.data()), max_size_(span.size()), resultset_index_(resultset_index)
+    constexpr output_ref(boost::span<T> span, std::size_t resultset_index, std::size_t offset = 0) noexcept
+        : data_(span.data()), max_size_(span.size()), resultset_index_(resultset_index), offset_(offset)
     {
     }
 

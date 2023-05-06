@@ -43,11 +43,10 @@ inline void cpp2db_add_field(
     string_view field_name
 ) noexcept
 {
-    assert(self.size() == name_table.size());
-    assert(db_index < self.size());
-
     if (has_field_names(name_table))
     {
+        assert(self.size() == name_table.size());
+
         // We're mapping fields by name. Try to find where in our target struct
         // is the current field located
         auto it = std::find(name_table.begin(), name_table.end(), field_name);

@@ -315,7 +315,7 @@ public:
     }
 
     static_execution_state_impl(static_execution_state_impl&& rhs) noexcept
-        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_, storage_table()))
+        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_), storage_table())
     {
     }
 
