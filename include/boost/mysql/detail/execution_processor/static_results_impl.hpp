@@ -22,154 +22,119 @@
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
+#include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
+using results_reset_fn_t = void (*)(void*);
+using results_parse_fn_t = error_code (*)(const_cpp2db_t field_map, const field_view* from, void* to);
+
+struct results_resultset_descriptor
+{
+    name_table_t name_table;
+    meta_check_fn_t meta_check;
+    results_parse_fn_t parse_fn;
+};
+
+struct static_per_resultset_data
+{
+    std::size_t meta_offset{};
+    std::size_t meta_size{};
+    std::size_t info_offset{};
+    std::size_t info_size{};
+    bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
+    std::uint64_t affected_rows{};   // OK packet data
+    std::uint64_t last_insert_id{};  // OK packet data
+    std::uint16_t warnings{};        // OK packet data
+    bool is_out_params{false};       // Does this resultset contain OUT param information?
+};
+
+class results_external_data
+{
+public:
+    results_external_data(
+        span<const results_resultset_descriptor> desc,
+        results_reset_fn_t reset,
+        void* rows,
+        field_view* temp_fields,
+        std::size_t* pos_map,
+        span<static_per_resultset_data> per_resultset
+    ) noexcept
+        : desc_(desc),
+          reset_(reset),
+          rows_(rows),
+          temp_fields_(temp_fields),
+          pos_map_(pos_map),
+          per_resultset_(per_resultset.data())
+    {
+        assert(desc.size() == per_resultset.size());
+    }
+
+    results_external_data(const results_external_data&) = default;
+    results_external_data(results_external_data&&) = default;
+    results_external_data& operator=(const results_external_data&) noexcept { return *this; }
+    results_external_data& operator=(results_external_data&&) noexcept { return *this; }
+    ~results_external_data() = default;
+
+    std::size_t num_resultsets() const noexcept { return desc_.size(); }
+    std::size_t num_columns(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].name_table.size();
+    }
+    name_table_t name_table(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].name_table;
+    }
+    meta_check_fn_t meta_check_fn(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].meta_check;
+    }
+    results_parse_fn_t parse_fn(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].parse_fn;
+    }
+    results_reset_fn_t reset_fn() const noexcept { return reset_; }
+    void* rows() const noexcept { return rows_; }
+    field_view* temp_fields() const noexcept { return temp_fields_; }
+    span<std::size_t> pos_map(std::size_t idx) const noexcept
+    {
+        return span<std::size_t>(pos_map_, num_columns(idx));
+    }
+    static_per_resultset_data& per_result(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return per_resultset_[idx];
+    }
+
+private:
+    span<const results_resultset_descriptor> desc_;
+    results_reset_fn_t reset_;
+    void* rows_;
+    field_view* temp_fields_;
+    std::size_t* pos_map_;
+    static_per_resultset_data* per_resultset_;
+};
+
 class static_results_erased_impl final : public execution_processor
 {
 public:
-    using reset_fn_t = void (*)(void*);
-    using parse_fn_t = error_code (*)(const_cpp2db_t field_map, const field_view* from, void* to);
+    static_results_erased_impl(results_external_data ext) noexcept : ext_(ext) {}
 
-    struct basic_per_resultset_data
-    {
-        std::size_t meta_offset{};
-        std::size_t meta_size{};
-        std::size_t info_offset{};
-        std::size_t info_size{};
-        bool has_ok_packet_data{false};  // The OK packet information is default constructed, or actual data?
-        std::uint64_t affected_rows{};   // OK packet data
-        std::uint64_t last_insert_id{};  // OK packet data
-        std::uint16_t warnings{};        // OK packet data
-        bool is_out_params{false};       // Does this resultset contain OUT param information?
-    };
-
-    // These only depend on the type of the rows we're parsing
-    struct resultset_descriptor
-    {
-        std::size_t num_resultsets{};
-        const std::size_t* num_columns{};
-        const name_table_t* name_table{};
-        reset_fn_t reset_fn{};
-        const meta_check_fn_t* meta_check_vtable{};
-        const parse_fn_t* parse_vtable{};
-    };
-
-    // These point to storage owned by an object that knows the row types
-    struct external_storage
-    {
-        void* rows{};
-        basic_per_resultset_data* per_resultset{};
-        field_view* temp_fields{};
-        std::size_t* pos_map{};
-    };
-
-    // Both descriptor and storage must be provided on initialization
-    static_results_erased_impl(resultset_descriptor desc, external_storage ext) noexcept
-        : desc_(desc), ext_(ext)
-    {
-    }
-
-    // Copy/move construction requires providing the storage table for the object we're
-    // creating, so we disable default copy/move construction. The descriptor table
-    // shouldn't change
-    static_results_erased_impl(const static_results_erased_impl& rhs) = delete;
-    static_results_erased_impl(const static_results_erased_impl& rhs, external_storage st)
-        : desc_(rhs.desc_), ext_(st), data_(rhs.data_)
-    {
-    }
-    static_results_erased_impl(static_results_erased_impl&& rhs) = delete;
-    static_results_erased_impl(static_results_erased_impl&& rhs, external_storage st) noexcept
-        : desc_(rhs.desc_), ext_(st), data_(std::move(rhs.data_))
-    {
-    }
-
-    // Assignment should only assign data, and not the descriptor or storage tables
-    static_results_erased_impl& operator=(const static_results_erased_impl& rhs)
-    {
-        data_ = rhs.data_;
-        return *this;
-    }
-    static_results_erased_impl& operator=(static_results_erased_impl&& rhs) noexcept
-    {
-        data_ = std::move(rhs.data_);
-        return *this;
-    }
-
-    ~static_results_erased_impl() = default;
-
-    void reset_impl() noexcept override
-    {
-        desc_.reset_fn(ext_.rows);
-        data_.info.clear();
-        data_.meta.clear();
-        data_.meta_index = 0;
-        data_.resultset_index = 0;
-    }
-
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
-    {
-        add_resultset();
-        auto err = on_ok_packet_impl(pack);
-        if (err)
-            return err;
-        return meta_check(diag);
-    }
-
-    void on_num_meta_impl(std::size_t num_columns) override final
-    {
-        auto& resultset_data = add_resultset();
-        data_.meta.reserve(data_.meta.size() + num_columns);
-        resultset_data.meta_size = num_columns;
-        set_state(state_t::reading_metadata);
-    }
-
-    error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
-    {
-        // Fill the pos map entry for this field, if any
-        cpp2db_add_field(current_pos_map(), current_name_table(), data_.meta_index, field_name);
-
-        // Store the meta object anyway
-        data_.meta.push_back(std::move(meta));
-        if (++data_.meta_index == current_resultset().meta_size)
-        {
-            set_state(state_t::reading_rows);
-            return meta_check(diag);
-        }
-        return error_code();
-    }
-
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
-
-    error_code on_row_impl(deserialization_context ctx, const output_ref&) override final
-    {
-        // deserialize the row
-        auto err = deserialize_row(encoding(), ctx, current_resultset_meta(), ext_.temp_fields);
-        if (err)
-            return err;
-
-        // parse it against the appropriate tuple element
-        return desc_.parse_vtable[data_.resultset_index - 1](current_pos_map(), ext_.temp_fields, ext_.rows);
-    }
-
-    void on_row_batch_start_impl() override final {}
-    void on_row_batch_finish_impl() override final {}
-
-    // User facing
     metadata_collection_view get_meta(std::size_t index) const noexcept
     {
-        assert(index < desc_.num_resultsets);
-        const auto& resultset_data = ext_.per_resultset[index];
-        return metadata_collection_view(
-            data_.meta.data() + resultset_data.meta_offset,
-            resultset_data.meta_size
-        );
+        const auto& resultset_data = ext_.per_result(index);
+        return metadata_collection_view(meta_.data() + resultset_data.meta_offset, resultset_data.meta_size);
     }
 
     std::uint64_t get_affected_rows(std::size_t index) const noexcept
@@ -190,7 +155,7 @@ public:
     string_view get_info(std::size_t index) const noexcept
     {
         const auto& resultset_data = get_resultset_with_ok_packet(index);
-        return string_view(data_.info.data() + resultset_data.info_offset, resultset_data.info_size);
+        return string_view(info.data() + resultset_data.info_offset, resultset_data.info_size);
     }
 
     bool get_is_out_params(std::size_t index) const noexcept
@@ -199,37 +164,84 @@ public:
     }
 
 private:
-    resultset_descriptor desc_;
-    external_storage ext_;
-
-    struct
+    // Virtual implementations
+    void reset_impl() noexcept override
     {
-        std::vector<metadata> meta;
-        std::vector<char> info;
-        std::size_t meta_index{};
-        std::size_t resultset_index{0};
-    } data_;
-
-    cpp2db_t current_pos_map() noexcept { return cpp2db_t(ext_.pos_map, current_num_columns()); }
-    const_cpp2db_t current_pos_map() const noexcept
-    {
-        return const_cpp2db_t(ext_.pos_map, current_num_columns());
+        ext_.reset_fn()(ext_.rows());
+        info.clear();
+        meta_.clear();
+        meta_index = 0;
+        resultset_index = 0;
     }
 
-    std::size_t current_num_columns() const noexcept { return desc_.num_columns[data_.resultset_index - 1]; }
-    name_table_t current_name_table() const noexcept
+    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
     {
-        assert(desc_.name_table);
-        return desc_.name_table[data_.resultset_index - 1];
+        add_resultset();
+        auto err = on_ok_packet_impl(pack);
+        if (err)
+            return err;
+        return meta_check(diag);
     }
 
-    basic_per_resultset_data& add_resultset()
+    void on_num_meta_impl(std::size_t num_columns) override final
     {
-        assert(data_.resultset_index < desc_.num_resultsets);
-        ++data_.resultset_index;
+        auto& resultset_data = add_resultset();
+        meta_.reserve(meta_.size() + num_columns);
+        resultset_data.meta_size = num_columns;
+        set_state(state_t::reading_metadata);
+    }
+
+    error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
+    {
+        // Fill the pos map entry for this field, if any
+        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
+
+        // Store the meta object anyway
+        meta_.push_back(std::move(meta));
+        if (++meta_index == current_resultset().meta_size)
+        {
+            set_state(state_t::reading_rows);
+            return meta_check(diag);
+        }
+        return error_code();
+    }
+
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
+
+    error_code on_row_impl(deserialization_context ctx, const output_ref&) override final
+    {
+        // deserialize the row
+        auto err = deserialize_row(encoding(), ctx, current_resultset_meta(), ext_.temp_fields());
+        if (err)
+            return err;
+
+        // parse it against the appropriate tuple element
+        return ext_.parse_fn(resultset_index - 1)(current_pos_map(), ext_.temp_fields(), ext_.rows());
+    }
+
+    void on_row_batch_start_impl() override final {}
+    void on_row_batch_finish_impl() override final {}
+
+    // Data
+    results_external_data ext_;
+    std::vector<metadata> meta_;
+    std::vector<char> info;
+    std::size_t meta_index{};
+    std::size_t resultset_index{0};
+
+    // Helpers
+    cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index - 1); }
+    const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index - 1); }
+    name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index - 1); }
+    static_per_resultset_data& current_resultset() noexcept { return ext_.per_result(resultset_index - 1); }
+    metadata_collection_view current_resultset_meta() const noexcept { return get_meta(resultset_index - 1); }
+
+    static_per_resultset_data& add_resultset()
+    {
+        ++resultset_index;
         auto& resultset_data = current_resultset();
-        resultset_data.meta_offset = data_.meta.size();
-        data_.meta_index = 0;
+        resultset_data.meta_offset = meta_.size();
+        meta_index = 0;
         cpp2db_reset(current_pos_map());
         return resultset_data;
     }
@@ -243,90 +255,40 @@ private:
         resultset_data.info_size = pack.info.value.size();
         resultset_data.has_ok_packet_data = true;
         resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        data_.info.insert(data_.info.end(), pack.info.value.begin(), pack.info.value.end());
+        info.insert(info.end(), pack.info.value.begin(), pack.info.value.end());
+        bool is_last_resultset = resultset_index == ext_.num_resultsets();
         if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
             set_state(state_t::reading_first_subseq);
-            return data_.resultset_index < desc_.num_resultsets ? error_code()
-                                                                : client_errc::num_resultsets_mismatch;
+            return is_last_resultset ? client_errc::num_resultsets_mismatch : error_code();
         }
         else
         {
             set_state(state_t::complete);
-            return data_.resultset_index == desc_.num_resultsets ? error_code()
-                                                                 : client_errc::num_resultsets_mismatch;
+            return is_last_resultset ? error_code() : client_errc::num_resultsets_mismatch;
         }
     }
 
-    basic_per_resultset_data& current_resultset() noexcept
+    const static_per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
     {
-        return ext_.per_resultset[data_.resultset_index - 1];
-    }
-
-    const basic_per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
-    {
-        assert(index < desc_.num_resultsets);
-        const auto& res = ext_.per_resultset[index];
+        const auto& res = ext_.per_result(index);
         assert(res.has_ok_packet_data);
         return res;
     }
 
     error_code meta_check(diagnostics& diag) const
     {
-        return desc_
-            .meta_check_vtable[data_.resultset_index - 1](current_pos_map(), current_resultset_meta(), diag);
-    }
-
-    metadata_collection_view current_resultset_meta() const noexcept
-    {
-        return get_meta(data_.resultset_index - 1);
+        return ext_.meta_check_fn(resultset_index - 1)(current_pos_map(), current_resultset_meta(), diag);
     }
 };
 
 template <class... StaticRow>
-using static_results_rows_t = std::tuple<std::vector<StaticRow>...>;
+using results_rows_t = std::tuple<std::vector<StaticRow>...>;
 
 template <class... StaticRow>
-struct static_results_parse_vtable_helper
+struct results_fns
 {
-    template <std::size_t I>
-    static error_code parse_fn(const_cpp2db_t pos_map, const field_view* from, void* to)
-    {
-        auto& v = std::get<I>(*static_cast<static_results_rows_t<StaticRow...>*>(to));
-        v.emplace_back();
-        return parse(pos_map, from, v.back());
-    }
-
-    template <std::size_t... N>
-    static constexpr std::array<static_results_erased_impl::parse_fn_t, sizeof...(StaticRow)> create_table(boost::mp11::index_sequence<
-                                                                                                           N...>)
-    {
-        return {{&parse_fn<N>...}};
-    }
-};
-
-template <class... StaticRow>
-constexpr auto static_results_parse_vtable = static_results_parse_vtable_helper<StaticRow...>::create_table(
-    boost::mp11::make_index_sequence<sizeof...(StaticRow)>()
-);
-
-template <BOOST_MYSQL_STATIC_ROW... StaticRow>
-class static_results_impl
-{
-    using rows_t = static_results_rows_t<StaticRow...>;
-
-    // Storage for our data, which requires knowing the template args.
-    struct data_t
-    {
-        rows_t rows;
-        std::array<static_results_erased_impl::basic_per_resultset_data, sizeof...(StaticRow)>
-            per_resultset{};
-        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
-        std::array<std::size_t, max_num_columns<StaticRow...>> pos_table{};
-    } data_;
-
-    // The type-erased impl, that will use pointers to the above storage
-    static_results_erased_impl impl_;
+    using rows_t = results_rows_t<StaticRow...>;
 
     struct reset_fn
     {
@@ -339,56 +301,76 @@ class static_results_impl
         }
     };
 
-    static void reset_tuple(void* rows_ptr) noexcept
+    static void reset(void* rows_ptr) noexcept
     {
         auto& rows = *static_cast<rows_t*>(rows_ptr);
         boost::mp11::mp_for_each<boost::mp11::mp_iota_c<sizeof...(StaticRow)>>(reset_fn{rows});
     }
 
-    static static_results_erased_impl::resultset_descriptor descriptor() noexcept
+    template <std::size_t I>
+    static error_code parse(const_cpp2db_t pos_map, const field_view* from, void* to)
     {
+        auto& v = std::get<I>(*static_cast<rows_t*>(to));
+        v.emplace_back();
+        return parse(pos_map, from, v.back());
+    }
+
+    template <std::size_t I>
+    static constexpr results_resultset_descriptor create_descriptor()
+    {
+        using T = mp11::mp_at_c<mp11::mp_list<StaticRow...>, I>;
         return {
-            sizeof...(StaticRow),
-            num_columns_table<StaticRow...>.data(),
-            name_table<StaticRow...>.data(),
-            &reset_tuple,
-            meta_check_vtable<StaticRow...>.data(),
-            static_results_parse_vtable<StaticRow...>.data(),
+            get_row_name_table<T>(),
+            &meta_check<T>,
+            &parse<I>,
         };
     }
 
-    static_results_erased_impl::external_storage storage_table() noexcept
+    template <std::size_t... I>
+    static constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)> create_descriptors(mp11::index_sequence<
+                                                                                                       I...>)
     {
-        return {
-            &data_.rows,
-            data_.per_resultset.data(),
-            data_.temp_fields.data(),
-            data_.pos_table.data(),
-        };
+        return {create_descriptor<I>()...};
     }
+};
+
+template <class... StaticRow>
+constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)>
+    results_resultset_descriptor_table = results_fns<StaticRow...>::create_descriptors(
+        mp11::make_index_sequence<sizeof...(StaticRow)>()
+    );
+
+template <BOOST_MYSQL_STATIC_ROW... StaticRow>
+class static_results_impl
+{
+    // Data
+    results_rows_t<StaticRow...> rows_;
+    std::array<field_view, max_num_columns<StaticRow...>> temp_fields_{};
+    std::array<std::size_t, max_num_columns<StaticRow...>> pos_table_{};
+    std::array<static_per_resultset_data, sizeof...(StaticRow)> per_resultset_{};
+
+    // The type-erased impl, that will use pointers to the above storage
+    static_results_erased_impl impl_;
 
 public:
-    static_results_impl() noexcept : impl_(descriptor(), storage_table()) {}
-
-    static_results_impl(const static_results_impl& rhs) : data_(rhs.data_), impl_(rhs.impl_, storage_table())
+    static_results_impl() noexcept
+        : impl_(results_external_data(
+              results_resultset_descriptor_table<StaticRow...>,
+              &results_fns<StaticRow...>::reset,
+              &rows_,
+              temp_fields_.data(),
+              pos_table_.data(),
+              per_resultset_
+          ))
     {
     }
-
-    static_results_impl(static_results_impl&& rhs) noexcept
-        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_), storage_table())
-    {
-    }
-
-    static_results_impl& operator=(const static_results_impl&) = default;
-    static_results_impl& operator=(static_results_impl&&) = default;
-    ~static_results_impl() = default;
 
     // User facing
     template <std::size_t I>
     boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...>>::type> get_rows(
     ) const noexcept
     {
-        return std::get<I>(data_.rows);
+        return std::get<I>(rows_);
     }
 
     const static_results_erased_impl& get_interface() const noexcept { return impl_; }

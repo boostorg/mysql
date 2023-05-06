@@ -33,32 +33,12 @@ namespace detail {
 
 using execst_parse_fn_t = error_code (*)(const_cpp2db_t, const field_view* from, const output_ref& ref);
 
-template <class StaticRow>
-static error_code execst_parse_fn(const_cpp2db_t pos_map, const field_view* from, const output_ref& ref)
-{
-    return parse(pos_map, from, ref.span_element<StaticRow>());
-}
-
 struct execst_resultset_descriptor
 {
     name_table_t name_table;
     meta_check_fn_t meta_check;
     execst_parse_fn_t parse_fn;
 };
-
-template <class StaticRow>
-constexpr execst_resultset_descriptor create_execst_resultset_descriptor()
-{
-    return {
-        get_row_name_table<StaticRow>(),
-        &meta_check<StaticRow>,
-        &execst_parse_fn<StaticRow>,
-    };
-}
-
-template <class... StaticRow>
-constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> execst_resultset_descriptor_table{
-    {create_execst_resultset_descriptor<StaticRow>()...}};
 
 class execst_external_data
 {
@@ -234,7 +214,6 @@ private:
     void on_row_batch_finish_impl() noexcept override final {}
 
     // Auxiliar
-    std::size_t current_num_columns() const noexcept { return ext_.num_columns(resultset_index_ - 1); }
     name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index_ - 1); }
     cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
     const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
@@ -275,6 +254,26 @@ private:
         }
     }
 };
+
+template <class StaticRow>
+static error_code execst_parse_fn(const_cpp2db_t pos_map, const field_view* from, const output_ref& ref)
+{
+    return parse(pos_map, from, ref.span_element<StaticRow>());
+}
+
+template <class StaticRow>
+constexpr execst_resultset_descriptor create_execst_resultset_descriptor()
+{
+    return {
+        get_row_name_table<StaticRow>(),
+        &meta_check<StaticRow>,
+        &execst_parse_fn<StaticRow>,
+    };
+}
+
+template <class... StaticRow>
+constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> execst_resultset_descriptor_table{
+    {create_execst_resultset_descriptor<StaticRow>()...}};
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_execution_state_impl

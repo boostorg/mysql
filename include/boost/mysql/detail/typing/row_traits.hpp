@@ -244,18 +244,9 @@ error_code parse(const_cpp2db_t pos_map, const field_view* from, StaticRow& to)
 using meta_check_fn_t =
     error_code (*)(const_cpp2db_t field_map, metadata_collection_view meta, diagnostics& diag);
 
-// For multi-resultset - helpers
-template <class... StaticRow>
-constexpr std::array<std::size_t, sizeof...(StaticRow)> num_columns_table{{get_row_size<StaticRow>()...}};
-
+// For multi-resultset - helper
 template <class... StaticRow>
 constexpr std::size_t max_num_columns = (std::max)({get_row_size<StaticRow>()...});
-
-template <class... StaticRow>
-constexpr std::array<meta_check_fn_t, sizeof...(StaticRow)> meta_check_vtable{{&meta_check<StaticRow>...}};
-
-template <class... StaticRow>
-constexpr std::array<name_table_t, sizeof...(StaticRow)> name_table{{get_row_name_table<StaticRow>()...}};
 
 }  // namespace detail
 }  // namespace mysql
