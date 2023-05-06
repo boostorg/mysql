@@ -57,7 +57,7 @@ public:
         const std::size_t* num_columns{};
         const name_table_t* name_table{};
         reset_fn_t reset_fn{};
-        const meta_check_fn* meta_check_vtable{};
+        const meta_check_fn_t* meta_check_vtable{};
         const parse_fn_t* parse_vtable{};
     };
 

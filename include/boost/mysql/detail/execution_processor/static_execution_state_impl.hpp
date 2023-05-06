@@ -31,70 +31,150 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+using execst_parse_fn_t = error_code (*)(const_cpp2db_t, const field_view* from, const output_ref& ref);
+
+template <class StaticRow>
+static error_code execst_parse_fn(const_cpp2db_t pos_map, const field_view* from, const output_ref& ref)
+{
+    return parse(pos_map, from, ref.span_element<StaticRow>());
+}
+
+struct execst_resultset_descriptor
+{
+    name_table_t name_table;
+    meta_check_fn_t meta_check;
+    execst_parse_fn_t parse_fn;
+};
+
+template <class StaticRow>
+constexpr execst_resultset_descriptor create_execst_resultset_descriptor()
+{
+    return {
+        get_row_name_table<StaticRow>(),
+        &meta_check<StaticRow>,
+        &execst_parse_fn<StaticRow>,
+    };
+}
+
+template <class... StaticRow>
+constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> execst_resultset_descriptor_table{
+    {create_execst_resultset_descriptor<StaticRow>()...}};
+
+class execst_external_data
+{
+public:
+    execst_external_data(
+        span<const execst_resultset_descriptor> desc,
+        field_view* temp_fields,
+        std::size_t* pos_map
+    ) noexcept
+        : desc_(desc), temp_fields_(temp_fields), pos_map_(pos_map)
+    {
+    }
+
+    execst_external_data(const execst_external_data&) = default;
+    execst_external_data(execst_external_data&&) = default;
+    execst_external_data& operator=(const execst_external_data&) noexcept { return *this; }
+    execst_external_data& operator=(execst_external_data&&) noexcept { return *this; }
+    ~execst_external_data() = default;
+
+    std::size_t num_resultsets() const noexcept { return desc_.size(); }
+    std::size_t num_columns(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].name_table.size();
+    }
+    name_table_t name_table(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].name_table;
+    }
+    meta_check_fn_t meta_check_fn(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].meta_check;
+    }
+    execst_parse_fn_t parse_fn(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].parse_fn;
+    }
+    field_view* temp_fields() const noexcept { return temp_fields_; }
+    span<std::size_t> pos_map(std::size_t idx) const noexcept
+    {
+        return span<std::size_t>(pos_map_, num_columns(idx));
+    }
+
+private:
+    span<const execst_resultset_descriptor> desc_;
+    field_view* temp_fields_;
+    std::size_t* pos_map_;
+};
+
 class static_execution_state_erased_impl final : public execution_processor
 {
 public:
-    using parse_fn_t = error_code (*)(const_cpp2db_t, const field_view* from, const output_ref& ref);
+    static_execution_state_erased_impl(execst_external_data ext) noexcept : ext_(ext) {}
+    metadata_collection_view meta() const noexcept { return meta_; }
 
-    // These only depend on the type of the rows we're parsing
-    struct resultset_descriptor
+    std::uint64_t get_affected_rows() const noexcept
     {
-        std::size_t num_resultsets{};
-        const std::size_t* num_columns{};
-        const name_table_t* name_table{};
-        const meta_check_fn* meta_check_vtable{};
-        const parse_fn_t* parse_vtable{};
+        assert(ok_data_.has_value);
+        return ok_data_.affected_rows;
+    }
+
+    std::uint64_t get_last_insert_id() const noexcept
+    {
+        assert(ok_data_.has_value);
+        return ok_data_.last_insert_id;
+    }
+
+    unsigned get_warning_count() const noexcept
+    {
+        assert(ok_data_.has_value);
+        return ok_data_.warnings;
+    }
+
+    string_view get_info() const noexcept
+    {
+        assert(ok_data_.has_value);
+        return string_view(info_.data(), info_.size());
+    }
+
+    bool get_is_out_params() const noexcept
+    {
+        assert(ok_data_.has_value);
+        return ok_data_.is_out_params;
+    }
+
+private:
+    // Data
+    struct ok_packet_data
+    {
+        bool has_value{false};           // The OK packet information is default constructed, or actual data?
+        std::uint64_t affected_rows{};   // OK packet data
+        std::uint64_t last_insert_id{};  // OK packet data
+        std::uint16_t warnings{};        // OK packet data
+        bool is_out_params{false};       // Does this resultset contain OUT param information?
     };
 
-    // These point to storage owned by an object that knows the row types
-    struct external_storage
-    {
-        field_view* temp_fields{};
-        std::size_t* pos_map{};
-    };
+    execst_external_data ext_;
+    std::size_t resultset_index_{};
+    std::size_t meta_index_{};
+    std::size_t meta_size_{};
+    ok_packet_data ok_data_;
+    std::vector<char> info_;
+    std::vector<metadata> meta_;
 
-    // Both descriptor and storage must be provided on initialization
-    static_execution_state_erased_impl(resultset_descriptor desc, external_storage ext) noexcept
-        : desc_(desc), ext_(ext)
-    {
-    }
-
-    // Copy/move construction requires providing the storage table for the object we're
-    // creating, so we disable default copy/move construction. The descriptor table
-    // shouldn't change
-    static_execution_state_erased_impl(const static_execution_state_erased_impl& rhs) = delete;
-    static_execution_state_erased_impl(const static_execution_state_erased_impl& rhs, external_storage st)
-        : desc_(rhs.desc_), ext_(st), data_(rhs.data_)
-    {
-    }
-    static_execution_state_erased_impl(static_execution_state_erased_impl&& rhs) = delete;
-    static_execution_state_erased_impl(static_execution_state_erased_impl&& rhs, external_storage st) noexcept
-        : desc_(rhs.desc_), ext_(st), data_(std::move(rhs.data_))
-    {
-    }
-
-    // Assignment should only assign data, and not the descriptor or storage tables
-    static_execution_state_erased_impl& operator=(const static_execution_state_erased_impl& rhs)
-    {
-        data_ = rhs.data_;
-        return *this;
-    }
-    static_execution_state_erased_impl& operator=(static_execution_state_erased_impl&& rhs) noexcept
-    {
-        data_ = std::move(rhs.data_);
-        return *this;
-    }
-
-    ~static_execution_state_erased_impl() = default;
-
+    // Virtual impls
     void reset_impl() noexcept override final
     {
-        data_.resultset_index = 0;
-        data_.meta_index = 0;
-        data_.meta_size = 0;
-        data_.ok_data = ok_packet_data();
-        data_.info.clear();
-        data_.meta.clear();
+        resultset_index_ = 0;
+        meta_index_ = 0;
+        meta_size_ = 0;
+        ok_data_ = ok_packet_data();
+        info_.clear();
+        meta_.clear();
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
@@ -109,18 +189,18 @@ public:
     void on_num_meta_impl(std::size_t num_columns) override final
     {
         on_new_resultset();
-        data_.meta.reserve(num_columns);
-        data_.meta_size = num_columns;
+        meta_.reserve(num_columns);
+        meta_size_ = num_columns;
         set_state(state_t::reading_metadata);
     }
 
     error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
     {
-        cpp2db_add_field(current_pos_map(), current_name_table(), data_.meta_index, field_name);
+        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index_, field_name);
 
         // Store the meta object anyway
-        data_.meta.push_back(std::move(meta));
-        if (++data_.meta_index == data_.meta_size)
+        meta_.push_back(std::move(meta));
+        if (++meta_index_ == meta_size_)
         {
             set_state(state_t::reading_rows);
             return meta_check(diag);
@@ -133,16 +213,16 @@ public:
     error_code on_row_impl(deserialization_context ctx, const output_ref& ref) override final
     {
         // check output
-        if (ref.resultset_index() != data_.resultset_index - 1)
+        if (ref.resultset_index() != resultset_index_ - 1)
             return client_errc::metadata_check_failed;  // TODO: is this OK?
 
         // deserialize the row
-        auto err = deserialize_row(encoding(), ctx, meta(), ext_.temp_fields);
+        auto err = deserialize_row(encoding(), ctx, meta(), ext_.temp_fields());
         if (err)
             return err;
 
         // parse it into the output ref
-        err = desc_.parse_vtable[data_.resultset_index - 1](current_pos_map(), ext_.temp_fields, ref);
+        err = ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), ext_.temp_fields(), ref);
         if (err)
             return err;
 
@@ -153,176 +233,64 @@ public:
 
     void on_row_batch_finish_impl() noexcept override final {}
 
-    // User facing
-    metadata_collection_view meta() const noexcept { return data_.meta; }
-
-    std::uint64_t get_affected_rows() const noexcept
-    {
-        assert(data_.ok_data.has_value);
-        return data_.ok_data.affected_rows;
-    }
-
-    std::uint64_t get_last_insert_id() const noexcept
-    {
-        assert(data_.ok_data.has_value);
-        return data_.ok_data.last_insert_id;
-    }
-
-    unsigned get_warning_count() const noexcept
-    {
-        assert(data_.ok_data.has_value);
-        return data_.ok_data.warnings;
-    }
-
-    string_view get_info() const noexcept
-    {
-        assert(data_.ok_data.has_value);
-        return string_view(data_.info.data(), data_.info.size());
-    }
-
-    bool get_is_out_params() const noexcept
-    {
-        assert(data_.ok_data.has_value);
-        return data_.ok_data.is_out_params;
-    }
-
-private:
-    struct ok_packet_data
-    {
-        bool has_value{false};           // The OK packet information is default constructed, or actual data?
-        std::uint64_t affected_rows{};   // OK packet data
-        std::uint64_t last_insert_id{};  // OK packet data
-        std::uint16_t warnings{};        // OK packet data
-        bool is_out_params{false};       // Does this resultset contain OUT param information?
-    };
-
-    resultset_descriptor desc_;
-    external_storage ext_;
-
-    struct data_t
-    {
-        std::size_t resultset_index{};
-        std::size_t meta_index{};
-        std::size_t meta_size{};
-        ok_packet_data ok_data;
-        std::vector<char> info;
-        std::vector<metadata> meta;
-    } data_;
-
-    std::size_t current_num_columns() const noexcept { return desc_.num_columns[data_.resultset_index - 1]; }
-    name_table_t current_name_table() const noexcept
-    {
-        assert(desc_.name_table);
-        return desc_.name_table[data_.resultset_index - 1];
-    }
-    cpp2db_t current_pos_map() noexcept { return cpp2db_t(ext_.pos_map, current_num_columns()); }
-    const_cpp2db_t current_pos_map() const noexcept
-    {
-        return const_cpp2db_t(ext_.pos_map, current_num_columns());
-    }
+    // Auxiliar
+    std::size_t current_num_columns() const noexcept { return ext_.num_columns(resultset_index_ - 1); }
+    name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index_ - 1); }
+    cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
 
     error_code meta_check(diagnostics& diag) const
     {
-        assert(data_.resultset_index <= desc_.num_resultsets);
-        return desc_.meta_check_vtable[data_.resultset_index - 1](current_pos_map(), data_.meta, diag);
+        return ext_.meta_check_fn(resultset_index_ - 1)(current_pos_map(), meta_, diag);
     }
 
     void on_new_resultset() noexcept
     {
-        assert(data_.resultset_index < desc_.num_resultsets);
-        ++data_.resultset_index;
-        data_.meta_index = 0;
-        data_.ok_data = ok_packet_data{};
-        data_.info.clear();
-        data_.meta.clear();
+        ++resultset_index_;
+        meta_index_ = 0;
+        ok_data_ = ok_packet_data{};
+        info_.clear();
+        meta_.clear();
         cpp2db_reset(current_pos_map());
     }
 
     error_code on_ok_packet_impl(const ok_packet& pack)
     {
-        data_.ok_data.has_value = true;
-        data_.ok_data.affected_rows = pack.affected_rows.value;
-        data_.ok_data.last_insert_id = pack.last_insert_id.value;
-        data_.ok_data.warnings = pack.warnings;
-        data_.ok_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        data_.info.assign(pack.info.value.begin(), pack.info.value.end());
+        ok_data_.has_value = true;
+        ok_data_.affected_rows = pack.affected_rows.value;
+        ok_data_.last_insert_id = pack.last_insert_id.value;
+        ok_data_.warnings = pack.warnings;
+        ok_data_.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
+        info_.assign(pack.info.value.begin(), pack.info.value.end());
+        bool is_last_resultset = resultset_index_ == ext_.num_resultsets();
         if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
             set_state(state_t::reading_first_subseq);
-            return data_.resultset_index < desc_.num_resultsets ? error_code()
-                                                                : client_errc::num_resultsets_mismatch;
+            return is_last_resultset ? client_errc::num_resultsets_mismatch : error_code();
         }
         else
         {
             set_state(state_t::complete);
-            return data_.resultset_index == desc_.num_resultsets ? error_code()
-                                                                 : client_errc::num_resultsets_mismatch;
+            return is_last_resultset ? error_code() : client_errc::num_resultsets_mismatch;
         }
     }
 };
-
-template <class StaticRow>
-static error_code static_execution_state_parse_fn(
-    const_cpp2db_t pos_map,
-    const field_view* from,
-    const output_ref& ref
-)
-{
-    return parse(pos_map, from, ref.span_element<StaticRow>());
-}
-
-template <class... StaticRow>
-constexpr std::array<static_execution_state_erased_impl::parse_fn_t, sizeof...(StaticRow)>
-    static_execution_state_parse_vtable{{&static_execution_state_parse_fn<StaticRow>...}};
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_execution_state_impl
 {
     // Storage for our data, which requires knowing the template args
-    struct data_t
-    {
-        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
-        std::array<std::size_t, max_num_columns<StaticRow...>> pos_map{};
-    } data_;
+    std::array<field_view, max_num_columns<StaticRow...>> temp_fields_{};
+    std::array<std::size_t, max_num_columns<StaticRow...>> pos_map_{};
 
     // The type-erased impl, that will use pointers to the above storage
     static_execution_state_erased_impl impl_;
 
-    static static_execution_state_erased_impl::resultset_descriptor descriptor() noexcept
-    {
-        return {
-            sizeof...(StaticRow),
-            num_columns_table<StaticRow...>.data(),
-            name_table<StaticRow...>.data(),
-            meta_check_vtable<StaticRow...>.data(),
-            static_execution_state_parse_vtable<StaticRow...>.data(),
-        };
-    }
-
-    static_execution_state_erased_impl::external_storage storage_table() noexcept
-    {
-        return {
-            data_.temp_fields.data(),
-            data_.pos_map.data(),
-        };
-    }
-
 public:
-    static_execution_state_impl() noexcept : impl_(descriptor(), storage_table()) {}
-
-    static_execution_state_impl(const static_execution_state_impl& rhs)
-        : data_(rhs.data_), impl_(rhs.impl_, storage_table())
+    static_execution_state_impl() noexcept
+        : impl_({execst_resultset_descriptor_table<StaticRow...>, temp_fields_.data(), pos_map_.data()})
     {
     }
-
-    static_execution_state_impl(static_execution_state_impl&& rhs) noexcept
-        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_), storage_table())
-    {
-    }
-
-    static_execution_state_impl& operator=(const static_execution_state_impl&) = default;
-    static_execution_state_impl& operator=(static_execution_state_impl&&) = default;
-    ~static_execution_state_impl() = default;
 
     const static_execution_state_erased_impl& get_interface() const noexcept { return impl_; }
     static_execution_state_erased_impl& get_interface() noexcept { return impl_; }
