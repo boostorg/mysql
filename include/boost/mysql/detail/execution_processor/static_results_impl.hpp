@@ -59,29 +59,22 @@ struct static_per_resultset_data
 class results_external_data
 {
 public:
+    struct ptr_data
+    {
+        void* rows;
+        field_view* temp_fields;
+        std::size_t* pos_map;
+        static_per_resultset_data* per_resultset;
+    };
+
     results_external_data(
         span<const results_resultset_descriptor> desc,
         results_reset_fn_t reset,
-        void* rows,
-        field_view* temp_fields,
-        std::size_t* pos_map,
-        span<static_per_resultset_data> per_resultset
+        ptr_data ptr
     ) noexcept
-        : desc_(desc),
-          reset_(reset),
-          rows_(rows),
-          temp_fields_(temp_fields),
-          pos_map_(pos_map),
-          per_resultset_(per_resultset.data())
+        : desc_(desc), reset_(reset), ptr_(ptr)
     {
-        assert(desc.size() == per_resultset.size());
     }
-
-    results_external_data(const results_external_data&) = default;
-    results_external_data(results_external_data&&) = default;
-    results_external_data& operator=(const results_external_data&) noexcept { return *this; }
-    results_external_data& operator=(results_external_data&&) noexcept { return *this; }
-    ~results_external_data() = default;
 
     std::size_t num_resultsets() const noexcept { return desc_.size(); }
     std::size_t num_columns(std::size_t idx) const noexcept
@@ -105,31 +98,30 @@ public:
         return desc_[idx].parse_fn;
     }
     results_reset_fn_t reset_fn() const noexcept { return reset_; }
-    void* rows() const noexcept { return rows_; }
-    field_view* temp_fields() const noexcept { return temp_fields_; }
+    void* rows() const noexcept { return ptr_.rows; }
+    field_view* temp_fields() const noexcept { return ptr_.temp_fields; }
     span<std::size_t> pos_map(std::size_t idx) const noexcept
     {
-        return span<std::size_t>(pos_map_, num_columns(idx));
+        return span<std::size_t>(ptr_.pos_map, num_columns(idx));
     }
     static_per_resultset_data& per_result(std::size_t idx) const noexcept
     {
         assert(idx < num_resultsets());
-        return per_resultset_[idx];
+        return ptr_.per_resultset[idx];
     }
 
 private:
     span<const results_resultset_descriptor> desc_;
     results_reset_fn_t reset_;
-    void* rows_;
-    field_view* temp_fields_;
-    std::size_t* pos_map_;
-    static_per_resultset_data* per_resultset_;
+    ptr_data ptr_;
 };
 
 class static_results_erased_impl final : public execution_processor
 {
 public:
     static_results_erased_impl(results_external_data ext) noexcept : ext_(ext) {}
+
+    results_external_data& ext_data() noexcept { return ext_; }
 
     metadata_collection_view get_meta(std::size_t index) const noexcept
     {
@@ -343,26 +335,64 @@ constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)>
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_results_impl
 {
-    // Data
-    results_rows_t<StaticRow...> rows_;
-    std::array<field_view, max_num_columns<StaticRow...>> temp_fields_{};
-    std::array<std::size_t, max_num_columns<StaticRow...>> pos_table_{};
-    std::array<static_per_resultset_data, sizeof...(StaticRow)> per_resultset_{};
+    // Data that requires knowing template params
+    struct
+    {
+        results_rows_t<StaticRow...> rows;
+        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
+        std::array<std::size_t, max_num_columns<StaticRow...>> pos_map{};
+        std::array<static_per_resultset_data, sizeof...(StaticRow)> per_resultset{};
+    } data_;
 
     // The type-erased impl, that will use pointers to the above storage
     static_results_erased_impl impl_;
+
+    results_external_data::ptr_data ptr_data() noexcept
+    {
+        return {
+            &data_.rows,
+            data_.temp_fields.data(),
+            data_.pos_map.data(),
+            data_.per_resultset.data(),
+        };
+    }
+
+    void set_pointers() noexcept { data_.impl_.ext_data().set_pointers(ptr_data()); }
 
 public:
     static_results_impl() noexcept
         : impl_(results_external_data(
               results_resultset_descriptor_table<StaticRow...>,
               &results_fns<StaticRow...>::reset,
-              &rows_,
-              temp_fields_.data(),
-              pos_table_.data(),
-              per_resultset_
+              ptr_data()
           ))
     {
+    }
+
+    static_results_impl(const static_results_impl& rhs) : data_(rhs.data_), impl_(rhs.impl_)
+    {
+        set_pointers();
+    }
+
+    static_results_impl(static_results_impl&& rhs) noexcept : data_(rhs.data_), impl_(std::move(rhs.impl_))
+    {
+        set_pointers();
+    }
+
+    static_results_impl& operator=(const static_results_impl& rhs)
+    {
+        data_ = rhs.data_;
+        impl_ = rhs.impl_;
+        set_pointers();
+        return *this;
+    }
+
+    static_results_impl& operator=(static_results_impl&& rhs)
+    {
+        data_ = rhs.data_;
+        impl_ = std::move(rhs.impl_);
+        set_pointers();
+        return *this;
     }
 
     // User facing
@@ -370,7 +400,7 @@ public:
     boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...>>::type> get_rows(
     ) const noexcept
     {
-        return std::get<I>(rows_);
+        return std::get<I>(data_.rows);
     }
 
     const static_results_erased_impl& get_interface() const noexcept { return impl_; }

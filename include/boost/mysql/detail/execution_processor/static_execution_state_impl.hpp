@@ -43,20 +43,16 @@ struct execst_resultset_descriptor
 class execst_external_data
 {
 public:
-    execst_external_data(
-        span<const execst_resultset_descriptor> desc,
-        field_view* temp_fields,
-        std::size_t* pos_map
-    ) noexcept
-        : desc_(desc), temp_fields_(temp_fields), pos_map_(pos_map)
+    struct ptr_data
+    {
+        field_view* temp_fields;
+        std::size_t* pos_map;
+    };
+
+    execst_external_data(span<const execst_resultset_descriptor> desc, ptr_data ptr) noexcept
+        : desc_(desc), ptr_(ptr)
     {
     }
-
-    execst_external_data(const execst_external_data&) = default;
-    execst_external_data(execst_external_data&&) = default;
-    execst_external_data& operator=(const execst_external_data&) noexcept { return *this; }
-    execst_external_data& operator=(execst_external_data&&) noexcept { return *this; }
-    ~execst_external_data() = default;
 
     std::size_t num_resultsets() const noexcept { return desc_.size(); }
     std::size_t num_columns(std::size_t idx) const noexcept
@@ -79,22 +75,26 @@ public:
         assert(idx < num_resultsets());
         return desc_[idx].parse_fn;
     }
-    field_view* temp_fields() const noexcept { return temp_fields_; }
+    field_view* temp_fields() const noexcept { return ptr_.temp_fields; }
     span<std::size_t> pos_map(std::size_t idx) const noexcept
     {
-        return span<std::size_t>(pos_map_, num_columns(idx));
+        return span<std::size_t>(ptr_.pos_map, num_columns(idx));
     }
+
+    void set_pointers(ptr_data ptr) noexcept { ptr_ = ptr; }
 
 private:
     span<const execst_resultset_descriptor> desc_;
-    field_view* temp_fields_;
-    std::size_t* pos_map_;
+    ptr_data ptr_;
 };
 
 class static_execution_state_erased_impl final : public execution_processor
 {
 public:
     static_execution_state_erased_impl(execst_external_data ext) noexcept : ext_(ext) {}
+
+    execst_external_data& ext_data() noexcept { return ext_; }
+
     metadata_collection_view meta() const noexcept { return meta_; }
 
     std::uint64_t get_affected_rows() const noexcept
@@ -279,17 +279,60 @@ template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_execution_state_impl
 {
     // Storage for our data, which requires knowing the template args
-    std::array<field_view, max_num_columns<StaticRow...>> temp_fields_{};
-    std::array<std::size_t, max_num_columns<StaticRow...>> pos_map_{};
+    struct
+    {
+        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
+        std::array<std::size_t, max_num_columns<StaticRow...>> pos_map{};
+
+    } data_;
 
     // The type-erased impl, that will use pointers to the above storage
     static_execution_state_erased_impl impl_;
 
+    execst_external_data::ptr_data ptr_data() noexcept
+    {
+        return {
+            data_.temp_fields.data(),
+            data_.pos_map.data(),
+        };
+    }
+
+    void set_pointers() noexcept { impl_.ext_data().set_pointers(ptr_data()); }
+
 public:
     static_execution_state_impl() noexcept
-        : impl_({execst_resultset_descriptor_table<StaticRow...>, temp_fields_.data(), pos_map_.data()})
+        : impl_({execst_resultset_descriptor_table<StaticRow...>, ptr_data()})
     {
     }
+
+    static_execution_state_impl(const static_execution_state_impl& rhs) : data_(rhs.data_), impl_(rhs.impl_)
+    {
+        set_pointers();
+    }
+
+    static_execution_state_impl(static_execution_state_impl&& rhs) noexcept
+        : data_(rhs.data_), impl_(std::move(rhs.impl_))
+    {
+        set_pointers();
+    }
+
+    static_execution_state_impl& operator=(const static_execution_state_impl& rhs)
+    {
+        data_ = rhs.data_;
+        impl_ = rhs.impl_;
+        set_pointers();
+        return *this;
+    }
+
+    static_execution_state_impl& operator=(static_execution_state_impl&& rhs)
+    {
+        data_ = rhs.data_;
+        impl_ = std::move(rhs.impl_);
+        set_pointers();
+        return *this;
+    }
+
+    ~static_execution_state_impl() = default;
 
     const static_execution_state_erased_impl& get_interface() const noexcept { return impl_; }
     static_execution_state_erased_impl& get_interface() noexcept { return impl_; }
