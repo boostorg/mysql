@@ -13,6 +13,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -113,12 +114,12 @@ public:
         set_state(state_t::reading_metadata);
     }
 
-    error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) override final
+    error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
     {
-        cpp2db_add_field(current_pos_map(), current_name_table(), data_.meta_index, pack.name.value);
+        cpp2db_add_field(current_pos_map(), current_name_table(), data_.meta_index, field_name);
 
         // Store the meta object anyway
-        data_.meta.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
+        data_.meta.push_back(std::move(meta));
         if (++data_.meta_index == data_.meta_size)
         {
             set_state(state_t::reading_rows);

@@ -11,6 +11,7 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -69,9 +70,14 @@ public:
             pack_.flags |= detail::column_flags::not_null;
         return *this;
     }
+    meta_builder& name(string_view v) noexcept
+    {
+        pack_.name.value = v;
+        return *this;
+    }
     metadata build()
     {
-        auto res = detail::metadata_access::construct(pack_, false);
+        auto res = detail::metadata_access::construct(pack_, true);
         if (coltype_set_)
             detail::metadata_access::set_type(res, type_);
         return res;

@@ -11,7 +11,9 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -109,7 +111,18 @@ public:
     error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
     {
         assert(is_reading_meta());
-        return on_meta_impl(pack, diag);
+        return on_meta_impl(
+            metadata_access::construct(pack, meta_mode() == metadata_mode::full),
+            pack.name.value,
+            diag
+        );
+    }
+
+    // Exposed for the sake of testing
+    error_code on_meta(metadata&& meta, diagnostics& diag)
+    {
+        assert(is_reading_meta());
+        return on_meta_impl(std::move(meta), meta.column_name(), diag);
     }
 
     void on_row_batch_start()
@@ -171,7 +184,7 @@ protected:
     virtual void reset_impl() noexcept = 0;
     virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
     virtual void on_num_meta_impl(std::size_t num_columns) = 0;
-    virtual error_code on_meta_impl(const column_definition_packet& pack, diagnostics& diag) = 0;
+    virtual error_code on_meta_impl(metadata&& meta, string_view column_name, diagnostics& diag) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
     virtual error_code on_row_impl(deserialization_context ctx, const output_ref& ref) = 0;
     virtual void on_row_batch_start_impl() = 0;

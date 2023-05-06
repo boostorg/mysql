@@ -13,6 +13,7 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -251,9 +252,9 @@ public:
         return error_code();
     }
 
-    error_code on_meta_impl(const column_definition_packet& pack, diagnostics&) override
+    error_code on_meta_impl(metadata&& meta, string_view, diagnostics&) override
     {
-        meta_.push_back(metadata_access::construct(pack, meta_mode() == metadata_mode::full));
+        meta_.push_back(std::move(meta));
         if (--remaining_meta_ == 0)
         {
             set_state(state_t::reading_rows);
