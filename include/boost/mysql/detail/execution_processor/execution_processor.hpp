@@ -20,6 +20,7 @@
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -96,7 +97,7 @@ public:
         reset_impl();
     }
 
-    error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
     {
         assert(is_reading_head());
         return on_head_ok_packet_impl(pack, diag);
@@ -108,7 +109,7 @@ public:
         on_num_meta_impl(num_columns);
     }
 
-    error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
     {
         assert(is_reading_meta());
         return on_meta_impl(
@@ -119,7 +120,7 @@ public:
     }
 
     // Exposed for the sake of testing
-    error_code on_meta(metadata&& meta, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD error_code on_meta(metadata&& meta, diagnostics& diag)
     {
         assert(is_reading_meta());
         return on_meta_impl(std::move(meta), meta.column_name(), diag);
@@ -133,13 +134,13 @@ public:
 
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
-    error_code on_row_ok_packet(const ok_packet& pack)
+    BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
     {
         assert(is_reading_rows());
         return on_row_ok_packet_impl(pack);
     }
 
-    error_code on_row(deserialization_context ctx, const output_ref& ref)
+    BOOST_ATTRIBUTE_NODISCARD error_code on_row(deserialization_context ctx, const output_ref& ref)
     {
         assert(is_reading_rows());
         return on_row_impl(ctx, ref);

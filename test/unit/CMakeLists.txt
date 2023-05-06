@@ -29,6 +29,7 @@ add_executable(
     detail/protocol/process_error_packet.cpp
     detail/execution_processor/execution_processor.cpp
     detail/execution_processor/execution_state_impl.cpp
+    detail/execution_processor/static_execution_state_impl.cpp
     # detail/network_algorithms/start_execution_impl.cpp
     # detail/network_algorithms/read_resultset_head.cpp
     # detail/network_algorithms/read_some_rows.cpp

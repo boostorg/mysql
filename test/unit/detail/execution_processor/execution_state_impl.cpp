@@ -155,26 +155,26 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 
     // First metadata
     auto err = st.on_meta(create_coldef(protocol_field_type::tiny), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_meta());
 
     // Second metadata, ready to read rows
     err = st.on_meta(create_coldef(protocol_field_type::var_string), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r1(st.meta());
 
     // Rows
     rowbuff r1{10, "abc"}, r2{20, "cdef"};
     err = st.on_row(r1.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     err = st.on_row(r2.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(fields == make_fv_vector(10, "abc", 20, "cdef"));
 
     // End of resultset
     err = st.on_row_ok_packet(create_ok_r1());
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_r1(st.meta());
     check_ok_r1(st);
@@ -184,7 +184,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 {
     // Directly end of resultet, no meta
     auto err = st.on_head_ok_packet(create_ok_r1(), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_empty(st.meta());
     check_ok_r1(st);
@@ -197,7 +197,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 
     // OK packet indicates more results
     auto err = st.on_row_ok_packet(create_ok_r1(true));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_first_subseq());
     check_meta_r1(st.meta());
     check_ok_r1(st);
@@ -208,19 +208,20 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 
     // First packet
     err = st.on_meta(create_coldef(protocol_field_type::longlong), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r2(st.meta());
 
     // Rows
     rowbuff r1{90u};
     err = st.on_row(r1.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(fields == make_fv_vector(90u));
 
     // OK packet, no more resultsets
-    st.on_row_ok_packet(create_ok_r2());
+    err = st.on_row_ok_packet(create_ok_r2());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_r2(st.meta());
     check_ok_r2(st);
@@ -240,21 +241,22 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 
     // Metadata packet
     auto err = st.on_meta(create_coldef(protocol_field_type::longlong), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r2(st.meta());
 
     // Rows
     rowbuff r1{90u}, r2{100u};
     err = st.on_row(r1.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     err = st.on_row(r2.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
 
     // Final OK packet
-    st.on_row_ok_packet(create_ok_r2());
+    err = st.on_row_ok_packet(create_ok_r2());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_r2(st.meta());
     check_ok_r2(st);
@@ -267,14 +269,14 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 
     // OK packet indicates more results
     auto err = st.on_row_ok_packet(create_ok_r1(true));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_first_subseq());
     check_meta_r1(st.meta());
     check_ok_r1(st);
 
     // OK packet for 2nd result
     err = st.on_head_ok_packet(create_ok_r2(), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_empty(st.meta());
     check_ok_r2(st);
@@ -284,14 +286,14 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 {
     // OK packet indicates more results
     auto err = st.on_head_ok_packet(create_ok_r1(true), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_first_subseq());
     check_meta_empty(st.meta());
     check_ok_r1(st);
 
     // OK packet for 2nd result
     err = st.on_head_ok_packet(create_ok_r2(), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_empty(st.meta());
     check_ok_r2(st);
@@ -302,7 +304,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     // Two first resultsets
     st = exec_builder().ok(create_ok_r1(true)).build();
     auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_first_subseq());
     check_meta_empty(st.meta());
     check_ok_r2(st);
@@ -313,28 +315,28 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 
     // Metadata
     err = st.on_meta(create_coldef(protocol_field_type::float_), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_meta());
 
-    st.on_meta(create_coldef(protocol_field_type::double_), diag);
-    BOOST_TEST(err == error_code());
+    err = st.on_meta(create_coldef(protocol_field_type::double_), diag);
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_meta());
 
     err = st.on_meta(create_coldef(protocol_field_type::tiny), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r3(st.meta());
 
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
     err = st.on_row(r1.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
 
     // End of resultset
     err = st.on_row_ok_packet(create_ok_r3());
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_r3(st.meta());
     check_ok_r3(st);
@@ -355,23 +357,23 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
 
     // Metadata
     err = st.on_meta(create_coldef(protocol_field_type::float_), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     err = st.on_meta(create_coldef(protocol_field_type::double_), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     err = st.on_meta(create_coldef(protocol_field_type::tiny), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r3(st.meta());
 
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
     err = st.on_row(r1.ctx(), output_ref(fields));
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
 
     // End of resultset
     err = st.on_row_ok_packet(create_ok_r3());
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     BOOST_TEST(st.is_complete());
     check_meta_r3(st.meta());
     check_ok_r3(st);
@@ -382,7 +384,7 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
     // OK packet received, doesn't own the string
     std::string info = "Some info";
     auto err = st.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
 
     // st does, so changing info doesn't affect
     info = "other info";
@@ -391,9 +393,9 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
     // Repeat the process for row OK packet
     st.on_num_meta(1);
     err = st.on_meta(create_coldef(protocol_field_type::longlong), diag);
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     err = st.on_row_ok_packet(ok_builder().info(info).build());
-    BOOST_TEST(err == error_code());
+    throw_on_error(err, diag);
     info = "abcdfefgh";
     BOOST_TEST(st.get_info() == "other info");
 }

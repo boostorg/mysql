@@ -167,7 +167,8 @@ BOOST_AUTO_TEST_CASE(on_meta_mode_minimal)
 
     p.reset(resultset_encoding::text, metadata_mode::minimal);
     p.set_state(mock_execution_processor::state_t::reading_metadata);
-    p.on_meta(create_coldef(protocol_field_type::bit, "myname"), diag);
+    auto err = p.on_meta(create_coldef(protocol_field_type::bit, "myname"), diag);
+    BOOST_TEST(err == error_code());
 
     // Metadata object didn't copy the strings, and the column_name argument got the right thing
     BOOST_TEST(p.on_meta_impl_call.m.type() == column_type::bit);
@@ -182,7 +183,8 @@ BOOST_AUTO_TEST_CASE(on_meta_mode_full)
 
     p.reset(resultset_encoding::text, metadata_mode::full);
     p.set_state(mock_execution_processor::state_t::reading_metadata);
-    p.on_meta(create_coldef(protocol_field_type::bit, "myname"), diag);
+    auto err = p.on_meta(create_coldef(protocol_field_type::bit, "myname"), diag);
+    BOOST_TEST(err == error_code());
 
     // Metadata object copied the strings and the column_name argument got the right thing
     BOOST_TEST(p.on_meta_impl_call.m.type() == column_type::bit);

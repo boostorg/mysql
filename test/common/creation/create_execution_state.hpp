@@ -11,14 +11,17 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows.hpp>
+#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -35,34 +38,47 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-// execution_state_impl
-class exec_builder
+template <class T>
+class basic_exec_builder
 {
-    detail::execution_state_impl res_;
+    T res_;
+
+    detail::execution_processor& iface() noexcept { return res_.get_interface(); }
 
 public:
-    exec_builder() = default;
+    basic_exec_builder() = default;
 
-    exec_builder& reset(
+    basic_exec_builder& reset(
         detail::resultset_encoding enc = detail::resultset_encoding::text,
         metadata_mode mode = metadata_mode::minimal
     )
     {
-        res_.reset(enc, mode);
+        iface().reset(enc, mode);
         return *this;
     }
-    exec_builder& seqnum(std::uint8_t v)
+    basic_exec_builder& seqnum(std::uint8_t v)
     {
-        res_.sequence_number() = v;
+        iface().sequence_number() = v;
         return *this;
     }
-    exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
+    basic_exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
     {
         diagnostics diag;
-        res_.on_num_meta(types.size());
+        iface().on_num_meta(types.size());
         for (auto type : types)
         {
-            auto err = res_.on_meta(create_coldef(type), diag);
+            auto err = iface().on_meta(create_coldef(type), diag);
+            throw_on_error(err, diag);
+        }
+        return *this;
+    }
+    basic_exec_builder& meta(std::vector<metadata> meta)
+    {
+        diagnostics diag;
+        iface().on_num_meta(meta.size());
+        for (auto& m : meta)
+        {
+            auto err = iface().on_meta(std::move(m), diag);
             throw_on_error(err, diag);
         }
         return *this;
@@ -83,20 +99,25 @@ public:
     //     return *this;
     // }
 
-    exec_builder& ok(const detail::ok_packet& pack)
+    basic_exec_builder& ok(const detail::ok_packet& pack)
     {
         diagnostics diag;
         error_code err;
-        if (res_.is_reading_head())
-            err = res_.on_head_ok_packet(pack, diag);
+        if (iface().is_reading_head())
+            err = iface().on_head_ok_packet(pack, diag);
         else
-            err = res_.on_row_ok_packet(pack);
+            err = iface().on_row_ok_packet(pack);
         throw_on_error(err, diag);
         return *this;
     }
 
-    detail::execution_state_impl build() { return std::move(res_); }
+    T build() { return std::move(res_); }
 };
+
+using exec_builder = basic_exec_builder<detail::execution_state_impl>;
+
+template <class... StaticRow>
+using static_exec_builder = basic_exec_builder<detail::static_execution_state_impl<StaticRow...>>;
 
 struct resultset_spec
 {
