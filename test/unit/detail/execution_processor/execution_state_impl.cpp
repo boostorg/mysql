@@ -403,17 +403,10 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
 {
     st = exec_builder().meta(create_meta_r1()).build();
-    auto bad_row = create_text_row_body(42, "abc");
-    bad_row.push_back(0xff);
+    rowbuff bad_row{42, "abc"};
+    bad_row.data().push_back(0xff);
 
-    auto err = st.on_row(
-        detail::deserialization_context(
-            bad_row.data(),
-            bad_row.data() + bad_row.size(),
-            detail::capabilities()
-        ),
-        output_ref(fields)
-    );
+    auto err = st.on_row(bad_row.ctx(), output_ref(fields));
 
     BOOST_TEST(err == client_errc::extra_bytes);
 }

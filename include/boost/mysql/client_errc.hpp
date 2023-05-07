@@ -53,7 +53,7 @@ enum class client_errc : int
     metadata_check_failed,
     num_resultsets_mismatch,
     is_null,
-    resultset_type_mismatch,
+    row_type_mismatch,
 };
 
 /// Creates an \ref error_code from a \ref client_errc.

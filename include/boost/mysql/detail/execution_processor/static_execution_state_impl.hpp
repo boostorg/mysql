@@ -201,7 +201,7 @@ private:
     {
         // check output
         if (ref.type_index() != ext_.type_index(resultset_index_ - 1))
-            return client_errc::resultset_type_mismatch;
+            return client_errc::row_type_mismatch;
 
         // deserialize the row
         auto err = deserialize_row(encoding(), ctx, meta(), ext_.temp_fields());

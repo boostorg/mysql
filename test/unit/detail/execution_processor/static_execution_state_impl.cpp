@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/throw_on_error.hpp>
@@ -502,18 +503,109 @@ BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
     BOOST_TEST((storage[0] == row1{"abc", 10}));
 }
 
-/**
+BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
+{
+    static_execution_state_impl<row1> stp;
+    auto& st = stp.get_interface();
 
-meta mismatch (even if no rows)
-deserialize row error
-parse row error
-output_ref type mismatch
-too few resultsets (head & rows)
-too many resultsets (head & rows)
-name mapping is correctly applied, and meta remains as given
-tuple trailing fields are correctly removed, and meta remains as given
+    st.on_num_meta(1);
+    auto err = st.on_meta(
+        meta_builder().type(column_type::bigint).name("fvarchar").nullable(false).build(),
+        diag
+    );
+
+    const char* expected_msg =
+        "Incompatible types for field 'fvarchar': C++ type 'string' is not compatible with DB type 'BIGINT'\n"
+        "Field 'ftiny' is not present in the data returned by the server";
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_meta_mismatch_head, fixture)
+{
+    static_execution_state_impl<row1> stp;
+    auto& st = stp.get_interface();
+
+    auto err = st.on_head_ok_packet(create_ok_r1(), diag);
+    const char* expected_msg =
+        "Field 'fvarchar' is not present in the data returned by the server\n"
+        "Field 'ftiny' is not present in the data returned by the server";
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
+{
+    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+    rowbuff bad_row{42, "abc"};
+    bad_row.data().push_back(0xff);
+
+    row1 storage[1]{};
+    auto err = st.on_row(bad_row.ctx(), output_ref(span<row1>(storage), get_type_index<row1, row1>(), 0));
+    BOOST_TEST(err == client_errc::extra_bytes);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
+{
+    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+    rowbuff bad_row{nullptr, "abc"};  // should not be NULL - non_null used incorrectly, for instance
+
+    row1 storage[1]{};
+    auto err = st.on_row(bad_row.ctx(), output_ref(span<row1>(storage), get_type_index<row1, row1>(), 0));
+    BOOST_TEST(err == client_errc::is_null);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_type_index_mismatch, fixture)
+{
+    auto stp = static_exec_builder<row1, row2>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+    rowbuff r1{42, "abc"};
+
+    row2 storage[1]{};
+    auto err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), get_type_index<row2, row1, row2>(), 0));
+    BOOST_TEST(err == client_errc::row_type_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_empty, fixture)
+{
+    static_execution_state_impl<empty, row2> stp;
+    auto& st = stp.get_interface();
+
+    auto err = st.on_head_ok_packet(create_ok_r1(), diag);
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_empty, fixture)
+{
+    static_execution_state_impl<empty> stp;
+    auto& st = stp.get_interface();
+
+    auto err = st.on_head_ok_packet(create_ok_r1(true), diag);
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_data, fixture)
+{
+    auto stp = static_exec_builder<row1, row2>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+
+    auto err = st.on_row_ok_packet(create_ok_r1());
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
+{
+    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+
+    auto err = st.on_row_ok_packet(create_ok_r1(true));
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+/**
 copy/move assign/construct
- *
  */
 
 BOOST_AUTO_TEST_SUITE_END()
