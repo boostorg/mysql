@@ -23,6 +23,7 @@
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -129,52 +130,15 @@ using results_builder = basic_exec_builder<detail::results_impl>;
 template <class... StaticRow>
 using static_exec_builder = basic_exec_builder<detail::static_execution_state_impl<StaticRow...>>;
 
-struct resultset_spec
-{
-    std::vector<detail::protocol_field_type> types;
-    boost::mysql::rows r;
-    detail::ok_packet ok;
+template <class... StaticRow>
+using static_results_builder = basic_exec_builder<detail::static_results_impl<StaticRow...>>;
 
-    bool empty() const noexcept { return types.empty(); }
-};
-
-// inline results create_results(const std::vector<resultset_spec>& spec)
+// inline detail::execution_state_impl& get_impl(execution_state& st)
 // {
-//     exec_builder builder;
-//     for (std::size_t i = 0; i < spec.size(); ++i)
-//     {
-//         const auto& speci = spec[i];
-
-//         // Meta
-//         if (!spec.empty())
-//         {
-//             builder.meta(speci.types);
-//         }
-
-//         // Rows
-//         if (!speci.r.empty())
-//         {
-//             builder.rows(speci.r);
-//         }
-
-//         // OK packate
-//         bool is_last = i == spec.size() - 1;
-//         detail::ok_packet actual_ok = speci.ok;
-//         if (!is_last)
-//         {
-//             actual_ok.status_flags |= detail::SERVER_MORE_RESULTS_EXISTS;
-//         }
-//         builder.ok(actual_ok);
-//     }
-//     // TODO
+//     return detail::impl_access::get_impl(st);
 // }
 
-inline detail::execution_state_impl& get_impl(execution_state& st)
-{
-    return detail::impl_access::get_impl(st);
-}
-
-inline detail::results_impl& get_impl(results& r) { return detail::impl_access::get_impl(r); }
+// inline detail::results_impl& get_impl(results& r) { return detail::impl_access::get_impl(r); }
 
 }  // namespace test
 }  // namespace mysql

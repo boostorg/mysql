@@ -76,6 +76,8 @@ public:
     {
     }
 
+    void set_pointers(ptr_data ptr) noexcept { ptr_ = ptr; }
+
     std::size_t num_resultsets() const noexcept { return desc_.size(); }
     std::size_t num_columns(std::size_t idx) const noexcept
     {
@@ -147,7 +149,7 @@ public:
     string_view get_info(std::size_t index) const noexcept
     {
         const auto& resultset_data = get_resultset_with_ok_packet(index);
-        return string_view(info.data() + resultset_data.info_offset, resultset_data.info_size);
+        return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
     }
 
     bool get_is_out_params(std::size_t index) const noexcept
@@ -160,10 +162,10 @@ private:
     void reset_impl() noexcept override
     {
         ext_.reset_fn()(ext_.rows());
-        info.clear();
+        info_.clear();
         meta_.clear();
-        meta_index = 0;
-        resultset_index = 0;
+        meta_index_ = 0;
+        resultset_index_ = 0;
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
@@ -186,11 +188,11 @@ private:
     error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
     {
         // Fill the pos map entry for this field, if any
-        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
+        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index_, field_name);
 
         // Store the meta object anyway
         meta_.push_back(std::move(meta));
-        if (++meta_index == current_resultset().meta_size)
+        if (++meta_index_ == current_resultset().meta_size)
         {
             set_state(state_t::reading_rows);
             return meta_check(diag);
@@ -208,7 +210,7 @@ private:
             return err;
 
         // parse it against the appropriate tuple element
-        return ext_.parse_fn(resultset_index - 1)(current_pos_map(), ext_.temp_fields(), ext_.rows());
+        return ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), ext_.temp_fields(), ext_.rows());
     }
 
     void on_row_batch_start_impl() override final {}
@@ -217,23 +219,28 @@ private:
     // Data
     results_external_data ext_;
     std::vector<metadata> meta_;
-    std::vector<char> info;
-    std::size_t meta_index{};
-    std::size_t resultset_index{0};
+    std::vector<char> info_;
+    std::size_t meta_index_{};
+    std::size_t resultset_index_{0};
 
     // Helpers
-    cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index - 1); }
-    const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index - 1); }
-    name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index - 1); }
-    static_per_resultset_data& current_resultset() noexcept { return ext_.per_result(resultset_index - 1); }
-    metadata_collection_view current_resultset_meta() const noexcept { return get_meta(resultset_index - 1); }
+    cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index_ - 1); }
+    static_per_resultset_data& current_resultset() noexcept { return ext_.per_result(resultset_index_ - 1); }
+    metadata_collection_view current_resultset_meta() const noexcept
+    {
+        return get_meta(resultset_index_ - 1);
+    }
 
     static_per_resultset_data& add_resultset()
     {
-        ++resultset_index;
+        ++resultset_index_;
         auto& resultset_data = current_resultset();
+        resultset_data = static_per_resultset_data();
         resultset_data.meta_offset = meta_.size();
-        meta_index = 0;
+        resultset_data.info_offset = info_.size();
+        meta_index_ = 0;
         cpp2db_reset(current_pos_map());
         return resultset_data;
     }
@@ -247,8 +254,8 @@ private:
         resultset_data.info_size = pack.info.value.size();
         resultset_data.has_ok_packet_data = true;
         resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        info.insert(info.end(), pack.info.value.begin(), pack.info.value.end());
-        bool is_last_resultset = resultset_index == ext_.num_resultsets();
+        info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
+        bool is_last_resultset = resultset_index_ == ext_.num_resultsets();
         if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
             set_state(state_t::reading_first_subseq);
@@ -270,7 +277,7 @@ private:
 
     error_code meta_check(diagnostics& diag) const
     {
-        return ext_.meta_check_fn(resultset_index - 1)(current_pos_map(), current_resultset_meta(), diag);
+        return ext_.meta_check_fn(resultset_index_ - 1)(current_pos_map(), current_resultset_meta(), diag);
     }
 };
 
@@ -300,7 +307,7 @@ struct results_fns
     }
 
     template <std::size_t I>
-    static error_code parse(const_cpp2db_t pos_map, const field_view* from, void* to)
+    static error_code do_parse(const_cpp2db_t pos_map, const field_view* from, void* to)
     {
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
         v.emplace_back();
@@ -314,7 +321,7 @@ struct results_fns
         return {
             get_row_name_table<T>(),
             &meta_check<T>,
-            &parse<I>,
+            &do_parse<I>,
         };
     }
 
@@ -357,7 +364,7 @@ class static_results_impl
         };
     }
 
-    void set_pointers() noexcept { data_.impl_.ext_data().set_pointers(ptr_data()); }
+    void set_pointers() noexcept { impl_.ext_data().set_pointers(ptr_data()); }
 
 public:
     static_results_impl() noexcept
