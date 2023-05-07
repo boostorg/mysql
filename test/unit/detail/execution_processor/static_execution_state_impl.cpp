@@ -11,6 +11,7 @@
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
+#include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/describe/class.hpp>
@@ -26,9 +27,8 @@
 
 using namespace boost::mysql;
 using boost::span;
-using boost::mysql::detail::execution_processor;
+using boost::mysql::detail::get_type_index;
 using boost::mysql::detail::output_ref;
-using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 using boost::mysql::detail::static_execution_state_erased_impl;
 using boost::mysql::detail::static_execution_state_impl;
@@ -195,12 +195,13 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     row1 storage[2]{};
     rowbuff r1{10, "abc"}, r2{20, "cdef"};
 
-    err = st.on_row(r1.ctx(), output_ref(span<row1>(storage), 0, 0));
+    std::size_t type_index = get_type_index<row1, row1>();
+    err = st.on_row(r1.ctx(), output_ref(span<row1>(storage), type_index, 0));
     BOOST_TEST(err == error_code());
     BOOST_TEST((storage[0] == row1{"abc", 10}));
     BOOST_TEST(storage[1] == row1{});
 
-    err = st.on_row(r2.ctx(), output_ref(span<row1>(storage), 0, 1));
+    err = st.on_row(r2.ctx(), output_ref(span<row1>(storage), type_index, 1));
     BOOST_TEST(err == error_code());
     BOOST_TEST((storage[0] == row1{"abc", 10}));
     BOOST_TEST((storage[1] == row1{"cdef", 20}));
@@ -254,7 +255,8 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     // Rows
     rowbuff r1{90u};
     row2 storage[2]{};
-    err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), 1, 0));
+    std::size_t type_index = get_type_index<row2, row1, row2>();
+    err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), type_index, 0));
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
@@ -293,13 +295,14 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     // Rows
     rowbuff r1{90u}, r2{100u};
     row2 storage[2]{};
-    err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), 1, 0));
+    std::size_t type_index = get_type_index<row2, empty, row2>();
+    err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), type_index, 0));
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
     BOOST_TEST(storage[1] == row2{});
 
-    err = st.on_row(r2.ctx(), output_ref(span<row2>(storage), 1, 1));
+    err = st.on_row(r2.ctx(), output_ref(span<row2>(storage), type_index, 1));
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
@@ -391,7 +394,8 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
     row3 storage[1]{};
-    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), 2, 0));
+    std::size_t type_index = get_type_index<row3, empty, empty, row3>();
+    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), type_index, 0));
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
@@ -436,7 +440,8 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
     row3 storage[1]{};
-    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), 2, 0));
+    std::size_t type_index = get_type_index<row3, row1, empty, row3>();
+    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), type_index, 0));
     throw_on_error(err, diag);
     BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
 
@@ -476,6 +481,25 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip_row_ok, fixture)
     // st does, so changing info doesn't affect
     info = "abcdfefgh";
     BOOST_TEST(st.get_info() == "Some info");
+}
+
+BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
+{
+    // Ready to read rows
+    auto stp = static_exec_builder<row1, row1>()
+                   .meta(create_meta_r1())
+                   .ok(create_ok_r1(true))
+                   .meta(create_meta_r1())
+                   .build();
+    auto& st = stp.get_interface();
+
+    // Rows use type index 0, since they're the same type as resultset one's rows
+    rowbuff r1{10, "abc"};
+    row1 storage[1]{};
+    std::size_t type_index = get_type_index<row1, row1, row1>();
+    auto err = st.on_row(r1.ctx(), output_ref(span<row1>(storage), type_index, 0));
+    throw_on_error(err, diag);
+    BOOST_TEST((storage[0] == row1{"abc", 10}));
 }
 
 /**

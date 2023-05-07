@@ -53,6 +53,9 @@ inline const char* error_to_string(client_errc error) noexcept
                "arguments to static_results<T1, T2...>/static_execution_state<T1, T2...> and the number of "
                "results returned by server";
     case boost::mysql::client_errc::is_null: return "A field specified as non_null<T> was NULL";
+    case boost::mysql::client_errc::resultset_type_mismatch:
+        return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
+               "read";
 
     default: return "<unknown MySQL client error>";
     }

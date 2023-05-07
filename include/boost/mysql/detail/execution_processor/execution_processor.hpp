@@ -43,27 +43,27 @@ class output_ref
     std::size_t max_size_{};
 
     // Identifier for the type of elements. Index in the resultset type list (static_execution_state).
-    // Otherwise unused
-    std::size_t resultset_index_{resultset_index_none};
+    // type_index_none otherwise
+    std::size_t type_index_{type_index_none};
 
     // Offset into the span's data (static_execution_state). Otherwise unused
     std::size_t offset_{};
 
-    static constexpr std::size_t resultset_index_none = static_cast<std::size_t>(-1);
+    static constexpr std::size_t type_index_none = static_cast<std::size_t>(-1);
 
 public:
     constexpr output_ref() noexcept = default;
 
     template <class T>
-    constexpr output_ref(boost::span<T> span, std::size_t resultset_index, std::size_t offset = 0) noexcept
-        : data_(span.data()), max_size_(span.size()), resultset_index_(resultset_index), offset_(offset)
+    constexpr output_ref(boost::span<T> span, std::size_t type_index, std::size_t offset = 0) noexcept
+        : data_(span.data()), max_size_(span.size()), type_index_(type_index), offset_(offset)
     {
     }
 
     output_ref(std::vector<field_view>& storage) noexcept : data_(&storage) {}
 
     std::size_t max_size() const noexcept { return max_size_; }
-    std::size_t resultset_index() const noexcept { return resultset_index_; }
+    std::size_t type_index() const noexcept { return type_index_; }
     std::size_t offset() const noexcept { return offset_; }
     void inc_offset() noexcept { ++offset_; }
 
@@ -71,14 +71,14 @@ public:
     T& span_element() const noexcept
     {
         assert(data_);
-        assert(resultset_index_ != resultset_index_none);
+        assert(type_index_ != type_index_none);
         return static_cast<T*>(data_)[offset_];
     }
 
     std::vector<field_view>& fields() const noexcept
     {
         assert(data_);
-        assert(resultset_index_ == resultset_index_none);
+        assert(type_index_ == type_index_none);
         return *static_cast<std::vector<field_view>*>(data_);
     }
 };

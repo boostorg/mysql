@@ -28,6 +28,7 @@
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
+#include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/assert/source_location.hpp>
@@ -665,12 +666,10 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     diagnostics& diag
 )
 {
-    constexpr std::size_t index = boost::mp11::mp_find<boost::mp11::mp_list<RowType...>, SpanRowType>::value;
-    static_assert(index < sizeof...(RowType), "SpanRowType must be one of the types returned by the query");
     return detail::read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output, index),
+        detail::output_ref(output, detail::get_type_index<SpanRowType, RowType...>()),
         err,
         diag
     );
@@ -702,12 +701,10 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     CompletionToken&& token
 )
 {
-    constexpr std::size_t index = boost::mp11::mp_find<boost::mp11::mp_list<RowType...>, SpanRowType>::value;
-    static_assert(index < sizeof...(RowType), "SpanRowType must be one of the types returned by the query");
     return detail::async_read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output, index),
+        detail::output_ref(output, detail::get_type_index<SpanRowType, RowType...>()),
         diag,
         std::forward<CompletionToken>(token)
     );

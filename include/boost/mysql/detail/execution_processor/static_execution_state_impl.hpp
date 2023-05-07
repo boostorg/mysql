@@ -20,6 +20,7 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/typing/cpp2db_map.hpp>
+#include <boost/mysql/detail/typing/get_type_index.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <algorithm>
@@ -38,6 +39,7 @@ struct execst_resultset_descriptor
     name_table_t name_table;
     meta_check_fn_t meta_check;
     execst_parse_fn_t parse_fn;
+    std::size_t type_index;
 };
 
 class execst_external_data
@@ -74,6 +76,11 @@ public:
     {
         assert(idx < num_resultsets());
         return desc_[idx].parse_fn;
+    }
+    std::size_t type_index(std::size_t idx) const noexcept
+    {
+        assert(idx < num_resultsets());
+        return desc_[idx].type_index;
     }
     field_view* temp_fields() const noexcept { return ptr_.temp_fields; }
     span<std::size_t> pos_map(std::size_t idx) const noexcept
@@ -193,8 +200,8 @@ private:
     error_code on_row_impl(deserialization_context ctx, const output_ref& ref) override final
     {
         // check output
-        if (ref.resultset_index() != resultset_index_ - 1)
-            return client_errc::metadata_check_failed;  // TODO: is this OK?
+        if (ref.type_index() != ext_.type_index(resultset_index_ - 1))
+            return client_errc::resultset_type_mismatch;
 
         // deserialize the row
         auto err = deserialize_row(encoding(), ctx, meta(), ext_.temp_fields());
@@ -261,19 +268,20 @@ static error_code execst_parse_fn(const_cpp2db_t pos_map, const field_view* from
     return parse(pos_map, from, ref.span_element<StaticRow>());
 }
 
-template <class StaticRow>
-constexpr execst_resultset_descriptor create_execst_resultset_descriptor()
+template <class... StaticRow>
+constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> create_execst_resultset_descriptors()
 {
-    return {
+    return {{{
         get_row_name_table<StaticRow>(),
         &meta_check<StaticRow>,
         &execst_parse_fn<StaticRow>,
-    };
+        get_type_index<StaticRow, StaticRow...>(),
+    }...}};
 }
 
 template <class... StaticRow>
-constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> execst_resultset_descriptor_table{
-    {create_execst_resultset_descriptor<StaticRow>()...}};
+constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)>
+    execst_resultset_descriptor_table = create_execst_resultset_descriptors<StaticRow...>();
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_execution_state_impl

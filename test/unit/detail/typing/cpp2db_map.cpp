@@ -10,9 +10,7 @@
 
 #include <boost/mysql/detail/typing/cpp2db_map.hpp>
 
-#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 

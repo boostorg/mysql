@@ -42,6 +42,7 @@ add_executable(
     detail/typing/readable_field_traits.cpp
     detail/typing/writable_field_traits.cpp
     detail/typing/row_traits.cpp
+    detail/typing/get_type_index.cpp
     date.cpp
     datetime.cpp
     field_view.cpp
