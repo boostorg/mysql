@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -67,10 +68,13 @@ using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;
 
 // Metadata
-// std::vector<protocol_field_type> create_meta_r1()
-// {
-//     return {protocol_field_type::tiny, protocol_field_type::var_string};
-// }
+std::vector<metadata> create_meta_r1()
+{
+    return {
+        meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
+        meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
+    };
+}
 
 void check_meta_r1(metadata_collection_view meta)
 {
@@ -226,10 +230,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     // Resultset r1 (rows are not stored anyhow in execution states)
     auto stp = static_exec_builder<row1, row2>()
                    .reset(resultset_encoding::text)
-                   .meta({
-                       meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
-                       meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
-                   })
+                   .meta(create_meta_r1())
                    .build();
     auto& st = stp.get_interface();
 
@@ -317,10 +318,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
     // Resultset r1
     auto stp = static_exec_builder<row1, empty>()
                    .reset(resultset_encoding::text)
-                   .meta({
-                       meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
-                       meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
-                   })
+                   .meta(create_meta_r1())
                    .build();
     auto& st = stp.get_interface();
 
@@ -406,73 +404,82 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     check_ok_r3(st);
 }
 
-// BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
-// {
-//     // Two first resultsets
-//     st = exec_builder().meta(create_meta_r1()).ok(create_ok_r1(true)).build();
-//     auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
-//     BOOST_TEST(st.is_reading_first_subseq());
-//     check_meta_empty(st.meta());
-//     check_ok_r2(st);
+BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
+{
+    // First resultset
+    auto stp = static_exec_builder<row1, empty, row3>().meta(create_meta_r1()).ok(create_ok_r1(true)).build();
+    auto& st = stp.get_interface();
 
-//     // Resultset r3: head indicates resultset with metadata
-//     st.on_num_meta(3);
-//     BOOST_TEST(st.is_reading_meta());
+    // OK packet indicates more results
+    auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
+    throw_on_error(err, diag);
+    BOOST_TEST(st.is_reading_first_subseq());
+    check_meta_empty(st.meta());
+    check_ok_r2(st);
 
-//     // Metadata
-//     err = st.on_meta(create_coldef(protocol_field_type::float_), diag);
-//     BOOST_TEST(err == error_code());
-//     err = st.on_meta(create_coldef(protocol_field_type::double_), diag);
-//     BOOST_TEST(err == error_code());
-//     err = st.on_meta(create_coldef(protocol_field_type::tiny), diag);
-//     BOOST_TEST(err == error_code());
-//     BOOST_TEST(st.is_reading_rows());
-//     check_meta_r3(st.meta());
+    // Resultset r3: head indicates resultset with metadata
+    st.on_num_meta(3);
+    BOOST_TEST(st.is_reading_meta());
 
-//     // Rows
-//     rowbuff r1{4.2f, 90.0, 9};
-//     err = st.on_row(r1.ctx(), output_ref(fields));
-//     BOOST_TEST(err == error_code());
-//     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
+    // Metadata
+    err = st.on_meta(meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(), diag);
+    throw_on_error(err, diag);
 
-//     // End of resultset
-//     err = st.on_row_ok_packet(create_ok_r3());
-//     BOOST_TEST(err == error_code());
-//     BOOST_TEST(st.is_complete());
-//     check_meta_r3(st.meta());
-//     check_ok_r3(st);
-// }
+    err = st.on_meta(meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(), diag);
+    throw_on_error(err, diag);
 
-// BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
-// {
-//     // OK packet received, doesn't own the string
-//     std::string info = "Some info";
-//     auto err = st.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
-//     BOOST_TEST(err == error_code());
+    err = st.on_meta(meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    BOOST_TEST(st.is_reading_rows());
+    check_meta_r3(st.meta());
 
-//     // st does, so changing info doesn't affect
-//     info = "other info";
-//     BOOST_TEST(st.get_info() == "Some info");
+    // Rows
+    rowbuff r1{4.2f, 90.0, 9};
+    row3 storage[1]{};
+    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), 2, 0));
+    throw_on_error(err, diag);
+    BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
 
-//     // Repeat the process for row OK packet
-//     st.on_num_meta(1);
-//     err = st.on_meta(create_coldef(protocol_field_type::longlong), diag);
-//     BOOST_TEST(err == error_code());
-//     err = st.on_row_ok_packet(ok_builder().info(info).build());
-//     BOOST_TEST(err == error_code());
-//     info = "abcdfefgh";
-//     BOOST_TEST(st.get_info() == "other info");
-// }
+    // End of resultset
+    err = st.on_row_ok_packet(create_ok_r3());
+    throw_on_error(err, diag);
+    BOOST_TEST(st.is_complete());
+    check_meta_r3(st.meta());
+    check_ok_r3(st);
+}
+
+BOOST_FIXTURE_TEST_CASE(info_string_ownserhip_head_ok, fixture)
+{
+    static_execution_state_impl<empty> stp;
+    auto& st = stp.get_interface();
+
+    // OK packet received, doesn't own the string
+    std::string info = "Some info";
+    auto err = st.on_head_ok_packet(ok_builder().info(info).build(), diag);
+    throw_on_error(err, diag);
+
+    // st does, so changing info doesn't affect
+    info = "other info";
+    BOOST_TEST(st.get_info() == "Some info");
+}
+
+BOOST_FIXTURE_TEST_CASE(info_string_ownserhip_row_ok, fixture)
+{
+    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+
+    // OK packet received, doesn't own the string
+    std::string info = "Some info";
+    auto err = st.on_row_ok_packet(ok_builder().info(info).build());
+    throw_on_error(err, diag);
+
+    // st does, so changing info doesn't affect
+    info = "abcdfefgh";
+    BOOST_TEST(st.get_info() == "Some info");
+}
 
 /**
-empty
-data
-data (no rows)
-empty-data
-data-empty
-data-data
-...
-reset: must be complete, with meta, with info
+
 meta mismatch (even if no rows)
 deserialize row error
 parse row error
