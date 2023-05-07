@@ -24,10 +24,12 @@
 #include "creation/create_execution_state.hpp"
 #include "creation/create_meta.hpp"
 #include "creation/create_row_message.hpp"
+#include "execution_processor_helpers.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 using boost::span;
 using boost::mysql::detail::get_type_index;
 using boost::mysql::detail::output_ref;
@@ -35,100 +37,11 @@ using boost::mysql::detail::resultset_encoding;
 using boost::mysql::detail::static_execution_state_erased_impl;
 using boost::mysql::detail::static_execution_state_impl;
 
-using namespace boost::mysql::test;
-
 namespace {
 
-// Row types
-struct row1
-{
-    std::string fvarchar;
-    std::int16_t ftiny;
-};
-BOOST_DESCRIBE_STRUCT(row1, (), (fvarchar, ftiny));
-
-struct row2
-{
-    std::int64_t fbigint;
-};
-BOOST_DESCRIBE_STRUCT(row2, (), (fbigint));
-
-struct row3
-{
-    double fdouble;
-    std::int8_t ftiny;
-    float ffloat;
-};
-BOOST_DESCRIBE_STRUCT(row3, (), (fdouble, ftiny, ffloat));
-
-struct empty
-{
-};
-BOOST_DESCRIBE_STRUCT(empty, (), ());
-
-using boost::describe::operators::operator==;
-using boost::describe::operators::operator<<;
-
-// Metadata
-std::vector<metadata> create_meta_r1()
-{
-    return {
-        meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
-        meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
-    };
-}
-std::vector<metadata> create_meta_r3()
-{
-    return {
-        meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(),
-        meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(),
-        meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
-    };
-}
-
-void check_meta_r1(metadata_collection_view meta)
-{
-    check_meta(meta, {column_type::tinyint, column_type::varchar});
-}
-
-void check_meta_r2(metadata_collection_view meta) { check_meta(meta, {column_type::bigint}); }
-
-void check_meta_r3(metadata_collection_view meta)
-{
-    check_meta(meta, {column_type::float_, column_type::double_, column_type::tinyint});
-}
-
-void check_meta_empty(metadata_collection_view meta) { BOOST_TEST(meta.size() == 0u); }
+BOOST_AUTO_TEST_SUITE(test_static_execution_state_impl)
 
 // OK packet data checking
-boost::mysql::detail::ok_packet create_ok_r1(bool more_results = false)
-{
-    return ok_builder()
-        .affected_rows(1)
-        .last_insert_id(2)
-        .warnings(4)
-        .info("Information")
-        .more_results(more_results)
-        .build();
-}
-
-boost::mysql::detail::ok_packet create_ok_r2(bool more_results = false)
-{
-    return ok_builder()
-        .affected_rows(5)
-        .last_insert_id(6)
-        .warnings(8)
-        .info("more_info")
-        .more_results(more_results)
-        .out_params(true)
-        .build();
-}
-
-boost::mysql::detail::ok_packet create_ok_r3()
-{
-    return ok_builder().affected_rows(10).last_insert_id(11).warnings(12).info("").build();
-}
-
 void check_ok_r1(const static_execution_state_erased_impl& st)
 {
     BOOST_TEST(st.get_affected_rows() == 1u);
@@ -155,8 +68,6 @@ void check_ok_r3(const static_execution_state_erased_impl& st)
     BOOST_TEST(st.get_info() == "");
     BOOST_TEST(st.get_is_out_params() == false);
 }
-
-BOOST_AUTO_TEST_SUITE(test_static_execution_state_impl)
 
 struct fixture
 {
@@ -185,18 +96,12 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     BOOST_TEST(st.is_reading_meta());
 
     // First metadata
-    auto err = st.on_meta(
-        meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
-        diag
-    );
+    auto err = st.on_meta(create_meta_r1_0(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_meta());
 
     // Second metadata, ready to read rows
-    err = st.on_meta(
-        meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
-        diag
-    );
+    err = st.on_meta(create_meta_r1_1(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r1(st.meta());
@@ -257,7 +162,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     BOOST_TEST(st.is_reading_meta());
 
     // First packet
-    err = st.on_meta(meta_builder().type(column_type::bigint).name("fbigint").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r2_0(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r2(st.meta());
@@ -297,7 +202,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     BOOST_TEST(st.is_reading_meta());
 
     // Metadata packet
-    err = st.on_meta(meta_builder().type(column_type::bigint).name("fbigint").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r2_0(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r2(st.meta());
@@ -388,15 +293,15 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     BOOST_TEST(st.is_reading_meta());
 
     // Metadata
-    err = st.on_meta(meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r3_0(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_meta());
 
-    err = st.on_meta(meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r3_1(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_meta());
 
-    err = st.on_meta(meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r3_2(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r3(st.meta());
@@ -436,13 +341,13 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
     BOOST_TEST(st.is_reading_meta());
 
     // Metadata
-    err = st.on_meta(meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r3_0(), diag);
     throw_on_error(err, diag);
 
-    err = st.on_meta(meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r3_1(), diag);
     throw_on_error(err, diag);
 
-    err = st.on_meta(meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(), diag);
+    err = st.on_meta(create_meta_r3_2(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     check_meta_r3(st.meta());
@@ -654,22 +559,20 @@ BOOST_FIXTURE_TEST_CASE(copy_ctor, ctor_assign_fixture)
 {
     // Copy construct
     st_t stp{*stp_old};
-    auto& st = stp.get_interface();
     stp_old.reset();
 
     // Check
-    check_object(st);
+    check_object(stp.get_interface());
 }
 
 BOOST_FIXTURE_TEST_CASE(move_ctor, ctor_assign_fixture)
 {
     // Move construct
     st_t stp{std::move(*stp_old)};
-    auto& st = stp.get_interface();
     stp_old.reset();
 
     // Check
-    check_object(st);
+    check_object(stp.get_interface());
 }
 
 BOOST_FIXTURE_TEST_CASE(copy_assignment, ctor_assign_fixture)
@@ -687,10 +590,9 @@ BOOST_FIXTURE_TEST_CASE(copy_assignment, ctor_assign_fixture)
     // Assign
     stp = *stp_old;
     stp_old.reset();
-    auto& st = stp.get_interface();
 
     // Check
-    check_object(st);
+    check_object(stp.get_interface());
 }
 
 BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
@@ -708,10 +610,9 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
     // Assign
     stp = std::move(*stp_old);
     stp_old.reset();
-    auto& st = stp.get_interface();
 
     // Check
-    check_object(st);
+    check_object(stp.get_interface());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -26,6 +26,7 @@
 
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
+#include "execution_processor_helpers.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
@@ -39,66 +40,9 @@ using boost::mysql::detail::resultset_encoding;
 
 namespace {
 
-// Metadata
-std::vector<protocol_field_type> create_meta_r1()
-{
-    return {protocol_field_type::tiny, protocol_field_type::var_string};
-}
+BOOST_AUTO_TEST_SUITE(test_results_impl)
 
-std::vector<protocol_field_type> create_meta_r2() { return {protocol_field_type::longlong}; }
-
-void check_meta_r1(metadata_collection_view meta)
-{
-    BOOST_TEST_REQUIRE(meta.size() == 2u);
-    BOOST_TEST(meta[0].type() == column_type::tinyint);
-    BOOST_TEST(meta[1].type() == column_type::varchar);
-}
-
-void check_meta_r2(metadata_collection_view meta)
-{
-    BOOST_TEST_REQUIRE(meta.size() == 1u);
-    BOOST_TEST(meta[0].type() == column_type::bigint);
-}
-
-void check_meta_r3(metadata_collection_view meta)
-{
-    BOOST_TEST_REQUIRE(meta.size() == 3u);
-    BOOST_TEST(meta[0].type() == column_type::float_);
-    BOOST_TEST(meta[1].type() == column_type::double_);
-    BOOST_TEST(meta[2].type() == column_type::tinyint);
-}
-
-void check_meta_empty(metadata_collection_view meta) { BOOST_TEST(meta.size() == 0u); }
-
-// OK packet data checking
-boost::mysql::detail::ok_packet create_ok_r1(bool more_results = false)
-{
-    return ok_builder()
-        .affected_rows(1)
-        .last_insert_id(2)
-        .warnings(4)
-        .info("Information")
-        .more_results(more_results)
-        .build();
-}
-
-boost::mysql::detail::ok_packet create_ok_r2(bool more_results = false)
-{
-    return ok_builder()
-        .affected_rows(5)
-        .last_insert_id(6)
-        .warnings(8)
-        .info("more_info")
-        .more_results(more_results)
-        .out_params(true)
-        .build();
-}
-
-boost::mysql::detail::ok_packet create_ok_r3()
-{
-    return ok_builder().affected_rows(10).last_insert_id(11).warnings(12).info("").build();
-}
-
+// OK packet checking
 void check_ok_r1(const results_impl& st, std::size_t idx)
 {
     BOOST_TEST(st.get_affected_rows(idx) == 1u);
@@ -125,8 +69,6 @@ void check_ok_r3(const results_impl& st, std::size_t idx)
     BOOST_TEST(st.get_info(idx) == "");
     BOOST_TEST(st.get_is_out_params(idx) == false);
 }
-
-BOOST_AUTO_TEST_SUITE(test_results_impl)
 
 BOOST_AUTO_TEST_SUITE(resultset_container_)
 BOOST_AUTO_TEST_CASE(append_from_empty)
@@ -254,12 +196,12 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     BOOST_TEST(r.is_reading_meta());
 
     // First meta
-    auto err = r.on_meta(create_coldef(protocol_field_type::tiny), diag);
+    auto err = r.on_meta(create_meta_r1_0(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_meta());
 
     // Second meta, ready to read rows
-    err = r.on_meta(create_coldef(protocol_field_type::var_string), diag);
+    err = r.on_meta(create_meta_r1_1(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -318,7 +260,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     BOOST_TEST(r.is_reading_meta());
 
     // Meta
-    err = r.on_meta(create_coldef(protocol_field_type::longlong), diag);
+    err = r.on_meta(create_meta_r2_0(), diag);
     BOOST_TEST(r.is_reading_rows());
 
     // Row
@@ -358,7 +300,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     BOOST_TEST(r.is_reading_meta());
 
     // Metadata packet
-    err = r.on_meta(create_coldef(protocol_field_type::longlong), diag);
+    err = r.on_meta(create_meta_r2_0(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -453,11 +395,11 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     BOOST_TEST(r.is_reading_meta());
 
     // Metadata
-    err = r.on_meta(create_coldef(protocol_field_type::float_), diag);
+    err = r.on_meta(create_meta_r3_0(), diag);
     throw_on_error(err, diag);
-    err = r.on_meta(create_coldef(protocol_field_type::double_), diag);
+    err = r.on_meta(create_meta_r3_1(), diag);
     throw_on_error(err, diag);
-    err = r.on_meta(create_coldef(protocol_field_type::tiny), diag);
+    err = r.on_meta(create_meta_r3_2(), diag);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -508,9 +450,11 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
 
     // Third resultset meta
     r.on_num_meta(3);
-    err = r.on_meta(create_coldef(protocol_field_type::float_), diag);
-    err = r.on_meta(create_coldef(protocol_field_type::double_), diag);
-    err = r.on_meta(create_coldef(protocol_field_type::tiny), diag);
+    err = r.on_meta(create_meta_r3_0(), diag);
+    throw_on_error(err, diag);
+    err = r.on_meta(create_meta_r3_1(), diag);
+    throw_on_error(err, diag);
+    err = r.on_meta(create_meta_r3_2(), diag);
     throw_on_error(err, diag);
 
     // Rows
