@@ -74,14 +74,6 @@ std::vector<metadata> create_meta_r2()
         meta_builder().type(column_type::bigint).name("fbigint").nullable(false).build(),
     };
 }
-// std::vector<metadata> create_meta_r3()
-// {
-//     return {
-//         meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(),
-//         meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(),
-//         meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
-//     };
-// }
 
 void check_meta_r1(metadata_collection_view meta)
 {
@@ -495,6 +487,69 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
     check_rows(rt.get_rows<2>(), expected_r3);
 }
 
+// Verify that reset clears all previous state
+BOOST_FIXTURE_TEST_CASE(reset, fixture)
+{
+    // Previous state
+    auto rt = static_results_builder<row1, row2, empty>()
+                  .meta({
+                      meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
+                      meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
+                  })
+                  .row(21, "a string")
+                  .row(90, "another string")
+                  .ok(create_ok_r1(true))
+                  .meta({
+                      meta_builder().type(column_type::bigint).name("fbigint").nullable(false).build(),
+                      meta_builder().type(column_type::char_).name("unrelated_field").nullable(false).build(),
+                  })
+                  .row(10, "aaa")
+                  .row(2000, "bbb")
+                  .ok(create_ok_r2(true))
+                  .build();
+    auto& r = rt.get_interface();
+
+    r.on_num_meta(3);
+    auto err = r.on_meta(
+        meta_builder().type(column_type::float_).name("other").nullable(false).build(),
+        diag
+    );
+    throw_on_error(err, diag);
+
+    // Reset
+    r.reset(detail::resultset_encoding::text, metadata_mode::minimal);
+    BOOST_TEST(r.is_reading_first());
+
+    // Use the object
+    add_meta(r, create_meta_r1());
+    add_row(r, 42, "abc");
+    add_row(r, 50, "def");
+    add_ok(r, create_ok_r1(true));
+
+    add_meta(r, create_meta_r2());
+    add_row(r, 100);
+    add_ok(r, create_ok_r2(true));
+
+    add_ok(r, create_ok_r3());
+
+    // Verify
+    std::vector<row1> expected_r1{
+        {"abc", 42},
+        {"def", 50}
+    };
+    std::vector<row2> expected_r2{{100}};
+    BOOST_TEST(r.is_complete());
+    check_meta_r1(r.get_meta(0));
+    check_meta_r2(r.get_meta(1));
+    check_meta_empty(r.get_meta(2));
+    check_ok_r1(r, 0);
+    check_ok_r2(r, 1);
+    check_ok_r3(r, 2);
+    check_rows(rt.get_rows<0>(), expected_r1);
+    check_rows(rt.get_rows<1>(), expected_r2);
+    BOOST_TEST(rt.get_rows<2>().empty());
+}
+
 BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 {
     static_results_impl<empty, empty, row2> rt;
@@ -609,7 +664,6 @@ BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
 }
 
 /**
-reset with data-empty-data or similar
 ctors/assignments
  */
 
