@@ -663,9 +663,106 @@ BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
     BOOST_TEST(err == client_errc::num_resultsets_mismatch);
 }
 
-/**
-ctors/assignments
- */
+struct ctor_assign_fixture
+{
+    using results_t = static_results_impl<row1, row2>;
+
+    std::unique_ptr<results_t> rt_old{new results_t{}};
+
+    ctor_assign_fixture()
+    {
+        // Create and populate an object. Having it in the heap should make it easier to detect dangling
+        // pointers
+        add_meta(rt_old->get_interface(), create_meta_r1());
+        add_row(rt_old->get_interface(), 42, "abc");
+        add_row(rt_old->get_interface(), 50, "def");
+        add_ok(rt_old->get_interface(), create_ok_r1(true));
+        add_meta(rt_old->get_interface(), create_meta_r2());
+        add_row(rt_old->get_interface(), 400);
+        add_ok(rt_old->get_interface(), create_ok_r2());
+    }
+
+    // Checks that we correctly performed the copy/move, and that the object works
+    // without dangling parts
+    static void check_object(results_t& rt)
+    {
+        auto& r = rt.get_interface();
+
+        // Data has been copied, and external data (like rows) doesn't dangle
+        std::vector<row1> expected_r1{
+            {"abc", 42},
+            {"def", 50}
+        };
+        std::vector<row2> expected_r2{{400}};
+        BOOST_TEST(r.is_complete());
+        check_meta_r1(r.get_meta(0));
+        check_meta_r2(r.get_meta(1));
+        check_rows(rt.get_rows<0>(), expected_r1);
+        check_rows(rt.get_rows<1>(), expected_r2);
+        check_ok_r1(r, 0);
+        check_ok_r2(r, 1);
+    }
+};
+
+BOOST_FIXTURE_TEST_CASE(copy_ctor, ctor_assign_fixture)
+{
+    // Copy construct
+    results_t rt{*rt_old};
+    rt_old.reset();
+
+    // Check
+    check_object(rt);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_ctor, ctor_assign_fixture)
+{
+    // Move construct
+    results_t rt{std::move(*rt_old)};
+    rt_old.reset();
+
+    // Check
+    check_object(rt);
+}
+
+BOOST_FIXTURE_TEST_CASE(copy_assignment, ctor_assign_fixture)
+{
+    // Create and populate the object we'll assign to
+    results_t rt;
+    add_meta(
+        rt.get_interface(),
+        {
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
+        }
+    );
+
+    // Assign
+    rt = *rt_old;
+    rt_old.reset();
+
+    // Check
+    check_object(rt);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
+{
+    // Create and populate the object we'll assign to
+    results_t rt;
+    add_meta(
+        rt.get_interface(),
+        {
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
+        }
+    );
+
+    // Assign
+    rt = std::move(*rt_old);
+    rt_old.reset();
+
+    // Check
+    check_object(rt);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
