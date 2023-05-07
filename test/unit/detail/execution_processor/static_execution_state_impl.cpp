@@ -12,6 +12,7 @@
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/core/span.hpp>
@@ -74,6 +75,14 @@ std::vector<metadata> create_meta_r1()
     return {
         meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
         meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
+    };
+}
+std::vector<metadata> create_meta_r3()
+{
+    return {
+        meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(),
+        meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(),
+        meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(),
     };
 }
 
@@ -604,9 +613,106 @@ BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
     BOOST_TEST(err == client_errc::num_resultsets_mismatch);
 }
 
-/**
-copy/move assign/construct
- */
+struct ctor_assign_fixture
+{
+    // Using row3 because it has more fields, to verify pos_map
+    using st_t = static_execution_state_impl<row1, row3>;
+
+    std::unique_ptr<st_t> stp_old{new st_t{}};
+
+    ctor_assign_fixture()
+    {
+        // Create and populate an object. Having it in the heap should make it easier to detect dangling
+        // pointers
+        add_meta(stp_old->get_interface(), create_meta_r1());
+        add_ok(stp_old->get_interface(), create_ok_r1(true));
+    }
+
+    // Checks that we correctly performed the copy/move, and that the object works
+    // without dangling parts
+    static void check_object(static_execution_state_erased_impl& st)
+    {
+        // Data has been copied
+        BOOST_TEST(st.is_reading_first_subseq());
+        check_meta_r1(st.meta());
+        check_ok_r1(st);
+
+        // External data (pos_map and fields) does not dangle
+        add_meta(st, create_meta_r3());
+        check_meta_r3(st.meta());
+
+        rowbuff r1{4.2f, 90.0, 9};
+        row3 storage[1]{};
+        std::size_t type_index = get_type_index<row3, row1, row3>();
+        auto err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), type_index, 0));
+        BOOST_TEST(err == error_code());
+        BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
+    }
+};
+
+BOOST_FIXTURE_TEST_CASE(copy_ctor, ctor_assign_fixture)
+{
+    // Copy construct
+    st_t stp{*stp_old};
+    auto& st = stp.get_interface();
+    stp_old.reset();
+
+    // Check
+    check_object(st);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_ctor, ctor_assign_fixture)
+{
+    // Move construct
+    st_t stp{std::move(*stp_old)};
+    auto& st = stp.get_interface();
+    stp_old.reset();
+
+    // Check
+    check_object(st);
+}
+
+BOOST_FIXTURE_TEST_CASE(copy_assignment, ctor_assign_fixture)
+{
+    // Create and populate the object we'll assign to
+    st_t stp;
+    add_meta(
+        stp.get_interface(),
+        {
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
+        }
+    );
+
+    // Assign
+    stp = *stp_old;
+    stp_old.reset();
+    auto& st = stp.get_interface();
+
+    // Check
+    check_object(st);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
+{
+    // Create and populate the object we'll assign to
+    st_t stp;
+    add_meta(
+        stp.get_interface(),
+        {
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
+        }
+    );
+
+    // Assign
+    stp = std::move(*stp_old);
+    stp_old.reset();
+    auto& st = stp.get_interface();
+
+    // Check
+    check_object(st);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 

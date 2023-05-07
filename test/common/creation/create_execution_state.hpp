@@ -38,6 +38,28 @@ namespace boost {
 namespace mysql {
 namespace test {
 
+inline void add_meta(detail::execution_processor& proc, std::vector<metadata> meta)
+{
+    diagnostics diag;
+    proc.on_num_meta(meta.size());
+    for (auto& m : meta)
+    {
+        auto err = proc.on_meta(std::move(m), diag);
+        throw_on_error(err, diag);
+    }
+}
+
+inline void add_ok(detail::execution_processor& proc, const detail::ok_packet& pack)
+{
+    diagnostics diag;
+    error_code err;
+    if (proc.is_reading_head())
+        err = proc.on_head_ok_packet(pack, diag);
+    else
+        err = proc.on_row_ok_packet(pack);
+    throw_on_error(err, diag);
+}
+
 template <class T>
 class basic_exec_builder
 {
@@ -74,40 +96,13 @@ public:
     }
     basic_exec_builder& meta(std::vector<metadata> meta)
     {
-        diagnostics diag;
-        iface().on_num_meta(meta.size());
-        for (auto& m : meta)
-        {
-            auto err = iface().on_meta(std::move(m), diag);
-            throw_on_error(err, diag);
-        }
+        add_meta(iface(), std::move(meta));
         return *this;
     }
-    // exec_builder& rows(const boost::mysql::rows& r)
-    // {
-    //     assert(res_.encoding() == detail::resultset_encoding::text);
-    //     assert(r.num_columns() == res_.meta().size());
-    //     res_.on_row_batch_start();
-    //     for (auto rv : r)
-    //     {
-    //         // TODO: this is wrong
-    //         auto s = create_text_row_body_span(boost::span<const field_view>(rv.begin(), rv.size()));
-    //         detail::deserialization_context ctx{s.data(), s.data() + s.size(), detail::capabilities()};
-    //         throw_on_error(res_.on_row(ctx, detail::output_ref()));
-    //     }
-    //     res_.on_row_batch_finish();
-    //     return *this;
-    // }
 
     basic_exec_builder& ok(const detail::ok_packet& pack)
     {
-        diagnostics diag;
-        error_code err;
-        if (iface().is_reading_head())
-            err = iface().on_head_ok_packet(pack, diag);
-        else
-            err = iface().on_row_ok_packet(pack);
-        throw_on_error(err, diag);
+        add_ok(iface(), pack);
         return *this;
     }
 
