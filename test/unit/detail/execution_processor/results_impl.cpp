@@ -454,8 +454,11 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 
     // Metadata
     err = r.on_meta(create_coldef(protocol_field_type::float_), diag);
+    throw_on_error(err, diag);
     err = r.on_meta(create_coldef(protocol_field_type::double_), diag);
+    throw_on_error(err, diag);
     err = r.on_meta(create_coldef(protocol_field_type::tiny), diag);
+    throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
     // Read rows

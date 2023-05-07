@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
@@ -67,6 +68,12 @@ std::vector<metadata> create_meta_r1()
         meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build(),
     };
 }
+std::vector<metadata> create_meta_r2()
+{
+    return {
+        meta_builder().type(column_type::bigint).name("fbigint").nullable(false).build(),
+    };
+}
 // std::vector<metadata> create_meta_r3()
 // {
 //     return {
@@ -89,13 +96,13 @@ void check_meta_r2(metadata_collection_view meta)
     BOOST_TEST(meta[0].type() == column_type::bigint);
 }
 
-// void check_meta_r3(metadata_collection_view meta)
-// {
-//     BOOST_TEST_REQUIRE(meta.size() == 3u);
-//     BOOST_TEST(meta[0].type() == column_type::float_);
-//     BOOST_TEST(meta[1].type() == column_type::double_);
-//     BOOST_TEST(meta[2].type() == column_type::tinyint);
-// }
+void check_meta_r3(metadata_collection_view meta)
+{
+    BOOST_TEST_REQUIRE(meta.size() == 3u);
+    BOOST_TEST(meta[0].type() == column_type::float_);
+    BOOST_TEST(meta[1].type() == column_type::double_);
+    BOOST_TEST(meta[2].type() == column_type::tinyint);
+}
 
 void check_meta_empty(metadata_collection_view meta) { BOOST_TEST(meta.size() == 0u); }
 
@@ -131,10 +138,10 @@ boost::mysql::detail::ok_packet create_ok_r2(bool more_results = false)
         .build();
 }
 
-// boost::mysql::detail::ok_packet create_ok_r3()
-// {
-//     return ok_builder().affected_rows(10).last_insert_id(11).warnings(12).info("").build();
-// }
+boost::mysql::detail::ok_packet create_ok_r3()
+{
+    return ok_builder().affected_rows(10).last_insert_id(11).warnings(12).info("").build();
+}
 
 void check_ok_r1(const static_results_erased_impl& r, std::size_t idx)
 {
@@ -154,14 +161,14 @@ void check_ok_r2(const static_results_erased_impl& r, std::size_t idx)
     BOOST_TEST(r.get_is_out_params(idx) == true);
 }
 
-// void check_ok_r3(const static_results_erased_impl& r, std::size_t idx)
-// {
-//     BOOST_TEST(r.get_affected_rows(idx) == 10u);
-//     BOOST_TEST(r.get_last_insert_id(idx) == 11u);
-//     BOOST_TEST(r.get_warning_count(idx) == 12u);
-//     BOOST_TEST(r.get_info(idx) == "");
-//     BOOST_TEST(r.get_is_out_params(idx) == false);
-// }
+void check_ok_r3(const static_results_erased_impl& r, std::size_t idx)
+{
+    BOOST_TEST(r.get_affected_rows(idx) == 10u);
+    BOOST_TEST(r.get_last_insert_id(idx) == 11u);
+    BOOST_TEST(r.get_warning_count(idx) == 12u);
+    BOOST_TEST(r.get_info(idx) == "");
+    BOOST_TEST(r.get_is_out_params(idx) == false);
+}
 
 BOOST_AUTO_TEST_SUITE(test_static_results_impl)
 
@@ -281,291 +288,328 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     check_rows(rt.get_rows<1>(), expected_r2);
 }
 
-// BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
-// {
-//     results_impl r;
+BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
+{
+    static_results_impl<empty, row2> rt;
+    auto& r = rt.get_interface();
 
-//     // Empty resultset r1, indicating more results
-//     auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
-//     throw_on_error(err, diag);
-//     BOOST_TEST(r.is_reading_first_subseq());
+    // Empty resultset r1, indicating more results
+    auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
+    throw_on_error(err, diag);
+    BOOST_TEST(r.is_reading_first_subseq());
 
-//     // Resultset r2: indicates data
-//     r.on_num_meta(1);
-//     BOOST_TEST(r.is_reading_meta());
+    // Resultset r2: indicates data
+    r.on_num_meta(1);
+    BOOST_TEST(r.is_reading_meta());
 
-//     // Metadata packet
-//     err = r.on_meta(create_coldef(protocol_field_type::longlong), diag);
-//     throw_on_error(err, diag);
-//     BOOST_TEST(r.is_reading_rows());
+    // Metadata packet
+    err = r.on_meta(meta_builder().type(column_type::bigint).name("fbigint").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    BOOST_TEST(r.is_reading_rows());
 
-//     // Rows
-//     rowbuff r1{70};
-//     r.on_row_batch_start();
-//     err = r.on_row(r1.ctx(), output_ref());
-//     throw_on_error(err, diag);
-//     BOOST_TEST(r.is_reading_rows());
+    // Rows
+    rowbuff r1{70};
+    err = r.on_row(r1.ctx(), output_ref());
+    throw_on_error(err, diag);
+    BOOST_TEST(r.is_reading_rows());
 
-//     // Final OK packet
-//     err = r.on_row_ok_packet(create_ok_r2());
-//     throw_on_error(err, diag);
-//     r.on_row_batch_finish();
+    // Final OK packet
+    err = r.on_row_ok_packet(create_ok_r2());
+    throw_on_error(err, diag);
 
-//     // Verify
-//     BOOST_TEST(r.is_complete());
-//     check_meta_empty(r.get_meta(0));
-//     check_meta_r2(r.get_meta(1));
-//     check_ok_r1(r, 0);
-//     check_ok_r2(r, 1);
-//     BOOST_TEST(r.num_resultsets() == 2u);
-//     BOOST_TEST(r.get_rows(0) == rows_view());
-//     BOOST_TEST(r.get_rows(1) == makerows(1, 70));
-//     BOOST_TEST(r.get_out_params() == makerow(70));
-// }
+    // Verify
+    std::vector<row2> expected_r2{{70}};
+    BOOST_TEST(r.is_complete());
+    check_meta_empty(r.get_meta(0));
+    check_meta_r2(r.get_meta(1));
+    check_ok_r1(r, 0);
+    check_ok_r2(r, 1);
+    BOOST_TEST(rt.get_rows<0>().empty());
+    check_rows(rt.get_rows<1>(), expected_r2);
+}
 
-// // Note: this tests also an edge case where a resultset indicates
-// // that contains OUT parameters but is empty
-// BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
-// {
-//     // Resultset r1
-//     auto r = results_builder().meta(create_meta_r1()).row(42, "abc").row(50, "def").build();
+BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
+{
+    // Resultset r1
+    auto rt = static_results_builder<row1, empty>()
+                  .meta(create_meta_r1())
+                  .row(42, "abc")
+                  .row(50, "def")
+                  .build();
+    auto& r = rt.get_interface();
 
-//     // OK packet indicates more results
-//     auto err = r.on_row_ok_packet(create_ok_r1(true));
-//     throw_on_error(err, diag);
-//     BOOST_TEST(r.is_reading_first_subseq());
+    // OK packet indicates more results
+    auto err = r.on_row_ok_packet(create_ok_r1(true));
+    throw_on_error(err, diag);
+    BOOST_TEST(r.is_reading_first_subseq());
 
-//     // OK packet for 2nd result
-//     err = r.on_head_ok_packet(create_ok_r2(), diag);
-//     throw_on_error(err, diag);
+    // OK packet for 2nd result
+    err = r.on_head_ok_packet(create_ok_r2(), diag);
+    throw_on_error(err, diag);
 
-//     // Verify
-//     BOOST_TEST(r.is_complete());
-//     check_meta_r1(r.get_meta(0));
-//     check_meta_empty(r.get_meta(1));
-//     check_ok_r1(r, 0);
-//     check_ok_r2(r, 1);
-//     BOOST_TEST(r.num_resultsets() == 2u);
-//     BOOST_TEST(r.get_rows(0) == makerows(2, 42, "abc", 50, "def"));
-//     BOOST_TEST(r.get_rows(1) == rows_view());
-//     BOOST_TEST(r.get_out_params() == row_view());
-// }
+    // Verify
+    std::vector<row1> expected_r1{
+        {"abc", 42},
+        {"def", 50}
+    };
+    BOOST_TEST(r.is_complete());
+    check_meta_r1(r.get_meta(0));
+    check_meta_empty(r.get_meta(1));
+    check_ok_r1(r, 0);
+    check_ok_r2(r, 1);
+    check_rows(rt.get_rows<0>(), expected_r1);
+    BOOST_TEST(rt.get_rows<1>().empty());
+}
 
-// BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
-// {
-//     results_impl r;
+BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
+{
+    static_results_impl<empty, empty> rt;
+    auto& r = rt.get_interface();
 
-//     // Resultset r1
-//     auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
-//     throw_on_error(err, diag);
-//     BOOST_TEST(r.is_reading_first_subseq());
+    // Resultset r1
+    auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
+    throw_on_error(err, diag);
+    BOOST_TEST(r.is_reading_first_subseq());
 
-//     // OK packet for 2nd result
-//     err = r.on_head_ok_packet(create_ok_r2(), diag);
-//     throw_on_error(err, diag);
+    // OK packet for 2nd result
+    err = r.on_head_ok_packet(create_ok_r2(), diag);
+    throw_on_error(err, diag);
 
-//     // Verify
-//     BOOST_TEST(r.is_complete());
-//     check_meta_empty(r.get_meta(0));
-//     check_meta_empty(r.get_meta(1));
-//     check_ok_r1(r, 0);
-//     check_ok_r2(r, 1);
-//     BOOST_TEST(r.num_resultsets() == 2u);
-//     BOOST_TEST(r.get_rows(0) == rows_view());
-//     BOOST_TEST(r.get_rows(1) == rows_view());
-//     BOOST_TEST(r.get_out_params() == row_view());
-// }
+    // Verify
+    BOOST_TEST(r.is_complete());
+    check_meta_empty(r.get_meta(0));
+    check_meta_empty(r.get_meta(1));
+    check_ok_r1(r, 0);
+    check_ok_r2(r, 1);
+    BOOST_TEST(rt.get_rows<0>().empty());
+    BOOST_TEST(rt.get_rows<1>().empty());
+}
 
-// BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
-// {
-//     // First resultset
-//     auto r = results_builder().ok(create_ok_r1(true)).build();
+BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
+{
+    // First resultset
+    auto rt = static_results_builder<empty, empty, row3>().ok(create_ok_r1(true)).build();
+    auto& r = rt.get_interface();
 
-//     // Second resultset: OK packet indicates more results
-//     auto err = r.on_head_ok_packet(create_ok_r2(true), diag);
-//     BOOST_TEST(r.is_reading_first_subseq());
+    // Second resultset: OK packet indicates more results
+    auto err = r.on_head_ok_packet(create_ok_r2(true), diag);
+    BOOST_TEST(r.is_reading_first_subseq());
 
-//     // Resultset r3: head indicates resultset with metadata
-//     r.on_num_meta(3);
-//     BOOST_TEST(r.is_reading_meta());
+    // Resultset r3: head indicates resultset with metadata
+    r.on_num_meta(3);
+    BOOST_TEST(r.is_reading_meta());
 
-//     // Metadata
-//     err = r.on_meta(create_coldef(protocol_field_type::float_), diag);
-//     err = r.on_meta(create_coldef(protocol_field_type::double_), diag);
-//     err = r.on_meta(create_coldef(protocol_field_type::tiny), diag);
-//     BOOST_TEST(r.is_reading_rows());
+    // Metadata
+    err = r.on_meta(meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    err = r.on_meta(meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    err = r.on_meta(meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    BOOST_TEST(r.is_reading_rows());
 
-//     // Read rows
-//     rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
-//     r.on_row_batch_start();
-//     err = r.on_row(r1.ctx(), output_ref());
-//     throw_on_error(err, diag);
-//     err = r.on_row(r2.ctx(), output_ref());
-//     throw_on_error(err, diag);
+    // Read rows
+    rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
+    err = r.on_row(r1.ctx(), output_ref());
+    throw_on_error(err, diag);
+    err = r.on_row(r2.ctx(), output_ref());
+    throw_on_error(err, diag);
 
-//     // End of resultset
-//     err = r.on_row_ok_packet(create_ok_r3());
-//     throw_on_error(err, diag);
-//     r.on_row_batch_finish();
+    // End of resultset
+    err = r.on_row_ok_packet(create_ok_r3());
+    throw_on_error(err, diag);
 
-//     // Verify
-//     BOOST_TEST(r.is_complete());
-//     check_meta_empty(r.get_meta(0));
-//     check_meta_empty(r.get_meta(1));
-//     check_meta_r3(r.get_meta(2));
-//     check_ok_r1(r, 0);
-//     check_ok_r2(r, 1);
-//     check_ok_r3(r, 2);
-//     BOOST_TEST(r.num_resultsets() == 3u);
-//     BOOST_TEST(r.get_rows(0) == rows_view());
-//     BOOST_TEST(r.get_rows(1) == rows_view());
-//     BOOST_TEST(r.get_rows(2) == makerows(3, 4.2f, 5.0, 8, 42.0f, 50.0, 80));
-//     BOOST_TEST(r.get_out_params() == row_view());
-// }
+    // Verify
+    std::vector<row3> expected_r3{
+        {5.0,  8,  4.2f },
+        {50.0, 80, 42.0f}
+    };
+    BOOST_TEST(r.is_complete());
+    check_meta_empty(r.get_meta(0));
+    check_meta_empty(r.get_meta(1));
+    check_meta_r3(r.get_meta(2));
+    check_ok_r1(r, 0);
+    check_ok_r2(r, 1);
+    check_ok_r3(r, 2);
+    BOOST_TEST(rt.get_rows<0>().empty());
+    BOOST_TEST(rt.get_rows<1>().empty());
+    check_rows(rt.get_rows<2>(), expected_r3);
+}
 
-// // Verify that we do row slicing correctly
-// BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
-// {
-//     // Two first resultets
-//     auto r = results_builder()
-//                  .meta(create_meta_r1())
-//                  .row(42, "abc")
-//                  .row(50, "def")
-//                  .ok(create_ok_r1(true))
-//                  .meta(create_meta_r2())
-//                  .row(60)
-//                  .build();
+BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
+{
+    // Two first resultets
+    auto rt = static_results_builder<row1, row2, row3>()
+                  .meta(create_meta_r1())
+                  .row(42, "abc")
+                  .row(50, "def")
+                  .ok(create_ok_r1(true))
+                  .meta(create_meta_r2())
+                  .row(60)
+                  .build();
+    auto& r = rt.get_interface();
 
-//     // OK packet indicates more results
-//     auto err = r.on_row_ok_packet(create_ok_r2(true));
-//     throw_on_error(err, diag);
+    // OK packet indicates more results
+    auto err = r.on_row_ok_packet(create_ok_r2(true));
+    throw_on_error(err, diag);
 
-//     // Third resultset meta
-//     r.on_num_meta(3);
-//     err = r.on_meta(create_coldef(protocol_field_type::float_), diag);
-//     err = r.on_meta(create_coldef(protocol_field_type::double_), diag);
-//     err = r.on_meta(create_coldef(protocol_field_type::tiny), diag);
-//     throw_on_error(err, diag);
+    // Third resultset meta
+    r.on_num_meta(3);
+    err = r.on_meta(meta_builder().type(column_type::float_).name("ffloat").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    err = r.on_meta(meta_builder().type(column_type::double_).name("fdouble").nullable(false).build(), diag);
+    throw_on_error(err, diag);
+    err = r.on_meta(meta_builder().type(column_type::tinyint).name("ftiny").nullable(false).build(), diag);
+    throw_on_error(err, diag);
 
-//     // Rows
-//     rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
-//     r.on_row_batch_start();
-//     err = r.on_row(r1.ctx(), output_ref());
-//     throw_on_error(err, diag);
-//     err = r.on_row(r2.ctx(), output_ref());
-//     throw_on_error(err, diag);
-//     r.on_row_batch_finish();
+    // Rows
+    rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
+    err = r.on_row(r1.ctx(), output_ref());
+    throw_on_error(err, diag);
+    err = r.on_row(r2.ctx(), output_ref());
+    throw_on_error(err, diag);
 
-//     // OK packet
-//     err = r.on_row_ok_packet(create_ok_r3());
-//     throw_on_error(err, diag);
+    // OK packet
+    err = r.on_row_ok_packet(create_ok_r3());
+    throw_on_error(err, diag);
 
-//     // Check results
-//     BOOST_TEST(r.is_complete());
-//     check_meta_r1(r.get_meta(0));
-//     check_meta_r2(r.get_meta(1));
-//     check_meta_r3(r.get_meta(2));
-//     check_ok_r1(r, 0);
-//     check_ok_r2(r, 1);
-//     check_ok_r3(r, 2);
-//     BOOST_TEST(r.num_resultsets() == 3u);
-//     BOOST_TEST(r.get_rows(0) == makerows(2, 42, "abc", 50, "def"));
-//     BOOST_TEST(r.get_rows(1) == makerows(1, 60));
-//     BOOST_TEST(r.get_rows(2) == makerows(3, 4.2f, 5.0, 8, 42.0f, 50.0, 80));
-//     BOOST_TEST(r.get_out_params() == makerow(60));
-// }
+    // Verify
+    std::vector<row1> expected_r1{
+        {"abc", 42},
+        {"def", 50}
+    };
+    std::vector<row2> expected_r2{{60}};
+    std::vector<row3> expected_r3{
+        {5.0,  8,  4.2f },
+        {50.0, 80, 42.0f}
+    };
+    BOOST_TEST(r.is_complete());
+    check_meta_r1(r.get_meta(0));
+    check_meta_r2(r.get_meta(1));
+    check_meta_r3(r.get_meta(2));
+    check_ok_r1(r, 0);
+    check_ok_r2(r, 1);
+    check_ok_r3(r, 2);
+    check_rows(rt.get_rows<0>(), expected_r1);
+    check_rows(rt.get_rows<1>(), expected_r2);
+    check_rows(rt.get_rows<2>(), expected_r3);
+}
 
-// BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
-// {
-//     results_impl r;
+BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
+{
+    static_results_impl<empty, empty, row2> rt;
+    auto& r = rt.get_interface();
 
-//     // Head OK packet
-//     std::string info = "Some info";
-//     auto err = r.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
-//     throw_on_error(err, diag);
+    // Head OK packet
+    std::string info = "Some info";
+    auto err = r.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
+    throw_on_error(err, diag);
 
-//     // Empty OK packet
-//     info = "";
-//     err = r.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
+    // Empty OK packet
+    info = "";
+    err = r.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
 
-//     // Row OK packet
-//     info = "other info";
-//     add_meta(r, create_meta_r2());
-//     err = r.on_row_ok_packet(ok_builder().info(info).build());
-//     info = "abcdfefgh";
-//     BOOST_TEST(r.get_info(0) == "Some info");
-//     BOOST_TEST(r.get_info(1) == "");
-//     BOOST_TEST(r.get_info(2) == "other info");
-// }
+    // Row OK packet
+    info = "other info";
+    add_meta(r, create_meta_r2());
+    err = r.on_row_ok_packet(ok_builder().info(info).build());
+    info = "abcdfefgh";
+    BOOST_TEST(r.get_info(0) == "Some info");
+    BOOST_TEST(r.get_info(1) == "");
+    BOOST_TEST(r.get_info(2) == "other info");
+}
 
-// BOOST_FIXTURE_TEST_CASE(multiple_row_batches, fixture)
-// {
-//     // Initial
-//     auto r = results_builder().meta(create_meta_r1()).build();
+BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
+{
+    static_results_impl<row1> rt;
+    auto& r = rt.get_interface();
 
-//     // Buffers
-//     rowbuff r1{42, "abc"}, r2{50, "bdef"}, r3{60, "pov"};
+    r.on_num_meta(1);
+    auto err = r.on_meta(
+        meta_builder().type(column_type::bigint).name("fvarchar").nullable(false).build(),
+        diag
+    );
 
-//     // First batch
-//     r.on_row_batch_start();
-//     auto err = r.on_row(r1.ctx(), output_ref());
-//     throw_on_error(err);
-//     err = r.on_row(r2.ctx(), output_ref());
-//     throw_on_error(err);
-//     r.on_row_batch_finish();
+    const char* expected_msg =
+        "Incompatible types for field 'fvarchar': C++ type 'string' is not compatible with DB type 'BIGINT'\n"
+        "Field 'ftiny' is not present in the data returned by the server";
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
 
-//     // Second batch (only one row)
-//     r.on_row_batch_start();
-//     err = r.on_row(r3.ctx(), output_ref());
-//     throw_on_error(err);
+BOOST_FIXTURE_TEST_CASE(error_meta_mismatch_head, fixture)
+{
+    static_results_impl<row1> rt;
+    auto& r = rt.get_interface();
 
-//     // End of resultset
-//     err = r.on_row_ok_packet(create_ok_r1());
-//     throw_on_error(err);
-//     r.on_row_batch_finish();
+    auto err = r.on_head_ok_packet(create_ok_r1(), diag);
+    const char* expected_msg =
+        "Field 'fvarchar' is not present in the data returned by the server\n"
+        "Field 'ftiny' is not present in the data returned by the server";
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
 
-//     // Verify
-//     BOOST_TEST(r.is_complete());
-//     BOOST_TEST(r.num_resultsets() == 1u);
-//     BOOST_TEST(r.get_rows(0) == makerows(2, 42, "abc", 50, "bdef", 60, "pov"));
-// }
+BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
+{
+    auto rt = static_results_builder<row1>().meta(create_meta_r1()).build();
+    auto& r = rt.get_interface();
+    rowbuff bad_row{42, "abc"};
+    bad_row.data().push_back(0xff);
 
-// BOOST_FIXTURE_TEST_CASE(empty_row_batch, fixture)
-// {
-//     // Initial
-//     auto r = results_builder().meta(create_meta_r1()).build();
+    auto err = r.on_row(bad_row.ctx(), output_ref());
 
-//     // No rows, directly eof
-//     r.on_row_batch_start();
-//     auto err = r.on_row_ok_packet(create_ok_r1());
-//     throw_on_error(err);
-//     r.on_row_batch_finish();
+    BOOST_TEST(err == client_errc::extra_bytes);
+}
 
-//     // Verify
-//     BOOST_TEST(r.is_complete());
-//     BOOST_TEST(r.num_resultsets() == 1u);
-//     BOOST_TEST(r.get_rows(0) == makerows(2));  // empty but with 2 cols
-// }
+BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
+{
+    auto rt = static_results_builder<row1>().meta(create_meta_r1()).build();
+    auto& r = rt.get_interface();
+    rowbuff bad_row{nullptr, "abc"};  // should not be NULL - non_null used incorrectly, for instance
 
-// BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
-// {
-//     auto st = results_builder().meta(create_meta_r1()).build();
-//     rowbuff bad_row{42, "abc"};
-//     bad_row.data().push_back(0xff);
+    auto err = r.on_row(bad_row.ctx(), output_ref());
+    BOOST_TEST(err == client_errc::is_null);
+}
 
-//     st.on_row_batch_start();
-//     auto err = st.on_row(bad_row.ctx(), output_ref());
-//     st.on_row_batch_finish();
+BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_empty, fixture)
+{
+    static_results_impl<empty, row2> rt;
+    auto& r = rt.get_interface();
 
-//     BOOST_TEST(err == client_errc::extra_bytes);
-// }
+    auto err = r.on_head_ok_packet(create_ok_r1(), diag);
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_empty, fixture)
+{
+    static_results_impl<empty> rt;
+    auto& r = rt.get_interface();
+
+    auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_data, fixture)
+{
+    auto rt = static_results_builder<row1, row2>().meta(create_meta_r1()).build();
+    auto& r = rt.get_interface();
+
+    auto err = r.on_row_ok_packet(create_ok_r1());
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
+{
+    auto rt = static_results_builder<row1>().meta(create_meta_r1()).build();
+    auto& r = rt.get_interface();
+
+    auto err = r.on_row_ok_packet(create_ok_r1(true));
+    BOOST_TEST(err == client_errc::num_resultsets_mismatch);
+}
 
 /**
 reset with data-empty-data or similar
-meta mismatch (head & rows)
-num resultsets mismatch (more & less, head & rows)
-row deserialize err
-row parse error
 ctors/assignments
  */
 
