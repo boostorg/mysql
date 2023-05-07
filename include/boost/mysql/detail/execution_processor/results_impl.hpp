@@ -164,70 +164,70 @@ public:
 
 class results_impl final : public execution_processor
 {
-    std::size_t remaining_meta_{};
-    std::vector<metadata> meta_;
-    resultset_container per_result_;
-    std::vector<char> info_;
-    multi_rows rows_;
-
-    per_resultset_data& current_resultset() noexcept
-    {
-        assert(!per_result_.empty());
-        return per_result_.back();
-    }
-
-    const per_resultset_data& current_resultset() const noexcept
-    {
-        assert(!per_result_.empty());
-        return per_result_.back();
-    }
-
-    per_resultset_data& add_resultset()
-    {
-        // Allocate a new per-resultset object
-        auto& resultset_data = per_result_.emplace_back();
-        resultset_data.meta_offset = meta_.size();
-        resultset_data.field_offset = rows_.num_fields();
-        resultset_data.info_offset = info_.size();
-        return resultset_data;
-    }
-
-    void on_ok_packet_impl(const ok_packet& pack)
-    {
-        auto& resultset_data = current_resultset();
-        resultset_data.affected_rows = pack.affected_rows.value;
-        resultset_data.last_insert_id = pack.last_insert_id.value;
-        resultset_data.warnings = pack.warnings;
-        resultset_data.info_size = pack.info.value.size();
-        resultset_data.has_ok_packet_data = true;
-        resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
-        {
-            set_state(state_t::reading_first_subseq);
-        }
-        else
-        {
-            rows_.finish();
-            set_state(state_t::complete);
-        }
-    }
-
-    const per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
-    {
-        const auto& res = per_result_[index];
-        assert(res.has_ok_packet_data);
-        return res;
-    }
-
-    metadata_collection_view current_resultset_meta() const noexcept
-    {
-        return get_meta(per_result_.size() - 1);
-    }
-
 public:
     results_impl() = default;
 
+    row_view get_out_params() const noexcept
+    {
+        assert(is_complete());
+        for (std::size_t i = 0; i < per_result_.size(); ++i)
+        {
+            if (per_result_[i].is_out_params)
+            {
+                auto res = get_rows(i);
+                return res.empty() ? row_view() : res[0];
+            }
+        }
+        return row_view();
+    }
+
+    std::size_t num_resultsets() const noexcept { return per_result_.size(); }
+
+    rows_view get_rows(std::size_t index) const noexcept
+    {
+        const auto& resultset_data = per_result_[index];
+        return rows_
+            .rows_slice(resultset_data.field_offset, resultset_data.num_columns, resultset_data.num_rows);
+    }
+    metadata_collection_view get_meta(std::size_t index) const noexcept
+    {
+        const auto& resultset_data = per_result_[index];
+        return metadata_collection_view(
+            meta_.data() + resultset_data.meta_offset,
+            resultset_data.num_columns
+        );
+    }
+
+    std::uint64_t get_affected_rows(std::size_t index) const noexcept
+    {
+        return get_resultset_with_ok_packet(index).affected_rows;
+    }
+
+    std::uint64_t get_last_insert_id(std::size_t index) const noexcept
+    {
+        return get_resultset_with_ok_packet(index).last_insert_id;
+    }
+
+    unsigned get_warning_count(std::size_t index) const noexcept
+    {
+        return get_resultset_with_ok_packet(index).warnings;
+    }
+
+    string_view get_info(std::size_t index) const noexcept
+    {
+        const auto& resultset_data = get_resultset_with_ok_packet(index);
+        return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
+    }
+
+    bool get_is_out_params(std::size_t index) const noexcept
+    {
+        return get_resultset_with_ok_packet(index).is_out_params;
+    }
+
+    results_impl& get_interface() noexcept { return *this; }
+
+private:
+    // Virtual impls
     void reset_impl() noexcept override
     {
         remaining_meta_ = 0;
@@ -287,65 +287,68 @@ public:
 
     void on_row_batch_finish_impl() override final { rows_.finish_batch(); }
 
-    // User facing
-    row_view get_out_params() const noexcept
+    // Data
+    std::size_t remaining_meta_{};
+    std::vector<metadata> meta_;
+    resultset_container per_result_;
+    std::vector<char> info_;
+    multi_rows rows_;
+
+    // Auxiliar
+    per_resultset_data& current_resultset() noexcept
     {
-        assert(is_complete());
-        for (std::size_t i = 0; i < per_result_.size(); ++i)
+        assert(!per_result_.empty());
+        return per_result_.back();
+    }
+
+    const per_resultset_data& current_resultset() const noexcept
+    {
+        assert(!per_result_.empty());
+        return per_result_.back();
+    }
+
+    per_resultset_data& add_resultset()
+    {
+        // Allocate a new per-resultset object
+        auto& resultset_data = per_result_.emplace_back();
+        resultset_data.meta_offset = meta_.size();
+        resultset_data.field_offset = rows_.num_fields();
+        resultset_data.info_offset = info_.size();
+        return resultset_data;
+    }
+
+    void on_ok_packet_impl(const ok_packet& pack)
+    {
+        auto& resultset_data = current_resultset();
+        resultset_data.affected_rows = pack.affected_rows.value;
+        resultset_data.last_insert_id = pack.last_insert_id.value;
+        resultset_data.warnings = pack.warnings;
+        resultset_data.info_size = pack.info.value.size();
+        resultset_data.has_ok_packet_data = true;
+        resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
+        info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
+        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
         {
-            if (per_result_[i].is_out_params)
-            {
-                auto res = get_rows(i);
-                return res.empty() ? row_view() : res[0];
-            }
+            set_state(state_t::reading_first_subseq);
         }
-        return row_view();
+        else
+        {
+            rows_.finish();
+            set_state(state_t::complete);
+        }
     }
 
-    std::size_t num_resultsets() const noexcept { return per_result_.size(); }
-
-    rows_view get_rows(std::size_t index) const noexcept
+    const per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
     {
-        const auto& resultset_data = per_result_[index];
-        return rows_
-            .rows_slice(resultset_data.field_offset, resultset_data.num_columns, resultset_data.num_rows);
-    }
-    metadata_collection_view get_meta(std::size_t index) const noexcept
-    {
-        const auto& resultset_data = per_result_[index];
-        return metadata_collection_view(
-            meta_.data() + resultset_data.meta_offset,
-            resultset_data.num_columns
-        );
+        const auto& res = per_result_[index];
+        assert(res.has_ok_packet_data);
+        return res;
     }
 
-    std::uint64_t get_affected_rows(std::size_t index) const noexcept
+    metadata_collection_view current_resultset_meta() const noexcept
     {
-        return get_resultset_with_ok_packet(index).affected_rows;
+        return get_meta(per_result_.size() - 1);
     }
-
-    std::uint64_t get_last_insert_id(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).last_insert_id;
-    }
-
-    unsigned get_warning_count(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).warnings;
-    }
-
-    string_view get_info(std::size_t index) const noexcept
-    {
-        const auto& resultset_data = get_resultset_with_ok_packet(index);
-        return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
-    }
-
-    bool get_is_out_params(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).is_out_params;
-    }
-
-    results_impl& get_interface() noexcept { return *this; }
 };
 
 }  // namespace detail

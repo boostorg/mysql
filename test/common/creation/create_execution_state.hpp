@@ -21,6 +21,7 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/results_impl.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -49,6 +50,28 @@ inline void add_meta(detail::execution_processor& proc, std::vector<metadata> me
     }
 }
 
+inline void add_meta(detail::execution_processor& proc, const std::vector<detail::protocol_field_type>& types)
+{
+    diagnostics diag;
+    proc.on_num_meta(types.size());
+    for (auto type : types)
+    {
+        auto err = proc.on_meta(create_coldef(type), diag);
+        throw_on_error(err, diag);
+    }
+}
+
+// This is only applicable for results types (not for execution_state types)
+template <class... T>
+void add_row(detail::execution_processor& proc, const T&... args)
+{
+    rowbuff buff{args...};
+    proc.on_row_batch_start();
+    auto err = proc.on_row(buff.ctx(), detail::output_ref());
+    throw_on_error(err);
+    proc.on_row_batch_finish();
+}
+
 inline void add_ok(detail::execution_processor& proc, const detail::ok_packet& pack)
 {
     diagnostics diag;
@@ -65,8 +88,6 @@ class basic_exec_builder
 {
     T res_;
 
-    detail::execution_processor& iface() noexcept { return res_.get_interface(); }
-
 public:
     basic_exec_builder() = default;
 
@@ -75,41 +96,35 @@ public:
         metadata_mode mode = metadata_mode::minimal
     )
     {
-        iface().reset(enc, mode);
-        return *this;
-    }
-    basic_exec_builder& seqnum(std::uint8_t v)
-    {
-        iface().sequence_number() = v;
+        res_.get_interface().reset(enc, mode);
         return *this;
     }
     basic_exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
     {
-        diagnostics diag;
-        iface().on_num_meta(types.size());
-        for (auto type : types)
-        {
-            auto err = iface().on_meta(create_coldef(type), diag);
-            throw_on_error(err, diag);
-        }
+        add_meta(res_.get_interface(), types);
         return *this;
     }
     basic_exec_builder& meta(std::vector<metadata> meta)
     {
-        add_meta(iface(), std::move(meta));
+        add_meta(res_.get_interface(), std::move(meta));
         return *this;
     }
-
+    template <class... Args>
+    basic_exec_builder& row(const Args&... args)
+    {
+        add_row(res_.get_interface(), args...);
+        return *this;
+    }
     basic_exec_builder& ok(const detail::ok_packet& pack)
     {
-        add_ok(iface(), pack);
+        add_ok(res_.get_interface(), pack);
         return *this;
     }
-
     T build() { return std::move(res_); }
 };
 
 using exec_builder = basic_exec_builder<detail::execution_state_impl>;
+using results_builder = basic_exec_builder<detail::results_impl>;
 
 template <class... StaticRow>
 using static_exec_builder = basic_exec_builder<detail::static_execution_state_impl<StaticRow...>>;

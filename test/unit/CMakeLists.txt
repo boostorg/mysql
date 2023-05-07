@@ -30,6 +30,7 @@ add_executable(
     detail/execution_processor/execution_processor.cpp
     detail/execution_processor/execution_state_impl.cpp
     detail/execution_processor/static_execution_state_impl.cpp
+    detail/execution_processor/results_impl.cpp
     # detail/network_algorithms/start_execution_impl.cpp
     # detail/network_algorithms/read_resultset_head.cpp
     # detail/network_algorithms/read_some_rows.cpp
@@ -68,6 +69,8 @@ add_executable(
     # multifn.cpp
     entry_point.cpp
 )
+target_compile_options(boost_mysql_unittests PRIVATE -fsanitize=address)
+target_link_options(boost_mysql_unittests PRIVATE -fsanitize=address)
 target_link_libraries(
     boost_mysql_unittests
     PRIVATE

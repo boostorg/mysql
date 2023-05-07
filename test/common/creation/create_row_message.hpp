@@ -39,6 +39,7 @@ inline std::vector<std::uint8_t> create_text_row_body_span(boost::span<const fie
         case field_kind::float_: s = std::to_string(f.get_float()); break;
         case field_kind::double_: s = std::to_string(f.get_double()); break;
         case field_kind::string: s = f.get_string(); break;
+        case field_kind::blob: s.assign(f.get_blob().begin(), f.get_blob().end()); break;
         case field_kind::null: serialize_to_vector(res, std::uint8_t(0xfb)); continue;
         default: throw std::runtime_error("create_text_row_message: type not implemented");
         }
