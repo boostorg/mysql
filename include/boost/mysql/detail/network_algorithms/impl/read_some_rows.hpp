@@ -65,15 +65,17 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_static(
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
-    assert(output.offset() == 0u);
-    while (channel.has_read_messages() && proc.is_reading_rows() && output.offset() < output.max_size())
+    read_rows = 0;
+    while (channel.has_read_messages() && read_rows < output.max_size())
     {
+        output.set_offset(read_rows);
         auto err = process_row_message(channel, proc, diag, output);
         if (err)
             return err;
-        output.inc_offset();
+        if (!proc.is_reading_rows())
+            break;
+        ++read_rows;
     }
-    read_rows = output.offset();
     return error_code();
 }
 

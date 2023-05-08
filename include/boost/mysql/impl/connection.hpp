@@ -666,6 +666,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     diagnostics& diag
 )
 {
+    detail::clear_errors(err, diag);
     return detail::read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
@@ -683,7 +684,13 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
 )
 {
     detail::error_block blk;
-    auto res = read_some_rows(st, output, blk.err, blk.diag);
+    auto res = detail::read_some_rows(
+        get_channel(),
+        detail::impl_access::get_impl(st).get_interface(),
+        detail::output_ref(output, detail::get_type_index<SpanRowType, RowType...>()),
+        blk.err,
+        blk.diag
+    );
     blk.check(BOOST_CURRENT_LOCATION);
     return res;
 }

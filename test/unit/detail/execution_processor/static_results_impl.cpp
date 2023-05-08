@@ -664,6 +664,56 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
     check_object(rt);
 }
 
+// Regression check: using tuples crashed. Having more fields in the query than the C++ type crashed
+BOOST_AUTO_TEST_CASE(tuples)
+{
+    static_results_impl<row1_tuple, empty, row3_tuple> stp;
+    auto& st = stp.get_interface();
+
+    // Meta r1
+    add_meta(st, create_meta_r1());
+
+    // Rows r1
+    rowbuff r1{10, "abc"};
+    auto err = st.on_row(r1.ctx(), output_ref());
+    throw_on_error(err);
+
+    // EOF r1
+    add_ok(st, create_ok_r1(true));
+
+    // EOF r2
+    add_ok(st, create_ok_r2(true));
+
+    // Meta r3
+    add_meta(st, create_meta_r3());
+
+    // Rows r3
+    rowbuff r3{4.2f, 90.0, 9};
+    err = st.on_row(r3.ctx(), output_ref());
+    throw_on_error(err);
+
+    // OK r3
+    add_ok(st, create_ok_r3());
+
+    // Verify
+    std::vector<row1_tuple> expected_r1{
+        {10, "abc"}
+    };
+    std::vector<row3_tuple> expected_r3{
+        {4.2f, 90.0}
+    };
+    BOOST_TEST(st.is_complete());
+    check_meta_r1(st.get_meta(0));
+    check_meta_empty(st.get_meta(1));
+    check_meta_r3(st.get_meta(2));
+    check_rows(stp.get_rows<0>(), expected_r1);
+    BOOST_TEST(stp.get_rows<1>().empty());
+    check_rows(stp.get_rows<2>(), expected_r3);
+    check_ok_r1(st, 0);
+    check_ok_r2(st, 1);
+    check_ok_r3(st, 2);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace

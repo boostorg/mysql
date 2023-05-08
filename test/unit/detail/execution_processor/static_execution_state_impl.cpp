@@ -22,6 +22,7 @@
 
 #include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
+#include "creation/create_message_struct.hpp"
 #include "creation/create_meta.hpp"
 #include "creation/create_row_message.hpp"
 #include "execution_processor_helpers.hpp"
@@ -613,6 +614,47 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
 
     // Check
     check_object(stp.get_interface());
+}
+
+// Regression check: using tuples crashed
+BOOST_AUTO_TEST_CASE(tuples)
+{
+    static_execution_state_impl<row1_tuple, empty, row3_tuple> stp;
+    auto& st = stp.get_interface();
+
+    // Meta r1
+    add_meta(st, create_meta_r1());
+
+    // Rows r1
+    row1_tuple storage_1[2]{};
+    rowbuff r1{10, "abc"};
+    std::size_t type_index = get_type_index<row1_tuple, row1_tuple, empty, row3_tuple>();
+    auto err = st.on_row(r1.ctx(), output_ref(span<row1_tuple>(storage_1), type_index, 0));
+    throw_on_error(err);
+    BOOST_TEST((storage_1[0] == row1_tuple{10, "abc"}));
+
+    // EOF r1
+    add_ok(st, create_ok_r1(true));
+    check_ok_r1(st);
+
+    // EOF r2
+    add_ok(st, create_ok_r2(true));
+    check_ok_r2(st);
+
+    // Meta r3
+    add_meta(st, create_meta_r3());
+
+    // Rows r3
+    row3_tuple storage_3[2]{};
+    rowbuff r3{4.2f, 90.0, 9};
+    type_index = get_type_index<row3_tuple, row1_tuple, empty, row3_tuple>();
+    err = st.on_row(r3.ctx(), output_ref(span<row3_tuple>(storage_3), type_index, 0));
+    throw_on_error(err);
+    BOOST_TEST((storage_3[0] == row3_tuple{4.2f, 90.0}));
+
+    // OK r3
+    add_ok(st, create_ok_r3());
+    check_ok_r3(st);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

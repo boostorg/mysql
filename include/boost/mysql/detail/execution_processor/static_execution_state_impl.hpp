@@ -36,6 +36,7 @@ using execst_parse_fn_t = error_code (*)(const_cpp2db_t, const field_view* from,
 
 struct execst_resultset_descriptor
 {
+    std::size_t num_columns;
     name_table_t name_table;
     meta_check_fn_t meta_check;
     execst_parse_fn_t parse_fn;
@@ -60,7 +61,7 @@ public:
     std::size_t num_columns(std::size_t idx) const noexcept
     {
         assert(idx < num_resultsets());
-        return desc_[idx].name_table.size();
+        return desc_[idx].num_columns;
     }
     name_table_t name_table(std::size_t idx) const noexcept
     {
@@ -257,6 +258,7 @@ template <class... StaticRow>
 constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> create_execst_resultset_descriptors()
 {
     return {{{
+        get_row_size<StaticRow>(),
         get_row_name_table<StaticRow>(),
         &meta_check<StaticRow>,
         &execst_parse_fn<StaticRow>,

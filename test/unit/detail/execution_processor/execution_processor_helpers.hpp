@@ -98,11 +98,15 @@ struct row1
 };
 BOOST_DESCRIBE_STRUCT(row1, (), (fvarchar, ftiny));
 
+using row1_tuple = std::tuple<std::int16_t, std::string>;
+
 struct row2
 {
     std::int64_t fbigint;
 };
 BOOST_DESCRIBE_STRUCT(row2, (), (fbigint));
+
+using row2_tuple = std::tuple<std::int64_t>;
 
 struct row3
 {
@@ -111,6 +115,8 @@ struct row3
     float ffloat;
 };
 BOOST_DESCRIBE_STRUCT(row3, (), (fdouble, ftiny, ffloat));
+
+using row3_tuple = std::tuple<float, double>;
 
 struct empty
 {
