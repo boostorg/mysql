@@ -6,6 +6,8 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/column_type.hpp>
+#include <boost/mysql/execution_state.hpp>
 
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -15,16 +17,19 @@
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_message_struct.hpp"
+#include "creation/create_meta.hpp"
 #include "creation/create_row_message.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
 
-using boost::mysql::detail::protocol_field_type;
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 
 namespace {
+
+BOOST_AUTO_TEST_SUITE(test_read_some_rows)
+BOOST_AUTO_TEST_SUITE(dynamic_iface)
 
 using netfun_maker = netfun_maker_mem<rows_view, test_connection, execution_state&>;
 
@@ -39,17 +44,21 @@ struct
     {netfun_maker::async_noerrinfo(&test_connection::async_read_some_rows), "async_noerrinfo"},
 };
 
-execution_state create_initial_state(test_connection& conn)
+struct fixture
 {
-    return exec_builder(false)
-        .reset(detail::resultset_encoding::text, &get_channel(conn).shared_fields())
-        .meta({protocol_field_type::var_string})
-        .rows(makerows(1, 42, 50))
-        .seqnum(42)
-        .build_state();
-}
+    execution_state st;
+    test_connection conn;
 
-BOOST_AUTO_TEST_SUITE(test_read_some_rows)
+    fixture()
+    {
+        // Prepare the state, such that it's ready to read VARCHAR rows
+        add_meta(get_iface(st), {meta_builder().type(column_type::varchar).build()});
+        get_iface(st).sequence_number() = 42;
+
+        // Put something in shared_fields, simulating a previous read
+        get_channel(conn).shared_fields().push_back(field_view("prev"));  // from previous read
+    }
+};
 
 BOOST_AUTO_TEST_CASE(empty_resultset)
 {
@@ -57,18 +66,17 @@ BOOST_AUTO_TEST_CASE(empty_resultset)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = create_initial_state(conn);
-            get_channel(conn).lowest_layer().add_message(
+            fixture fix;
+            get_channel(fix.conn).lowest_layer().add_message(
                 ok_msg_builder().affected_rows(1).info("1st").seqnum(42).build_eof()
             );
 
-            rows_view rv = fns.read_some_rows(conn, st).get();
+            rows_view rv = fns.read_some_rows(fix.conn, fix.st).get();
             BOOST_TEST(rv == makerows(1));
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(st.affected_rows() == 1u);
-            BOOST_TEST(st.info() == "1st");
-            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
+            BOOST_TEST_REQUIRE(fix.st.complete());
+            BOOST_TEST(fix.st.affected_rows() == 1u);
+            BOOST_TEST(fix.st.info() == "1st");
+            BOOST_TEST(get_channel(fix.conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -79,19 +87,18 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = create_initial_state(conn);
-            get_channel(conn)
+            fixture fix;
+            get_channel(fix.conn)
                 .lowest_layer()
                 .add_message(
                     concat_copy(create_text_row_message(42, "abc"), create_text_row_message(43, "von"))
                 )
                 .add_message(create_text_row_message(44, "other"));  // only a single read should be issued
 
-            rows_view rv = fns.read_some_rows(conn, st).get();
+            rows_view rv = fns.read_some_rows(fix.conn, fix.st).get();
             BOOST_TEST(rv == makerows(1, "abc", "von"));
-            BOOST_TEST(st.should_read_rows());
-            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
+            BOOST_TEST(fix.st.should_read_rows());
+            BOOST_TEST(get_channel(fix.conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -102,20 +109,19 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = create_initial_state(conn);
-            get_channel(conn).lowest_layer().add_message(concat_copy(
+            fixture fix;
+            get_channel(fix.conn).lowest_layer().add_message(concat_copy(
                 create_text_row_message(42, "abc"),
                 create_text_row_message(43, "von"),
                 ok_msg_builder().seqnum(44).affected_rows(1).info("1st").build_eof()
             ));
 
-            rows_view rv = fns.read_some_rows(conn, st).get();
+            rows_view rv = fns.read_some_rows(fix.conn, fix.st).get();
             BOOST_TEST(rv == makerows(1, "abc", "von"));
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(st.affected_rows() == 1u);
-            BOOST_TEST(st.info() == "1st");
-            BOOST_TEST(get_channel(conn).shared_sequence_number() == 0u);  // not used
+            BOOST_TEST_REQUIRE(fix.st.complete());
+            BOOST_TEST(fix.st.affected_rows() == 1u);
+            BOOST_TEST(fix.st.info() == "1st");
+            BOOST_TEST(get_channel(fix.conn).shared_sequence_number() == 0u);  // not used
         }
     }
 }
@@ -127,19 +133,18 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof_multiresult)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = create_initial_state(conn);
-            get_channel(conn).lowest_layer().add_message(concat_copy(
+            fixture fix;
+            get_channel(fix.conn).lowest_layer().add_message(concat_copy(
                 create_text_row_message(42, "abc"),
                 ok_msg_builder().seqnum(43).affected_rows(1).info("1st").more_results(true).build_eof(),
                 ok_msg_builder().seqnum(44).info("2nd").build_ok()
             ));
 
-            rows_view rv = fns.read_some_rows(conn, st).get();
+            rows_view rv = fns.read_some_rows(fix.conn, fix.st).get();
             BOOST_TEST(rv == makerows(1, "abc"));
-            BOOST_TEST_REQUIRE(st.should_read_head());
-            BOOST_TEST(st.affected_rows() == 1u);
-            BOOST_TEST(st.info() == "1st");
+            BOOST_TEST_REQUIRE(fix.st.should_read_head());
+            BOOST_TEST(fix.st.affected_rows() == 1u);
+            BOOST_TEST(fix.st.info() == "1st");
         }
     }
 }
@@ -151,20 +156,13 @@ BOOST_AUTO_TEST_CASE(state_complete)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = exec_builder(false)
-                          .reset(&get_channel(conn).shared_fields())
-                          .meta({protocol_field_type::var_string})
-                          .rows(makerows(1, 60, 70))
-                          .ok(ok_builder().affected_rows(90).info("1st").build())
-                          .seqnum(42)
-                          .build_state();
+            fixture fix;
+            add_ok(get_iface(fix.st), ok_builder().affected_rows(42).build());
 
-            rows_view rv = fns.read_some_rows(conn, st).get();
+            rows_view rv = fns.read_some_rows(fix.conn, fix.st).get();
             BOOST_TEST(rv == rows());
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(st.affected_rows() == 90u);
-            BOOST_TEST(st.info() == "1st");
+            BOOST_TEST_REQUIRE(fix.st.complete());
+            BOOST_TEST(fix.st.affected_rows() == 42u);
         }
     }
 }
@@ -175,20 +173,13 @@ BOOST_AUTO_TEST_CASE(state_reading_head)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = exec_builder(false)
-                          .reset(&get_channel(conn).shared_fields())
-                          .meta({protocol_field_type::var_string})
-                          .rows(makerows(1, 60, 70))
-                          .ok(ok_builder().affected_rows(90).info("1st").more_results(true).build())
-                          .seqnum(42)
-                          .build_state();
+            fixture fix;
+            add_ok(get_iface(fix.st), ok_builder().affected_rows(42).more_results(true).build());
 
-            rows_view rv = fns.read_some_rows(conn, st).get();
+            rows_view rv = fns.read_some_rows(fix.conn, fix.st).get();
             BOOST_TEST(rv == rows());
-            BOOST_TEST_REQUIRE(st.should_read_head());
-            BOOST_TEST(st.affected_rows() == 90u);
-            BOOST_TEST(st.info() == "1st");
+            BOOST_TEST_REQUIRE(fix.st.should_read_head());
+            BOOST_TEST(fix.st.affected_rows() == 42u);
         }
     }
 }
@@ -203,50 +194,36 @@ BOOST_AUTO_TEST_CASE(error_network_error)
             {
                 BOOST_TEST_CONTEXT("i=" << i)
                 {
-                    test_connection conn;
-                    auto st = create_initial_state(conn);
-                    get_channel(conn)
+                    fixture fix;
+                    get_channel(fix.conn)
                         .lowest_layer()
                         .add_message(create_text_row_message(42, "abc"))
                         .add_message(ok_msg_builder().seqnum(43).affected_rows(1).info("1st").build_eof())
                         .set_fail_count(fail_count(i, client_errc::wrong_num_params));
 
-                    fns.read_some_rows(conn, st).validate_error_exact(client_errc::wrong_num_params);
+                    fns.read_some_rows(fix.conn, fix.st).validate_error_exact(client_errc::wrong_num_params);
                 }
             }
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(error_seqnum_mismatch)
+BOOST_AUTO_TEST_CASE(error_processing_row)
 {
     for (const auto& fns : all_fns)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            test_connection conn;
-            auto st = create_initial_state(conn);
-            get_channel(conn).lowest_layer().add_message(create_text_row_message(0, "abc"));
+            fixture fix;
 
-            fns.read_some_rows(conn, st).validate_error_exact(client_errc::sequence_number_mismatch);
+            // invalid row
+            get_channel(fix.conn).lowest_layer().add_message(create_message(42, {0x02, 0xff}));
+
+            fns.read_some_rows(fix.conn, fix.st).validate_error_exact(client_errc::incomplete_message);
         }
     }
 }
-
-BOOST_AUTO_TEST_CASE(error_deserialize_row)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            test_connection conn;
-            auto st = create_initial_state(conn);
-            get_channel(conn).lowest_layer().add_message(create_message(42, {0x02, 0xff}));
-
-            fns.read_some_rows(conn, st).validate_error_exact(client_errc::incomplete_message);
-        }
-    }
-}
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 

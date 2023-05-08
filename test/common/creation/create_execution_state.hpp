@@ -138,10 +138,11 @@ using static_exec_builder = basic_exec_builder<detail::static_execution_state_im
 template <class... StaticRow>
 using static_results_builder = basic_exec_builder<detail::static_results_impl<StaticRow...>>;
 
-// inline detail::execution_state_impl& get_impl(execution_state& st)
-// {
-//     return detail::impl_access::get_impl(st);
-// }
+template <class T>
+auto get_iface(T& obj) -> decltype(detail::impl_access::get_impl(obj).get_interface())
+{
+    return detail::impl_access::get_impl(obj).get_interface();
+}
 
 // inline detail::results_impl& get_impl(results& r) { return detail::impl_access::get_impl(r); }
 
