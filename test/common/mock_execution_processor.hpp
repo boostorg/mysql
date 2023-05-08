@@ -41,6 +41,8 @@ public:
         std::function<error_code(const detail::ok_packet&, diagnostics&)> on_head_ok_packet;
         std::function<void(std::size_t)> on_num_meta;
         std::function<error_code(metadata&&, string_view, bool, diagnostics&)> on_meta;
+        std::function<error_code(detail::deserialization_context, const detail::output_ref&)> on_row;
+        std::function<error_code(const detail::ok_packet&)> on_row_ok_packet;
     } actions;
 
 private:
@@ -65,13 +67,22 @@ private:
             return actions.on_meta(std::move(m), column_name, is_last, diag);
         return error_code();
     }
-    error_code on_row_ok_packet_impl(const detail::ok_packet&) override { return error_code(); }
-    error_code on_row_impl(detail::deserialization_context, const detail::output_ref&) override
-    {
-        return error_code();
-    }
     void on_row_batch_start_impl() override {}
     void on_row_batch_finish_impl() override {}
+    error_code on_row_impl(detail::deserialization_context ctx, const detail::output_ref& ref) override
+    {
+        ++num_calls.on_row;
+        if (actions.on_row)
+            return actions.on_row(ctx, ref);
+        return error_code();
+    }
+    error_code on_row_ok_packet_impl(const detail::ok_packet& pack) override
+    {
+        ++num_calls.on_row_ok_packet;
+        if (actions.on_row_ok_packet)
+            return actions.on_row_ok_packet(pack);
+        return error_code();
+    }
 };
 
 }  // namespace test

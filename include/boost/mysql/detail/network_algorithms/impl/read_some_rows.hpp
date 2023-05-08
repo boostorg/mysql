@@ -15,7 +15,7 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/network_algorithms/helpers.hpp>
+#include <boost/mysql/detail/network_algorithms/process_row_message.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -36,13 +36,17 @@ inline rows_view get_some_rows(const channel_base& ch, const execution_state_imp
     );
 }
 
-inline error_code process_some_rows(channel_base& channel, execution_state_impl& st, diagnostics& diag)
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_dynamic(
+    channel_base& channel,
+    execution_processor& st,
+    diagnostics& diag
+)
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
     channel.shared_fields().clear();
     output_ref ref(channel.shared_fields());
-    while (channel.has_read_messages() && st.is_reading_first())
+    while (channel.has_read_messages() && st.is_reading_rows())
     {
         auto err = process_row_message(channel, st, diag, ref);
         if (err)
@@ -51,7 +55,7 @@ inline error_code process_some_rows(channel_base& channel, execution_state_impl&
     return error_code();
 }
 
-inline error_code process_some_rows_static(
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_static(
     channel_base& channel,
     execution_processor& proc,
     output_ref output,
@@ -112,7 +116,7 @@ struct read_some_rows_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            err = process_some_rows(chan_, st_, diag_);
+            err = process_some_rows_dynamic(chan_, st_, diag_);
             if (err)
             {
                 self.complete(err, rows_view());
@@ -206,7 +210,7 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows(
         return rows_view();
 
     // Process read messages
-    err = process_some_rows(channel, st, diag);
+    err = process_some_rows_dynamic(channel, st, diag);
     if (err)
         return rows_view();
 

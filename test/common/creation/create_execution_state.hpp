@@ -100,6 +100,11 @@ public:
         res_.get_interface().reset(enc, mode);
         return *this;
     }
+    basic_exec_builder& seqnum(std::uint8_t v)
+    {
+        res_.get_interface().sequence_number() = v;
+        return *this;
+    }
     basic_exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
     {
         add_meta(res_.get_interface(), types);

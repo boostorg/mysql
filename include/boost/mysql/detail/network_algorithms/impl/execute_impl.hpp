@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
-#include <boost/mysql/detail/network_algorithms/helpers.hpp>
+#include <boost/mysql/detail/network_algorithms/process_row_message.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 
 #include <boost/asio/coroutine.hpp>
@@ -21,7 +21,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline error_code process_available_rows(
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_available_rows(
     channel_base& channel,
     execution_processor& output,
     diagnostics& diag

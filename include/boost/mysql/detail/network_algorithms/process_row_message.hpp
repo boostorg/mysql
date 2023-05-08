@@ -15,11 +15,13 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
+#include <boost/config.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline error_code process_row_message(
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_row_message(
     channel_base& channel,
     execution_processor& proc,
     diagnostics& diag,
