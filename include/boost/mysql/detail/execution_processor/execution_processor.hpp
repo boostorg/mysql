@@ -164,6 +164,7 @@ public:
 
     resultset_encoding encoding() const noexcept { return encoding_; }
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
+    metadata_mode meta_mode() const noexcept { return mode_; }
 
 protected:
     virtual void reset_impl() noexcept = 0;
