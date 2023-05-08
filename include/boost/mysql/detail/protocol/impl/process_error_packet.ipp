@@ -27,7 +27,7 @@ inline boost::mysql::error_code boost::mysql::detail::process_error_packet(
 
     // Error message
     string_view sv = error_packet.error_message.value;
-    diagnostics_access::assign(diag, sv);
+    diagnostics_access::assign_server(diag, sv);
 
     // Error code
     if (get_common_error_message(error_packet.error_code))

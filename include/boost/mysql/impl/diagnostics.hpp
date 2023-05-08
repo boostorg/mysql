@@ -14,10 +14,16 @@
 
 struct boost::mysql::detail::diagnostics_access
 {
-    static void assign(diagnostics& obj, std::string from, bool is_server = true)
+    static void assign_client(diagnostics& obj, std::string from)
     {
         obj.msg_ = std::move(from);
-        obj.is_server_ = is_server;
+        obj.is_server_ = false;
+    }
+
+    static void assign_server(diagnostics& obj, std::string from)
+    {
+        obj.msg_ = std::move(from);
+        obj.is_server_ = true;
     }
 };
 

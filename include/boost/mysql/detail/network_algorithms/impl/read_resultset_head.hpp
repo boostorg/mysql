@@ -149,6 +149,7 @@ void boost::mysql::detail::read_resultset_head(
 )
 {
     // Setup
+    err = error_code();
     diag.clear();
 
     // If we're not reading head, return

@@ -144,7 +144,7 @@ public:
     {
         if (errors_ != nullptr)
         {
-            diagnostics_access::assign(diag, errors_->str(), false);
+            diagnostics_access::assign_client(diag, errors_->str());
             return client_errc::metadata_check_failed;
         }
         return error_code();

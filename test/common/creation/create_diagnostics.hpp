@@ -20,7 +20,7 @@ namespace test {
 inline diagnostics create_diagnostics(string_view s)
 {
     diagnostics res;
-    detail::diagnostics_access::assign(res, s);
+    detail::diagnostics_access::assign_server(res, s);
     return res;
 }
 
