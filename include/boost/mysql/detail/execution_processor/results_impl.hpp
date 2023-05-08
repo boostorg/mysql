@@ -168,7 +168,6 @@ private:
     // Virtual impls
     void reset_impl() noexcept override
     {
-        remaining_meta_ = 0;
         meta_.clear();
         per_result_.clear();
         info_.clear();
@@ -181,8 +180,6 @@ private:
         auto& resultset_data = add_resultset();
         meta_.reserve(meta_.size() + num_columns);
         resultset_data.num_columns = num_columns;
-        remaining_meta_ = num_columns;
-        set_state(state_t::reading_metadata);
     }
 
     error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
@@ -192,13 +189,9 @@ private:
         return error_code();
     }
 
-    error_code on_meta_impl(metadata&& meta, string_view, diagnostics&) override
+    error_code on_meta_impl(metadata&& meta, string_view, bool, diagnostics&) override
     {
         meta_.push_back(std::move(meta));
-        if (--remaining_meta_ == 0)
-        {
-            set_state(state_t::reading_rows);
-        }
         return error_code();
     }
 
@@ -234,7 +227,6 @@ private:
     void on_row_batch_finish_impl() override final { finish_batch(); }
 
     // Data
-    std::size_t remaining_meta_{};
     std::vector<metadata> meta_;
     resultset_container per_result_;
     std::vector<char> info_;
@@ -290,15 +282,11 @@ private:
         resultset_data.has_ok_packet_data = true;
         resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
         info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
-        {
-            set_state(state_t::reading_first_subseq);
-        }
-        else
+        bool is_last = !(pack.status_flags & SERVER_MORE_RESULTS_EXISTS);
+        if (is_last)
         {
             finish_batch();
             rows_.offsets_to_string_views();
-            set_state(state_t::complete);
         }
     }
 

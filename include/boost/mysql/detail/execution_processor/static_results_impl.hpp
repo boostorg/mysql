@@ -164,7 +164,6 @@ private:
         ext_.reset_fn()(ext_.rows());
         info_.clear();
         meta_.clear();
-        meta_index_ = 0;
         resultset_index_ = 0;
     }
 
@@ -182,22 +181,20 @@ private:
         auto& resultset_data = add_resultset();
         meta_.reserve(meta_.size() + num_columns);
         resultset_data.meta_size = num_columns;
-        set_state(state_t::reading_metadata);
     }
 
-    error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
+    error_code on_meta_impl(metadata&& meta, string_view field_name, bool is_last, diagnostics& diag)
+        override final
     {
-        // Fill the pos map entry for this field, if any
-        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index_, field_name);
+        std::size_t meta_index = meta_.size() - current_resultset().meta_offset;
 
-        // Store the meta object anyway
+        // Store the new object
         meta_.push_back(std::move(meta));
-        if (++meta_index_ == current_resultset().meta_size)
-        {
-            set_state(state_t::reading_rows);
-            return meta_check(diag);
-        }
-        return error_code();
+
+        // Fill the pos map entry for this field, if any
+        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
+
+        return is_last ? meta_check(diag) : error_code();
     }
 
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
@@ -220,7 +217,6 @@ private:
     results_external_data ext_;
     std::vector<metadata> meta_;
     std::vector<char> info_;
-    std::size_t meta_index_{};
     std::size_t resultset_index_{0};
 
     // Helpers
@@ -240,7 +236,6 @@ private:
         resultset_data = static_per_resultset_data();
         resultset_data.meta_offset = meta_.size();
         resultset_data.info_offset = info_.size();
-        meta_index_ = 0;
         cpp2db_reset(current_pos_map());
         return resultset_data;
     }
@@ -255,17 +250,9 @@ private:
         resultset_data.has_ok_packet_data = true;
         resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
         info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
-        bool is_last_resultset = resultset_index_ == ext_.num_resultsets();
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
-        {
-            set_state(state_t::reading_first_subseq);
-            return is_last_resultset ? client_errc::num_resultsets_mismatch : error_code();
-        }
-        else
-        {
-            set_state(state_t::complete);
-            return is_last_resultset ? error_code() : client_errc::num_resultsets_mismatch;
-        }
+        bool should_be_last = resultset_index_ == ext_.num_resultsets();
+        bool is_last = !(pack.status_flags & SERVER_MORE_RESULTS_EXISTS);
+        return should_be_last == is_last ? error_code() : client_errc::num_resultsets_mismatch;
     }
 
     const static_per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept

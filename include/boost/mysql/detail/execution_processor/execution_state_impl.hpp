@@ -38,7 +38,6 @@ class execution_state_impl final : public execution_processor
         bool is_out_params{false};       // Does this resultset contain OUT param information?
     };
 
-    std::size_t remaining_meta_{};
     std::vector<metadata> meta_;
     ok_data eof_data_;
     std::vector<char> info_;
@@ -58,19 +57,10 @@ class execution_state_impl final : public execution_processor
         eof_data_.warnings = pack.warnings;
         eof_data_.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
         info_.assign(pack.info.value.begin(), pack.info.value.end());
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
-        {
-            set_state(state_t::reading_first_subseq);
-        }
-        else
-        {
-            set_state(state_t::complete);
-        }
     }
 
     void reset_impl() noexcept override final
     {
-        remaining_meta_ = 0;
         meta_.clear();
         eof_data_ = ok_data();
         info_.clear();
@@ -86,18 +76,12 @@ class execution_state_impl final : public execution_processor
     void on_num_meta_impl(std::size_t num_columns) override final
     {
         on_new_resultset();
-        remaining_meta_ = num_columns;
         meta_.reserve(num_columns);
-        set_state(state_t::reading_metadata);
     }
 
-    error_code on_meta_impl(metadata&& meta, string_view, diagnostics&) override final
+    error_code on_meta_impl(metadata&& meta, string_view, bool, diagnostics&) override final
     {
         meta_.push_back(std::move(meta));
-        if (--remaining_meta_ == 0)
-        {
-            set_state(state_t::reading_rows);
-        }
         return error_code();
     }
 

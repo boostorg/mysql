@@ -94,26 +94,30 @@ public:
         encoding_ = enc;
         mode_ = mode;
         seqnum_ = 0;
+        remaining_meta_ = 0;
         reset_impl();
     }
 
     BOOST_ATTRIBUTE_NODISCARD error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
     {
         assert(is_reading_head());
-        return on_head_ok_packet_impl(pack, diag);
+        auto err = on_head_ok_packet_impl(pack, diag);
+        set_state_for_ok(pack);
+        return err;
     }
 
     void on_num_meta(std::size_t num_columns)
     {
         assert(is_reading_head());
         on_num_meta_impl(num_columns);
+        remaining_meta_ = num_columns;
+        set_state(state_t::reading_metadata);
     }
 
     BOOST_ATTRIBUTE_NODISCARD error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
     {
-        assert(is_reading_meta());
-        return on_meta_impl(
-            metadata_access::construct(pack, meta_mode() == metadata_mode::full),
+        return on_meta_helper(
+            metadata_access::construct(pack, mode_ == metadata_mode::full),
             pack.name.value,
             diag
         );
@@ -122,8 +126,8 @@ public:
     // Exposed for the sake of testing
     BOOST_ATTRIBUTE_NODISCARD error_code on_meta(metadata&& meta, diagnostics& diag)
     {
-        assert(is_reading_meta());
-        return on_meta_impl(std::move(meta), meta.column_name(), diag);
+        std::string field_name = meta.column_name();
+        return on_meta_helper(std::move(meta), field_name, diag);
     }
 
     void on_row_batch_start()
@@ -134,16 +138,18 @@ public:
 
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
-    {
-        assert(is_reading_rows());
-        return on_row_ok_packet_impl(pack);
-    }
-
     BOOST_ATTRIBUTE_NODISCARD error_code on_row(deserialization_context ctx, const output_ref& ref)
     {
         assert(is_reading_rows());
         return on_row_impl(ctx, ref);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
+    {
+        assert(is_reading_rows());
+        auto err = on_row_ok_packet_impl(pack);
+        set_state_for_ok(pack);
+        return err;
     }
 
     bool is_reading_first() const noexcept { return state_ == state_t::reading_first; }
@@ -160,6 +166,21 @@ public:
     std::uint8_t& sequence_number() noexcept { return seqnum_; }
 
 protected:
+    virtual void reset_impl() noexcept = 0;
+    virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
+    virtual void on_num_meta_impl(std::size_t num_columns) = 0;
+    virtual error_code on_meta_impl(
+        metadata&& meta,
+        string_view column_name,
+        bool is_last,
+        diagnostics& diag
+    ) = 0;
+    virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
+    virtual error_code on_row_impl(deserialization_context ctx, const output_ref& ref) = 0;
+    virtual void on_row_batch_start_impl() = 0;
+    virtual void on_row_batch_finish_impl() = 0;
+
+private:
     enum class state_t
     {
         // waiting for 1st packet, for the 1st resultset
@@ -178,24 +199,36 @@ protected:
         // done
         complete
     };
-    void set_state(state_t v) noexcept { state_ = v; }
 
-    metadata_mode meta_mode() const noexcept { return mode_; }
-
-    virtual void reset_impl() noexcept = 0;
-    virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
-    virtual void on_num_meta_impl(std::size_t num_columns) = 0;
-    virtual error_code on_meta_impl(metadata&& meta, string_view column_name, diagnostics& diag) = 0;
-    virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
-    virtual error_code on_row_impl(deserialization_context ctx, const output_ref& ref) = 0;
-    virtual void on_row_batch_start_impl() = 0;
-    virtual void on_row_batch_finish_impl() = 0;
-
-private:
     state_t state_{state_t::reading_first};
     resultset_encoding encoding_{resultset_encoding::text};
     std::uint8_t seqnum_{};
     metadata_mode mode_{metadata_mode::minimal};
+    std::size_t remaining_meta_{};
+
+    void set_state(state_t v) noexcept { state_ = v; }
+
+    error_code on_meta_helper(metadata&& meta, string_view column_name, diagnostics& diag)
+    {
+        assert(is_reading_meta());
+        bool is_last = --remaining_meta_ == 0;
+        auto err = on_meta_impl(std::move(meta), column_name, is_last, diag);
+        if (is_last)
+            set_state(state_t::reading_rows);
+        return err;
+    }
+
+    void set_state_for_ok(const ok_packet& pack) noexcept
+    {
+        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
+        {
+            set_state(state_t::reading_first_subseq);
+        }
+        else
+        {
+            set_state(state_t::complete);
+        }
+    }
 };
 
 }  // namespace detail

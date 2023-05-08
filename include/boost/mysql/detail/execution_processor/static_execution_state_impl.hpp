@@ -147,8 +147,6 @@ private:
 
     execst_external_data ext_;
     std::size_t resultset_index_{};
-    std::size_t meta_index_{};
-    std::size_t meta_size_{};
     ok_packet_data ok_data_;
     std::vector<char> info_;
     std::vector<metadata> meta_;
@@ -157,8 +155,6 @@ private:
     void reset_impl() noexcept override final
     {
         resultset_index_ = 0;
-        meta_index_ = 0;
-        meta_size_ = 0;
         ok_data_ = ok_packet_data();
         info_.clear();
         meta_.clear();
@@ -177,22 +173,20 @@ private:
     {
         on_new_resultset();
         meta_.reserve(num_columns);
-        meta_size_ = num_columns;
-        set_state(state_t::reading_metadata);
     }
 
-    error_code on_meta_impl(metadata&& meta, string_view field_name, diagnostics& diag) override final
+    error_code on_meta_impl(metadata&& meta, string_view field_name, bool is_last, diagnostics& diag)
+        override final
     {
-        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index_, field_name);
+        std::size_t meta_index = meta_.size();
 
-        // Store the meta object anyway
+        // Store the object
         meta_.push_back(std::move(meta));
-        if (++meta_index_ == meta_size_)
-        {
-            set_state(state_t::reading_rows);
-            return meta_check(diag);
-        }
-        return error_code();
+
+        // Record its position
+        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
+
+        return is_last ? meta_check(diag) : error_code();
     }
 
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
@@ -233,7 +227,6 @@ private:
     void on_new_resultset() noexcept
     {
         ++resultset_index_;
-        meta_index_ = 0;
         ok_data_ = ok_packet_data{};
         info_.clear();
         meta_.clear();
@@ -248,17 +241,9 @@ private:
         ok_data_.warnings = pack.warnings;
         ok_data_.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
         info_.assign(pack.info.value.begin(), pack.info.value.end());
-        bool is_last_resultset = resultset_index_ == ext_.num_resultsets();
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
-        {
-            set_state(state_t::reading_first_subseq);
-            return is_last_resultset ? client_errc::num_resultsets_mismatch : error_code();
-        }
-        else
-        {
-            set_state(state_t::complete);
-            return is_last_resultset ? error_code() : client_errc::num_resultsets_mismatch;
-        }
+        bool should_be_last = resultset_index_ == ext_.num_resultsets();
+        bool is_last = !(pack.status_flags & SERVER_MORE_RESULTS_EXISTS);
+        return should_be_last == is_last ? error_code() : client_errc::num_resultsets_mismatch;
     }
 };
 
