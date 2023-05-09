@@ -175,12 +175,12 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
             BOOST_TEST(result.get_affected_rows(0) == 10u);
             BOOST_TEST(result.get_info(0) == "1st");
             BOOST_TEST(result.get_rows(0) == makerows(1, 42, 43));
-            BOOST_TEST(result.get_affected_rows(0) == 20u);
-            BOOST_TEST(result.get_info(0) == "2nd");
-            BOOST_TEST(result.get_rows(0) == rows());
-            BOOST_TEST(result.get_affected_rows(0) == 30u);
-            BOOST_TEST(result.get_info(0) == "3rd");
-            BOOST_TEST(result.get_rows(0) == makerows(1, "ab"));
+            BOOST_TEST(result.get_affected_rows(1) == 20u);
+            BOOST_TEST(result.get_info(1) == "2nd");
+            BOOST_TEST(result.get_rows(1) == rows());
+            BOOST_TEST(result.get_affected_rows(2) == 30u);
+            BOOST_TEST(result.get_info(2) == "3rd");
+            BOOST_TEST(result.get_rows(2) == makerows(1, "ab"));
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
