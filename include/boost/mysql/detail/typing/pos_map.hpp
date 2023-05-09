@@ -24,20 +24,18 @@ namespace detail {
 // These functions map C++ type positions to positions to positions in the DB query
 
 constexpr std::size_t pos_absent = static_cast<std::size_t>(-1);
-using cpp2db_t = boost::span<std::size_t>;
-using const_cpp2db_t = boost::span<const std::size_t>;
 using name_table_t = boost::span<const string_view>;
 
 inline bool has_field_names(name_table_t name_table) noexcept { return !name_table.empty(); }
 
-inline void cpp2db_reset(cpp2db_t self) noexcept
+inline void pos_map_reset(span<std::size_t> self) noexcept
 {
     for (std::size_t i = 0; i < self.size(); ++i)
         self.data()[i] = pos_absent;
 }
 
-inline void cpp2db_add_field(
-    cpp2db_t self,
+inline void pos_map_add_field(
+    span<std::size_t> self,
     name_table_t name_table,
     std::size_t db_index,
     string_view field_name
@@ -67,7 +65,7 @@ inline void cpp2db_add_field(
 }
 
 inline field_view map_field_view(
-    const_cpp2db_t self,
+    span<const std::size_t> self,
     std::size_t cpp_index,
     span<const field_view> array
 ) noexcept
@@ -77,7 +75,7 @@ inline field_view map_field_view(
 }
 
 inline const metadata& map_metadata(
-    const_cpp2db_t self,
+    span<const std::size_t> self,
     std::size_t cpp_index,
     metadata_collection_view meta
 ) noexcept

@@ -8,8 +8,9 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
@@ -19,13 +20,13 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::detail::cpp2db_add_field;
-using boost::mysql::detail::cpp2db_reset;
-using boost::mysql::detail::cpp2db_t;
+using boost::span;
 using boost::mysql::detail::map_field_view;
 using boost::mysql::detail::map_metadata;
 using boost::mysql::detail::name_table_t;
 using boost::mysql::detail::pos_absent;
+using boost::mysql::detail::pos_map_add_field;
+using boost::mysql::detail::pos_map_reset;
 
 namespace {
 
@@ -33,16 +34,16 @@ BOOST_AUTO_TEST_SUITE(test_cpp2db_map)
 
 BOOST_AUTO_TEST_CASE(reset_empty)
 {
-    cpp2db_t map{};
-    BOOST_CHECK_NO_THROW(cpp2db_reset(map));
+    span<std::size_t> map{};
+    BOOST_CHECK_NO_THROW(pos_map_reset(map));
 }
 
 BOOST_AUTO_TEST_CASE(reset_nonempty)
 {
     std::array<std::size_t, 4> storage{42, 43, 44, 45};
-    cpp2db_t map(storage.data(), 3);
+    span<std::size_t> map(storage.data(), 3);
 
-    cpp2db_reset(map);
+    pos_map_reset(map);
     BOOST_TEST(map[0] == pos_absent);
     BOOST_TEST(map[1] == pos_absent);
     BOOST_TEST(map[2] == pos_absent);
@@ -51,9 +52,9 @@ BOOST_AUTO_TEST_CASE(reset_nonempty)
 
 BOOST_AUTO_TEST_CASE(add_field_empty)
 {
-    cpp2db_t map{};
+    span<std::size_t> map{};
     name_table_t name_table{};
-    BOOST_CHECK_NO_THROW(cpp2db_add_field(map, name_table, 0, "f1"));
+    BOOST_CHECK_NO_THROW(pos_map_add_field(map, name_table, 0, "f1"));
 }
 
 BOOST_AUTO_TEST_CASE(add_field_unnamed)
@@ -61,29 +62,29 @@ BOOST_AUTO_TEST_CASE(add_field_unnamed)
     // Setup
     std::array<std::size_t, 4> map{42, 43, 44};
     name_table_t name_table{};
-    cpp2db_reset(map);
+    pos_map_reset(map);
 
     // Add first field
-    cpp2db_add_field(map, name_table, 0, "f1");
+    pos_map_add_field(map, name_table, 0, "f1");
     BOOST_TEST(map[0] == 0u);
     BOOST_TEST(map[1] == pos_absent);
     BOOST_TEST(map[2] == pos_absent);
 
     // Add second field
-    cpp2db_add_field(map, name_table, 1, "f2");
+    pos_map_add_field(map, name_table, 1, "f2");
     BOOST_TEST(map[0] == 0u);
     BOOST_TEST(map[1] == 1u);
     BOOST_TEST(map[2] == pos_absent);
 
     // Add third field
-    cpp2db_add_field(map, name_table, 2, "f3");
+    pos_map_add_field(map, name_table, 2, "f3");
     BOOST_TEST(map[0] == 0u);
     BOOST_TEST(map[1] == 1u);
     BOOST_TEST(map[2] == 2u);
 
     // Any further trailing fields are discarded
-    BOOST_CHECK_NO_THROW(cpp2db_add_field(map, name_table, 3, "f3"));
-    BOOST_CHECK_NO_THROW(cpp2db_add_field(map, name_table, 4, "f4"));
+    BOOST_CHECK_NO_THROW(pos_map_add_field(map, name_table, 3, "f3"));
+    BOOST_CHECK_NO_THROW(pos_map_add_field(map, name_table, 4, "f4"));
     BOOST_TEST(map[0] == 0u);
     BOOST_TEST(map[1] == 1u);
     BOOST_TEST(map[2] == 2u);
@@ -94,31 +95,31 @@ BOOST_AUTO_TEST_CASE(add_field_named)
     // Setup
     const string_view name_table[] = {"f1", "f2", "f3", "f4"};
     std::array<std::size_t, 4> map{};
-    cpp2db_reset(map);
+    pos_map_reset(map);
 
     // Add first field
-    cpp2db_add_field(map, name_table, 0, "f2");
+    pos_map_add_field(map, name_table, 0, "f2");
     BOOST_TEST(map[0] == pos_absent);
     BOOST_TEST(map[1] == 0u);
     BOOST_TEST(map[2] == pos_absent);
     BOOST_TEST(map[3] == pos_absent);
 
     // Add second field
-    cpp2db_add_field(map, name_table, 1, "f4");
+    pos_map_add_field(map, name_table, 1, "f4");
     BOOST_TEST(map[0] == pos_absent);
     BOOST_TEST(map[1] == 0u);
     BOOST_TEST(map[2] == pos_absent);
     BOOST_TEST(map[3] == 1u);
 
     // Add a non-existing field
-    cpp2db_add_field(map, name_table, 2, "fnonexistent");
+    pos_map_add_field(map, name_table, 2, "fnonexistent");
     BOOST_TEST(map[0] == pos_absent);
     BOOST_TEST(map[1] == 0u);
     BOOST_TEST(map[2] == pos_absent);
     BOOST_TEST(map[3] == 1u);
 
     // Add third field
-    cpp2db_add_field(map, name_table, 3, "f1");
+    pos_map_add_field(map, name_table, 3, "f1");
     BOOST_TEST(map[0] == 3u);
     BOOST_TEST(map[1] == 0u);
     BOOST_TEST(map[2] == pos_absent);

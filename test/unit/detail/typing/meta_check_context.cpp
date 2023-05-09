@@ -11,8 +11,8 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 
 #include <boost/test/unit_test.hpp>
 

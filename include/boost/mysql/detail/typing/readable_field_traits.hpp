@@ -22,8 +22,8 @@
 
 #include <boost/mysql/detail/auxiliar/is_optional.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 
 #include <cstdint>
 #include <limits>
@@ -565,7 +565,7 @@ void meta_check_field(meta_check_context& ctx)
 
 template <typename ReadableFieldList>
 error_code meta_check_field_type_list(
-    const_cpp2db_t field_map,
+    span<const std::size_t> field_map,
     name_table_t name_table,
     metadata_collection_view meta,
     diagnostics& diag

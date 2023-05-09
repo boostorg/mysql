@@ -20,8 +20,8 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
@@ -47,7 +47,6 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace mp11 = boost::mp11;
-using detail::const_cpp2db_t;
 using detail::is_readable_field;
 using detail::meta_check_context;
 using detail::meta_check_field_type_list;
@@ -758,7 +757,7 @@ BOOST_AUTO_TEST_CASE(empty)
     diagnostics diag;
 
     auto err = meta_check_field_type_list<types>(
-        const_cpp2db_t(),
+        boost::span<const std::size_t>(),
         name_table_t(),
         metadata_collection_view(),
         diag

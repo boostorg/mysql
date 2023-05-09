@@ -17,8 +17,8 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/impl/diagnostics.hpp>
 
@@ -75,14 +75,14 @@ struct array_wrapper<T, 0>
 // Helpers
 class parse_functor
 {
-    const_cpp2db_t field_map_;
+    span<const std::size_t> pos_map_;
     span<const field_view> fields_;
     std::size_t index_{};
     error_code ec_;
 
 public:
-    parse_functor(const_cpp2db_t field_map, span<const field_view> fields) noexcept
-        : field_map_(field_map), fields_(fields)
+    parse_functor(span<const std::size_t> pos_map, span<const field_view> fields) noexcept
+        : pos_map_(pos_map), fields_(fields)
     {
     }
 
@@ -90,7 +90,7 @@ public:
     void operator()(ReadableField& output)
     {
         auto ec = readable_field_traits<ReadableField>::parse(
-            map_field_view(field_map_, index_++, fields_),
+            map_field_view(pos_map_, index_++, fields_),
             output
         );
         if (!ec_)
@@ -225,7 +225,7 @@ constexpr name_table_t get_row_name_table()
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code meta_check(const_cpp2db_t pos_map, metadata_collection_view meta, diagnostics& diag)
+error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
     using fields = typename row_traits<StaticRow>::types;
     assert(pos_map.size() == get_row_size<StaticRow>());
@@ -233,7 +233,7 @@ error_code meta_check(const_cpp2db_t pos_map, metadata_collection_view meta, dia
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code parse(const_cpp2db_t pos_map, span<const field_view> from, StaticRow& to)
+error_code parse(span<const std::size_t> pos_map, span<const field_view> from, StaticRow& to)
 {
     assert(pos_map.size() == get_row_size<StaticRow>());
     assert(from.size() >= get_row_size<StaticRow>());
@@ -243,7 +243,7 @@ error_code parse(const_cpp2db_t pos_map, span<const field_view> from, StaticRow&
 }
 
 using meta_check_fn_t =
-    error_code (*)(const_cpp2db_t field_map, metadata_collection_view meta, diagnostics& diag);
+    error_code (*)(span<const std::size_t> field_map, metadata_collection_view meta, diagnostics& diag);
 
 // For multi-resultset - helper
 template <class... StaticRow>

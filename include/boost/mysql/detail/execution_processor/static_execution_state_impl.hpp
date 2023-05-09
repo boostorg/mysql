@@ -20,8 +20,8 @@
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <algorithm>
@@ -33,7 +33,8 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-using execst_parse_fn_t = error_code (*)(const_cpp2db_t, span<const field_view> from, const output_ref& ref);
+using execst_parse_fn_t =
+    error_code (*)(span<const std::size_t> pos_map, span<const field_view> from, const output_ref& ref);
 
 struct execst_resultset_descriptor
 {
@@ -184,7 +185,7 @@ private:
         meta_.push_back(std::move(meta));
 
         // Record its position
-        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
+        pos_map_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
 
         return is_last ? meta_check(diag) : error_code();
     }
@@ -224,8 +225,8 @@ private:
 
     // Auxiliar
     name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index_ - 1); }
-    cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
-    const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    span<std::size_t> current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    span<const std::size_t> current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
 
     error_code meta_check(diagnostics& diag) const
     {
@@ -238,7 +239,7 @@ private:
         ok_data_ = ok_packet_data{};
         info_.clear();
         meta_.clear();
-        cpp2db_reset(current_pos_map());
+        pos_map_reset(current_pos_map());
     }
 
     error_code on_ok_packet_impl(const ok_packet& pack)
@@ -256,7 +257,11 @@ private:
 };
 
 template <class StaticRow>
-static error_code execst_parse_fn(const_cpp2db_t pos_map, span<const field_view> from, const output_ref& ref)
+static error_code execst_parse_fn(
+    span<const std::size_t> pos_map,
+    span<const field_view> from,
+    const output_ref& ref
+)
 {
     return parse(pos_map, from, ref.span_element<StaticRow>());
 }

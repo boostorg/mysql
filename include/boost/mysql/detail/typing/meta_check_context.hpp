@@ -14,7 +14,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 
 #include <memory>
 #include <sstream>
@@ -59,7 +59,7 @@ class meta_check_context
 {
     std::unique_ptr<std::ostringstream> errors_;
     std::size_t current_index_{};
-    const_cpp2db_t pos_map_;
+    span<const std::size_t> pos_map_;
     name_table_t name_table_;
     metadata_collection_view meta_{};
     bool nullability_checked_{};
@@ -83,7 +83,7 @@ class meta_check_context
 
 public:
     meta_check_context(
-        const_cpp2db_t pos_map,
+        span<const std::size_t> pos_map,
         name_table_t name_table,
         metadata_collection_view meta
     ) noexcept

@@ -19,7 +19,7 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
@@ -35,7 +35,8 @@ namespace mysql {
 namespace detail {
 
 using results_reset_fn_t = void (*)(void*);
-using results_parse_fn_t = error_code (*)(const_cpp2db_t field_map, span<const field_view> from, void* to);
+using results_parse_fn_t =
+    error_code (*)(span<const std::size_t> pos_map, span<const field_view> from, void* to);
 
 struct results_resultset_descriptor
 {
@@ -192,7 +193,7 @@ private:
         meta_.push_back(std::move(meta));
 
         // Fill the pos map entry for this field, if any
-        cpp2db_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
+        pos_map_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
 
         return is_last ? meta_check(diag) : error_code();
     }
@@ -227,8 +228,8 @@ private:
     std::size_t resultset_index_{0};
 
     // Helpers
-    cpp2db_t current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
-    const_cpp2db_t current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    span<std::size_t> current_pos_map() noexcept { return ext_.pos_map(resultset_index_ - 1); }
+    span<const std::size_t> current_pos_map() const noexcept { return ext_.pos_map(resultset_index_ - 1); }
     name_table_t current_name_table() const noexcept { return ext_.name_table(resultset_index_ - 1); }
     static_per_resultset_data& current_resultset() noexcept { return ext_.per_result(resultset_index_ - 1); }
     metadata_collection_view current_resultset_meta() const noexcept
@@ -243,7 +244,7 @@ private:
         resultset_data = static_per_resultset_data();
         resultset_data.meta_offset = meta_.size();
         resultset_data.info_offset = info_.size();
-        cpp2db_reset(current_pos_map());
+        pos_map_reset(current_pos_map());
         return resultset_data;
     }
 
@@ -301,7 +302,7 @@ struct results_fns
     }
 
     template <std::size_t I>
-    static error_code do_parse(const_cpp2db_t pos_map, span<const field_view> from, void* to)
+    static error_code do_parse(span<const std::size_t> pos_map, span<const field_view> from, void* to)
     {
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
         v.emplace_back();

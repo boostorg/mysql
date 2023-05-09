@@ -12,7 +12,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/typing/cpp2db_map.hpp>
+#include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/core/span.hpp>
@@ -28,7 +28,6 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::span;
-using boost::mysql::detail::const_cpp2db_t;
 using boost::mysql::detail::get_row_name_table;
 using boost::mysql::detail::get_row_size;
 using boost::mysql::detail::is_static_row;
@@ -167,7 +166,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty_struct)
 {
     diagnostics diag;
-    auto err = meta_check<sempty>(const_cpp2db_t(), metadata_collection_view(), diag);
+    auto err = meta_check<sempty>(span<const std::size_t>(), metadata_collection_view(), diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -210,7 +209,7 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
 BOOST_AUTO_TEST_CASE(parse_empty_struct)
 {
     sempty value;
-    auto err = parse(const_cpp2db_t(), span<const field_view>(), value);
+    auto err = parse(span<const std::size_t>(), span<const field_view>(), value);
     BOOST_TEST(err == error_code());
 }
 
@@ -269,7 +268,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty)
 {
     diagnostics diag;
-    auto err = meta_check<tempty>(const_cpp2db_t(), metadata_collection_view(), diag);
+    auto err = meta_check<tempty>(span<const std::size_t>(), metadata_collection_view(), diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -312,7 +311,7 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
 BOOST_AUTO_TEST_CASE(parse_empty_tuple)
 {
     tempty value;
-    auto err = parse(const_cpp2db_t(), span<const field_view>(), value);
+    auto err = parse(span<const std::size_t>(), span<const field_view>(), value);
     BOOST_TEST(err == error_code());
 }
 
