@@ -7,7 +7,10 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/results.hpp>
 
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/execution_processor/results_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -26,12 +29,13 @@
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
+using detail::execution_processor;
 using detail::protocol_field_type;
 using detail::resultset_encoding;
 
 namespace {
 
-using netfun_maker = netfun_maker_fn<void, test_channel&, resultset_encoding, results&>;
+using netfun_maker = netfun_maker_fn<void, test_channel&, resultset_encoding, execution_processor&>;
 
 struct
 {
@@ -43,16 +47,17 @@ struct
 };
 
 // Verify that we clear any previous result
-results create_initial_results()
+detail::results_impl create_initial_results()
 {
-    return create_results({
-        {{protocol_field_type::bit, protocol_field_type::var_string},
-         makerows(2, 30, "abc", 40, "bhj"),
-         ok_builder().affected_rows(89).info("abc").build()}
-    });
+    return results_builder()
+        .meta({protocol_field_type::bit, protocol_field_type::var_string})
+        .row(30, "abc")
+        .row(40, "bhj")
+        .ok(ok_builder().affected_rows(89).info("abc").build())
+        .build();
 }
 
-BOOST_AUTO_TEST_SUITE(test_execute)
+BOOST_AUTO_TEST_SUITE(test_execute_impl)
 
 BOOST_AUTO_TEST_CASE(empty_resultset)
 {
@@ -73,10 +78,10 @@ BOOST_AUTO_TEST_CASE(empty_resultset)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
             // We've populated the results
-            BOOST_TEST_REQUIRE(result.size() == 1u);
-            BOOST_TEST(result[0].affected_rows() == 60u);
-            BOOST_TEST(result[0].info() == "abc");
-            BOOST_TEST(result[0].rows() == rows());
+            BOOST_TEST_REQUIRE(result.num_resultsets() == 1u);
+            BOOST_TEST(result.get_affected_rows(0) == 60u);
+            BOOST_TEST(result.get_info(0) == "abc");
+            BOOST_TEST(result.get_rows(0) == rows());
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
@@ -118,16 +123,16 @@ BOOST_AUTO_TEST_CASE(single_batch)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
             // We've populated the results
-            BOOST_TEST_REQUIRE(result.size() == 3u);
-            BOOST_TEST(result[0].affected_rows() == 10u);
-            BOOST_TEST(result[0].info() == "1st");
-            BOOST_TEST(result[0].rows() == makerows(1, 42, 43));
-            BOOST_TEST(result[1].affected_rows() == 20u);
-            BOOST_TEST(result[1].info() == "2nd");
-            BOOST_TEST(result[1].rows() == rows());
-            BOOST_TEST(result[2].affected_rows() == 30u);
-            BOOST_TEST(result[2].info() == "3rd");
-            BOOST_TEST(result[2].rows() == makerows(1, "abc"));
+            BOOST_TEST_REQUIRE(result.num_resultsets() == 3u);
+            BOOST_TEST(result.get_affected_rows(0) == 10u);
+            BOOST_TEST(result.get_info(0) == "1st");
+            BOOST_TEST(result.get_rows(0) == makerows(1, 42, 43));
+            BOOST_TEST(result.get_affected_rows(1) == 20u);
+            BOOST_TEST(result.get_info(1) == "2nd");
+            BOOST_TEST(result.get_rows(1) == rows());
+            BOOST_TEST(result.get_affected_rows(2) == 30u);
+            BOOST_TEST(result.get_info(2) == "3rd");
+            BOOST_TEST(result.get_rows(2) == makerows(1, "abc"));
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
@@ -166,16 +171,16 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
             // We've populated the results
-            BOOST_TEST_REQUIRE(result.size() == 3u);
-            BOOST_TEST(result[0].affected_rows() == 10u);
-            BOOST_TEST(result[0].info() == "1st");
-            BOOST_TEST(result[0].rows() == makerows(1, 42, 43));
-            BOOST_TEST(result[1].affected_rows() == 20u);
-            BOOST_TEST(result[1].info() == "2nd");
-            BOOST_TEST(result[1].rows() == rows());
-            BOOST_TEST(result[2].affected_rows() == 30u);
-            BOOST_TEST(result[2].info() == "3rd");
-            BOOST_TEST(result[2].rows() == makerows(1, "ab"));
+            BOOST_TEST_REQUIRE(result.num_resultsets() == 3u);
+            BOOST_TEST(result.get_affected_rows(0) == 10u);
+            BOOST_TEST(result.get_info(0) == "1st");
+            BOOST_TEST(result.get_rows(0) == makerows(1, 42, 43));
+            BOOST_TEST(result.get_affected_rows(0) == 20u);
+            BOOST_TEST(result.get_info(0) == "2nd");
+            BOOST_TEST(result.get_rows(0) == rows());
+            BOOST_TEST(result.get_affected_rows(0) == 30u);
+            BOOST_TEST(result.get_info(0) == "3rd");
+            BOOST_TEST(result.get_rows(0) == makerows(1, "ab"));
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }

@@ -36,7 +36,7 @@ add_executable(
     detail/network_algorithms/read_resultset_head.cpp
     detail/network_algorithms/start_execution_impl.cpp
     detail/network_algorithms/read_some_rows.cpp
-    # detail/network_algorithms/execute_impl.cpp
+    detail/network_algorithms/execute_impl.cpp
     # detail/network_algorithms/high_level_execution.cpp
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
