@@ -7,6 +7,7 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
@@ -19,6 +20,8 @@
 #include <boost/describe/class.hpp>
 #include <boost/describe/operators.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <cstddef>
 
 #include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
@@ -70,9 +73,17 @@ void check_ok_r3(const static_execution_state_erased_impl& st)
     BOOST_TEST(st.get_is_out_params() == false);
 }
 
+// Helper to create output_ref's
+template <class... TList, class T>
+output_ref create_ref(span<T> sp, std::size_t offset)
+{
+    return output_ref(sp, get_type_index<T, TList...>(), offset);
+}
+
 struct fixture
 {
     diagnostics diag;
+    std::vector<field_view> fields;
 };
 
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
@@ -111,13 +122,12 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     row1 storage[2]{};
     rowbuff r1{10, "abc"}, r2{20, "cdef"};
 
-    std::size_t type_index = get_type_index<row1, row1>();
-    err = st.on_row(r1.ctx(), output_ref(span<row1>(storage), type_index, 0));
+    err = st.on_row(r1.ctx(), create_ref<row1, row1>(span<row1>(storage), 0), fields);
     BOOST_TEST(err == error_code());
     BOOST_TEST((storage[0] == row1{"abc", 10}));
     BOOST_TEST(storage[1] == row1{});
 
-    err = st.on_row(r2.ctx(), output_ref(span<row1>(storage), type_index, 1));
+    err = st.on_row(r2.ctx(), create_ref<row1, row1>(span<row1>(storage), 1), fields);
     BOOST_TEST(err == error_code());
     BOOST_TEST((storage[0] == row1{"abc", 10}));
     BOOST_TEST((storage[1] == row1{"cdef", 20}));
@@ -171,8 +181,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     // Rows
     rowbuff r1{90u};
     row2 storage[2]{};
-    std::size_t type_index = get_type_index<row2, row1, row2>();
-    err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), type_index, 0));
+    err = st.on_row(r1.ctx(), create_ref<row1, row2>(span<row2>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
@@ -211,14 +220,13 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     // Rows
     rowbuff r1{90u}, r2{100u};
     row2 storage[2]{};
-    std::size_t type_index = get_type_index<row2, empty, row2>();
-    err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), type_index, 0));
+    err = st.on_row(r1.ctx(), create_ref<empty, row2>(span<row2>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
     BOOST_TEST(storage[1] == row2{});
 
-    err = st.on_row(r2.ctx(), output_ref(span<row2>(storage), type_index, 1));
+    err = st.on_row(r2.ctx(), create_ref<empty, row2>(span<row2>(storage), 1), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
@@ -310,8 +318,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
     row3 storage[1]{};
-    std::size_t type_index = get_type_index<row3, empty, empty, row3>();
-    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), type_index, 0));
+    err = st.on_row(r1.ctx(), create_ref<empty, empty, row3>(span<row3>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
@@ -356,8 +363,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
     row3 storage[1]{};
-    std::size_t type_index = get_type_index<row3, row1, empty, row3>();
-    err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), type_index, 0));
+    err = st.on_row(r1.ctx(), create_ref<row1, empty, row3>(span<row3>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
 
@@ -412,10 +418,29 @@ BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
     // Rows use type index 0, since they're the same type as resultset one's rows
     rowbuff r1{10, "abc"};
     row1 storage[1]{};
-    std::size_t type_index = get_type_index<row1, row1, row1>();
-    auto err = st.on_row(r1.ctx(), output_ref(span<row1>(storage), type_index, 0));
+    auto err = st.on_row(r1.ctx(), create_ref<row1, row1>(span<row1>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST((storage[0] == row1{"abc", 10}));
+}
+
+// Verify that we clear the fields before adding new ones
+BOOST_FIXTURE_TEST_CASE(storage_reuse, fixture)
+{
+    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    auto& st = stp.get_interface();
+
+    // Rows
+    rowbuff r1{42, "abc"}, r2{43, "def"};
+    row1 storage[2]{};
+    auto err = st.on_row(r1.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
+    throw_on_error(err, diag);
+    err = st.on_row(r2.ctx(), create_ref<row1>(span<row1>(storage), 1), fields);
+    throw_on_error(err, diag);
+
+    // Verify results
+    BOOST_TEST((storage[0] == row1{"abc", 42}));
+    BOOST_TEST((storage[1] == row1{"def", 43}));
+    BOOST_TEST(fields.size() == 2u);
 }
 
 BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
@@ -457,7 +482,7 @@ BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
     bad_row.data().push_back(0xff);
 
     row1 storage[1]{};
-    auto err = st.on_row(bad_row.ctx(), output_ref(span<row1>(storage), get_type_index<row1, row1>(), 0));
+    auto err = st.on_row(bad_row.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
     BOOST_TEST(err == client_errc::extra_bytes);
 }
 
@@ -468,7 +493,7 @@ BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
     rowbuff bad_row{nullptr, "abc"};  // should not be NULL - non_null used incorrectly, for instance
 
     row1 storage[1]{};
-    auto err = st.on_row(bad_row.ctx(), output_ref(span<row1>(storage), get_type_index<row1, row1>(), 0));
+    auto err = st.on_row(bad_row.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
     BOOST_TEST(err == client_errc::is_null);
 }
 
@@ -479,7 +504,7 @@ BOOST_FIXTURE_TEST_CASE(error_type_index_mismatch, fixture)
     rowbuff r1{42, "abc"};
 
     row2 storage[1]{};
-    auto err = st.on_row(r1.ctx(), output_ref(span<row2>(storage), get_type_index<row2, row1, row2>(), 0));
+    auto err = st.on_row(r1.ctx(), create_ref<row1, row2>(span<row2>(storage), 0), fields);
     BOOST_TEST(err == client_errc::row_type_mismatch);
 }
 
@@ -549,8 +574,8 @@ struct ctor_assign_fixture
 
         rowbuff r1{4.2f, 90.0, 9};
         row3 storage[1]{};
-        std::size_t type_index = get_type_index<row3, row1, row3>();
-        auto err = st.on_row(r1.ctx(), output_ref(span<row3>(storage), type_index, 0));
+        std::vector<field_view> fields;
+        auto err = st.on_row(r1.ctx(), create_ref<row1, row3>(span<row3>(storage), 0), fields);
         BOOST_TEST(err == error_code());
         BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
     }
@@ -619,7 +644,8 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
 // Regression check: using tuples crashed
 BOOST_AUTO_TEST_CASE(tuples)
 {
-    static_execution_state_impl<row1_tuple, empty, row3_tuple> stp;
+    std::vector<field_view> fields;
+    static_execution_state_impl<row1_tuple, std::tuple<>, row3_tuple> stp;
     auto& st = stp.get_interface();
 
     // Meta r1
@@ -628,8 +654,11 @@ BOOST_AUTO_TEST_CASE(tuples)
     // Rows r1
     row1_tuple storage_1[2]{};
     rowbuff r1{10, "abc"};
-    std::size_t type_index = get_type_index<row1_tuple, row1_tuple, empty, row3_tuple>();
-    auto err = st.on_row(r1.ctx(), output_ref(span<row1_tuple>(storage_1), type_index, 0));
+    auto err = st.on_row(
+        r1.ctx(),
+        create_ref<row1_tuple, std::tuple<>, row3_tuple>(span<row1_tuple>(storage_1), 0),
+        fields
+    );
     throw_on_error(err);
     BOOST_TEST((storage_1[0] == row1_tuple{10, "abc"}));
 
@@ -647,8 +676,11 @@ BOOST_AUTO_TEST_CASE(tuples)
     // Rows r3
     row3_tuple storage_3[2]{};
     rowbuff r3{4.2f, 90.0, 9};
-    type_index = get_type_index<row3_tuple, row1_tuple, empty, row3_tuple>();
-    err = st.on_row(r3.ctx(), output_ref(span<row3_tuple>(storage_3), type_index, 0));
+    err = st.on_row(
+        r3.ctx(),
+        create_ref<row1_tuple, std::tuple<>, row3_tuple>(span<row3_tuple>(storage_3), 0),
+        fields
+    );
     throw_on_error(err);
     BOOST_TEST((storage_3[0] == row3_tuple{4.2f, 90.0}));
 

@@ -22,7 +22,7 @@ inline error_code deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
     metadata_collection_view meta,
-    field_view* output  // Should point to meta.size() field_view objects
+    boost::span<field_view> output  // Should point to meta.size() field_view objects
 );
 
 }  // namespace detail

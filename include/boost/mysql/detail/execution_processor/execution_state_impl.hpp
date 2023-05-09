@@ -85,19 +85,20 @@ class execution_state_impl final : public execution_processor
         return error_code();
     }
 
+    error_code on_row_impl(deserialization_context ctx, const output_ref&, std::vector<field_view>& fields)
+        override final
+    {
+        // add row storage
+        span<field_view> storage = add_fields(fields, meta_.size());
+
+        // deserialize the row
+        return deserialize_row(encoding(), ctx, meta_, storage);
+    }
+
     error_code on_row_ok_packet_impl(const ok_packet& pack) override final
     {
         on_ok_packet_impl(pack);
         return error_code();
-    }
-
-    error_code on_row_impl(deserialization_context ctx, const output_ref& ref) override final
-    {
-        // add row storage
-        field_view* storage = add_fields(ref.fields(), meta_.size());
-
-        // deserialize the row
-        return deserialize_row(encoding(), ctx, meta_, storage);
     }
 
     void on_row_batch_start_impl() noexcept override final {}

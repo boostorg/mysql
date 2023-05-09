@@ -174,6 +174,7 @@ BOOST_AUTO_TEST_SUITE_END()
 struct fixture
 {
     diagnostics diag;
+    std::vector<field_view> fields;
 };
 
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
@@ -208,7 +209,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     // Rows
     rowbuff r1{42, "abc"};
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -224,6 +225,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     BOOST_TEST(r.num_resultsets() == 1u);
     BOOST_TEST(r.get_rows(0) == makerows(2, 42, "abc"));
     BOOST_TEST(r.get_out_params() == row_view());
+    BOOST_TEST(fields.empty());  // unused
 }
 
 BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
@@ -266,7 +268,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     // Row
     rowbuff r1{70};
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
 
     // OK packet, no more resultsets
@@ -307,7 +309,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     // Rows
     rowbuff r1{70};
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -406,9 +408,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     // Read rows
     rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
-    err = r.on_row(r2.ctx(), output_ref());
+    err = r.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
 
     // End of resultset
@@ -460,9 +462,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
     // Rows
     rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
-    err = r.on_row(r2.ctx(), output_ref());
+    err = r.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     r.on_row_batch_finish();
 
@@ -518,15 +520,15 @@ BOOST_FIXTURE_TEST_CASE(multiple_row_batches, fixture)
 
     // First batch
     r.on_row_batch_start();
-    auto err = r.on_row(r1.ctx(), output_ref());
+    auto err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err);
-    err = r.on_row(r2.ctx(), output_ref());
+    err = r.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err);
     r.on_row_batch_finish();
 
     // Second batch (only one row)
     r.on_row_batch_start();
-    err = r.on_row(r3.ctx(), output_ref());
+    err = r.on_row(r3.ctx(), output_ref(), fields);
     throw_on_error(err);
 
     // End of resultset
@@ -564,7 +566,7 @@ BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
     bad_row.data().push_back(0xff);
 
     st.on_row_batch_start();
-    auto err = st.on_row(bad_row.ctx(), output_ref());
+    auto err = st.on_row(bad_row.ctx(), output_ref(), fields);
     st.on_row_batch_finish();
 
     BOOST_TEST(err == client_errc::extra_bytes);

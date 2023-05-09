@@ -40,7 +40,7 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_row_message(
     {
     case row_message::type_t::error: err = msg.data.err; break;
     case row_message::type_t::ok_packet: err = proc.on_row_ok_packet(msg.data.ok_pack); break;
-    case row_message::type_t::row: err = proc.on_row(msg.data.ctx, ref); break;
+    case row_message::type_t::row: err = proc.on_row(msg.data.ctx, ref, channel.shared_fields()); break;
     }
 
     return err;

@@ -116,9 +116,9 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 
     // Rows
     rowbuff r1{10, "abc"}, r2{20, "cdef"};
-    err = st.on_row(r1.ctx(), output_ref(fields));
+    err = st.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
-    err = st.on_row(r2.ctx(), output_ref(fields));
+    err = st.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(fields == make_fv_vector(10, "abc", 20, "cdef"));
 
@@ -164,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 
     // Rows
     rowbuff r1{90u};
-    err = st.on_row(r1.ctx(), output_ref(fields));
+    err = st.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(fields == make_fv_vector(90u));
@@ -197,10 +197,10 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 
     // Rows
     rowbuff r1{90u}, r2{100u};
-    err = st.on_row(r1.ctx(), output_ref(fields));
+    err = st.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
-    err = st.on_row(r2.ctx(), output_ref(fields));
+    err = st.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
 
@@ -279,7 +279,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
-    err = st.on_row(r1.ctx(), output_ref(fields));
+    err = st.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
@@ -317,7 +317,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
 
     // Rows
     rowbuff r1{4.2f, 90.0, 9};
-    err = st.on_row(r1.ctx(), output_ref(fields));
+    err = st.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
 
@@ -356,7 +356,7 @@ BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
     rowbuff bad_row{42, "abc"};
     bad_row.data().push_back(0xff);
 
-    auto err = st.on_row(bad_row.ctx(), output_ref(fields));
+    auto err = st.on_row(bad_row.ctx(), output_ref(), fields);
 
     BOOST_TEST(err == client_errc::extra_bytes);
 }

@@ -15,6 +15,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
@@ -34,10 +35,11 @@ namespace mysql {
 namespace detail {
 
 using results_reset_fn_t = void (*)(void*);
-using results_parse_fn_t = error_code (*)(const_cpp2db_t field_map, const field_view* from, void* to);
+using results_parse_fn_t = error_code (*)(const_cpp2db_t field_map, span<const field_view> from, void* to);
 
 struct results_resultset_descriptor
 {
+    std::size_t num_columns;
     name_table_t name_table;
     meta_check_fn_t meta_check;
     results_parse_fn_t parse_fn;
@@ -62,7 +64,6 @@ public:
     struct ptr_data
     {
         void* rows;
-        field_view* temp_fields;
         std::size_t* pos_map;
         static_per_resultset_data* per_resultset;
     };
@@ -82,7 +83,7 @@ public:
     std::size_t num_columns(std::size_t idx) const noexcept
     {
         assert(idx < num_resultsets());
-        return desc_[idx].name_table.size();
+        return desc_[idx].num_columns;
     }
     name_table_t name_table(std::size_t idx) const noexcept
     {
@@ -101,7 +102,6 @@ public:
     }
     results_reset_fn_t reset_fn() const noexcept { return reset_; }
     void* rows() const noexcept { return ptr_.rows; }
-    field_view* temp_fields() const noexcept { return ptr_.temp_fields; }
     span<std::size_t> pos_map(std::size_t idx) const noexcept
     {
         return span<std::size_t>(ptr_.pos_map, num_columns(idx));
@@ -197,18 +197,25 @@ private:
         return is_last ? meta_check(diag) : error_code();
     }
 
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
-
-    error_code on_row_impl(deserialization_context ctx, const output_ref&) override final
+    error_code on_row_impl(deserialization_context ctx, const output_ref&, std::vector<field_view>& fields)
+        override final
     {
+        auto meta = current_resultset_meta();
+
+        // Allocate temporary storage
+        fields.clear();
+        span<field_view> storage = add_fields(fields, meta.size());
+
         // deserialize the row
-        auto err = deserialize_row(encoding(), ctx, current_resultset_meta(), ext_.temp_fields());
+        auto err = deserialize_row(encoding(), ctx, meta, storage);
         if (err)
             return err;
 
         // parse it against the appropriate tuple element
-        return ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), ext_.temp_fields(), ext_.rows());
+        return ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), storage, ext_.rows());
     }
+
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
     void on_row_batch_start_impl() override final {}
     void on_row_batch_finish_impl() override final {}
@@ -294,7 +301,7 @@ struct results_fns
     }
 
     template <std::size_t I>
-    static error_code do_parse(const_cpp2db_t pos_map, const field_view* from, void* to)
+    static error_code do_parse(const_cpp2db_t pos_map, span<const field_view> from, void* to)
     {
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
         v.emplace_back();
@@ -306,6 +313,7 @@ struct results_fns
     {
         using T = mp11::mp_at_c<mp11::mp_list<StaticRow...>, I>;
         return {
+            get_row_size<T>(),
             get_row_name_table<T>(),
             &meta_check<T>,
             &do_parse<I>,
@@ -333,7 +341,6 @@ class static_results_impl
     struct
     {
         results_rows_t<StaticRow...> rows;
-        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
         std::array<std::size_t, max_num_columns<StaticRow...>> pos_map{};
         std::array<static_per_resultset_data, sizeof...(StaticRow)> per_resultset{};
     } data_;
@@ -345,7 +352,6 @@ class static_results_impl
     {
         return {
             &data_.rows,
-            data_.temp_fields.data(),
             data_.pos_map.data(),
             data_.per_resultset.data(),
         };

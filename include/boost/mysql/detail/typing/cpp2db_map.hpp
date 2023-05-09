@@ -66,7 +66,11 @@ inline void cpp2db_add_field(
     }
 }
 
-inline field_view map_field_view(const_cpp2db_t self, std::size_t cpp_index, const field_view* array) noexcept
+inline field_view map_field_view(
+    const_cpp2db_t self,
+    std::size_t cpp_index,
+    span<const field_view> array
+) noexcept
 {
     assert(cpp_index < self.size());
     return array[self[cpp_index]];

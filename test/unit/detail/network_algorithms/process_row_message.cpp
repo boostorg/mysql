@@ -36,24 +36,22 @@ using boost::mysql::detail::process_row_message;
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_process_rows)
+BOOST_AUTO_TEST_SUITE(test_process_row_message)
 
-BOOST_AUTO_TEST_SUITE(process_row_message_)
 BOOST_AUTO_TEST_CASE(row_success)
 {
     // Setup
     auto st = exec_builder().meta({meta_builder().type(column_type::int_).build()}).build();
     diagnostics diag;
-    std::vector<field_view> fields;
 
     // Channel, with a message waiting to be retrieved
     auto chan = create_channel(create_text_row_message(0, 42));
     read_some_and_check(chan);
 
     // Process the message
-    auto err = process_row_message(chan, st, diag, output_ref(fields));
+    auto err = process_row_message(chan, st, diag, output_ref());
     throw_on_error(err, diag);
-    BOOST_TEST(fields == make_fv_vector(42));
+    BOOST_TEST(chan.shared_fields() == make_fv_vector(42));
 }
 
 BOOST_AUTO_TEST_CASE(row_error)
@@ -147,7 +145,6 @@ BOOST_AUTO_TEST_CASE(seqnum_mismatch)
     BOOST_TEST(p.num_calls.on_row == 0u);
     BOOST_TEST(p.num_calls.on_row_ok_packet == 0u);
 }
-BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
 

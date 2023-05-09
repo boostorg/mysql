@@ -45,10 +45,9 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_dynamic(
     // Process all read messages until they run out, an error happens
     // or an EOF is received
     channel.shared_fields().clear();
-    output_ref ref(channel.shared_fields());
     while (channel.has_read_messages() && st.is_reading_rows())
     {
-        auto err = process_row_message(channel, st, diag, ref);
+        auto err = process_row_message(channel, st, diag, output_ref());
         if (err)
             return err;
     }

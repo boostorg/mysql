@@ -67,8 +67,9 @@ template <class... T>
 void add_row(detail::execution_processor& proc, const T&... args)
 {
     rowbuff buff{args...};
+    std::vector<field_view> fields;
     proc.on_row_batch_start();
-    auto err = proc.on_row(buff.ctx(), detail::output_ref());
+    auto err = proc.on_row(buff.ctx(), detail::output_ref(), fields);
     throw_on_error(err);
     proc.on_row_batch_finish();
 }

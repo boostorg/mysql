@@ -76,12 +76,12 @@ struct array_wrapper<T, 0>
 class parse_functor
 {
     const_cpp2db_t field_map_;
-    const field_view* fields_;
+    span<const field_view> fields_;
     std::size_t index_{};
     error_code ec_;
 
 public:
-    parse_functor(const_cpp2db_t field_map, const field_view* fields) noexcept
+    parse_functor(const_cpp2db_t field_map, span<const field_view> fields) noexcept
         : field_map_(field_map), fields_(fields)
     {
     }
@@ -233,9 +233,10 @@ error_code meta_check(const_cpp2db_t pos_map, metadata_collection_view meta, dia
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code parse(const_cpp2db_t pos_map, const field_view* from, StaticRow& to)
+error_code parse(const_cpp2db_t pos_map, span<const field_view> from, StaticRow& to)
 {
     assert(pos_map.size() == get_row_size<StaticRow>());
+    assert(from.size() >= get_row_size<StaticRow>());
     parse_functor ctx(pos_map, from);
     row_traits<StaticRow>::parse(ctx, to);
     return ctx.error();

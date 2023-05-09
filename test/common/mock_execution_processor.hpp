@@ -10,6 +10,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -69,7 +70,8 @@ private:
     }
     void on_row_batch_start_impl() override {}
     void on_row_batch_finish_impl() override {}
-    error_code on_row_impl(detail::deserialization_context ctx, const detail::output_ref& ref) override
+    error_code on_row_impl(detail::deserialization_context ctx, const detail::output_ref& ref, std::vector<field_view>&)
+        override
     {
         ++num_calls.on_row;
         if (actions.on_row)

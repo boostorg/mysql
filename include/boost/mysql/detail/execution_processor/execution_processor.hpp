@@ -30,26 +30,20 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// A type-erased reference to be used as the output range for execution states.
-// For static_execution_state, this is a span-like class.
-// For execution_state, this holds a pointer to the field vector to use
+// A type-erased reference to be used as the output range for static_execution_state
 class output_ref
 {
-    // Pointer to the first element of the span (static_execution_state)
-    // Pointer to a vector<field_view> to use as output (execution_state)
+    // Pointer to the first element of the span
     void* data_{};
 
-    // Number of elements in the span (static_execution_state). Otherwise unused
+    // Number of elements in the span
     std::size_t max_size_{};
 
-    // Identifier for the type of elements. Index in the resultset type list (static_execution_state).
-    // type_index_none otherwise
-    std::size_t type_index_{type_index_none};
+    // Identifier for the type of elements. Index in the resultset type list
+    std::size_t type_index_{};
 
     // Offset into the span's data (static_execution_state). Otherwise unused
     std::size_t offset_{};
-
-    static constexpr std::size_t type_index_none = static_cast<std::size_t>(-1);
 
 public:
     constexpr output_ref() noexcept = default;
@@ -60,8 +54,6 @@ public:
     {
     }
 
-    output_ref(std::vector<field_view>& storage) noexcept : data_(&storage) {}
-
     std::size_t max_size() const noexcept { return max_size_; }
     std::size_t type_index() const noexcept { return type_index_; }
     void set_offset(std::size_t v) noexcept { offset_ = v; }
@@ -70,15 +62,7 @@ public:
     T& span_element() const noexcept
     {
         assert(data_);
-        assert(type_index_ != type_index_none);
         return static_cast<T*>(data_)[offset_];
-    }
-
-    std::vector<field_view>& fields() const noexcept
-    {
-        assert(data_);
-        assert(type_index_ == type_index_none);
-        return *static_cast<std::vector<field_view>*>(data_);
     }
 };
 
@@ -137,10 +121,11 @@ public:
 
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_row(deserialization_context ctx, const output_ref& ref)
+    BOOST_ATTRIBUTE_NODISCARD error_code
+    on_row(deserialization_context ctx, const output_ref& ref, std::vector<field_view>& storage)
     {
         assert(is_reading_rows());
-        return on_row_impl(ctx, ref);
+        return on_row_impl(ctx, ref, storage);
     }
 
     BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
@@ -176,7 +161,11 @@ protected:
         diagnostics& diag
     ) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
-    virtual error_code on_row_impl(deserialization_context ctx, const output_ref& ref) = 0;
+    virtual error_code on_row_impl(
+        deserialization_context ctx,
+        const output_ref& ref,
+        std::vector<field_view>& storage
+    ) = 0;
     virtual void on_row_batch_start_impl() = 0;
     virtual void on_row_batch_finish_impl() = 0;
 

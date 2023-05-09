@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -70,6 +71,7 @@ void check_ok_r3(const static_results_erased_impl& r, std::size_t idx)
 struct fixture
 {
     diagnostics diag;
+    std::vector<field_view> fields;
 };
 
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
@@ -96,7 +98,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 
     // Rows
     rowbuff r1{42, "abc"};
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -158,7 +160,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 
     // Row
     rowbuff r1{70};
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
 
     // OK packet, no more resultsets
@@ -201,7 +203,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 
     // Rows
     rowbuff r1{70};
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -302,9 +304,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 
     // Read rows
     rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
-    err = r.on_row(r2.ctx(), output_ref());
+    err = r.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
 
     // End of resultset
@@ -356,9 +358,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
 
     // Rows
     rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
-    err = r.on_row(r1.ctx(), output_ref());
+    err = r.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
-    err = r.on_row(r2.ctx(), output_ref());
+    err = r.on_row(r2.ctx(), output_ref(), fields);
     throw_on_error(err, diag);
 
     // OK packet
@@ -474,6 +476,31 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
     BOOST_TEST(r.get_info(2) == "other info");
 }
 
+// Verify that we clear the fields before adding new ones
+BOOST_FIXTURE_TEST_CASE(storage_reuse, fixture)
+{
+    auto rt = static_results_builder<row1>().meta(create_meta_r1()).build();
+    auto& r = rt.get_interface();
+
+    // Rows
+    rowbuff r1{42, "abc"}, r2{43, "def"};
+    auto err = r.on_row(r1.ctx(), output_ref(), fields);
+    throw_on_error(err, diag);
+    err = r.on_row(r2.ctx(), output_ref(), fields);
+    throw_on_error(err, diag);
+
+    // End of resultset
+    add_ok(r, create_ok_r1());
+
+    // Verify results
+    std::vector<row1> expected_r1{
+        {"abc", 42},
+        {"def", 43},
+    };
+    BOOST_TEST(fields.size() == 2u);
+    check_rows(rt.get_rows<0>(), expected_r1);
+}
+
 BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
 {
     static_results_impl<row1> rt;
@@ -512,7 +539,7 @@ BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
     rowbuff bad_row{42, "abc"};
     bad_row.data().push_back(0xff);
 
-    auto err = r.on_row(bad_row.ctx(), output_ref());
+    auto err = r.on_row(bad_row.ctx(), output_ref(), fields);
 
     BOOST_TEST(err == client_errc::extra_bytes);
 }
@@ -523,7 +550,7 @@ BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
     auto& r = rt.get_interface();
     rowbuff bad_row{nullptr, "abc"};  // should not be NULL - non_null used incorrectly, for instance
 
-    auto err = r.on_row(bad_row.ctx(), output_ref());
+    auto err = r.on_row(bad_row.ctx(), output_ref(), fields);
     BOOST_TEST(err == client_errc::is_null);
 }
 
@@ -667,6 +694,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
 // Regression check: using tuples crashed. Having more fields in the query than the C++ type crashed
 BOOST_AUTO_TEST_CASE(tuples)
 {
+    std::vector<field_view> fields;
     static_results_impl<row1_tuple, empty, row3_tuple> stp;
     auto& st = stp.get_interface();
 
@@ -675,7 +703,7 @@ BOOST_AUTO_TEST_CASE(tuples)
 
     // Rows r1
     rowbuff r1{10, "abc"};
-    auto err = st.on_row(r1.ctx(), output_ref());
+    auto err = st.on_row(r1.ctx(), output_ref(), fields);
     throw_on_error(err);
 
     // EOF r1
@@ -689,7 +717,7 @@ BOOST_AUTO_TEST_CASE(tuples)
 
     // Rows r3
     rowbuff r3{4.2f, 90.0, 9};
-    err = st.on_row(r3.ctx(), output_ref());
+    err = st.on_row(r3.ctx(), output_ref(), fields);
     throw_on_error(err);
 
     // OK r3

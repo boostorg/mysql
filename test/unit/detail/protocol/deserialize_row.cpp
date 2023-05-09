@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(success)
             deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
             std::vector<field_view> actual(tc.meta.size());
 
-            auto err = deserialize_row(tc.encoding, ctx, tc.meta, actual.data());
+            auto err = deserialize_row(tc.encoding, ctx, tc.meta, actual);
             BOOST_TEST(err == error_code());
             BOOST_TEST(actual == tc.expected);
         }
@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE(error)
             deserialization_context ctx(buffer.data(), buffer.data() + buffer.size(), capabilities());
             std::vector<field_view> actual(tc.meta.size());
 
-            auto err = deserialize_row(tc.encoding, ctx, tc.meta, actual.data());
+            auto err = deserialize_row(tc.encoding, ctx, tc.meta, actual);
             BOOST_TEST(err == error_code(tc.expected));
         }
     }

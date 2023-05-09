@@ -144,9 +144,9 @@ BOOST_AUTO_TEST_CASE(map_field_view_)
     const std::array<std::size_t, 3> map{1, 0, 2};
     const auto fv = make_fv_arr(10, "abc", nullptr);
 
-    BOOST_TEST(map_field_view(map, 0, fv.data()) == field_view("abc"));
-    BOOST_TEST(map_field_view(map, 1, fv.data()) == field_view(10));
-    BOOST_TEST(map_field_view(map, 2, fv.data()) == field_view());
+    BOOST_TEST(map_field_view(map, 0, fv) == field_view("abc"));
+    BOOST_TEST(map_field_view(map, 1, fv) == field_view(10));
+    BOOST_TEST(map_field_view(map, 2, fv) == field_view());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -111,11 +111,12 @@ boost::mysql::error_code boost::mysql::detail::deserialize_row(
     resultset_encoding encoding,
     deserialization_context& ctx,
     metadata_collection_view meta,
-    field_view* output
+    boost::span<field_view> output
 )
 {
-    return encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output)
-                                                        : deserialize_binary_row(ctx, meta, output);
+    assert(meta.size() == output.size());
+    return encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output.data())
+                                                        : deserialize_binary_row(ctx, meta, output.data());
 }
 
 #endif

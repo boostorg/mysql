@@ -10,6 +10,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -195,19 +196,13 @@ private:
         return error_code();
     }
 
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override
-    {
-        on_ok_packet_impl(pack);
-        return error_code();
-    }
-
-    error_code on_row_impl(deserialization_context ctx, const output_ref&) override
+    error_code on_row_impl(deserialization_context ctx, const output_ref&, std::vector<field_view>&) override
     {
         assert(has_active_batch());
 
         // add row storage
         std::size_t num_fields = current_resultset().num_columns;
-        field_view* storage = rows_.add_fields(num_fields);
+        span<field_view> storage = rows_.add_fields(num_fields);
         ++current_resultset().num_rows;
 
         // deserialize the row
@@ -215,6 +210,12 @@ private:
         if (err)
             return err;
 
+        return error_code();
+    }
+
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override
+    {
+        on_ok_packet_impl(pack);
         return error_code();
     }
 

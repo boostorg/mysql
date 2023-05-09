@@ -15,6 +15,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -32,7 +33,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-using execst_parse_fn_t = error_code (*)(const_cpp2db_t, const field_view* from, const output_ref& ref);
+using execst_parse_fn_t = error_code (*)(const_cpp2db_t, span<const field_view> from, const output_ref& ref);
 
 struct execst_resultset_descriptor
 {
@@ -48,7 +49,6 @@ class execst_external_data
 public:
     struct ptr_data
     {
-        field_view* temp_fields;
         std::size_t* pos_map;
     };
 
@@ -83,7 +83,6 @@ public:
         assert(idx < num_resultsets());
         return desc_[idx].type_index;
     }
-    field_view* temp_fields() const noexcept { return ptr_.temp_fields; }
     span<std::size_t> pos_map(std::size_t idx) const noexcept
     {
         return span<std::size_t>(ptr_.pos_map, num_columns(idx));
@@ -190,26 +189,34 @@ private:
         return is_last ? meta_check(diag) : error_code();
     }
 
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
-
-    error_code on_row_impl(deserialization_context ctx, const output_ref& ref) override final
+    error_code on_row_impl(
+        deserialization_context ctx,
+        const output_ref& ref,
+        std::vector<field_view>& fields
+    ) override final
     {
         // check output
         if (ref.type_index() != ext_.type_index(resultset_index_ - 1))
             return client_errc::row_type_mismatch;
 
+        // Allocate temporary space
+        fields.clear();
+        span<field_view> storage = add_fields(fields, meta_.size());
+
         // deserialize the row
-        auto err = deserialize_row(encoding(), ctx, meta(), ext_.temp_fields());
+        auto err = deserialize_row(encoding(), ctx, meta_, storage);
         if (err)
             return err;
 
         // parse it into the output ref
-        err = ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), ext_.temp_fields(), ref);
+        err = ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), storage, ref);
         if (err)
             return err;
 
         return error_code();
     }
+
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
 
     void on_row_batch_start_impl() noexcept override final {}
 
@@ -249,7 +256,7 @@ private:
 };
 
 template <class StaticRow>
-static error_code execst_parse_fn(const_cpp2db_t pos_map, const field_view* from, const output_ref& ref)
+static error_code execst_parse_fn(const_cpp2db_t pos_map, span<const field_view> from, const output_ref& ref)
 {
     return parse(pos_map, from, ref.span_element<StaticRow>());
 }
@@ -276,9 +283,7 @@ class static_execution_state_impl
     // Storage for our data, which requires knowing the template args
     struct
     {
-        std::array<field_view, max_num_columns<StaticRow...>> temp_fields{};
         std::array<std::size_t, max_num_columns<StaticRow...>> pos_map{};
-
     } data_;
 
     // The type-erased impl, that will use pointers to the above storage
@@ -287,7 +292,6 @@ class static_execution_state_impl
     execst_external_data::ptr_data ptr_data() noexcept
     {
         return {
-            data_.temp_fields.data(),
             data_.pos_map.data(),
         };
     }
