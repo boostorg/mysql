@@ -23,11 +23,13 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "buffer_concat.hpp"
 #include "check_meta.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_message_struct.hpp"
 #include "creation/create_meta.hpp"
+#include "creation/create_row_message.hpp"
 #include "mock_execution_processor.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
@@ -138,6 +140,51 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
             BOOST_TEST_REQUIRE(fix.st.is_complete());
             BOOST_TEST(fix.st.get_affected_rows() == 42u);
             BOOST_TEST(fix.st.get_info() == "abc");
+        }
+    }
+}
+
+// Check that we don't attempt to read the rows even if they're available
+BOOST_AUTO_TEST_CASE(success_rows_available)
+{
+    for (auto fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            fixture fix;
+            auto response = create_message(1, {0x01});
+            auto col1 = create_coldef_message(2, protocol_field_type::var_string, "f1");
+            auto row1 = create_text_row_message(3, "abc");
+            fix.chan.lowest_layer().add_message(concat_copy(response, col1, row1));
+
+            // Call the function
+            fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
+
+            // We've read the response
+            BOOST_TEST(fix.st.is_reading_rows());
+            BOOST_TEST(fix.st.sequence_number() == 3u);  // row wasn't read
+        }
+    }
+}
+
+// Check that we don't attempt to read the next resultset even if it's available
+BOOST_AUTO_TEST_CASE(success_ok_packet_next_resultset)
+{
+    for (auto fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            fixture fix;
+            auto ok1 = ok_msg_builder().seqnum(1).info("1st").more_results(true).build_ok();
+            auto ok2 = ok_msg_builder().seqnum(2).info("2nd").build_ok();
+            fix.chan.lowest_layer().add_message(concat_copy(ok1, ok2));
+
+            // Call the function
+            fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
+
+            // We've read the response
+            BOOST_TEST(fix.st.is_reading_first_subseq());
+            BOOST_TEST(fix.st.get_info() == "1st");
         }
     }
 }
