@@ -25,6 +25,7 @@
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/mp11/detail/mp_list.hpp>
 #include <boost/mp11/utility.hpp>
 #include <boost/optional/optional.hpp>
@@ -47,6 +48,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace mp11 = boost::mp11;
+using boost::span;
 using detail::is_readable_field;
 using detail::meta_check_context;
 using detail::meta_check_field_type_list;
@@ -749,6 +751,17 @@ BOOST_AUTO_TEST_CASE(failed_checks)
 
     BOOST_TEST(err == client_errc::metadata_check_failed);
     BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_AUTO_TEST_CASE(all_fields_discarded)
+{
+    using types = identity_list<>;
+    diagnostics diag;
+
+    auto err = meta_check_field_type_list<types>(span<const std::size_t>(), name_table_t(), meta, diag);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
 }
 
 BOOST_AUTO_TEST_CASE(empty)
