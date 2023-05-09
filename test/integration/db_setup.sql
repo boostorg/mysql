@@ -56,6 +56,17 @@ CREATE TABLE three_rows_table (
 );
 INSERT INTO three_rows_table VALUES (1, 'f0'), (2, 'f1'), (3, 'f2');
 
+CREATE TABLE multifield_table(
+    id INT NOT NULL PRIMARY KEY,
+    field_varchar VARCHAR(255) NOT NULL,
+    field_int INT NOT NULL,
+    field_nullable FLOAT,
+    field_double DOUBLE NOT NULL
+);
+INSERT INTO multifield_table VALUES
+    (1, "aaa", 11, 1.1, 0.1),
+    (2, "bbb", 22, NULL, 0.2);
+
 -- Tables to test we retrieve correctly values of every possible type
 -- Every type gets a separate table. Each field within the table is a possible variant of this same type
 -- Every row is a test case, identified by the id column.
