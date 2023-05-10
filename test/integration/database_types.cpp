@@ -39,7 +39,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <ostream>
 #include <sstream>
@@ -62,7 +61,7 @@ using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
 
-using boost::describe::operators::operator==;
+#ifdef BOOST_MYSQL_CXX14
 
 // operator<< doesn't work for blob (vector<unsigned char>) or time (chrono::duration<...>)
 template <class T, class = typename std::enable_if<boost::describe::has_describe_members<T>::value>::type>
@@ -74,6 +73,9 @@ std::ostream& operator<<(std::ostream& os, const T& v)
     });
     return os << '}';
 }
+using boost::describe::operators::operator==;
+
+#endif
 
 // Helpers
 bool is_mariadb() { return safe_getenv("BOOST_MYSQL_TEST_DB", "mysql8") == "mariadb"; }
@@ -226,6 +228,7 @@ public:
         rws.emplace_back(makerow(id, convert_none(args)...));
     }
 
+#ifdef BOOST_MYSQL_CXX14
     void select_static(tcp_connection& conn) override
     {
         // Execute the query
@@ -271,6 +274,9 @@ public:
             }
         }
     }
+#else
+    void select_static(tcp_connection&) override {}
+#endif
 };
 
 template <class StaticRow>
@@ -1065,6 +1071,7 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
     }
 }
 
+#ifdef BOOST_MYSQL_CXX14
 BOOST_FIXTURE_TEST_CASE(static_interface, database_types_fixture)
 {
     for (const auto& table : all_tables())
@@ -1076,5 +1083,6 @@ BOOST_FIXTURE_TEST_CASE(static_interface, database_types_fixture)
         }
     }
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()  // test_database_types
