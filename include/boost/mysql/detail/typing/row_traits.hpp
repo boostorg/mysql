@@ -40,16 +40,25 @@ namespace detail {
 
 // Helpers to check that all the fields satisfy ReadableField
 // and produce meaningful error messages, with the offending field type, at least
-template <class TypeList>
-static constexpr bool check_readable_field() noexcept
+
+// Workaround clang 3.6 not liking generic lambdas in the below constexpr function
+struct readable_field_checker
 {
-    mp11::mp_for_each<TypeList>([](auto type_identity) {
-        using T = typename decltype(type_identity)::type;
+    template <class TypeIdentity>
+    constexpr void operator()(TypeIdentity) const noexcept
+    {
+        using T = typename TypeIdentity::type;
         static_assert(
             is_readable_field<T>::value,
             "You're trying to use an unsupported field type in a row type. Review your row type definitions."
         );
-    });
+    }
+};
+
+template <class TypeList>
+static constexpr bool check_readable_field() noexcept
+{
+    mp11::mp_for_each<TypeList>(readable_field_checker{});
     return true;
 }
 

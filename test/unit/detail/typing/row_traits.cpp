@@ -38,7 +38,6 @@ using boost::mysql::detail::is_static_row;
 using boost::mysql::detail::meta_check;
 using boost::mysql::detail::name_table_t;
 using boost::mysql::detail::parse;
-using boost::mysql::detail::pos_absent;
 
 namespace {
 
