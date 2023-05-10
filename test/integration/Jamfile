@@ -49,7 +49,7 @@ run
         integrationtests_pch
         $(context_lib)
         integrationtests_entry_point
-
+ 
         # Utilities
         utils/src/get_endpoint.cpp
         utils/src/metadata_validator.cpp
@@ -67,9 +67,11 @@ run
         prepared_statements.cpp
         stored_procedures.cpp
         multi_queries.cpp
+        static_iface.cpp
         reconnect.cpp
         db_specific.cpp
         database_types.cpp
+
     : requirements
         <testing.arg>$(test_command)
         <include>utils/include

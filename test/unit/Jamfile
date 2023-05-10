@@ -45,14 +45,27 @@ run
         detail/protocol/deserialize_row.cpp
         detail/protocol/deserialize_execution_messages.cpp
         detail/protocol/process_error_packet.cpp
-        # detail/protocol/execution_state_impl.cpp
-        # detail/network_algorithms/start_execution_impl.cpp
-        # detail/network_algorithms/read_resultset_head.cpp
-        # detail/network_algorithms/read_some_rows.cpp
-        # detail/network_algorithms/execute_impl.cpp
-        # detail/network_algorithms/high_level_execution.cpp
+        detail/execution_processor/execution_processor.cpp
+        detail/execution_processor/execution_state_impl.cpp
+        detail/execution_processor/static_execution_state_impl.cpp
+        detail/execution_processor/results_impl.cpp
+        detail/execution_processor/static_results_impl.cpp
+        detail/execution_processor/concepts.cpp
+        detail/network_algorithms/process_row_message.cpp
+        detail/network_algorithms/read_resultset_head.cpp
+        detail/network_algorithms/start_execution_impl.cpp
+        detail/network_algorithms/read_some_rows.cpp
+        detail/network_algorithms/execute_impl.cpp
+        detail/network_algorithms/high_level_execution.cpp
         detail/network_algorithms/close_statement.cpp
         detail/network_algorithms/ping.cpp
+        detail/typing/meta_check_context.cpp
+        detail/typing/pos_map.cpp
+        detail/typing/readable_field_traits.cpp
+        detail/typing/writable_field_traits.cpp
+        detail/typing/row_traits.cpp
+        detail/typing/get_type_index.cpp
+        detail/config.cpp
         date.cpp
         datetime.cpp
         field_view.cpp
@@ -68,15 +81,15 @@ run
         mariadb_server_errc.cpp
         diagnostics.cpp
         statement.cpp
-        # execution_state.cpp
-        # results.cpp
-        # resultset_view.cpp
-        # resultset.cpp
+        execution_state.cpp
+        results.cpp
+        resultset_view.cpp
+        resultset.cpp
         connection.cpp
         throw_on_error.cpp
         regressions.cpp
-        # multifn.cpp
-        entry_point.cpp
+        multifn.cpp
+        
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
     : target-name boost_mysql_unittests
