@@ -82,14 +82,14 @@ error_code parse_unsigned_int(field_view input, UnsignedInt& output)
 }
 
 // Traits
-template <typename T, bool is_optional_flag = is_optional<T>::value>
+template <typename T, class EnableIf = void>
 struct readable_field_traits
 {
     static constexpr bool is_supported = false;
 };
 
 template <>
-struct readable_field_traits<std::int8_t, false>
+struct readable_field_traits<std::int8_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int8_t";
@@ -108,7 +108,7 @@ struct readable_field_traits<std::int8_t, false>
 };
 
 template <>
-struct readable_field_traits<std::uint8_t, false>
+struct readable_field_traits<std::uint8_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint8_t";
@@ -127,7 +127,7 @@ struct readable_field_traits<std::uint8_t, false>
 };
 
 template <>
-struct readable_field_traits<bool, false>
+struct readable_field_traits<bool, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "bool";
@@ -149,7 +149,7 @@ struct readable_field_traits<bool, false>
 };
 
 template <>
-struct readable_field_traits<std::int16_t, false>
+struct readable_field_traits<std::int16_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int16_t";
@@ -170,7 +170,7 @@ struct readable_field_traits<std::int16_t, false>
 };
 
 template <>
-struct readable_field_traits<std::uint16_t, false>
+struct readable_field_traits<std::uint16_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint16_t";
@@ -191,7 +191,7 @@ struct readable_field_traits<std::uint16_t, false>
 };
 
 template <>
-struct readable_field_traits<std::int32_t, false>
+struct readable_field_traits<std::int32_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int32_t";
@@ -214,7 +214,7 @@ struct readable_field_traits<std::int32_t, false>
 };
 
 template <>
-struct readable_field_traits<std::uint32_t, false>
+struct readable_field_traits<std::uint32_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint32_t";
@@ -237,7 +237,7 @@ struct readable_field_traits<std::uint32_t, false>
 };
 
 template <>
-struct readable_field_traits<std::int64_t, false>
+struct readable_field_traits<std::int64_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int64_t";
@@ -261,7 +261,7 @@ struct readable_field_traits<std::int64_t, false>
 };
 
 template <>
-struct readable_field_traits<std::uint64_t, false>
+struct readable_field_traits<std::uint64_t, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint64_t";
@@ -286,7 +286,7 @@ struct readable_field_traits<std::uint64_t, false>
 };
 
 template <>
-struct readable_field_traits<float, false>
+struct readable_field_traits<float, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "float";
@@ -308,7 +308,7 @@ struct readable_field_traits<float, false>
 };
 
 template <>
-struct readable_field_traits<double, false>
+struct readable_field_traits<double, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "double";
@@ -342,7 +342,7 @@ struct readable_field_traits<double, false>
 };
 
 template <class Allocator>
-struct readable_field_traits<std::basic_string<char, std::char_traits<char>, Allocator>, false>
+struct readable_field_traits<std::basic_string<char, std::char_traits<char>, Allocator>, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "string";
@@ -377,7 +377,7 @@ struct readable_field_traits<std::basic_string<char, std::char_traits<char>, All
 };
 
 template <class Allocator>
-struct readable_field_traits<std::vector<unsigned char, Allocator>, false>
+struct readable_field_traits<std::vector<unsigned char, Allocator>, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "blob";
@@ -408,7 +408,7 @@ struct readable_field_traits<std::vector<unsigned char, Allocator>, false>
 };
 
 template <>
-struct readable_field_traits<date, false>
+struct readable_field_traits<date, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "date";
@@ -427,7 +427,7 @@ struct readable_field_traits<date, false>
 };
 
 template <>
-struct readable_field_traits<datetime, false>
+struct readable_field_traits<datetime, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "datetime";
@@ -454,7 +454,7 @@ struct readable_field_traits<datetime, false>
 };
 
 template <>
-struct readable_field_traits<time, false>
+struct readable_field_traits<time, void>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "time";
@@ -475,10 +475,13 @@ struct readable_field_traits<time, false>
 // std::optional<T> and boost::optional<T>. To avoid dependencies,
 // this is achieved through a "concept"
 template <class T>
-struct readable_field_traits<T, true>
+struct readable_field_traits<
+    T,
+    typename std::enable_if<
+        is_optional<T>::value && readable_field_traits<typename T::value_type>::is_supported>::type>
 {
     using value_type = typename T::value_type;
-    static constexpr bool is_supported = readable_field_traits<value_type>::is_supported;
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = readable_field_traits<value_type>::type_name;
     static bool meta_check(meta_check_context& ctx)
     {
@@ -501,9 +504,11 @@ struct readable_field_traits<T, true>
 };
 
 template <class T>
-struct readable_field_traits<non_null<T>, false>
+struct readable_field_traits<
+    non_null<T>,
+    typename std::enable_if<readable_field_traits<T>::is_supported>::type>
 {
-    static constexpr bool is_supported = readable_field_traits<T>::is_supported;
+    static constexpr bool is_supported = true;
     static constexpr const char* type_name = readable_field_traits<T>::type_name;
     static bool meta_check(meta_check_context& ctx)
     {
