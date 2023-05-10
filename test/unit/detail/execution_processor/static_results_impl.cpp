@@ -729,10 +729,10 @@ BOOST_AUTO_TEST_CASE(tuples)
 
     // Verify
     std::vector<row1_tuple> expected_r1{
-        {10, "abc"}
+        row1_tuple{10, "abc"}
     };
     std::vector<row3_tuple> expected_r3{
-        {4.2f, 90.0}
+        row3_tuple{4.2f, 90.0}
     };
     BOOST_TEST(st.is_complete());
     check_meta_r1(st.get_meta(0));

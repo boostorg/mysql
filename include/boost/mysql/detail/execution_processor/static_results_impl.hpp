@@ -329,7 +329,7 @@ struct results_fns
     static constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)> create_descriptors(mp11::index_sequence<
                                                                                                        I...>)
     {
-        return {create_descriptor<I>()...};
+        return {{create_descriptor<I>()...}};
     }
 };
 

@@ -40,7 +40,9 @@ BOOST_AUTO_TEST_CASE(reset_empty)
 
 BOOST_AUTO_TEST_CASE(reset_nonempty)
 {
-    std::array<std::size_t, 4> storage{42, 43, 44, 45};
+    std::array<std::size_t, 4> storage{
+        {42, 43, 44, 45}
+    };
     span<std::size_t> map(storage.data(), 3);
 
     pos_map_reset(map);
@@ -60,7 +62,9 @@ BOOST_AUTO_TEST_CASE(add_field_empty)
 BOOST_AUTO_TEST_CASE(add_field_unnamed)
 {
     // Setup
-    std::array<std::size_t, 4> map{42, 43, 44};
+    std::array<std::size_t, 4> map{
+        {42, 43, 44}
+    };
     name_table_t name_table{};
     pos_map_reset(map);
 
@@ -94,7 +98,7 @@ BOOST_AUTO_TEST_CASE(add_field_named)
 {
     // Setup
     const string_view name_table[] = {"f1", "f2", "f3", "f4"};
-    std::array<std::size_t, 4> map{};
+    std::array<std::size_t, 4> map{{}};
     pos_map_reset(map);
 
     // Add first field
@@ -128,7 +132,9 @@ BOOST_AUTO_TEST_CASE(add_field_named)
 
 BOOST_AUTO_TEST_CASE(map_metadata_)
 {
-    const std::array<std::size_t, 3> map{1, 0, 2};
+    const std::array<std::size_t, 3> map{
+        {1, 0, 2}
+    };
     const metadata meta[] = {
         meta_builder().type(column_type::bigint).build(),
         meta_builder().type(column_type::char_).build(),
@@ -142,7 +148,9 @@ BOOST_AUTO_TEST_CASE(map_metadata_)
 
 BOOST_AUTO_TEST_CASE(map_field_view_)
 {
-    const std::array<std::size_t, 3> map{1, 0, 2};
+    const std::array<std::size_t, 3> map{
+        {1, 0, 2}
+    };
     const auto fv = make_fv_arr(10, "abc", nullptr);
 
     BOOST_TEST(map_field_view(map, 0, fv) == field_view("abc"));

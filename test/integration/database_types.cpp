@@ -321,7 +321,7 @@ table_ptr types_tinyint()
     res->add_row("min",      int8_t(-0x80), uint8_t(0u),    none,        uint8_t(0u));
     res->add_row("max",      int8_t(0x7f),  uint8_t(0xffu), none,        none);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // SMALLINT
@@ -339,7 +339,7 @@ table_ptr types_smallint()
     res->add_row("min",      int16_t(-0x8000), uint16_t(0u),      none,         uint16_t(0u));
     res->add_row("max",      int16_t(0x7fff),  uint16_t(0xffffu), none,         none);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));  // This cast is required due to a bug in old clangs
 }
 
 // MEDIUMINT (row type shared with INT)
@@ -357,7 +357,7 @@ table_ptr types_mediumint()
     res->add_row("min",      int32_t(-0x800000), uint32_t(0u),        none,         uint32_t(0u));
     res->add_row("max",      int32_t(0x7fffff),  uint32_t(0xffffffu), none,         none);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // INT
@@ -372,7 +372,7 @@ table_ptr types_int()
     res->add_row("min",      int32_t(-0x80000000LL), uint32_t(0u),          none,         0u);
     res->add_row("max",      int32_t(0x7fffffff),    uint32_t(0xffffffffu), none,         none);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // BIGINT
@@ -390,7 +390,7 @@ table_ptr types_bigint()
     res->add_row("min",      -0x7fffffffffffffff - 1, 0u,                  none, 0u);
     res->add_row("max",       0x7fffffffffffffff,     0xffffffffffffffffu, none, none);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // YEAR
@@ -412,7 +412,7 @@ table_ptr types_year()
     res->add_row("max",     uint16_t(2155u));
     res->add_row("zero",    uint16_t(0u));
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // BOOL
@@ -430,7 +430,7 @@ table_ptr types_bool()
 
     res->add_row("true", true);
     res->add_row("false", false);
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // BIT
@@ -489,7 +489,7 @@ table_ptr types_bit()
     res->add_row("regular", 1u, 0x9eu, 0x1e2au, 0x1234u, 0x123456u, 0x154abe0u, 0x12345678u, 0x123456789au, 0x123456789abcu, 0x123456789abcdeu, 0x1234567812345678u);
     res->add_row("max",     1u, 0xffu, 0x3fffu, 0xffffu, 0xffffffu, 0x1ffffffu, 0xffffffffu, 0xffffffffffu, 0xffffffffffffu, 0xffffffffffffffu, 0xffffffffffffffffu);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // FLOAT
@@ -523,7 +523,7 @@ table_ptr types_float()
     res->add_row("positive_exp_negative_fractional", -3.14e20f,  none,  none, none);
     res->add_row("negative_exp_positive_fractional",  3.14e-20f, none,  none, 3.14e-20f);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // DOUBLE
@@ -557,7 +557,7 @@ table_ptr types_double()
     res->add_row("positive_exp_negative_fractional", -3.14e200,  none, none, none);
     res->add_row("negative_exp_positive_fractional",  3.14e-200, none, none, 3.14e-200);
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // DATE
@@ -590,7 +590,7 @@ table_ptr types_date()
     res->add_row("yregular_invalid_date_leapregular", date(1999u, 2u, 29u));
     res->add_row("yregular_invalid_date_leap100",     date(1900u, 2u, 29u));
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // DATETIME and TIMESTAMP (they share row definition)
@@ -678,7 +678,7 @@ table_ptr types_datetime()
     res->add_row("hmsu_yregular_invalid_date_leapregular",  datetime(1999,  2, 29, 10, 20, 30, 0), datetime(1999,  2, 29, 10, 20, 30, 900000), datetime(1999,  2, 29, 10, 20, 30, 990000), datetime(1999,  2, 29, 10, 20, 30, 999000), datetime(1999,  2, 29, 10, 20, 30, 999900), datetime(1999,  2, 29, 10, 20, 30, 999990), datetime(1999,  2, 29, 10, 20, 30, 999999));
     res->add_row("hmsu_yregular_invalid_date_leap100",      datetime(1900,  2, 29, 10, 20, 30, 0), datetime(1900,  2, 29, 10, 20, 30, 900000), datetime(1900,  2, 29, 10, 20, 30, 990000), datetime(1900,  2, 29, 10, 20, 30, 999000), datetime(1900,  2, 29, 10, 20, 30, 999900), datetime(1900,  2, 29, 10, 20, 30, 999990), datetime(1900,  2, 29, 10, 20, 30, 999999));
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 table_ptr types_timestamp()
@@ -699,7 +699,7 @@ table_ptr types_timestamp()
     res->add_row("min",  datetime(1970,  1,  1,  2,  0,  1, 0), datetime(1970,  1,  1,  2,  0,  1, 0),      datetime(1970,  1,  1,  2,  0,  1,  0),     datetime(1970,  1,  1,  2,  0,  1,   0),    datetime(1970,  1,  1,  2,  0,  1,    0),   datetime(1970,  1,  1,  2,  0,  1,     0),  datetime(1970,  1,  1,  2,  0,  1,      0));
     res->add_row("max",  datetime(2038,  1, 19,  5, 14,  7, 0), datetime(2038,  1, 19,  5, 14,  7, 900000), datetime(2038,  1, 19,  5, 14,  7, 990000), datetime(2038,  1, 19,  5, 14,  7, 999000), datetime(2038,  1, 19,  5, 14,  7, 999900), datetime(2038,  1, 19,  5, 14,  7, 999990), datetime(2038,  1, 19,  5, 14,  7, 999999));
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // TIME
@@ -794,7 +794,7 @@ table_ptr types_time()
     res->add_row("min",            -maket(838, 59, 59),-maket(838,59, 58, 900000), -maket(838, 59, 58, 990000),-maket(838, 59, 58, 999000),-maket(838, 59, 58, 999900),-maket(838,59, 58, 999990), -maket(838,59, 58,  999999));
     res->add_row("max",             maket(838, 59, 59), maket(838,59, 58, 900000),  maket(838, 59, 58, 990000), maket(838, 59, 58, 999000), maket(838, 59, 58, 999900), maket(838,59, 58, 999990),  maket(838,59, 58,  999999));
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // string types
@@ -846,7 +846,7 @@ table_ptr types_string()
     res->add_row("utf8",    string("\xc3\xb1"),  string("\xc3\x91"),     string("\xc3\xa1"),      string("\xc3\xa9"),  string("\xc3\xad"),        string("\xc3\xb3"),      string("\xc3\xba"),    none,             none);
     res->add_row("empty",   string(),            string(),               string(),                string(),            string(),                  string(),                string(),              none,             string());
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // JSON
@@ -872,7 +872,7 @@ table_ptr types_json()
     res->add_row("utf8",           string("[\"adi\xc3\xb3os\"]"));
     res->add_row("empty",          string("{}"));
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // Binary types
@@ -907,7 +907,7 @@ table_ptr types_binary()
     res->add_row("nonascii", makeb("\0\xff\0\0\0\0\0\0\0\0"), makeb("\1\xfe"),        makeb("\2\xfd"),       makeb("\3\xfc"),   makeb("\4\xfb"),        makeb("\5\xfa"));
     res->add_row("empty",    makeb("\0\0\0\0\0\0\0\0\0\0"),   blob(),                 blob(),                blob(),            blob(),                 blob());
     // clang-format on
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // These types don't have a better representation, and we represent
@@ -930,7 +930,7 @@ table_ptr types_not_implemented()
                         0x00, 0x00, 0xf0, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40};
 
     res->add_row("regular", std::string("300"), geometry_value);
-    return res;
+    return table_ptr(std::move(res));
 }
 
 // Tests for certain metadata flags
@@ -969,7 +969,7 @@ table_ptr types_flags()
     res->add_meta("field_indexed", column_type::int_, flagsvec{&metadata::is_multiple_key});
 
     res->add_row("default", none, 50, "char", 21, 42);
-    return res;
+    return table_ptr(std::move(res));
 }
 
 std::vector<table_ptr> make_all_tables()
