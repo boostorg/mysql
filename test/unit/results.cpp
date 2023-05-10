@@ -15,8 +15,7 @@
 #include <stdexcept>
 
 #include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
-#include "creation/create_message_struct.hpp"
+#include "creation/create_execution_processor.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
 
@@ -32,17 +31,30 @@ BOOST_AUTO_TEST_SUITE(test_results)
 
 results create_initial_results()
 {
-    return create_results({
-        {{protocol_field_type::var_string},
-         makerows(1, "abc", nullptr),
-         ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").build()},
-
-        {{protocol_field_type::tiny},
-         makerows(1, 42),
-         ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build()},
-
-        {{}, rows(), ok_builder().info("3rd").build()}
-    });
+    results res;
+    auto& iface = get_iface(res);
+    add_meta(iface, {protocol_field_type::var_string});
+    add_row(iface, "abc");
+    add_row(iface, nullptr);
+    add_ok(
+        iface,
+        ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").more_results(true).build()
+    );
+    add_meta(iface, {protocol_field_type::tiny});
+    add_row(iface, 42);
+    add_ok(
+        iface,
+        ok_builder()
+            .affected_rows(4)
+            .last_insert_id(5)
+            .warnings(6)
+            .info("2nd")
+            .out_params(true)
+            .more_results(true)
+            .build()
+    );
+    add_ok(iface, ok_builder().info("3rd").build());
+    return res;
 }
 
 struct fixture
