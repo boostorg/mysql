@@ -666,11 +666,17 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     diagnostics& diag
 )
 {
+    constexpr std::size_t index = detail::get_type_index<SpanRowType, RowType...>();
+    static_assert(
+        index != detail::index_not_found,
+        "SpanRowType must be one of the types returned by the query"
+    );
+
     detail::clear_errors(err, diag);
     return detail::read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output, detail::get_type_index<SpanRowType, RowType...>()),
+        detail::output_ref(output, index),
         err,
         diag
     );
@@ -683,11 +689,17 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     span<SpanRowType> output
 )
 {
+    constexpr std::size_t index = detail::get_type_index<SpanRowType, RowType...>();
+    static_assert(
+        index != detail::index_not_found,
+        "SpanRowType must be one of the types returned by the query"
+    );
+
     detail::error_block blk;
     auto res = detail::read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output, detail::get_type_index<SpanRowType, RowType...>()),
+        detail::output_ref(output, index),
         blk.err,
         blk.diag
     );
@@ -708,10 +720,16 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     CompletionToken&& token
 )
 {
+    constexpr std::size_t index = detail::get_type_index<SpanRowType, RowType...>();
+    static_assert(
+        index != detail::index_not_found,
+        "SpanRowType must be one of the types returned by the query"
+    );
+
     return detail::async_read_some_rows(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
-        detail::output_ref(output, detail::get_type_index<SpanRowType, RowType...>()),
+        detail::output_ref(output, index),
         diag,
         std::forward<CompletionToken>(token)
     );

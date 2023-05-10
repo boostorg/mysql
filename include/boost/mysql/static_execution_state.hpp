@@ -19,7 +19,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds state for multi-function SQL execution operations.
+ * \brief Holds state for multi-function SQL execution operations (static interface).
  * \details
  * This class behaves like a state machine. The current state can be accessed using
  * \ref should_start_op, \ref should_read_rows, \ref should_read_head
@@ -133,7 +133,7 @@ public:
      * \brief Returns metadata about the columns in the query.
      * \details
      * The returned collection will have as many \ref metadata objects as columns retrieved by
-     * the SQL query, and in the same order.
+     * the SQL query, and in the same order. This may not be the same as the
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -208,6 +208,8 @@ public:
 
 private:
     detail::static_execution_state_impl<StaticRow...> impl_;
+
+    static_assert(sizeof...(StaticRow) > 0, "static_execution_state requires one row type, at least");
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::impl_access;

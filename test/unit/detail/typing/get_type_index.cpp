@@ -10,6 +10,7 @@
 #include <tuple>
 
 using boost::mysql::detail::get_type_index;
+using boost::mysql::detail::index_not_found;
 
 namespace {
 
@@ -28,5 +29,9 @@ static_assert(get_type_index<r2, r1, r2, r1, r3, r1, r2, r3, r1>() == 1u, "");
 static_assert(get_type_index<r3, r1, r2, r1, r3, r1, r2, r3, r1>() == 2u, "");
 
 static_assert(get_type_index<r1, r1>() == 0u, "");
+
+static_assert(get_type_index<r1>() == index_not_found, "");
+static_assert(get_type_index<r1, r2>() == index_not_found, "");
+static_assert(get_type_index<r1, r2, r2, r3, r2>() == index_not_found, "");
 
 }  // namespace
