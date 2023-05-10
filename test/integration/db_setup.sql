@@ -153,6 +153,15 @@ INSERT INTO types_year VALUES
     ("zero",    0)
 ;
 
+CREATE TABLE types_bool(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_default BOOL
+);
+INSERT INTO types_bool VALUES
+    ("true",  TRUE),
+    ("false", FALSE)
+;
+
 CREATE TABLE types_bit(
     id VARCHAR(50) NOT NULL PRIMARY KEY,
     field_1 BIT(1),

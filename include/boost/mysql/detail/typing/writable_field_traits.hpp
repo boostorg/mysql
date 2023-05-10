@@ -57,6 +57,12 @@ struct writable_field_traits<T, void, typename std::enable_if<is_optional<T>::va
 };
 
 template <class T>
+field_view to_field(const T& value) noexcept
+{
+    return writable_field_traits<T>::to_field(value);
+}
+
+template <class T>
 struct is_writable_field
 {
     static constexpr bool value = writable_field_traits<T>::is_supported;

@@ -78,7 +78,7 @@ void serialize_stmt_exec_req(
 template <class... T, std::size_t... I>
 std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, boost::mp11::index_sequence<I...>) noexcept
 {
-    return std::array<field_view, sizeof...(T)>{{writable_field_traits<T>::to_field(std::get<I>(t))...}};
+    return std::array<field_view, sizeof...(T)>{{to_field(std::get<I>(t))...}};
 }
 
 template <class... T>
