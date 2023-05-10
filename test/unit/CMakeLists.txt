@@ -32,6 +32,7 @@ add_executable(
     detail/execution_processor/static_execution_state_impl.cpp
     detail/execution_processor/results_impl.cpp
     detail/execution_processor/static_results_impl.cpp
+    detail/execution_processor/concepts.cpp
     detail/network_algorithms/process_row_message.cpp
     detail/network_algorithms/read_resultset_head.cpp
     detail/network_algorithms/start_execution_impl.cpp

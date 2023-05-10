@@ -23,6 +23,7 @@
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/execution_processor/concepts.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
@@ -322,11 +323,11 @@ public:
      * \n
      * Metadata in `result` will be populated according to `this->meta_mode()`.
      */
-    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
+    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
     void execute(const ExecutionRequest& req, ResultsType& result, error_code&, diagnostics&);
 
     /// \copydoc execute
-    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ResultsType>
+    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
     void execute(const ExecutionRequest& req, ResultsType& result);
 
     /**
@@ -348,7 +349,7 @@ public:
      */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
-        class ResultsType,
+        BOOST_MYSQL_RESULTS_TYPE ResultsType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -369,7 +370,7 @@ public:
     /// \copydoc async_execute
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
-        class ResultsType,
+        BOOST_MYSQL_RESULTS_TYPE ResultsType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -399,12 +400,16 @@ public:
      * Any string parameters provided to \ref statement::bind should also be encoded
      * using the connection's character set.
      */
-    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ExecutionState>
-    void start_execution(const ExecutionRequest& req, ExecutionState& st, error_code&, diagnostics&);
+    template <
+        BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+        BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
+    void start_execution(const ExecutionRequest& req, ExecutionStateType& st, error_code&, diagnostics&);
 
     /// \copydoc start_execution
-    template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class ExecutionState>
-    void start_execution(const ExecutionRequest& req, ExecutionState& st);
+    template <
+        BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
+        BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
+    void start_execution(const ExecutionRequest& req, ExecutionStateType& st);
 
     /**
      * \copydoc start_execution
@@ -425,13 +430,13 @@ public:
      */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
-        class ExecutionState,
+        BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_start_execution(
         ExecutionRequest&& req,
-        ExecutionState& st,
+        ExecutionStateType& st,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -446,13 +451,13 @@ public:
     /// \copydoc async_start_execution
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
-        class ExecutionState,
+        BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_start_execution(
         ExecutionRequest&& req,
-        ExecutionState& st,
+        ExecutionStateType& st,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
@@ -1045,12 +1050,12 @@ public:
      * This function is only relevant when using multi-function operations with statements
      * that return more than one resultset.
      */
-    template <class ExecutionState>
-    void read_resultset_head(ExecutionState& st, error_code& err, diagnostics& info);
+    template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
+    void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& info);
 
     /// \copydoc read_resultset_head
-    template <class ExecutionState>
-    void read_resultset_head(ExecutionState& st);
+    template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
+    void read_resultset_head(ExecutionStateType& st);
 
     /**
      * \copydoc read_resultset_head
@@ -1059,12 +1064,12 @@ public:
      * `void(boost::mysql::error_code)`.
      */
     template <
-        class ExecutionState,
+        BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_resultset_head(
-        ExecutionState& st,
+        ExecutionStateType& st,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -1073,12 +1078,12 @@ public:
 
     /// \copydoc async_read_resultset_head
     template <
-        class ExecutionState,
+        BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_resultset_head(
-        ExecutionState& st,
+        ExecutionStateType& st,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );

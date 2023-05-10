@@ -5,11 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/impl/statement.hpp>
 
 #include <string>
 #ifdef __cpp_lib_string_view
