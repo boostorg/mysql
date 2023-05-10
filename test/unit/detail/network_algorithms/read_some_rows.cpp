@@ -4,12 +4,12 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -23,6 +23,7 @@
 #include "creation/create_message_struct.hpp"
 #include "creation/create_meta.hpp"
 #include "creation/create_row_message.hpp"
+#include "creation/create_static_execution_state.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
@@ -229,6 +230,8 @@ BOOST_AUTO_TEST_CASE(error_processing_row)
     }
 }
 BOOST_AUTO_TEST_SUITE_END()
+
+#ifdef BOOST_MYSQL_CXX14
 BOOST_AUTO_TEST_SUITE(static_iface)
 
 struct row1
@@ -492,6 +495,7 @@ BOOST_AUTO_TEST_CASE(error_processing_row)
     }
 }
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

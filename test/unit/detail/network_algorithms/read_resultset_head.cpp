@@ -17,6 +17,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -430,6 +431,7 @@ BOOST_AUTO_TEST_CASE(error)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+#ifdef BOOST_MYSQL_CXX14
 BOOST_AUTO_TEST_SUITE(connection_static)  // spotchecks connection::read_resultset_head with static iface
 
 using state_t = static_execution_state<std::tuple<>>;
@@ -493,8 +495,8 @@ BOOST_AUTO_TEST_CASE(error)
         }
     }
 }
-
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -72,8 +72,6 @@ add_executable(
     # multifn.cpp
     entry_point.cpp
 )
-target_compile_options(boost_mysql_unittests PRIVATE -fsanitize=address)
-target_link_options(boost_mysql_unittests PRIVATE -fsanitize=address)
 target_link_libraries(
     boost_mysql_unittests
     PRIVATE

@@ -8,6 +8,10 @@
 #ifndef BOOST_MYSQL_STATIC_RESULTS_HPP
 #define BOOST_MYSQL_STATIC_RESULTS_HPP
 
+#include <boost/mysql/detail/config.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -259,5 +263,7 @@ private:
 
 }  // namespace mysql
 }  // namespace boost
+
+#endif  // BOOST_MYSQL_CXX14
 
 #endif

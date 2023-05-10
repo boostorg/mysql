@@ -18,7 +18,6 @@
 
 #include "assert_buffer_equals.hpp"
 #include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_row_message.hpp"
 #include "printing.hpp"

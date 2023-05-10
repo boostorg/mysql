@@ -983,6 +983,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
 
+#ifdef BOOST_MYSQL_CXX14
     template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(
         static_execution_state<StaticRow...>& st,
@@ -1029,6 +1030,7 @@ public:
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
+#endif
 
     /**
      * \brief Reads metadata for subsequent resultsets in a multi-resultset operation.

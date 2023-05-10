@@ -11,8 +11,6 @@
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/list.hpp>
 
-// This is always visible from connection.hpp, so keep it small and C++11 compatible
-
 namespace boost {
 namespace mysql {
 namespace detail {

@@ -24,8 +24,8 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
+#include "creation/create_results.hpp"
 #include "execution_processor_helpers.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"

@@ -563,6 +563,17 @@ void meta_check_field(meta_check_context& ctx)
     ctx.advance();
 }
 
+struct meta_check_field_fn
+{
+    meta_check_context ctx;
+
+    template <class T>
+    void operator()(T)
+    {
+        meta_check_field<typename T::type>(ctx);
+    }
+};
+
 template <typename ReadableFieldList>
 error_code meta_check_field_type_list(
     span<const std::size_t> field_map,
@@ -571,11 +582,9 @@ error_code meta_check_field_type_list(
     diagnostics& diag
 )
 {
-    meta_check_context ctx(field_map, name_table, meta);
-    boost::mp11::mp_for_each<ReadableFieldList>([&ctx](auto type_identity) {
-        meta_check_field<typename decltype(type_identity)::type>(ctx);
-    });
-    return ctx.check_errors(diag);
+    meta_check_field_fn fn{meta_check_context(field_map, name_table, meta)};
+    boost::mp11::mp_for_each<ReadableFieldList>(fn);
+    return fn.ctx.check_errors(diag);
 }
 
 }  // namespace detail

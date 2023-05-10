@@ -657,6 +657,8 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     );
 }
 
+#ifdef BOOST_MYSQL_CXX14
+
 template <class Stream>
 template <class SpanRowType, class... RowType>
 std::size_t boost::mysql::connection<Stream>::read_some_rows(
@@ -734,6 +736,8 @@ boost::mysql::connection<Stream>::async_read_some_rows(
         std::forward<CompletionToken>(token)
     );
 }
+
+#endif
 
 // ping
 template <class Stream>

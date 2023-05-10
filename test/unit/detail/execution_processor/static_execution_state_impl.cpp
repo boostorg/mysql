@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/detail/config.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -24,10 +28,10 @@
 #include <cstddef>
 
 #include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 #include "creation/create_meta.hpp"
 #include "creation/create_row_message.hpp"
+#include "creation/create_static_execution_state.hpp"
 #include "execution_processor_helpers.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
@@ -692,3 +696,5 @@ BOOST_AUTO_TEST_CASE(tuples)
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
+
+#endif

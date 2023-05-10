@@ -8,6 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_TYPING_ROW_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_TYPING_ROW_TRAITS_HPP
 
+#include <boost/mysql/detail/config.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -20,11 +24,9 @@
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
-#include <boost/mysql/impl/diagnostics.hpp>
 
 #include <boost/describe/members.hpp>
 #include <boost/mp11/algorithm.hpp>
-#include <boost/mp11/detail/mp_list.hpp>
 #include <boost/mp11/utility.hpp>
 
 #include <cstddef>
@@ -35,8 +37,6 @@
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// TODO: this requires C++14, assert it somehow
 
 // Helpers to check that all the fields satisfy ReadableField
 // and produce meaningful error messages, with the offending field type, at least
@@ -72,6 +72,16 @@ struct array_wrapper<T, 0>
     constexpr boost::span<const T> span() const noexcept { return boost::span<const T>(); }
 };
 
+// Workaround for char_traits::length not being constexpr in C++14
+// Only used to retrieve Describe member name lengths
+constexpr std::size_t get_length(const char* s) noexcept
+{
+    const char* p = s;
+    while (*p)
+        ++p;
+    return p - s;
+}
+
 // Helpers
 class parse_functor
 {
@@ -99,14 +109,6 @@ public:
 
     error_code error() const noexcept { return ec_; }
 };
-
-constexpr std::size_t get_length(const char* s) noexcept
-{
-    const char* p = s;
-    while (*p)
-        ++p;
-    return p - s;
-}
 
 // Base template
 template <class T, bool is_describe_struct = boost::describe::has_describe_members<T>::value>
@@ -248,6 +250,8 @@ using meta_check_fn_t =
 // For multi-resultset - helper
 template <class... StaticRow>
 constexpr std::size_t max_num_columns = (std::max)({get_row_size<StaticRow>()...});
+
+#endif  // BOOST_MYSQL_CXX14
 
 }  // namespace detail
 }  // namespace mysql

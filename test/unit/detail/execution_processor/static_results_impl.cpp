@@ -16,8 +16,8 @@
 #include <boost/describe/operators.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "creation/create_execution_state.hpp"
 #include "creation/create_meta.hpp"
+#include "creation/create_static_results.hpp"
 #include "execution_processor_helpers.hpp"
 #include "printing.hpp"
 #include "test_common.hpp"
