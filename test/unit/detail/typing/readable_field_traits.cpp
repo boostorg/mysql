@@ -387,7 +387,7 @@ struct parse_and_check
 
     void operator()(field_view from) const
     {
-        T actual;
+        T actual{};
         auto err = readable_field_traits<T>::parse(from, actual);
         BOOST_TEST(err == error_code());
         BOOST_TEST(actual == expected);
