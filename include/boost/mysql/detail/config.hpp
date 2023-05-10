@@ -10,6 +10,7 @@
 
 // clang-format off
 
+// Concepts
 #if defined(__has_include)
     #if __has_include(<version>)
         #include <version>
@@ -17,6 +18,13 @@
             #define BOOST_MYSQL_HAS_CONCEPTS
         #endif
     #endif
+#endif
+
+// C++14. Shamelessly copied from Describe
+#if __cplusplus >= 201402L
+    #define BOOST_MYSQL_CXX14
+#elif defined(_MSC_VER) && _MSC_VER >= 1900
+    #define BOOST_MYSQL_CXX14
 #endif
 
 // clang-format on
