@@ -104,7 +104,7 @@ struct post
 
 // We must use Boost.Describe to add reflection capabilities to post.
 // We must list all the fields that should be populated by Boost.MySQL
-BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
+BOOST_DESCRIBE_STRUCT(post, (), (id, title, body))
 //]
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -115,7 +115,7 @@ struct post_v2
     std::string title;
     std::optional<std::string> body;  // body may be NULL
 };
-BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body));
+BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body))
 //]
 #endif
 
@@ -126,7 +126,7 @@ struct statistics
     double average;
     double max_value;
 };
-BOOST_DESCRIBE_STRUCT(statistics, (), (company, average, max_value));
+BOOST_DESCRIBE_STRUCT(statistics, (), (company, average, max_value))
 //]
 
 //[describe_stored_procedures
@@ -137,7 +137,7 @@ struct company
     std::string name;
     std::string tax_id;
 };
-BOOST_DESCRIBE_STRUCT(company, (), (id, name, tax_id));
+BOOST_DESCRIBE_STRUCT(company, (), (id, name, tax_id))
 
 // Describes the second resultset
 struct employee
@@ -146,7 +146,7 @@ struct employee
     std::string last_name;
     boost::optional<double> salary;
 };
-BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, salary));
+BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, salary))
 
 // The last resultset will always be empty.
 // We can use an empty tuple to represent it.

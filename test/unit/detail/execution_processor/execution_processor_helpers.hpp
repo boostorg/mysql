@@ -96,7 +96,7 @@ struct row1
     std::string fvarchar;
     std::int16_t ftiny;
 };
-BOOST_DESCRIBE_STRUCT(row1, (), (fvarchar, ftiny));
+BOOST_DESCRIBE_STRUCT(row1, (), (fvarchar, ftiny))
 
 using row1_tuple = std::tuple<std::int16_t, std::string>;
 
@@ -104,7 +104,7 @@ struct row2
 {
     std::int64_t fbigint;
 };
-BOOST_DESCRIBE_STRUCT(row2, (), (fbigint));
+BOOST_DESCRIBE_STRUCT(row2, (), (fbigint))
 
 using row2_tuple = std::tuple<std::int64_t>;
 
@@ -114,14 +114,14 @@ struct row3
     std::int8_t ftiny;
     float ffloat;
 };
-BOOST_DESCRIBE_STRUCT(row3, (), (fdouble, ftiny, ffloat));
+BOOST_DESCRIBE_STRUCT(row3, (), (fdouble, ftiny, ffloat))
 
 using row3_tuple = std::tuple<float, double>;
 
 struct empty
 {
 };
-BOOST_DESCRIBE_STRUCT(empty, (), ());
+BOOST_DESCRIBE_STRUCT(empty, (), ())
 
 #ifdef BOOST_DESCRIBE_CXX14
 using boost::describe::operators::operator==;

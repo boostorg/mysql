@@ -30,7 +30,7 @@ struct order
     std::int64_t id;
     std::string status;
 };
-BOOST_DESCRIBE_STRUCT(order, (), (id, status));
+BOOST_DESCRIBE_STRUCT(order, (), (id, status))
 
 struct order_item
 {
@@ -38,7 +38,7 @@ struct order_item
     std::int64_t quantity;
     std::int64_t unit_price;
 };
-BOOST_DESCRIBE_STRUCT(order_item, (), (id, quantity, unit_price));
+BOOST_DESCRIBE_STRUCT(order_item, (), (id, quantity, unit_price))
 
 struct product
 {
@@ -47,7 +47,7 @@ struct product
     boost::optional<std::string> description;
     std::int64_t price;
 };
-BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price));
+BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, description, price))
 
 void main_impl(int argc, char** argv)
 {

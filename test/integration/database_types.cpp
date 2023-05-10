@@ -308,7 +308,7 @@ struct int_table_row
 
 // TINYINT
 using tinyint_row = int_table_row<int8_t, uint8_t>;
-BOOST_DESCRIBE_STRUCT(tinyint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill));
+BOOST_DESCRIBE_STRUCT(tinyint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
 table_ptr types_tinyint()
 {
@@ -326,7 +326,7 @@ table_ptr types_tinyint()
 
 // SMALLINT
 using smallint_row = int_table_row<int16_t, uint16_t>;
-BOOST_DESCRIBE_STRUCT(smallint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill));
+BOOST_DESCRIBE_STRUCT(smallint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
 table_ptr types_smallint()
 {
@@ -344,7 +344,7 @@ table_ptr types_smallint()
 
 // MEDIUMINT (row type shared with INT)
 using int_row = int_table_row<int32_t, uint32_t>;
-BOOST_DESCRIBE_STRUCT(int_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill));
+BOOST_DESCRIBE_STRUCT(int_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
 table_ptr types_mediumint()
 {
@@ -377,7 +377,7 @@ table_ptr types_int()
 
 // BIGINT
 using bigint_row = int_table_row<int64_t, uint64_t>;
-BOOST_DESCRIBE_STRUCT(bigint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill));
+BOOST_DESCRIBE_STRUCT(bigint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
 table_ptr types_bigint()
 {
@@ -399,7 +399,7 @@ struct year_row
     std::string id;
     optional<uint16_t> field_default;
 };
-BOOST_DESCRIBE_STRUCT(year_row, (), (id, field_default));
+BOOST_DESCRIBE_STRUCT(year_row, (), (id, field_default))
 
 table_ptr types_year()
 {
@@ -421,7 +421,7 @@ struct bool_row
     std::string id;
     optional<bool> field_default;
 };
-BOOST_DESCRIBE_STRUCT(bool_row, (), (id, field_default));
+BOOST_DESCRIBE_STRUCT(bool_row, (), (id, field_default))
 
 table_ptr types_bool()
 {
@@ -501,7 +501,7 @@ struct float_row
     optional<float> field_width;
     optional<float> field_zerofill;
 };
-BOOST_DESCRIBE_STRUCT(float_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill));
+BOOST_DESCRIBE_STRUCT(float_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
 table_ptr types_float()
 {
@@ -535,7 +535,7 @@ struct double_row
     optional<double> field_width;
     optional<double> field_zerofill;
 };
-BOOST_DESCRIBE_STRUCT(double_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill));
+BOOST_DESCRIBE_STRUCT(double_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
 table_ptr types_double()
 {
@@ -566,7 +566,7 @@ struct date_row
     std::string id;
     optional<date> field_date;
 };
-BOOST_DESCRIBE_STRUCT(date_row, (), (id, field_date));
+BOOST_DESCRIBE_STRUCT(date_row, (), (id, field_date))
 
 table_ptr types_date()
 {
@@ -605,7 +605,7 @@ struct datetime_row
     optional<datetime> field_5;
     optional<datetime> field_6;
 };
-BOOST_DESCRIBE_STRUCT(datetime_row, (), (id, field_0, field_1, field_2, field_3, field_4, field_5, field_6));
+BOOST_DESCRIBE_STRUCT(datetime_row, (), (id, field_0, field_1, field_2, field_3, field_4, field_5, field_6))
 
 void datetime_timestamp_common_rows(table<datetime_row>& res)
 {
@@ -714,7 +714,7 @@ struct time_row
     optional<boost::mysql::time> field_5;
     optional<boost::mysql::time> field_6;
 };
-BOOST_DESCRIBE_STRUCT(time_row, (), (id, field_0, field_1, field_2, field_3, field_4, field_5, field_6));
+BOOST_DESCRIBE_STRUCT(time_row, (), (id, field_0, field_1, field_2, field_3, field_4, field_5, field_6))
 
 table_ptr types_time()
 {
@@ -855,7 +855,7 @@ struct json_row
     std::string id;
     optional<std::string> field_json;
 };
-BOOST_DESCRIBE_STRUCT(json_row, (), (id, field_json));
+BOOST_DESCRIBE_STRUCT(json_row, (), (id, field_json))
 
 table_ptr types_json()
 {
@@ -918,7 +918,7 @@ struct not_implemented_row
     optional<std::string> field_decimal;
     optional<blob> field_geometry;
 };
-BOOST_DESCRIBE_STRUCT(not_implemented_row, (), (id, field_decimal, field_geometry));
+BOOST_DESCRIBE_STRUCT(not_implemented_row, (), (id, field_decimal, field_geometry))
 
 table_ptr types_not_implemented()
 {

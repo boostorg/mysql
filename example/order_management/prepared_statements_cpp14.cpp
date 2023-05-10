@@ -73,7 +73,7 @@ struct order
     // The order status (draft, pending_payment, complete).
     std::string status;
 };
-BOOST_DESCRIBE_STRUCT(order, (), (id, status));
+BOOST_DESCRIBE_STRUCT(order, (), (id, status))
 
 // A product, as listed in the store product catalog.
 struct product
@@ -91,7 +91,7 @@ struct product
     // The product's unit price, in cents of USD.
     std::int64_t price;
 };
-BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price));
+BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price))
 
 // An order with its line items. This record type is returned by JOINs
 // from the orders and order_items tables. We use this type to retrieve both

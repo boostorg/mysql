@@ -53,7 +53,7 @@ struct row_multifield
     std::int32_t field_int;
     std::string field_varchar;
 };
-BOOST_DESCRIBE_STRUCT(row_multifield, (), (field_nullable, field_int, field_varchar));
+BOOST_DESCRIBE_STRUCT(row_multifield, (), (field_nullable, field_int, field_varchar))
 
 struct row_multifield_bad
 {
@@ -62,21 +62,21 @@ struct row_multifield_bad
     std::string field_int;
     int field_missing;
 };
-BOOST_DESCRIBE_STRUCT(row_multifield_bad, (), (field_varchar, field_nullable, field_int, field_missing));
+BOOST_DESCRIBE_STRUCT(row_multifield_bad, (), (field_varchar, field_nullable, field_int, field_missing))
 
 struct row_2fields
 {
     boost::optional<int> id;
     boost::optional<std::string> field_varchar;
 };
-BOOST_DESCRIBE_STRUCT(row_2fields, (), (id, field_varchar));
+BOOST_DESCRIBE_STRUCT(row_2fields, (), (id, field_varchar))
 
 struct row_multifield_nonnull
 {
     int id;
     non_null<float> field_nullable;
 };
-BOOST_DESCRIBE_STRUCT(row_multifield_nonnull, (), (id, field_nullable));
+BOOST_DESCRIBE_STRUCT(row_multifield_nonnull, (), (id, field_nullable))
 
 using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;

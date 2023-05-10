@@ -236,7 +236,7 @@ struct row1
 {
     std::string fvarchar;
 };
-BOOST_DESCRIBE_STRUCT(row1, (), (fvarchar));
+BOOST_DESCRIBE_STRUCT(row1, (), (fvarchar))
 
 using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;

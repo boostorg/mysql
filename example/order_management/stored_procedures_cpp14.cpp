@@ -73,7 +73,7 @@ struct order
     // The order status (draft, pending_payment, complete).
     std::string status;
 };
-BOOST_DESCRIBE_STRUCT(order, (), (id, status));
+BOOST_DESCRIBE_STRUCT(order, (), (id, status))
 
 // A line item, associated to an order and to a product.
 // Our queries don't retrieve the order or product ID, so
@@ -89,7 +89,7 @@ struct order_item
     // The product's unit price, in cents of USD.
     std::int64_t unit_price;
 };
-BOOST_DESCRIBE_STRUCT(order_item, (), (id, quantity, unit_price));
+BOOST_DESCRIBE_STRUCT(order_item, (), (id, quantity, unit_price))
 
 // A product, as listed in the store product catalog.
 struct product
@@ -108,7 +108,7 @@ struct product
     // The product's unit price, in cents of USD.
     std::int64_t price;
 };
-BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price));
+BOOST_DESCRIBE_STRUCT(product, (), (id, short_name, descr, price))
 
 // An empty row type. This can be used to describe empty resultsets,
 // like the ones returned by INSERT or CALL.
