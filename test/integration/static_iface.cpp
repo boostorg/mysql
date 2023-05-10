@@ -354,7 +354,7 @@ BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
     // Read again, in case the EOF came separately (r1)
     num_rows = conn.read_some_rows(result, boost::span<row_2fields>(rws2));
     BOOST_TEST_REQUIRE(num_rows == 0u);
-    BOOST_TEST(result.should_read_head());
+    BOOST_TEST(result.complete());
     BOOST_TEST(result.affected_rows() == 0u);
     BOOST_TEST(result.warning_count() == 0u);
     BOOST_TEST(result.last_insert_id() == 0u);
