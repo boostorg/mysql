@@ -8,6 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_STATIC_EXECUTION_STATE_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_EXECUTION_PROCESSOR_STATIC_EXECUTION_STATE_IMPL_HPP
 
+#include <boost/mysql/detail/config.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -345,5 +349,7 @@ public:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#endif  // BOOST_MYSQL_CXX14
 
 #endif

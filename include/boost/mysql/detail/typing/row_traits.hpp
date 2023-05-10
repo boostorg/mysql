@@ -251,10 +251,10 @@ using meta_check_fn_t =
 template <class... StaticRow>
 constexpr std::size_t max_num_columns = (std::max)({get_row_size<StaticRow>()...});
 
-#endif  // BOOST_MYSQL_CXX14
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#endif  // BOOST_MYSQL_CXX14
 
 #endif

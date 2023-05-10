@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/detail/config.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
@@ -745,3 +749,5 @@ BOOST_AUTO_TEST_CASE(tuples)
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
+
+#endif  // BOOST_MYSQL_CXX14

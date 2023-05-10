@@ -123,8 +123,10 @@ struct empty
 };
 BOOST_DESCRIBE_STRUCT(empty, (), ());
 
+#ifdef BOOST_DESCRIBE_CXX14
 using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;
+#endif
 
 // OK packet creation
 inline detail::ok_packet create_ok_r1(bool more_results = false)

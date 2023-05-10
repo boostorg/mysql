@@ -71,10 +71,12 @@ using boost::mysql::row_view;
 using boost::mysql::rows;
 using boost::mysql::rows_view;
 using boost::mysql::statement;
-using boost::mysql::static_execution_state;
-using boost::mysql::static_results;
 using boost::mysql::string_view;
 using boost::mysql::tcp_ssl_connection;
+#ifdef BOOST_MYSQL_CXX14
+using boost::mysql::static_execution_state;
+using boost::mysql::static_results;
+#endif
 
 #define ASSERT(expr)                                          \
     if (!(expr))                                              \
@@ -105,6 +107,7 @@ struct post
 BOOST_DESCRIBE_STRUCT(post, (), (id, title, body));
 //]
 
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 //[describe_post_v2
 struct post_v2
 {
@@ -114,6 +117,7 @@ struct post_v2
 };
 BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body));
 //]
+#endif
 
 //[describe_statistics
 struct statistics
@@ -300,6 +304,7 @@ void section_overview(tcp_ssl_connection& conn)
         }
         //]
     }
+#ifdef BOOST_MYSQL_CXX14
     {
         // The struct definition is included above this
         //[overview_ifaces_static
@@ -318,6 +323,7 @@ void section_overview(tcp_ssl_connection& conn)
         }
         //]
     }
+#endif
 
     {
         //[overview_statements_setup
@@ -570,6 +576,7 @@ void section_dynamic(tcp_ssl_connection& conn)
 
 void section_static(tcp_ssl_connection& conn)
 {
+#ifdef BOOST_MYSQL_CXX14
     {
         //[static_setup
         const char* table_definition = R"%(
@@ -620,6 +627,7 @@ void section_static(tcp_ssl_connection& conn)
         std::cout << "Number of employees: " << std::get<0>(result.rows()[0]) << "\n";
         //]
     }
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
         //[static_nulls_table
         const char* table_definition = R"%(
@@ -638,6 +646,8 @@ void section_static(tcp_ssl_connection& conn)
         conn.execute("SELECT * FROM posts_v2", result);
         conn.execute("DROP TABLE posts_v2", r);
     }
+#endif  // BOOST_NO_CXX17_HDR_OPTIONAL
+#endif  // BOOST_MYSQL_CXX14
 }
 
 void section_prepared_statements(tcp_ssl_connection& conn)
@@ -717,6 +727,7 @@ void section_multi_resultset(tcp_ssl_connection& conn)
         boost::ignore_unused(matched_company);
         boost::ignore_unused(matched_employees);
     }
+#ifdef BOOST_MYSQL_CXX14
     {
         //[multi_resultset_call_static
         // We must list all the resultset types the operation returns as template arguments
@@ -741,6 +752,7 @@ void section_multi_resultset(tcp_ssl_connection& conn)
         }
         //]
     }
+#endif
     {
         //[multi_resultset_out_params
         // To retrieve output parameters, you must use prepared statements. Text queries don't support this
@@ -875,6 +887,7 @@ void section_multi_function(tcp_ssl_connection& conn)
         }
         //]
     }
+#ifdef BOOST_MYSQL_CXX14
     {
         //[multi_function_static_start
         // st will hold information about the operation being executed.
@@ -906,6 +919,7 @@ void section_multi_function(tcp_ssl_connection& conn)
         results result;
         conn.execute("DROP TABLE posts", result);
     }
+#endif
     {
         //[multi_function_stored_procedure_dynamic
         // Get the company ID to retrieve, possibly from the user
@@ -949,6 +963,7 @@ void section_multi_function(tcp_ssl_connection& conn)
         assert(st.complete());
         //]
     }
+#ifdef BOOST_MYSQL_CXX14
     {
         //[multi_function_stored_procedure_static
         // Get the company ID to retrieve, possibly from the user
@@ -996,6 +1011,7 @@ void section_multi_function(tcp_ssl_connection& conn)
         assert(st.complete());
         //]
     }
+#endif
 }
 
 void section_metadata(tcp_ssl_connection& conn)

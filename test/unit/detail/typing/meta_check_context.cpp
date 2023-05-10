@@ -98,7 +98,7 @@ const metadata meta[] = {
     meta_builder().type(column_type::varchar).build(),
     meta_builder().type(column_type::blob).build(),
 };
-constexpr string_view names[] = {"f1", "f2", "f3"};
+const string_view names[] = {"f1", "f2", "f3"};
 
 BOOST_AUTO_TEST_CASE(accessors_fields_present)
 {
