@@ -13,8 +13,10 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/non_null.hpp>
+#include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/static_results.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/describe/class.hpp>
 #include <boost/describe/operators.hpp>
 #include <boost/optional/optional.hpp>
@@ -112,7 +114,7 @@ BOOST_FIXTURE_TEST_CASE(describe_structs, tcp_network_fixture)
     validate_multified_rows(result.rows());
     BOOST_TEST(result.affected_rows() == 0u);
     BOOST_TEST(result.warning_count() == 0u);
-    BOOST_TEST(result.last_insert_id() == 0u);  // this refers to the CALL, not to the INSERT
+    BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
 }
 
@@ -131,7 +133,7 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST((result.rows()[1] == tuple_t{2, "bbb", 22, {}}));
     BOOST_TEST(result.affected_rows() == 0u);
     BOOST_TEST(result.warning_count() == 0u);
-    BOOST_TEST(result.last_insert_id() == 0u);  // this refers to the CALL, not to the INSERT
+    BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
 }
 
@@ -235,6 +237,162 @@ BOOST_FIXTURE_TEST_CASE(non_null_constraint_violation, tcp_network_fixture)
     conn.execute("SELECT * FROM multifield_table", result, ec, diag);
 
     BOOST_TEST(ec == client_errc::is_null);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(multifn)
+
+BOOST_FIXTURE_TEST_CASE(describe_structs, tcp_network_fixture)
+{
+    connect();
+
+    // Start
+    static_execution_state<row_multifield> result;
+    conn.start_execution("SELECT * FROM multifield_table WHERE id = 1", result);
+    validate_multifield_meta(result.meta());
+    BOOST_TEST(result.should_read_rows());
+
+    // Read rows
+    std::array<row_multifield, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((rws[0] == row_multifield{1.1f, 11, "aaa"}));
+
+    // Read again, in case the EOF came separately
+    num_rows = conn.read_some_rows(result, boost::span<row_multifield>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.complete());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+
+BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
+{
+    connect();
+
+    using tuple_t = std::tuple<int, std::string, int>;  // trailing fields discarded
+
+    // Start
+    static_execution_state<tuple_t> result;
+    conn.start_execution("SELECT * FROM multifield_table WHERE id = 1", result);
+    validate_multifield_meta(result.meta());
+    BOOST_TEST(result.should_read_rows());
+
+    // Read rows
+    std::array<tuple_t, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<tuple_t>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((rws[0] == tuple_t{1, "aaa", 11}));
+
+    // Read again, in case the EOF came separately
+    num_rows = conn.read_some_rows(result, boost::span<tuple_t>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.complete());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+
+BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
+{
+    params.set_multi_queries(true);
+    connect();
+    start_transaction();
+
+    // Start
+    static_execution_state<row_multifield, empty, row_2fields> result;
+    conn.start_execution(
+        R"%(
+            SELECT * FROM multifield_table WHERE id = 1;
+            DELETE FROM updates_table;
+            SELECT * FROM one_row_table
+        )%",
+        result
+    );
+    validate_multifield_meta(result.meta());
+    BOOST_TEST(result.should_read_rows());
+
+    // Read rows (r1)
+    std::array<row_multifield, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((rws[0] == row_multifield{1.1f, 11, "aaa"}));
+
+    // Read again, in case the EOF came separately (r1)
+    num_rows = conn.read_some_rows(result, boost::span<row_multifield>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.should_read_head());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+
+    // Next resultset (r2, empty)
+    conn.read_resultset_head(result);
+    BOOST_TEST(result.should_read_head());
+    BOOST_TEST(result.meta().size() == 0u);
+    BOOST_TEST(result.affected_rows() == 3u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+
+    // Next resultset (r3)
+    conn.read_resultset_head(result);
+    BOOST_TEST(result.should_read_rows());
+    validate_2fields_meta(result.meta(), "one_row_table");
+
+    // Read rows (r3)
+    std::array<row_2fields, 3> rws2;
+    num_rows = conn.read_some_rows(result, boost::span<row_2fields>(rws2));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((rws2[0] == row_2fields{1, std::string("f0")}));
+
+    // Read again, in case the EOF came separately (r1)
+    num_rows = conn.read_some_rows(result, boost::span<row_2fields>(rws2));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.should_read_head());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+
+BOOST_FIXTURE_TEST_CASE(metadata_check_failed, tcp_network_fixture)
+{
+    connect();
+
+    error_code ec;
+    diagnostics diag;
+    static_execution_state<row_multifield_bad> result;
+    conn.start_execution("SELECT * FROM multifield_table ORDER BY id", result, ec, diag);
+
+    const char* expected_msg =
+        "NULL checks failed for field 'field_nullable': the database type may be NULL, but the C++ type "
+        "cannot. Use std::optional<T> or boost::optional<T>\n"
+        "Incompatible types for field 'field_int': C++ type 'string' is not compatible with DB type 'INT'\n"
+        "Field 'field_missing' is not present in the data returned by the server";
+
+    BOOST_TEST(ec == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
+{
+    connect();
+    start_transaction();
+
+    error_code ec;
+    diagnostics diag;
+
+    // Start
+    static_execution_state<empty, empty> result;
+    conn.start_execution("DELETE FROM updates_table", result, ec, diag);
+
+    BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
