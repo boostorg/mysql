@@ -25,9 +25,11 @@
 #include <type_traits>
 
 #include "assert_buffer_equals.hpp"
+#include "creation/create_execution_processor.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_message_struct.hpp"
+#include "creation/create_meta.hpp"
 #include "creation/create_statement.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
@@ -60,23 +62,20 @@ statement create_the_statement() { return statement_builder().id(1).num_params(2
 // Verify that we clear any previous result
 results create_initial_results()
 {
-    return create_results({
-        {
-         {protocol_field_type::var_string},
-         makerows(1, "abc", "def"),
-         ok_builder().affected_rows(42).info("prev").build(),
-         }
-    });
+    results res;
+    add_meta(get_iface(res), {meta_builder().type(column_type::varchar).build()});
+    add_row(get_iface(res), "abc");
+    add_row(get_iface(res), "def");
+    add_ok(get_iface(res), ok_builder().affected_rows(42).info("prev").build());
+    return res;
 }
 
 execution_state create_initial_state()
 {
-    std::vector<field_view> fields;  // won't be further used - can be left dangling
-    return exec_builder(false)
-        .reset(resultset_encoding::binary, &fields)
-        .meta({protocol_field_type::time})
-        .seqnum(42)
-        .build_state();
+    execution_state res;
+    add_meta(get_iface(res), {meta_builder().type(column_type::time).build()});
+    get_iface(res).sequence_number() = 42;
+    return res;
 }
 
 //
@@ -191,9 +190,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), select_1_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::text);
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::text);
             BOOST_TEST(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
+            BOOST_TEST(get_iface(st).sequence_number() == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 50u);
             BOOST_TEST(st.info() == "1st");
@@ -588,9 +587,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
             BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
+            BOOST_TEST(get_iface(st).sequence_number() == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 50u);
             BOOST_TEST(st.info() == "1st");
@@ -706,9 +705,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
             BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
+            BOOST_TEST(get_iface(st).sequence_number() == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 50u);
             BOOST_TEST(st.info() == "1st");
@@ -827,9 +826,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
             BOOST_TEST(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
+            BOOST_TEST(get_iface(st).sequence_number() == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 50u);
             BOOST_TEST(st.info() == "1st");
@@ -926,9 +925,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
             BOOST_TEST(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
+            BOOST_TEST(get_iface(st).sequence_number() == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 50u);
             BOOST_TEST(st.info() == "1st");
