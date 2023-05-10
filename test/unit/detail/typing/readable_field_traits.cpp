@@ -76,15 +76,17 @@ struct unrelated
 {
 };
 
-// scalars. char not supported directly, since may or may not be signed
 static_assert(is_readable_field<unsigned char>::value, "");
 static_assert(is_readable_field<signed char>::value, "");
+static_assert(is_readable_field<char>::value, "");
 static_assert(is_readable_field<short>::value, "");
 static_assert(is_readable_field<unsigned short>::value, "");
 static_assert(is_readable_field<int>::value, "");
 static_assert(is_readable_field<unsigned int>::value, "");
 static_assert(is_readable_field<long>::value, "");
 static_assert(is_readable_field<unsigned long>::value, "");
+static_assert(is_readable_field<long long>::value, "");
+static_assert(is_readable_field<unsigned long long>::value, "");
 static_assert(is_readable_field<std::int8_t>::value, "");
 static_assert(is_readable_field<std::uint8_t>::value, "");
 static_assert(is_readable_field<std::int16_t>::value, "");
@@ -93,6 +95,22 @@ static_assert(is_readable_field<std::int32_t>::value, "");
 static_assert(is_readable_field<std::uint32_t>::value, "");
 static_assert(is_readable_field<std::int64_t>::value, "");
 static_assert(is_readable_field<std::uint64_t>::value, "");
+static_assert(is_readable_field<std::int_least8_t>::value, "");
+static_assert(is_readable_field<std::uint_least8_t>::value, "");
+static_assert(is_readable_field<std::int_least16_t>::value, "");
+static_assert(is_readable_field<std::uint_least16_t>::value, "");
+static_assert(is_readable_field<std::int_least32_t>::value, "");
+static_assert(is_readable_field<std::uint_least32_t>::value, "");
+static_assert(is_readable_field<std::int_least64_t>::value, "");
+static_assert(is_readable_field<std::uint_least64_t>::value, "");
+static_assert(is_readable_field<std::int_fast8_t>::value, "");
+static_assert(is_readable_field<std::uint_fast8_t>::value, "");
+static_assert(is_readable_field<std::int_fast16_t>::value, "");
+static_assert(is_readable_field<std::uint_fast16_t>::value, "");
+static_assert(is_readable_field<std::int_fast32_t>::value, "");
+static_assert(is_readable_field<std::uint_fast32_t>::value, "");
+static_assert(is_readable_field<std::int_fast64_t>::value, "");
+static_assert(is_readable_field<std::uint_fast64_t>::value, "");
 static_assert(is_readable_field<float>::value, "");
 static_assert(is_readable_field<double>::value, "");
 static_assert(is_readable_field<boost::mysql::date>::value, "");

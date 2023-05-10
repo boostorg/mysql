@@ -28,14 +28,19 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class SignedInt, class UnsignedInt>
+// Helpers for integers
+template <class SignedInt>
 error_code parse_signed_int(field_view input, SignedInt& output)
 {
+    using unsigned_t = typename std::make_unsigned<SignedInt>::type;
+    using limits_t = std::numeric_limits<SignedInt>;
+
     auto kind = input.kind();
     if (kind == field_kind::null)
     {
@@ -45,7 +50,7 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     if (kind == field_kind::int64)
     {
         auto v = input.get_int64();
-        if (v < std::numeric_limits<SignedInt>::min() || v > std::numeric_limits<SignedInt>::max())
+        if (v < limits_t::min() || v > limits_t::max())
         {
             return client_errc::protocol_value_error;
         }
@@ -54,7 +59,7 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     else
     {
         auto v = input.get_uint64();
-        if (v > static_cast<UnsignedInt>(std::numeric_limits<SignedInt>::max()))
+        if (v > static_cast<unsigned_t>(limits_t::max()))
         {
             return client_errc::protocol_value_error;
         }
@@ -81,15 +86,17 @@ error_code parse_unsigned_int(field_view input, UnsignedInt& output)
     return error_code();
 }
 
-// Traits
-template <typename T, class EnableIf = void>
-struct readable_field_traits
+// We want all integer types to be allowed as fields. Some integers
+// may have the same width as others, but different type (e.g. long and long long
+// may both be 64-bit, but different types). Auxiliar int_traits to allow this to work
+template <class T, bool is_signed = std::is_signed<T>::value, std::size_t width = sizeof(T)>
+struct int_traits
 {
     static constexpr bool is_supported = false;
 };
 
-template <>
-struct readable_field_traits<std::int8_t, void>
+template <class T>
+struct int_traits<T, true, 1>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "int8_t";
@@ -101,14 +108,11 @@ struct readable_field_traits<std::int8_t, void>
         default: return false;
         }
     }
-    static error_code parse(field_view input, std::int8_t& output)
-    {
-        return parse_signed_int<std::int8_t, std::uint8_t>(input, output);
-    }
+    static error_code parse(field_view input, T& output) { return parse_signed_int(input, output); }
 };
 
-template <>
-struct readable_field_traits<std::uint8_t, void>
+template <class T>
+struct int_traits<T, false, 1>
 {
     static constexpr bool is_supported = true;
     static constexpr const char* type_name = "uint8_t";
@@ -120,10 +124,191 @@ struct readable_field_traits<std::uint8_t, void>
         default: return false;
         }
     }
-    static error_code parse(field_view input, std::uint8_t& output)
+    static error_code parse(field_view input, T& output) { return parse_unsigned_int(input, output); }
+};
+
+template <class T>
+struct int_traits<T, true, 2>
+{
+    static constexpr bool is_supported = true;
+    static constexpr const char* type_name = "int16_t";
+    static bool meta_check(meta_check_context& ctx)
+    {
+        switch (ctx.current_meta().type())
+        {
+        case column_type::tinyint: return true;
+        case column_type::smallint:
+        case column_type::year: return !ctx.current_meta().is_unsigned();
+        default: return false;
+        }
+    }
+    static error_code parse(field_view input, T& output) { return parse_signed_int(input, output); }
+};
+
+template <class T>
+struct int_traits<T, false, 2>
+{
+    static constexpr bool is_supported = true;
+    static constexpr const char* type_name = "uint16_t";
+    static bool meta_check(meta_check_context& ctx)
+    {
+        switch (ctx.current_meta().type())
+        {
+        case column_type::tinyint:
+        case column_type::smallint:
+        case column_type::year: return ctx.current_meta().is_unsigned();
+        default: return false;
+        }
+    }
+    static error_code parse(field_view input, T& output) { return parse_unsigned_int(input, output); }
+};
+
+template <class T>
+struct int_traits<T, true, 4>
+{
+    static constexpr bool is_supported = true;
+    static constexpr const char* type_name = "int32_t";
+    static bool meta_check(meta_check_context& ctx)
+    {
+        switch (ctx.current_meta().type())
+        {
+        case column_type::tinyint:
+        case column_type::smallint:
+        case column_type::year:
+        case column_type::mediumint: return true;
+        case column_type::int_: return !ctx.current_meta().is_unsigned();
+        default: return false;
+        }
+    }
+    static error_code parse(field_view input, T& output) { return parse_signed_int(input, output); }
+};
+
+template <class T>
+struct int_traits<T, false, 4>
+{
+    static constexpr bool is_supported = true;
+    static constexpr const char* type_name = "uint32_t";
+    static bool meta_check(meta_check_context& ctx)
+    {
+        switch (ctx.current_meta().type())
+        {
+        case column_type::tinyint:
+        case column_type::smallint:
+        case column_type::year:
+        case column_type::mediumint:
+        case column_type::int_: return ctx.current_meta().is_unsigned();
+        default: return false;
+        }
+    }
+    static error_code parse(field_view input, T& output) { return parse_unsigned_int(input, output); }
+};
+
+template <class T>
+struct int_traits<T, true, 8>
+{
+    static constexpr bool is_supported = true;
+    static constexpr const char* type_name = "int64_t";
+    static bool meta_check(meta_check_context& ctx)
+    {
+        switch (ctx.current_meta().type())
+        {
+        case column_type::tinyint:
+        case column_type::smallint:
+        case column_type::year:
+        case column_type::mediumint:
+        case column_type::int_: return true;
+        case column_type::bigint: return !ctx.current_meta().is_unsigned();
+        default: return false;
+        }
+    }
+    static error_code parse(field_view input, T& output) { return parse_signed_int(input, output); }
+};
+
+template <class T>
+struct int_traits<T, false, 8>
+{
+    static constexpr bool is_supported = true;
+    static constexpr const char* type_name = "uint64_t";
+    static bool meta_check(meta_check_context& ctx)
+    {
+        switch (ctx.current_meta().type())
+        {
+        case column_type::tinyint:
+        case column_type::smallint:
+        case column_type::year:
+        case column_type::mediumint:
+        case column_type::int_:
+        case column_type::bigint: return ctx.current_meta().is_unsigned();
+        case column_type::bit: return true;
+        default: return false;
+        }
+    }
+    static error_code parse(field_view input, std::uint64_t& output)
     {
         return parse_unsigned_int(input, output);
     }
+};
+
+// Traits
+template <typename T, class EnableIf = void>
+struct readable_field_traits
+{
+    static constexpr bool is_supported = false;
+};
+
+template <>
+struct readable_field_traits<char, void> : int_traits<char>
+{
+};
+
+template <>
+struct readable_field_traits<signed char, void> : int_traits<signed char>
+{
+};
+
+template <>
+struct readable_field_traits<unsigned char, void> : int_traits<unsigned char>
+{
+};
+
+template <>
+struct readable_field_traits<short, void> : int_traits<short>
+{
+};
+
+template <>
+struct readable_field_traits<unsigned short, void> : int_traits<unsigned short>
+{
+};
+
+template <>
+struct readable_field_traits<int, void> : int_traits<int>
+{
+};
+
+template <>
+struct readable_field_traits<unsigned int, void> : int_traits<unsigned int>
+{
+};
+
+template <>
+struct readable_field_traits<long, void> : int_traits<long>
+{
+};
+
+template <>
+struct readable_field_traits<unsigned long, void> : int_traits<unsigned long>
+{
+};
+
+template <>
+struct readable_field_traits<long long, void> : int_traits<long long>
+{
+};
+
+template <>
+struct readable_field_traits<unsigned long long, void> : int_traits<unsigned long long>
+{
 };
 
 template <>
@@ -145,143 +330,6 @@ struct readable_field_traits<bool, void>
         assert(k == field_kind::int64);
         output = input.get_int64() != 0;
         return error_code();
-    }
-};
-
-template <>
-struct readable_field_traits<std::int16_t, void>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = "int16_t";
-    static bool meta_check(meta_check_context& ctx)
-    {
-        switch (ctx.current_meta().type())
-        {
-        case column_type::tinyint: return true;
-        case column_type::smallint:
-        case column_type::year: return !ctx.current_meta().is_unsigned();
-        default: return false;
-        }
-    }
-    static error_code parse(field_view input, std::int16_t& output)
-    {
-        return parse_signed_int<std::int16_t, std::uint16_t>(input, output);
-    }
-};
-
-template <>
-struct readable_field_traits<std::uint16_t, void>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = "uint16_t";
-    static bool meta_check(meta_check_context& ctx)
-    {
-        switch (ctx.current_meta().type())
-        {
-        case column_type::tinyint:
-        case column_type::smallint:
-        case column_type::year: return ctx.current_meta().is_unsigned();
-        default: return false;
-        }
-    }
-    static error_code parse(field_view input, std::uint16_t& output)
-    {
-        return parse_unsigned_int(input, output);
-    }
-};
-
-template <>
-struct readable_field_traits<std::int32_t, void>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = "int32_t";
-    static bool meta_check(meta_check_context& ctx)
-    {
-        switch (ctx.current_meta().type())
-        {
-        case column_type::tinyint:
-        case column_type::smallint:
-        case column_type::year:
-        case column_type::mediumint: return true;
-        case column_type::int_: return !ctx.current_meta().is_unsigned();
-        default: return false;
-        }
-    }
-    static error_code parse(field_view input, std::int32_t& output)
-    {
-        return parse_signed_int<std::int32_t, std::uint32_t>(input, output);
-    }
-};
-
-template <>
-struct readable_field_traits<std::uint32_t, void>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = "uint32_t";
-    static bool meta_check(meta_check_context& ctx)
-    {
-        switch (ctx.current_meta().type())
-        {
-        case column_type::tinyint:
-        case column_type::smallint:
-        case column_type::year:
-        case column_type::mediumint:
-        case column_type::int_: return ctx.current_meta().is_unsigned();
-        default: return false;
-        }
-    }
-    static error_code parse(field_view input, std::uint32_t& output)
-    {
-        return parse_unsigned_int(input, output);
-    }
-};
-
-template <>
-struct readable_field_traits<std::int64_t, void>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = "int64_t";
-    static bool meta_check(meta_check_context& ctx)
-    {
-        switch (ctx.current_meta().type())
-        {
-        case column_type::tinyint:
-        case column_type::smallint:
-        case column_type::year:
-        case column_type::mediumint:
-        case column_type::int_: return true;
-        case column_type::bigint: return !ctx.current_meta().is_unsigned();
-        default: return false;
-        }
-    }
-    static error_code parse(field_view input, std::int64_t& output)
-    {
-        return parse_signed_int<std::int64_t, std::uint64_t>(input, output);
-    }
-};
-
-template <>
-struct readable_field_traits<std::uint64_t, void>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = "uint64_t";
-    static bool meta_check(meta_check_context& ctx)
-    {
-        switch (ctx.current_meta().type())
-        {
-        case column_type::tinyint:
-        case column_type::smallint:
-        case column_type::year:
-        case column_type::mediumint:
-        case column_type::int_:
-        case column_type::bigint: return ctx.current_meta().is_unsigned();
-        case column_type::bit: return true;
-        default: return false;
-        }
-    }
-    static error_code parse(field_view input, std::uint64_t& output)
-    {
-        return parse_unsigned_int(input, output);
     }
 };
 
