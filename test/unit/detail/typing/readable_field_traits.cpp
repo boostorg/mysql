@@ -572,7 +572,7 @@ BOOST_AUTO_TEST_CASE(errors)
         {"uint16_absmax",                   proto_val_err, ui64_absmax,                     parse_and_discard<std::uint16_t>        },
 
         {"int32_null",                      is_null,       field_view(),                    parse_and_discard<std::int32_t>         },
-        {"int32_signed_ltmin",              proto_val_err, field_view(-0x80000001L),        parse_and_discard<std::int32_t>         },
+        {"int32_signed_ltmin",              proto_val_err, field_view(-0x80000001LL),       parse_and_discard<std::int32_t>         },
         {"int32_signed_gtmax",              proto_val_err, field_view(0x80000000L),         parse_and_discard<std::int32_t>         },
         {"int32_signed_absmin",             proto_val_err, i64_absmin,                      parse_and_discard<std::int32_t>         },
         {"int32_signed_absmax",             proto_val_err, i64_absmax,                      parse_and_discard<std::int32_t>         },
