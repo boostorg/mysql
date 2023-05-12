@@ -29,6 +29,13 @@ namespace mysql {
  * \ref should_start_op, \ref should_read_rows, \ref should_read_head
  * and \ref complete. They are mutually exclusive.
  * More states may be added in the future as more protocol features are implemented.
+ * \n
+ * Note that this class doesn't store rows anyhow. Row template parameters are
+ * used to validate their compatibility with the data that will be returned by the server.
+ *
+ * \tparam StaticRow The row or row types that will be returned by the server.
+ * There must be one for every resultset returned by the query, and always at least one.
+ * All the passed types must fulfill the `StaticRow` concept.
  *
  * \par Thread safety
  * Distinct objects: safe. \n
@@ -137,7 +144,9 @@ public:
      * \brief Returns metadata about the columns in the query.
      * \details
      * The returned collection will have as many \ref metadata objects as columns retrieved by
-     * the SQL query, and in the same order. This may not be the same as the
+     * the SQL query, and in the same order. Note that this may not be the same order as in the `StaticRow`
+     * type, since columns may be mapped by name or discarded. This function returns the representation that
+     * was retrieved from the database.
      *
      * \par Exception safety
      * No-throw guarantee.

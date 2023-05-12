@@ -111,7 +111,10 @@ We now [*must] read all the generated rows by calling [refmem connection read_so
 
 Some remarks:
 
-* We must allocate and pass `read_some_rows` a `boost::span` of the appropriate row type.
+* [reflink static_execution_state] doesn't store rows anyhow. It uses the row types passed
+  as template parameters to validate the metadata returned by the server, and ensure it is compatible
+  with the C++ data structures that will be used with `read_some_rows`.
+* We must pass `read_some_rows` a `boost::span` of the appropriate row type.
   We've used `std::array` to allocate rows on the stack, but you can use any other contiguous range.
 * `read_some_rows` returns the number of read rows. At maximum, this will be the size
   of the span, but there may be less, depending on row and network buffer sizes.

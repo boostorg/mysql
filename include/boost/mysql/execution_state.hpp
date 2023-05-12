@@ -24,7 +24,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds state for multi-function SQL execution operations.
+ * \brief Holds state for multi-function SQL execution operations (dynamic interface).
  * \details
  * This class behaves like a state machine. The current state can be accessed using
  * \ref should_start_op, \ref should_read_rows, \ref should_read_head
