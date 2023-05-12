@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE(legacy_protocol_field_types)
         column_type expected;
     } test_cases[] = {
         {"tiny_text",      protocol_field_type::tiny_blob,   collations::utf8mb4_general_ci, column_type::text     },
-        {"tiny_blob",      protocol_field_type::tiny_blob,   collations::binary,             column_type::text     },
+        {"tiny_blob",      protocol_field_type::tiny_blob,   collations::binary,             column_type::blob     },
         {"medium_text",    protocol_field_type::medium_blob, collations::utf8mb4_general_ci, column_type::text     },
         {"medium_blob",    protocol_field_type::medium_blob, collations::binary,             column_type::blob     },
         {"long_text",      protocol_field_type::long_blob,   collations::utf8mb4_general_ci, column_type::text     },
