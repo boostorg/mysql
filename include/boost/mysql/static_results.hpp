@@ -24,14 +24,13 @@ namespace mysql {
 /**
  * \brief Holds the results of a SQL query (static interface).
  * \details
- * This object can store the results of single and multi resultset queries.
- * The template parameters describe the row type or types returned by the server,
- * and must satisfy the `StaticRow` concept.
- * \n
- * Rows are stored within the object, as a collection of `StaticRow` objects.
- * One `StaticRow` type must be passed as template argument for each resultset
- * type returned by the SQL statement that will be executed.
- * \n
+ * This object can store the results of single and multi resultset queries
+ * in a type-safe manner.
+ *
+ * \tparam StaticRow The row or row types that will be returned by the server.
+ * There must be one for every resultset returned by the query, and always at least one.
+ * All the passed types must fulfill the `StaticRow` concept.
+ *
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n
@@ -111,6 +110,8 @@ public:
      * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
      * specify this parameter to obtain the rows contained in the i-th resultset. If left unspecified,
      * rows for the first resultset are returned.
+     *
+     * \return Returns a read-only span of the `I`-th row type.
      *
      * \par Preconditions
      * `this->has_value() == true`
