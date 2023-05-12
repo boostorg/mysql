@@ -180,7 +180,7 @@ public:
     unsigned warning_count() const noexcept { return impl_.get_warning_count(); }
 
     /**
-     * \brief Returns additionat text information about this resultset.
+     * \brief Returns additional text information about this resultset.
      * \details
      * The format of this information is documented by MySQL <a
      * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.

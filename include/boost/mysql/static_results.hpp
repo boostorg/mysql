@@ -21,13 +21,25 @@
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief Holds the results of a SQL query (static interface).
+ * \details
+ * This object can store the results of single and multi resultset queries.
+ * The template parameters describe the row type or types returned by the server,
+ * and must satisfy the `StaticRow` concept.
+ * \n
+ * Rows are stored within the object, as a collection of `StaticRow` objects.
+ * One `StaticRow` type must be passed as template argument for each resultset
+ * type returned by the SQL statement that will be executed.
+ * \n
+ * \par Thread safety
+ * Distinct objects: safe. \n
+ * Shared objects: unsafe. \n
+ */
 template <class... StaticRow>
 class static_results
 {
 public:
-    template <std::size_t I>
-    using row_type = boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...>>::type>;
-
     /**
      * \brief Default constructor.
      * \details Constructs an empty results object, with `this->has_value() == false`.
@@ -50,8 +62,7 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * View objects obtained from `other` using \ref rows and \ref meta remain valid.
-     * Any other views and iterators referencing `other` are invalidated.
+     * View objects obtained from `other` remain valid.
      */
     static_results(static_results&& other) = default;
 
@@ -61,7 +72,7 @@ public:
      * Basic guarantee. Internal allocations may throw.
      *
      * \par Object lifetimes
-     * Views and iterators referencing `*this` are invalidated.
+     * Views referencing `*this` are invalidated.
      */
     static_results& operator=(const static_results& other) = default;
 
@@ -71,9 +82,8 @@ public:
      * Basic guarantee. Internal allocations may throw.
      *
      * \par Object lifetimes
-     * View objects obtained from `other` using \ref rows and \ref meta remain valid.
-     * Any other views and iterators referencing `other` are invalidated. Views and iterators
-     * referencing `*this` are invalidated.
+     * View objects obtained from `other` remain valid.
+     * Views and referencing `*this` are invalidated.
      */
     static_results& operator=(static_results&& other) = default;
 
@@ -97,8 +107,10 @@ public:
     /**
      * \brief Returns the rows retrieved by the SQL query.
      * \details
-     * For operations returning more than one resultset, returns the rows
-     * for the first resultset.
+     *
+     * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
+     * specify this parameter to obtain the rows contained in the i-th resultset. If left unspecified,
+     * rows for the first resultset are returned.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -115,8 +127,12 @@ public:
      * Constant.
      */
     template <std::size_t I = 0>
-    row_type<I> rows() const noexcept
-    {
+#ifdef BOOST_MYSQL_DOXYGEN
+    boost::span<const StaticRow... [I]>
+#else
+    boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...> >::type>
+#endif
+    rows() const noexcept {
         assert(has_value());
         return impl_.template get_rows<I>();
     }
@@ -125,10 +141,13 @@ public:
      * \brief Returns metadata about the columns in the query.
      * \details
      * The returned collection will have as many \ref metadata objects as columns retrieved by
-     * the SQL query, and in the same order.
-     * \n
-     * For operations returning more than one resultset, returns metadata
-     * for the first resultset.
+     * the SQL query, and in the same order. Note that this may not be the same order as in the `StaticRow`
+     * type, since columns may be mapped by name or discarded. This function returns the representation that
+     * was retrieved from the database.
+     *
+     * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
+     * specify this parameter to obtain metadata for the i-th resultset. If left unspecified,
+     * metadata for the first resultset is returned.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -155,8 +174,9 @@ public:
     /**
      * \brief Returns the number of rows affected by the executed SQL statement.
      * \details
-     * For operations returning more than one resultset, returns the
-     * first resultset's affected rows.
+     * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
+     * specify this parameter to obtain the number of affected rows by the i-th resultset. If left
+     * unspecified, the number of affected rows by the first resultset is returned.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -178,8 +198,9 @@ public:
     /**
      * \brief Returns the last insert ID produced by the executed SQL statement.
      * \details
-     * For operations returning more than one resultset, returns the
-     * first resultset's last insert ID.
+     * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
+     * specify this parameter to obtain the last insert ID for the i-th resultset. If left unspecified,
+     * the last insert ID for the first resultset is returned.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -201,8 +222,9 @@ public:
     /**
      * \brief Returns the number of warnings produced by the executed SQL statement.
      * \details
-     * For operations returning more than one resultset, returns the
-     * first resultset's warning count.
+     * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
+     * specify this parameter to obtain the warning count for the i-th resultset. If left unspecified,
+     * the warning count for the first resultset is returned.
      *
      * \par Preconditions
      * `this->has_value() == true`
@@ -222,15 +244,16 @@ public:
     }
 
     /**
-     * \brief Returns additionat text information about the execution of the SQL statement.
+     * \brief Returns additional text information about the execution of the SQL statement.
      * \details
      * The format of this information is documented by MySQL <a
      * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
      * \n
      * The returned string always uses ASCII encoding, regardless of the connection's character set.
-     * \n
-     * For operations returning more than one resultset, returns the
-     * first resultset's info.
+     *
+     * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
+     * specify this parameter to obtain the value for the i-th resultset. If left unspecified,
+     * the value for the first resultset is returned.
      *
      * \par Preconditions
      * `this->has_value() == true`

@@ -37,6 +37,7 @@
           <member><link linkend="mysql.ref.boost__mysql__rows">rows</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows_view">rows_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__statement">statement</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__static_results">static_results</link></member>
         </simplelist>
       </entry>
       <entry valign="top">

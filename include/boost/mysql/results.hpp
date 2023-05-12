@@ -26,7 +26,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds the results of a SQL query.
+ * \brief Holds the results of a SQL query (dynamic interface).
  * \details
  * This object can store the results of single and multi resultset queries.
  * For the former, you use \ref meta, \ref rows, \ref affected_rows and so on.
@@ -252,7 +252,7 @@ public:
     }
 
     /**
-     * \brief Returns additionat text information about the execution of the SQL statement.
+     * \brief Returns additional text information about the execution of the SQL statement.
      * \details
      * The format of this information is documented by MySQL <a
      * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
