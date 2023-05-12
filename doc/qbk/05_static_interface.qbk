@@ -53,7 +53,7 @@ and is performed before reading any data.
 
 * [*Type compatibility]: the C++ type must be able to represent any value that the MySQL type can represent.
   For example, `std::int32_t` is compatible with `TINYINT` (1 byte integer), but not with `BIGINT` (8 byte integer).
-  For a full list of allowable field types, [link mysql.static_interface.static_type_mappings refer to this table].
+  For a full list of allowable field types, [link mysql.static_interface.readable_field_reference refer to this table].
 * [*Nullability]: if MySQL reports that a column can be `NULL`, your type must account for it. You can use
   `std::optional` or `boost::optional` for columns that may be `NULL`.
 
@@ -78,7 +78,7 @@ For a usage example, see [link mysql.examples.stored_procedures_cpp14].
 The following table is a reference on which C++ types can be used in your
 row types and their compatibility with MySQL database types:
 
-[table:static_type_mappings
+[table:readable_field_reference
     [
         [C++ type]
         [Compatible with...]

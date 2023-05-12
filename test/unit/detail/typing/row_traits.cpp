@@ -104,6 +104,11 @@ static_assert(is_static_row<tbad>::value, "");
 static_assert(!is_static_row<unrelated>::value, "");
 static_assert(!is_static_row<int>::value, "");
 static_assert(!is_static_row<row>::value, "");
+static_assert(!is_static_row<s1&>::value, "");
+static_assert(!is_static_row<const s1&>::value, "");
+static_assert(!is_static_row<s1&&>::value, "");
+static_assert(!is_static_row<const s1&&>::value, "");
+static_assert(!is_static_row<s1*>::value, "");
 
 // Helpers
 void compare_name_tables(name_table_t lhs, name_table_t rhs)

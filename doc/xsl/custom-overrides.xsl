@@ -35,7 +35,8 @@
     'Executor',
     'WritableFieldTuple',
     'FieldViewFwdIterator',
-    'ExecutionRequest'
+    'ExecutionRequest',
+    'StaticRow'
   "/>
 
 </xsl:stylesheet>

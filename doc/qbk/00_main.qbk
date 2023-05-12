@@ -41,6 +41,7 @@
 [def __FieldViewFwdIterator__ [reflink2 FieldViewFwdIterator ['FieldViewFwdIterator]]]
 [def __WritableFieldTuple__ [reflink2 WritableFieldTuple ['WritableFieldTuple]]]
 [def __ExecutionRequest__ [reflink2 ExecutionRequest ['ExecutionRequest]]]
+[def __StaticRow__ [reflink2 StaticRow ['StaticRow]]]
 
 [def __Boost__ [@https://www.boost.org/ Boost]]
 [def __Asio__ [@boost:/libs/asio/index.html Boost.Asio]]
@@ -122,5 +123,6 @@
 [include helpers/FieldViewFwdIterator.qbk]
 [include helpers/WritableFieldTuple.qbk]
 [include helpers/ExecutionRequest.qbk]
+[include helpers/StaticRow.qbk]
 [block'''</part>''']
 [endsect]
