@@ -192,7 +192,10 @@ row types and their compatibility with MySQL database types:
         ]
     ]
     [
-        [`std::basic_string<char, std::char_traits<char>, Allocator>`]
+        [
+            `std::basic_string<char, std::char_traits<char>, Allocator>`[br][br]
+            The object must be default-constructible.
+        ]
         [
             __CHAR__, __VARCHAR__, __TEXT__[br]
             __ENUM__, __SET__[br]
@@ -201,26 +204,38 @@ row types and their compatibility with MySQL database types:
         ]
     ]
     [
-        [`std::basic_vector<unsigned char, Allocator>`]
+        [
+            `std::basic_vector<unsigned char, Allocator>`[br][br]
+            The object must be default-constructible.
+        ]
         [
             __BINARY__, __VARBINARY__, __BLOB__[br]
             __GEOMETRY__
         ]
     ]
     [
-        [`std::optional<T>`]
+        [
+            `std::optional<T>`[br][br]
+            `T` must be any of the types listed in this table.
+        ]
         [
             Any type compatible with `T`
         ]
     ]
     [
-        [`boost::optional<T>`]
+        [
+            `boost::optional<T>`[br][br]
+            `T` must be any of the types listed in this table.
+        ]
         [
             Any type compatible with `T`
         ]
     ]
     [
-        [[reflink2 non_null `non_null<T>`]]
+        [
+            [reflink2 non_null `non_null<T>`][br][br]
+            `T` must be any of the types listed in this table.
+        ]
         [
             Any type compatible with `T`
         ]
