@@ -9,11 +9,12 @@
 
 A type `T` is a `WritableFieldTuple` if it's a `std::tuple` specialization,
 or a reference to one, and all element types fulfill the exposition-only
-concept `FieldLike`. Empty tuples satisfy `WritableFieldTuple`.
+concept `WritableField`. Empty tuples satisfy `WritableFieldTuple`.
 
-Currently, a type `T2` satisfies `FieldLike` if a [reflink field_view]
-can be constructed from `T2`. The exact definition may change in future releases.
-
-However, the types listed in [link mysql.fields.cpp_to_mysql this table] are guaranteed to satisfy `FieldLike`.
+A type is a `WritableField` if it can be used to represent a statement parameter
+value to be sent to the server. A type `T` satisfies `WritableField` if it is
+[link mysql.prepared_statements.writable_field_reference any of the types listed in this table],
+or a (possibly cv-qualified) reference to any of them.
+More types may be added in future releases.
 
 [endsect]

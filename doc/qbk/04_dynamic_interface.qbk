@@ -214,7 +214,7 @@ The range column shows the range of values that MySQL admits for that type. This
 guarantees that any field retrieved from the database honors that range. The `column_type`
 column shows what [refmem metadata type] would return for a column of that type.
 
-[table
+[table:dynamic_field_mappings
     [
         [MySQL type]
         [`field_kind`]

@@ -9,7 +9,7 @@
 [section:charsets Character sets]
 [nochunk]
 
-[section Character set refresher]
+[heading Character set refresher]
 
 MySQL defines a character set as "a set of symbols and their respective encodings". `ascii`,
 `latin1`, `utf8` and `utf16` are character sets supported by MySQL.
@@ -22,9 +22,7 @@ For example, `latin1_swedish_ci` is the default collation for the `latin1` chara
 
 You can find more information about these concepts in [mysqllink charset.html the official MySQL docs on character sets].
 
-[endsect]
-
-[section The connection character set and collation]
+[heading The connection character set and collation]
 
 Every connection has an associated character set and collation. The connection's character set determines
 the encoding for character strings sent to and retrieved from the server. This includes SQL query strings,
@@ -50,9 +48,7 @@ character set and collation. You can specify this in two ways:
 
 [charsets_set_names]
 
-[endsect]
-
-[section character_set_results and character_set_client]
+[heading character_set_results and character_set_client]
 
 Both of the above methods are shortcuts to set several session-level variables.
 The ones that impact this library's behavior are:
@@ -80,7 +76,7 @@ The ones that impact this library's behavior are:
 
 The table below summarizes the encoding used by each piece of functionality in this library:
 
-[table
+[table:string_encoding
     [
         [Functionality]
         [Encoding given by...]
@@ -128,7 +124,5 @@ The table below summarizes the encoding used by each piece of functionality in t
         ]
     ]
 ]
-
-[endsect]
 
 [endsect]

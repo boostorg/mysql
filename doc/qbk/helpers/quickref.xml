@@ -56,6 +56,15 @@
           <member><link linkend="mysql.ref.boost__mysql__unix_connection">unix_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__unix_ssl_connection">unix_ssl_connection</link></member>
         </simplelist>
+        <bridgehead renderas="sect3">Concepts</bridgehead>
+        <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__ExecutionRequest">ExecutionRequest</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__Stream">Stream</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__WritableFieldTuple">WritableFieldTuple</link></member>
+        </simplelist>
       </entry>
       <entry valign="top">
         <bridgehead renderas="sect3">Enumerations</bridgehead>
@@ -89,14 +98,12 @@
           <member><link linkend="mysql.ref.boost__mysql__make_error_code">make_error_code</link></member>
           <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
         </simplelist>
-        <bridgehead renderas="sect3">Concepts</bridgehead>
+        <bridgehead renderas="sect3">Reference tables</bridgehead>
         <simplelist type="vert" columns="1">
-          <member><link linkend="mysql.ref.boost__mysql__ExecutionRequest">ExecutionRequest</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__Stream">Stream</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__WritableFieldTuple">WritableFieldTuple</link></member>
+          <member><link linkend="mysql.dynamic_interface.dynamic_field_mappings">Dynamic interface type mappings</link></member>
+          <member><link linkend="mysql.static_interface.readable_field_reference">ReadableField types</link></member>
+          <member><link linkend="mysql.prepared_statements.writable_field_reference">WritableField types</link></member>
+          <member><link linkend="mysql.charsets.string_encoding">String encoding</link></member>
         </simplelist>
       </entry>
     </row></tbody>

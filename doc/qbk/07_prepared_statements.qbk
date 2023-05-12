@@ -45,7 +45,7 @@ Some observations:
 * You don't need to sanitize the parameters anyhow. The server takes care of it.
 * Actual parameters are matched to `?` placeholders by order. 
 * You can pass types like built-in integers, `float`, [reflink date], `std::string`,
-  with the expected effects. [link mysql.prepared_statements.stmt_type_mappings This table]
+  with the expected effects. [link mysql.prepared_statements.writable_field_reference This table]
   contains a reference with all the allowed types.
 
 You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`.
@@ -106,7 +106,7 @@ The following table shows how a parameter `v` in a expression `conn.execute(stmt
 is interpreted by MySQL, depeding on `v`'s type.
 
 
-[table:stmt_type_mappings
+[table:writable_field_reference
     [
         [C++ type]
         [MySQL type]
