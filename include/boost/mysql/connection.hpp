@@ -957,11 +957,11 @@ public:
      */
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& info);
 
-    /// \copydoc read_some_rows
+    /// \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
     rows_view read_some_rows(execution_state& st);
 
     /**
-     * \copydoc read_some_rows
+     * \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
      * \details
      * \par Handler signature
      * The handler signature for this operation is
@@ -978,7 +978,7 @@ public:
         return async_read_some_rows(st, shared_diag(), std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc async_read_some_rows
+    /// \copydoc async_read_some_rows(execution_state&,CompletionToken&&)
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
@@ -989,6 +989,32 @@ public:
     );
 
 #ifdef BOOST_MYSQL_CXX14
+
+    /**
+     * \brief Reads a batch of rows.
+     * \details
+     * Reads a batch of rows of unspecified size into the storage given by `output`.
+     * At most `output.size()` rows will be read. If the operation represented by `st`
+     * has still rows to read, and `output.size() > 0`, at least one row will be read.
+     * \n
+     * Returns the number of read rows.
+     * \n
+     * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
+     * zero.
+     * \n
+     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
+     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
+     * grown bigger by other read operations, if required.
+     * \n
+     * Rows read by this function are owning objects, and don't hold any reference to
+     * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
+     * \n
+     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type must match the resultset that is currently being processed by `st`. For instance,
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
+     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     */
     template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(
         static_execution_state<StaticRow...>& st,
@@ -997,15 +1023,65 @@ public:
         diagnostics& info
     );
 
+    /**
+     * \brief Reads a batch of rows.
+     * \details
+     * Reads a batch of rows of unspecified size into the storage given by `output`.
+     * At most `output.size()` rows will be read. If the operation represented by `st`
+     * has still rows to read, and `output.size() > 0`, at least one row will be read.
+     * \n
+     * Returns the number of read rows.
+     * \n
+     * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
+     * zero.
+     * \n
+     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
+     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
+     * grown bigger by other read operations, if required.
+     * \n
+     * Rows read by this function are owning objects, and don't hold any reference to
+     * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
+     * \n
+     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type must match the resultset that is currently being processed by `st`. For instance,
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
+     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     */
     template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output);
 
     /**
-     * \copydoc read_some_rows
+     * \brief Reads a batch of rows.
      * \details
+     * Reads a batch of rows of unspecified size into the storage given by `output`.
+     * At most `output.size()` rows will be read. If the operation represented by `st`
+     * has still rows to read, and `output.size() > 0`, at least one row will be read.
+     * \n
+     * Returns the number of read rows.
+     * \n
+     * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
+     * zero.
+     * \n
+     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
+     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
+     * grown bigger by other read operations, if required.
+     * \n
+     * Rows read by this function are owning objects, and don't hold any reference to
+     * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
+     * \n
+     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type must match the resultset that is currently being processed by `st`. For instance,
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
+     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     *
      * \par Handler signature
      * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
+     * `void(boost::mysql::error_code, std::size_t)`.
+     *
+     * \par Object lifetimes
+     * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
         class SpanStaticRow,
@@ -1022,16 +1098,47 @@ public:
         return async_read_some_rows(st, output, shared_diag(), std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc async_read_some_rows
+    /**
+     * \brief Reads a batch of rows.
+     * \details
+     * Reads a batch of rows of unspecified size into the storage given by `output`.
+     * At most `output.size()` rows will be read. If the operation represented by `st`
+     * has still rows to read, and `output.size() > 0`, at least one row will be read.
+     * \n
+     * Returns the number of read rows.
+     * \n
+     * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
+     * zero.
+     * \n
+     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
+     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
+     * grown bigger by other read operations, if required.
+     * \n
+     * Rows read by this function are owning objects, and don't hold any reference to
+     * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
+     * \n
+     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type must match the resultset that is currently being processed by `st`. For instance,
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
+     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, std::size_t)`.
+     *
+     * \par Object lifetimes
+     * The storage that `output` references must be kept alive until the operation completes.
+     */
     template <
-        class SpanRowType,
+        class SpanStaticRow,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanRowType> output,
+        span<SpanStaticRow> output,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     );
