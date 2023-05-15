@@ -156,6 +156,11 @@ static_assert(!is_readable_field<void*>::value, "");
 static_assert(!is_readable_field<unrelated>::value, "");
 static_assert(!is_readable_field<const field_view*>::value, "");
 
+// const-qualified objects are not accepted
+static_assert(!is_readable_field<const int>::value, "");
+static_assert(!is_readable_field<const std::string>::value, "");
+static_assert(!is_readable_field<boost::optional<const int>>::value, "");
+
 BOOST_AUTO_TEST_SUITE(meta_check_field_)
 
 using single_field_check_fn = void (*)(meta_check_context&);

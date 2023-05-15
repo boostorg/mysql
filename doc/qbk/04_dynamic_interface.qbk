@@ -8,10 +8,23 @@
 [section:dynamic_interface The dynamic interface]
 [nochunk]
 
-The dynamic interface uses variant-like objects, called ['fields], to represent
-values retrieved from MySQL.
+To use the dynamic interface, use the [reflink results] class. `results` is
+an in-memory representation of a resultset. We can depict it like this
+(this is actually a simplified representation, since
+[link mysql.multi_resultset some statements may return more than one resultset]).
 
-The following classes are part of the dynamic interface:
+[$mysql/images/results.svg [align center] [scale 125]]
+
+We can see that [refmem results rows] returns a matrix-like object,
+containing the retrieved rows. This section is dedicated on diving deeper
+on how to use these objects.
+
+[heading Rows and fields]
+
+This matrix-like structure is composed of variant-like objects called ['fields].
+Field objects are capable of representing any value retrieved from MySQL.
+
+This library defines the following classes to work with rows and fields:
 
 [variablelist
     [

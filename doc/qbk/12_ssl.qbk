@@ -60,7 +60,7 @@ are implemented in terms of [refmem connection quit] and
 [refmem connection async_quit], and thus also perform the TLS shutdown. 
 
 
-[heading SSL negotiation]
+[heading:negotiation SSL negotiation]
 
 During the handshake, client and server will negotiate whether to use TLS or not. For SSL
 capable streams, we support using TLS conditionally. This is controlled using the [reflink ssl_mode]
