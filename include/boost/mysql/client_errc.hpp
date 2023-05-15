@@ -50,10 +50,19 @@ enum class client_errc : int
     /// The connection mandatory SSL, but the server doesn't accept SSL connections.
     server_doesnt_support_ssl,
 
+    /// The static interface detected a mismatch between your C++ type definitions and what the server
+    /// returned in the query.
     metadata_check_failed,
+
+    /// The static interface detected a mismatch between the number of row types passed to `static_results`
+    /// or `static_execution_state` and the number of resultsets returned by your query.
     num_resultsets_mismatch,
-    is_null,
+
+    /// The StaticRow type passed to read_some_rows does not correspond to the resultset type being read.
     row_type_mismatch,
+
+    /// A field specified as `non_null<T>` was NULL.
+    is_null,
 };
 
 /// Creates an \ref error_code from a \ref client_errc.

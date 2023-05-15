@@ -313,6 +313,7 @@ public:
      * \brief Executes a text query or prepared statement.
      * \details
      * Sends `req` to the server for execution and reads the response into `result`.
+     * `result` may be either a \ref results or \ref static_results object.
      * `req` should may be either a type convertible to \ref string_view containing valid SQL
      * or a bound prepared statement, obtained by calling \ref statement::bind.
      * If a string, it must be encoded using the connection's character set.
@@ -386,6 +387,8 @@ public:
      * \details
      * Writes the execution request and reads the initial server response and the column
      * metadata, but not the generated rows or subsequent resultsets, if any.
+     * `st` may be either an \ref execution_state or \ref static_execution_state object.
+     * \n
      * After this operation completes, `st` will have
      * \ref execution_state::meta populated.
      * Metadata will be populated according to `this->meta_mode()`.
@@ -1153,6 +1156,8 @@ public:
      * with that error.
      * \n
      * If `st.should_read_head() == false`, this function is a no-op.
+     * \n
+     * `st` may be either an \ref execution_state or \ref static_execution_state object.
      * \n
      * This function is only relevant when using multi-function operations with statements
      * that return more than one resultset.
