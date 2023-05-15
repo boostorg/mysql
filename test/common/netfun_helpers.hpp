@@ -134,7 +134,7 @@ network_result<R> create_initial_netresult(bool with_diag = true)
 {
     network_result<R> res(boost::mysql::make_error_code(boost::mysql::common_server_errc::er_no));
     if (with_diag)
-        res.diag = create_diagnostics("diagnostics not cleared properly");
+        res.diag = create_server_diag("diagnostics not cleared properly");
     return res;
 }
 

@@ -19,7 +19,7 @@
 using boost::mysql::error_code;
 using boost::mysql::error_with_diagnostics;
 using boost::mysql::throw_on_error;
-using boost::mysql::test::create_diagnostics;
+using boost::mysql::test::create_server_diag;
 
 namespace {
 
@@ -28,14 +28,14 @@ BOOST_AUTO_TEST_SUITE(test_throw_on_error)
 BOOST_AUTO_TEST_CASE(success)
 {
     error_code ec;
-    auto diag = create_diagnostics("abc");
+    auto diag = create_server_diag("abc");
     BOOST_CHECK_NO_THROW(throw_on_error(ec, diag));
 }
 
 BOOST_AUTO_TEST_CASE(failure)
 {
     error_code ec(boost::mysql::client_errc::incomplete_message);
-    auto diag = create_diagnostics("abc");
+    auto diag = create_server_diag("abc");
     BOOST_CHECK_EXCEPTION(
         throw_on_error(ec, diag),
         error_with_diagnostics,
