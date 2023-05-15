@@ -130,7 +130,7 @@ public:
     }
     metadata_collection_view get_meta(std::size_t index) const noexcept
     {
-        const auto& resultset_data = per_result_[index];
+        const auto& resultset_data = get_resultset(index);
         return metadata_collection_view(
             meta_.data() + resultset_data.meta_offset,
             resultset_data.num_columns
@@ -139,29 +139,23 @@ public:
 
     std::uint64_t get_affected_rows(std::size_t index) const noexcept
     {
-        return get_resultset_with_ok_packet(index).affected_rows;
+        return get_resultset(index).affected_rows;
     }
 
     std::uint64_t get_last_insert_id(std::size_t index) const noexcept
     {
-        return get_resultset_with_ok_packet(index).last_insert_id;
+        return get_resultset(index).last_insert_id;
     }
 
-    unsigned get_warning_count(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).warnings;
-    }
+    unsigned get_warning_count(std::size_t index) const noexcept { return get_resultset(index).warnings; }
 
     string_view get_info(std::size_t index) const noexcept
     {
-        const auto& resultset_data = get_resultset_with_ok_packet(index);
+        const auto& resultset_data = get_resultset(index);
         return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
     }
 
-    bool get_is_out_params(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).is_out_params;
-    }
+    bool get_is_out_params(std::size_t index) const noexcept { return get_resultset(index).is_out_params; }
 
     results_impl& get_interface() noexcept { return *this; }
 
@@ -291,11 +285,10 @@ private:
         }
     }
 
-    const per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
+    const per_resultset_data& get_resultset(std::size_t index) const noexcept
     {
-        const auto& res = per_result_[index];
-        assert(res.has_ok_packet_data);
-        return res;
+        assert(index < per_result_.size());
+        return per_result_[index];
     }
 
     metadata_collection_view current_resultset_meta() const noexcept

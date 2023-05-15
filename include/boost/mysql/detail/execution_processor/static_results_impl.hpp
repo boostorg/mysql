@@ -138,29 +138,23 @@ public:
 
     std::uint64_t get_affected_rows(std::size_t index) const noexcept
     {
-        return get_resultset_with_ok_packet(index).affected_rows;
+        return ext_.per_result(index).affected_rows;
     }
 
     std::uint64_t get_last_insert_id(std::size_t index) const noexcept
     {
-        return get_resultset_with_ok_packet(index).last_insert_id;
+        return ext_.per_result(index).last_insert_id;
     }
 
-    unsigned get_warning_count(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).warnings;
-    }
+    unsigned get_warning_count(std::size_t index) const noexcept { return ext_.per_result(index).warnings; }
 
     string_view get_info(std::size_t index) const noexcept
     {
-        const auto& resultset_data = get_resultset_with_ok_packet(index);
+        const auto& resultset_data = ext_.per_result(index);
         return string_view(info_.data() + resultset_data.info_offset, resultset_data.info_size);
     }
 
-    bool get_is_out_params(std::size_t index) const noexcept
-    {
-        return get_resultset_with_ok_packet(index).is_out_params;
-    }
+    bool get_is_out_params(std::size_t index) const noexcept { return ext_.per_result(index).is_out_params; }
 
 private:
     // Virtual implementations
@@ -265,13 +259,6 @@ private:
         bool should_be_last = resultset_index_ == ext_.num_resultsets();
         bool is_last = !(pack.status_flags & SERVER_MORE_RESULTS_EXISTS);
         return should_be_last == is_last ? error_code() : client_errc::num_resultsets_mismatch;
-    }
-
-    const static_per_resultset_data& get_resultset_with_ok_packet(std::size_t index) const noexcept
-    {
-        const auto& res = ext_.per_result(index);
-        assert(res.has_ok_packet_data);
-        return res;
     }
 
     error_code meta_check(diagnostics& diag) const
