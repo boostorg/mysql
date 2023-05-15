@@ -28,7 +28,7 @@ Here is a list of available examples:
 # [link mysql.examples.ssl Setting SSL options]
 # [link mysql.examples.source_script Using multi-queries to source a .sql file]
 
-[section:setup Setup]
+[heading Setup]
 
 To run the examples, you need a MySQL server you can connect to.
 Examples make use of a database named `boost_mysql_examples`.
@@ -57,7 +57,6 @@ and is not suitable for production.
 
 The root MySQL user for these containers is `root` and it has an empty password.
 
-[endsect]
 
 [section:async_callbacks Async functions using callbacks]
 

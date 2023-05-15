@@ -804,14 +804,14 @@ void section_multi_resultset_multi_queries(char** argv)
     results result;
     conn.execute(
         R"(
-                CREATE TEMPORARY TABLE posts (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    title VARCHAR (256),
-                    body TEXT
-                );
-                INSERT INTO posts (title, body) VALUES ('Breaking news', 'Something happened!');
-                SELECT COUNT(*) FROM posts;
-            )",
+            CREATE TEMPORARY TABLE posts (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                title VARCHAR (256),
+                body TEXT
+            );
+            INSERT INTO posts (title, body) VALUES ('Breaking news', 'Something happened!');
+            SELECT COUNT(*) FROM posts;
+        )",
         result
     );
     //]

@@ -13,7 +13,7 @@ make use of TLS connections, as TLS is required for the
 [mysqllink caching-sha2-pluggable-authentication.html `caching_sha2_password`]
 authentication plugin, which is the default in MySQL 8.0.
 
-[section:streams SSL-enabled streams]
+[heading SSL-enabled streams]
 
 To use SSL/TLS, you must use a [reflink connection] with a 
 [reflink Stream] that supports SSL. A SSL-enabled stream must inherit from
@@ -26,9 +26,9 @@ Note that there is no need to use TLS when using UNIX sockets. As the traffic do
 leave the machine, MySQL considers them secure, and will allow using authentication
 plugins like `caching_sha2_password` even if TLS is not used.
 
-[endsect]
 
-[section:handshake When is the SSL handshake performed?]
+
+[heading When is the SSL handshake performed?]
 
 The SSL handshake is performed while establishing the connection to the MySQL server,
 as part of the [refmem connection handshake] and [refmem connection async_handshake]. The functions
@@ -59,9 +59,8 @@ The functions [refmem connection close] and [refmem connection async_close]
 are implemented in terms of [refmem connection quit] and 
 [refmem connection async_quit], and thus also perform the TLS shutdown. 
 
-[endsect]
 
-[section:negotiation SSL negotiation]
+[heading SSL negotiation]
 
 During the handshake, client and server will negotiate whether to use TLS or not. For SSL
 capable streams, we support using TLS conditionally. This is controlled using the [reflink ssl_mode]
@@ -88,6 +87,5 @@ be used.
 
 See [link mysql.connparams this section] for more information on [reflink handshake_params].
 
-[endsect]
 
 [endsect]

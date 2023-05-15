@@ -12,7 +12,7 @@ This section discusses several aspects regarding the establishment
 of a connection with the MySQL server, including a detailed
 description of the parameters in [reflink handshake_params].
 
-[section:auth Authentication]
+[heading Authentication]
 
 The parameters [refmem handshake_params username] and
 [refmem handshake_params password] are mandatory. The
@@ -57,9 +57,7 @@ an unsupported authentication plugin, the operation will fail.
     may be lifted in the future.
 ]
 
-[endsect]
-
-[section:database Connect with database]
+[heading Connect with database]
 
 The parameter [refmem handshake_params database] is a string
 with the database name to connect to. If you specify it,
@@ -69,9 +67,7 @@ to select no database. You can always employ a __USE__
 statement to select a different database after establishing
 the connection.
 
-[endsect]
-
-[section:collation Connection encoding and collation]
+[heading Connection encoding and collation]
 
 When establishing a connection, you specify a numeric collation ID
 parameter ([refmem handshake_params connection_collation]), which will
@@ -96,17 +92,13 @@ about character sets.
     and collation. If you want to be sure, use a `"SET NAMES"` statement.
 ]
 
-[endsect]
-
-[section:ssl SSL/TLS]
+[heading SSL/TLS]
 
 When establising a connection, you can specify a [reflink ssl_mode]
 value to configure whether to use SSL/TLS or not. As explained in
 [link mysql.ssl.negotiation this section], this parameters can be
 employed to configure SSL negotiation. This value is ignored if the
 underlying stream does not support SSL.
-
-[endsect]
 
 
 [endsect] [/ connparams]
