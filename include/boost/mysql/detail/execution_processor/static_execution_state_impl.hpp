@@ -319,7 +319,7 @@ public:
     }
 
     static_execution_state_impl(static_execution_state_impl&& rhs) noexcept
-        : data_(rhs.data_), impl_(std::move(rhs.impl_))
+        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_))
     {
         set_pointers();
     }
@@ -334,7 +334,7 @@ public:
 
     static_execution_state_impl& operator=(static_execution_state_impl&& rhs)
     {
-        data_ = rhs.data_;
+        data_ = std::move(rhs.data_);
         impl_ = std::move(rhs.impl_);
         set_pointers();
         return *this;

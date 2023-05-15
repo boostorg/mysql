@@ -134,6 +134,7 @@ public:
     boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...> >::type>
 #endif
     rows() const noexcept {
+        static_assert(I < sizeof...(StaticRow), "Index I out of range");
         assert(has_value());
         return impl_.template get_rows<I>();
     }

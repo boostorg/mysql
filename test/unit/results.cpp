@@ -293,16 +293,19 @@ BOOST_FIXTURE_TEST_CASE(collection_fns, fixture)
 }
 
 // Verify view validity
-BOOST_FIXTURE_TEST_CASE(move_constructor, fixture)
+BOOST_AUTO_TEST_CASE(move_constructor)
 {
+    // Having this in heap helps spot lifetime issues
+    std::unique_ptr<results> result{new results(create_initial_results())};
+
     // Obtain references. Note that iterators and resultset_view's don't remain valid.
-    auto rws = result.rows();
-    auto meta = result.meta();
-    auto info = result.info();
+    auto rws = result->rows();
+    auto meta = result->meta();
+    auto info = result->info();
 
     // Move construct
-    results result2(std::move(result));
-    result = results();  // Regression check - std::string impl SBO buffer
+    results result2(std::move(*result));
+    result.reset();
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));
@@ -316,17 +319,20 @@ BOOST_FIXTURE_TEST_CASE(move_constructor, fixture)
     BOOST_TEST(result2.info() == "1st");
 }
 
-BOOST_FIXTURE_TEST_CASE(move_assignment, fixture)
+BOOST_AUTO_TEST_CASE(move_assignment)
 {
+    // Having this in heap helps spot lifetime issues
+    std::unique_ptr<results> result{new results(create_initial_results())};
+
     // Obtain references
-    auto rws = result.rows();
-    auto meta = result.meta();
-    auto info = result.info();
+    auto rws = result->rows();
+    auto meta = result->meta();
+    auto info = result->info();
 
     // Move construct
     results result2;
-    result2 = std::move(result);
-    result = results();  // Regression check - std::string impl SBO buffer
+    result2 = std::move(*result);
+    result.reset();
 
     // Make sure that views are still valid
     BOOST_TEST(rws == makerows(1, "abc", nullptr));

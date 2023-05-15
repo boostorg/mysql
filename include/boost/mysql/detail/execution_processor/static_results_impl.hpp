@@ -366,7 +366,8 @@ public:
         set_pointers();
     }
 
-    static_results_impl(static_results_impl&& rhs) noexcept : data_(rhs.data_), impl_(std::move(rhs.impl_))
+    static_results_impl(static_results_impl&& rhs) noexcept
+        : data_(std::move(rhs.data_)), impl_(std::move(rhs.impl_))
     {
         set_pointers();
     }
@@ -381,7 +382,7 @@ public:
 
     static_results_impl& operator=(static_results_impl&& rhs)
     {
-        data_ = rhs.data_;
+        data_ = std::move(rhs.data_);
         impl_ = std::move(rhs.impl_);
         set_pointers();
         return *this;
