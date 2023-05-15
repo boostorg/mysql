@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(row_error)
     mock_execution_processor p;
     add_meta(p, {meta_builder().build()});
     p.actions.on_row = [](deserialization_context, const output_ref&) {
-        return error_code(client_errc::is_null);
+        return error_code(client_errc::static_row_parsing_error);
     };
 
     // Channel with message
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(row_error)
 
     // Process the message
     auto err = process_row_message(chan, p, diag, output_ref());
-    BOOST_TEST(err == client_errc::is_null);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
     BOOST_TEST(p.num_calls.on_row == 1u);
     BOOST_TEST(p.num_calls.on_row_ok_packet == 0u);
 }

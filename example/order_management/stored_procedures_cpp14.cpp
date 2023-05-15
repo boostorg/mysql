@@ -43,7 +43,6 @@
 #if defined(BOOST_DESCRIBE_CXX14)
 
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/non_null.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
@@ -251,8 +250,9 @@ struct visitor
         //   1. The affected order. Always a single row.
         //   2. A collection of line items for the affected order.
         //   3. An OUT params resultset, containing the ID of the newly created line item. Single row.
+        //      MySQL always marks OUT params as nullable.
         //   4. An empty resultset describing the effects of the CALL statement
-        using out_params_t = std::tuple<mysql::non_null<std::int64_t>>;
+        using out_params_t = std::tuple<boost::optional<std::int64_t>>;
         mysql::static_results<order, order_item, out_params_t, empty> result;
 
         // We still have to pass a value to the 4th argument, even if it's an OUT parameter.
@@ -260,7 +260,7 @@ struct visitor
         conn.execute(stmt.bind(args.order_id, args.product_id, args.quantity, nullptr), result);
 
         // We can access the OUT param as we access any other resultset
-        auto new_line_item_id = std::get<0>(result.rows<2>()[0]).value;
+        auto new_line_item_id = std::get<0>(result.rows<2>()[0]).value();
 
         // Print the results to stdout
         std::cout << "Created line item: id=" << new_line_item_id << "\n";
@@ -296,13 +296,14 @@ struct visitor
         //   1. The affected order. Always a single row.
         //   2. A collection of line items for the affected order.
         //   3. An OUT params resultset, containing the total amount to pay, in USD cents. Single row.
+        //      MySQL always marks OUT params as nullable.
         //   4. An empty resultset describing the effects of the CALL statement
-        using out_params_t = std::tuple<mysql::non_null<std::int64_t>>;
+        using out_params_t = std::tuple<boost::optional<std::int64_t>>;
         mysql::static_results<order, order_item, out_params_t, empty> result;
         conn.execute(stmt.bind(args.order_id, nullptr), result);
 
         // We can access the OUT param as we access any other resultset
-        auto total_amount = std::get<0>(result.rows<2>()[0]).value;
+        auto total_amount = std::get<0>(result.rows<2>()[0]).value_or(0);
 
         // Print the results to stdout
         std::cout << "Checked out order. The total amount to pay is: " << total_amount / 100.0 << "$\n";

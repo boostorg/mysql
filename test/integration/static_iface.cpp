@@ -16,7 +16,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/non_null.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/static_results.hpp>
 
@@ -70,13 +69,6 @@ struct row_2fields
     boost::optional<std::string> field_varchar;
 };
 BOOST_DESCRIBE_STRUCT(row_2fields, (), (id, field_varchar))
-
-struct row_multifield_nonnull
-{
-    int id;
-    non_null<float> field_nullable;
-};
-BOOST_DESCRIBE_STRUCT(row_multifield_nonnull, (), (id, field_nullable))
 
 using boost::describe::operators::operator==;
 using boost::describe::operators::operator<<;
@@ -229,20 +221,6 @@ BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
 
     BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
 }
-
-BOOST_FIXTURE_TEST_CASE(non_null_constraint_violation, tcp_network_fixture)
-{
-    connect();
-    start_transaction();
-
-    error_code ec;
-    diagnostics diag;
-    static_results<row_multifield_nonnull> result;
-    conn.execute("SELECT * FROM multifield_table", result, ec, diag);
-
-    BOOST_TEST(ec == client_errc::is_null);
-}
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(multifn)

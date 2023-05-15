@@ -494,11 +494,11 @@ BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
 {
     auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
     auto& st = stp.get_interface();
-    rowbuff bad_row{nullptr, "abc"};  // should not be NULL - non_null used incorrectly, for instance
+    rowbuff bad_row{nullptr, "abc"};  // should not be NULL
 
     row1 storage[1]{};
     auto err = st.on_row(bad_row.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
-    BOOST_TEST(err == client_errc::is_null);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_FIXTURE_TEST_CASE(error_type_index_mismatch, fixture)

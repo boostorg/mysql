@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE(parse_one_error)
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
     auto err = parse(pos_map, fv, value);
-    BOOST_TEST(err == client_errc::is_null);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_AUTO_TEST_CASE(parse_several_errors)
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE(parse_one_error)
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
     auto err = parse(pos_map, fv, value);
-    BOOST_TEST(err == client_errc::is_null);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_AUTO_TEST_CASE(parse_several_errors)
@@ -313,7 +313,7 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
     auto err = parse(pos_map, fv, value);
-    BOOST_TEST(err == client_errc::is_null);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_AUTO_TEST_CASE(parse_empty_tuple)

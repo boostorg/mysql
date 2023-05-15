@@ -16,7 +16,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/non_null.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
@@ -42,45 +41,43 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     using limits_t = std::numeric_limits<SignedInt>;
 
     auto kind = input.kind();
-    if (kind == field_kind::null)
-    {
-        return client_errc::is_null;
-    }
-    assert(kind == field_kind::int64 || kind == field_kind::uint64);
     if (kind == field_kind::int64)
     {
         auto v = input.get_int64();
         if (v < limits_t::min() || v > limits_t::max())
         {
-            return client_errc::protocol_value_error;
+            return client_errc::static_row_parsing_error;
         }
         output = static_cast<SignedInt>(v);
+        return error_code();
     }
-    else
+    else if (kind == field_kind::uint64)
     {
         auto v = input.get_uint64();
         if (v > static_cast<unsigned_t>(limits_t::max()))
         {
-            return client_errc::protocol_value_error;
+            return client_errc::static_row_parsing_error;
         }
         output = static_cast<SignedInt>(v);
+        return error_code();
     }
-    return error_code();
+    else
+    {
+        return client_errc::static_row_parsing_error;
+    }
 }
 
 template <class UnsignedInt>
 error_code parse_unsigned_int(field_view input, UnsignedInt& output)
 {
-    auto kind = input.kind();
-    if (kind == field_kind::null)
+    if (input.kind() != field_kind::uint64)
     {
-        return client_errc::is_null;
+        return client_errc::static_row_parsing_error;
     }
-    assert(kind == field_kind::uint64);
     auto v = input.get_uint64();
     if (v > std::numeric_limits<UnsignedInt>::max())
     {
-        return client_errc::protocol_value_error;
+        return client_errc::static_row_parsing_error;
     }
     output = static_cast<UnsignedInt>(v);
     return error_code();
@@ -322,12 +319,10 @@ struct readable_field_traits<bool, void>
     }
     static error_code parse(field_view input, bool& output)
     {
-        auto k = input.kind();
-        if (k == field_kind::null)
+        if (input.kind() != field_kind::int64)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(k == field_kind::int64);
         output = input.get_int64() != 0;
         return error_code();
     }
@@ -344,12 +339,10 @@ struct readable_field_traits<float, void>
     }
     static error_code parse(field_view input, float& output)
     {
-        auto kind = input.kind();
-        if (kind == field_kind::null)
+        if (input.kind() != field_kind::float_)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(kind == field_kind::float_);
         output = input.get_float();
         return error_code();
     }
@@ -372,20 +365,20 @@ struct readable_field_traits<double, void>
     static error_code parse(field_view input, double& output)
     {
         auto kind = input.kind();
-        if (kind == field_kind::null)
-        {
-            return client_errc::is_null;
-        }
-        assert(kind == field_kind::float_ || kind == field_kind::double_);
         if (kind == field_kind::float_)
         {
             output = input.get_float();
+            return error_code();
+        }
+        else if (kind == field_kind::double_)
+        {
+            output = input.get_double();
+            return error_code();
         }
         else
         {
-            output = input.get_double();
+            return client_errc::static_row_parsing_error;
         }
-        return error_code();
     }
 };
 
@@ -413,12 +406,10 @@ struct readable_field_traits<std::basic_string<char, std::char_traits<char>, All
         std::basic_string<char, std::char_traits<char>, Allocator>& output
     )
     {
-        auto kind = input.kind();
-        if (kind == field_kind::null)
+        if (input.kind() != field_kind::string)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(kind == field_kind::string);
         output = input.get_string();
         return error_code();
     }
@@ -443,12 +434,10 @@ struct readable_field_traits<std::vector<unsigned char, Allocator>, void>
     }
     static error_code parse(field_view input, std::vector<unsigned char, Allocator>& output)
     {
-        auto kind = input.kind();
-        if (kind == field_kind::null)
+        if (input.kind() != field_kind::blob)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(kind == field_kind::blob);
         auto view = input.get_blob();
         output.assign(view.begin(), view.end());
         return error_code();
@@ -463,12 +452,10 @@ struct readable_field_traits<date, void>
     static bool meta_check(meta_check_context& ctx) { return ctx.current_meta().type() == column_type::date; }
     static error_code parse(field_view input, date& output)
     {
-        auto kind = input.kind();
-        if (kind == field_kind::null)
+        if (input.kind() != field_kind::date)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(kind == field_kind::date);
         output = input.get_date();
         return error_code();
     }
@@ -490,12 +477,10 @@ struct readable_field_traits<datetime, void>
     }
     static error_code parse(field_view input, datetime& output)
     {
-        auto kind = input.kind();
-        if (kind == field_kind::null)
+        if (input.kind() != field_kind::datetime)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(kind == field_kind::datetime);
         output = input.get_datetime();
         return error_code();
     }
@@ -509,12 +494,10 @@ struct readable_field_traits<time, void>
     static bool meta_check(meta_check_context& ctx) { return ctx.current_meta().type() == column_type::time; }
     static error_code parse(field_view input, time& output)
     {
-        auto kind = input.kind();
-        if (kind == field_kind::null)
+        if (input.kind() != field_kind::time)
         {
-            return client_errc::is_null;
+            return client_errc::static_row_parsing_error;
         }
-        assert(kind == field_kind::time);
         output = input.get_time();
         return error_code();
     }
@@ -547,31 +530,6 @@ struct readable_field_traits<
         {
             output.emplace();
             return readable_field_traits<value_type>::parse(input, output.value());
-        }
-    }
-};
-
-template <class T>
-struct readable_field_traits<
-    non_null<T>,
-    typename std::enable_if<readable_field_traits<T>::is_supported>::type>
-{
-    static constexpr bool is_supported = true;
-    static constexpr const char* type_name = readable_field_traits<T>::type_name;
-    static bool meta_check(meta_check_context& ctx)
-    {
-        ctx.set_nullability_checked();
-        return readable_field_traits<T>::meta_check(ctx);
-    }
-    static error_code parse(field_view input, non_null<T>& output)
-    {
-        if (input.is_null())
-        {
-            return client_errc::is_null;
-        }
-        else
-        {
-            return readable_field_traits<T>::parse(input, output.value);
         }
     }
 };

@@ -67,12 +67,6 @@ In this case, the correct definition would be:
 
 [describe_post_v2]
 
-You can also use [reflink non_null] to tell the static interface to disable
-the nullability check for a certain field. This can be handy when using
-stored procedures, since you may have more knowledge about nullability than MySQL.
-For a usage example, see [link mysql.examples.stored_procedures_cpp14].
-
-
 [heading Type mapping reference]
 
 The following table is a reference on which C++ types can be used in your
@@ -225,15 +219,6 @@ row types and their compatibility with MySQL database types:
     [
         [
             `boost::optional<T>`[br][br]
-            `T` must be any of the types listed in this table.
-        ]
-        [
-            Any type compatible with `T`
-        ]
-    ]
-    [
-        [
-            [reflink2 non_null `non_null<T>`][br][br]
             `T` must be any of the types listed in this table.
         ]
         [

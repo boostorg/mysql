@@ -146,9 +146,6 @@ static_assert(is_readable_field<boost::optional<blob>>::value, "");
 static_assert(is_readable_field<boost::optional<datetime>>::value, "");
 static_assert(!is_readable_field<boost::optional<void*>>::value, "");
 static_assert(!is_readable_field<boost::optional<unrelated>>::value, "");
-static_assert(is_readable_field<non_null<float>>::value, "");
-static_assert(is_readable_field<non_null<std::string>>::value, "");
-static_assert(!is_readable_field<non_null<void*>>::value, "");
 
 // other types not accepted
 static_assert(!is_readable_field<std::nullptr_t>::value, "");
@@ -371,8 +368,6 @@ BOOST_AUTO_TEST_CASE(optionals)
 #endif
         {"boost_optional_not_nullable", &meta_check_field<boost::optional<double>>, false},
         {"boost_optional_nullable",     &meta_check_field<boost::optional<double>>, true },
-        {"non_null_not_nullable",       &meta_check_field<non_null<double>>,        false},
-        {"non_null_nullable",           &meta_check_field<non_null<double>>,        true },
     };
 
     for (const auto& tc : test_cases)
@@ -495,7 +490,7 @@ BOOST_AUTO_TEST_CASE(success)
     }
 }
 
-// std::optional and non_null. These don't implement equality or stream operators
+// std::optional, which doesn't implement equality or stream operators
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 BOOST_AUTO_TEST_CASE(std_optional_null)
 {
@@ -515,14 +510,6 @@ BOOST_AUTO_TEST_CASE(std_optional_not_null)
 }
 #endif
 
-BOOST_AUTO_TEST_CASE(non_null_not_null)
-{
-    non_null<int> actual{};
-    auto err = readable_field_traits<non_null<int>>::parse(field_view(42), actual);
-    BOOST_TEST(err == error_code());
-    BOOST_TEST(actual.value == 42);
-}
-
 template <class T>
 error_code parse_and_discard(field_view f)
 {
@@ -536,85 +523,97 @@ BOOST_AUTO_TEST_CASE(errors)
     field_view i64_absmax(std::numeric_limits<std::int64_t>::max());
     field_view ui64_absmax(std::numeric_limits<std::uint64_t>::max());
 
-    // This makes the table more compact
-    auto is_null = client_errc::is_null;
-    auto proto_val_err = client_errc::protocol_value_error;
-
     struct
     {
         const char* name;
-        client_errc err;
         field_view from;
         error_code (*parse_fn)(field_view);
     } test_cases[] = {
-        {"int8_null",                       is_null,       field_view(),                    parse_and_discard<std::int8_t>          },
-        {"int8_signed_ltmin",               proto_val_err, field_view(-0x81),               parse_and_discard<std::int8_t>          },
-        {"int8_signed_gtmax",               proto_val_err, field_view(0x80),                parse_and_discard<std::int8_t>          },
-        {"int8_signed_absmin",              proto_val_err, i64_absmin,                      parse_and_discard<std::int8_t>          },
-        {"int8_signed_absmax",              proto_val_err, i64_absmax,                      parse_and_discard<std::int8_t>          },
-        {"int8_unsigned_gtmax",             proto_val_err, field_view(0x80u),               parse_and_discard<std::int8_t>          },
-        {"int8_unsigned_absmax",            proto_val_err, ui64_absmax,                     parse_and_discard<std::int8_t>          },
+        {"int8_null",                       field_view(),                    parse_and_discard<std::int8_t>                 },
+        {"int8_badtype",                    field_view(4.2),                 parse_and_discard<std::int8_t>                 },
+        {"int8_signed_ltmin",               field_view(-0x81),               parse_and_discard<std::int8_t>                 },
+        {"int8_signed_gtmax",               field_view(0x80),                parse_and_discard<std::int8_t>                 },
+        {"int8_signed_absmin",              i64_absmin,                      parse_and_discard<std::int8_t>                 },
+        {"int8_signed_absmax",              i64_absmax,                      parse_and_discard<std::int8_t>                 },
+        {"int8_unsigned_gtmax",             field_view(0x80u),               parse_and_discard<std::int8_t>                 },
+        {"int8_unsigned_absmax",            ui64_absmax,                     parse_and_discard<std::int8_t>                 },
 
-        {"uint8_null",                      is_null,       field_view(),                    parse_and_discard<std::uint8_t>         },
-        {"uint8_gtmax",                     proto_val_err, field_view(0x100u),              parse_and_discard<std::uint8_t>         },
-        {"uint8_absmax",                    proto_val_err, ui64_absmax,                     parse_and_discard<std::uint8_t>         },
+        {"uint8_null",                      field_view(),                    parse_and_discard<std::uint8_t>                },
+        {"uint8_badtype",                   field_view(4.2),                 parse_and_discard<std::uint8_t>                },
+        {"uint8_gtmax",                     field_view(0x100u),              parse_and_discard<std::uint8_t>                },
+        {"uint8_absmax",                    ui64_absmax,                     parse_and_discard<std::uint8_t>                },
 
-        {"int16_null",                      is_null,       field_view(),                    parse_and_discard<std::int16_t>         },
-        {"int16_signed_ltmin",              proto_val_err, field_view(-0x8001),             parse_and_discard<std::int16_t>         },
-        {"int16_signed_gtmax",              proto_val_err, field_view(0x8000),              parse_and_discard<std::int16_t>         },
-        {"int16_signed_absmin",             proto_val_err, i64_absmin,                      parse_and_discard<std::int16_t>         },
-        {"int16_signed_absmax",             proto_val_err, i64_absmax,                      parse_and_discard<std::int16_t>         },
-        {"int16_unsigned_gtmax",            proto_val_err, field_view(0x8000u),             parse_and_discard<std::int16_t>         },
-        {"int16_unsigned_absmax",           proto_val_err, ui64_absmax,                     parse_and_discard<std::int16_t>         },
+        {"int16_null",                      field_view(),                    parse_and_discard<std::int16_t>                },
+        {"int16_badtype",                   field_view(4.2),                 parse_and_discard<std::int16_t>                },
+        {"int16_signed_ltmin",              field_view(-0x8001),             parse_and_discard<std::int16_t>                },
+        {"int16_signed_gtmax",              field_view(0x8000),              parse_and_discard<std::int16_t>                },
+        {"int16_signed_absmin",             i64_absmin,                      parse_and_discard<std::int16_t>                },
+        {"int16_signed_absmax",             i64_absmax,                      parse_and_discard<std::int16_t>                },
+        {"int16_unsigned_gtmax",            field_view(0x8000u),             parse_and_discard<std::int16_t>                },
+        {"int16_unsigned_absmax",           ui64_absmax,                     parse_and_discard<std::int16_t>                },
 
-        {"uint16_null",                     is_null,       field_view(),                    parse_and_discard<std::uint16_t>        },
-        {"uint16_gtmax",                    proto_val_err, field_view(0x10000u),            parse_and_discard<std::uint16_t>        },
-        {"uint16_absmax",                   proto_val_err, ui64_absmax,                     parse_and_discard<std::uint16_t>        },
+        {"uint16_null",                     field_view(),                    parse_and_discard<std::uint16_t>               },
+        {"uint16_badtype",                  field_view(4.2),                 parse_and_discard<std::uint16_t>               },
+        {"uint16_gtmax",                    field_view(0x10000u),            parse_and_discard<std::uint16_t>               },
+        {"uint16_absmax",                   ui64_absmax,                     parse_and_discard<std::uint16_t>               },
 
-        {"int32_null",                      is_null,       field_view(),                    parse_and_discard<std::int32_t>         },
-        {"int32_signed_ltmin",              proto_val_err, field_view(-0x80000001LL),       parse_and_discard<std::int32_t>         },
-        {"int32_signed_gtmax",              proto_val_err, field_view(0x80000000L),         parse_and_discard<std::int32_t>         },
-        {"int32_signed_absmin",             proto_val_err, i64_absmin,                      parse_and_discard<std::int32_t>         },
-        {"int32_signed_absmax",             proto_val_err, i64_absmax,                      parse_and_discard<std::int32_t>         },
-        {"int32_unsigned_gtmax",            proto_val_err, field_view(0x80000000uL),        parse_and_discard<std::int32_t>         },
-        {"int32_unsigned_absmax",           proto_val_err, ui64_absmax,                     parse_and_discard<std::int32_t>         },
+        {"int32_null",                      field_view(),                    parse_and_discard<std::int32_t>                },
+        {"int32_badtype",                   field_view(4.2),                 parse_and_discard<std::int32_t>                },
+        {"int32_signed_ltmin",              field_view(-0x80000001LL),       parse_and_discard<std::int32_t>                },
+        {"int32_signed_gtmax",              field_view(0x80000000L),         parse_and_discard<std::int32_t>                },
+        {"int32_signed_absmin",             i64_absmin,                      parse_and_discard<std::int32_t>                },
+        {"int32_signed_absmax",             i64_absmax,                      parse_and_discard<std::int32_t>                },
+        {"int32_unsigned_gtmax",            field_view(0x80000000uL),        parse_and_discard<std::int32_t>                },
+        {"int32_unsigned_absmax",           ui64_absmax,                     parse_and_discard<std::int32_t>                },
 
-        {"uint32_null",                     is_null,       field_view(),                    parse_and_discard<std::uint32_t>        },
-        {"uint32_gtmax",                    proto_val_err, field_view(0x100000000u),        parse_and_discard<std::uint32_t>        },
-        {"uint32_absmax",                   proto_val_err, ui64_absmax,                     parse_and_discard<std::uint32_t>        },
+        {"uint32_null",                     field_view(),                    parse_and_discard<std::uint32_t>               },
+        {"uint32_badtype",                  field_view("abc"),               parse_and_discard<std::uint32_t>               },
+        {"uint32_gtmax",                    field_view(0x100000000u),        parse_and_discard<std::uint32_t>               },
+        {"uint32_absmax",                   ui64_absmax,                     parse_and_discard<std::uint32_t>               },
 
-        {"int64_null",                      is_null,       field_view(),                    parse_and_discard<std::int64_t>         },
-        {"int64_unsigned_gtmax",
-         proto_val_err,                                    field_view(0x8000000000000000u),
-         parse_and_discard<std::int64_t>                                                                                            },
-        {"int64_unsigned_absmax",           proto_val_err, ui64_absmax,                     parse_and_discard<std::int64_t>         },
+        {"int64_null",                      field_view(),                    parse_and_discard<std::int64_t>                },
+        {"int64_badtype",                   field_view(4.1f),                parse_and_discard<std::int64_t>                },
+        {"int64_unsigned_gtmax",            field_view(0x8000000000000000u), parse_and_discard<std::int64_t>                },
+        {"int64_unsigned_absmax",           ui64_absmax,                     parse_and_discard<std::int64_t>                },
 
-        {"uint64_null",                     is_null,       field_view(),                    parse_and_discard<std::uint64_t>        },
-        {"bool_null",                       is_null,       field_view(),                    parse_and_discard<bool>                 },
-        {"float_null",                      is_null,       field_view(),                    parse_and_discard<float>                },
-        {"double_null",                     is_null,       field_view(),                    parse_and_discard<double>               },
-        {"date_null",                       is_null,       field_view(),                    parse_and_discard<date>                 },
-        {"datetime_null",                   is_null,       field_view(),                    parse_and_discard<datetime>             },
-        {"time_null",                       is_null,       field_view(),                    parse_and_discard<boost::mysql::time>   },
-        {"string_null",                     is_null,       field_view(),                    parse_and_discard<std::string>          },
-        {"blob_null",                       is_null,       field_view(),                    parse_and_discard<blob>                 },
+        {"uint64_null",                     field_view(),                    parse_and_discard<std::uint64_t>               },
+        {"uint64_badtype",                  field_view("abc"),               parse_and_discard<std::uint64_t>               },
 
+        {"bool_null",                       field_view(),                    parse_and_discard<bool>                        },
+        {"bool_badtype",                    field_view("abc"),               parse_and_discard<bool>                        },
+
+        {"float_null",                      field_view(),                    parse_and_discard<float>                       },
+        {"float_badtype",                   field_view(42),                  parse_and_discard<float>                       },
+
+        {"double_null",                     field_view(),                    parse_and_discard<double>                      },
+        {"double_badtype",                  field_view("abc"),               parse_and_discard<double>                      },
+
+        {"date_null",                       field_view(),                    parse_and_discard<date>                        },
+        {"date_badtype",                    field_view(1.1),                 parse_and_discard<date>                        },
+
+        {"datetime_null",                   field_view(),                    parse_and_discard<datetime>                    },
+        {"datetime_badtype",                field_view("abc"),               parse_and_discard<datetime>                    },
+
+        {"time_null",                       field_view(),                    parse_and_discard<boost::mysql::time>          },
+        {"time_badtype",                    field_view(30),                  parse_and_discard<boost::mysql::time>          },
+
+        {"string_null",                     field_view(),                    parse_and_discard<std::string>                 },
+        {"string_badtype",                  field_view(makebv("abc")),       parse_and_discard<std::string>                 },
+
+        {"blob_null",                       field_view(),                    parse_and_discard<blob>                        },
+        {"blob_badtype",                    field_view("abc"),               parse_and_discard<blob>                        },
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-        {"std_optional_underlying_error",
-         proto_val_err,                                    field_view(0xffffu),
-         parse_and_discard<std::optional<std::int8_t>>                                                                              },
+        {"std_optional_underlying_error",   field_view(0xffffu),             parse_and_discard<std::optional<std::int8_t>>  },
 #endif
-        {"boost_optional_underlying_error",
-         proto_val_err,                                    field_view(0xffffu),
-         parse_and_discard<boost::optional<std::int8_t>>                                                                            },
-
-        {"non_null_int",                    is_null,       field_view(),                    parse_and_discard<non_null<int>>        },
-        {"non_null_string",                 is_null,       field_view(),                    parse_and_discard<non_null<std::string>>},
+        {"boost_optional_underlying_error", field_view(),                    parse_and_discard<boost::optional<std::int8_t>>},
     };
 
     for (const auto& tc : test_cases)
     {
-        BOOST_TEST_CONTEXT(tc.name) { BOOST_TEST(tc.parse_fn(tc.from) == tc.err); }
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(tc.parse_fn(tc.from) == client_errc::static_row_parsing_error);
+        }
     }
 }
 

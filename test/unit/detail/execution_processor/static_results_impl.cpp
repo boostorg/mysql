@@ -552,10 +552,10 @@ BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
 {
     auto rt = static_results_builder<row1>().meta(create_meta_r1()).build();
     auto& r = rt.get_interface();
-    rowbuff bad_row{nullptr, "abc"};  // should not be NULL - non_null used incorrectly, for instance
+    rowbuff bad_row{nullptr, "abc"};  // should not be NULL
 
     auto err = r.on_row(bad_row.ctx(), output_ref(), fields);
-    BOOST_TEST(err == client_errc::is_null);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_empty, fixture)

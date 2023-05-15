@@ -61,8 +61,8 @@ enum class client_errc : int
     /// The StaticRow type passed to read_some_rows does not correspond to the resultset type being read.
     row_type_mismatch,
 
-    /// A field specified as `non_null<T>` was NULL.
-    is_null,
+    /// The static interface encountered an error when parsing a field into a C++ data structure.
+    static_row_parsing_error,
 };
 
 /// Creates an \ref error_code from a \ref client_errc.
