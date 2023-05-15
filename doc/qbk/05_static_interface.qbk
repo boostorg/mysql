@@ -67,6 +67,14 @@ In this case, the correct definition would be:
 
 [describe_post_v2]
 
+[heading C++ standard requirements]
+
+Using the static interface requires C++14. The `BOOST_MYSQL_CXX14` test macro
+is defined only if the static interface is supported. Including the static interface headers
+on an unsupported compiler doesn't cause any error, but classes like [reflink static_results]
+and [reflink static_execution_state] are not defined. The test macro is brought on scope by
+any of the static interface headers.
+
 [heading Type mapping reference]
 
 The following table is a reference on which C++ types can be used in your
