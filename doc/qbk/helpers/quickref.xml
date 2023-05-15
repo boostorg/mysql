@@ -59,7 +59,9 @@
         <bridgehead renderas="sect3">Concepts</bridgehead>
         <simplelist type="vert" columns="1">
           <member><link linkend="mysql.ref.boost__mysql__ExecutionRequest">ExecutionRequest</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__ExecutionStateType">ExecutionStateType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__ResultsType">ResultsType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
           <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>
           <member><link linkend="mysql.ref.boost__mysql__Stream">Stream</link></member>
