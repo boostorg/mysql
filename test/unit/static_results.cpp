@@ -10,7 +10,6 @@
 #ifdef BOOST_MYSQL_CXX14
 
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/results.hpp>
 #include <boost/mysql/static_results.hpp>
 
 #include <boost/describe/class.hpp>

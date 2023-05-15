@@ -64,6 +64,7 @@ add_executable(
     diagnostics.cpp
     statement.cpp
     execution_state.cpp
+    static_execution_state.cpp
     results.cpp
     static_results.cpp
     resultset_view.cpp

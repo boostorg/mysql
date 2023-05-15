@@ -116,21 +116,27 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.is_out_params());
 }
 
+std::unique_ptr<execution_state> create_heap_state()
+{
+    std::unique_ptr<execution_state> st{new execution_state};
+    add_meta(get_iface(*st), {protocol_field_type::var_string});
+    add_ok(get_iface(*st), ok_builder().info("small").build());
+    return st;
+}
+
 // Verify that the lifetime guarantees we make are correct
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construction
-    execution_state st;
-    add_meta(get_iface(st), {protocol_field_type::var_string});
-    add_ok(get_iface(st), ok_builder().info("small").build());
+    // Having this in heap helps detect lifetime issues
+    auto st = create_heap_state();
 
     // Obtain references
-    auto meta = st.meta();
-    auto info = st.info();
+    auto meta = st->meta();
+    auto info = st->info();
 
     // Move construct
-    execution_state st2(std::move(st));
-    st = execution_state();  // Regression check
+    execution_state st2(std::move(*st));
+    st.reset();
 
     // Make sure that views are still valid
     check_meta(meta, {column_type::varchar});
@@ -144,19 +150,17 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
-    // Construct an execution_state with value
-    execution_state st;
-    add_meta(get_iface(st), {protocol_field_type::var_string});
-    add_ok(get_iface(st), ok_builder().info("small").build());
+    // Having this in heap helps detect lifetime issues
+    auto st = create_heap_state();
 
     // Obtain references
-    auto meta = st.meta();
-    auto info = st.info();
+    auto meta = st->meta();
+    auto info = st->info();
 
     // Move assign
     execution_state st2;
-    st2 = std::move(st);
-    st = execution_state();  // Regression check - std::string impl SBO buffer
+    st2 = std::move(*st);
+    st.reset();
 
     // Make sure that views are still valid
     check_meta(meta, {column_type::varchar});
