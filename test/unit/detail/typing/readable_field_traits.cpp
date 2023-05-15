@@ -603,9 +603,9 @@ BOOST_AUTO_TEST_CASE(errors)
         {"blob_null",                       field_view(),                    parse_and_discard<blob>                        },
         {"blob_badtype",                    field_view("abc"),               parse_and_discard<blob>                        },
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-        {"std_optional_underlying_error",   field_view(0xffffu),             parse_and_discard<std::optional<std::int8_t>>  },
+        {"std_optional_underlying_error",   field_view("a"),                 parse_and_discard<std::optional<std::int8_t>>  },
 #endif
-        {"boost_optional_underlying_error", field_view(),                    parse_and_discard<boost::optional<std::int8_t>>},
+        {"boost_optional_underlying_error", field_view("a"),                 parse_and_discard<boost::optional<std::int8_t>>},
     };
 
     for (const auto& tc : test_cases)
