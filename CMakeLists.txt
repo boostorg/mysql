@@ -62,6 +62,7 @@ else()
         Boost::assert
         Boost::config
         Boost::core
+        Boost::describe
         Boost::endian
         Boost::lexical_cast
         Boost::mp11
