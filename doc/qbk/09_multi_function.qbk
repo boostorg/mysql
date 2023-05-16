@@ -115,7 +115,7 @@ Some remarks:
   as template parameters to validate the metadata returned by the server, and ensure it is compatible
   with the C++ data structures that will be used with `read_some_rows`.
 * We must pass `read_some_rows` a `boost::span` of the appropriate row type.
-  We've used `std::array` to allocate rows on the stack, but you can use any other contiguous range.
+  We've used `std::array` to place rows on the stack, but you can use any other contiguous range.
 * `read_some_rows` returns the number of read rows. At maximum, this will be the size
   of the span, but there may be less, depending on row and network buffer sizes.
 * If there are rows to be read, `read_some_rows` will return at least one, but may return more.
