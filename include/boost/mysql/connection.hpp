@@ -402,6 +402,9 @@ public:
      * If a string, it must be encoded using the connection's character set.
      * Any string parameters provided to \ref statement::bind should also be encoded
      * using the connection's character set.
+     * \n
+     * When using the static interface, this function will detect schema mismatches for the first
+     * resultset. Further errors may be detected by \ref read_resultset_head and \ref read_some_rows.
      */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
@@ -1017,6 +1020,8 @@ public:
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
      * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * \n
+     * This function can report schema mismatches.
      */
     template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(
@@ -1050,6 +1055,8 @@ public:
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
      * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * \n
+     * This function can report schema mismatches.
      */
     template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output);
@@ -1078,6 +1085,8 @@ public:
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
      * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * \n
+     * This function can report schema mismatches.
      *
      * \par Handler signature
      * The handler signature for this operation is
@@ -1125,6 +1134,8 @@ public:
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
      * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * \n
+     * This function can report schema mismatches.
      *
      * \par Handler signature
      * The handler signature for this operation is
@@ -1161,6 +1172,10 @@ public:
      * \n
      * This function is only relevant when using multi-function operations with statements
      * that return more than one resultset.
+     * \n
+     * When using the static interface, this function will detect schema mismatches for the resultset
+     * currently being read. Further errors may be detected by subsequent invocations of this function
+     * and by \ref read_some_rows.
      */
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& info);

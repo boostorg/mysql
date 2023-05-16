@@ -177,9 +177,14 @@ We can write:
     ]
 ]
 
-Note that we're using [refmem execution_state should_read_rows] instead of [refmem execution_state complete]
+Note that we're using [refmemunq execution_state should_read_rows] instead of [refmemunq execution_state complete]
 as our loop termination condition. `complete()` returns true when all the resultsets have been read,
 while `should_read_rows()` will return false once an individual result has been fully read.
+
+When using the static interface with multi-function operations, not all schema mismatches can be found
+by the `start_execution` function, since not all the information is available at this point. Errors may
+be reported by `read_some_rows` and `read_resultset_head`, too. Overall, the same checks are performed as
+when using [refmem connection execute], but at different points in time.
 
 [heading Multi-resultset in the general case]
 
