@@ -539,6 +539,12 @@ BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1002;
 END //
 
+CREATE PROCEDURE sp_spotchecks()
+BEGIN
+    SELECT * FROM multifield_table WHERE id = 1;
+    SELECT * FROM one_row_table;
+END //
+
 DELIMITER ;
 
 COMMIT;

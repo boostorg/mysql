@@ -16,11 +16,14 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
+#include <boost/mysql/static_execution_state.hpp>
+#include <boost/mysql/static_results.hpp>
 
 #include <forward_list>
 #include <memory>
 
 #include "network_result.hpp"
+#include "static_rows.hpp"
 
 namespace boost {
 namespace mysql {
@@ -76,6 +79,16 @@ public:
     virtual network_result<void> ping() = 0;
     virtual network_result<void> quit() = 0;
     virtual network_result<void> close() = 0;
+
+#ifdef BOOST_MYSQL_CXX14
+    using static_results_t = static_results<row_multifield, row_2fields, empty>;
+    using static_state_t = static_execution_state<row_multifield, row_2fields, empty>;
+    virtual network_result<void> execute(string_view, static_results_t&) = 0;
+    virtual network_result<void> start_execution(string_view, static_state_t&) = 0;
+    virtual network_result<void> read_resultset_head(static_state_t& st) = 0;
+    virtual network_result<std::size_t> read_some_rows(static_state_t& st, boost::span<row_multifield>) = 0;
+    virtual network_result<std::size_t> read_some_rows(static_state_t& st, boost::span<row_2fields>) = 0;
+#endif
 };
 
 using er_connection_ptr = std::unique_ptr<er_connection>;

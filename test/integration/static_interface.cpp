@@ -33,6 +33,7 @@
 #include "integration_test_common.hpp"
 #include "metadata_validator.hpp"
 #include "printing.hpp"
+#include "static_rows.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
@@ -45,35 +46,6 @@ using namespace boost::mysql::test;
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_static_iface)
-
-struct row_multifield
-{
-    boost::optional<float> field_nullable;
-    std::int32_t field_int;
-    std::string field_varchar;
-};
-BOOST_DESCRIBE_STRUCT(row_multifield, (), (field_nullable, field_int, field_varchar))
-
-struct row_multifield_bad
-{
-    std::string field_varchar;
-    float field_nullable;
-    std::string field_int;
-    int field_missing;
-};
-BOOST_DESCRIBE_STRUCT(row_multifield_bad, (), (field_varchar, field_nullable, field_int, field_missing))
-
-struct row_2fields
-{
-    boost::optional<int> id;
-    boost::optional<std::string> field_varchar;
-};
-BOOST_DESCRIBE_STRUCT(row_2fields, (), (id, field_varchar))
-
-using boost::describe::operators::operator==;
-using boost::describe::operators::operator<<;
-
-using empty = std::tuple<>;
 
 void validate_multifield_meta(metadata_collection_view meta)
 {
