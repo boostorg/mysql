@@ -183,8 +183,8 @@ BOOST_AUTO_TEST_CASE(ctor_from_time_point_invalid)
 {
     BOOST_CHECK_THROW(from_timestamp(253402300799999999 + 1), std::out_of_range);
     BOOST_CHECK_THROW(from_timestamp(-62167219200000000 - 1), std::out_of_range);
-    BOOST_CHECK_THROW(from_timestamp(std::numeric_limits<std::int64_t>::max()), std::out_of_range);
-    BOOST_CHECK_THROW(from_timestamp(std::numeric_limits<std::int64_t>::min()), std::out_of_range);
+    BOOST_CHECK_THROW(from_timestamp((std::numeric_limits<std::int64_t>::max)()), std::out_of_range);
+    BOOST_CHECK_THROW(from_timestamp((std::numeric_limits<std::int64_t>::min)()), std::out_of_range);
 }
 
 // spotcheck, uses the same routines as get_time_point

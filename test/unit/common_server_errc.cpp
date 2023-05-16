@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(error_to_string_regular)
         int err;
         const char* expected_msg;
     } test_cases[] = {
-        {"int_min",                  std::numeric_limits<int>::min(),                       "<unknown server error>"     },
+        {"int_min",                  (std::numeric_limits<int>::min)(),                     "<unknown server error>"     },
         {"zero",                     0,                                                     "<unknown server error>"     },
         {"lt_min",                   999,                                                   "<unknown server error>"     },
         {"min",                      1000,                                                  "er_hashchk"                 },
@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(error_to_string_regular)
         {"max",                      1879,                                                  "er_innodb_ft_aux_not_hex_id"},
         {"gt_max",                   1880,                                                  "<unknown server error>"     },
         {"3000_range",               3000,                                                  "<unknown server error>"     },
-        {"int_max",                  std::numeric_limits<int>::max(),                       "<unknown server error>"     }
+        {"int_max",                  (std::numeric_limits<int>::max)(),                     "<unknown server error>"     }
     };
 
     for (const auto& tc : test_cases)

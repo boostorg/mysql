@@ -44,7 +44,7 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     if (kind == field_kind::int64)
     {
         auto v = input.get_int64();
-        if (v < limits_t::min() || v > limits_t::max())
+        if (v < (limits_t::min)() || v > (limits_t::max)())
         {
             return client_errc::static_row_parsing_error;
         }
@@ -54,7 +54,7 @@ error_code parse_signed_int(field_view input, SignedInt& output)
     else if (kind == field_kind::uint64)
     {
         auto v = input.get_uint64();
-        if (v > static_cast<unsigned_t>(limits_t::max()))
+        if (v > static_cast<unsigned_t>((limits_t::max)()))
         {
             return client_errc::static_row_parsing_error;
         }
@@ -75,7 +75,7 @@ error_code parse_unsigned_int(field_view input, UnsignedInt& output)
         return client_errc::static_row_parsing_error;
     }
     auto v = input.get_uint64();
-    if (v > std::numeric_limits<UnsignedInt>::max())
+    if (v > (std::numeric_limits<UnsignedInt>::max)())
     {
         return client_errc::static_row_parsing_error;
     }

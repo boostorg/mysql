@@ -246,8 +246,8 @@ static_assert(!is_field_view_forward_iterator<const row::iterator&>::value, "");
 
 BOOST_AUTO_TEST_CASE(to_field_)
 {
-    std::int64_t int64max = std::numeric_limits<std::int64_t>::max();
-    std::uint64_t uint64max = std::numeric_limits<std::uint64_t>::max();
+    std::int64_t int64max = (std::numeric_limits<std::int64_t>::max)();
+    std::uint64_t uint64max = (std::numeric_limits<std::uint64_t>::max)();
     datetime dt{2020, 1, 2, 23};
     auto t = maket(45, 1, 2);
     std::string s = "ljk";

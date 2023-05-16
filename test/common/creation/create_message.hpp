@@ -29,7 +29,7 @@ namespace test {
 
 inline std::vector<std::uint8_t> create_message(std::uint8_t seqnum, std::vector<std::uint8_t> body)
 {
-    assert(body.size() <= std::numeric_limits<std::uint32_t>::max());
+    assert(body.size() <= (std::numeric_limits<std::uint32_t>::max)());
     auto body_size = static_cast<std::uint32_t>(body.size());
     boost::mysql::detail::packet_header header{boost::mysql::detail::int3{body_size}, seqnum};
     body.resize(body_size + 4);

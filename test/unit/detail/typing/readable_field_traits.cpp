@@ -524,9 +524,9 @@ error_code parse_and_discard(field_view f)
 
 BOOST_AUTO_TEST_CASE(errors)
 {
-    field_view i64_absmin(std::numeric_limits<std::int64_t>::min());
-    field_view i64_absmax(std::numeric_limits<std::int64_t>::max());
-    field_view ui64_absmax(std::numeric_limits<std::uint64_t>::max());
+    field_view i64_absmin((std::numeric_limits<std::int64_t>::min)());
+    field_view i64_absmax((std::numeric_limits<std::int64_t>::max)());
+    field_view ui64_absmax((std::numeric_limits<std::uint64_t>::max)());
 
     struct
     {

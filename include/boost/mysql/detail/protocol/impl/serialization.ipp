@@ -27,10 +27,9 @@ inline string_view get_string(const std::uint8_t* from, std::size_t size)
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::int_lenenc,
-    boost::mysql::detail::serialization_tag::none>::
-    deserialize_(deserialization_context& ctx, int_lenenc& output) noexcept
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::
+    serialization_traits<boost::mysql::detail::int_lenenc, boost::mysql::detail::serialization_tag::none>::
+        deserialize_(deserialization_context& ctx, int_lenenc& output) noexcept
 {
     std::uint8_t first_byte = 0;
     auto err = deserialize(ctx, first_byte);
@@ -65,10 +64,9 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
     return err;
 }
 
-inline void boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::int_lenenc,
-    boost::mysql::detail::serialization_tag::none>::
-    serialize_(serialization_context& ctx, int_lenenc input) noexcept
+inline void boost::mysql::detail::
+    serialization_traits<boost::mysql::detail::int_lenenc, boost::mysql::detail::serialization_tag::none>::
+        serialize_(serialization_context& ctx, int_lenenc input) noexcept
 {
     if (input.value < 251)
     {
@@ -91,10 +89,9 @@ inline void boost::mysql::detail::serialization_traits<
     }
 }
 
-inline std::size_t boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::int_lenenc,
-    boost::mysql::detail::serialization_tag::none>::
-    get_size_(const serialization_context&, int_lenenc input) noexcept
+inline std::size_t boost::mysql::detail::
+    serialization_traits<boost::mysql::detail::int_lenenc, boost::mysql::detail::serialization_tag::none>::
+        get_size_(const serialization_context&, int_lenenc input) noexcept
 {
     if (input.value < 251)
         return 1;
@@ -106,10 +103,9 @@ inline std::size_t boost::mysql::detail::serialization_traits<
         return 9;
 }
 
-inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::string_null,
-    boost::mysql::detail::serialization_tag::none>::
-    deserialize_(deserialization_context& ctx, string_null& output) noexcept
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::
+    serialization_traits<boost::mysql::detail::string_null, boost::mysql::detail::serialization_tag::none>::
+        deserialize_(deserialization_context& ctx, string_null& output) noexcept
 {
     auto string_end = std::find(ctx.first(), ctx.last(), 0);
     if (string_end == ctx.last())
@@ -121,20 +117,18 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
     return deserialize_errc::ok;
 }
 
-inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::string_eof,
-    boost::mysql::detail::serialization_tag::none>::
-    deserialize_(deserialization_context& ctx, string_eof& output) noexcept
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::
+    serialization_traits<boost::mysql::detail::string_eof, boost::mysql::detail::serialization_tag::none>::
+        deserialize_(deserialization_context& ctx, string_eof& output) noexcept
 {
     output.value = get_string(ctx.first(), ctx.last() - ctx.first());
     ctx.set_first(ctx.last());
     return deserialize_errc::ok;
 }
 
-inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
-    boost::mysql::detail::string_lenenc,
-    boost::mysql::detail::serialization_tag::none>::
-    deserialize_(deserialization_context& ctx, string_lenenc& output) noexcept
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::
+    serialization_traits<boost::mysql::detail::string_lenenc, boost::mysql::detail::serialization_tag::none>::
+        deserialize_(deserialization_context& ctx, string_lenenc& output) noexcept
 {
     int_lenenc length;
     auto err = deserialize(ctx, length);
@@ -142,7 +136,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
     {
         return err;
     }
-    if (length.value > std::numeric_limits<std::size_t>::max())
+    if (length.value > (std::numeric_limits<std::size_t>::max)())
     {
         return deserialize_errc::protocol_value_error;
     }
