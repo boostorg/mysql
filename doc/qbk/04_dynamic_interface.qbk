@@ -220,6 +220,12 @@ change the underlying type of a `field`:
 
 [dynamic_field_assignment]
 
+[heading Multi-resultset and multi-function operations]
+
+You can use both with the dynamic interface. Please refer to the sections
+on [link mysql.multi_resultset multi-resultset operations] and
+[link mysql.multi_function multi-function operations] for more information.
+
 [heading MySQL to C++ type mapping reference]
 
 The following table reflects mapping from database types to C++ types.

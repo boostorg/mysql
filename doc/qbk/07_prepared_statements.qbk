@@ -44,9 +44,11 @@ Some observations:
   as the statement has]. Failing to do so will result in an error.
 * You don't need to sanitize the parameters anyhow. The server takes care of it.
 * Actual parameters are matched to `?` placeholders by order. 
-* You can pass types like built-in integers, `float`, [reflink date], `std::string`,
+* You can pass types like built-in integers, `float`, [reflink date] or `std::string`,
   with the expected effects. [link mysql.prepared_statements.writable_field_reference This table]
   contains a reference with all the allowed types.
+* You can also use the static interface to execute statements by replacing [reflink results]
+  by [reflink static_results].
 
 You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`.
 If the optional doesn't have a value, `NULL` will be sent to the server. For example:
@@ -102,7 +104,9 @@ operation that may block or fail.
 
 [heading Type mapping reference for prepared statement parameters]
 
-The following table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
+The following table contains a reference of the types that can be used when binding a statement.
+If a type can be used this way, we say to satisfy the `WritableField` concept.
+The table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
 is interpreted by MySQL, depeding on `v`'s type.
 
 

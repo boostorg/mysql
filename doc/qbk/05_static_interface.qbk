@@ -76,6 +76,12 @@ In this case, the correct definition would be:
 
 [describe_post_v2]
 
+[heading Multi-resultset and multi-function operations]
+
+You can use both with the dynamic interface. Please refer to the sections
+on [link mysql.multi_resultset multi-resultset operations] and
+[link mysql.multi_function multi-function operations] for more information.
+
 [heading C++ standard requirements]
 
 Using the static interface requires C++14. The `BOOST_MYSQL_CXX14` test macro
