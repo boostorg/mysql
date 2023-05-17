@@ -108,6 +108,7 @@ BOOST_DESCRIBE_STRUCT(row2, (), (fbigint))
 
 using row2_tuple = std::tuple<std::int64_t>;
 
+// This is doing field reordering by name
 struct row3
 {
     double fdouble;
@@ -116,12 +117,21 @@ struct row3
 };
 BOOST_DESCRIBE_STRUCT(row3, (), (fdouble, ftiny, ffloat))
 
-using row3_tuple = std::tuple<float, double>;
+using row3_tuple = std::tuple<float, double, std::int8_t>;
 
 struct empty
 {
 };
 BOOST_DESCRIBE_STRUCT(empty, (), ())
+
+// For tests verifying that field selection works
+struct row3_selection
+{
+    std::int8_t ftiny;
+    float ffloat;
+};
+BOOST_DESCRIBE_STRUCT(row3_selection, (), (ftiny, ffloat))
+using row3_selection_tuple = std::tuple<float, double>;
 
 #ifdef BOOST_DESCRIBE_CXX14
 using boost::describe::operators::operator==;

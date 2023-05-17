@@ -645,7 +645,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
     check_object(stp.get_interface());
 }
 
-// Regression check: using tuples crashed
+// Regression checks
 BOOST_AUTO_TEST_CASE(tuples)
 {
     std::vector<field_view> fields;
@@ -686,9 +686,55 @@ BOOST_AUTO_TEST_CASE(tuples)
         fields
     );
     throw_on_error(err);
-    BOOST_TEST((storage_3[0] == row3_tuple{4.2f, 90.0}));
+    BOOST_TEST((storage_3[0] == row3_tuple{4.2f, 90.0, 9}));
 
     // OK r3
+    add_ok(st, create_ok_r3());
+    check_ok_r3(st);
+}
+
+BOOST_AUTO_TEST_CASE(field_selection_structs)
+{
+    std::vector<field_view> fields;
+    static_execution_state_impl<row3_selection> stp;
+    auto& st = stp.get_interface();
+
+    // Meta
+    add_meta(st, create_meta_r3());
+
+    // Rows
+    row3_selection storage[1]{};
+    rowbuff r1{4.2f, 90.0, 9};
+    auto err = st.on_row(r1.ctx(), create_ref<row3_selection>(span<row3_selection>(storage), 0), fields);
+    throw_on_error(err);
+    BOOST_TEST((storage[0] == row3_selection{9, 4.2f}));
+
+    // EOF
+    add_ok(st, create_ok_r3());
+    check_ok_r3(st);
+}
+
+BOOST_AUTO_TEST_CASE(field_selection_tuples)
+{
+    std::vector<field_view> fields;
+    static_execution_state_impl<row3_selection_tuple> stp;
+    auto& st = stp.get_interface();
+
+    // Meta
+    add_meta(st, create_meta_r3());
+
+    // Rows
+    row3_selection_tuple storage[1]{};
+    rowbuff r1{4.2f, 90.0, 9};
+    auto err = st.on_row(
+        r1.ctx(),
+        create_ref<row3_selection_tuple>(span<row3_selection_tuple>(storage), 0),
+        fields
+    );
+    throw_on_error(err);
+    BOOST_TEST((storage[0] == row3_selection_tuple{4.2f, 90.0}));
+
+    // EOF
     add_ok(st, create_ok_r3());
     check_ok_r3(st);
 }

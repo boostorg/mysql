@@ -695,7 +695,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
     check_object(rt);
 }
 
-// Regression check: using tuples crashed. Having more fields in the query than the C++ type crashed
+// Regression checks
 BOOST_AUTO_TEST_CASE(tuples)
 {
     std::vector<field_view> fields;
@@ -732,7 +732,7 @@ BOOST_AUTO_TEST_CASE(tuples)
         row1_tuple{10, "abc"}
     };
     std::vector<row3_tuple> expected_r3{
-        row3_tuple{4.2f, 90.0}
+        row3_tuple{4.2f, 90.0, 9}
     };
     BOOST_TEST(st.is_complete());
     check_meta_r1(st.get_meta(0));
@@ -744,6 +744,56 @@ BOOST_AUTO_TEST_CASE(tuples)
     check_ok_r1(st, 0);
     check_ok_r2(st, 1);
     check_ok_r3(st, 2);
+}
+
+BOOST_AUTO_TEST_CASE(field_selection_structs)
+{
+    std::vector<field_view> fields;
+    static_results_impl<row3_selection> stp;
+    auto& st = stp.get_interface();
+
+    // Meta
+    add_meta(st, create_meta_r3());
+
+    // Row
+    add_row(st, 4.2f, 90.0, 9);
+
+    // EOF
+    add_ok(st, create_ok_r3());
+
+    // Verify
+    std::vector<row3_selection> expected{
+        row3_selection{9, 4.2f}
+    };
+    BOOST_TEST(st.is_complete());
+    check_meta_r3(st.get_meta(0));
+    check_rows(stp.get_rows<0>(), expected);
+    check_ok_r3(st, 0);
+}
+
+BOOST_AUTO_TEST_CASE(field_selection_tuples)
+{
+    std::vector<field_view> fields;
+    static_results_impl<row3_selection_tuple> stp;
+    auto& st = stp.get_interface();
+
+    // Meta
+    add_meta(st, create_meta_r3());
+
+    // Row
+    add_row(st, 4.2f, 90.0, 9);
+
+    // EOF
+    add_ok(st, create_ok_r3());
+
+    // Verify
+    std::vector<row3_selection_tuple> expected{
+        row3_selection_tuple{4.2f, 90.0}
+    };
+    BOOST_TEST(st.is_complete());
+    check_meta_r3(st.get_meta(0));
+    check_rows(stp.get_rows<0>(), expected);
+    check_ok_r3(st, 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
