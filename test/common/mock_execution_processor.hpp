@@ -101,6 +101,7 @@ public:
     string_view info() const noexcept { return ok_packet_.info; }
     std::size_t num_meta() const noexcept { return num_meta_; }
     const std::vector<metadata>& meta() const noexcept { return meta_; }
+    const std::vector<detail::output_ref>& refs() const noexcept { return refs_; }
     BOOST_ATTRIBUTE_NODISCARD num_calls_validator num_calls() noexcept
     {
         return num_calls_validator(num_calls_);
@@ -123,6 +124,7 @@ private:
     std::size_t num_meta_{};
     std::vector<metadata> meta_;
     std::vector<row> rows_;
+    std::vector<detail::output_ref> refs_;
     fail_count fc_;
     diagnostics diag_;
 
@@ -165,10 +167,11 @@ protected:
     }
     void on_row_batch_start_impl() override { ++num_calls_.on_row_batch_start; }
     void on_row_batch_finish_impl() override { ++num_calls_.on_row_batch_finish; }
-    error_code on_row_impl(detail::deserialization_context, const detail::output_ref&, std::vector<field_view>&)
+    error_code on_row_impl(detail::deserialization_context, const detail::output_ref& ref, std::vector<field_view>&)
         override
     {
         ++num_calls_.on_row;
+        refs_.push_back(ref);
         return fc_.maybe_fail();
     }
     error_code on_row_ok_packet_impl(const detail::ok_packet& pack) override

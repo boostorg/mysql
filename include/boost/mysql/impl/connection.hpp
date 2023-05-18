@@ -27,7 +27,8 @@
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
+#include <boost/mysql/detail/network_algorithms/read_some_rows_dynamic.hpp>
+#include <boost/mysql/detail/network_algorithms/read_some_rows_static.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -617,7 +618,7 @@ boost::mysql::rows_view boost::mysql::connection<Stream>::read_some_rows(
 )
 {
     detail::clear_errors(err, diag);
-    return detail::read_some_rows(
+    return detail::read_some_rows_dynamic(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         err,
@@ -629,7 +630,7 @@ template <class Stream>
 boost::mysql::rows_view boost::mysql::connection<Stream>::read_some_rows(execution_state& st)
 {
     detail::error_block blk;
-    rows_view res = detail::read_some_rows(
+    rows_view res = detail::read_some_rows_dynamic(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         blk.err,
@@ -649,7 +650,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
     CompletionToken&& token
 )
 {
-    return detail::async_read_some_rows(
+    return detail::async_read_some_rows_dynamic(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         diag,
@@ -675,7 +676,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     );
 
     detail::clear_errors(err, diag);
-    return detail::read_some_rows(
+    return detail::read_some_rows_static(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),
@@ -698,7 +699,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     );
 
     detail::error_block blk;
-    auto res = detail::read_some_rows(
+    auto res = detail::read_some_rows_static(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),
@@ -728,7 +729,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
         "SpanRowType must be one of the types returned by the query"
     );
 
-    return detail::async_read_some_rows(
+    return detail::async_read_some_rows_static(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),

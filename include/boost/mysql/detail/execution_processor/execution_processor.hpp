@@ -56,6 +56,7 @@ public:
 
     std::size_t max_size() const noexcept { return max_size_; }
     std::size_t type_index() const noexcept { return type_index_; }
+    std::size_t offset() const noexcept { return offset_; }
     void set_offset(std::size_t v) noexcept { offset_ = v; }
 
     template <class T>
