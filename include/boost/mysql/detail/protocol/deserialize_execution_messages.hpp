@@ -11,6 +11,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
@@ -85,6 +86,12 @@ inline row_message deserialize_row_message(
     boost::asio::const_buffer msg,
     capabilities caps,
     db_flavor flavor,
+    diagnostics& diag
+);
+
+inline row_message deserialize_row_message(
+    channel_base& chan,
+    std::uint8_t& sequence_number,
     diagnostics& diag
 );
 

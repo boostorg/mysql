@@ -111,4 +111,20 @@ inline boost::mysql::detail::row_message boost::mysql::detail::deserialize_row_m
     }
 }
 
+inline boost::mysql::detail::row_message boost::mysql::detail::deserialize_row_message(
+    channel_base& chan,
+    std::uint8_t& sequence_number,
+    diagnostics& diag
+)
+{
+    // Get the row message
+    error_code err;
+    auto buff = chan.next_read_message(sequence_number, err);
+    if (err)
+        return err;
+
+    // Deserialize it
+    return deserialize_row_message(buff, chan.current_capabilities(), chan.flavor(), diag);
+}
+
 #endif

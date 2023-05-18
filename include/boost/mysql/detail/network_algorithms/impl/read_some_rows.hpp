@@ -15,8 +15,8 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/network_algorithms/process_row_message.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/post.hpp>
@@ -44,10 +44,18 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_dynamic(
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
+    error_code err;
     channel.shared_fields().clear();
     while (channel.has_read_messages() && st.is_reading_rows())
     {
-        auto err = process_row_message(channel, st, diag, output_ref());
+        auto res = deserialize_row_message(channel, st.sequence_number(), diag);
+        if (res.type == row_message::type_t::error)
+            err = res.data.err;
+        else if (res.type == row_message::type_t::row)
+            err = st.on_row(res.data.ctx, output_ref(), channel.shared_fields());
+        else
+            err = st.on_row_ok_packet(res.data.ok_pack);
+
         if (err)
             return err;
     }
@@ -65,15 +73,28 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_static(
     // Process all read messages until they run out, an error happens
     // or an EOF is received
     read_rows = 0;
-    while (channel.has_read_messages() && read_rows < output.max_size())
+    error_code err;
+    while (channel.has_read_messages() && proc.is_reading_rows() && read_rows < output.max_size())
     {
-        output.set_offset(read_rows);
-        auto err = process_row_message(channel, proc, diag, output);
+        auto res = deserialize_row_message(channel, proc.sequence_number(), diag);
+        if (res.type == row_message::type_t::error)
+        {
+            err = res.data.err;
+        }
+        else if (res.type == row_message::type_t::row)
+        {
+            output.set_offset(read_rows);
+            err = proc.on_row(res.data.ctx, output, channel.shared_fields());
+            if (!err)
+                ++read_rows;
+        }
+        else
+        {
+            err = proc.on_row_ok_packet(res.data.ok_pack);
+        }
+
         if (err)
             return err;
-        if (!proc.is_reading_rows())
-            break;
-        ++read_rows;
     }
     return error_code();
 }

@@ -12,8 +12,8 @@
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
-#include <boost/mysql/detail/network_algorithms/process_row_message.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
@@ -29,10 +29,18 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_available_rows(
 {
     // Process all read messages until they run out, an error happens
     // or an EOF is received
+    error_code err;
     output.on_row_batch_start();
     while (channel.has_read_messages() && output.is_reading_rows())
     {
-        auto err = process_row_message(channel, output, diag, output_ref());
+        auto res = deserialize_row_message(channel, output.sequence_number(), diag);
+        if (res.type == row_message::type_t::error)
+            err = res.data.err;
+        else if (res.type == row_message::type_t::row)
+            err = output.on_row(res.data.ctx, output_ref(), channel.shared_fields());
+        else
+            err = output.on_row_ok_packet(res.data.ok_pack);
+
         if (err)
             return err;
     }

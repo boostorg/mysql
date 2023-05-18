@@ -19,6 +19,7 @@
 
 #include "creation/create_message.hpp"
 #include "creation/create_row_message.hpp"
+#include "test_channel.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
@@ -225,6 +226,39 @@ BOOST_AUTO_TEST_CASE(error)
             BOOST_TEST(diag.server_message() == tc.expected_info);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(channel_success)
+{
+    auto chan = create_channel(
+        ok_msg_builder().seqnum(42).affected_rows(42).last_insert_id(1).info("abc").build_eof()
+    );
+    read_some_and_check(chan);
+    diagnostics diag;
+    std::uint8_t seqnum = 42;
+
+    auto response = deserialize_row_message(chan, seqnum, diag);
+
+    BOOST_TEST_REQUIRE(response.type == row_message::type_t::ok_packet);
+    BOOST_TEST(response.data.ok_pack.affected_rows.value == 42u);
+    BOOST_TEST(response.data.ok_pack.last_insert_id.value == 1u);
+    BOOST_TEST(response.data.ok_pack.info.value == "abc");
+    BOOST_TEST(seqnum == 43u);
+}
+
+BOOST_AUTO_TEST_CASE(channel_seqnum_mismatch)
+{
+    auto chan = create_channel(
+        ok_msg_builder().seqnum(41).affected_rows(42).last_insert_id(1).info("abc").build_eof()
+    );
+    read_some_and_check(chan);
+    diagnostics diag;
+    std::uint8_t seqnum = 42;
+
+    auto response = deserialize_row_message(chan, seqnum, diag);
+
+    BOOST_TEST_REQUIRE(response.type == row_message::type_t::error);
+    BOOST_TEST(response.data.err == client_errc::sequence_number_mismatch);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
