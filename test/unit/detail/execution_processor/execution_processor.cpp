@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(on_meta_mode_minimal)
 
     // Metadata object shouldn't copy the strings, and the other args get the right thing
     BOOST_TEST(err == error_code());
-    BOOST_TEST(p.num_calls().on_meta == 1u);
+    p.num_calls().reset(1).on_num_meta(1).on_meta(1).validate();
     BOOST_TEST(p.on_meta_call.meta.type() == column_type::bit);
     BOOST_TEST(p.on_meta_call.meta.column_name() == "");
     BOOST_TEST(p.on_meta_call.column_name == "myname");
@@ -183,11 +183,11 @@ BOOST_AUTO_TEST_CASE(on_meta_mode_full)
 
     // Metadata object should copy the strings, and the other args get the right thing
     BOOST_TEST(err == error_code());
-    BOOST_TEST(p.num_calls().on_meta == 1u);
+    p.num_calls().reset(1).on_num_meta(1).on_meta(1).validate();
     BOOST_TEST(p.on_meta_call.meta.type() == column_type::bit);
     BOOST_TEST(p.on_meta_call.meta.column_name() == "myname");
     BOOST_TEST(p.on_meta_call.column_name == "myname");
-    BOOST_TEST(p.on_meta_call.is_last);
+    BOOST_TEST(!p.on_meta_call.is_last);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

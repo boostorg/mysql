@@ -19,6 +19,8 @@
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/impl/deserialize_row.ipp>
 
+#include <boost/config.hpp>
+
 #include <cstddef>
 
 #include "test_stream.hpp"
@@ -29,12 +31,6 @@ namespace test {
 
 class mock_execution_processor : public detail::execution_processor
 {
-public:
-    explicit mock_execution_processor(fail_count fc = fail_count(), diagnostics diag = diagnostics())
-        : fc_(fc), diag_(std::move(diag))
-    {
-    }
-
     struct num_calls_t
     {
         std::size_t reset{};
@@ -47,12 +43,73 @@ public:
         std::size_t on_row_ok_packet{};
     };
 
-    const num_calls_t& num_calls() const noexcept { return num_calls_; }
+public:
+    // Validate the number of calls safely
+    class num_calls_validator
+    {
+        num_calls_t expected_{};
+        num_calls_t actual_{};
+
+    public:
+        num_calls_validator(num_calls_t actual) noexcept : actual_(actual) {}
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& reset(std::size_t v) noexcept
+        {
+            expected_.reset = v;
+            return *this;
+        }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_num_meta(std::size_t v) noexcept
+        {
+            expected_.on_num_meta = v;
+            return *this;
+        }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_meta(std::size_t v) noexcept
+        {
+            expected_.on_meta = v;
+            return *this;
+        }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_head_ok_packet(std::size_t v) noexcept
+        {
+            expected_.on_head_ok_packet = v;
+            return *this;
+        }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_row(std::size_t v) noexcept
+        {
+            expected_.on_row = v;
+            return *this;
+        }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_row_ok_packet(std::size_t v) noexcept
+        {
+            expected_.on_row_ok_packet = v;
+            return *this;
+        }
+        void validate()
+        {
+            BOOST_TEST(expected_.reset == actual_.reset);
+            BOOST_TEST(expected_.on_num_meta == actual_.on_num_meta);
+            BOOST_TEST(expected_.on_meta == actual_.on_meta);
+            BOOST_TEST(expected_.on_head_ok_packet == actual_.on_head_ok_packet);
+            BOOST_TEST(expected_.on_row_batch_start == actual_.on_row_batch_start);
+            BOOST_TEST(expected_.on_row_batch_finish == actual_.on_row_batch_finish);
+            BOOST_TEST(expected_.on_row == actual_.on_row);
+            BOOST_TEST(expected_.on_row_ok_packet == actual_.on_row_ok_packet);
+        }
+    };
+
+    mock_execution_processor() = default;
     std::uint64_t affected_rows() const noexcept { return ok_packet_.affected_rows; }
     std::uint64_t last_insert_id() const noexcept { return ok_packet_.last_insert_id; }
     string_view info() const noexcept { return ok_packet_.info; }
     std::size_t num_meta() const noexcept { return num_meta_; }
     const std::vector<metadata>& meta() const noexcept { return meta_; }
+    BOOST_ATTRIBUTE_NODISCARD num_calls_validator num_calls() noexcept
+    {
+        return num_calls_validator(num_calls_);
+    }
+    void set_fail_count(fail_count fc, diagnostics diag = diagnostics())
+    {
+        fc_ = fc;
+        diag_ = std::move(diag);
+    }
 
 private:
     // Data
@@ -95,7 +152,11 @@ protected:
         handle_ok(pack);
         return maybe_fail(diag);
     }
-    void on_num_meta_impl(std::size_t) override { ++num_calls_.on_num_meta; }
+    void on_num_meta_impl(std::size_t num_meta) override
+    {
+        ++num_calls_.on_num_meta;
+        num_meta_ = num_meta;
+    }
     error_code on_meta_impl(metadata&& m, string_view, bool is_last, diagnostics& diag) override
     {
         ++num_calls_.on_meta;

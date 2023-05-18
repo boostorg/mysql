@@ -19,6 +19,7 @@
 
 #include "creation/create_message.hpp"
 #include "creation/create_row_message.hpp"
+#include "printing.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 

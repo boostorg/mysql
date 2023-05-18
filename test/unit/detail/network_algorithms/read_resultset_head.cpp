@@ -18,14 +18,13 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "buffer_concat.hpp"
 #include "check_meta.hpp"
+#include "creation/create_diagnostics.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_message_struct.hpp"
@@ -35,6 +34,7 @@
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "test_connection.hpp"
+#include "test_stream.hpp"
 #include "unit_netfun_maker.hpp"
 
 using namespace boost::mysql;
@@ -62,7 +62,7 @@ struct
 struct fixture
 {
     test_channel chan{create_channel()};
-    detail::execution_state_impl st;  // The simplest processor that stores what is passed to it
+    mock_execution_processor st;
 
     fixture()
     {
@@ -86,8 +86,10 @@ BOOST_AUTO_TEST_CASE(success_meta)
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
             // We've read the response
+            fix.st.num_calls().on_num_meta(1).on_meta(1).validate();
             BOOST_TEST(fix.st.is_reading_rows());
             BOOST_TEST(fix.st.sequence_number() == 3u);
+            BOOST_TEST(fix.st.num_meta() == 1u);
             check_meta(fix.st.meta(), {std::make_pair(column_type::varchar, "mycol")});
         }
     }
@@ -110,8 +112,10 @@ BOOST_AUTO_TEST_CASE(success_several_meta_separate)
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
             // We've read the response
+            fix.st.num_calls().on_num_meta(1).on_meta(2).validate();
             BOOST_TEST(fix.st.is_reading_rows());
             BOOST_TEST(fix.st.sequence_number() == 4u);
+            BOOST_TEST(fix.st.num_meta() == 2u);
             check_meta(
                 fix.st.meta(),
                 {
@@ -137,10 +141,11 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
             // We've read the response
+            fix.st.num_calls().on_head_ok_packet(1).validate();
             BOOST_TEST(fix.st.meta().size() == 0u);
-            BOOST_TEST_REQUIRE(fix.st.is_complete());
-            BOOST_TEST(fix.st.get_affected_rows() == 42u);
-            BOOST_TEST(fix.st.get_info() == "abc");
+            BOOST_TEST(fix.st.is_complete());
+            BOOST_TEST(fix.st.affected_rows() == 42u);
+            BOOST_TEST(fix.st.info() == "abc");
         }
     }
 }
@@ -161,9 +166,10 @@ BOOST_AUTO_TEST_CASE(success_rows_available)
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
-            // We've read the response
+            // We've read the response but not the rows
+            fix.st.num_calls().on_num_meta(1).on_meta(1).validate();
             BOOST_TEST(fix.st.is_reading_rows());
-            BOOST_TEST(fix.st.sequence_number() == 3u);  // row wasn't read
+            BOOST_TEST(fix.st.sequence_number() == 3u);
         }
     }
 }
@@ -184,8 +190,9 @@ BOOST_AUTO_TEST_CASE(success_ok_packet_next_resultset)
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
             // We've read the response
+            fix.st.num_calls().on_head_ok_packet(1).validate();
             BOOST_TEST(fix.st.is_reading_first_subseq());
-            BOOST_TEST(fix.st.get_info() == "1st");
+            BOOST_TEST(fix.st.info() == "1st");
         }
     }
 }
@@ -204,8 +211,9 @@ BOOST_AUTO_TEST_CASE(state_complete)
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
             // Nothing changed
-            BOOST_TEST_REQUIRE(fix.st.is_complete());
-            BOOST_TEST(fix.st.get_affected_rows() == 42u);
+            fix.st.num_calls().on_head_ok_packet(1).validate();
+            BOOST_TEST(fix.st.is_complete());
+            BOOST_TEST(fix.st.affected_rows() == 42u);
         }
     }
 }
@@ -224,7 +232,8 @@ BOOST_AUTO_TEST_CASE(state_reading_rows)
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
 
             // Nothing changed
-            BOOST_TEST_REQUIRE(fix.st.is_reading_rows());
+            fix.st.num_calls().on_num_meta(1).on_meta(1).validate();
+            BOOST_TEST(fix.st.is_reading_rows());
             check_meta(fix.st.meta(), {column_type::bit});
         }
     }
@@ -318,6 +327,7 @@ BOOST_AUTO_TEST_CASE(error_deserialize_metadata)
     }
 }
 
+// The execution processor signals an error on head packet (e.g. meta mismatch)
 BOOST_AUTO_TEST_CASE(error_on_head_ok_packet)
 {
     for (auto fns : all_fns)
@@ -325,18 +335,17 @@ BOOST_AUTO_TEST_CASE(error_on_head_ok_packet)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            mock_execution_processor proc;
-            proc.sequence_number() = 1;
-            proc.actions.on_head_ok_packet = [](const detail::ok_packet&, diagnostics& diag) {
-                detail::diagnostics_access::assign_client(diag, "some message");
-                return client_errc::metadata_check_failed;
-            };
+            fix.st.set_fail_count(
+                fail_count(0, client_errc::metadata_check_failed),
+                create_client_diag("some message")
+            );
 
             auto response = ok_msg_builder().seqnum(1).affected_rows(42).info("abc").build_ok();
             fix.chan.lowest_layer().add_message(response);
 
-            fns.read_resultset_head(fix.chan, proc)
+            fns.read_resultset_head(fix.chan, fix.st)
                 .validate_error_exact_client(client_errc::metadata_check_failed, "some message");
+            fix.st.num_calls().on_head_ok_packet(1).validate();
         }
     }
 }
@@ -348,19 +357,18 @@ BOOST_AUTO_TEST_CASE(error_on_meta)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            mock_execution_processor proc;
-            proc.sequence_number() = 1;
-            proc.actions.on_meta = [](metadata&&, string_view, bool, diagnostics& diag) {
-                detail::diagnostics_access::assign_client(diag, "some message");
-                return client_errc::metadata_check_failed;
-            };
+            fix.st.set_fail_count(
+                fail_count(0, client_errc::metadata_check_failed),
+                create_client_diag("some message")
+            );
 
             auto response = create_message(1, {0x01});
             auto col = create_coldef_message(2, protocol_field_type::var_string);
             fix.chan.lowest_layer().add_message(concat_copy(response, col));
 
-            fns.read_resultset_head(fix.chan, proc)
+            fns.read_resultset_head(fix.chan, fix.st)
                 .validate_error_exact_client(client_errc::metadata_check_failed, "some message");
+            fix.st.num_calls().on_num_meta(1).on_meta(1).validate();
         }
     }
 }
