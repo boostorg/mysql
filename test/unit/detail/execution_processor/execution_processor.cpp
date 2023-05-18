@@ -38,6 +38,26 @@ using boost::mysql::throw_on_error;
 
 namespace {
 
+class spy_execution_processor : public mock_execution_processor
+{
+public:
+    struct
+    {
+        metadata meta;
+        std::string column_name;
+        bool is_last;
+    } on_meta_call;
+
+private:
+    error_code on_meta_impl(metadata&& m, string_view column_name, bool is_last, diagnostics& diag) override
+    {
+        on_meta_call.meta = m;
+        on_meta_call.column_name = column_name;
+        on_meta_call.is_last = is_last;
+        return mock_execution_processor::on_meta_impl(std::move(m), column_name, is_last, diag);
+    }
+};
+
 void check_reading_first(const execution_processor& st)
 {
     BOOST_TEST(st.is_reading_first());
@@ -136,42 +156,38 @@ BOOST_AUTO_TEST_CASE(states)
 
 BOOST_AUTO_TEST_CASE(on_meta_mode_minimal)
 {
-    mock_execution_processor p;
+    spy_execution_processor p;
     diagnostics diag;
     p.reset(resultset_encoding::text, metadata_mode::minimal);
     p.on_num_meta(1);
 
-    // Metadata object shouldn't copy the strings, and the other args get the right thing
-    p.actions.on_meta = [](metadata&& meta, string_view column_name, bool is_last, diagnostics&) {
-        BOOST_TEST(meta.type() == column_type::bit);
-        BOOST_TEST(meta.column_name() == "");
-        BOOST_TEST(column_name == "myname");
-        BOOST_TEST(is_last);
-        return error_code();
-    };
-
     auto err = p.on_meta(create_coldef(protocol_field_type::bit, "myname"), diag);
+
+    // Metadata object shouldn't copy the strings, and the other args get the right thing
     BOOST_TEST(err == error_code());
+    BOOST_TEST(p.num_calls().on_meta == 1u);
+    BOOST_TEST(p.on_meta_call.meta.type() == column_type::bit);
+    BOOST_TEST(p.on_meta_call.meta.column_name() == "");
+    BOOST_TEST(p.on_meta_call.column_name == "myname");
+    BOOST_TEST(p.on_meta_call.is_last);
 }
 
 BOOST_AUTO_TEST_CASE(on_meta_mode_full)
 {
-    mock_execution_processor p;
+    spy_execution_processor p;
     diagnostics diag;
     p.reset(resultset_encoding::text, metadata_mode::full);
     p.on_num_meta(2);
 
-    // Metadata object should copy the strings, and the other args get the right thing
-    p.actions.on_meta = [](metadata&& meta, string_view column_name, bool is_last, diagnostics&) {
-        BOOST_TEST(meta.type() == column_type::bit);
-        BOOST_TEST(meta.column_name() == "myname");
-        BOOST_TEST(column_name == "myname");
-        BOOST_TEST(!is_last);
-        return error_code();
-    };
-
     auto err = p.on_meta(create_coldef(protocol_field_type::bit, "myname"), diag);
+
+    // Metadata object should copy the strings, and the other args get the right thing
     BOOST_TEST(err == error_code());
+    BOOST_TEST(p.num_calls().on_meta == 1u);
+    BOOST_TEST(p.on_meta_call.meta.type() == column_type::bit);
+    BOOST_TEST(p.on_meta_call.meta.column_name() == "myname");
+    BOOST_TEST(p.on_meta_call.column_name == "myname");
+    BOOST_TEST(p.on_meta_call.is_last);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

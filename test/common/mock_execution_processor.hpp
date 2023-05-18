@@ -11,12 +11,17 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
+#include <boost/mysql/row.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/protocol/impl/deserialize_row.ipp>
 
 #include <cstddef>
+
+#include "test_stream.hpp"
 
 namespace boost {
 namespace mysql {
@@ -25,65 +30,91 @@ namespace test {
 class mock_execution_processor : public detail::execution_processor
 {
 public:
-    using execution_processor::execution_processor;
+    explicit mock_execution_processor(fail_count fc = fail_count(), diagnostics diag = diagnostics())
+        : fc_(fc), diag_(std::move(diag))
+    {
+    }
 
     struct num_calls_t
     {
         std::size_t reset{};
-        std::size_t on_head_ok_packet{};
         std::size_t on_num_meta{};
         std::size_t on_meta{};
+        std::size_t on_head_ok_packet{};
+        std::size_t on_row_batch_start{};
+        std::size_t on_row_batch_finish{};
         std::size_t on_row{};
         std::size_t on_row_ok_packet{};
-    } num_calls;
+    };
 
-    struct actions_t
-    {
-        std::function<error_code(const detail::ok_packet&, diagnostics&)> on_head_ok_packet;
-        std::function<void(std::size_t)> on_num_meta;
-        std::function<error_code(metadata&&, string_view, bool, diagnostics&)> on_meta;
-        std::function<error_code(detail::deserialization_context, const detail::output_ref&)> on_row;
-        std::function<error_code(const detail::ok_packet&)> on_row_ok_packet;
-    } actions;
+    const num_calls_t& num_calls() const noexcept { return num_calls_; }
+    std::uint64_t affected_rows() const noexcept { return ok_packet_.affected_rows; }
+    std::uint64_t last_insert_id() const noexcept { return ok_packet_.last_insert_id; }
+    string_view info() const noexcept { return ok_packet_.info; }
+    std::size_t num_meta() const noexcept { return num_meta_; }
+    const std::vector<metadata>& meta() const noexcept { return meta_; }
 
 private:
-    void reset_impl() noexcept override { ++num_calls.reset; }
+    // Data
+    num_calls_t num_calls_;
+    struct
+    {
+        std::uint64_t affected_rows{};
+        std::uint64_t last_insert_id{};
+        std::string info;
+    } ok_packet_{};
+    std::size_t num_meta_{};
+    std::vector<metadata> meta_;
+    std::vector<row> rows_;
+    fail_count fc_;
+    diagnostics diag_;
+
+    // Helpers
+    error_code maybe_fail(diagnostics& diag)
+    {
+        auto err = fc_.maybe_fail();
+        if (err)
+        {
+            diag = diag_;
+        }
+        return err;
+    }
+
+    void handle_ok(const detail::ok_packet& pack)
+    {
+        ok_packet_.affected_rows = pack.affected_rows.value;
+        ok_packet_.last_insert_id = pack.last_insert_id.value;
+        ok_packet_.info = pack.info.value;
+    }
+
+protected:
+    void reset_impl() noexcept override { ++num_calls_.reset; }
     error_code on_head_ok_packet_impl(const detail::ok_packet& pack, diagnostics& diag) override
     {
-        ++num_calls.on_head_ok_packet;
-        if (actions.on_head_ok_packet)
-            return actions.on_head_ok_packet(pack, diag);
-        return error_code();
+        ++num_calls_.on_head_ok_packet;
+        handle_ok(pack);
+        return maybe_fail(diag);
     }
-    void on_num_meta_impl(std::size_t num_columns) override
+    void on_num_meta_impl(std::size_t) override { ++num_calls_.on_num_meta; }
+    error_code on_meta_impl(metadata&& m, string_view, bool is_last, diagnostics& diag) override
     {
-        ++num_calls.on_num_meta;
-        if (actions.on_num_meta)
-            actions.on_num_meta(num_columns);
+        ++num_calls_.on_meta;
+        meta_.push_back(std::move(m));
+        return is_last ? maybe_fail(diag) : error_code();
     }
-    error_code on_meta_impl(metadata&& m, string_view column_name, bool is_last, diagnostics& diag) override
-    {
-        ++num_calls.on_meta;
-        if (actions.on_meta)
-            return actions.on_meta(std::move(m), column_name, is_last, diag);
-        return error_code();
-    }
-    void on_row_batch_start_impl() override {}
-    void on_row_batch_finish_impl() override {}
-    error_code on_row_impl(detail::deserialization_context ctx, const detail::output_ref& ref, std::vector<field_view>&)
+    void on_row_batch_start_impl() override { ++num_calls_.on_row_batch_start; }
+    void on_row_batch_finish_impl() override { ++num_calls_.on_row_batch_finish; }
+    error_code on_row_impl(detail::deserialization_context, const detail::output_ref&, std::vector<field_view>&)
         override
     {
-        ++num_calls.on_row;
-        if (actions.on_row)
-            return actions.on_row(ctx, ref);
-        return error_code();
+        ++num_calls_.on_row;
+        return fc_.maybe_fail();
     }
     error_code on_row_ok_packet_impl(const detail::ok_packet& pack) override
     {
-        ++num_calls.on_row_ok_packet;
-        if (actions.on_row_ok_packet)
-            return actions.on_row_ok_packet(pack);
-        return error_code();
+        ++num_calls_.on_row_ok_packet;
+        handle_ok(pack);
+        return fc_.maybe_fail();
     }
 };
 
