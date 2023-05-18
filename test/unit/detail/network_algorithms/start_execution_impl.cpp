@@ -8,13 +8,9 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -23,8 +19,8 @@
 
 #include "assert_buffer_equals.hpp"
 #include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
+#include "mock_execution_processor.hpp"
 #include "printing.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
@@ -49,9 +45,6 @@ struct
     {netfun_maker::async_errinfo(&boost::mysql::detail::async_start_execution_impl), "async"}
 };
 
-// start_execution_impl should work for any execution_processor.
-// We've chosen to test with execution_state_impl for simplicity - higher level tests
-// spotcheck that other processors work, too
 BOOST_AUTO_TEST_SUITE(test_start_execution_impl)
 
 BOOST_AUTO_TEST_CASE(success)
@@ -60,15 +53,11 @@ BOOST_AUTO_TEST_CASE(success)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            // Initial state, to verify that we reset it
-            auto st = exec_builder()
-                          .reset(resultset_encoding::text, metadata_mode::minimal)
-                          .meta({protocol_field_type::geometry})
-                          .seqnum(4)
-                          .build();
+            mock_execution_processor st;
 
             // Channel
             auto chan = create_channel();
+            chan.set_meta_mode(metadata_mode::full);
             chan.lowest_layer()
                 .add_message(create_message(1, {0x01}))
                 .add_message(create_coldef_message(2, protocol_field_type::var_string));
@@ -90,6 +79,9 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_TEST(st.sequence_number() == 3u);
             BOOST_TEST(st.is_reading_rows());
             check_meta(st.meta(), {std::make_pair(column_type::varchar, "mycol")});
+
+            // Validate mock calls
+            st.num_calls().reset(1).on_num_meta(1).on_meta(1).validate();
         }
     }
 }
@@ -105,7 +97,9 @@ BOOST_AUTO_TEST_CASE(error_network_error)
             {
                 BOOST_TEST_CONTEXT(i)
                 {
-                    detail::execution_state_impl st;
+                    mock_execution_processor st;
+
+                    // Channel
                     auto chan = create_channel();
                     chan.lowest_layer()
                         .add_message(create_message(1, {0x01}))
@@ -118,6 +112,9 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     // Call the function
                     fns.start_execution(chan, resultset_encoding::binary, st)
                         .validate_error_exact(client_errc::server_unsupported);
+
+                    // Num calls validation
+                    st.num_calls().reset(1).validate();
                 }
             }
         }
