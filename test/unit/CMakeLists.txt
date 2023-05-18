@@ -71,7 +71,7 @@ add_executable(
     resultset.cpp
     connection.cpp
     throw_on_error.cpp
-    regressions.cpp
+    misc.cpp
     multifn.cpp
     entry_point.cpp
 )

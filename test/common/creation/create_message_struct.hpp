@@ -76,7 +76,8 @@ inline detail::err_packet create_err_packet(std::uint16_t code, string_view mess
 
 inline detail::column_definition_packet create_coldef(
     detail::protocol_field_type type,
-    string_view name = "mycol"
+    string_view name = "mycol",
+    std::uint16_t flags = 0
 )
 {
     return boost::mysql::detail::column_definition_packet{
@@ -89,8 +90,8 @@ inline detail::column_definition_packet create_coldef(
         33,  // utf8_general_ci
         10,  // column_length
         type,
-        0,  // flags
-        0,  // decimals
+        flags,  // flags
+        0,      // decimals
     };
 }
 

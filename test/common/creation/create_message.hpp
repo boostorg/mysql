@@ -174,11 +174,9 @@ inline std::vector<std::uint8_t> create_err_packet_message(
 
 inline std::vector<std::uint8_t> create_coldef_message(
     std::uint8_t seqnum,
-    detail::protocol_field_type type,
-    string_view name = "mycol"
+    const detail::column_definition_packet& pack
 )
 {
-    auto pack = create_coldef(type, name);
     return create_message(
         seqnum,
         serialize_to_vector(
@@ -197,6 +195,15 @@ inline std::vector<std::uint8_t> create_coldef_message(
             std::uint16_t(0)  // padding
         )
     );
+}
+
+inline std::vector<std::uint8_t> create_coldef_message(
+    std::uint8_t seqnum,
+    detail::protocol_field_type type,
+    string_view name = "mycol"
+)
+{
+    return create_coldef_message(seqnum, create_coldef(type, name));
 }
 
 }  // namespace test

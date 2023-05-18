@@ -8,16 +8,18 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_RUN_COROUTINE_HPP
 #define BOOST_MYSQL_TEST_COMMON_RUN_COROUTINE_HPP
 
+#include <boost/asio/use_awaitable.hpp>
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
 inline void run_coroutine(std::function<boost::asio::awaitable<void>(void)> coro)
 {
     boost::asio::io_context ctx;
@@ -25,10 +27,10 @@ inline void run_coroutine(std::function<boost::asio::awaitable<void>(void)> coro
     ctx.run();
     fut.get();
 }
-#endif
-
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
+
+#endif  // BOOST_ASIO_HAS_CO_AWAIT
 
 #endif
