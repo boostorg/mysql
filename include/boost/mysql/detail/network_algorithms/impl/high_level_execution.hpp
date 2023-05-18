@@ -219,6 +219,7 @@ void boost::mysql::detail::execute(
     diagnostics& diag
 )
 {
+    diag.clear();
     err = check_client_errors(req);
     if (err)
         return;

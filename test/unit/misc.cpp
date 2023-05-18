@@ -23,6 +23,7 @@
 #include "creation/create_message.hpp"
 #include "creation/create_meta.hpp"
 #include "creation/create_row_message.hpp"
+#include "creation/create_statement.hpp"
 #include "run_coroutine.hpp"
 #include "test_connection.hpp"
 
@@ -117,6 +118,33 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
     BOOST_TEST(result[2].affected_rows() == 30u);
     BOOST_TEST(result[2].info() == "3rd");
     BOOST_TEST(result[2].rows() == makerows(1, "ab"));
+}
+
+// Regression check: execute statement with iterator range with a reference type that is convertible to
+// field_view, but not equal to field_view
+BOOST_AUTO_TEST_CASE(execute_stmt_iterator_reference_not_field_view)
+{
+    results result;
+    auto stmt = statement_builder().id(1).num_params(2).build();
+    test_connection conn;
+    conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+
+    // Call the function
+    std::vector<field> fields{field_view("test"), field_view()};
+    conn.execute(stmt.bind(fields.begin(), fields.end()), result);
+
+    // Verify the message we sent
+    constexpr std::uint8_t expected_msg[] = {
+        0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+        0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
+    };
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_msg);
+
+    // Verify the results
+    BOOST_TEST_REQUIRE(result.size() == 1u);
+    BOOST_TEST(result.meta().size() == 0u);
+    BOOST_TEST(result.affected_rows() == 50u);
+    BOOST_TEST(result.info() == "1st");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

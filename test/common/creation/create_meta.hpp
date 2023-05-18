@@ -15,7 +15,6 @@
 
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/impl/metadata.hpp>
 
 namespace boost {
 namespace mysql {
