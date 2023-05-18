@@ -72,6 +72,16 @@ public:
             expected_.on_head_ok_packet = v;
             return *this;
         }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_row_batch_start(std::size_t v) noexcept
+        {
+            expected_.on_row_batch_start = v;
+            return *this;
+        }
+        BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_row_batch_finish(std::size_t v) noexcept
+        {
+            expected_.on_row_batch_finish = v;
+            return *this;
+        }
         BOOST_ATTRIBUTE_NODISCARD num_calls_validator& on_row(std::size_t v) noexcept
         {
             expected_.on_row = v;

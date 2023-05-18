@@ -119,107 +119,8 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
     }
 }
 
-// Regression check: don't attempt to continue reading after the 1st EOF for multi-result
-BOOST_AUTO_TEST_CASE(batch_with_rows_eof_multiresult)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            fixture fix;
-            fix.chan.lowest_layer().add_message(concat_copy(
-                create_text_row_message(42, "abc"),
-                ok_msg_builder().seqnum(43).affected_rows(1).info("1st").more_results(true).build_eof(),
-                ok_msg_builder().seqnum(44).info("2nd").build_ok()
-            ));
-
-            rows_view rv = fns.read_some_rows_dynamic(fix.chan, fix.st).get();
-            BOOST_TEST(rv == makerows(1, "abc"));
-            BOOST_TEST_REQUIRE(fix.st.is_reading_head());
-            BOOST_TEST(fix.st.get_affected_rows() == 1u);
-            BOOST_TEST(fix.st.get_info() == "1st");
-        }
-    }
-}
-
-// read_some_rows is a no-op if !st.should_read_rows()
-BOOST_AUTO_TEST_CASE(state_complete)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            fixture fix;
-            add_ok(fix.st, ok_builder().affected_rows(42).build());
-
-            rows_view rv = fns.read_some_rows_dynamic(fix.chan, fix.st).get();
-            BOOST_TEST(rv == rows());
-            BOOST_TEST_REQUIRE(fix.st.is_complete());
-            BOOST_TEST(fix.st.get_affected_rows() == 42u);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(state_reading_head)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            fixture fix;
-            add_ok(fix.st, ok_builder().affected_rows(42).more_results(true).build());
-
-            rows_view rv = fns.read_some_rows_dynamic(fix.chan, fix.st).get();
-            BOOST_TEST(rv == rows());
-            BOOST_TEST_REQUIRE(fix.st.is_reading_head());
-            BOOST_TEST(fix.st.get_affected_rows() == 42u);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error_network_error)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            for (std::size_t i = 0; i <= 1; ++i)
-            {
-                BOOST_TEST_CONTEXT("i=" << i)
-                {
-                    fixture fix;
-                    fix.chan.lowest_layer()
-                        .add_message(create_text_row_message(42, "abc"))
-                        .add_message(ok_msg_builder().seqnum(43).affected_rows(1).info("1st").build_eof())
-                        .set_fail_count(fail_count(i, client_errc::wrong_num_params));
-
-                    fns.read_some_rows_dynamic(fix.chan, fix.st)
-                        .validate_error_exact(client_errc::wrong_num_params);
-                }
-            }
-        }
-    }
-}
-
-// deserialize_row_message covers cases like getting an error packet, seqnum mismatch, etc
-BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            fixture fix;
-
-            // invalid row
-            fix.chan.lowest_layer().add_message(ok_msg_builder().seqnum(111).build_eof());
-
-            fns.read_some_rows_dynamic(fix.chan, fix.st)
-                .validate_error_exact(client_errc::sequence_number_mismatch);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error_on_row)
+// All the other error cases are already tested in read_some_rows_impl. Spotcheck
+BOOST_AUTO_TEST_CASE(error)
 {
     for (const auto& fns : all_fns)
     {
@@ -235,8 +136,6 @@ BOOST_AUTO_TEST_CASE(error_on_row)
         }
     }
 }
-
-// error in on_row_ok_packet is not a real case
 
 BOOST_AUTO_TEST_SUITE_END()
 

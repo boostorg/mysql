@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace boost {
 namespace mysql {
@@ -37,7 +38,7 @@ class output_ref
     void* data_{};
 
     // Number of elements in the span
-    std::size_t max_size_{};
+    std::size_t max_size_{(std::numeric_limits<std::size_t>::max)()};
 
     // Identifier for the type of elements. Index in the resultset type list
     std::size_t type_index_{};

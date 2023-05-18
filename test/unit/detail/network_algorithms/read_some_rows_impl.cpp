@@ -12,7 +12,7 @@
 #include <boost/mysql/common_server_errc.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows_static.hpp>
+#include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
@@ -38,7 +38,7 @@ using boost::mysql::detail::output_ref;
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_read_some_rows_static)
+BOOST_AUTO_TEST_SUITE(test_read_some_rows_impl)
 
 using row1 = std::tuple<int>;
 
@@ -46,11 +46,11 @@ using netfun_maker = netfun_maker_fn<std::size_t, test_channel&, execution_proce
 
 struct
 {
-    typename netfun_maker::signature read_some_rows_static;
+    typename netfun_maker::signature read_some_rows_impl;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&detail::read_some_rows_static),           "sync" },
-    {netfun_maker::async_errinfo(&detail::async_read_some_rows_static), "async"},
+    {netfun_maker::sync_errc(&detail::read_some_rows_impl),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_read_some_rows_impl), "async"},
 };
 
 struct fixture
@@ -87,13 +87,19 @@ BOOST_AUTO_TEST_CASE(eof)
                 ok_msg_builder().affected_rows(1).info("1st").seqnum(42).more_results(true).build_eof()
             );
 
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 0u);
             BOOST_TEST(fix.proc.is_reading_head());
             BOOST_TEST(fix.proc.affected_rows() == 1u);
             BOOST_TEST(fix.proc.info() == "1st");
             BOOST_TEST(fix.chan.shared_sequence_number() == 0u);  // not used
-            fix.proc.num_calls().on_row_ok_packet(1).validate();
+            fix.proc.num_calls()
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(1)
+                .on_row_ok_packet(1)
+                .on_row_batch_finish(1)
+                .validate();
         }
     }
 }
@@ -111,12 +117,18 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
                 )
                 .add_message(create_text_row_message(44, "other"));  // only a single read should be issued
 
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 2u);
             BOOST_TEST(fix.proc.is_reading_rows());
             BOOST_TEST(fix.chan.shared_sequence_number() == 0u);  // not used
             fix.validate_refs(2);
-            fix.proc.num_calls().on_row(2).validate();
+            fix.proc.num_calls()
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(1)
+                .on_row(2)
+                .on_row_batch_finish(1)
+                .validate();
         }
     }
 }
@@ -134,14 +146,21 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
                 ok_msg_builder().seqnum(44).affected_rows(1).info("1st").more_results(true).build_eof()
             ));
 
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 2u);
             BOOST_TEST_REQUIRE(fix.proc.is_reading_head());
             BOOST_TEST(fix.proc.affected_rows() == 1u);
             BOOST_TEST(fix.proc.info() == "1st");
             BOOST_TEST(fix.chan.shared_sequence_number() == 0u);  // not used
             fix.validate_refs(2);
-            fix.proc.num_calls().on_row(2).on_row_ok_packet(1).validate();
+            fix.proc.num_calls()
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(1)
+                .on_row(2)
+                .on_row_ok_packet(1)
+                .on_row_batch_finish(1)
+                .validate();
         }
     }
 }
@@ -160,13 +179,20 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof_multiresult)
                 ok_msg_builder().seqnum(44).info("2nd").build_ok()
             ));
 
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 1u);
             BOOST_TEST_REQUIRE(fix.proc.is_reading_head());
             BOOST_TEST(fix.proc.affected_rows() == 1u);
             BOOST_TEST(fix.proc.info() == "1st");
             fix.validate_refs(1);
-            fix.proc.num_calls().on_row(1).on_row_ok_packet(1).validate();
+            fix.proc.num_calls()
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(1)
+                .on_row(1)
+                .on_row_ok_packet(1)
+                .on_row_batch_finish(1)
+                .validate();
         }
     }
 }
@@ -186,11 +212,17 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_out_of_span_space)
             ));
 
             // We only have space for 3
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 3u);
             fix.validate_refs(3);
             BOOST_TEST(fix.proc.is_reading_rows());
-            fix.proc.num_calls().on_row(3).validate();
+            fix.proc.num_calls()
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(1)
+                .on_row(3)
+                .on_row_batch_finish(1)
+                .validate();
         }
     }
 }
@@ -203,12 +235,12 @@ BOOST_AUTO_TEST_CASE(state_complete)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            add_ok(fix.proc, ok_builder().affected_rows(20).more_results().build());
+            add_ok(fix.proc, ok_builder().affected_rows(20).build());
 
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 0u);
             BOOST_TEST(fix.proc.is_complete());
-            fix.proc.num_calls().on_row_ok_packet(1).validate();
+            fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).validate();
         }
     }
 }
@@ -222,10 +254,10 @@ BOOST_AUTO_TEST_CASE(state_reading_head)
             fixture fix;
             add_ok(fix.proc, ok_builder().affected_rows(42).more_results(true).build());
 
-            std::size_t num_rows = fns.read_some_rows_static(fix.chan, fix.proc, fix.ref()).get();
+            std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 0u);
             BOOST_TEST(fix.proc.is_reading_head());
-            fix.proc.num_calls().on_row_ok_packet(1).validate();
+            fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).validate();
         }
     }
 }
@@ -246,7 +278,7 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                         .add_message(ok_msg_builder().seqnum(43).affected_rows(1).info("1st").build_eof())
                         .set_fail_count(fail_count(i, client_errc::wrong_num_params));
 
-                    fns.read_some_rows_static(fix.chan, fix.proc, fix.ref())
+                    fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
                         .validate_error_exact(client_errc::wrong_num_params);
                 }
             }
@@ -267,7 +299,7 @@ BOOST_AUTO_TEST_CASE(error_on_row)
             fix.proc.set_fail_count(fail_count(0, client_errc::static_row_parsing_error));
 
             // Call the function
-            fns.read_some_rows_static(fix.chan, fix.proc, fix.ref())
+            fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
                 .validate_error_exact(client_errc::static_row_parsing_error);
         }
     }
@@ -286,7 +318,7 @@ BOOST_AUTO_TEST_CASE(error_on_row_ok_packet)
             fix.proc.set_fail_count(fail_count(0, client_errc::num_resultsets_mismatch));
 
             // Call the function
-            fns.read_some_rows_static(fix.chan, fix.proc, fix.ref())
+            fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
                 .validate_error_exact(client_errc::num_resultsets_mismatch);
         }
     }
@@ -305,7 +337,7 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
             );
 
             // Call the function
-            fns.read_some_rows_static(fix.chan, fix.proc, fix.ref())
+            fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
                 .validate_error_exact(common_server_errc::er_cant_create_db);
         }
     }

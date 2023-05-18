@@ -19,7 +19,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Note: impl requires access to execution_state_impl::meta::size()
 template <class Stream>
 rows_view read_some_rows_dynamic(
     channel<Stream>& chan,

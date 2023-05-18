@@ -11,12 +11,7 @@
 #pragma once
 
 #include <boost/mysql/detail/network_algorithms/read_some_rows_dynamic.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
-
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/post.hpp>
-
-#include <cstddef>
+#include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
 
 namespace boost {
 namespace mysql {
@@ -29,32 +24,6 @@ inline rows_view get_some_rows(const channel_base& ch, const execution_state_imp
         ch.shared_fields().size(),
         st.meta().size()
     );
-}
-
-BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_dynamic(
-    channel_base& channel,
-    execution_processor& st,
-    diagnostics& diag
-)
-{
-    // Process all read messages until they run out, an error happens
-    // or an EOF is received
-    error_code err;
-    channel.shared_fields().clear();
-    while (channel.has_read_messages() && st.is_reading_rows())
-    {
-        auto res = deserialize_row_message(channel, st.sequence_number(), diag);
-        if (res.type == row_message::type_t::error)
-            err = res.data.err;
-        else if (res.type == row_message::type_t::row)
-            err = st.on_row(res.data.ctx, output_ref(), channel.shared_fields());
-        else
-            err = st.on_row_ok_packet(res.data.ok_pack);
-
-        if (err)
-            return err;
-    }
-    return error_code();
 }
 
 template <class Stream>
@@ -70,7 +39,7 @@ struct read_some_rows_dynamic_op : boost::asio::coroutine
     }
 
     template <class Self>
-    void operator()(Self& self, error_code err = {})
+    void operator()(Self& self, error_code err = {}, std::size_t = 0)
     {
         // Error checking
         if (err)
@@ -82,27 +51,8 @@ struct read_some_rows_dynamic_op : boost::asio::coroutine
         // Normal path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            diag_.clear();
-
-            // If we are not reading rows, return
-            if (!st_.is_reading_rows())
-            {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
-                self.complete(error_code(), rows_view());
-                BOOST_ASIO_CORO_YIELD break;
-            }
-
-            // Read at least one message
-            BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
-
-            // Process messages
-            err = process_some_rows_dynamic(chan_, st_, diag_);
-            if (err)
-            {
-                self.complete(err, rows_view());
-                BOOST_ASIO_CORO_YIELD break;
-            }
-
+            chan_.shared_fields().clear();
+            BOOST_ASIO_CORO_YIELD async_read_some_rows_impl(chan_, st_, output_ref(), diag_, std::move(self));
             self.complete(error_code(), get_some_rows(chan_, st_));
         }
     }
@@ -120,22 +70,10 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows_dynamic(
     diagnostics& diag
 )
 {
-    // If we are not reading rows, just return
-    if (!st.is_reading_rows())
-    {
-        return rows_view();
-    }
-
-    // Read from the stream until there is at least one message
-    channel.read_some(err);
+    channel.shared_fields().clear();
+    read_some_rows_impl(channel, st, output_ref(), err, diag);
     if (err)
         return rows_view();
-
-    // Process read messages
-    err = process_some_rows_dynamic(channel, st, diag);
-    if (err)
-        return rows_view();
-
     return get_some_rows(channel, st);
 }
 

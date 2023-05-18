@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/results.hpp>
 
@@ -18,10 +19,14 @@
 #include <boost/test/unit_test.hpp>
 
 #include "assert_buffer_equals.hpp"
+#include "buffer_concat.hpp"
+#include "check_meta.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_message_struct.hpp"
 #include "creation/create_results.hpp"
 #include "creation/create_row_message.hpp"
+#include "mock_execution_processor.hpp"
+#include "printing.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "test_stream.hpp"
@@ -46,42 +51,31 @@ struct
     {netfun_maker::async_errinfo(&detail::async_execute_impl<test_stream>), "async"}
 };
 
-// Verify that we clear any previous result
-detail::results_impl create_initial_results()
-{
-    return results_builder()
-        .meta({protocol_field_type::bit, protocol_field_type::var_string})
-        .row(30, "abc")
-        .row(40, "bhj")
-        .ok(ok_builder().affected_rows(89).info("abc").build())
-        .build();
-}
-
 BOOST_AUTO_TEST_SUITE(test_execute_impl)
 
-BOOST_AUTO_TEST_CASE(empty_resultset)
+BOOST_AUTO_TEST_CASE(eof)
 {
     for (const auto& fns : all_fns)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_results();
+            mock_execution_processor proc;
             auto ok_packet = ok_msg_builder().affected_rows(60u).info("abc").seqnum(1).build_ok();
             auto chan = create_channel(ok_packet);
             concat(chan.shared_buffer(), {0x02, 0x05, 0x09});  // some execution request
 
             // Call the function
-            fns.execute(chan, resultset_encoding::binary, result).validate_no_error();
+            fns.execute(chan, resultset_encoding::binary, proc).validate_no_error();
 
             // We've written the exeuction request
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
-            // We've populated the results
-            BOOST_TEST_REQUIRE(result.num_resultsets() == 1u);
-            BOOST_TEST(result.get_affected_rows(0) == 60u);
-            BOOST_TEST(result.get_info(0) == "abc");
-            BOOST_TEST(result.get_rows(0) == rows());
+            // We've read into the processor
+            proc.num_calls().reset(1).on_head_ok_packet(1).validate();
+            BOOST_TEST(proc.encoding() == resultset_encoding::binary);
+            BOOST_TEST(proc.affected_rows() == 60u);
+            BOOST_TEST(proc.info() == "abc");
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
@@ -93,7 +87,7 @@ BOOST_AUTO_TEST_CASE(single_batch)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_results();
+            mock_execution_processor proc;
             auto chan = create_channel();
             concat(chan.shared_buffer(), {0x02, 0x05, 0x09});  // some execution request
             std::vector<std::uint8_t> messages;
@@ -101,38 +95,31 @@ BOOST_AUTO_TEST_CASE(single_batch)
             concat(messages, create_coldef_message(2, protocol_field_type::longlong));  // meta
             concat(messages, create_text_row_message(3, 42));                           // row 1
             concat(messages, create_text_row_message(4, 43));                           // row 2
-            concat(
-                messages,
-                ok_msg_builder().seqnum(5).affected_rows(10u).info("1st").more_results(true).build_eof()
-            );
-            concat(
-                messages,
-                ok_msg_builder().seqnum(6).affected_rows(20u).info("2nd").more_results(true).build_ok()
-            );
-            concat(messages, create_message(7, {0x01}));                                  // OK, 1 metadata
-            concat(messages, create_coldef_message(8, protocol_field_type::var_string));  // meta
-            concat(messages, create_text_row_message(9, "abc"));                          // row 1
-            concat(messages, ok_msg_builder().seqnum(10).affected_rows(30u).info("3rd").build_eof());
+            concat(messages, ok_msg_builder().seqnum(5).affected_rows(10u).info("1st").build_eof());
+            concat(messages, ok_msg_builder().seqnum(1).info("2nd").build_eof());  // don't read any further
             chan.lowest_layer().add_message(std::move(messages));
 
             // Call the function
-            fns.execute(chan, resultset_encoding::text, result).validate_no_error();
+            fns.execute(chan, resultset_encoding::text, proc).validate_no_error();
 
             // We've written the exeuction request
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
-            // We've populated the results
-            BOOST_TEST_REQUIRE(result.num_resultsets() == 3u);
-            BOOST_TEST(result.get_affected_rows(0) == 10u);
-            BOOST_TEST(result.get_info(0) == "1st");
-            BOOST_TEST(result.get_rows(0) == makerows(1, 42, 43));
-            BOOST_TEST(result.get_affected_rows(1) == 20u);
-            BOOST_TEST(result.get_info(1) == "2nd");
-            BOOST_TEST(result.get_rows(1) == rows());
-            BOOST_TEST(result.get_affected_rows(2) == 30u);
-            BOOST_TEST(result.get_info(2) == "3rd");
-            BOOST_TEST(result.get_rows(2) == makerows(1, "abc"));
+            // We've read the results
+            proc.num_calls()
+                .reset(1)
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(1)
+                .on_row(2)
+                .on_row_batch_finish(1)
+                .on_row_ok_packet(1)
+                .validate();
+            BOOST_TEST(proc.num_meta() == 1u);
+            check_meta(proc.meta(), {column_type::bigint});
+            BOOST_TEST(proc.affected_rows() == 10u);
+            BOOST_TEST(proc.info() == "1st");
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
@@ -144,7 +131,7 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_results();
+            mock_execution_processor proc;
             auto chan = create_channel();
             concat(chan.shared_buffer(), {0x02, 0x05, 0x09});  // some execution request
             chan.lowest_layer()
@@ -152,52 +139,46 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
                 .add_message(create_coldef_message(2, protocol_field_type::tiny))  // meta
                 .add_message(create_text_row_message(3, 42))                       // row 1
                 .add_message(create_text_row_message(4, 43))                       // row 2
-                .add_message(
-                    ok_msg_builder().seqnum(5).affected_rows(10u).info("1st").more_results(true).build_eof()
-                )
-                .add_message(
-                    ok_msg_builder().seqnum(6).affected_rows(20u).info("2nd").more_results(true).build_ok()
-                )
-                .add_message(create_message(7, {0x01}))                                  // OK, 1 metadata
-                .add_message(create_coldef_message(8, protocol_field_type::var_string))  // meta
-                .add_message(create_text_row_message(9, "ab"))                           // row 1
-                .add_message(ok_msg_builder().seqnum(10).affected_rows(30u).info("3rd").build_eof());
+                .add_message(ok_msg_builder().seqnum(5).affected_rows(10u).info("1st").build_eof());
 
             // Call the function
-            fns.execute(chan, resultset_encoding::text, result).validate_no_error();
+            fns.execute(chan, resultset_encoding::text, proc).validate_no_error();
 
             // We've written the exeuction request
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
             BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
-            // We've populated the results
-            BOOST_TEST_REQUIRE(result.num_resultsets() == 3u);
-            BOOST_TEST(result.get_affected_rows(0) == 10u);
-            BOOST_TEST(result.get_info(0) == "1st");
-            BOOST_TEST(result.get_rows(0) == makerows(1, 42, 43));
-            BOOST_TEST(result.get_affected_rows(1) == 20u);
-            BOOST_TEST(result.get_info(1) == "2nd");
-            BOOST_TEST(result.get_rows(1) == rows());
-            BOOST_TEST(result.get_affected_rows(2) == 30u);
-            BOOST_TEST(result.get_info(2) == "3rd");
-            BOOST_TEST(result.get_rows(2) == makerows(1, "ab"));
+            // We've read the results
+            proc.num_calls()
+                .reset(1)
+                .on_num_meta(1)
+                .on_meta(1)
+                .on_row_batch_start(3)
+                .on_row(2)
+                .on_row_batch_finish(3)
+                .on_row_ok_packet(1)
+                .validate();
+            BOOST_TEST(proc.num_meta() == 1u);
+            check_meta(proc.meta(), {column_type::tinyint});
+            BOOST_TEST(proc.affected_rows() == 10u);
+            BOOST_TEST(proc.info() == "1st");
             BOOST_TEST(chan.shared_sequence_number() == 0u);  // not used
         }
     }
 }
 
+// Tests error on write, while reading head and while reading rows (error spotcheck)
 BOOST_AUTO_TEST_CASE(error_network_error)
 {
     for (const auto& fns : all_fns)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            // Tests error on write, while reading head and while reading rows
             for (std::size_t i = 0; i <= 2; ++i)
             {
                 BOOST_TEST_CONTEXT("i=" << i)
                 {
-                    auto result = create_initial_results();
+                    mock_execution_processor proc;
                     auto chan = create_channel();
                     concat(chan.shared_buffer(), {0x02, 0x05, 0x09});  // some execution request
                     chan.lowest_layer()
@@ -212,56 +193,10 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                         .set_fail_count(fail_count(i, client_errc::wrong_num_params));
 
                     // Call the function
-                    fns.execute(chan, resultset_encoding::text, result)
+                    fns.execute(chan, resultset_encoding::text, proc)
                         .validate_error_exact(client_errc::wrong_num_params);
                 }
             }
-        }
-    }
-}
-
-// Seqnum mismatch on row messages
-BOOST_AUTO_TEST_CASE(error_seqnum_mismatch)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            auto result = create_initial_results();
-            auto chan = create_channel();
-            concat(chan.shared_buffer(), {0x02, 0x05, 0x09});  // some execution request
-            chan.lowest_layer().add_message(concat_copy(
-                create_message(1, {0x01}),
-                create_coldef_message(2, protocol_field_type::tiny),
-                create_text_row_message(3, 42),
-                ok_msg_builder().seqnum(0).info("1st").build_eof()
-            ));
-
-            // Call the function
-            fns.execute(chan, resultset_encoding::text, result)
-                .validate_error_exact(client_errc::sequence_number_mismatch);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error_deserializing_rows)
-{
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            auto result = create_initial_results();
-            auto chan = create_channel();
-            concat(chan.shared_buffer(), {0x02, 0x05, 0x09});  // some execution request
-            chan.lowest_layer().add_message(concat_copy(
-                create_message(1, {0x01}),
-                create_coldef_message(2, protocol_field_type::tiny),
-                create_message(3, {0x02, 0xff})  // bad row
-            ));
-
-            // Call the function
-            fns.execute(chan, resultset_encoding::text, result)
-                .validate_error_exact(client_errc::incomplete_message);
         }
     }
 }

@@ -28,7 +28,7 @@
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_dynamic.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows_static.hpp>
+#include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -676,7 +676,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     );
 
     detail::clear_errors(err, diag);
-    return detail::read_some_rows_static(
+    return detail::read_some_rows_impl(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),
@@ -699,7 +699,7 @@ std::size_t boost::mysql::connection<Stream>::read_some_rows(
     );
 
     detail::error_block blk;
-    auto res = detail::read_some_rows_static(
+    auto res = detail::read_some_rows_impl(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),
@@ -729,7 +729,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
         "SpanRowType must be one of the types returned by the query"
     );
 
-    return detail::async_read_some_rows_static(
+    return detail::async_read_some_rows_impl(
         get_channel(),
         detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),

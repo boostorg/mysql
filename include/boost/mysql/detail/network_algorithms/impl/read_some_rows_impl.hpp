@@ -11,7 +11,7 @@
 #pragma once
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows_static.hpp>
+#include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
 #include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -23,7 +23,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_static(
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows(
     channel_base& chan,
     execution_processor& proc,
     output_ref output,
@@ -35,6 +35,7 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_static(
     // or an EOF is received
     read_rows = 0;
     error_code err;
+    proc.on_row_batch_start();
     while (chan.has_read_messages() && proc.is_reading_rows() && read_rows < output.max_size())
     {
         auto res = deserialize_row_message(chan, proc.sequence_number(), diag);
@@ -57,18 +58,19 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows_static(
         if (err)
             return err;
     }
+    proc.on_row_batch_finish();
     return error_code();
 }
 
 template <class Stream>
-struct read_some_rows_static_op : boost::asio::coroutine
+struct read_some_rows_impl_op : boost::asio::coroutine
 {
     channel<Stream>& chan_;
     diagnostics& diag_;
     execution_processor& proc_;
     output_ref output_;
 
-    read_some_rows_static_op(
+    read_some_rows_impl_op(
         channel<Stream>& chan,
         diagnostics& diag,
         execution_processor& proc,
@@ -106,7 +108,7 @@ struct read_some_rows_static_op : boost::asio::coroutine
             BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
 
             // Process messages
-            err = process_some_rows_static(chan_, proc_, output_, read_rows, diag_);
+            err = process_some_rows(chan_, proc_, output_, read_rows, diag_);
             if (err)
             {
                 self.complete(err, 0);
@@ -123,7 +125,7 @@ struct read_some_rows_static_op : boost::asio::coroutine
 }  // namespace boost
 
 template <class Stream>
-std::size_t boost::mysql::detail::read_some_rows_static(
+std::size_t boost::mysql::detail::read_some_rows_impl(
     channel<Stream>& chan,
     execution_processor& proc,
     const output_ref& output,
@@ -147,7 +149,7 @@ std::size_t boost::mysql::detail::read_some_rows_static(
 
     // Process read messages
     std::size_t read_rows = 0;
-    err = process_some_rows_static(chan, proc, output, read_rows, diag);
+    err = process_some_rows(chan, proc, output, read_rows, diag);
     if (err)
         return 0;
 
@@ -158,7 +160,7 @@ template <
     class Stream,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
-boost::mysql::detail::async_read_some_rows_static(
+boost::mysql::detail::async_read_some_rows_impl(
     channel<Stream>& chan,
     execution_processor& proc,
     const output_ref& output,
@@ -167,7 +169,7 @@ boost::mysql::detail::async_read_some_rows_static(
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
-        read_some_rows_static_op<Stream>(chan, diag, proc, output),
+        read_some_rows_impl_op<Stream>(chan, diag, proc, output),
         token,
         chan
     );

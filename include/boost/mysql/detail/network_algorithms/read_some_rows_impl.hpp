@@ -18,9 +18,8 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// We don't want to depend on static_execution_state_impl (and we don't need to)
 template <class Stream>
-std::size_t read_some_rows_static(
+std::size_t read_some_rows_impl(
     channel<Stream>& chan,
     execution_processor& proc,
     const output_ref& output,
@@ -32,7 +31,7 @@ template <
     class Stream,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
-async_read_some_rows_static(
+async_read_some_rows_impl(
     channel<Stream>& chan,
     execution_processor& proc,
     const output_ref& output,
@@ -44,6 +43,6 @@ async_read_some_rows_static(
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/detail/network_algorithms/impl/read_some_rows_static.hpp>
+#include <boost/mysql/detail/network_algorithms/impl/read_some_rows_impl.hpp>
 
 #endif

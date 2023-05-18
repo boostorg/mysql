@@ -46,12 +46,12 @@ public:
         pack_.warnings = v;
         return *this;
     }
-    ok_builder& more_results(bool v = true)
+    ok_builder& more_results(bool v)
     {
         flag(detail::SERVER_MORE_RESULTS_EXISTS, v);
         return *this;
     }
-    ok_builder& out_params(bool v = true)
+    ok_builder& out_params(bool v)
     {
         flag(detail::SERVER_PS_OUT_PARAMS, v);
         return *this;
