@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(success)
                     create_coldef_message(2, coldef_builder().type(protocol_field_type::tiny).build())
                 )
                 .add_message(create_text_row_message(3, 42))
-                .add_message(ok_msg_builder().seqnum(1).affected_rows(10).info("1st").build_ok());
+                .add_message(ok_msg_builder().seqnum(4).affected_rows(10).info("1st").build_eof());
 
             // Call the function
             fns.execute(chan, "SELECT 1", get_iface(result)).validate_no_error();
@@ -424,7 +424,7 @@ BOOST_AUTO_TEST_SUITE_END()
 //
 // start_execution (statement, tuple)
 //
-BOOST_AUTO_TEST_SUITE(start_statement_execution_tuple)
+BOOST_AUTO_TEST_SUITE(start_execution_stmt_tuple)
 
 using netfun_maker = netfun_maker_fn<
     void,
@@ -455,7 +455,7 @@ BOOST_AUTO_TEST_CASE(success)
                 .add_message(
                     create_coldef_message(2, coldef_builder().type(protocol_field_type::tiny).build())
                 )
-                .add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+                .add_message(ok_msg_builder().seqnum(3).affected_rows(50).info("1st").build_ok());
 
             // Call the function
             fns.start_execution(chan, stmt.bind("test", nullptr), get_iface(st)).validate_no_error();
@@ -468,8 +468,6 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_TEST(st.should_read_rows());
             BOOST_TEST(get_iface(st).sequence_number() == 3u);
             check_meta(st.meta(), {column_type::tinyint});
-            BOOST_TEST(st.affected_rows() == 50u);
-            BOOST_TEST(st.info() == "1st");
         }
     }
 }
@@ -547,7 +545,7 @@ BOOST_AUTO_TEST_SUITE_END()
 //
 // start_execution (statement, iterator)
 //
-BOOST_AUTO_TEST_SUITE(start_statement_execution_it)
+BOOST_AUTO_TEST_SUITE(start_execution_stmt_it)
 
 using netfun_maker = netfun_maker_fn<
     void,
