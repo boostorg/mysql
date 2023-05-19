@@ -68,6 +68,12 @@ void validate_multified_rows(boost::span<const row_multifield> r)
     BOOST_TEST((r[1] == row_multifield{{}, 22, "bbb"}));
 }
 
+constexpr const char* multifield_bad_msg =
+    "NULL checks failed for field 'field_nullable': the database type may be NULL, but the C++ type "
+    "cannot. Use std::optional<T> or boost::optional<T>\n"
+    "Incompatible types for field 'field_int': C++ type 'string' is not compatible with DB type 'INT'\n"
+    "Field 'field_missing' is not present in the data returned by the server";
+
 BOOST_AUTO_TEST_SUITE(singlefn)
 
 BOOST_FIXTURE_TEST_CASE(describe_structs, tcp_network_fixture)
@@ -118,7 +124,7 @@ BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
             SELECT * FROM multifield_table;
             DELETE FROM updates_table;
             SELECT * FROM one_row_table;
-            DELETE FROM updates_table
+            SET @v1 = 2
         )%",
         result
     );
@@ -163,31 +169,38 @@ BOOST_FIXTURE_TEST_CASE(metadata_check_failed, tcp_network_fixture)
     static_results<row_multifield_bad> result;
     conn.execute("SELECT * FROM multifield_table ORDER BY id", result, ec, diag);
 
-    const char* expected_msg =
-        "NULL checks failed for field 'field_nullable': the database type may be NULL, but the C++ type "
-        "cannot. Use std::optional<T> or boost::optional<T>\n"
-        "Incompatible types for field 'field_int': C++ type 'string' is not compatible with DB type 'INT'\n"
-        "Field 'field_missing' is not present in the data returned by the server";
-
     BOOST_TEST(ec == client_errc::metadata_check_failed);
-    BOOST_TEST(diag.client_message() == expected_msg);
+    BOOST_TEST(diag.client_message() == multifield_bad_msg);
 }
 
 BOOST_FIXTURE_TEST_CASE(metadata_check_failed_empty_resultset, tcp_network_fixture)
 {
     connect();
-    start_transaction();
 
     error_code ec;
     diagnostics diag;
     static_results<std::tuple<int>> result;
-    conn.execute("DELETE FROM updates_table", result, ec, diag);
+    conn.execute("SET @v1 = 2", result, ec, diag);
 
     const char* expected_msg =
         "Field in position 0 can't be mapped: there are more fields in your C++ data type than in your query";
 
     BOOST_TEST(ec == client_errc::metadata_check_failed);
     BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_FIXTURE_TEST_CASE(metadata_check_failed_subsequent_resultset, tcp_network_fixture)
+{
+    params.set_multi_queries(true);
+    connect();
+
+    error_code ec;
+    diagnostics diag;
+    static_results<empty, row_multifield_bad> result;
+    conn.execute("SET @v1 = 2; SELECT * FROM multifield_table ORDER BY id", result, ec, diag);
+
+    BOOST_TEST(ec == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == multifield_bad_msg);
 }
 
 BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
@@ -205,12 +218,11 @@ BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
 BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch_empty_resultset, tcp_network_fixture)
 {
     connect();
-    start_transaction();
 
     error_code ec;
     diagnostics diag;
     static_results<empty, empty> result;
-    conn.execute("DELETE FROM updates_table", result, ec, diag);
+    conn.execute("SET @v1 = 2", result, ec, diag);
 
     BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
 }
@@ -271,6 +283,7 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 
+// This spotchecks having repeated empty row types, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
 {
     params.set_multi_queries(true);
@@ -278,12 +291,13 @@ BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
     start_transaction();
 
     // Start
-    static_execution_state<row_multifield, empty, row_2fields> result;
+    static_execution_state<row_multifield, empty, row_2fields, empty> result;
     conn.start_execution(
         R"%(
             SELECT * FROM multifield_table WHERE id = 1;
             DELETE FROM updates_table;
-            SELECT * FROM one_row_table
+            SELECT * FROM one_row_table;
+            SET @v1 = 2
         )%",
         result
     );
@@ -325,10 +339,19 @@ BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
     BOOST_TEST_REQUIRE(num_rows == 1u);
     BOOST_TEST((rws2[0] == row_2fields{1, std::string("f0")}));
 
-    // Read again, in case the EOF came separately (r1)
+    // Read again, in case the EOF came separately (r3)
     num_rows = conn.read_some_rows(result, boost::span<row_2fields>(rws2));
     BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.should_read_head());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+
+    // Next resultset (r4, empty)
+    conn.read_resultset_head(result);
     BOOST_TEST(result.complete());
+    BOOST_TEST(result.meta().size() == 0u);
     BOOST_TEST(result.affected_rows() == 0u);
     BOOST_TEST(result.warning_count() == 0u);
     BOOST_TEST(result.last_insert_id() == 0u);
@@ -344,11 +367,21 @@ BOOST_FIXTURE_TEST_CASE(metadata_check_failed, tcp_network_fixture)
     static_execution_state<row_multifield_bad> result;
     conn.start_execution("SELECT * FROM multifield_table ORDER BY id", result, ec, diag);
 
+    BOOST_TEST(ec == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == multifield_bad_msg);
+}
+
+BOOST_FIXTURE_TEST_CASE(metadata_check_failed_empty_resultset, tcp_network_fixture)
+{
+    connect();
+
+    error_code ec;
+    diagnostics diag;
+    static_execution_state<std::tuple<int>> result;
+    conn.start_execution("SET @v1 = 2", result, ec, diag);
+
     const char* expected_msg =
-        "NULL checks failed for field 'field_nullable': the database type may be NULL, but the C++ type "
-        "cannot. Use std::optional<T> or boost::optional<T>\n"
-        "Incompatible types for field 'field_int': C++ type 'string' is not compatible with DB type 'INT'\n"
-        "Field 'field_missing' is not present in the data returned by the server";
+        "Field in position 0 can't be mapped: there are more fields in your C++ data type than in your query";
 
     BOOST_TEST(ec == client_errc::metadata_check_failed);
     BOOST_TEST(diag.client_message() == expected_msg);
@@ -357,16 +390,51 @@ BOOST_FIXTURE_TEST_CASE(metadata_check_failed, tcp_network_fixture)
 BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
 {
     connect();
-    start_transaction();
+
+    error_code ec;
+    diagnostics diag;
+    static_execution_state<row_2fields, empty> result;
+
+    // Start execution
+    conn.start_execution("SELECT * FROM empty_table", result);
+
+    // Error is detected when reading the OK packet in read_some_rows
+    std::array<row_2fields, 3> storage;
+    conn.read_some_rows(result, boost::span<row_2fields>(storage), ec, diag);
+    BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch_empty_resultset, tcp_network_fixture)
+{
+    connect();
 
     error_code ec;
     diagnostics diag;
 
     // Start
     static_execution_state<empty, empty> result;
-    conn.start_execution("DELETE FROM updates_table", result, ec, diag);
+    conn.start_execution("SET @v1 = 2", result, ec, diag);
 
     BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
+}
+
+BOOST_FIXTURE_TEST_CASE(metadata_check_failed_subsequent_resultset, tcp_network_fixture)
+{
+    params.set_multi_queries(true);
+    connect();
+
+    error_code ec;
+    diagnostics diag;
+    static_execution_state<empty, row_multifield_bad> result;
+
+    // Start execution goes OK
+    conn.start_execution("SET @v1 = 2; SELECT * FROM multifield_table", result);
+
+    // Error is detected when reading next head
+    conn.read_resultset_head(result, ec, diag);
+
+    BOOST_TEST(ec == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == multifield_bad_msg);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
