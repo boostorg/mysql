@@ -105,18 +105,20 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 
+// This spotchecks having a repeated empty row type, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
 {
     params.set_multi_queries(true);
     connect();
     start_transaction();
 
-    static_results<row_multifield, empty, row_2fields> result;
+    static_results<row_multifield, empty, row_2fields, empty> result;
     conn.execute(
         R"%(
             SELECT * FROM multifield_table;
             DELETE FROM updates_table;
-            SELECT * FROM one_row_table
+            SELECT * FROM one_row_table;
+            DELETE FROM updates_table
         )%",
         result
     );
@@ -143,6 +145,13 @@ BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
     BOOST_TEST(result.warning_count<2>() == 0u);
     BOOST_TEST(result.last_insert_id<2>() == 0u);
     BOOST_TEST(result.info<2>() == "");
+
+    BOOST_TEST(result.meta<3>().size() == 0u);
+    BOOST_TEST(result.rows<3>().size() == 0u);
+    BOOST_TEST(result.affected_rows<3>() == 0u);
+    BOOST_TEST(result.warning_count<3>() == 0u);
+    BOOST_TEST(result.last_insert_id<3>() == 0u);
+    BOOST_TEST(result.info<3>() == "");
 }
 
 BOOST_FIXTURE_TEST_CASE(metadata_check_failed, tcp_network_fixture)
@@ -184,7 +193,6 @@ BOOST_FIXTURE_TEST_CASE(metadata_check_failed_empty_resultset, tcp_network_fixtu
 BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
 {
     connect();
-    start_transaction();
 
     error_code ec;
     diagnostics diag;
@@ -193,10 +201,22 @@ BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch, tcp_network_fixture)
 
     BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
 }
+
+BOOST_FIXTURE_TEST_CASE(num_resultsets_mismatch_empty_resultset, tcp_network_fixture)
+{
+    connect();
+    start_transaction();
+
+    error_code ec;
+    diagnostics diag;
+    static_results<empty, empty> result;
+    conn.execute("DELETE FROM updates_table", result, ec, diag);
+
+    BOOST_TEST(ec == client_errc::num_resultsets_mismatch);
+}
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(multifn)
-
 BOOST_FIXTURE_TEST_CASE(describe_structs, tcp_network_fixture)
 {
     connect();

@@ -796,6 +796,87 @@ BOOST_AUTO_TEST_CASE(field_selection_tuples)
     check_ok_r3(st, 0);
 }
 
+BOOST_AUTO_TEST_CASE(repeated_row_types)
+{
+    std::vector<field_view> fields;
+    static_results_impl<row1, row1, row2, row1> stp;
+    auto& st = stp.get_interface();
+
+    // 1st resultset
+    add_meta(st, create_meta_r1());
+    add_row(st, 42, "aaa");
+    add_row(st, 43, "bbb");
+    add_ok(st, create_ok_r1(true));
+
+    // 2nd resultset
+    add_meta(st, create_meta_r1());
+    add_row(st, 44, "ccc");
+    add_ok(st, create_ok_r1(true));
+
+    // 3rd resultset
+    add_meta(st, create_meta_r2());
+    add_row(st, 900);
+    add_ok(st, create_ok_r2(true));
+
+    // 4th resultset
+    add_meta(st, create_meta_r1());
+    add_row(st, 45, "ddd");
+    add_ok(st, create_ok_r3());
+
+    // Verify
+    std::vector<row1> expected_r1{
+        row1{"aaa", 42},
+        row1{"bbb", 43}
+    };
+    std::vector<row1> expected_r2{
+        row1{"ccc", 44}
+    };
+    std::vector<row2> expected_r3{row2{900}};
+    std::vector<row1> expected_r4{
+        row1{"ddd", 45}
+    };
+    BOOST_TEST(st.is_complete());
+    check_meta_r1(st.get_meta(0));
+    check_meta_r1(st.get_meta(1));
+    check_meta_r2(st.get_meta(2));
+    check_meta_r1(st.get_meta(3));
+    check_rows(stp.get_rows<0>(), expected_r1);
+    check_rows(stp.get_rows<1>(), expected_r2);
+    check_rows(stp.get_rows<2>(), expected_r3);
+    check_rows(stp.get_rows<3>(), expected_r4);
+    check_ok_r1(st, 0);
+    check_ok_r1(st, 1);
+    check_ok_r2(st, 2);
+    check_ok_r3(st, 3);
+}
+
+BOOST_AUTO_TEST_CASE(all_fields_discarded)
+{
+    std::vector<field_view> fields;
+    static_results_impl<empty, empty> stp;
+    auto& st = stp.get_interface();
+
+    // 1st resultset
+    add_meta(st, create_meta_r1());
+    add_row(st, 42, "aaa");
+    add_row(st, 43, "bbb");
+    add_ok(st, create_ok_r1(true));
+
+    // 2nd resultset
+    add_meta(st, create_meta_r2());
+    add_row(st, 900);
+    add_ok(st, create_ok_r2());
+
+    // Verify
+    BOOST_TEST(st.is_complete());
+    check_meta_r1(st.get_meta(0));
+    check_meta_r2(st.get_meta(1));
+    check_rows(stp.get_rows<0>(), {empty{}, empty{}});
+    check_rows(stp.get_rows<1>(), {empty{}});
+    check_ok_r1(st, 0);
+    check_ok_r2(st, 1);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
