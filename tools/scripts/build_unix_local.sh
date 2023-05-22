@@ -8,10 +8,11 @@
 
 set -e
 
-BK=b2
-IMAGE=build-gcc11
+BK=docs
+IMAGE=build-docs
+SHA=a6ccc56343736f8b4edea3686c92d9856469fa36
 CONTAINER=builder-$IMAGE-$BK
-FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE
+FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
 
 docker start $DB
