@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/detail/config.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 
@@ -179,3 +183,5 @@ BOOST_AUTO_TEST_CASE(error_row_type_mismatch)
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
+
+#endif
