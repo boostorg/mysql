@@ -8,7 +8,7 @@
 //[example_prepared_statements_cpp11
 
 /**
- * This example implements a ver simple command-line order manager
+ * This example implements a very simple command-line order manager
  * for an online store, using prepared statements. You can find the table
  * definitions in example/order_management/db_setup.sql. Be sure to run this file before the example.
  * This example assumes you are connecting to a localhost MySQL server.

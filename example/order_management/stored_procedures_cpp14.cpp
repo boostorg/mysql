@@ -8,7 +8,7 @@
 //[example_stored_procedures_cpp14
 
 /**
- * This example implements a ver simple command-line order manager
+ * This example implements a very simple command-line order manager
  * for an online store, using stored procedures. You can find the procedure
  * definitions in example/db_setup_stored_procedures.sql. Be sure to run this file before the example.
  * This example assumes you are connecting to a localhost MySQL server.
@@ -35,21 +35,16 @@
  * data, so Boost.MySQL knows how to parse rows into them.
  */
 
-#include <boost/describe/class.hpp>
-
-#include <iostream>
-
-// This example makes use of Boost.Describe, so it needs C++14 or higher to work
-#if defined(BOOST_DESCRIBE_CXX14)
-
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/describe/class.hpp>
 #include <boost/optional/optional.hpp>
 
+#include <iostream>
 #include <string>
 #include <tuple>
 
@@ -58,6 +53,10 @@
 // an alias for a boost::variant2::variant holding the command line
 // arguments for any of the subcommands. We will use it via visit().
 #include "parse_cmdline.hpp"
+
+// Including any of the static interface headers brings this macro into
+// scope if the static interface is supported.
+#ifdef BOOST_MYSQL_CXX14
 
 namespace mysql = boost::mysql;
 

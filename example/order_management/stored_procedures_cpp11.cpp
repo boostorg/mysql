@@ -20,7 +20,7 @@
 #include <string>
 
 /**
- * This example implements a ver simple command-line order manager
+ * This example implements a very simple command-line order manager
  * for an online store, using stored procedures. You can find the procedure
  * definitions in example/db_setup_stored_procedures.sql. Be sure to run this file before the example.
  * This example assumes you are connecting to a localhost MySQL server.
