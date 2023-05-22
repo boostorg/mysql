@@ -16,8 +16,6 @@
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -33,7 +31,6 @@
 #include "mock_execution_processor.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
-#include "test_connection.hpp"
 #include "test_stream.hpp"
 #include "unit_netfun_maker.hpp"
 
@@ -373,138 +370,6 @@ BOOST_AUTO_TEST_CASE(error_on_meta)
     }
 }
 BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE(connection_dynamic)  // spotchecks connection::read_resultset_head with dynamic iface
-
-using netfun_maker = netfun_maker_mem<void, test_connection, execution_state&>;
-
-struct
-{
-    typename netfun_maker::signature read_resultset_head;
-    const char* name;
-} all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::read_resultset_head),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::read_resultset_head),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_read_resultset_head),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_read_resultset_head), "async_noerrinfo"},
-};
-
-BOOST_AUTO_TEST_CASE(success)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            execution_state st;
-            detail::impl_access::get_impl(st).sequence_number() = 1;
-
-            test_connection conn;
-            get_channel(conn).lowest_layer().add_message(
-                ok_msg_builder().seqnum(1).affected_rows(42).info("abc").build_ok()
-            );
-
-            // Call the function
-            fns.read_resultset_head(conn, st).validate_no_error();
-
-            // We've read the response
-            BOOST_TEST(st.meta().size() == 0u);
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(st.affected_rows() == 42u);
-            BOOST_TEST(st.info() == "abc");
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            execution_state st;
-            detail::impl_access::get_impl(st).sequence_number() = 1;
-
-            // Triggers a deserialization error, metadata message is incomplete
-            test_connection conn;
-            get_channel(conn)
-                .lowest_layer()
-                .add_message(create_message(1, {0x01}))
-                .add_message(create_message(2, {0x08, 0x03}));
-
-            // Call the function
-            fns.read_resultset_head(conn, st).validate_error_exact(client_errc::incomplete_message);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-#ifdef BOOST_MYSQL_CXX14
-BOOST_AUTO_TEST_SUITE(connection_static)  // spotchecks connection::read_resultset_head with static iface
-
-using state_t = static_execution_state<std::tuple<>>;
-using netfun_maker = netfun_maker_mem<void, test_connection, state_t&>;
-
-struct
-{
-    typename netfun_maker::signature read_resultset_head;
-    const char* name;
-} all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::read_resultset_head),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::read_resultset_head),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_read_resultset_head),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_read_resultset_head), "async_noerrinfo"},
-};
-
-BOOST_AUTO_TEST_CASE(success)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            state_t st;
-            detail::impl_access::get_impl(st).get_interface().sequence_number() = 1;
-
-            test_connection conn;
-            get_channel(conn).lowest_layer().add_message(
-                ok_msg_builder().seqnum(1).affected_rows(42).info("abc").build_ok()
-            );
-
-            // Call the function
-            fns.read_resultset_head(conn, st).validate_no_error();
-
-            // We've read the response
-            BOOST_TEST(st.meta().size() == 0u);
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(st.affected_rows() == 42u);
-            BOOST_TEST(st.info() == "abc");
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            state_t st;
-            detail::impl_access::get_impl(st).get_interface().sequence_number() = 1;
-
-            // Triggers a deserialization error, metadata message is incomplete
-            test_connection conn;
-            get_channel(conn)
-                .lowest_layer()
-                .add_message(create_message(1, {0x01}))
-                .add_message(create_message(2, {0x08, 0x03}));
-
-            // Call the function
-            fns.read_resultset_head(conn, st).validate_error_exact(client_errc::incomplete_message);
-        }
-    }
-}
-BOOST_AUTO_TEST_SUITE_END()
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -165,7 +165,6 @@ public:
 
     static constexpr std::size_t size() noexcept { return boost::mp11::mp_size<members>::value; }
 
-    // TODO: allow disabling matching by name
     static constexpr name_table_t name_table() noexcept
     {
         return describe_names_storage<DescribeStruct>.span();

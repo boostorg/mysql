@@ -5,10 +5,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/config.hpp>
-
-#ifdef BOOST_MYSQL_CXX14
-
 #include <boost/mysql/common_server_errc.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -346,5 +342,3 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
-
-#endif
