@@ -54,6 +54,8 @@ struct other_traits : std::char_traits<char>
 };
 
 using string_with_alloc = std::basic_string<char, std::char_traits<char>, test::custom_allocator<char>>;
+using string_no_defctor = std::
+    basic_string<char, std::char_traits<char>, test::custom_allocator_no_defctor<char>>;
 using string_with_traits = std::basic_string<char, other_traits>;
 using blob_with_alloc = std::vector<unsigned char, test::custom_allocator<unsigned char>>;
 
@@ -108,6 +110,7 @@ static_assert(is_writable_field<std::string>::value, "");
 static_assert(is_writable_field<std::string&>::value, "");
 static_assert(is_writable_field<const std::string&>::value, "");
 static_assert(is_writable_field<string_with_alloc>::value, "");
+static_assert(is_writable_field<string_no_defctor>::value, "");
 static_assert(is_writable_field<std::string&&>::value, "");
 static_assert(is_writable_field<string_view>::value, "");
 static_assert(!is_writable_field<string_with_traits>::value, "");
@@ -124,9 +127,11 @@ static_assert(is_writable_field<blob_with_alloc>::value, "");
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 static_assert(is_writable_field<std::optional<int>>::value, "");
 static_assert(is_writable_field<std::optional<std::string>>::value, "");
+static_assert(is_writable_field<std::optional<string_no_defctor>>::value, "");
 #endif
 static_assert(is_writable_field<boost::optional<string_view>>::value, "");
 static_assert(is_writable_field<boost::optional<blob_view>>::value, "");
+static_assert(is_writable_field<boost::optional<string_no_defctor>>::value, "");
 
 // optional of other stuff not accepted
 static_assert(!is_writable_field<boost::optional<void*>>::value, "");

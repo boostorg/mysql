@@ -11,7 +11,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/is_optional.hpp>
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/detail/config.hpp>
 
@@ -45,8 +44,16 @@ struct writable_field_traits<
     static field_view to_field(const T& value) noexcept { return field_view(value); }
 };
 
+// Optionals. To avoid dependencies, we use a "concept".
+// We consider a type an optional if has a `bool has_value() const` and
+// `const value_type& value() const`
 template <class T>
-struct writable_field_traits<T, void, typename std::enable_if<is_optional<T>::value>::type>
+struct writable_field_traits<
+    T,
+    void,
+    typename std::enable_if<
+        std::is_same<decltype(std::declval<const T&>().has_value()), bool>::value &&
+        std::is_same<decltype(std::declval<const T&>().value()), const typename T::value_type&>::value>::type>
 {
     using value_traits = writable_field_traits<typename T::value_type>;
     static constexpr bool is_supported = value_traits::is_supported;

@@ -19,7 +19,6 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/detail/auxiliar/is_optional.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
@@ -505,11 +504,27 @@ struct readable_field_traits<time, void>
 
 // std::optional<T> and boost::optional<T>. To avoid dependencies,
 // this is achieved through a "concept"
+template <class T, class = void>
+struct is_readable_optional : std::false_type
+{
+};
+
+template <class T>
+struct is_readable_optional<
+    T,
+    void_t<
+        typename std::enable_if<
+            std::is_same<decltype(std::declval<T&>().value()), typename T::value_type&>::value>::type,
+        decltype(std::declval<T&>().emplace()),  // T should be default constructible
+        decltype(std::declval<T&>().reset())>> : std::true_type
+{
+};
+
 template <class T>
 struct readable_field_traits<
     T,
     typename std::enable_if<
-        is_optional<T>::value && readable_field_traits<typename T::value_type>::is_supported>::type>
+        is_readable_optional<T>::value && readable_field_traits<typename T::value_type>::is_supported>::type>
 {
     using value_type = typename T::value_type;
     static constexpr bool is_supported = true;

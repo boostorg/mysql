@@ -30,7 +30,6 @@
 #include <boost/mysql/detail/network_algorithms/read_some_rows_dynamic.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_static.hpp>
-#include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/assert/source_location.hpp>

@@ -25,6 +25,12 @@ struct custom_allocator
     void deallocate(T* p, std::size_t n);
 };
 
+template <class T>
+struct custom_allocator_no_defctor : custom_allocator<T>
+{
+    custom_allocator_no_defctor(int) noexcept {}
+};
+
 template <class T, class U>
 constexpr bool operator==(const custom_allocator<T>&, const custom_allocator<U>&) noexcept;
 
