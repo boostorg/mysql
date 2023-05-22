@@ -7,7 +7,7 @@
 
 # Note: examples count as integration tests. This is only processed
 # when we're the main project and BOOST_MYSQL_INTEGRATION_TESTS is on
-find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context)
+find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context json url)
 
 # Get the MySQL hostname to use for examples
 if(DEFINED ENV{BOOST_MYSQL_SERVER_HOST})
@@ -122,3 +122,13 @@ add_example(
     source_script.cpp
     example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql
 )
+add_example_target(zzz http_server/http_server.cpp)
+target_link_libraries(
+    zzz 
+    PUBLIC 
+    boost_mysql_examples_common
+    Boost::json
+    Boost::context
+    Boost::url
+)
+target_compile_options(zzz PUBLIC -ftime-trace)
