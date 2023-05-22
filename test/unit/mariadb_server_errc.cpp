@@ -33,24 +33,24 @@ BOOST_AUTO_TEST_CASE(error_to_string_regular)
         int code;
         const char* expected_msg;
     } test_cases[] = {
-        {"int_min",           std::numeric_limits<int>::min(), "<unknown MariaDB-specific server error>"    },
-        {"zero",              0,                               "<unknown MariaDB-specific server error>"    },
-        {"common_min",        1000,                            "<unknown MariaDB-specific server error>"    },
-        {"common_repurposed", 1076,                            "er_binlog_cant_delete_gtid_domain"          }, // != in MySQL
-        {"common_max",        1879,                            "<unknown MariaDB-specific server error>"    },
-        {"specific1_min",     1901,                            "er_generated_column_function_is_not_allowed"},
-        {"specific1_max",     1982,                            "warn_innodb_partition_option_ignored"       },
-        {"specific1_gtmax",   1983,                            "<unknown MariaDB-specific server error>"    },
-        {"specific2_ltmin",   2999,                            "<unknown MariaDB-specific server error>"    },
-        {"specific2_min",     3000,                            "er_file_corrupt"                            },
-        {"specific2_regular", 3015,                            "er_engine_out_of_memory"                    },
-        {"specific2_max",     3060,                            "er_alter_operation_not_supported_reason_gis"},
-        {"specific2_gtmax",   3061,                            "<unknown MariaDB-specific server error>"    },
-        {"specific3_ltmin",   3999,                            "<unknown MariaDB-specific server error>"    },
-        {"specific3_min",     4002,                            "er_with_col_wrong_list"                     },
-        {"specific3_regular", 4025,                            "er_constraint_failed"                       },
-        {"gt_max",            5000,                            "<unknown MariaDB-specific server error>"    },
-        {"int_max",           std::numeric_limits<int>::max(), "<unknown MariaDB-specific server error>"    },
+        {"int_min",           (std::numeric_limits<int>::min)(), "<unknown MariaDB-specific server error>"    },
+        {"zero",              0,                                 "<unknown MariaDB-specific server error>"    },
+        {"common_min",        1000,                              "<unknown MariaDB-specific server error>"    },
+        {"common_repurposed", 1076,                              "er_binlog_cant_delete_gtid_domain"          }, // != in MySQL
+        {"common_max",        1879,                              "<unknown MariaDB-specific server error>"    },
+        {"specific1_min",     1901,                              "er_generated_column_function_is_not_allowed"},
+        {"specific1_max",     1982,                              "warn_innodb_partition_option_ignored"       },
+        {"specific1_gtmax",   1983,                              "<unknown MariaDB-specific server error>"    },
+        {"specific2_ltmin",   2999,                              "<unknown MariaDB-specific server error>"    },
+        {"specific2_min",     3000,                              "er_file_corrupt"                            },
+        {"specific2_regular", 3015,                              "er_engine_out_of_memory"                    },
+        {"specific2_max",     3060,                              "er_alter_operation_not_supported_reason_gis"},
+        {"specific2_gtmax",   3061,                              "<unknown MariaDB-specific server error>"    },
+        {"specific3_ltmin",   3999,                              "<unknown MariaDB-specific server error>"    },
+        {"specific3_min",     4002,                              "er_with_col_wrong_list"                     },
+        {"specific3_regular", 4025,                              "er_constraint_failed"                       },
+        {"gt_max",            5000,                              "<unknown MariaDB-specific server error>"    },
+        {"int_max",           (std::numeric_limits<int>::max)(), "<unknown MariaDB-specific server error>"    },
     };
 
     for (const auto& tc : test_cases)

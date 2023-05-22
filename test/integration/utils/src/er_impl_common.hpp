@@ -27,6 +27,7 @@
 #include "er_network_variant.hpp"
 #include "get_endpoint.hpp"
 #include "network_result.hpp"
+#include "static_rows.hpp"
 #include "streams.hpp"
 
 namespace boost {
@@ -75,6 +76,18 @@ struct function_table
     using quit_sig = network_result<void>(conn_type&);
     using close_sig = network_result<void>(conn_type&);
 
+#ifdef BOOST_MYSQL_CXX14
+    using execute_static_sig =
+        network_result<void>(conn_type&, const string_view&, er_connection::static_results_t&);
+    using start_execution_static_sig =
+        network_result<void>(conn_type&, const string_view&, er_connection::static_state_t&);
+    using read_resultset_head_static_sig = network_result<void>(conn_type&, er_connection::static_state_t&);
+    using read_some_rows_static_1_sig =
+        network_result<std::size_t>(conn_type&, er_connection::static_state_t&, boost::span<row_multifield>);
+    using read_some_rows_static_2_sig =
+        network_result<std::size_t>(conn_type&, er_connection::static_state_t&, boost::span<row_2fields>);
+#endif
+
     std::function<connect_sig> connect;
     std::function<handshake_sig> handshake;
     std::function<query_legacy_sig> query_legacy;
@@ -95,6 +108,14 @@ struct function_table
     std::function<ping_sig> ping;
     std::function<quit_sig> quit;
     std::function<close_sig> close;
+
+#ifdef BOOST_MYSQL_CXX14
+    std::function<execute_static_sig> execute_static;
+    std::function<start_execution_static_sig> start_execution_static;
+    std::function<read_resultset_head_static_sig> read_resultset_head_static;
+    std::function<read_some_rows_static_1_sig> read_some_rows_static_1;
+    std::function<read_some_rows_static_2_sig> read_some_rows_static_2;
+#endif
 };
 
 // Note: Netmaker should be a struct with a
@@ -130,6 +151,13 @@ function_table<Stream> create_sync_table()
         Netmaker::template type<typename table_t::ping_sig>::call(&conn_type::ping),
         Netmaker::template type<typename table_t::quit_sig>::call(&conn_type::quit),
         Netmaker::template type<typename table_t::close_sig>::call(&conn_type::close),
+#ifdef BOOST_MYSQL_CXX14
+        Netmaker::template type<typename table_t::execute_static_sig>::call(&conn_type::execute),
+        Netmaker::template type<typename table_t::start_execution_static_sig>::call(&conn_type::start_execution),
+        Netmaker::template type<typename table_t::read_resultset_head_static_sig>::call(&conn_type::read_resultset_head),
+        Netmaker::template type<typename table_t::read_some_rows_static_1_sig>::call(&conn_type::read_some_rows),
+        Netmaker::template type<typename table_t::read_some_rows_static_2_sig>::call(&conn_type::read_some_rows),
+#endif
     };
     // clang-format on
 }
@@ -163,6 +191,13 @@ function_table<Stream> create_async_table()
         Netmaker::template type<typename table_t::ping_sig>::call(&conn_type::async_ping),
         Netmaker::template type<typename table_t::quit_sig>::call(&conn_type::async_quit),
         Netmaker::template type<typename table_t::close_sig>::call(&conn_type::async_close),
+#ifdef BOOST_MYSQL_CXX14
+        Netmaker::template type<typename table_t::execute_static_sig>::call(&conn_type::async_execute),
+        Netmaker::template type<typename table_t::start_execution_static_sig>::call(&conn_type::async_start_execution),
+        Netmaker::template type<typename table_t::read_resultset_head_static_sig>::call(&conn_type::async_read_resultset_head),
+        Netmaker::template type<typename table_t::read_some_rows_static_1_sig>::call(&conn_type::async_read_some_rows),
+        Netmaker::template type<typename table_t::read_some_rows_static_2_sig>::call(&conn_type::async_read_some_rows),
+#endif
     };
     // clang-format on
 }
@@ -330,6 +365,29 @@ public:
     network_result<void> ping() override { return table_.ping(conn_); }
     network_result<void> quit() override { return table_.quit(conn_); }
     network_result<void> close() override { return table_.close(conn_); }
+#ifdef BOOST_MYSQL_CXX14
+    network_result<void> execute(string_view q, static_results_t& result) override
+    {
+        return table_.execute_static(conn_, q, result);
+    }
+    network_result<void> start_execution(string_view q, static_state_t& st) override
+    {
+        return table_.start_execution_static(conn_, q, st);
+    }
+    network_result<void> read_resultset_head(static_state_t& st) override
+    {
+        return table_.read_resultset_head_static(conn_, st);
+    }
+    network_result<std::size_t> read_some_rows(static_state_t& st, boost::span<row_multifield> storage)
+        override
+    {
+        return table_.read_some_rows_static_1(conn_, st, storage);
+    }
+    network_result<std::size_t> read_some_rows(static_state_t& st, boost::span<row_2fields> storage) override
+    {
+        return table_.read_some_rows_static_2(conn_, st, storage);
+    }
+#endif
 };
 
 template <class Stream>

@@ -16,7 +16,7 @@
 
 struct boost::mysql::detail::resultset_view_access
 {
-    static resultset_view construct(const detail::execution_state_impl& st, std::size_t index)
+    static resultset_view construct(const detail::results_impl& st, std::size_t index)
     {
         return resultset_view(st, index);
     }

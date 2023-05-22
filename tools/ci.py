@@ -137,7 +137,7 @@ def _db_setup(
     db: str = 'mysql8'
 ) -> None:
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
-    _run_sql_file(source_dir.joinpath('example', 'db_setup_stored_procedures.sql'))
+    _run_sql_file(source_dir.joinpath('example', 'order_management', 'db_setup.sql'))
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
     if db == 'mysql8':
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))

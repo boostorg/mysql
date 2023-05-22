@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_RESULTS_HPP
 #define BOOST_MYSQL_RESULTS_HPP
 
-#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
@@ -18,7 +17,7 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
 #include <cassert>
 #include <stdexcept>
@@ -27,7 +26,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Holds the results of a SQL query.
+ * \brief Holds the results of a SQL query (dynamic interface).
  * \details
  * This object can store the results of single and multi resultset queries.
  * For the former, you use \ref meta, \ref rows, \ref affected_rows and so on.
@@ -75,7 +74,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    results() noexcept : impl_(true) {}
+    results() = default;
 
     /**
      * \brief Copy constructor.
@@ -132,7 +131,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    bool has_value() const noexcept { return impl_.complete(); }
+    bool has_value() const noexcept { return impl_.is_complete(); }
 
     /**
      * \brief Returns the rows retrieved by the SQL query.
@@ -253,7 +252,7 @@ public:
     }
 
     /**
-     * \brief Returns additionat text information about the execution of the SQL statement.
+     * \brief Returns additional text information about the execution of the SQL statement.
      * \details
      * The format of this information is documented by MySQL <a
      * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
@@ -472,15 +471,13 @@ public:
     }
 
 private:
-    detail::execution_state_impl impl_;
+    detail::results_impl impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::results_access;
+    friend struct detail::impl_access;
 #endif
 };
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/results.hpp>
 
 #endif

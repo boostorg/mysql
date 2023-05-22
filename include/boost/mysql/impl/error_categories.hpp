@@ -45,6 +45,19 @@ inline const char* error_to_string(client_errc error) noexcept
     case boost::mysql::client_errc::server_doesnt_support_ssl:
         return "The connection is configured to require SSL, but the server doesn't allow SSL connections. "
                "Configure SSL on your server or change your connection to not require SSL";
+    case boost::mysql::client_errc::metadata_check_failed:
+        return "The static interface detected a type mismatch between your declared row type and what the "
+               "server returned. Verify your type definitions.";
+    case boost::mysql::client_errc::num_resultsets_mismatch:
+        return "The static interface detected a mismatch between the number of resultsets passed as template "
+               "arguments to static_results<T1, T2...>/static_execution_state<T1, T2...> and the number of "
+               "results returned by server";
+    case boost::mysql::client_errc::static_row_parsing_error:
+        return "The static interface encountered an error when parsing a field into a C++ data structure.";
+    case boost::mysql::client_errc::row_type_mismatch:
+        return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
+               "read";
+
     default: return "<unknown MySQL client error>";
     }
 }

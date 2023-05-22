@@ -14,9 +14,9 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execute_response.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -25,72 +25,55 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_resultset_head_processor
+inline error_code process_execution_response(
+    channel_base& chan,
+    execution_processor& proc,
+    boost::asio::const_buffer msg,
+    diagnostics& diag
+)
 {
-    channel_base& chan_;
-    execution_state_impl& st_;
-    diagnostics& diag_;
-
-public:
-    read_resultset_head_processor(channel_base& chan, execution_state_impl& st, diagnostics& diag) noexcept
-        : chan_(chan), st_(st), diag_(diag)
+    auto response = deserialize_execute_response(msg, chan.current_capabilities(), chan.flavor(), diag);
+    error_code err;
+    switch (response.type)
     {
+    case execute_response::type_t::error: err = response.data.err; break;
+    case execute_response::type_t::ok_packet:
+        err = proc.on_head_ok_packet(response.data.ok_pack, diag);
+        break;
+    case execute_response::type_t::num_fields: proc.on_num_meta(response.data.num_fields); break;
     }
+    return err;
+}
 
-    void clear_diag() noexcept { diag_.clear(); }
-
-    error_code process_response(boost::asio::const_buffer msg)
-    {
-        error_code err;
-        auto
-            response = deserialize_execute_response(msg, chan_.current_capabilities(), chan_.flavor(), diag_);
-        switch (response.type)
-        {
-        case execute_response::type_t::error: err = response.data.err; break;
-        case execute_response::type_t::ok_packet: st_.on_head_ok_packet(response.data.ok_pack); break;
-        case execute_response::type_t::num_fields: st_.on_num_meta(response.data.num_fields); break;
-        }
+inline error_code process_field_definition(channel_base& chan, execution_processor& proc, diagnostics& diag)
+{
+    // Read the field definition packet (it's cached at this point)
+    assert(chan.has_read_messages());
+    error_code err;
+    auto msg = chan.next_read_message(proc.sequence_number(), err);
+    if (err)
         return err;
-    }
 
-    error_code process_field_definition()
-    {
-        // Read the field definition packet (it's cached at this point)
-        assert(chan_.has_read_messages());
-        error_code err;
-        auto msg = chan_.next_read_message(st_.sequence_number(), err);
-        if (err)
-            return err;
+    // Deserialize
+    column_definition_packet field_definition{};
+    err = deserialize_message(msg, field_definition, chan.current_capabilities());
+    if (err)
+        return err;
 
-        // Deserialize
-        column_definition_packet field_definition{};
-        deserialization_context ctx(msg, chan_.current_capabilities());
-        err = deserialize_message(ctx, field_definition);
-        if (err)
-            return err;
-
-        // Notify the state object
-        st_.on_meta(field_definition, chan_.meta_mode());
-        return error_code();
-    }
-
-    channel_base& get_channel() noexcept { return chan_; }
-    execution_state_impl& state() noexcept { return st_; }
-};
+    // Notify the processor
+    return proc.on_meta(field_definition, diag);
+}
 
 template <class Stream>
 struct read_resultset_head_op : boost::asio::coroutine
 {
-    read_resultset_head_processor processor_;
+    channel<Stream>& chan_;
+    execution_processor& proc_;
+    diagnostics& diag_;
 
-    read_resultset_head_op(channel<Stream>& chan, execution_state_impl& st, diagnostics& diag)
-        : processor_(chan, st, diag)
+    read_resultset_head_op(channel<Stream>& chan, execution_processor& proc, diagnostics& diag)
+        : chan_(chan), proc_(proc), diag_(diag)
     {
-    }
-
-    channel<Stream>& get_channel() noexcept
-    {
-        return static_cast<channel<Stream>&>(processor_.get_channel());
     }
 
     template <class Self>
@@ -106,10 +89,11 @@ struct read_resultset_head_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            processor_.clear_diag();
+            // Setup
+            diag_.clear();
 
             // If we're not reading head, return
-            if (!processor_.state().should_read_head())
+            if (!proc_.is_reading_head())
             {
                 BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
                 self.complete(error_code());
@@ -117,14 +101,11 @@ struct read_resultset_head_op : boost::asio::coroutine
             }
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
-                processor_.state().sequence_number(),
-                std::move(self)
-            );
+            BOOST_ASIO_CORO_YIELD chan_.async_read_one(proc_.sequence_number(), std::move(self));
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
-            err = processor_.process_response(read_message);
+            err = process_execution_response(chan_, proc_, read_message, diag_);
             if (err)
             {
                 self.complete(err);
@@ -132,16 +113,16 @@ struct read_resultset_head_op : boost::asio::coroutine
             }
 
             // Read all of the field definitions
-            while (processor_.state().should_read_meta())
+            while (proc_.is_reading_meta())
             {
                 // Read from the stream if we need it
-                if (!get_channel().has_read_messages())
+                if (!chan_.has_read_messages())
                 {
-                    BOOST_ASIO_CORO_YIELD get_channel().async_read_some(std::move(self));
+                    BOOST_ASIO_CORO_YIELD chan_.async_read_some(std::move(self));
                 }
 
                 // Process the metadata packet
-                err = processor_.process_field_definition();
+                err = process_field_definition(chan_, proc_, diag_);
                 if (err)
                 {
                     self.complete(err);
@@ -150,7 +131,7 @@ struct read_resultset_head_op : boost::asio::coroutine
             }
 
             // No EOF packet is expected here, as we require deprecate EOF capabilities
-            self.complete(error_code());
+            self.complete(err);
         }
     }
 };
@@ -162,32 +143,32 @@ struct read_resultset_head_op : boost::asio::coroutine
 template <class Stream>
 void boost::mysql::detail::read_resultset_head(
     channel<Stream>& chan,
-    execution_state_impl& st,
+    execution_processor& proc,
     error_code& err,
     diagnostics& diag
 )
 {
     // Setup
-    read_resultset_head_processor processor(chan, st, diag);
-    processor.clear_diag();
+    err = error_code();
+    diag.clear();
 
     // If we're not reading head, return
-    if (!st.should_read_head())
+    if (!proc.is_reading_head())
         return;
 
     // Read the response
-    auto msg = chan.read_one(st.sequence_number(), err);
+    auto msg = chan.read_one(proc.sequence_number(), err);
     if (err)
         return;
 
     // Response may be: ok_packet, err_packet, local infile request
     // (not implemented), or response with fields
-    err = processor.process_response(msg);
+    err = process_execution_response(chan, proc, msg, diag);
     if (err)
         return;
 
     // Read all of the field definitions (zero if empty resultset)
-    while (st.should_read_meta())
+    while (proc.is_reading_meta())
     {
         // Read from the stream if required
         if (!chan.has_read_messages())
@@ -198,7 +179,7 @@ void boost::mysql::detail::read_resultset_head(
         }
 
         // Process the packet
-        err = processor.process_field_definition();
+        err = process_field_definition(chan, proc, diag);
         if (err)
             return;
     }
@@ -208,13 +189,13 @@ template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::err
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_read_resultset_head(
     channel<Stream>& channel,
-    execution_state_impl& st,
+    execution_processor& proc,
     diagnostics& diag,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        read_resultset_head_op<Stream>(channel, st, diag),
+        read_resultset_head_op<Stream>(channel, proc, diag),
         token,
         channel
     );

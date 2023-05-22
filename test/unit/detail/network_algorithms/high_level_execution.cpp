@@ -7,12 +7,15 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/network_algorithms/high_level_execution.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
@@ -21,22 +24,26 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
-#include <tuple>
 #include <type_traits>
 
 #include "assert_buffer_equals.hpp"
+#include "check_meta.hpp"
+#include "creation/create_execution_processor.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
 #include "creation/create_message_struct.hpp"
+#include "creation/create_meta.hpp"
+#include "creation/create_row_message.hpp"
 #include "creation/create_statement.hpp"
 #include "printing.hpp"
 #include "run_coroutine.hpp"
+#include "test_channel.hpp"
 #include "test_common.hpp"
-#include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using detail::execution_processor;
 using detail::protocol_field_type;
 using detail::resultset_encoding;
 
@@ -60,48 +67,36 @@ statement create_the_statement() { return statement_builder().id(1).num_params(2
 // Verify that we clear any previous result
 results create_initial_results()
 {
-    return create_results({
-        {
-         {protocol_field_type::var_string},
-         makerows(1, "abc", "def"),
-         ok_builder().affected_rows(42).info("prev").build(),
-         }
-    });
+    results res;
+    add_meta(get_iface(res), {meta_builder().type(column_type::varchar).build()});
+    add_row(get_iface(res), "abc");
+    add_row(get_iface(res), "def");
+    add_ok(get_iface(res), ok_builder().affected_rows(42).info("prev").build());
+    return res;
 }
 
 execution_state create_initial_state()
 {
-    std::vector<field_view> fields;  // won't be further used - can be left dangling
-    return exec_builder(false)
-        .reset(resultset_encoding::binary, &fields)
-        .meta({protocol_field_type::time})
-        .seqnum(42)
-        .build_state();
+    execution_state res;
+    add_meta(get_iface(res), {meta_builder().type(column_type::time).build()});
+    get_iface(res).sequence_number() = 42;
+    return res;
 }
 
 //
-// ------- query ---------
-// Both legacy query() and execute("SELECT ...") share a compatible signature
+// execute (with text query)
 //
-BOOST_AUTO_TEST_SUITE(query_)
+BOOST_AUTO_TEST_SUITE(execute_query)
 
-using netfun_maker = netfun_maker_mem<void, test_connection, string_view, results&>;
-using netfun_maker_execute = netfun_maker_mem<void, test_connection, const string_view&, results&>;
+using netfun_maker = netfun_maker_fn<void, test_channel&, const string_view&, execution_processor&>;
 
 struct
 {
-    netfun_maker::signature query;
+    netfun_maker::signature execute;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::query),                       "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::query),                        "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_query),             "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_query),           "async_noerrinfo"},
-
-    {netfun_maker_execute::sync_errc(&test_connection::execute),             "sync_errc"      },
-    {netfun_maker_execute::sync_exc(&test_connection::execute),              "sync_exc"       },
-    {netfun_maker_execute::async_errinfo(&test_connection::async_execute),   "async_errinfo"  },
-    {netfun_maker_execute::async_noerrinfo(&test_connection::async_execute), "async_noerrinfo"},
+    {netfun_maker::sync_errc(&detail::execute),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_execute), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -111,18 +106,24 @@ BOOST_AUTO_TEST_CASE(success)
         BOOST_TEST_CONTEXT(fns.name)
         {
             auto result = create_initial_results();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(10).info("1st").build_ok());
+            auto chan = create_channel();
+            chan.lowest_layer()
+                .add_message(create_message(1, {0x01}))  // 1 column
+                .add_message(
+                    create_coldef_message(2, coldef_builder().type(protocol_field_type::tiny).build())
+                )
+                .add_message(create_text_row_message(3, 42))
+                .add_message(ok_msg_builder().seqnum(4).affected_rows(10).info("1st").build_eof());
 
             // Call the function
-            fns.query(conn, "SELECT 1", result).validate_no_error();
+            fns.execute(chan, "SELECT 1", get_iface(result)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), select_1_msg);
+            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), select_1_msg);
 
             // Verify the results
             BOOST_TEST_REQUIRE(result.size() == 1u);
-            BOOST_TEST(result.meta().size() == 0u);
+            check_meta(result.meta(), {column_type::tinyint});
             BOOST_TEST(result.affected_rows() == 10u);
             BOOST_TEST(result.info() == "1st");
         }
@@ -136,83 +137,11 @@ BOOST_AUTO_TEST_CASE(error)
         BOOST_TEST_CONTEXT(fns.name)
         {
             results result;
-            test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
+            auto chan = create_channel();
+            chan.lowest_layer().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
 
             // Call the function
-            fns.query(conn, "SELECT 1", result)
-                .validate_error_exact(common_server_errc::er_aborting_connection);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//
-// ------- start_query ---------
-// Both legacy start_query() and start_execution("SELECT ...") share a compatible signature
-//
-BOOST_AUTO_TEST_SUITE(start_query_)
-
-using netfun_maker = netfun_maker_mem<void, test_connection, string_view, execution_state&>;
-using netfun_maker_execute = netfun_maker_mem<void, test_connection, const string_view&, execution_state&>;
-
-struct
-{
-    netfun_maker::signature start_query;
-    const char* name;
-} all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::start_query),                         "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::start_query),                          "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_start_query),               "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_start_query),             "async_noerrinfo"},
-
-    {netfun_maker_execute::sync_errc(&test_connection::start_execution),             "sync_errc"      },
-    {netfun_maker_execute::sync_exc(&test_connection::start_execution),              "sync_exc"       },
-    {netfun_maker_execute::async_errinfo(&test_connection::async_start_execution),   "async_errinfo"  },
-    {netfun_maker_execute::async_noerrinfo(&test_connection::async_start_execution), "async_noerrinfo"},
-};
-
-BOOST_AUTO_TEST_CASE(success)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            std::vector<field_view> fields;
-            auto st = create_initial_state();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
-
-            // Call the function
-            fns.start_query(conn, "SELECT 1", st).validate_no_error();
-
-            // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), select_1_msg);
-
-            // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::text);
-            BOOST_TEST(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
-            BOOST_TEST(st.meta().size() == 0u);
-            BOOST_TEST(st.affected_rows() == 50u);
-            BOOST_TEST(st.info() == "1st");
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            execution_state st;
-            test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
-
-            // Call the function
-            fns.start_query(conn, "SELECT 1", st)
+            fns.execute(chan, "SELECT 1", get_iface(result))
                 .validate_error_exact(common_server_errc::er_aborting_connection);
         }
     }
@@ -220,142 +149,23 @@ BOOST_AUTO_TEST_CASE(error)
 BOOST_AUTO_TEST_SUITE_END()
 
 //
-// ------- execute_statement (legacy) ---------
-//
-BOOST_AUTO_TEST_SUITE(execute_statement_legacy)
-
-using netfun_maker = netfun_maker_mem<
-    void,
-    test_connection,
-    const statement&,
-    const std::tuple<const char*, std::nullptr_t>&,
-    results&>;
-
-struct
-{
-    netfun_maker::signature execute_statement;
-    const char* name;
-} all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::execute_statement),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::execute_statement),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_execute_statement),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_execute_statement), "async_noerrinfo"},
-};
-
-BOOST_AUTO_TEST_CASE(success)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            auto result = create_initial_results();
-            auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
-
-            // Call the function
-            fns.execute_statement(conn, stmt, std::make_tuple("test", nullptr), result).validate_no_error();
-
-            // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-
-            // Verify the results
-            BOOST_TEST_REQUIRE(result.size() == 1u);
-            BOOST_TEST(result.meta().size() == 0u);
-            BOOST_TEST(result.affected_rows() == 50u);
-            BOOST_TEST(result.info() == "1st");
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error_wrong_num_params)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            auto result = create_initial_results();
-            auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
-
-            // Call the function
-            fns.execute_statement(conn, stmt, std::make_tuple("test", nullptr), result)
-                .validate_error_exact(client_errc::wrong_num_params);
-        }
-    }
-}
-
-// Verify that we correctly perform a decay-copy of the parameters and the
-// statement handle, relevant for deferred tokens
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
-{
-    run_coroutine([]() -> boost::asio::awaitable<void> {
-        results result;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
-
-        // Deferred op
-        auto aw = conn.async_execute_statement(
-            create_the_statement(),                         // statement is a temporary
-            std::make_tuple(std::string("test"), nullptr),  // tuple is a temporary
-            result,
-            boost::asio::use_awaitable
-        );
-        co_await std::move(aw);
-
-        // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-        BOOST_TEST(result.info() == "1st");
-    });
-}
-
-BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
-{
-    run_coroutine([]() -> boost::asio::awaitable<void> {
-        results result;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
-        boost::asio::awaitable<void> aw;
-
-        // Deferred op
-        {
-            auto stmt = create_the_statement();
-            auto params = std::make_tuple(std::string("test"), nullptr);
-            aw = conn.async_execute_statement(stmt, params, result, boost::asio::use_awaitable);
-        }
-
-        co_await std::move(aw);
-
-        // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-        BOOST_TEST(result.info() == "1st");
-    });
-}
-#endif
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//
-// ------- execute_statement (tuple) ---------
+// execute (statement with tuple)
 //
 BOOST_AUTO_TEST_SUITE(execute_statement_tuple)
 
-using netfun_maker = netfun_maker_mem<
+using netfun_maker = netfun_maker_fn<
     void,
-    test_connection,
+    test_channel&,
     const bound_statement_tuple<std::tuple<const char*, std::nullptr_t>>&,
-    results&>;
+    execution_processor&>;
 
 struct
 {
     netfun_maker::signature execute;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::execute),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::execute),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_execute),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_execute), "async_noerrinfo"},
+    {netfun_maker::sync_errc(&detail::execute),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_execute), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -366,20 +176,22 @@ BOOST_AUTO_TEST_CASE(success)
         {
             auto result = create_initial_results();
             auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+            auto chan = create_channel();
+            chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok(
+            ));
 
             // Call the function
-            fns.execute(conn, stmt.bind("test", nullptr), result).validate_no_error();
+            fns.execute(chan, stmt.bind("test", nullptr), get_iface(result)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
             BOOST_TEST_REQUIRE(result.size() == 1u);
             BOOST_TEST(result.meta().size() == 0u);
             BOOST_TEST(result.affected_rows() == 50u);
             BOOST_TEST(result.info() == "1st");
+            BOOST_TEST(get_iface(result).encoding() == resultset_encoding::binary);
         }
     }
 }
@@ -390,13 +202,30 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_results();
+            results result;
             auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
+            auto chan = create_channel();
 
             // Call the function
-            fns.execute(conn, stmt.bind("test", nullptr), result)
+            fns.execute(chan, stmt.bind("test", nullptr), get_iface(result))
                 .validate_error_exact(client_errc::wrong_num_params);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(error_execute_impl)
+{
+    for (auto fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            results result;
+            auto chan = create_channel();
+            chan.lowest_layer().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
+
+            // Call the function
+            fns.execute(chan, create_the_statement().bind("test", nullptr), get_iface(result))
+                .validate_error_exact(common_server_errc::er_aborting_connection);
         }
     }
 }
@@ -408,19 +237,22 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
 {
     run_coroutine([]() -> boost::asio::awaitable<void> {
         results result;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        auto chan = create_channel();
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        diagnostics diag;
 
         // Deferred op. Execution request is a temporary
-        auto aw = conn.async_execute(
+        auto aw = detail::async_execute(
+            chan,
             create_the_statement().bind(std::string("test"), nullptr),
-            result,
+            get_iface(result),
+            diag,
             boost::asio::use_awaitable
         );
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(result.info() == "1st");
     });
 }
@@ -429,48 +261,46 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
 {
     run_coroutine([]() -> boost::asio::awaitable<void> {
         results result;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        auto chan = create_channel();
+        diagnostics diag;
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
         boost::asio::awaitable<void> aw;
 
         // Deferred op
         {
             auto stmt = create_the_statement();
             auto req = stmt.bind(std::string("test"), nullptr);
-            aw = conn.async_execute(req, result, boost::asio::use_awaitable);
+            aw = detail::async_execute(chan, req, get_iface(result), diag, boost::asio::use_awaitable);
         }
 
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(result.info() == "1st");
     });
 }
 #endif
-
 BOOST_AUTO_TEST_SUITE_END()
 
 //
-// ------- execute_statement (iterator) ---------
+// execute (statement with iterator range)
 //
 BOOST_AUTO_TEST_SUITE(execute_statement_iterator_range)
 
-using netfun_maker = netfun_maker_mem<
+using netfun_maker = netfun_maker_fn<
     void,
-    test_connection,
+    test_channel&,
     const bound_statement_iterator_range<const field_view*>&,
-    results&>;
+    execution_processor&>;
 
 struct
 {
     netfun_maker::signature execute;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::execute),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::execute),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_execute),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_execute), "async_noerrinfo"},
+    {netfun_maker::sync_errc(&detail::execute),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_execute), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -481,47 +311,26 @@ BOOST_AUTO_TEST_CASE(success)
         {
             auto result = create_initial_results();
             auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+            auto chan = create_channel();
+            chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok(
+            ));
 
             // Call the function
             const auto params = make_fv_arr("test", nullptr);
-            fns.execute(conn, stmt.bind(params.data(), params.data() + params.size()), result)
+            fns.execute(chan, stmt.bind(params.data(), params.data() + params.size()), get_iface(result))
                 .validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
             BOOST_TEST_REQUIRE(result.size() == 1u);
             BOOST_TEST(result.meta().size() == 0u);
             BOOST_TEST(result.affected_rows() == 50u);
             BOOST_TEST(result.info() == "1st");
+            BOOST_TEST(get_iface(result).encoding() == resultset_encoding::binary);
         }
     }
-}
-
-// Regression check: iterator reference type is convertible to field_view,
-// but not equal to field_view
-BOOST_AUTO_TEST_CASE(iterator_reference_not_field_view)
-{
-    auto result = create_initial_results();
-    auto stmt = create_the_statement();
-    test_connection conn;
-    conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
-
-    // Call the function
-    std::vector<field> fields{field_view("test"), field_view()};
-    conn.execute(stmt.bind(fields.begin(), fields.end()), result);
-
-    // Verify the message we sent
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-
-    // Verify the results
-    BOOST_TEST_REQUIRE(result.size() == 1u);
-    BOOST_TEST(result.meta().size() == 0u);
-    BOOST_TEST(result.affected_rows() == 50u);
-    BOOST_TEST(result.info() == "1st");
 }
 
 BOOST_AUTO_TEST_CASE(error_wrong_num_params)
@@ -530,13 +339,13 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            auto result = create_initial_results();
+            results result;
             auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
+            auto chan = create_channel();
 
             // Call the function
             const auto params = make_fv_arr("test", nullptr);
-            fns.execute(conn, stmt.bind(params.data(), params.data() + params.size()), result)
+            fns.execute(chan, stmt.bind(params.data(), params.data() + params.size()), get_iface(result))
                 .validate_error_exact(client_errc::wrong_num_params);
         }
     }
@@ -547,26 +356,19 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
 BOOST_AUTO_TEST_SUITE_END()
 
 //
-// ------- start_statement_execution (tuple, legacy) ---------
+// start_execution (text query)
 //
-BOOST_AUTO_TEST_SUITE(start_statement_execution_tuple_legacy)
+BOOST_AUTO_TEST_SUITE(start_execution_query)
 
-using netfun_maker = netfun_maker_mem<
-    void,
-    test_connection,
-    const statement&,
-    const std::tuple<const char*, std::nullptr_t>&,
-    execution_state&>;
+using netfun_maker = netfun_maker_fn<void, test_channel&, const string_view&, execution_processor&>;
 
 struct
 {
-    netfun_maker::signature start_statement_execution;
+    netfun_maker::signature start_query;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::start_statement_execution),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::start_statement_execution),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_start_statement_execution),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_start_statement_execution), "async_noerrinfo"},
+    {netfun_maker::sync_errc(&detail::start_execution),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_start_execution), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -575,117 +377,68 @@ BOOST_AUTO_TEST_CASE(success)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
+            std::vector<field_view> fields;
             auto st = create_initial_state();
-            auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+            auto chan = create_channel();
+            chan.lowest_layer()
+                .add_message(create_message(1, {0x01}))  // 1 column
+                .add_message(
+                    create_coldef_message(2, coldef_builder().type(protocol_field_type::tiny).build())
+                )
+                .add_message(create_text_row_message(3, 42))
+                .add_message(ok_msg_builder().seqnum(1).affected_rows(10).info("1st").build_ok());
 
             // Call the function
-            fns.start_statement_execution(conn, stmt, std::make_tuple("test", nullptr), st)
-                .validate_no_error();
+            fns.start_query(chan, "SELECT 1", get_iface(st)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), select_1_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
-            BOOST_TEST(st.meta().size() == 0u);
-            BOOST_TEST(st.affected_rows() == 50u);
-            BOOST_TEST(st.info() == "1st");
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::text);
+            BOOST_TEST(st.should_read_rows());
+            BOOST_TEST(get_iface(st).sequence_number() == 3u);
+            check_meta(st.meta(), {column_type::tinyint});
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(error_wrong_num_params)
+BOOST_AUTO_TEST_CASE(error)
 {
     for (auto fns : all_fns)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
             execution_state st;
-            auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
+            auto chan = create_channel();
+            chan.lowest_layer().set_fail_count(fail_count(0, common_server_errc::er_aborting_connection));
 
             // Call the function
-            fns.start_statement_execution(conn, stmt, std::make_tuple("test", nullptr), st)
-                .validate_error_exact(client_errc::wrong_num_params);
+            fns.start_query(chan, "SELECT 1", get_iface(st))
+                .validate_error_exact(common_server_errc::er_aborting_connection);
         }
     }
 }
-
-// Verify that we correctly perform a decay-copy of the parameters and the
-// statement handle, relevant for deferred tokens
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
-{
-    run_coroutine([]() -> boost::asio::awaitable<void> {
-        execution_state st;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
-
-        // Deferred op
-        auto aw = conn.async_start_statement_execution(
-            create_the_statement(),                         // statement is a temporary
-            std::make_tuple(std::string("test"), nullptr),  // tuple is a temporary
-            st,
-            boost::asio::use_awaitable
-        );
-        co_await std::move(aw);
-
-        // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-        BOOST_TEST(st.info() == "1st");
-    });
-}
-
-BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
-{
-    run_coroutine([]() -> boost::asio::awaitable<void> {
-        execution_state st;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
-        boost::asio::awaitable<void> aw;
-
-        // Deferred op
-        {
-            auto stmt = create_the_statement();
-            auto params = std::make_tuple(std::string("test"), nullptr);
-            aw = conn.async_start_statement_execution(stmt, params, st, boost::asio::use_awaitable);
-        }
-
-        co_await std::move(aw);
-
-        // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-        BOOST_TEST(st.info() == "1st");
-    });
-}
-#endif
-
 BOOST_AUTO_TEST_SUITE_END()
 
 //
-// ------- start_statement_execution (tuple) ---------
+// start_execution (statement, tuple)
 //
-BOOST_AUTO_TEST_SUITE(start_statement_execution_tuple)
+BOOST_AUTO_TEST_SUITE(start_execution_stmt_tuple)
 
-using netfun_maker = netfun_maker_mem<
+using netfun_maker = netfun_maker_fn<
     void,
-    test_connection,
+    test_channel&,
     const bound_statement_tuple<std::tuple<const char*, std::nullptr_t>>&,
-    execution_state&>;
+    execution_processor&>;
 
 struct
 {
     netfun_maker::signature start_execution;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::start_execution),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::start_execution),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_start_execution),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_start_execution), "async_noerrinfo"},
+    {netfun_maker::sync_errc(&detail::start_execution),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_start_execution), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -696,22 +449,25 @@ BOOST_AUTO_TEST_CASE(success)
         {
             auto st = create_initial_state();
             auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+            auto chan = create_channel();
+            chan.lowest_layer()
+                .add_message(create_message(1, {0x01}))  // 1 column
+                .add_message(
+                    create_coldef_message(2, coldef_builder().type(protocol_field_type::tiny).build())
+                )
+                .add_message(ok_msg_builder().seqnum(3).affected_rows(50).info("1st").build_ok());
 
             // Call the function
-            fns.start_execution(conn, stmt.bind("test", nullptr), st).validate_no_error();
+            fns.start_execution(chan, stmt.bind("test", nullptr), get_iface(st)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
-            BOOST_TEST_REQUIRE(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
-            BOOST_TEST(st.meta().size() == 0u);
-            BOOST_TEST(st.affected_rows() == 50u);
-            BOOST_TEST(st.info() == "1st");
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
+            BOOST_TEST(st.should_read_rows());
+            BOOST_TEST(get_iface(st).sequence_number() == 3u);
+            check_meta(st.meta(), {column_type::tinyint});
         }
     }
 }
@@ -724,10 +480,10 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
         {
             execution_state st;
             auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
+            auto chan = create_channel();
 
             // Call the function
-            fns.start_execution(conn, stmt.bind("test", nullptr), st)
+            fns.start_execution(chan, stmt.bind("test", nullptr), get_iface(st))
                 .validate_error_exact(client_errc::wrong_num_params);
         }
     }
@@ -740,19 +496,22 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
 {
     run_coroutine([]() -> boost::asio::awaitable<void> {
         execution_state st;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        auto chan = create_channel();
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        diagnostics diag;
 
         // Deferred op. Execution request is a temporary
-        auto aw = conn.async_start_execution(
+        auto aw = detail::async_start_execution(
+            chan,
             create_the_statement().bind(std::string("test"), nullptr),
-            st,
+            get_iface(st),
+            diag,
             boost::asio::use_awaitable
         );
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(st.info() == "1st");
     });
 }
@@ -761,149 +520,46 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
 {
     run_coroutine([]() -> boost::asio::awaitable<void> {
         execution_state st;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        auto chan = create_channel();
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
         boost::asio::awaitable<void> aw;
+        diagnostics diag;
 
         // Deferred op
         {
             const auto stmt = create_the_statement();
             const auto req = stmt.bind(std::string("test"), nullptr);
-            aw = conn.async_start_execution(req, st, boost::asio::use_awaitable);
+            aw = detail::async_start_execution(chan, req, get_iface(st), diag, boost::asio::use_awaitable);
         }
 
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(st.info() == "1st");
     });
 }
 #endif
-
 BOOST_AUTO_TEST_SUITE_END()
 
 //
-// ------- start_statement_execution (iterator, legacy) ---------
+// start_execution (statement, iterator)
 //
-BOOST_AUTO_TEST_SUITE(start_statement_execution_it_legacy)
+BOOST_AUTO_TEST_SUITE(start_execution_stmt_it)
 
-using netfun_maker = netfun_maker_mem<
+using netfun_maker = netfun_maker_fn<
     void,
-    test_connection,
-    const statement&,
-    const field_view*,
-    const field_view*,
-    execution_state&>;
-
-struct
-{
-    netfun_maker::signature start_statement_execution;
-    const char* name;
-} all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::start_statement_execution),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::start_statement_execution),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_start_statement_execution),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_start_statement_execution), "async_noerrinfo"},
-};
-
-BOOST_AUTO_TEST_CASE(success)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            auto st = create_initial_state();
-            auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
-
-            // Call the function
-            auto fields = make_fv_arr("test", nullptr);
-            fns.start_statement_execution(conn, stmt, fields.data(), fields.data() + fields.size(), st)
-                .validate_no_error();
-
-            // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-
-            // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
-            BOOST_TEST(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
-            BOOST_TEST(st.meta().size() == 0u);
-            BOOST_TEST(st.affected_rows() == 50u);
-            BOOST_TEST(st.info() == "1st");
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(error_wrong_num_params)
-{
-    for (auto fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            execution_state st;
-            auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
-
-            // Call the function
-            auto fields = make_fv_arr("test", nullptr);
-            fns.start_statement_execution(conn, stmt, fields.data(), fields.data() + fields.size(), st)
-                .validate_error_exact(client_errc::wrong_num_params);
-        }
-    }
-}
-
-// Verify that we correctly perform a decay-copy of the stmt handle
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-BOOST_AUTO_TEST_CASE(deferred_lifetimes)
-{
-    run_coroutine([]() -> boost::asio::awaitable<void> {
-        execution_state st;
-        test_connection conn;
-        conn.stream().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
-        auto fields = make_fv_arr("test", nullptr);
-
-        // Deferred op
-        auto aw = conn.async_start_statement_execution(
-            create_the_statement(),
-            fields.data(),
-            fields.data() + fields.size(),
-            st,
-            boost::asio::use_awaitable
-        );
-        co_await std::move(aw);
-
-        // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-        BOOST_TEST(st.info() == "1st");
-    });
-}
-#endif
-
-BOOST_AUTO_TEST_SUITE_END()
-
-//
-// ------- start_statement_execution (iterator) ---------
-//
-BOOST_AUTO_TEST_SUITE(start_statement_execution_it)
-
-using netfun_maker = netfun_maker_mem<
-    void,
-    test_connection,
+    test_channel&,
     const bound_statement_iterator_range<field_view*>&,
-    execution_state&>;
+    execution_processor&>;
 
 struct
 {
     netfun_maker::signature start_execution;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&test_connection::start_execution),             "sync_errc"      },
-    {netfun_maker::sync_exc(&test_connection::start_execution),              "sync_exc"       },
-    {netfun_maker::async_errinfo(&test_connection::async_start_execution),   "async_errinfo"  },
-    {netfun_maker::async_noerrinfo(&test_connection::async_start_execution), "async_noerrinfo"},
+    {netfun_maker::sync_errc(&detail::start_execution),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_start_execution), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -914,21 +570,22 @@ BOOST_AUTO_TEST_CASE(success)
         {
             auto st = create_initial_state();
             auto stmt = create_the_statement();
-            test_connection conn;
-            conn.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok());
+            auto chan = create_channel();
+            chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).affected_rows(50).info("1st").build_ok(
+            ));
 
             // Call the function
             auto fields = make_fv_arr("test", nullptr);
-            fns.start_execution(conn, stmt.bind(fields.data(), fields.data() + fields.size()), st)
+            fns.start_execution(chan, stmt.bind(fields.data(), fields.data() + fields.size()), get_iface(st))
                 .validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
+            BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
             BOOST_TEST(st.complete());
-            BOOST_TEST(get_impl(st).sequence_number() == 2u);
+            BOOST_TEST(get_iface(st).sequence_number() == 2u);
             BOOST_TEST(st.meta().size() == 0u);
             BOOST_TEST(st.affected_rows() == 50u);
             BOOST_TEST(st.info() == "1st");
@@ -944,11 +601,11 @@ BOOST_AUTO_TEST_CASE(error_wrong_num_params)
         {
             execution_state st;
             auto stmt = statement_builder().id(1).num_params(3).build();
-            test_connection conn;
+            auto chan = create_channel();
 
             // Call the function
             auto fields = make_fv_arr("test", nullptr);
-            fns.start_execution(conn, stmt.bind(fields.data(), fields.data() + fields.size()), st)
+            fns.start_execution(chan, stmt.bind(fields.data(), fields.data() + fields.size()), get_iface(st))
                 .validate_error_exact(client_errc::wrong_num_params);
         }
     }

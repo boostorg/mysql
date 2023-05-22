@@ -29,7 +29,7 @@ namespace test {
 
 inline std::vector<std::uint8_t> create_message(std::uint8_t seqnum, std::vector<std::uint8_t> body)
 {
-    assert(body.size() <= std::numeric_limits<std::uint32_t>::max());
+    assert(body.size() <= (std::numeric_limits<std::uint32_t>::max)());
     auto body_size = static_cast<std::uint32_t>(body.size());
     boost::mysql::detail::packet_header header{boost::mysql::detail::int3{body_size}, seqnum};
     body.resize(body_size + 4);
@@ -70,8 +70,9 @@ void serialize_to_vector(std::vector<std::uint8_t>& res, const Args&... args)
 {
     detail::serialization_context ctx(detail::capabilities(0));
     std::size_t size = detail::get_size(ctx, args...);
-    res.resize(res.size() + size);
-    ctx.set_first(res.data());
+    std::size_t old_size = res.size();
+    res.resize(old_size + size);
+    ctx.set_first(res.data() + old_size);
     detail::serialize(ctx, args...);
 }
 
@@ -173,11 +174,9 @@ inline std::vector<std::uint8_t> create_err_packet_message(
 
 inline std::vector<std::uint8_t> create_coldef_message(
     std::uint8_t seqnum,
-    detail::protocol_field_type type,
-    string_view name = "mycol"
+    const detail::column_definition_packet& pack
 )
 {
-    auto pack = create_coldef(type, name);
     return create_message(
         seqnum,
         serialize_to_vector(
@@ -196,6 +195,15 @@ inline std::vector<std::uint8_t> create_coldef_message(
             std::uint16_t(0)  // padding
         )
     );
+}
+
+inline std::vector<std::uint8_t> create_coldef_message(
+    std::uint8_t seqnum,
+    detail::protocol_field_type type,
+    string_view name = "mycol"
+)
+{
+    return create_coldef_message(seqnum, create_coldef(type, name));
 }
 
 }  // namespace test

@@ -13,7 +13,7 @@
 #include <boost/mysql/metadata.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 namespace boost {
 namespace mysql {
@@ -22,7 +22,7 @@ namespace detail {
 template <class Stream>
 void read_resultset_head(
     channel<Stream>& channel,
-    execution_state_impl& st,
+    execution_processor& proc,
     error_code& err,
     diagnostics& diag
 );
@@ -31,7 +31,7 @@ template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::err
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_read_resultset_head(
     channel<Stream>& channel,
-    execution_state_impl& st,
+    execution_processor& proc,
     diagnostics& diag,
     CompletionToken&& token
 );

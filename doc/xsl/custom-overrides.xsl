@@ -33,9 +33,12 @@
     'Stream',
     'SocketStream',
     'Executor',
-    'FieldLikeTuple',
+    'WritableFieldTuple',
     'FieldViewFwdIterator',
-    'ExecutionRequest'
+    'ExecutionRequest',
+    'StaticRow',
+    'ResultsType',
+    'ExecutionStateType'
   "/>
 
 </xsl:stylesheet>

@@ -10,6 +10,11 @@ Boost.MySQL is part of Boost.
 
 Boost.MySQL gets its first stable release with Boost 1.82 on the 12th of April, 2023.
 
+## Feedback
+
+Do you have any suggestion? Would you like to share a bad or good experience while using the library?
+Please comment [on this issue](https://github.com/boostorg/mysql/issues/140).
+
 ## Why another MySQL C++ client?
 
 - It is fully compatible with Boost.Asio and integrates well with any other

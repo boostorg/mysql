@@ -15,7 +15,7 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
 class boost::mysql::bound_statement_tuple
 {
     friend class statement;
@@ -24,7 +24,7 @@ class boost::mysql::bound_statement_tuple
     struct impl
     {
         statement stmt;
-        FieldLikeTuple params;
+        WritableFieldTuple params;
     } impl_;
 
     template <typename TupleType>
@@ -56,16 +56,15 @@ class boost::mysql::bound_statement_iterator_range
     }
 };
 
-template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple, typename EnableIf>
-boost::mysql::bound_statement_tuple<typename std::decay<FieldLikeTuple>::type> boost::mysql::statement::bind(
-    FieldLikeTuple&& args
-) const
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple, typename EnableIf>
+boost::mysql::bound_statement_tuple<typename std::decay<WritableFieldTuple>::type> boost::mysql::statement::
+    bind(WritableFieldTuple&& args) const
 
 {
     assert(valid());
-    return bound_statement_tuple<typename std::decay<FieldLikeTuple>::type>(
+    return bound_statement_tuple<typename std::decay<WritableFieldTuple>::type>(
         *this,
-        std::forward<FieldLikeTuple>(args)
+        std::forward<WritableFieldTuple>(args)
     );
 }
 
@@ -88,9 +87,9 @@ struct boost::mysql::detail::statement_access
         stmt.num_params_ = msg.num_params;
     }
 
-    template <BOOST_MYSQL_FIELD_LIKE_TUPLE FieldLikeTuple>
-    static const typename bound_statement_tuple<FieldLikeTuple>::impl get_impl_tuple(
-        const bound_statement_tuple<FieldLikeTuple>& obj
+    template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
+    static const typename bound_statement_tuple<WritableFieldTuple>::impl get_impl_tuple(
+        const bound_statement_tuple<WritableFieldTuple>& obj
     )
     {
         return obj.impl_;

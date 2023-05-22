@@ -6,16 +6,20 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
+#include "creation/create_execution_processor.hpp"
 #include "creation/create_message_struct.hpp"
 #include "test_common.hpp"
 
@@ -32,7 +36,8 @@ BOOST_AUTO_TEST_CASE(spotchecks)
 {
     std::vector<field_view> fields;
     execution_state st;
-    auto& impl = boost::mysql::detail::execution_state_access::get_impl(st);
+    auto& impl = boost::mysql::detail::impl_access::get_impl(st);
+    diagnostics diag;
 
     // Initial
     BOOST_TEST(st.should_start_op());
@@ -42,53 +47,47 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.meta().size() == 0u);
 
     // Reset
-    impl.reset(detail::resultset_encoding::text, &fields);
+    impl.reset(detail::resultset_encoding::text, metadata_mode::minimal);
     BOOST_TEST(st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
 
-    // Reading meta
-    impl.on_num_meta(1);
-    BOOST_TEST(!st.should_start_op());
-    BOOST_TEST(st.should_read_head());
-    BOOST_TEST(!st.should_read_rows());
-    BOOST_TEST(!st.complete());
-
-    // Reading rows
-    impl.on_meta(create_coldef(protocol_field_type::bit), metadata_mode::full);
+    // Meta
+    add_meta(impl, {protocol_field_type::var_string});
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    check_meta(st.meta(), {column_type::bit});
+    check_meta(st.meta(), {column_type::varchar});
 
     // Reading a row leaves it in the same state
-    impl.on_row_batch_start();
-    *impl.add_row() = field_view(42u);
-    impl.on_row_batch_finish();
+    rowbuff r1{"abc"};
+    auto err = impl.on_row(r1.ctx(), detail::output_ref(), fields);
+    throw_on_error(err);
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
     BOOST_TEST(!st.complete());
-    BOOST_TEST(fields == make_fv_vector(42u));
+    BOOST_TEST(fields == make_fv_vector("abc"));
 
     // End of first resultset
-    impl.on_row_batch_start();
-    impl.on_row_ok_packet(ok_builder()
-                              .affected_rows(1)
-                              .last_insert_id(2)
-                              .warnings(4)
-                              .info("abc")
-                              .more_results(true)
-                              .out_params(true)
-                              .build());
-    impl.on_row_batch_finish();
+    add_ok(
+        impl,
+        ok_builder()
+            .affected_rows(1)
+            .last_insert_id(2)
+            .warnings(4)
+            .info("abc")
+            .more_results(true)
+            .out_params(true)
+            .build()
+    );
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
     BOOST_TEST(!st.complete());
-    check_meta(st.meta(), {column_type::bit});
+    check_meta(st.meta(), {column_type::varchar});
     BOOST_TEST(st.affected_rows() == 1u);
     BOOST_TEST(st.last_insert_id() == 2u);
     BOOST_TEST(st.warning_count() == 4u);
@@ -96,8 +95,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.is_out_params());
 
     // Second resultset meta
-    impl.on_num_meta(1);
-    impl.on_meta(create_coldef(protocol_field_type::tiny), metadata_mode::full);
+    add_meta(impl, {protocol_field_type::tiny});
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
@@ -105,9 +103,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     check_meta(st.meta(), {column_type::tinyint});
 
     // Complete
-    impl.on_row_batch_start();
-    impl.on_row_ok_packet(ok_builder().affected_rows(5).last_insert_id(6).warnings(7).info("bhu").build());
-    impl.on_row_batch_finish();
+    add_ok(impl, ok_builder().affected_rows(5).last_insert_id(6).warnings(7).info("bhu").build());
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(!st.should_read_rows());
@@ -120,22 +116,27 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.is_out_params());
 }
 
+std::unique_ptr<execution_state> create_heap_state()
+{
+    std::unique_ptr<execution_state> st{new execution_state};
+    add_meta(get_iface(*st), {protocol_field_type::var_string});
+    add_ok(get_iface(*st), ok_builder().info("small").build());
+    return st;
+}
+
 // Verify that the lifetime guarantees we make are correct
 BOOST_AUTO_TEST_CASE(move_constructor)
 {
-    // Construction
-    execution_state st = exec_builder(false)
-                             .meta({protocol_field_type::var_string})
-                             .ok(ok_builder().info("small").build())
-                             .build_state();
+    // Having this in heap helps detect lifetime issues
+    auto st = create_heap_state();
 
     // Obtain references
-    auto meta = st.meta();
-    auto info = st.info();
+    auto meta = st->meta();
+    auto info = st->info();
 
     // Move construct
-    execution_state st2(std::move(st));
-    st = execution_state();  // Regression check
+    execution_state st2(std::move(*st));
+    st.reset();
 
     // Make sure that views are still valid
     check_meta(meta, {column_type::varchar});
@@ -149,20 +150,17 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
 BOOST_AUTO_TEST_CASE(move_assignment)
 {
-    // Construct an execution_state with value
-    execution_state st = exec_builder(false)
-                             .meta({protocol_field_type::var_string})
-                             .ok(ok_builder().info("small").build())
-                             .build_state();
+    // Having this in heap helps detect lifetime issues
+    auto st = create_heap_state();
 
     // Obtain references
-    auto meta = st.meta();
-    auto info = st.info();
+    auto meta = st->meta();
+    auto info = st->info();
 
     // Move assign
     execution_state st2;
-    st2 = std::move(st);
-    st = execution_state();  // Regression check - std::string impl SBO buffer
+    st2 = std::move(*st);
+    st.reset();
 
     // Make sure that views are still valid
     check_meta(meta, {column_type::varchar});

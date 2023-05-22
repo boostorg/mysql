@@ -39,7 +39,7 @@ template <class... T>
 void add_fields(row_impl& r, T&&... args)
 {
     auto fields = make_fv_arr(std::forward<T>(args)...);
-    std::copy(fields.begin(), fields.end(), r.add_fields(fields.size()));
+    std::copy(fields.begin(), fields.end(), r.add_fields(fields.size()).data());
 }
 
 // An array and vector with all scalar types
@@ -534,33 +534,37 @@ BOOST_AUTO_TEST_SUITE(add_fields_)
 BOOST_AUTO_TEST_CASE(empty_collection)
 {
     row_impl r;
-    field_view* storage = r.add_fields(2);
+    auto storage = r.add_fields(2);
     BOOST_TEST(r.fields().size() == 2u);
-    BOOST_TEST(storage == r.fields().data());
+    BOOST_TEST(storage.data() == r.fields().data());
+    BOOST_TEST(storage.size() == 2u);
 }
 
 BOOST_AUTO_TEST_CASE(non_empty_collection)
 {
     row_impl r = makerowimpl(nullptr, nullptr);
-    field_view* storage = r.add_fields(3);
+    auto storage = r.add_fields(3);
     BOOST_TEST(r.fields().size() == 5u);
-    BOOST_TEST(storage == r.fields().data() + 2);
+    BOOST_TEST(storage.data() == r.fields().data() + 2);
+    BOOST_TEST(storage.size() == 3u);
 }
 
 BOOST_AUTO_TEST_CASE(zero_fields)
 {
     row_impl r = makerowimpl(nullptr, nullptr);
-    field_view* storage = r.add_fields(0);
+    auto storage = r.add_fields(0);
     BOOST_TEST(r.fields().size() == 2u);
-    BOOST_TEST(storage == r.fields().data() + 2);
+    BOOST_TEST(storage.data() == r.fields().data() + 2);
+    BOOST_TEST(storage.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(empty_collection_zero_fields)
 {
     row_impl r;
-    field_view* storage = r.add_fields(0);
+    auto storage = r.add_fields(0);
     BOOST_TEST(r.fields().size() == 0u);
-    BOOST_TEST(storage == r.fields().data());
+    BOOST_TEST(storage.data() == r.fields().data());
+    BOOST_TEST(storage.size() == 0u);
 }
 BOOST_AUTO_TEST_SUITE_END()
 

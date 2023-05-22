@@ -8,39 +8,33 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/execution_state_impl.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "assert_buffer_equals.hpp"
 #include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
 #include "creation/create_message.hpp"
+#include "mock_execution_processor.hpp"
 #include "printing.hpp"
 #include "test_channel.hpp"
 #include "test_common.hpp"
 #include "unit_netfun_maker.hpp"
 
-using boost::mysql::blob;
-using boost::mysql::client_errc;
-using boost::mysql::column_type;
-using boost::mysql::error_code;
-using boost::mysql::execution_state;
-using boost::mysql::field_view;
+using namespace boost::mysql;
+using namespace boost::mysql::test;
+using boost::mysql::detail::execution_processor;
 using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
-using namespace boost::mysql::test;
 
 namespace {
 
-using netfun_maker = netfun_maker_fn<void, test_channel&, resultset_encoding, execution_state&>;
+using netfun_maker = netfun_maker_fn<void, test_channel&, resultset_encoding, execution_processor&>;
 
 struct
 {
@@ -51,7 +45,7 @@ struct
     {netfun_maker::async_errinfo(&boost::mysql::detail::async_start_execution_impl), "async"}
 };
 
-BOOST_AUTO_TEST_SUITE(test_start_execution)
+BOOST_AUTO_TEST_SUITE(test_start_execution_impl)
 
 BOOST_AUTO_TEST_CASE(success)
 {
@@ -59,16 +53,11 @@ BOOST_AUTO_TEST_CASE(success)
     {
         BOOST_TEST_CONTEXT(fns.name)
         {
-            // Initial state, to verify that we reset it
-            std::vector<field_view> fields;
-            auto st = exec_builder(false)
-                          .reset(resultset_encoding::text, &fields)
-                          .meta({protocol_field_type::geometry})
-                          .seqnum(4)
-                          .build_state();
+            mock_execution_processor st;
 
             // Channel
             auto chan = create_channel();
+            chan.set_meta_mode(metadata_mode::full);
             chan.lowest_layer()
                 .add_message(create_message(1, {0x01}))
                 .add_message(create_coldef_message(2, protocol_field_type::var_string));
@@ -86,13 +75,13 @@ BOOST_AUTO_TEST_CASE(success)
             BOOST_TEST(chan.shared_sequence_number() == 42u);  // unused
 
             // We've read the response
-            BOOST_TEST(get_impl(st).encoding() == resultset_encoding::binary);
-            BOOST_TEST(get_impl(st).sequence_number() == 3u);
-            BOOST_TEST(st.should_read_rows());
-            check_meta(
-                get_impl(st).current_resultset_meta(),
-                {std::make_pair(column_type::varchar, "mycol")}
-            );
+            BOOST_TEST(st.encoding() == resultset_encoding::binary);
+            BOOST_TEST(st.sequence_number() == 3u);
+            BOOST_TEST(st.is_reading_rows());
+            check_meta(st.meta(), {std::make_pair(column_type::varchar, "mycol")});
+
+            // Validate mock calls
+            st.num_calls().reset(1).on_num_meta(1).on_meta(1).validate();
         }
     }
 }
@@ -108,8 +97,9 @@ BOOST_AUTO_TEST_CASE(error_network_error)
             {
                 BOOST_TEST_CONTEXT(i)
                 {
-                    std::vector<field_view> fields;
-                    auto st = exec_builder(false).reset(&fields).build_state();
+                    mock_execution_processor st;
+
+                    // Channel
                     auto chan = create_channel();
                     chan.lowest_layer()
                         .add_message(create_message(1, {0x01}))
@@ -122,6 +112,9 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     // Call the function
                     fns.start_execution(chan, resultset_encoding::binary, st)
                         .validate_error_exact(client_errc::server_unsupported);
+
+                    // Num calls validation
+                    st.num_calls().reset(1).validate();
                 }
             }
         }

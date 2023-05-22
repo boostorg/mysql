@@ -85,10 +85,26 @@ struct network_result_base
         }
     }
 
+    void validate_error_exact_client(error_code expected_err, const char* expected_msg = "")
+    {
+        BOOST_TEST_CONTEXT("diagnostics= " << client_diag() << ", error_code=" << err.message())
+        {
+            BOOST_TEST_REQUIRE(err == expected_err);
+            if (diag)
+            {
+                BOOST_TEST(diag->client_message() == expected_msg);
+            }
+        }
+    }
+
 private:
     string_view server_diag() const noexcept
     {
         return diag ? diag->server_message() : string_view("<unavailable>");
+    }
+    string_view client_diag() const noexcept
+    {
+        return diag ? diag->client_message() : string_view("<unavailable>");
     }
 };
 

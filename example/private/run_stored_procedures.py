@@ -29,7 +29,7 @@ class Runner:
         self._host = host
     
     def run(self, subcmd: str, *args: str) -> str:
-        cmdline = [self._exe, 'sp_user', 'sp_password', self._host, subcmd, *args]
+        cmdline = [self._exe, 'orders_user', 'orders_password', self._host, subcmd, *args]
         print(' + ', cmdline)
         res = run(cmdline, check=True, stdout=PIPE)
         print(res.stdout.decode())
@@ -43,7 +43,12 @@ def main():
 
     runner = Runner(args.executable, args.host)
 
-    runner.run('get-products', 'feast')
+    # Some examples require C++14 and produce an apology for C++11 compilers
+    output = runner.run('get-products', 'feast')
+    if "your compiler doesn't have the required capabilities to run this example" in output:
+        print('Example reported unsupported compiler')
+        exit(0)
+    
     order_id = _parse_order_id(runner.run('create-order'))
     runner.run('get-orders')
     line_item_id = _parse_line_item_id(runner.run('add-line-item', order_id, '1', '5'))

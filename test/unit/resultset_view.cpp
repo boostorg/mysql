@@ -6,18 +6,19 @@
 //
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "check_meta.hpp"
+#include "creation/create_execution_processor.hpp"
 #include "creation/create_execution_state.hpp"
 #include "creation/create_message_struct.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::column_type;
-using boost::mysql::resultset_view;
+using namespace boost::mysql;
 using boost::mysql::detail::protocol_field_type;
 
 namespace {
@@ -32,11 +33,13 @@ BOOST_AUTO_TEST_CASE(null_view)
 
 BOOST_AUTO_TEST_CASE(valid_view)
 {
-    auto result = create_results({
-        {{protocol_field_type::tiny},
-         makerows(1, 42),
-         ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build()}
-    });
+    results result;
+    add_meta(get_iface(result), {protocol_field_type::tiny});
+    add_row(get_iface(result), 42);
+    add_ok(
+        get_iface(result),
+        ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build()
+    );
 
     auto v = result.at(0);
     BOOST_TEST_REQUIRE(v.has_value());

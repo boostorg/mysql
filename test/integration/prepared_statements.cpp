@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -19,14 +21,12 @@
 
 #include "er_connection.hpp"
 #include "integration_test_common.hpp"
+#include "printing.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::execution_state;
-using boost::mysql::results;
-using boost::mysql::row;
-using boost::mysql::row_view;
+using namespace boost::mysql;
 
 namespace {
 
@@ -112,6 +112,23 @@ BOOST_FIXTURE_TEST_CASE(statement_without_params, tcp_network_fixture)
     conn.execute(stmt.bind(), result);
     validate_2fields_meta(result.meta(), "empty_table");
     BOOST_TEST(result.rows().size() == 0u);
+}
+
+BOOST_FIXTURE_TEST_CASE(wrong_num_params, tcp_network_fixture)
+{
+    connect();
+
+    // Prepare the statement
+    auto stmt = conn.prepare_statement("SELECT * FROM empty_table");
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(stmt.num_params() == 0u);
+
+    // Execute fails appropriately
+    error_code ec;
+    diagnostics diag;
+    results result;
+    conn.execute(stmt.bind(42), result, ec, diag);
+    BOOST_TEST(ec == client_errc::wrong_num_params);
 }
 
 // Note: multifn query is already covered in spotchecks

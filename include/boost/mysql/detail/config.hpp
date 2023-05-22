@@ -8,8 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_CONFIG_HPP
 #define BOOST_MYSQL_DETAIL_CONFIG_HPP
 
+#include <boost/config.hpp>
+
 // clang-format off
 
+// Concepts
 #if defined(__has_include)
     #if __has_include(<version>)
         #include <version>
@@ -17,6 +20,11 @@
             #define BOOST_MYSQL_HAS_CONCEPTS
         #endif
     #endif
+#endif
+
+// C++14 conformance
+#if BOOST_CXX_VERSION >= 201402L
+    #define BOOST_MYSQL_CXX14
 #endif
 
 // clang-format on

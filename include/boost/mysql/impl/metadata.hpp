@@ -47,6 +47,10 @@ inline column_type compute_field_type(
     std::uint16_t collation
 )
 {
+    // Some protocol_field_types seem to not be sent by the server. We've found instances
+    // where some servers, with certain SQL statements, send some of the "apparently not sent"
+    // types (e.g. MariaDB was sending medium_blob only if you SELECT TEXT variables - but not with TEXT
+    // columns). So we've taken a defensive approach here
     switch (protocol_type)
     {
     case protocol_field_type::decimal:
@@ -66,8 +70,14 @@ inline column_type compute_field_type(
     case protocol_field_type::time: return column_type::time;
     case protocol_field_type::year: return column_type::year;
     case protocol_field_type::json: return column_type::json;
+    case protocol_field_type::enum_: return column_type::enum_;  // in theory not set
+    case protocol_field_type::set: return column_type::set;      // in theory not set
     case protocol_field_type::string: return compute_field_type_string(flags, collation);
+    case protocol_field_type::varchar:  // in theory not sent
     case protocol_field_type::var_string: return compute_field_type_var_string(collation);
+    case protocol_field_type::tiny_blob:    // in theory not sent
+    case protocol_field_type::medium_blob:  // in theory not sent
+    case protocol_field_type::long_blob:    // in theory not sent
     case protocol_field_type::blob: return compute_field_type_blob(collation);
     default: return column_type::unknown;
     }
@@ -97,6 +107,9 @@ struct boost::mysql::detail::metadata_access
     {
         return metadata(msg, copy_strings);
     }
+
+    // This is used by the tests
+    static void set_type(metadata& obj, column_type v) noexcept { obj.type_ = v; }
 };
 
 #endif

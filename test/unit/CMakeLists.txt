@@ -15,7 +15,6 @@ add_executable(
     detail/auth/auth_calculator.cpp
     detail/auxiliar/static_string.cpp
     detail/auxiliar/rows_iterator.cpp
-    detail/auxiliar/field_type_traits.cpp
     detail/auxiliar/execution_request.cpp
     detail/auxiliar/datetime.cpp
     detail/auxiliar/row_impl.cpp
@@ -26,16 +25,29 @@ add_executable(
     detail/protocol/deserialize_text_field.cpp
     detail/protocol/deserialize_binary_field.cpp
     detail/protocol/deserialize_row.cpp
-    detail/protocol/deserialize_execute_response.cpp
+    detail/protocol/deserialize_execution_messages.cpp
     detail/protocol/process_error_packet.cpp
-    detail/protocol/execution_state_impl.cpp
-    detail/network_algorithms/start_execution_impl.cpp
+    detail/execution_processor/execution_processor.cpp
+    detail/execution_processor/execution_state_impl.cpp
+    detail/execution_processor/static_execution_state_impl.cpp
+    detail/execution_processor/results_impl.cpp
+    detail/execution_processor/static_results_impl.cpp
+    detail/execution_processor/concepts.cpp
     detail/network_algorithms/read_resultset_head.cpp
-    detail/network_algorithms/read_some_rows.cpp
+    detail/network_algorithms/start_execution_impl.cpp
+    detail/network_algorithms/read_some_rows_dynamic.cpp
+    detail/network_algorithms/read_some_rows_static.cpp
+    detail/network_algorithms/read_some_rows_impl.cpp
     detail/network_algorithms/execute_impl.cpp
     detail/network_algorithms/high_level_execution.cpp
     detail/network_algorithms/close_statement.cpp
     detail/network_algorithms/ping.cpp
+    detail/typing/meta_check_context.cpp
+    detail/typing/pos_map.cpp
+    detail/typing/readable_field_traits.cpp
+    detail/typing/writable_field_traits.cpp
+    detail/typing/row_traits.cpp
+    detail/typing/get_type_index.cpp
     date.cpp
     datetime.cpp
     field_view.cpp
@@ -52,12 +64,14 @@ add_executable(
     diagnostics.cpp
     statement.cpp
     execution_state.cpp
+    static_execution_state.cpp
     results.cpp
+    static_results.cpp
     resultset_view.cpp
     resultset.cpp
     connection.cpp
     throw_on_error.cpp
-    regressions.cpp
+    misc.cpp
     multifn.cpp
     entry_point.cpp
 )

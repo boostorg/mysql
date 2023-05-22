@@ -56,6 +56,17 @@ CREATE TABLE three_rows_table (
 );
 INSERT INTO three_rows_table VALUES (1, 'f0'), (2, 'f1'), (3, 'f2');
 
+CREATE TABLE multifield_table(
+    id INT NOT NULL PRIMARY KEY,
+    field_varchar VARCHAR(255) NOT NULL,
+    field_int INT NOT NULL,
+    field_nullable FLOAT,
+    field_double DOUBLE NOT NULL
+);
+INSERT INTO multifield_table VALUES
+    (1, "aaa", 11, 1.1, 0.1),
+    (2, "bbb", 22, NULL, 0.2);
+
 -- Tables to test we retrieve correctly values of every possible type
 -- Every type gets a separate table. Each field within the table is a possible variant of this same type
 -- Every row is a test case, identified by the id column.
@@ -140,6 +151,15 @@ INSERT INTO types_year VALUES
     ("min",     1901),
     ("max",     2155),
     ("zero",    0)
+;
+
+CREATE TABLE types_bool(
+    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    field_default BOOL
+);
+INSERT INTO types_bool VALUES
+    ("true",  TRUE),
+    ("false", FALSE)
 ;
 
 CREATE TABLE types_bit(
@@ -517,6 +537,12 @@ END //
 CREATE PROCEDURE sp_signal()
 BEGIN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1002;
+END //
+
+CREATE PROCEDURE sp_spotchecks()
+BEGIN
+    SELECT * FROM multifield_table WHERE id = 1;
+    SELECT * FROM one_row_table;
 END //
 
 DELIMITER ;

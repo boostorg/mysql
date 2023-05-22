@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -13,8 +14,12 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
+#include <boost/mysql/detail/config.hpp>
+
+#include "er_connection.hpp"
 #include "integration_test_common.hpp"
 #include "metadata_validator.hpp"
+#include "static_rows.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
@@ -476,6 +481,78 @@ BOOST_MYSQL_NETWORK_TEST(not_open_connection, network_fixture, err_net_samples)
     conn->close().validate_no_error();
     BOOST_TEST(!conn->is_open());
 }
+
+#ifdef BOOST_MYSQL_CXX14
+// Execute (static) - errors are already covered by the other tests
+BOOST_MYSQL_NETWORK_TEST(execute_static_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    er_connection::static_results_t result;
+    conn->execute("CALL sp_spotchecks()", result).get();
+    BOOST_TEST(result.rows<0>().size() == 1u);
+    BOOST_TEST((result.rows<0>()[0] == row_multifield{1.1f, 11, "aaa"}));
+}
+
+// start_execution, read_resultset_head, read_some_rows success
+BOOST_MYSQL_NETWORK_TEST(start_execution_and_followups_static_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    er_connection::static_state_t st;
+
+    // Start
+    conn->start_execution("CALL sp_spotchecks()", st).get();
+    BOOST_TEST(st.should_read_rows());
+
+    // Read r1 rows
+    std::array<row_multifield, 2> storage;
+    std::size_t num_rows = conn->read_some_rows(st, storage).get();
+    BOOST_TEST(num_rows == 1u);
+    BOOST_TEST((storage[0] == row_multifield{1.1f, 11, "aaa"}));
+
+    // Ensure we're in the next resultset
+    num_rows = conn->read_some_rows(st, storage).get();
+    BOOST_TEST(num_rows == 0u);
+    BOOST_TEST(st.should_read_head());
+
+    // Read r2 head
+    conn->read_resultset_head(st).get();
+    BOOST_TEST(st.should_read_rows());
+
+    // Read r2 rows
+    std::array<row_2fields, 2> storage2;
+    num_rows = conn->read_some_rows(st, storage2).get();
+    BOOST_TEST(num_rows == 1u);
+    BOOST_TEST((storage2[0] == row_2fields{1, std::string("f0")}));
+
+    // Ensure we're in the next resultset
+    num_rows = conn->read_some_rows(st, storage2).get();
+    BOOST_TEST(num_rows == 0u);
+    BOOST_TEST(st.should_read_head());
+
+    // Read r3 head (empty)
+    conn->read_resultset_head(st).get();
+    BOOST_TEST(st.complete());
+}
+
+// read_some_rows failure (the other error cases are already widely tested)
+BOOST_MYSQL_NETWORK_TEST(read_some_rows_error, network_fixture, err_net_samples)
+{
+    setup_and_connect(sample.net);
+
+    er_connection::static_state_t st;
+
+    // Start
+    conn->start_execution("SELECT * FROM multifield_table WHERE id = 42", st).get();
+    BOOST_TEST(st.should_read_rows());
+
+    // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
+    std::array<row_multifield, 2> storage;
+    conn->read_some_rows(st, storage)
+        .validate_error_exact_client(boost::mysql::client_errc::num_resultsets_mismatch);
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()  // test_spotchecks
 
