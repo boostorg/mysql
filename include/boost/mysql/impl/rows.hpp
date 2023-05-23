@@ -16,7 +16,9 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+
 #include <cstddef>
 #include <stdexcept>
 
@@ -31,14 +33,14 @@ boost::mysql::row_view boost::mysql::rows::at(std::size_t i) const
 {
     if (i >= size())
     {
-        throw std::out_of_range("rows::at");
+        BOOST_THROW_EXCEPTION(std::out_of_range("rows::at"));
     }
     return detail::row_slice(impl_.fields().data(), num_columns_, i);
 }
 
 boost::mysql::row_view boost::mysql::rows::operator[](std::size_t i) const noexcept
 {
-    assert(i < size());
+    BOOST_ASSERT(i < size());
     return detail::row_slice(impl_.fields().data(), num_columns_, i);
 }
 

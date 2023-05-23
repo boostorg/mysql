@@ -13,6 +13,8 @@
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
 
+#include <boost/assert.hpp>
+
 #include <array>
 #include <vector>
 
@@ -22,12 +24,8 @@ namespace detail {
 
 struct authentication_plugin
 {
-    using calculator_signature = error_code (*)(
-        string_view password,
-        string_view challenge,
-        bool use_ssl,
-        bytestring& output
-    );
+    using calculator_signature =
+        error_code (*)(string_view password, string_view challenge, bool use_ssl, bytestring& output);
 
     string_view name;
     calculator_signature calculator;
@@ -53,7 +51,7 @@ public:
     }
     string_view plugin_name() const noexcept
     {
-        assert(plugin_);
+        BOOST_ASSERT(plugin_);
         return plugin_->name;
     }
 };

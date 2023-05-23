@@ -20,6 +20,7 @@
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/assert.hpp>
 
 namespace boost {
 namespace mysql {
@@ -48,7 +49,7 @@ inline error_code process_execution_response(
 inline error_code process_field_definition(channel_base& chan, execution_processor& proc, diagnostics& diag)
 {
     // Read the field definition packet (it's cached at this point)
-    assert(chan.has_read_messages());
+    BOOST_ASSERT(chan.has_read_messages());
     error_code err;
     auto msg = chan.next_read_message(proc.sequence_number(), err);
     if (err)

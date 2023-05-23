@@ -19,7 +19,9 @@
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+
 #include <stdexcept>
 
 namespace boost {
@@ -155,7 +157,7 @@ public:
      */
     rows_view rows() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_rows(0);
     }
 
@@ -184,7 +186,7 @@ public:
      */
     metadata_collection_view meta() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_meta(0);
     }
 
@@ -205,7 +207,7 @@ public:
      */
     std::uint64_t affected_rows() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_affected_rows(0);
     }
 
@@ -226,7 +228,7 @@ public:
      */
     std::uint64_t last_insert_id() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_last_insert_id(0);
     }
 
@@ -247,7 +249,7 @@ public:
      */
     unsigned warning_count() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_warning_count(0);
     }
 
@@ -278,7 +280,7 @@ public:
      */
     string_view info() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_info(0);
     }
 
@@ -299,7 +301,7 @@ public:
      */
     iterator begin() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return iterator(&impl_, 0);
     }
 
@@ -320,7 +322,7 @@ public:
      */
     iterator end() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return iterator(&impl_, size());
     }
 
@@ -342,9 +344,9 @@ public:
      */
     inline resultset_view at(std::size_t i) const
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         if (i >= size())
-            throw std::out_of_range("results::at: out of range");
+            BOOST_THROW_EXCEPTION(std::out_of_range("results::at: out of range"));
         return detail::resultset_view_access::construct(impl_, i);
     }
 
@@ -365,8 +367,8 @@ public:
      */
     resultset_view operator[](std::size_t i) const noexcept
     {
-        assert(has_value());
-        assert(i < size());
+        BOOST_ASSERT(has_value());
+        BOOST_ASSERT(i < size());
         return detail::resultset_view_access::construct(impl_, i);
     }
 
@@ -421,7 +423,7 @@ public:
      */
     bool empty() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return false;
     }
 
@@ -438,7 +440,7 @@ public:
      */
     std::size_t size() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.num_resultsets();
     }
 
@@ -466,7 +468,7 @@ public:
      */
     row_view out_params() const noexcept
     {
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_out_params();
     }
 

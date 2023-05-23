@@ -16,7 +16,6 @@
 
 #include <boost/asio/async_result.hpp>
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 

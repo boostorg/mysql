@@ -15,6 +15,8 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
+#include <boost/assert.hpp>
+
 template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
 class boost::mysql::bound_statement_tuple
 {
@@ -61,7 +63,7 @@ boost::mysql::bound_statement_tuple<typename std::decay<WritableFieldTuple>::typ
     bind(WritableFieldTuple&& args) const
 
 {
-    assert(valid());
+    BOOST_ASSERT(valid());
     return bound_statement_tuple<typename std::decay<WritableFieldTuple>::type>(
         *this,
         std::forward<WritableFieldTuple>(args)
@@ -74,7 +76,7 @@ boost::mysql::bound_statement_iterator_range<FieldViewFwdIterator> boost::mysql:
     FieldViewFwdIterator last
 ) const
 {
-    assert(valid());
+    BOOST_ASSERT(valid());
     return bound_statement_iterator_range<FieldViewFwdIterator>(*this, first, last);
 }
 

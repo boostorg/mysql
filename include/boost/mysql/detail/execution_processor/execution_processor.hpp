@@ -20,6 +20,7 @@
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
@@ -63,7 +64,7 @@ public:
     template <class T>
     T& span_element() const noexcept
     {
-        assert(data_);
+        BOOST_ASSERT(data_);
         return static_cast<T*>(data_)[offset_];
     }
 };
@@ -85,7 +86,7 @@ public:
 
     BOOST_ATTRIBUTE_NODISCARD error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
     {
-        assert(is_reading_head());
+        BOOST_ASSERT(is_reading_head());
         auto err = on_head_ok_packet_impl(pack, diag);
         set_state_for_ok(pack);
         return err;
@@ -93,7 +94,7 @@ public:
 
     void on_num_meta(std::size_t num_columns)
     {
-        assert(is_reading_head());
+        BOOST_ASSERT(is_reading_head());
         on_num_meta_impl(num_columns);
         remaining_meta_ = num_columns;
         set_state(state_t::reading_metadata);
@@ -117,7 +118,7 @@ public:
 
     void on_row_batch_start()
     {
-        assert(is_reading_rows());
+        BOOST_ASSERT(is_reading_rows());
         on_row_batch_start_impl();
     }
 
@@ -126,13 +127,13 @@ public:
     BOOST_ATTRIBUTE_NODISCARD error_code
     on_row(deserialization_context ctx, const output_ref& ref, std::vector<field_view>& storage)
     {
-        assert(is_reading_rows());
+        BOOST_ASSERT(is_reading_rows());
         return on_row_impl(ctx, ref, storage);
     }
 
     BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
     {
-        assert(is_reading_rows());
+        BOOST_ASSERT(is_reading_rows());
         auto err = on_row_ok_packet_impl(pack);
         set_state_for_ok(pack);
         return err;
@@ -201,7 +202,7 @@ private:
 
     error_code on_meta_helper(metadata&& meta, string_view column_name, diagnostics& diag)
     {
-        assert(is_reading_meta());
+        BOOST_ASSERT(is_reading_meta());
         bool is_last = --remaining_meta_ == 0;
         auto err = on_meta_impl(std::move(meta), column_name, is_last, diag);
         if (is_last)

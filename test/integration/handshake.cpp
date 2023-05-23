@@ -8,21 +8,22 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <random>
+#include <sstream>
+
 #include "er_network_variant.hpp"
 #include "get_endpoint.hpp"
 #include "integration_test_common.hpp"
 #include "streams.hpp"
+#include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
-
-// Tests containing with label 'sha256' require SHA256 functionality.
-// This is used by the build script to exclude these tests on databases
-// that do not support this functionality
 
 using namespace boost::mysql::test;
 
@@ -107,10 +108,80 @@ BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, net_samples_both)
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
-// caching_sha2_password
+// caching_sha2_password. We create a unique user here to avoid clashes
+// with other integration tests running at the same time (which happens in b2 builds).
+// We should probably migrate the offending tests to unit tests.
+struct caching_sha2_user_creator : tcp_network_fixture
+{
+    static std::string gen_id()
+    {
+        constexpr std::size_t len = 10;
+        constexpr const char alphanum[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+        // Random number generation
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<std::size_t> distrib(0, sizeof(alphanum) - 2);  // NULL terminator
+
+        std::string res;
+        res.reserve(len);
+        for (std::size_t i = 0; i < len; ++i)
+            res += alphanum[distrib(gen)];
+        return res;
+    }
+
+    static const std::string& regular_username()
+    {
+        static std::string res = "csha2p_user_" + gen_id();
+        return res;
+    }
+
+    static const std::string& empty_password_username()
+    {
+        static std::string res = "csha2p_emptypuser_" + gen_id();
+        return res;
+    }
+
+    caching_sha2_user_creator()
+    {
+        std::stringstream query;
+        query << "CREATE USER '" << regular_username()
+              << "'@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'csha2p_password';"
+                 "GRANT ALL PRIVILEGES ON boost_mysql_integtests.*TO '"
+              << regular_username()
+              << "'@'%';"
+                 "CREATE USER '"
+              << empty_password_username()
+              << "'@'%' IDENTIFIED WITH 'caching_sha2_password' BY '';"
+                 "GRANT ALL PRIVILEGES ON boost_mysql_integtests.*TO '"
+              << empty_password_username()
+              << "'@'%';"
+                 "FLUSH PRIVILEGES";
+
+        boost::mysql::results result;
+        params.set_username("root");
+        params.set_password("");
+        params.set_multi_queries(true);
+        connect();
+        conn.execute(query.str(), result);
+    }
+
+    ~caching_sha2_user_creator()
+    {
+        std::stringstream query;
+        query << "DROP USER '" << regular_username()
+              << "';"
+                 "DROP USER '"
+              << empty_password_username() << "'";
+
+        boost::mysql::results result;
+        conn.execute(query.str(), result);
+    }
+};
+
 BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
 BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
-BOOST_AUTO_TEST_SUITE(caching_sha2_password)
+BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_user_creator>())
 
 struct caching_sha2_fixture : handshake_fixture
 {
@@ -134,8 +205,8 @@ struct caching_sha2_fixture : handshake_fixture
 BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_user", "csha2p_password");
-    load_sha256_cache("csha2p_user", "csha2p_password");
+    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
+    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
     do_handshake_ok_ssl();
 }
 
@@ -143,15 +214,15 @@ BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_hit, caching_sha2_fixture, net_samples_bo
 {
     // As we are sending password hashed, it is OK to not have SSL for this
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_user", "csha2p_password");
-    load_sha256_cache("csha2p_user", "csha2p_password");
+    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
+    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
     do_handshake_ok_nossl();
 }
 
 BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_user", "csha2p_password");
+    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
     clear_sha256_cache();
     do_handshake_ok_ssl();
 }
@@ -161,7 +232,7 @@ BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture, net_samples_b
     // A cache miss would force us send a plaintext password over
     // a non-TLS connection, so we fail
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_user", "csha2p_password");
+    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
     clear_sha256_cache();
     params.set_ssl(ssl_mode::disable);
     conn->handshake(params).validate_error(client_errc::auth_plugin_requires_ssl, {});
@@ -170,8 +241,8 @@ BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture, net_samples_b
 BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_empty_password_user", "");
-    load_sha256_cache("csha2p_empty_password_user", "");
+    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
+    load_sha256_cache(caching_sha2_user_creator::empty_password_username(), "");
     do_handshake_ok_ssl();
 }
 
@@ -179,15 +250,15 @@ BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_hit, caching_sha2_fixture,
 {
     // Empty passwords are allowed over non-TLS connections
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_empty_password_user", "");
-    load_sha256_cache("csha2p_empty_password_user", "");
+    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
+    load_sha256_cache(caching_sha2_user_creator::empty_password_username(), "");
     do_handshake_ok_nossl();
 }
 
 BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
 {
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_empty_password_user", "");
+    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
     clear_sha256_cache();
     do_handshake_ok_ssl();
 }
@@ -196,7 +267,7 @@ BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_miss, caching_sha2_fixture
 {
     // Empty passwords are allowed over non-TLS connections
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_empty_password_user", "");
+    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
     clear_sha256_cache();
     do_handshake_ok_nossl();
 }
@@ -205,11 +276,11 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_hit, caching_sha2_fixture, ne
 {
     // Note: test over non-TLS would return "ssl required"
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_user", "bad_password");
-    load_sha256_cache("csha2p_user", "csha2p_password");
+    set_credentials(caching_sha2_user_creator::regular_username(), "bad_password");
+    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
     conn->handshake(params).validate_error(
         common_server_errc::er_access_denied_error,
-        {"access denied", "csha2p_user"}
+        {"access denied", caching_sha2_user_creator::regular_username()}
     );
 }
 
@@ -217,11 +288,11 @@ BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, n
 {
     // Note: test over non-TLS would return "ssl required"
     setup_and_physical_connect(sample.net);
-    set_credentials("csha2p_user", "bad_password");
+    set_credentials(caching_sha2_user_creator::regular_username(), "bad_password");
     clear_sha256_cache();
     conn->handshake(params).validate_error(
         common_server_errc::er_access_denied_error,
-        {"access denied", "csha2p_user"}
+        {"access denied", caching_sha2_user_creator::regular_username()}
     );
 }
 

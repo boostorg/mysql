@@ -13,6 +13,8 @@
 #include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 
+#include <boost/assert.hpp>
+
 #include <cstring>
 
 namespace boost {
@@ -109,7 +111,7 @@ void boost::mysql::detail::row_impl::assign(const field_view* fields, std::size_
     // don't implement sub-range operators (e.g. row_view[2:4])
     if (fields_.data() == fields)
     {
-        assert(fields_.size() == size);
+        BOOST_ASSERT(fields_.size() == size);
     }
     else
     {
@@ -142,14 +144,14 @@ inline void boost::mysql::detail::row_impl::copy_strings()
         default: break;
         }
     }
-    assert(buffer_it == string_buffer_.data() + size);
+    BOOST_ASSERT(buffer_it == string_buffer_.data() + size);
 }
 
 inline void boost::mysql::detail::row_impl::copy_strings_as_offsets(std::size_t first, std::size_t num_fields)
 {
     // Preconditions
-    assert(first <= fields_.size());
-    assert(first + num_fields <= fields_.size());
+    BOOST_ASSERT(first <= fields_.size());
+    BOOST_ASSERT(first + num_fields <= fields_.size());
 
     // Calculate the required size for the new strings
     std::size_t size = 0;
@@ -174,7 +176,7 @@ inline void boost::mysql::detail::row_impl::copy_strings_as_offsets(std::size_t 
         default: break;
         }
     }
-    assert(offset == string_buffer_.size());
+    BOOST_ASSERT(offset == string_buffer_.size());
 }
 
 #endif

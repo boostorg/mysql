@@ -27,6 +27,8 @@
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
+#include <boost/assert.hpp>
+
 #include <type_traits>
 #include <utility>
 
@@ -62,14 +64,14 @@ class connection
 
     const detail::channel<Stream>& get_channel() const noexcept
     {
-        assert(channel_ != nullptr);
+        BOOST_ASSERT(channel_ != nullptr);
         return *channel_;
     }
     diagnostics& shared_diag() noexcept { return get_channel().shared_diag(); }
 
     detail::channel<Stream>& get_channel() noexcept
     {
-        assert(channel_ != nullptr);
+        BOOST_ASSERT(channel_ != nullptr);
         return *channel_;
     }
 

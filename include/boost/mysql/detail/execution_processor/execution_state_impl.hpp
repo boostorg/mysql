@@ -21,6 +21,8 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 
+#include <boost/assert.hpp>
+
 #include <vector>
 
 namespace boost {
@@ -112,31 +114,31 @@ public:
 
     std::uint64_t get_affected_rows() const noexcept
     {
-        assert(eof_data_.has_value);
+        BOOST_ASSERT(eof_data_.has_value);
         return eof_data_.affected_rows;
     }
 
     std::uint64_t get_last_insert_id() const noexcept
     {
-        assert(eof_data_.has_value);
+        BOOST_ASSERT(eof_data_.has_value);
         return eof_data_.last_insert_id;
     }
 
     unsigned get_warning_count() const noexcept
     {
-        assert(eof_data_.has_value);
+        BOOST_ASSERT(eof_data_.has_value);
         return eof_data_.warnings;
     }
 
     string_view get_info() const noexcept
     {
-        assert(eof_data_.has_value);
+        BOOST_ASSERT(eof_data_.has_value);
         return string_view(info_.data(), info_.size());
     }
 
     bool get_is_out_params() const noexcept
     {
-        assert(eof_data_.has_value);
+        BOOST_ASSERT(eof_data_.has_value);
         return eof_data_.is_out_params;
     }
 

@@ -18,6 +18,9 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+
 #include <cstdio>
 #include <cstring>
 #include <limits>
@@ -310,7 +313,7 @@ BOOST_CXX14_CONSTEXPR boost::mysql::time boost::mysql::field_view::get_time() co
 BOOST_CXX14_CONSTEXPR void boost::mysql::field_view::check_kind(internal_kind expected) const
 {
     if (ikind_ != expected)
-        throw bad_field_access();
+        BOOST_THROW_EXCEPTION(bad_field_access());
 }
 
 BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(const field_view& rhs) const noexcept
@@ -359,7 +362,7 @@ BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(const field_view
     case field_kind::date: return rhs_k == field_kind::date && get_date() == rhs.get_date();
     case field_kind::datetime: return rhs_k == field_kind::datetime && get_datetime() == rhs.get_datetime();
     case field_kind::time: return rhs_k == field_kind::time && get_time() == rhs.get_time();
-    default: assert(false); return false;
+    default: BOOST_ASSERT(false); return false;
     }
 }
 
@@ -384,7 +387,7 @@ inline std::ostream& boost::mysql::operator<<(std::ostream& os, const field_view
     case field_kind::date: return os << value.get_date();
     case field_kind::datetime: return os << value.get_datetime();
     case field_kind::time: return detail::print_time(os, value.get_time());
-    default: assert(false); return os;
+    default: BOOST_ASSERT(false); return os;
     }
 }
 

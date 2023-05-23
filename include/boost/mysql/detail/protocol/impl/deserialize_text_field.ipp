@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/config.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 
@@ -215,7 +216,7 @@ inline deserialize_errc deserialize_text_value_time(
     // size check
     std::size_t actual_min_size = time_min_sz + (decimals ? decimals + 1 : 0);
     std::size_t actual_max_size = actual_min_size + 1 + 1;  // hour extra character and sign
-    assert(actual_max_size <= time_max_sz);
+    BOOST_ASSERT(actual_max_size <= time_max_sz);
     if (from.size() < actual_min_size || from.size() > actual_max_size)
         return deserialize_errc::protocol_value_error;
 

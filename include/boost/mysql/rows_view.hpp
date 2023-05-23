@@ -14,6 +14,8 @@
 
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
+#include <boost/assert.hpp>
+
 #include <cstddef>
 
 namespace boost {
@@ -216,9 +218,9 @@ private:
     rows_view(const field_view* fields, std::size_t num_fields, std::size_t num_columns) noexcept
         : fields_(fields), num_fields_(num_fields), num_columns_(num_columns)
     {
-        assert(fields != nullptr || num_fields == 0);  // fields null => num_fields 0
-        assert(num_fields == 0 || num_columns != 0);   // num_fields != 0 => num_columns != 0
-        assert(num_columns == 0 || (num_fields % num_columns == 0));
+        BOOST_ASSERT(fields != nullptr || num_fields == 0);  // fields null => num_fields 0
+        BOOST_ASSERT(num_fields == 0 || num_columns != 0);   // num_fields != 0 => num_columns != 0
+        BOOST_ASSERT(num_columns == 0 || (num_fields % num_columns == 0));
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
