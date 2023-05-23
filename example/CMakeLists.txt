@@ -122,7 +122,12 @@ add_example(
     source_script.cpp
     example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql
 )
-add_example_target(zzz http_server/http_server.cpp)
+add_executable(
+    zzz
+    http_server/http_server.cpp
+    http_server/dba.cpp
+)
+common_target_settings(zzz)
 target_link_libraries(
     zzz 
     PUBLIC 

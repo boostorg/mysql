@@ -11,17 +11,6 @@
 //
 //------------------------------------------------------------------------------
 
-#include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_categories.hpp>
-#include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/results.hpp>
-#include <boost/mysql/string_view.hpp>
-#include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/throw_on_error.hpp>
-
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
@@ -37,12 +26,14 @@
 #include <boost/beast/http/verb.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/config.hpp>
+#include <boost/core/detail/string_view.hpp>
 #include <boost/json/array.hpp>
 #include <boost/json/object.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/value.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <boost/url/parse.hpp>
 
 #include <algorithm>
@@ -59,40 +50,19 @@
 #include <tuple>
 #include <vector>
 
+#include "dba.hpp"
 #include "json_body.hpp"
 
 namespace beast = boost::beast;  // from <boost/beast.hpp>
 namespace http = beast::http;    // from <boost/beast/http.hpp>
 namespace net = boost::asio;     // from <boost/asio.hpp>
-namespace mysql = boost::mysql;
 namespace urls = boost::urls;
 namespace json = boost::json;
+using boost::core::string_view;
+using boost::system::error_code;
 using tcp = boost::asio::ip::tcp;  // from <boost/asio/ip/tcp.hpp>
-using boost::mysql::error_code;
-using boost::mysql::string_view;
 using string_request = http::request<http::string_body>;
 using string_response = http::response<http::string_body>;
-
-class connection_pool
-{
-    net::any_io_executor exec_;
-    net::ssl::context ssl_ctx{net::ssl::context::tls_client};
-
-public:
-    connection_pool(net::any_io_executor e) : exec_(std::move(e)) {}
-    mysql::tcp_ssl_connection async_get_connection(boost::mysql::diagnostics& diag, net::yield_context yield)
-    {
-        mysql::tcp_ssl_connection conn(exec_, ssl_ctx);
-        conn.async_connect(
-            net::ip::tcp::endpoint(net::ip::address_v4::loopback(), 3306),
-            mysql::handshake_params("orders_user", "orders_password", "boost_mysql_order_management"),
-            diag,
-            yield
-        );
-        return conn;
-    }
-    // TODO: closing connections
-};
 
 string_response bad_request(const string_request& req, string_view why)
 {
@@ -127,15 +97,10 @@ string_response internal_server_error(const string_request& req)
     return res;
 };
 
-string_response internal_server_error(
-    const string_request& req,
-    string_view what,
-    error_code ec,
-    const mysql::diagnostics& diag
-)
+string_response internal_server_error(const string_request& req, string_view what, error_code ec)
 {
     std::cerr << "Internal server error for " << req.method() << " " << req.target() << ": " << what
-              << ", error_code: " << ec << ", diagnostics: " << diag.server_message() << std::endl;
+              << ", error_code: " << ec << std::endl;
     return internal_server_error(req);
 }
 
@@ -163,6 +128,18 @@ http::response<http::empty_body> empty_response(const string_request& req)
     return res;
 }
 
+string_response error_code_response(const string_request& req, error_code ec)
+{
+    if (ec == dba::make_error_code(dba::errc::not_found))
+        return not_found(req);
+    else if (ec == dba::make_error_code(dba::errc::referenced_entity_not_found))
+        return bad_request(req, "A referenced entity was not found");
+    else if (ec == dba::make_error_code(dba::errc::order_wrong_status))
+        return bad_request(req, "The given order is in an incorrect status");
+    else
+        return internal_server_error(req, "DB error", ec);
+}
+
 // Report a failure
 void fail(beast::error_code ec, char const* what) { std::cerr << what << ": " << ec.message() << "\n"; }
 
@@ -177,17 +154,11 @@ boost::optional<std::int64_t> parse_id(string_view from)
 
 class server
 {
-    int num_threads_;
     tcp::endpoint http_ep_;
     net::io_context ioc_;
-    connection_pool db_pool_;
-    std::vector<std::thread> threads_;
 
 public:
-    server(int threads, tcp::endpoint http_ep)
-        : num_threads_(threads), http_ep_(http_ep), ioc_(threads), db_pool_(ioc_.get_executor())
-    {
-    }
+    server(tcp::endpoint http_ep) : http_ep_(http_ep) {}
 
     http::message_generator handle_get_products(
         net::yield_context yield,
@@ -195,56 +166,20 @@ public:
         string_view search
     )
     {
-        mysql::diagnostics diag;
-        error_code ec;
-
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // Issue the query
-        mysql::results result;
-        if (!search.empty())
-        {
-            auto stmt = conn.async_prepare_statement(
-                "SELECT id, short_name, descr, price "
-                "FROM products "
-                "WHERE MATCH(short_name, descr) AGAINST(p_search) "
-                "LIMIT 5",
-                diag,
-                yield[ec]
-            );
-            if (ec)
-                return internal_server_error(req, "preparing statement", ec, diag);
-
-            conn.async_execute(stmt.bind(search), result, diag, yield[ec]);
-            if (ec)
-                return internal_server_error(req, "executing statement", ec, diag);
-        }
-        else
-        {
-            conn.async_execute(
-                "SELECT id, short_name, descr, price "
-                "FROM products "
-                "LIMIT 5",
-                result,
-                diag,
-                yield[ec]
-            );
-            if (ec)
-                return internal_server_error(req, "executing query", ec, diag);
-        }
+        // DBA
+        auto dbares = dba::get_products(search, yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
         // Generate a JSON response. TODO: can we make this use a faster memory resource?
         json::array arr;
-        for (auto rv : result.rows())
+        for (const auto& prod : dbares.products)
         {
             arr.push_back(json::object({
-                {"id",         rv.at(0).as_int64() },
-                {"short_name", rv.at(1).as_string()},
-                {"descr",      rv.at(2).as_string()},
-                {"price",      rv.at(3).as_int64() }
+                {"id",         prod.id        },
+                {"short_name", prod.short_name},
+                {"descr",      prod.descr     },
+                {"price",      prod.price     }
             }));
         }
         json::value res;
@@ -255,53 +190,35 @@ public:
 
     http::message_generator handle_create_order(net::yield_context yield, const string_request& req)
     {
-        mysql::diagnostics diag;
-        error_code ec;
-
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // Issue the query
-        mysql::results result;
-        conn.async_execute("INSERT INTO orders VALUES ()", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing query", ec, diag);
+        // DBA
+        auto dbares = dba::create_order(yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
         // Generate a JSON response
         json::value res;
         res.emplace_object()["order"] = json::object({
-            {"id",     result.last_insert_id()},
-            {"status", "draft"                }
+            {"id",     dbares.id},
+            {"status", "draft"  }
         });
         return json_response(req, std::move(res), http::status::created);
     }
 
     http::message_generator handle_get_orders(net::yield_context yield, const string_request& req)
     {
-        mysql::diagnostics diag;
-        error_code ec;
-
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // Issue the query
-        mysql::results result;
-        conn.async_execute("SELECT id, `status` FROM orders", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing query", ec, diag);
+        // DBA
+        auto dbares = dba::get_orders(yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
         // Generate a JSON response
         json::array arr;
-        arr.reserve(result.rows().size());
-        for (auto rv : result.rows())
+        arr.reserve(dbares.orders.size());
+        for (const auto& order : dbares.orders)
         {
             arr.push_back(json::object{
-                {"id",     rv.at(0).as_int64() },
-                {"status", rv.at(1).as_string()}
+                {"id",     order.id    },
+                {"status", order.status}
             });
         }
         json::value res;
@@ -315,62 +232,28 @@ public:
         std::int64_t order_id
     )
     {
-        mysql::diagnostics diag;
-        error_code ec;
-
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // Prepare the statement
-        auto stmt = conn.async_prepare_statement(
-            "SELECT "
-            "  ord.status AS order_status, "
-            "  item.id AS item_id, "
-            "  item.quantity AS item_quantity, "
-            "  prod.price AS item_price "
-            "FROM orders ord "
-            "LEFT JOIN order_items item ON ord.id = item.order_id "
-            "LEFT JOIN products prod ON item.product_id = prod.id "
-            "WHERE ord.id = ?",
-            diag,
-            yield[ec]
-        );
-        if (ec)
-            return internal_server_error(req, "preparing statement", ec, diag);
-
-        // Execute it
-        mysql::results result;
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing statement", ec, diag);
-
-        // If no orders were matched, issue a 404
-        if (result.rows().empty())
-            return not_found(req);
+        // DBA
+        auto dbares = dba::get_order(order_id, yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
         // Generate a JSON response
         json::array line_items;
-        if (!result.rows()[0][1].is_null())
+        line_items.reserve(dbares.line_items.size());
+        for (const auto& item : dbares.line_items)
         {
-            // if item_id is NULL, the order exists but has no items
-            line_items.reserve(result.rows().size());
-            for (auto item : result.rows())
-            {
-                line_items.push_back(json::object{
-                    {"id",       item.at(1).as_int64()},
-                    {"quantity", item.at(2).as_int64()},
-                    {"price",    item.at(3).as_int64()},
-                });
-            }
+            line_items.push_back(json::object{
+                {"id",       item.id      },
+                {"quantity", item.quantity},
+                {"price",    item.price   },
+            });
         }
         json::value res{
             {"order", {}}
         };
         auto& order = res.get_object()["order"].get_object();
         order["id"] = order_id;
-        order["status"] = result.rows().front().at(0).as_string();
+        order["status"] = dbares.status;
         order["line_items"] = std::move(line_items);
         return json_response(req, std::move(res));
     }
@@ -381,9 +264,7 @@ public:
         std::int64_t order_id
     )
     {
-        mysql::diagnostics diag;
         error_code ec;
-        mysql::results result;
 
         // Parse the request body. TODO: we could do better and use a json_body
         auto it = req.find("content-type");
@@ -405,70 +286,22 @@ public:
             return bad_request(req, "product_id should be an int64");
         objit = obj->find("quantity");
         if (objit == obj->end())
-            return bad_request(req, "Missing mandatory propery quantity");
+            return bad_request(req, "Missing mandatory property quantity");
         const auto* quantity = objit->value().if_int64();
         if (!quantity)
             return bad_request(req, "quantity should be an int64");
         if (*quantity <= 0)
             return bad_request(req, "quantity should be a positive number");
 
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // We need a transaction here
-        conn.async_execute("START TRANSACTION", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "starting transaction", ec, diag);
-
-        // Get the order
-        auto stmt = conn.async_prepare_statement("SELECT status FROM orders WHERE id = ?", diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "preparing select statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing select statement", ec, diag);
-
-        // Check preconditions
-        if (result.rows().empty())
-            return not_found(req);
-        if (result.rows()[0][0].as_string() != "draft")
-            return bad_request(req, "Order is not in an editable state");
-
-        // Insert the line item. This can fail with a foreign key constraint check if the product doesn't
-        // exist
-        stmt = conn.async_prepare_statement(
-            "INSERT INTO order_items (order_id, product_id, quantity) values (?, ?, ?)",
-            diag,
-            yield[ec]
-        );
-        if (ec)
-            return internal_server_error(req, "preparing update statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id, *product_id, *quantity), result, diag, yield[ec]);
-        if (ec)
-        {
-            if (ec == mysql::common_server_errc::er_no_referenced_row_2 ||
-                ec == mysql::common_server_errc::er_no_referenced_row)
-            {
-                return bad_request(req, "The given product does not exist");
-            }
-            else
-            {
-                return internal_server_error(req, "executing update statement", ec, diag);
-            }
-        }
-        std::int64_t item_id = result.last_insert_id();
-
-        // Commit
-        conn.async_execute("COMMIT", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "committing transaction", ec, diag);
+        // DBA
+        auto dbares = dba::add_line_item(order_id, *product_id, *quantity, yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
         // Return the newly created item
         json::value res;
         res.emplace_object()["line_item"] = json::object({
-            {"id",         item_id    },
+            {"id",         dbares.id  },
             {"product_id", *product_id},
             {"quantity",   *quantity  },
         });
@@ -482,53 +315,12 @@ public:
         std::int64_t line_item_id
     )
     {
-        mysql::diagnostics diag;
-        error_code ec;
-        mysql::results result;
+        // DBA
+        auto dbares = dba::remove_line_item(order_id, line_item_id, yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // We need a transaction here
-        conn.async_execute("START TRANSACTION", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "starting transaction", ec, diag);
-
-        // Get the order
-        auto stmt = conn.async_prepare_statement("SELECT status FROM orders WHERE id = ?", diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "preparing select statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing select statement", ec, diag);
-
-        // Check preconditions
-        if (result.rows().empty())
-            return not_found(req);
-        if (result.rows()[0][0].as_string() != "draft")
-            return bad_request(req, "Order is not in an editable state");
-
-        // Delete the item
-        stmt = conn.async_prepare_statement(
-            "DELETE FROM order_items WHERE order_id = ? AND id = ?",
-            diag,
-            yield[ec]
-        );
-        if (ec)
-            return internal_server_error(req, "preparing delete statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id, line_item_id), result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing delete statement", ec, diag);
-        if (result.affected_rows() == 0u)
-            return not_found(req);  // we could also return 204 here
-
-        // Commit
-        conn.async_execute("COMMIT", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "committing transaction", ec, diag);
-
+        // Return response
         return empty_response(req);
     }
 
@@ -538,52 +330,12 @@ public:
         std::int64_t order_id
     )
     {
-        mysql::diagnostics diag;
-        error_code ec;
-        mysql::results result;
+        // DBA
+        auto dbares = dba::checkout_order(order_id, yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // We need a transaction here
-        conn.async_execute("START TRANSACTION", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "starting transaction", ec, diag);
-
-        // Get the order
-        auto stmt = conn.async_prepare_statement("SELECT status FROM orders WHERE id = ?", diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "preparing select statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing select statement", ec, diag);
-
-        // Check preconditions
-        if (result.rows().empty())
-            return not_found(req);
-        if (result.rows()[0][0].as_string() != "draft")
-            return bad_request(req, "Order is not in an editable state");
-
-        // Update the order status. In the real world, we would generate a payment_intent or similar
-        // through a payment gateway
-        stmt = conn.async_prepare_statement(
-            "UPDATE orders SET `status` = 'pending_payment' WHERE id = ?",
-            diag,
-            yield[ec]
-        );
-        if (ec)
-            return internal_server_error(req, "preparing update statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-
-        // TODO: retrieve the order
-
-        // Commit
-        conn.async_execute("COMMIT", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "committing transaction", ec, diag);
-
+        // Return response
         return json_response(req, json::value(json::object()));
     }
 
@@ -593,51 +345,12 @@ public:
         std::int64_t order_id
     )
     {
-        mysql::diagnostics diag;
-        error_code ec;
-        mysql::results result;
+        // DBA
+        auto dbares = dba::complete_order(order_id, yield);
+        if (dbares.err)
+            return error_code_response(req, dbares.err);
 
-        // Get a connection to MySQL
-        auto conn = db_pool_.async_get_connection(diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "obtaining MySQL connection from pool", ec, diag);
-
-        // We need a transaction here
-        conn.async_execute("START TRANSACTION", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "starting transaction", ec, diag);
-
-        // Get the order
-        auto stmt = conn.async_prepare_statement("SELECT status FROM orders WHERE id = ?", diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "preparing select statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "executing select statement", ec, diag);
-
-        // Check preconditions
-        if (result.rows().empty())
-            return not_found(req);
-        if (result.rows()[0][0].as_string() != "pending_payment")
-            return bad_request(req, "Order should be in pending_payment state");
-
-        // Update the order status
-        stmt = conn.async_prepare_statement(
-            "UPDATE orders SET `status` = 'complete' WHERE id = ?",
-            diag,
-            yield[ec]
-        );
-        if (ec)
-            return internal_server_error(req, "preparing update statement", ec, diag);
-        conn.async_execute(stmt.bind(order_id), result, diag, yield[ec]);
-
-        // TODO: retrieve the order
-
-        // Commit
-        conn.async_execute("COMMIT", result, diag, yield[ec]);
-        if (ec)
-            return internal_server_error(req, "committing transaction", ec, diag);
-
+        // Return response
         return json_response(req, json::value(json::object()));
     }
 
@@ -871,10 +584,6 @@ public:
             }
         );
 
-        // Create the requested threads and make them run the io_context
-        threads_.reserve(num_threads_ - 1);
-        for (auto i = num_threads_ - 1; i > 0; --i)
-            threads_.emplace_back([this] { ioc_.run(); });
         ioc_.run();
     }
 };
@@ -884,16 +593,15 @@ int main(int argc, char* argv[])
     // Check command line arguments.
     if (argc != 4)
     {
-        std::cerr << "Usage: http-server-coro <address> <port> <threads>\n"
+        std::cerr << "Usage: http-server-coro <address> <port>\n"
                   << "Example:\n"
-                  << "    http-server-coro 0.0.0.0 8080 1\n";
+                  << "    http-server-coro 0.0.0.0 8080\n";
         return EXIT_FAILURE;
     }
     auto const address = net::ip::make_address(argv[1]);
     auto const port = static_cast<unsigned short>(std::atoi(argv[2]));
-    auto const threads = std::max<int>(1, std::atoi(argv[3]));
 
-    server serv(threads, tcp::endpoint(address, port));
+    server serv(tcp::endpoint(address, port));
     serv.run();
 
     return EXIT_SUCCESS;
