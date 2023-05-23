@@ -12,8 +12,8 @@
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/assert.hpp>
 
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 
@@ -28,14 +28,10 @@ class deserialization_context
     capabilities capabilities_;
 
 public:
-    deserialization_context(
-        const std::uint8_t* first,
-        const std::uint8_t* last,
-        capabilities caps
-    ) noexcept
+    deserialization_context(const std::uint8_t* first, const std::uint8_t* last, capabilities caps) noexcept
         : first_(first), last_(last), capabilities_(caps)
     {
-        assert(last_ >= first_);
+        BOOST_ASSERT(last_ >= first_);
     };
     deserialization_context(boost::asio::const_buffer buff, capabilities caps) noexcept
         : deserialization_context(
@@ -48,12 +44,12 @@ public:
     void set_first(const std::uint8_t* new_first) noexcept
     {
         first_ = new_first;
-        assert(last_ >= first_);
+        BOOST_ASSERT(last_ >= first_);
     }
     void advance(std::size_t sz) noexcept
     {
         first_ += sz;
-        assert(last_ >= first_);
+        BOOST_ASSERT(last_ >= first_);
     }
     void rewind(std::size_t sz) noexcept { first_ -= sz; }
     std::size_t size() const noexcept { return last_ - first_; }

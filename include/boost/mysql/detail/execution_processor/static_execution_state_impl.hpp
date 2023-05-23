@@ -28,6 +28,8 @@
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
+#include <boost/assert.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -65,27 +67,27 @@ public:
     std::size_t num_resultsets() const noexcept { return desc_.size(); }
     std::size_t num_columns(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].num_columns;
     }
     name_table_t name_table(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].name_table;
     }
     meta_check_fn_t meta_check_fn(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].meta_check;
     }
     execst_parse_fn_t parse_fn(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].parse_fn;
     }
     std::size_t type_index(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].type_index;
     }
     span<std::size_t> pos_map(std::size_t idx) const noexcept
@@ -111,31 +113,31 @@ public:
 
     std::uint64_t get_affected_rows() const noexcept
     {
-        assert(ok_data_.has_value);
+        BOOST_ASSERT(ok_data_.has_value);
         return ok_data_.affected_rows;
     }
 
     std::uint64_t get_last_insert_id() const noexcept
     {
-        assert(ok_data_.has_value);
+        BOOST_ASSERT(ok_data_.has_value);
         return ok_data_.last_insert_id;
     }
 
     unsigned get_warning_count() const noexcept
     {
-        assert(ok_data_.has_value);
+        BOOST_ASSERT(ok_data_.has_value);
         return ok_data_.warnings;
     }
 
     string_view get_info() const noexcept
     {
-        assert(ok_data_.has_value);
+        BOOST_ASSERT(ok_data_.has_value);
         return string_view(info_.data(), info_.size());
     }
 
     bool get_is_out_params() const noexcept
     {
-        assert(ok_data_.has_value);
+        BOOST_ASSERT(ok_data_.has_value);
         return ok_data_.is_out_params;
     }
 

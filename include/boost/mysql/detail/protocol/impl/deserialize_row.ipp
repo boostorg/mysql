@@ -19,6 +19,8 @@
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
+#include <boost/assert.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -68,7 +70,7 @@ inline error_code deserialize_binary_row(
     // Skip packet header (it is not part of the message in the binary
     // protocol but it is in the text protocol, so we include it for homogeneity)
     // The caller will have checked we have this byte already for us
-    assert(ctx.enough_size(1));
+    BOOST_ASSERT(ctx.enough_size(1));
     ctx.advance(1);
 
     // Number of fields
@@ -114,7 +116,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_row(
     boost::span<field_view> output
 )
 {
-    assert(meta.size() == output.size());
+    BOOST_ASSERT(meta.size() == output.size());
     return encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output.data())
                                                         : deserialize_binary_row(ctx, meta, output.data());
 }

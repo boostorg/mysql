@@ -13,6 +13,8 @@
 #include <boost/mysql/detail/protocol/binary_serialization.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 
+#include <boost/assert.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -28,13 +30,7 @@ void serialize_binary_float(serialization_context& ctx, T input)
 // Time types
 inline void serialize_binary_date(serialization_context& ctx, const date& input)
 {
-    serialize(
-        ctx,
-        static_cast<std::uint8_t>(binc::date_sz),
-        input.year(),
-        input.month(),
-        input.day()
-    );
+    serialize(ctx, static_cast<std::uint8_t>(binc::date_sz), input.year(), input.month(), input.day());
 }
 
 inline void serialize_binary_datetime(serialization_context& ctx, const datetime& input)
@@ -88,8 +84,10 @@ inline string_lenenc to_string_lenenc(blob_view v)
 }  // namespace boost
 
 inline std::size_t boost::mysql::detail::
-    serialization_traits<boost::mysql::field_view, boost::mysql::detail::serialization_tag::none>::
-        get_size_(const serialization_context& ctx, const field_view& input) noexcept
+    serialization_traits<boost::mysql::field_view, boost::mysql::detail::serialization_tag::none>::get_size_(
+        const serialization_context& ctx,
+        const field_view& input
+    ) noexcept
 {
     switch (input.kind())
     {
@@ -103,13 +101,15 @@ inline std::size_t boost::mysql::detail::
     case field_kind::date: return binc::date_sz + binc::length_sz;
     case field_kind::datetime: return binc::datetime_dhmsu_sz + binc::length_sz;
     case field_kind::time: return binc::time_dhmsu_sz + binc::length_sz;
-    default: assert(false); return 0;
+    default: BOOST_ASSERT(false); return 0;
     }
 }
 
 inline void boost::mysql::detail::
-    serialization_traits<boost::mysql::field_view, boost::mysql::detail::serialization_tag::none>::
-        serialize_(serialization_context& ctx, const field_view& input) noexcept
+    serialization_traits<boost::mysql::field_view, boost::mysql::detail::serialization_tag::none>::serialize_(
+        serialization_context& ctx,
+        const field_view& input
+    ) noexcept
 {
     switch (input.kind())
     {
@@ -123,7 +123,7 @@ inline void boost::mysql::detail::
     case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
     case field_kind::datetime: serialize_binary_datetime(ctx, input.get_datetime()); break;
     case field_kind::time: serialize_binary_time(ctx, input.get_time()); break;
-    default: assert(false); break;
+    default: BOOST_ASSERT(false); break;
     }
 }
 

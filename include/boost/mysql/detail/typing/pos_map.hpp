@@ -13,6 +13,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -43,7 +44,7 @@ inline void pos_map_add_field(
 {
     if (has_field_names(name_table))
     {
-        assert(self.size() == name_table.size());
+        BOOST_ASSERT(self.size() == name_table.size());
 
         // We're mapping fields by name. Try to find where in our target struct
         // is the current field located
@@ -70,7 +71,7 @@ inline field_view map_field_view(
     span<const field_view> array
 ) noexcept
 {
-    assert(cpp_index < self.size());
+    BOOST_ASSERT(cpp_index < self.size());
     return array[self[cpp_index]];
 }
 
@@ -80,7 +81,7 @@ inline const metadata& map_metadata(
     metadata_collection_view meta
 ) noexcept
 {
-    assert(cpp_index < self.size());
+    BOOST_ASSERT(cpp_index < self.size());
     return meta[self[cpp_index]];
 }
 

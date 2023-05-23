@@ -18,6 +18,7 @@
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/ssl/stream_base.hpp>
+#include <boost/assert.hpp>
 
 #include <cstddef>
 #include <utility>
@@ -56,8 +57,7 @@ struct get_non_ssl_stream_t<false>
 };
 
 template <typename Stream>
-auto get_non_ssl_stream(Stream& s)
-    -> decltype(get_non_ssl_stream_t<is_ssl_stream<Stream>::value>::call(s))
+auto get_non_ssl_stream(Stream& s) -> decltype(get_non_ssl_stream_t<is_ssl_stream<Stream>::value>::call(s))
 {
     return get_non_ssl_stream_t<is_ssl_stream<Stream>::value>::call(s);
 }
@@ -73,7 +73,7 @@ struct async_compose_noop
     template <class... Args>
     void operator()(Args&&...)
     {
-        assert(false);
+        BOOST_ASSERT(false);
     }
 };
 
@@ -97,7 +97,7 @@ struct ssl_handshake_helper<Stream, false>
 {
     static void call(disableable_ssl_stream<Stream>&, error_code&)
     {
-        assert(false);  // should never be called
+        BOOST_ASSERT(false);  // should never be called
     }
 };
 
@@ -165,7 +165,7 @@ struct ssl_shutdown_helper<Stream, false>
 {
     static void call_sync(disableable_ssl_stream<Stream>&, error_code&)
     {
-        assert(false);  // should never be called
+        BOOST_ASSERT(false);  // should never be called
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
@@ -252,8 +252,7 @@ boost::mysql::detail::disableable_ssl_stream<Stream>::async_read_some(
     }
     else
     {
-        return get_non_ssl_stream(inner_stream_)
-            .async_read_some(buff, std::forward<CompletionToken>(token));
+        return get_non_ssl_stream(inner_stream_).async_read_some(buff, std::forward<CompletionToken>(token));
     }
 }
 
@@ -290,8 +289,7 @@ boost::mysql::detail::disableable_ssl_stream<Stream>::async_write_some(
     }
     else
     {
-        return get_non_ssl_stream(inner_stream_)
-            .async_write_some(buff, std::forward<CompletionToken>(token));
+        return get_non_ssl_stream(inner_stream_).async_write_some(buff, std::forward<CompletionToken>(token));
     }
 }
 

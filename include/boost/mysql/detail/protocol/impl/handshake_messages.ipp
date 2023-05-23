@@ -12,6 +12,8 @@
 
 #include <boost/mysql/detail/protocol/handshake_messages.hpp>
 
+#include <boost/assert.hpp>
+
 inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serialization_traits<
     boost::mysql::detail::handshake_packet,
     boost::mysql::detail::serialization_tag::struct_with_fields>::
@@ -56,8 +58,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
         return err;
 
     // Auth plugin data, second part
-    auto auth2_length = static_cast<std::uint8_t>((std::max
-    )(13, auth_plugin_data_len - auth1_length));
+    auto auth2_length = static_cast<std::uint8_t>((std::max)(13, auth_plugin_data_len - auth1_length));
     const void* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
         return deserialize_errc::incomplete_message;
@@ -71,10 +72,8 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();
     output.auth_plugin_data.append(auth_plugin_data_part_1.data(), auth1_length);
-    output.auth_plugin_data.append(
-        auth2_data,
-        auth2_length - 1
-    );  // discard an extra trailing NULL byte
+    output.auth_plugin_data.append(auth2_data,
+                                   auth2_length - 1);  // discard an extra trailing NULL byte
 
     return deserialize_errc::ok;
 }
@@ -133,7 +132,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::serializatio
     // Discard an additional NULL at the end of auth data
     if (!auth_data.empty())
     {
-        assert(auth_data.back() == 0);
+        BOOST_ASSERT(auth_data.back() == 0);
         auth_data = auth_data.substr(0, auth_data.size() - 1);
     }
     return err;

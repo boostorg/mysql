@@ -18,6 +18,8 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
 
+#include <boost/assert.hpp>
+
 namespace boost {
 namespace mysql {
 
@@ -135,7 +137,7 @@ public:
 #endif
     rows() const noexcept {
         static_assert(I < sizeof...(StaticRow), "Index I out of range");
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.template get_rows<I>();
     }
 
@@ -169,7 +171,7 @@ public:
     metadata_collection_view meta() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "Index I out of range");
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_interface().get_meta(I);
     }
 
@@ -193,7 +195,7 @@ public:
     std::uint64_t affected_rows() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "Index I out of range");
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_interface().get_affected_rows(I);
     }
 
@@ -217,7 +219,7 @@ public:
     std::uint64_t last_insert_id() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "I index out of range");
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_interface().get_last_insert_id(I);
     }
 
@@ -241,7 +243,7 @@ public:
     unsigned warning_count() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "I index out of range");
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_interface().get_warning_count(I);
     }
 
@@ -275,7 +277,7 @@ public:
     string_view info() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "I index out of range");
-        assert(has_value());
+        BOOST_ASSERT(has_value());
         return impl_.get_interface().get_info(I);
     }
 

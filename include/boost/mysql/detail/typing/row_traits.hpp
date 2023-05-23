@@ -25,6 +25,7 @@
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/describe/members.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/utility.hpp>
@@ -238,15 +239,15 @@ template <BOOST_MYSQL_STATIC_ROW StaticRow>
 error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
     using fields = typename row_traits<StaticRow>::types;
-    assert(pos_map.size() == get_row_size<StaticRow>());
+    BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     return meta_check_field_type_list<fields>(pos_map, get_row_name_table<StaticRow>(), meta, diag);
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 error_code parse(span<const std::size_t> pos_map, span<const field_view> from, StaticRow& to)
 {
-    assert(pos_map.size() == get_row_size<StaticRow>());
-    assert(from.size() >= get_row_size<StaticRow>());
+    BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
+    BOOST_ASSERT(from.size() >= get_row_size<StaticRow>());
     parse_functor ctx(pos_map, from);
     row_traits<StaticRow>::parse(ctx, to);
     return ctx.error();

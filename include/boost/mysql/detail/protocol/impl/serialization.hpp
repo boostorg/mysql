@@ -13,6 +13,8 @@
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
+#include <boost/assert.hpp>
+
 #include <cmath>
 #include <type_traits>
 
@@ -50,8 +52,7 @@ struct is_struct_with_fields_helper : std::false_type
 template <typename T>
 struct is_struct_with_fields_helper<
     T,
-    void_t<decltype(T::apply(std::declval<T&>(), is_struct_with_fields_test_op()))>>
-    : std::true_type
+    void_t<decltype(T::apply(std::declval<T&>(), is_struct_with_fields_test_op()))>> : std::true_type
 {
 };
 
@@ -60,10 +61,7 @@ struct struct_deserialize_op
     deserialization_context& ctx;
     deserialize_errc result;
 
-    struct_deserialize_op(deserialization_context& ctx) noexcept
-        : ctx(ctx), result(deserialize_errc::ok)
-    {
-    }
+    struct_deserialize_op(deserialization_context& ctx) noexcept : ctx(ctx), result(deserialize_errc::ok) {}
 
     template <class... Types>
     void operator()(Types&... output) noexcept
@@ -115,17 +113,10 @@ void serialize_command_id(serialization_context&, std::false_type) noexcept
 {
 }
 
-inline deserialize_errc deserialize_helper(deserialization_context&) noexcept
-{
-    return deserialize_errc::ok;
-}
+inline deserialize_errc deserialize_helper(deserialization_context&) noexcept { return deserialize_errc::ok; }
 
 template <class FirstType, class... Types>
-deserialize_errc deserialize_helper(
-    deserialization_context& ctx,
-    FirstType& first,
-    Types&... tail
-) noexcept
+deserialize_errc deserialize_helper(deserialization_context& ctx, FirstType& first, Types&... tail) noexcept
 {
     deserialize_errc err = serialization_traits<FirstType>::deserialize_(ctx, first);
     if (err == deserialize_errc::ok)
@@ -177,10 +168,7 @@ void boost::mysql::detail::serialize(serialization_context& ctx, const Types&...
 }
 
 template <class... Types>
-std::size_t boost::mysql::detail::get_size(
-    const serialization_context& ctx,
-    const Types&... input
-) noexcept
+std::size_t boost::mysql::detail::get_size(const serialization_context& ctx, const Types&... input) noexcept
 {
     return get_size_helper(ctx, input...);
 }
@@ -204,11 +192,8 @@ boost::mysql::detail::deserialize_errc boost::mysql::detail::
 }
 
 template <class T>
-void boost::mysql::detail::
-    serialization_traits<T, boost::mysql::detail::serialization_tag::plain_int>::serialize_(
-        serialization_context& ctx,
-        T input
-    ) noexcept
+void boost::mysql::detail::serialization_traits<T, boost::mysql::detail::serialization_tag::plain_int>::
+    serialize_(serialization_context& ctx, T input) noexcept
 {
     boost::endian::endian_store<T, sizeof(T), boost::endian::order::little>(ctx.first(), input);
     ctx.advance(sizeof(T));
@@ -223,8 +208,10 @@ constexpr bool boost::mysql::detail::is_struct_with_fields()
 
 template <class T>
 boost::mysql::detail::deserialize_errc boost::mysql::detail::
-    serialization_traits<T, boost::mysql::detail::serialization_tag::struct_with_fields>::
-        deserialize_(deserialization_context& ctx, T& output) noexcept
+    serialization_traits<T, boost::mysql::detail::serialization_tag::struct_with_fields>::deserialize_(
+        deserialization_context& ctx,
+        T& output
+    ) noexcept
 {
     struct_deserialize_op op(ctx);
     T::apply(output, op);
@@ -233,8 +220,10 @@ boost::mysql::detail::deserialize_errc boost::mysql::detail::
 
 template <class T>
 void boost::mysql::detail::
-    serialization_traits<T, boost::mysql::detail::serialization_tag::struct_with_fields>::
-        serialize_(serialization_context& ctx, const T& input) noexcept
+    serialization_traits<T, boost::mysql::detail::serialization_tag::struct_with_fields>::serialize_(
+        serialization_context& ctx,
+        const T& input
+    ) noexcept
 {
     // For commands, add the command ID. Commands are only sent by the client,
     // so this is not considered in the deserialization functions.
@@ -267,7 +256,7 @@ void boost::mysql::detail::serialize_message(
     buffer.resize(size);
     ctx.set_first(buffer.data());
     serialize(ctx, input);
-    assert(ctx.first() == buffer.data() + buffer.size());
+    BOOST_ASSERT(ctx.first() == buffer.data() + buffer.size());
 }
 
 template <class Deserializable>
@@ -295,10 +284,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_message_part(
 }
 
 template <class... Types>
-void boost::mysql::detail::serialize_fields(
-    serialization_context& ctx,
-    const Types&... fields
-) noexcept
+void boost::mysql::detail::serialize_fields(serialization_context& ctx, const Types&... fields) noexcept
 {
     serialize_fields_helper(ctx, fields...);
 }

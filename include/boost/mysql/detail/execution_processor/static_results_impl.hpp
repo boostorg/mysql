@@ -27,6 +27,7 @@
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
@@ -87,22 +88,22 @@ public:
     std::size_t num_resultsets() const noexcept { return desc_.size(); }
     std::size_t num_columns(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].num_columns;
     }
     name_table_t name_table(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].name_table;
     }
     meta_check_fn_t meta_check_fn(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].meta_check;
     }
     results_parse_fn_t parse_fn(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return desc_[idx].parse_fn;
     }
     results_reset_fn_t reset_fn() const noexcept { return reset_; }
@@ -113,7 +114,7 @@ public:
     }
     static_per_resultset_data& per_result(std::size_t idx) const noexcept
     {
-        assert(idx < num_resultsets());
+        BOOST_ASSERT(idx < num_resultsets());
         return ptr_.per_resultset[idx];
     }
 

@@ -11,7 +11,8 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
+
 #include <cstdint>
 #include <tuple>
 #include <type_traits>
@@ -85,7 +86,7 @@ public:
      */
     std::uint32_t id() const noexcept
     {
-        assert(valid());
+        BOOST_ASSERT(valid());
         return id_;
     }
 
@@ -99,7 +100,7 @@ public:
      */
     unsigned num_params() const noexcept
     {
-        assert(valid());
+        BOOST_ASSERT(valid());
         return num_params_;
     }
 

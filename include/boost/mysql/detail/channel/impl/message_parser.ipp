@@ -16,14 +16,12 @@
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/core/ignore_unused.hpp>
 
 #include <cstddef>
 
-inline void boost::mysql::detail::message_parser::parse_message(
-    read_buffer& buff,
-    result& res
-) noexcept
+inline void boost::mysql::detail::message_parser::parse_message(read_buffer& buff, result& res) noexcept
 {
     while (true)
     {
@@ -47,7 +45,7 @@ inline void boost::mysql::detail::message_parser::parse_message(
             );
             auto err = deserialize_message_part(ctx, header);
             boost::ignore_unused(err);
-            assert(err == error_code());
+            BOOST_ASSERT(err == error_code());
 
             // Process the sequence number
             if (state_.is_first_frame)

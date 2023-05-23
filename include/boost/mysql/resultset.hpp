@@ -14,7 +14,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
 
 namespace boost {
 namespace mysql {
@@ -158,7 +158,7 @@ public:
      */
     rows_view rows() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return rws_;
     }
 
@@ -179,7 +179,7 @@ public:
      */
     metadata_collection_view meta() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return meta_;
     }
 
@@ -196,7 +196,7 @@ public:
      */
     std::uint64_t affected_rows() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return affected_rows_;
     }
 
@@ -213,7 +213,7 @@ public:
      */
     std::uint64_t last_insert_id() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return last_insert_id_;
     }
 
@@ -230,7 +230,7 @@ public:
      */
     unsigned warning_count() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return warnings_;
     }
 
@@ -257,7 +257,7 @@ public:
      */
     string_view info() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return string_view(info_.data(), info_.size());
     }
 
@@ -274,7 +274,7 @@ public:
      */
     bool is_out_params() const noexcept
     {
-        assert(has_value_);
+        BOOST_ASSERT(has_value_);
         return is_out_params_;
     }
 

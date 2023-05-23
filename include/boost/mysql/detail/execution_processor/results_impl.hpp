@@ -22,6 +22,8 @@
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_row.hpp>
 
+#include <boost/assert.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -63,7 +65,7 @@ public:
     }
     const per_resultset_data& operator[](std::size_t i) const noexcept
     {
-        assert(i < size());
+        BOOST_ASSERT(i < size());
         return i == 0 ? first_ : rest_[i - 1];
     }
     per_resultset_data& back() noexcept
@@ -72,7 +74,7 @@ public:
     }
     const per_resultset_data& back() const noexcept
     {
-        assert(first_has_data_);
+        BOOST_ASSERT(first_has_data_);
         return rest_.empty() ? first_ : rest_.back();
     }
     per_resultset_data& emplace_back()
@@ -105,7 +107,7 @@ public:
 
     row_view get_out_params() const noexcept
     {
-        assert(is_complete());
+        BOOST_ASSERT(is_complete());
         for (std::size_t i = 0; i < per_result_.size(); ++i)
         {
             if (per_result_[i].is_out_params)
@@ -192,7 +194,7 @@ private:
 
     error_code on_row_impl(deserialization_context ctx, const output_ref&, std::vector<field_view>&) override
     {
-        assert(has_active_batch());
+        BOOST_ASSERT(has_active_batch());
 
         // add row storage
         std::size_t num_fields = current_resultset().num_columns;
@@ -215,7 +217,7 @@ private:
 
     void on_row_batch_start_impl() override final
     {
-        assert(!has_active_batch());
+        BOOST_ASSERT(!has_active_batch());
         num_fields_at_batch_start_ = rows_.fields().size();
     }
 
@@ -247,13 +249,13 @@ private:
 
     per_resultset_data& current_resultset() noexcept
     {
-        assert(!per_result_.empty());
+        BOOST_ASSERT(!per_result_.empty());
         return per_result_.back();
     }
 
     const per_resultset_data& current_resultset() const noexcept
     {
-        assert(!per_result_.empty());
+        BOOST_ASSERT(!per_result_.empty());
         return per_result_.back();
     }
 
@@ -287,7 +289,7 @@ private:
 
     const per_resultset_data& get_resultset(std::size_t index) const noexcept
     {
-        assert(index < per_result_.size());
+        BOOST_ASSERT(index < per_result_.size());
         return per_result_[index];
     }
 

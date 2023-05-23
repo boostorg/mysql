@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <vector>

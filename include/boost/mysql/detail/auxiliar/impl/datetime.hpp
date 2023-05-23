@@ -12,7 +12,8 @@
 
 #include <boost/mysql/detail/auxiliar/datetime.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
+
 #include <cstdint>
 
 namespace boost {
@@ -21,10 +22,7 @@ namespace detail {
 
 constexpr unsigned char last_month_day_arr[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
-constexpr bool is_leap(std::uint16_t y) noexcept
-{
-    return y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
-}
+constexpr bool is_leap(std::uint16_t y) noexcept { return y % 4 == 0 && (y % 100 != 0 || y % 400 == 0); }
 
 constexpr inline std::uint8_t last_month_day(std::uint16_t y, std::uint8_t m) noexcept
 {
@@ -51,7 +49,7 @@ BOOST_CXX14_CONSTEXPR inline int boost::mysql::detail::ymd_to_days(
     std::uint8_t day
 ) noexcept
 {
-    assert(is_valid(years, month, day));
+    BOOST_ASSERT(is_valid(years, month, day));
     int y = years;
     const int m = month;
     const int d = day;
