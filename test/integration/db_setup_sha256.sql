@@ -6,16 +6,6 @@
 --
 
 -- Setup that requires the presence of SHA256 functionality
-DROP USER IF EXISTS 'csha2p_user'@'%';
-CREATE USER 'csha2p_user'@'%' IDENTIFIED WITH 'caching_sha2_password';
-ALTER USER 'csha2p_user'@'%' IDENTIFIED BY 'csha2p_password';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'csha2p_user'@'%';
-
-DROP USER IF EXISTS 'csha2p_empty_password_user'@'%';
-CREATE USER 'csha2p_empty_password_user'@'%' IDENTIFIED WITH 'caching_sha2_password';
-ALTER USER 'csha2p_empty_password_user'@'%' IDENTIFIED BY '';
-GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'csha2p_empty_password_user'@'%';
-
 -- This one is used for unknown authentication plugin tests
 DROP USER IF EXISTS 'sha2p_user'@'%';
 CREATE USER 'sha2p_user'@'%' IDENTIFIED WITH 'sha256_password';

@@ -34,24 +34,24 @@ BOOST_AUTO_TEST_CASE(error_to_string_regular)
         int code;
         const char* expected_msg;
     } test_cases[] = {
-        {"int_min",           std::numeric_limits<int>::min(), "<unknown MySQL-specific server error>"  },
-        {"zero",              0,                               "<unknown MySQL-specific server error>"  },
-        {"common_min",        1000,                            "<unknown MySQL-specific server error>"  },
-        {"common_repurposed", 1076,                            "er_ready"                               }, // != in MariaDB
-        {"common_max",        1879,                            "<unknown MySQL-specific server error>"  },
-        {"specific1_min",     1880,                            "er_old_temporals_upgraded"              },
-        {"specific1_max",     1888,                            "er_found_missing_gtids"                 },
-        {"specific1_gtmax",   1889,                            "<unknown MySQL-specific server error>"  },
-        {"specific2_ltmin",   2999,                            "<unknown MySQL-specific server error>"  },
-        {"specific2_min",     3000,                            "er_file_corrupt"                        },
-        {"specific2_regular", 3015,                            "er_engine_out_of_memory"                },
-        {"specific2_max",     3238,                            "er_aes_invalid_kdf_option_size"         },
-        {"specific2_gtmax",   3239,                            "<unknown MySQL-specific server error>"  },
-        {"specific3_ltmin",   3499,                            "<unknown MySQL-specific server error>"  },
-        {"specific3_min",     3500,                            "er_unsupport_compressed_temporary_table"},
-        {"specific3_regular", 3532,                            "er_rename_role"                         },
-        {"gt_max",            5000,                            "<unknown MySQL-specific server error>"  },
-        {"int_max",           std::numeric_limits<int>::max(), "<unknown MySQL-specific server error>"  },
+        {"int_min",           (std::numeric_limits<int>::min)(), "<unknown MySQL-specific server error>"  },
+        {"zero",              0,                                 "<unknown MySQL-specific server error>"  },
+        {"common_min",        1000,                              "<unknown MySQL-specific server error>"  },
+        {"common_repurposed", 1076,                              "er_ready"                               }, // != in MariaDB
+        {"common_max",        1879,                              "<unknown MySQL-specific server error>"  },
+        {"specific1_min",     1880,                              "er_old_temporals_upgraded"              },
+        {"specific1_max",     1888,                              "er_found_missing_gtids"                 },
+        {"specific1_gtmax",   1889,                              "<unknown MySQL-specific server error>"  },
+        {"specific2_ltmin",   2999,                              "<unknown MySQL-specific server error>"  },
+        {"specific2_min",     3000,                              "er_file_corrupt"                        },
+        {"specific2_regular", 3015,                              "er_engine_out_of_memory"                },
+        {"specific2_max",     3238,                              "er_aes_invalid_kdf_option_size"         },
+        {"specific2_gtmax",   3239,                              "<unknown MySQL-specific server error>"  },
+        {"specific3_ltmin",   3499,                              "<unknown MySQL-specific server error>"  },
+        {"specific3_min",     3500,                              "er_unsupport_compressed_temporary_table"},
+        {"specific3_regular", 3532,                              "er_rename_role"                         },
+        {"gt_max",            5000,                              "<unknown MySQL-specific server error>"  },
+        {"int_max",           (std::numeric_limits<int>::max)(), "<unknown MySQL-specific server error>"  },
     };
 
     for (const auto& tc : test_cases)

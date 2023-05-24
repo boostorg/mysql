@@ -24,7 +24,6 @@ namespace detail {
 inline deserialize_errc deserialize_binary_field(
     deserialization_context& ctx,
     const metadata& meta,
-    const std::uint8_t* buffer_first,
     field_view& output
 );
 

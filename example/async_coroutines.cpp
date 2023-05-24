@@ -90,7 +90,7 @@ void main_impl(int argc, char** argv)
 
             // Execute the statement
             boost::mysql::results result;
-            conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag, yield[ec]);
+            conn.async_execute(stmt.bind(company_id), result, diag, yield[ec]);
             boost::mysql::throw_on_error(ec, diag);
 
             // Print the employees

@@ -21,12 +21,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline deserialize_errc deserialize_text_field(
-    string_view from,
-    const metadata& meta,
-    const std::uint8_t* buffer_first,
-    field_view& output
-);
+inline deserialize_errc deserialize_text_field(string_view from, const metadata& meta, field_view& output);
 
 }  // namespace detail
 }  // namespace mysql

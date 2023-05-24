@@ -12,6 +12,9 @@
 
 #include <boost/mysql/date.hpp>
 
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+
 #include <cstdio>
 #include <ostream>
 #include <stdexcept>
@@ -20,19 +23,19 @@ BOOST_CXX14_CONSTEXPR boost::mysql::date::date(time_point tp)
 {
     bool ok = detail::days_to_ymd(tp.time_since_epoch().count(), year_, month_, day_);
     if (!ok)
-        throw std::out_of_range("date::date: time_point was out of range");
+        BOOST_THROW_EXCEPTION(std::out_of_range("date::date: time_point was out of range"));
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point boost::mysql::date::get_time_point() const noexcept
 {
-    assert(valid());
+    BOOST_ASSERT(valid());
     return unch_get_time_point();
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::date::time_point boost::mysql::date::as_time_point() const
 {
     if (!valid())
-        throw std::invalid_argument("date::as_time_point: invalid date");
+        BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_time_point: invalid date"));
     return unch_get_time_point();
 }
 

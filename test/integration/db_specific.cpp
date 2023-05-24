@@ -33,7 +33,7 @@ BOOST_FIXTURE_TEST_CASE(mysql_specific_error_code, tcp_network_fixture)
     results result;
 
     // This is reported as a common, less desriptive error in MySQL5 and MariaDB
-    conn.query("select * from one_row_table where field_varchar regexp '(('", result, ec, diag);
+    conn.execute("select * from one_row_table where field_varchar regexp '(('", result, ec, diag);
     error_code expected_ec(
         boost::mysql::mysql_server_errc::er_regexp_mismatched_paren,
         boost::mysql::get_mysql_server_category()
@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_CASE(mariadb_specific_error_code, tcp_network_fixture)
     results result;
 
     // This is reported as a common error in MySQL5 and MySQL8
-    conn.query("WITH abc AS (SELECT 1), abc as (SELECT 2) SELECT * FROM abc", result, ec, diag);
+    conn.execute("WITH abc AS (SELECT 1), abc as (SELECT 2) SELECT * FROM abc", result, ec, diag);
     error_code expected_ec(
         boost::mysql::mariadb_server_errc::er_dup_query_name,
         boost::mysql::get_mariadb_server_category()

@@ -19,7 +19,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "create_message.hpp"
+#include "creation/create_message.hpp"
 #include "printing.hpp"
 #include "test_connection.hpp"
 #include "unit_netfun_maker.hpp"
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
             test_connection conn;
 
             // Use it
-            conn.stream().add_message(create_ok_packet_message(1));
+            conn.stream().add_message(ok_msg_builder().seqnum(1).build_ok());
             results result;
             fns.query(conn, "SELECT * FROM myt", result).validate_no_error();
 
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
             test_connection conn2(std::move(conn));
 
             // Using it works (no dangling pointer)
-            conn2.stream().add_message(create_ok_packet_message(1, 42));
+            conn2.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(42).build_ok());
             fns.query(conn2, "DELETE FROM myt", result).validate_no_error();
             BOOST_TEST(result.affected_rows() == 42u);
         }
@@ -131,8 +131,8 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
             test_connection conn2;
 
             // Use them
-            conn1.stream().add_message(create_ok_packet_message(1));
-            conn2.stream().add_message(create_ok_packet_message(1));
+            conn1.stream().add_message(ok_msg_builder().seqnum(1).build_ok());
+            conn2.stream().add_message(ok_msg_builder().seqnum(1).build_ok());
             results result;
             fns.query(conn1, "SELECT * FROM myt", result).validate_no_error();
             fns.query(conn2, "SELECT * FROM myt", result).validate_no_error();
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
             conn2 = std::move(conn1);
 
             // Using it works (no dangling pointer)
-            conn2.stream().add_message(create_ok_packet_message(1, 42));
+            conn2.stream().add_message(ok_msg_builder().seqnum(1).affected_rows(42).build_ok());
             fns.query(conn2, "DELETE FROM myt", result).validate_no_error();
             BOOST_TEST(result.affected_rows() == 42u);
         }

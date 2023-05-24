@@ -62,7 +62,7 @@ which accepts two parameters:
 [heading Issuing the SQL query]
 
 The next step is to issue the query to the server. We will use
-[reflink2 connection.query tcp_ssl_connection::query],
+[reflink2 connection.execute tcp_ssl_connection::execute],
 which accepts a string containing a single SQL query and instructs
 the server to run it. It returns a [reflink results] 
 object, containing the rows returned by the query:

@@ -14,6 +14,8 @@
 #include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
+#include <boost/assert.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -33,7 +35,7 @@ inline protocol_field_type get_protocol_field_type(const field_view& input) noex
     case field_kind::date: return protocol_field_type::date;
     case field_kind::datetime: return protocol_field_type::datetime;
     case field_kind::time: return protocol_field_type::time;
-    default: assert(false); return protocol_field_type::null;
+    default: BOOST_ASSERT(false); return protocol_field_type::null;
     }
 }
 
@@ -73,7 +75,7 @@ inline std::size_t boost::mysql::detail::serialization_traits<
     std::size_t res = 1 +  // command ID
                       get_size(ctx, value.statement_id, value.flags, value.iteration_count);
     auto num_params = std::distance(value.params_begin, value.params_end);
-    assert(num_params >= 0 && num_params <= 255);
+    BOOST_ASSERT(num_params >= 0 && num_params <= 255);
 
     if (num_params > 0u)
     {
@@ -82,7 +84,7 @@ inline std::size_t boost::mysql::detail::serialization_traits<
         res += get_size(ctx, com_stmt_execute_param_meta_packet{}) * num_params;
         for (auto it = value.params_begin; it != value.params_end; ++it)
         {
-            res += get_size(ctx, *it);
+            res += get_size(ctx, field_view(*it));
         }
     }
 
@@ -103,7 +105,7 @@ inline void boost::mysql::detail::serialization_traits<
 
     // Number of parameters
     auto num_params = std::distance(input.params_begin, input.params_end);
-    assert(num_params >= 0 && num_params <= 255);
+    BOOST_ASSERT(num_params >= 0 && num_params <= 255);
 
     if (num_params > 0)
     {
@@ -113,7 +115,8 @@ inline void boost::mysql::detail::serialization_traits<
         std::memset(ctx.first(), 0, traits.byte_count());  // Initialize to zeroes
         for (auto it = input.params_begin; it != input.params_end; ++it, ++i)
         {
-            if (it->is_null())
+            field_view fv(*it);
+            if (fv.is_null())
             {
                 traits.set_null(ctx.first(), i);
             }
@@ -135,7 +138,7 @@ inline void boost::mysql::detail::serialization_traits<
         // actual values
         for (auto it = input.params_begin; it != input.params_end; ++it)
         {
-            serialize(ctx, *it);
+            serialize(ctx, field_view(*it));
         }
     }
 }

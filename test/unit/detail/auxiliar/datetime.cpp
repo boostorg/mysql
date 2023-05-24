@@ -65,13 +65,12 @@ BOOST_AUTO_TEST_SUITE(test_datetime)
 
 // Helpers
 constexpr std::uint16_t leap_years[] = {
-    1804, 1808, 1812, 1816, 1820, 1824, 1828, 1832, 1836, 1840, 1844, 1848, 1852, 1856,
-    1860, 1864, 1868, 1872, 1876, 1880, 1884, 1888, 1892, 1896, 1904, 1908, 1912, 1916,
-    1920, 1924, 1928, 1932, 1936, 1940, 1944, 1948, 1952, 1956, 1960, 1964, 1968, 1972,
-    1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008, 2012, 2016, 2020, 2024, 2028,
-    2032, 2036, 2040, 2044, 2048, 2052, 2056, 2060, 2064, 2068, 2072, 2076, 2080, 2084,
-    2088, 2092, 2096, 2104, 2108, 2112, 2116, 2120, 2124, 2128, 2132, 2136, 2140, 2144,
-    2148, 2152, 2156, 2160, 2164, 2168, 2172, 2176, 2180, 2184, 2188, 2192, 2196, 2204,
+    1804, 1808, 1812, 1816, 1820, 1824, 1828, 1832, 1836, 1840, 1844, 1848, 1852, 1856, 1860, 1864, 1868,
+    1872, 1876, 1880, 1884, 1888, 1892, 1896, 1904, 1908, 1912, 1916, 1920, 1924, 1928, 1932, 1936, 1940,
+    1944, 1948, 1952, 1956, 1960, 1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992, 1996, 2000, 2004, 2008,
+    2012, 2016, 2020, 2024, 2028, 2032, 2036, 2040, 2044, 2048, 2052, 2056, 2060, 2064, 2068, 2072, 2076,
+    2080, 2084, 2088, 2092, 2096, 2104, 2108, 2112, 2116, 2120, 2124, 2128, 2132, 2136, 2140, 2144, 2148,
+    2152, 2156, 2160, 2164, 2168, 2172, 2176, 2180, 2184, 2188, 2192, 2196, 2204,
 };
 
 bool is_leap_year(std::uint16_t y)
@@ -81,8 +80,7 @@ bool is_leap_year(std::uint16_t y)
 
 std::uint8_t last_day_of_month(std::uint8_t month)  // doesn't take leap years into account
 {
-    constexpr std::uint8_t last_month_days[] =
-        {31u, 28u, 31u, 30u, 31u, 30u, 31u, 31u, 30u, 31u, 30u, 31u};
+    constexpr std::uint8_t last_month_days[] = {31u, 28u, 31u, 30u, 31u, 30u, 31u, 31u, 30u, 31u, 30u, 31u};
     assert(month >= 1 && month <= 12);
     return last_month_days[month - 1];
 }
@@ -164,13 +162,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 // ymd_to_days, days_to_ymd
 // Helper function that actually performs the assertions for us
-void ymd_years_test(
-    test_state& st,
-    std::uint16_t year,
-    std::uint8_t month,
-    std::uint8_t day,
-    int num_days
-)
+void ymd_years_test(test_state& st, std::uint16_t year, std::uint8_t month, std::uint8_t day, int num_days)
 {
     auto test_name = date_to_string(year, month, day);
     st.set_context(test_name.data());
@@ -198,8 +190,7 @@ BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
     {
         for (unsigned month = 1; month <= 12; ++month)
         {
-            unsigned last_month_day = month == 2 && is_leap_year(year) ? 29u
-                                                                       : last_day_of_month(month);
+            unsigned last_month_day = month == 2 && is_leap_year(year) ? 29u : last_day_of_month(month);
             for (unsigned day = 1; day <= last_month_day; ++day)
             {
                 ymd_years_test(st, year, month, day, num_days++);
@@ -214,8 +205,7 @@ BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
     {
         for (unsigned month = 12; month >= 1; --month)
         {
-            unsigned last_month_day = month == 2 && is_leap_year(year) ? 29u
-                                                                       : last_day_of_month(month);
+            unsigned last_month_day = month == 2 && is_leap_year(year) ? 29u : last_day_of_month(month);
             for (unsigned day = last_month_day; day >= 1; --day)
             {
                 ymd_years_test(st, year, month, day, num_days--);
@@ -247,7 +237,7 @@ BOOST_AUTO_TEST_CASE(days_to_ymd_limits)
 
     // Below lower limit
     BOOST_TEST(!days_to_ymd(-719529, years, month, day));
-    BOOST_TEST(!days_to_ymd(std::numeric_limits<int>::min(), years, month, day));
+    BOOST_TEST(!days_to_ymd((std::numeric_limits<int>::min)(), years, month, day));
 
     // Just in the upper limit
     ok = days_to_ymd(2932896, years, month, day);
@@ -258,7 +248,7 @@ BOOST_AUTO_TEST_CASE(days_to_ymd_limits)
 
     // Above the upper limit
     BOOST_TEST(!days_to_ymd(2932897, years, month, day));
-    BOOST_TEST(!days_to_ymd(std::numeric_limits<int>::max(), years, month, day));
+    BOOST_TEST(!days_to_ymd((std::numeric_limits<int>::max)(), years, month, day));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -67,10 +67,7 @@ public:
     };
 
     // Constructors
-    inline test_stream(
-        fail_count fc = fail_count(),
-        executor_type ex = boost::asio::system_executor()
-    );
+    inline test_stream(fail_count fc = fail_count(), executor_type ex = boost::asio::system_executor());
 
     inline test_stream(
         std::vector<std::uint8_t> bytes_to_read,
@@ -85,18 +82,27 @@ public:
     );
 
     // Setting test behavior
-    inline void add_message(const std::vector<std::uint8_t>& bytes, bool separate_reads = true);
-    inline void set_read_behavior(read_behavior b);
-    void set_write_break_size(std::size_t size) noexcept { write_break_size_ = size; }
-    void set_fail_count(const fail_count& fc) noexcept { fail_count_ = fc; }
-    void set_executor(executor_type ex) { executor_ = ex; }
+    inline test_stream& add_message(const std::vector<std::uint8_t>& bytes, bool separate_reads = true);
+    inline test_stream& set_read_behavior(read_behavior b);
+    test_stream& set_write_break_size(std::size_t size) noexcept
+    {
+        write_break_size_ = size;
+        return *this;
+    }
+    test_stream& set_fail_count(const fail_count& fc) noexcept
+    {
+        fail_count_ = fc;
+        return *this;
+    }
+    test_stream& set_executor(executor_type ex)
+    {
+        executor_ = ex;
+        return *this;
+    }
 
     // Getting test results
     std::size_t num_bytes_read() const noexcept { return num_bytes_read_; }
-    std::size_t num_unread_bytes() const noexcept
-    {
-        return bytes_to_read_.size() - num_bytes_read_;
-    }
+    std::size_t num_unread_bytes() const noexcept { return bytes_to_read_.size() - num_bytes_read_; }
     const std::vector<std::uint8_t>& bytes_written() const noexcept { return bytes_written_; }
 
     // Stream operations
@@ -114,15 +120,13 @@ public:
 
     template <
         class MutableBufferSequence,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
-            CompletionToken>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some(const MutableBufferSequence& buffers, CompletionToken&& token);
 
     template <
         class ConstBufferSequence,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
-            CompletionToken>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_write_some(ConstBufferSequence const& buffers, CompletionToken&& token);
 

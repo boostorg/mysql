@@ -14,6 +14,8 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 
+#include <boost/throw_exception.hpp>
+
 #include <cstddef>
 #include <ostream>
 #include <stdexcept>
@@ -21,7 +23,7 @@
 boost::mysql::field_view boost::mysql::row_view::at(std::size_t i) const
 {
     if (i >= size_)
-        throw std::out_of_range("row_view::at");
+        BOOST_THROW_EXCEPTION(std::out_of_range("row_view::at"));
     return fields_[i];
 }
 

@@ -94,11 +94,18 @@ inline string_view makesv(const std::uint8_t* value, std::size_t size)
 }
 
 template <std::size_t N>
-inline blob_view makebv(const char (&value)[N])
+blob_view makebv(const char (&value)[N])
 {
     static_assert(N >= 1, "Expected a C-array literal");
     return blob_view(reinterpret_cast<const unsigned char*>(value),
                      N - 1);  // discard null terminator
+}
+
+template <std::size_t N>
+blob makeb(const char (&value)[N])
+{
+    auto bv = makebv(value);
+    return blob(bv.begin(), bv.end());
 }
 
 template <std::size_t N>

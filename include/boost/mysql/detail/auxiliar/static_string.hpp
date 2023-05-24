@@ -12,8 +12,9 @@
 
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/assert.hpp>
+
 #include <array>
-#include <cassert>
 #include <cstring>
 #include <ostream>
 
@@ -31,7 +32,7 @@ public:
     static_string() noexcept : size_(0) {}
     static_string(string_view value) noexcept : size_(value.size())
     {
-        assert(value.size() <= max_size);
+        BOOST_ASSERT(value.size() <= max_size);
         size_ = value.size();
         std::memcpy(buffer_.data(), value.data(), value.size());
     }
@@ -40,7 +41,7 @@ public:
     void append(const void* arr, std::size_t sz) noexcept
     {
         std::size_t new_size = size_ + sz;
-        assert(new_size <= max_size);
+        BOOST_ASSERT(new_size <= max_size);
         std::memcpy(buffer_.data() + size_, arr, sz);
         size_ = new_size;
     }

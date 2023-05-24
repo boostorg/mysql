@@ -31,7 +31,7 @@ struct tcp_network_fixture : network_fixture_base
     void start_transaction()
     {
         results result;
-        conn.query("START TRANSACTION", result);
+        conn.execute("START TRANSACTION", result);
     }
 };
 

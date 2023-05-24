@@ -59,7 +59,7 @@ void main_impl(int argc, char** argv)
         JOIN company comp ON (comp.id = emp.company_id)
     )";
     boost::mysql::results result;
-    conn.query(sql, result);
+    conn.execute(sql, result);
 
     /**
      * results objects allow you to access metadata about the columns in the query

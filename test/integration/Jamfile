@@ -45,12 +45,11 @@ cpp-pch integrationtests_pch
     ;
 
 
-unit-test boost_mysql_integrationtests
-    :
+run 
         integrationtests_pch
         $(context_lib)
         integrationtests_entry_point
-
+ 
         # Utilities
         utils/src/get_endpoint.cpp
         utils/src/metadata_validator.cpp
@@ -66,13 +65,18 @@ unit-test boost_mysql_integrationtests
         crud.cpp
         handshake.cpp
         prepared_statements.cpp
+        stored_procedures.cpp
+        multi_queries.cpp
+        static_interface.cpp
         reconnect.cpp
         db_specific.cpp
         database_types.cpp
-    :
+
+    : requirements
         <testing.arg>$(test_command)
         <include>utils/include
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+    : target-name boost_mysql_integrationtests
     ;
 
 explicit boost_mysql_integrationtests ;

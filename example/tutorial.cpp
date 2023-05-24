@@ -64,7 +64,7 @@ void main_impl(int argc, char** argv)
     // Issue the SQL query to the server
     const char* sql = "SELECT 'Hello world!'";
     boost::mysql::results result;
-    conn.query(sql, result);
+    conn.execute(sql, result);
     //]
 
     //[tutorial_results

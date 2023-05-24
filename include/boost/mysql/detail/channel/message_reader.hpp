@@ -16,7 +16,6 @@
 
 #include <boost/asio/async_result.hpp>
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -33,38 +32,31 @@ public:
     }
 
     bool has_message() const noexcept { return result_.has_message; }
-    const std::uint8_t* buffer_first() const noexcept { return buffer_.first(); }
 
     inline boost::asio::const_buffer get_next_message(std::uint8_t& seqnum, error_code& ec) noexcept;
 
     // Reads some messages from stream, until there is at least one
     // or an error happens. On success, has_message() returns true
     // and get_next_message() returns the parsed message.
-    // May relocate the buffer, modifying buffer_first(). If !keep_messages,
-    // the reserved area bytes will be removed before the actual read; otherwise,
-    // they won't be touched (but may be reallocated).
+    // May relocate the buffer, modifying buffer_first().
+    // The reserved area bytes will be removed before the actual read.
     template <class Stream>
-    void read_some(Stream& stream, error_code& ec, bool keep_messages = false);
+    void read_some(Stream& stream, error_code& ec);
 
     template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_some(Stream& stream, CompletionToken&& token, bool keep_messages = false);
+    async_read_some(Stream& stream, CompletionToken&& token);
 
     // Equivalent to read_some + get_next_message
     template <class Stream>
-    boost::asio::const_buffer read_one(
-        Stream& stream,
-        std::uint8_t& seqnum,
-        error_code& ec,
-        bool keep_messages = false
-    );
+    boost::asio::const_buffer read_one(Stream& stream, std::uint8_t& seqnum, error_code& ec);
 
     template <
         class Stream,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
             CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, boost::asio::const_buffer))
-    async_read_one(Stream& stream, std::uint8_t& seqnum, CompletionToken&& token, bool keep_messages = false);
+    async_read_one(Stream& stream, std::uint8_t& seqnum, CompletionToken&& token);
 
     // Exposed for the sake of testing
     read_buffer& buffer() noexcept { return buffer_; }

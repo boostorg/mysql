@@ -281,7 +281,6 @@ private:
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::execution_state_access;
     friend struct detail::metadata_access;
 #endif
 };

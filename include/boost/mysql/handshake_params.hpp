@@ -30,6 +30,7 @@ class handshake_params
     string_view database_;
     std::uint16_t connection_collation_;
     ssl_mode ssl_;
+    bool multi_queries_;
 
 public:
     /// The default collation to use with the connection (`utf8mb4_general_ci` on both MySQL and MariaDB).
@@ -48,19 +49,23 @@ public:
      * `utf8mb4_general_ci` (see \ref default_collation), which is compatible with MySQL 5.x, 8.x and MariaDB.
      * \param mode The \ref ssl_mode to use with this connection; ignored if
      * the connection's `Stream` does not support SSL.
+     * \param multi_queries Whether to enable support for executing semicolon-separated
+     * queries using \ref connection::execute and \ref connection::start_execution. Disabled by default.
      */
     handshake_params(
         string_view username,
         string_view password,
         string_view db = "",
         std::uint16_t connection_col = default_collation,
-        ssl_mode mode = ssl_mode::require
+        ssl_mode mode = ssl_mode::require,
+        bool multi_queries = false
     )
         : username_(username),
           password_(password),
           database_(db),
           connection_collation_(connection_col),
-          ssl_(mode)
+          ssl_(mode),
+          multi_queries_(multi_queries)
     {
     }
 
@@ -133,6 +138,20 @@ public:
      * No-throw guarantee.
      */
     void set_ssl(ssl_mode value) noexcept { ssl_ = value; }
+
+    /**
+     * \brief Retrieves whether multi-query support is enabled.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    bool multi_queries() const noexcept { return multi_queries_; }
+
+    /**
+     * \brief Enables or disables support for the multi-query feature.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    void set_multi_queries(bool v) noexcept { multi_queries_ = v; }
 };
 
 }  // namespace mysql

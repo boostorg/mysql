@@ -123,11 +123,23 @@ function_table<stream_type> create_table()
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_execute_statement),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_statement_execution),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_statement_execution),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_execute),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_execute),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_execute),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_execution),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_execution),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_execution),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_close_statement),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_resultset_head),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_some_rows),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_ping),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_quit),
         BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_close),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_execute),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_start_execution),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_resultset_head),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_some_rows),
+        BOOST_MYSQL_ASYNC_COROCPP20_TABLE_ENTRY(async_read_some_rows),
     };
 }
 

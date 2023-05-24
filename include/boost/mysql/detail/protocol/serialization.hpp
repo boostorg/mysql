@@ -9,11 +9,13 @@
 #define BOOST_MYSQL_DETAIL_PROTOCOL_SERIALIZATION_HPP
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/protocol/serialization_context.hpp>
 
+#include <boost/asio/buffer.hpp>
 #include <boost/endian/conversion.hpp>
 
 #include <algorithm>
@@ -52,10 +54,7 @@ struct serialization_traits<T, serialization_tag::plain_int>
 {
     static deserialize_errc deserialize_(deserialization_context& ctx, T& output) noexcept;
     static void serialize_(serialization_context& ctx, T input) noexcept;
-    static constexpr std::size_t get_size_(const serialization_context&, T) noexcept
-    {
-        return sizeof(T);
-    }
+    static constexpr std::size_t get_size_(const serialization_context&, T) noexcept { return sizeof(T); }
 };
 
 // int3
@@ -82,10 +81,7 @@ struct serialization_traits<int3, serialization_tag::none>
 template <>
 struct serialization_traits<int_lenenc, serialization_tag::none>
 {
-    static inline deserialize_errc deserialize_(
-        deserialization_context& ctx,
-        int_lenenc& output
-    ) noexcept;
+    static inline deserialize_errc deserialize_(deserialization_context& ctx, int_lenenc& output) noexcept;
     static inline void serialize_(serialization_context& ctx, int_lenenc input) noexcept;
     static inline std::size_t get_size_(const serialization_context&, int_lenenc input) noexcept;
 };
@@ -94,10 +90,7 @@ struct serialization_traits<int_lenenc, serialization_tag::none>
 template <std::size_t N>
 struct serialization_traits<string_fixed<N>, serialization_tag::none>
 {
-    static deserialize_errc deserialize_(
-        deserialization_context& ctx,
-        string_fixed<N>& output
-    ) noexcept
+    static deserialize_errc deserialize_(deserialization_context& ctx, string_fixed<N>& output) noexcept
     {
         if (!ctx.enough_size(N))
             return deserialize_errc::incomplete_message;
@@ -119,10 +112,7 @@ struct serialization_traits<string_fixed<N>, serialization_tag::none>
 template <>
 struct serialization_traits<string_null, serialization_tag::none>
 {
-    static inline deserialize_errc deserialize_(
-        deserialization_context& ctx,
-        string_null& output
-    ) noexcept;
+    static inline deserialize_errc deserialize_(deserialization_context& ctx, string_null& output) noexcept;
     static inline void serialize_(serialization_context& ctx, string_null input) noexcept
     {
         ctx.write(input.value.data(), input.value.size());
@@ -138,10 +128,7 @@ struct serialization_traits<string_null, serialization_tag::none>
 template <>
 struct serialization_traits<string_eof, serialization_tag::none>
 {
-    static inline deserialize_errc deserialize_(
-        deserialization_context& ctx,
-        string_eof& output
-    ) noexcept;
+    static inline deserialize_errc deserialize_(deserialization_context& ctx, string_eof& output) noexcept;
     static inline void serialize_(serialization_context& ctx, string_eof input) noexcept
     {
         ctx.write(input.value.data(), input.value.size());
@@ -156,19 +143,13 @@ struct serialization_traits<string_eof, serialization_tag::none>
 template <>
 struct serialization_traits<string_lenenc, serialization_tag::none>
 {
-    static inline deserialize_errc deserialize_(
-        deserialization_context& ctx,
-        string_lenenc& output
-    ) noexcept;
+    static inline deserialize_errc deserialize_(deserialization_context& ctx, string_lenenc& output) noexcept;
     static inline void serialize_(serialization_context& ctx, string_lenenc input) noexcept
     {
         serialize(ctx, int_lenenc(input.value.size()));
         ctx.write(input.value.data(), input.value.size());
     }
-    static inline std::size_t get_size_(
-        const serialization_context& ctx,
-        string_lenenc input
-    ) noexcept
+    static inline std::size_t get_size_(const serialization_context& ctx, string_lenenc input) noexcept
     {
         return get_size(ctx, int_lenenc(input.value.size())) + input.value.size();
     }
@@ -191,10 +172,7 @@ struct serialization_traits<T, serialization_tag::enumeration>
     {
         serialize(ctx, static_cast<underlying_type>(input));
     }
-    static std::size_t get_size_(const serialization_context&, T) noexcept
-    {
-        return sizeof(underlying_type);
-    }
+    static std::size_t get_size_(const serialization_context&, T) noexcept { return sizeof(underlying_type); }
 };
 
 // Structs and commands
@@ -223,10 +201,7 @@ struct serialization_traits<T, serialization_tag::struct_with_fields>
 template <class T>
 struct noop_serialize
 {
-    static inline std::size_t get_size_(const serialization_context&, const T&) noexcept
-    {
-        return 0;
-    }
+    static inline std::size_t get_size_(const serialization_context&, const T&) noexcept { return 0; }
     static inline void serialize_(serialization_context&, const T&) noexcept {}
 };
 
@@ -241,14 +216,17 @@ struct noop_deserialize
 
 // Helper to serialize top-level messages
 template <class Serializable, class Allocator>
-void serialize_message(
-    const Serializable& input,
-    capabilities caps,
-    basic_bytestring<Allocator>& buffer
-);
+void serialize_message(const Serializable& input, capabilities caps, basic_bytestring<Allocator>& buffer);
 
 template <class Deserializable>
 error_code deserialize_message(deserialization_context& ctx, Deserializable& output);
+
+template <class Deserializable>
+error_code deserialize_message(boost::asio::const_buffer msg, Deserializable& output, capabilities caps)
+{
+    deserialization_context ctx(msg, caps);
+    return deserialize_message(ctx, output);
+}
 
 template <class Deserializable>
 error_code deserialize_message_part(deserialization_context& ctx, Deserializable& output);

@@ -16,6 +16,7 @@
 #include <boost/mysql/time.hpp>
 
 #include <boost/mp11.hpp>
+#include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <string>
@@ -61,7 +62,7 @@ struct field_impl
     {
         const T* res = boost::variant2::get_if<T>(&data);
         if (!res)
-            throw bad_field_access();
+            BOOST_THROW_EXCEPTION(bad_field_access());
         return *res;
     }
 
@@ -70,7 +71,7 @@ struct field_impl
     {
         T* res = boost::variant2::get_if<T>(&data);
         if (!res)
-            throw bad_field_access();
+            BOOST_THROW_EXCEPTION(bad_field_access());
         return *res;
     }
 

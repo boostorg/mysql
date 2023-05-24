@@ -15,7 +15,9 @@
 
 #include <boost/mysql/detail/auxiliar/datetime.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+
 #include <cstdio>
 #include <ostream>
 #include <stdexcept>
@@ -42,14 +44,14 @@ BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point tp)
     rem = rem - num_seconds;
     auto num_microseconds = duration_cast<microseconds>(rem);
 
-    assert(num_hours.count() >= 0 && num_hours.count() <= detail::max_hour);
-    assert(num_minutes.count() >= 0 && num_minutes.count() <= detail::max_min);
-    assert(num_seconds.count() >= 0 && num_seconds.count() <= detail::max_sec);
-    assert(num_microseconds.count() >= 0 && num_microseconds.count() <= detail::max_micro);
+    BOOST_ASSERT(num_hours.count() >= 0 && num_hours.count() <= detail::max_hour);
+    BOOST_ASSERT(num_minutes.count() >= 0 && num_minutes.count() <= detail::max_min);
+    BOOST_ASSERT(num_seconds.count() >= 0 && num_seconds.count() <= detail::max_sec);
+    BOOST_ASSERT(num_microseconds.count() >= 0 && num_microseconds.count() <= detail::max_micro);
 
     bool ok = detail::days_to_ymd(num_days.count(), year_, month_, day_);
     if (!ok)
-        throw std::out_of_range("datetime::datetime: time_point was out of range");
+        BOOST_THROW_EXCEPTION(std::out_of_range("datetime::datetime: time_point was out of range"));
 
     microsecond_ = static_cast<std::uint32_t>(num_microseconds.count());
     second_ = static_cast<std::uint8_t>(num_seconds.count());
@@ -66,14 +68,14 @@ constexpr bool boost::mysql::datetime::valid() const noexcept
 BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point boost::mysql::datetime::get_time_point(
 ) const noexcept
 {
-    assert(valid());
+    BOOST_ASSERT(valid());
     return unch_get_time_point();
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::datetime::time_point boost::mysql::datetime::as_time_point() const
 {
     if (!valid())
-        throw std::invalid_argument("datetime::as_time_point: invalid datetime");
+        BOOST_THROW_EXCEPTION(std::invalid_argument("datetime::as_time_point: invalid datetime"));
     return unch_get_time_point();
 }
 

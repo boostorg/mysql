@@ -95,7 +95,7 @@ def _install_boost(
     copytree(
         str(source_dir),
         str(lib_dir),
-        ignore=ignore_patterns('__build*__'),
+        ignore=ignore_patterns('__build*__', '.git'),
         **({ 'dirs_exist_ok': True } if _supports_dir_exist_ok else {})
     )
 
@@ -137,6 +137,7 @@ def _db_setup(
     db: str = 'mysql8'
 ) -> None:
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
+    _run_sql_file(source_dir.joinpath('example', 'order_management', 'db_setup.sql'))
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
     if db == 'mysql8':
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
@@ -210,7 +211,7 @@ def _b2_build(
         '-j4',
         'libs/mysql/test',
         'libs/mysql/test/integration//boost_mysql_integrationtests',
-        'libs/mysql/example//boost_mysql_all_examples'
+        'libs/mysql/example'
     ])
 
 
@@ -267,7 +268,7 @@ def _cmake_build(
             '--with-date_time',
             '--with-test',
             '-d0',
-            'cxxstd={}'.format(cxxstd),
+        ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
         ])
 
@@ -283,7 +284,7 @@ def _cmake_build(
         generator,
         '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path)),
         '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DCMAKE_CXX_STANDARD={}'.format(cxxstd),
+    ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
         '-DBOOST_INCLUDE_LIBRARIES=mysql',
         '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
         '-DBUILD_TESTING=ON',
@@ -300,7 +301,7 @@ def _cmake_build(
             'cmake',
             '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(b2_distro, *cmake_prefix_path)),
             '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-            '-DCMAKE_CXX_STANDARD={}'.format(cxxstd),
+        ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
             '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
             '-DBOOST_MYSQL_VALGRIND_TESTS={}'.format(_cmake_bool(valgrind)),
             '-DBOOST_MYSQL_COVERAGE={}'.format(_cmake_bool(coverage)),

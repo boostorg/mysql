@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -19,14 +21,12 @@
 
 #include "er_connection.hpp"
 #include "integration_test_common.hpp"
+#include "printing.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::execution_state;
-using boost::mysql::results;
-using boost::mysql::row;
-using boost::mysql::row_view;
+using namespace boost::mysql;
 
 namespace {
 
@@ -41,13 +41,13 @@ BOOST_FIXTURE_TEST_CASE(multiple_executions, tcp_network_fixture)
 
     // Execute it. Only one row will be returned (because of the id)
     results result;
-    conn.execute_statement(stmt, std::make_tuple(1, "non_existent"), result);
+    conn.execute(stmt.bind(1, "non_existent"), result);
     validate_2fields_meta(result.meta(), "two_rows_table");
     BOOST_TEST_REQUIRE(result.rows().size() == 1u);
     BOOST_TEST((result.rows()[0] == makerow(1, "f0")));
 
     // Execute it again, but with different values. This time, two rows are returned
-    conn.execute_statement(stmt, std::make_tuple(1, "f1"), result);
+    conn.execute(stmt.bind(1, "f1"), result);
     validate_2fields_meta(result.meta(), "two_rows_table");
     BOOST_TEST_REQUIRE(result.rows().size() == 2u);
     BOOST_TEST((result.rows()[0] == makerow(1, "f0")));
@@ -72,17 +72,17 @@ BOOST_FIXTURE_TEST_CASE(multiple_statements, tcp_network_fixture)
     BOOST_TEST(stmt_update.id() != stmt_select.id());
 
     // Execute update
-    conn.execute_statement(stmt_update, std::make_tuple(210, "f0"), result);
+    conn.execute(stmt_update.bind(210, "f0"), result);
     BOOST_TEST(result.meta().size() == 0u);
     BOOST_TEST(result.affected_rows() == 1u);
 
     // Execute select
-    conn.execute_statement(stmt_select, std::make_tuple("f0"), result);
+    conn.execute(stmt_select.bind("f0"), result);
     BOOST_TEST(result.rows().size() == 1u);
     BOOST_TEST(result.rows()[0] == makerow(210));
 
     // Execute update again
-    conn.execute_statement(stmt_update, std::make_tuple(220, "f0"), result);
+    conn.execute(stmt_update.bind(220, "f0"), result);
     BOOST_TEST(result.meta().size() == 0u);
     BOOST_TEST(result.affected_rows() == 1u);
 
@@ -90,7 +90,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_statements, tcp_network_fixture)
     conn.close_statement(stmt_update);
 
     // Execute select again
-    conn.execute_statement(stmt_select, std::make_tuple("f0"), result);
+    conn.execute(stmt_select.bind("f0"), result);
     BOOST_TEST(result.rows().size() == 1u);
     BOOST_TEST(result.rows()[0] == makerow(220));
 
@@ -109,9 +109,26 @@ BOOST_FIXTURE_TEST_CASE(statement_without_params, tcp_network_fixture)
 
     // Execute doesn't error
     results result;
-    conn.execute_statement(stmt, std::make_tuple(), result);
+    conn.execute(stmt.bind(), result);
     validate_2fields_meta(result.meta(), "empty_table");
     BOOST_TEST(result.rows().size() == 0u);
+}
+
+BOOST_FIXTURE_TEST_CASE(wrong_num_params, tcp_network_fixture)
+{
+    connect();
+
+    // Prepare the statement
+    auto stmt = conn.prepare_statement("SELECT * FROM empty_table");
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(stmt.num_params() == 0u);
+
+    // Execute fails appropriately
+    error_code ec;
+    diagnostics diag;
+    results result;
+    conn.execute(stmt.bind(42), result, ec, diag);
+    BOOST_TEST(ec == client_errc::wrong_num_params);
 }
 
 // Note: multifn query is already covered in spotchecks
@@ -124,14 +141,14 @@ BOOST_FIXTURE_TEST_CASE(multifn, tcp_network_fixture)
 
     // Execute it
     execution_state st;
-    conn.start_statement_execution(stmt, std::make_tuple(), st);
-    BOOST_TEST_REQUIRE(!st.complete());
+    conn.start_execution(stmt.bind(), st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // We don't know how many rows there will be in each batch,
     // but they will come in order
     std::size_t call_count = 0;
     std::vector<row> all_rows;
-    while (!st.complete() && call_count <= 4)
+    while (st.should_read_rows() && call_count <= 4)
     {
         ++call_count;
         for (row_view rv : conn.read_some_rows(st))

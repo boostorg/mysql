@@ -11,7 +11,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
 
 namespace boost {
 namespace mysql {
@@ -31,10 +31,9 @@ inline error_code to_error_code(deserialize_errc v) noexcept
     {
     case deserialize_errc::ok: return error_code();
     case deserialize_errc::incomplete_message: return error_code(client_errc::incomplete_message);
-    case deserialize_errc::protocol_value_error:
-        return error_code(client_errc::protocol_value_error);
+    case deserialize_errc::protocol_value_error: return error_code(client_errc::protocol_value_error);
     case deserialize_errc::server_unsupported: return error_code(client_errc::server_unsupported);
-    default: assert(false); return error_code();  // avoid warnings
+    default: BOOST_ASSERT(false); return error_code();  // avoid warnings
     }
 }
 

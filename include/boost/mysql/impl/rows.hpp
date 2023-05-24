@@ -16,21 +16,15 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
-#include <cassert>
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+
 #include <cstddef>
 #include <stdexcept>
 
 boost::mysql::rows& boost::mysql::rows::operator=(const rows_view& rhs)
 {
-    // Protect against self-assignment
-    if (rhs.fields_ == fields_.data())
-    {
-        assert(rhs.num_fields_ == fields_.size());
-    }
-    else
-    {
-        assign(rhs.fields_, rhs.num_fields_);
-    }
+    impl_.assign(rhs.fields_, rhs.num_fields_);
     num_columns_ = rhs.num_columns_;
     return *this;
 }
@@ -39,20 +33,15 @@ boost::mysql::row_view boost::mysql::rows::at(std::size_t i) const
 {
     if (i >= size())
     {
-        throw std::out_of_range("rows::at");
+        BOOST_THROW_EXCEPTION(std::out_of_range("rows::at"));
     }
-    return detail::row_slice(fields_.data(), num_columns_, i);
+    return detail::row_slice(impl_.fields().data(), num_columns_, i);
 }
 
 boost::mysql::row_view boost::mysql::rows::operator[](std::size_t i) const noexcept
 {
-    assert(i < size());
-    return detail::row_slice(fields_.data(), num_columns_, i);
+    BOOST_ASSERT(i < size());
+    return detail::row_slice(impl_.fields().data(), num_columns_, i);
 }
-
-struct boost::mysql::detail::rows_access
-{
-    static void clear(rows& r) noexcept { r.clear(); }
-};
 
 #endif

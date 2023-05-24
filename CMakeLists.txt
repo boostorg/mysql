@@ -62,6 +62,7 @@ else()
         Boost::assert
         Boost::config
         Boost::core
+        Boost::describe
         Boost::endian
         Boost::lexical_cast
         Boost::mp11
@@ -116,12 +117,6 @@ target_link_libraries(
     OpenSSL::SSL
 )
 
-# Asio bases C++ feature detection on __cplusplus. Make MSVC
-# define it correctly
-if (MSVC)
-    target_compile_options(boost_mysql INTERFACE /Zc:__cplusplus)
-endif()
-
 # Examples and tests
 if(BUILD_TESTING)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
@@ -151,6 +146,11 @@ if(BUILD_TESTING)
         boost_mysql_asio
         PUBLIC
         BOOST_ASIO_SEPARATE_COMPILATION
+    )
+    target_compile_features(
+        boost_mysql_asio
+        PUBLIC
+        cxx_std_11
     )
 
     # All examples require a real server to run

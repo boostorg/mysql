@@ -10,10 +10,7 @@
 
 #include <boost/mysql/detail/auxiliar/stringize.hpp>
 
-#include <boost/test/tools/context.hpp>
-#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <stdexcept>
 

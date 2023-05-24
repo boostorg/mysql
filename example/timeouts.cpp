@@ -135,9 +135,7 @@ boost::asio::awaitable<void> coro_main(
     // Execute the statement
     boost::mysql::results result;
     timer.expires_after(TIMEOUT);
-    op_result = co_await (
-        timer.async_wait() || conn.async_execute_statement(stmt, std::make_tuple(company_id), result, diag)
-    );
+    op_result = co_await (timer.async_wait() || conn.async_execute(stmt.bind(company_id), result, diag));
     check_error(op_result, diag);
 
     // Print all the obtained rows
