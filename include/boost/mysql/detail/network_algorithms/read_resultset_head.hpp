@@ -10,36 +10,39 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
-void read_resultset_head(
-    channel<Stream>& channel,
+class channel;
+
+BOOST_MYSQL_DECL
+void read_resultset_head_impl(
+    channel& channel,
     execution_processor& proc,
     error_code& err,
     diagnostics& diag
 );
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_read_resultset_head(
-    channel<Stream>& channel,
+BOOST_MYSQL_DECL void async_read_resultset_head_impl(
+    channel& channel,
     execution_processor& proc,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code)> handler
 );
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/read_resultset_head.hpp>
+#endif
 
 #endif

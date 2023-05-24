@@ -10,6 +10,7 @@
 
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/channel/any_stream.hpp>
 #include <boost/mysql/detail/channel/message_writer_processor.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 
@@ -29,31 +30,24 @@ class message_writer
 {
     message_writer_processor processor_;
 
-    template <class Stream>
     struct write_op;
 
 public:
-    message_writer(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept
-        : processor_(max_frame_size)
-    {
-    }
+    message_writer(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept : processor_(max_frame_size) {}
 
     // Writes an entire message to stream; partitions the message into
     // chunks and adds the required headers
-    template <class Stream>
-    void write(
-        Stream& stream,
+    inline void write(
+        any_stream& stream,
         boost::asio::const_buffer buffer,
         std::uint8_t& seqnum,
         error_code& ec
     );
 
-    template <
-        class Stream,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(
-        Stream& stream,
+        any_stream& stream,
         boost::asio::const_buffer buffer,
         std::uint8_t& seqnum,
         CompletionToken&& token

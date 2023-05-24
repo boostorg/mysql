@@ -26,14 +26,13 @@ inline rows_view get_some_rows(const channel_base& ch, const execution_state_imp
     );
 }
 
-template <class Stream>
 struct read_some_rows_dynamic_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     diagnostics& diag_;
     execution_state_impl& st_;
 
-    read_some_rows_dynamic_op(channel<Stream>& chan, diagnostics& diag, execution_state_impl& st) noexcept
+    read_some_rows_dynamic_op(channel& chan, diagnostics& diag, execution_state_impl& st) noexcept
         : chan_(chan), diag_(diag), st_(st)
     {
     }
@@ -62,9 +61,8 @@ struct read_some_rows_dynamic_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
-boost::mysql::rows_view boost::mysql::detail::read_some_rows_dynamic(
-    channel<Stream>& channel,
+boost::mysql::rows_view boost::mysql::detail::read_some_rows_dynamic_impl(
+    channel& channel,
     execution_state_impl& st,
     error_code& err,
     diagnostics& diag
@@ -77,23 +75,16 @@ boost::mysql::rows_view boost::mysql::detail::read_some_rows_dynamic(
     return get_some_rows(channel, st);
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-        CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::rows_view))
-boost::mysql::detail::async_read_some_rows_dynamic(
-    channel<Stream>& channel,
+void boost::mysql::detail::async_read_some_rows_dynamic_impl(
+    channel& channel,
     execution_state_impl& st,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code, rows_view)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, rows_view)>(
-        read_some_rows_dynamic_op<Stream>(channel, diag, st),
-        token,
-        channel
-    );
+    return boost::asio::async_compose<
+        asio::any_completion_handler<void(error_code, rows_view)>,
+        void(error_code, rows_view)>(read_some_rows_dynamic_op(channel, diag, st), handler, channel);
 }
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_IPP_ */

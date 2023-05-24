@@ -22,16 +22,15 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
 struct execute_impl_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     resultset_encoding enc_;
     execution_processor& output_;
     diagnostics& diag_;
 
     execute_impl_op(
-        channel<Stream>& chan,
+        channel& chan,
         resultset_encoding enc,
         execution_processor& output,
         diagnostics& diag
@@ -65,7 +64,8 @@ struct execute_impl_op : boost::asio::coroutine
             {
                 if (output_.is_reading_head())
                 {
-                    BOOST_ASIO_CORO_YIELD async_read_resultset_head(chan_, output_, diag_, std::move(self));
+                    BOOST_ASIO_CORO_YIELD
+                        async_read_resultset_head_impl(chan_, output_, diag_, std::move(self));
                 }
                 else if (output_.is_reading_rows())
                 {
@@ -83,9 +83,8 @@ struct execute_impl_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
 void boost::mysql::detail::execute_impl(
-    channel<Stream>& channel,
+    channel& channel,
     resultset_encoding enc,
     execution_processor& output,
     error_code& err,
@@ -105,7 +104,7 @@ void boost::mysql::detail::execute_impl(
     {
         if (output.is_reading_head())
         {
-            read_resultset_head(channel, output, err, diag);
+            read_resultset_head_impl(channel, output, err, diag);
             if (err)
                 return;
         }
@@ -118,21 +117,17 @@ void boost::mysql::detail::execute_impl(
     }
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_execute_impl(
-    channel<Stream>& chan,
+void boost::mysql::detail::async_execute_impl(
+    channel& chan,
     resultset_encoding enc,
     execution_processor& output,
     diagnostics& diag,
-    CompletionToken&& token
+    boost::asio::any_completion_handler<void(error_code)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(boost::mysql::error_code)>(
-        execute_impl_op<Stream>(chan, enc, output, diag),
-        token,
-        chan
-    );
+    return boost::asio::async_compose<
+        boost::asio::any_completion_handler<void(error_code)>,
+        void(boost::mysql::error_code)>(execute_impl_op(chan, enc, output, diag), handler, chan);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP_ */

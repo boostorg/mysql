@@ -11,11 +11,11 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
-#include <boost/asio/async_result.hpp>
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
@@ -24,29 +24,26 @@ namespace detail {
 // The caller function must serialize the execution request into channel's buffer
 // before calling these
 
-template <class Stream>
+class channel;
+
+BOOST_MYSQL_DECL
 void execute_impl(
-    channel<Stream>& channel,
+    channel& channel,
     resultset_encoding enc,
     execution_processor& output,
     error_code& err,
     diagnostics& diag
 );
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_execute_impl(
-    channel<Stream>& chan,
-    resultset_encoding enc,
-    execution_processor& output,
-    diagnostics& diag,
-    CompletionToken&& token
-);
+BOOST_MYSQL_DECL void
+async_execute_impl(channel& chan, resultset_encoding enc, execution_processor& output, diagnostics& diag, boost::asio::any_completion_handler<void(error_code)>);
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/execute_impl.hpp>
+#endif
 
 #endif

@@ -10,6 +10,7 @@
 
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/channel/any_stream.hpp>
 #include <boost/mysql/detail/channel/message_parser.hpp>
 #include <boost/mysql/detail/channel/read_buffer.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
@@ -40,32 +41,26 @@ public:
     // and get_next_message() returns the parsed message.
     // May relocate the buffer, modifying buffer_first().
     // The reserved area bytes will be removed before the actual read.
-    template <class Stream>
-    void read_some(Stream& stream, error_code& ec);
+    inline void read_some(any_stream& stream, error_code& ec);
 
-    template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_read_some(Stream& stream, CompletionToken&& token);
+    async_read_some(any_stream& stream, CompletionToken&& token);
 
     // Equivalent to read_some + get_next_message
-    template <class Stream>
-    boost::asio::const_buffer read_one(Stream& stream, std::uint8_t& seqnum, error_code& ec);
+    inline boost::asio::const_buffer read_one(any_stream& stream, std::uint8_t& seqnum, error_code& ec);
 
-    template <
-        class Stream,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
-            CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
+                  CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, boost::asio::const_buffer))
-    async_read_one(Stream& stream, std::uint8_t& seqnum, CompletionToken&& token);
+    async_read_one(any_stream& stream, std::uint8_t& seqnum, CompletionToken&& token);
 
     // Exposed for the sake of testing
     read_buffer& buffer() noexcept { return buffer_; }
     const read_buffer& buffer() const noexcept { return buffer_; }
 
 private:
-    template <class Stream>
     struct read_some_op;
-    template <class Stream>
     struct read_one_op;
 
     read_buffer buffer_;

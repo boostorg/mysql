@@ -22,7 +22,9 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
+#include <boost/mysql/detail/channel/any_stream.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/channel/channel_ptr.hpp>
 #include <boost/mysql/detail/execution_processor/concepts.hpp>
 #include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
@@ -60,20 +62,10 @@ class static_execution_state;
 template <class Stream>
 class connection
 {
-    std::unique_ptr<detail::channel<Stream>> channel_;
+    diagnostics shared_diag_;  // TODO: this can be done better
+    detail::channel_ptr channel_;
 
-    const detail::channel<Stream>& get_channel() const noexcept
-    {
-        BOOST_ASSERT(channel_ != nullptr);
-        return *channel_;
-    }
-    diagnostics& shared_diag() noexcept { return get_channel().shared_diag(); }
-
-    detail::channel<Stream>& get_channel() noexcept
-    {
-        BOOST_ASSERT(channel_ != nullptr);
-        return *channel_;
-    }
+    diagnostics& shared_diag() noexcept { return shared_diag_; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::connection_access;
@@ -114,7 +106,11 @@ public:
         class... Args,
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
     connection(const buffer_params& buff_params, Args&&... args)
-        : channel_(new detail::channel<Stream>(buff_params.initial_read_size(), std::forward<Args>(args)...))
+        : channel_(
+              buff_params.initial_read_size(),
+              std::unique_ptr<detail::any_stream>(new detail::any_stream_impl<Stream>(std::forward<Args>(args
+              )...))
+          )
     {
     }
 
@@ -137,7 +133,7 @@ public:
     using executor_type = typename Stream::executor_type;
 
     /// Retrieves the executor associated to this object.
-    executor_type get_executor() { return get_channel().get_executor(); }
+    executor_type get_executor() { return stream().get_executor(); }
 
     /// The `Stream` type this connection is using.
     using stream_type = Stream;
@@ -149,7 +145,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    Stream& stream() noexcept { return get_channel().stream().next_layer(); }
+    Stream& stream() noexcept { return channel_.stream().cast<Stream>(); }
 
     /**
      * \brief Retrieves the underlying Stream object.
@@ -158,7 +154,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    const Stream& stream() const noexcept { return get_channel().stream().next_layer(); }
+    const Stream& stream() const noexcept { return channel_.stream().cast<Stream>(); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.
@@ -177,7 +173,7 @@ public:
      *
      * \returns Whether the connection is using SSL.
      */
-    bool uses_ssl() const noexcept { return get_channel().ssl_active(); }
+    bool uses_ssl() const noexcept { return channel_.stream().ssl_active(); }
 
     /**
      * \brief Returns the current metadata mode that this connection is using.
@@ -187,7 +183,7 @@ public:
      *
      * \returns The matadata mode that will be used for queries and statement executions.
      */
-    metadata_mode meta_mode() const noexcept { return get_channel().meta_mode(); }
+    metadata_mode meta_mode() const noexcept { return channel_.meta_mode(); }
 
     /**
      * \brief Sets the metadata mode.
@@ -202,7 +198,7 @@ public:
      *
      * \param v The new metadata mode.
      */
-    void set_meta_mode(metadata_mode v) noexcept { get_channel().set_meta_mode(v); }
+    void set_meta_mode(metadata_mode v) noexcept { channel_.set_meta_mode(v); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
@@ -796,7 +792,7 @@ public:
             stmt,
             std::forward<WritableFieldTuple>(params),
             st,
-            get_channel().shared_diag(),
+            shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -885,7 +881,7 @@ public:
             params_first,
             params_last,
             st,
-            get_channel().shared_diag(),
+            shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }

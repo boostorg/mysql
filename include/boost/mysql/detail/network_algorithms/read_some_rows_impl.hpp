@@ -11,38 +11,40 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
+class channel;
+
+BOOST_MYSQL_DECL
 std::size_t read_some_rows_impl(
-    channel<Stream>& chan,
+    channel& chan,
     execution_processor& proc,
     const output_ref& output,
     error_code& err,
     diagnostics& diag
 );
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
-async_read_some_rows_impl(
-    channel<Stream>& chan,
+BOOST_MYSQL_DECL void async_read_some_rows_impl(
+    channel& chan,
     execution_processor& proc,
     const output_ref& output,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code, std::size_t)> handler
 );
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/read_some_rows_impl.hpp>
+#endif
 
 #endif

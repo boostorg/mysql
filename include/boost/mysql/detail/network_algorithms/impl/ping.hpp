@@ -14,6 +14,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/ping.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
@@ -23,18 +24,50 @@
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
+inline error_code process_ping_response(
+    boost::asio::const_buffer buff,
+    capabilities caps,
+    db_flavor flavor,
+    diagnostics& diag
+)
+{
+    // Header
+    std::uint8_t packet_header{};
+    deserialization_context ctx(buff, caps);
+    auto err = deserialize_message_part(ctx, packet_header);
+    if (err)
+        return err;
+
+    if (packet_header == ok_packet_header)
+    {
+        // Verify that the ok_packet is correct
+        ok_packet pack{};
+        return deserialize_message(ctx, pack);
+    }
+    else if (packet_header == error_packet_header)
+    {
+        // Theoretically, the server can answer with an error packet, too
+        return process_error_packet(ctx, flavor, diag);
+    }
+    else
+    {
+        // Invalid message
+        return make_error_code(client_errc::protocol_value_error);
+    }
+}
+
 struct ping_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     diagnostics& diag_;
 
-    ping_op(channel<Stream>& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
+    ping_op(channel& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {}, boost::asio::const_buffer buff = {})
@@ -71,40 +104,7 @@ struct ping_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::error_code boost::mysql::detail::process_ping_response(
-    boost::asio::const_buffer buff,
-    capabilities caps,
-    db_flavor flavor,
-    diagnostics& diag
-)
-{
-    // Header
-    std::uint8_t packet_header{};
-    deserialization_context ctx(buff, caps);
-    auto err = deserialize_message_part(ctx, packet_header);
-    if (err)
-        return err;
-
-    if (packet_header == ok_packet_header)
-    {
-        // Verify that the ok_packet is correct
-        ok_packet pack{};
-        return deserialize_message(ctx, pack);
-    }
-    else if (packet_header == error_packet_header)
-    {
-        // Theoretically, the server can answer with an error packet, too
-        return process_error_packet(ctx, flavor, diag);
-    }
-    else
-    {
-        // Invalid message
-        return make_error_code(client_errc::protocol_value_error);
-    }
-}
-
-template <class Stream>
-void boost::mysql::detail::ping(channel<Stream>& chan, error_code& code, diagnostics& diag)
+void boost::mysql::detail::ping_impl(channel& chan, error_code& code, diagnostics& diag)
 {
     // Serialize the ping message
     serialize_message(ping_packet{}, chan.current_capabilities(), chan.shared_buffer());
@@ -123,13 +123,15 @@ void boost::mysql::detail::ping(channel<Stream>& chan, error_code& code, diagnos
     code = process_ping_response(response, chan.current_capabilities(), chan.flavor(), diag);
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_ping(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token)
+void boost::mysql::detail::async_ping_impl(
+    channel& chan,
+    diagnostics& diag,
+    asio::any_completion_handler<void(error_code)> handler
+)
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        ping_op<Stream>(chan, diag),
-        token,
+    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+        ping_op(chan, diag),
+        handler,
         chan
     );
 }

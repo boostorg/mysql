@@ -14,16 +14,19 @@
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/auxiliar/bytestring.hpp>
+#include <boost/mysql/detail/channel/any_stream.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
 #include <boost/mysql/detail/channel/message_writer.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
 #include <boost/mysql/detail/protocol/db_flavor.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -89,55 +92,53 @@ public:
     void set_meta_mode(metadata_mode v) noexcept { meta_mode_ = v; }
 };
 
-template <class Stream>
 class channel : public channel_base
 {
-    disableable_ssl_stream<Stream> stream_;
+    std::unique_ptr<any_stream> stream_;
 
 public:
-    template <class... Args>
-    channel(std::size_t read_buffer_size, Args&&... args)
-        : channel_base(read_buffer_size), stream_(std::forward<Args>(args)...)
+    channel(std::size_t read_buffer_size, std::unique_ptr<any_stream> stream)
+        : channel_base(read_buffer_size), stream_(std::move(stream))
     {
     }
 
     // Executor
-    using executor_type = typename Stream::executor_type;
-    executor_type get_executor() { return stream_.get_executor(); }
+    using executor_type = asio::any_io_executor;
+    executor_type get_executor() { return stream_->get_executor(); }
 
     // Reading
-    void read_some(error_code& code) { return reader_.read_some(stream_, code); }
+    void read_some(error_code& code) { return reader_.read_some(*stream_, code); }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(CompletionToken&& token)
     {
-        return reader_.async_read_some(stream_, std::forward<CompletionToken>(token));
+        return reader_.async_read_some(*stream_, std::forward<CompletionToken>(token));
     }
 
     boost::asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec)
     {
-        return reader_.read_one(stream_, seqnum, ec);
+        return reader_.read_one(*stream_, seqnum, ec);
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
     async_read_one(std::uint8_t& seqnum, CompletionToken&& token)
     {
-        return reader_.async_read_one(stream_, seqnum, std::forward<CompletionToken>(token));
+        return reader_.async_read_one(*stream_, seqnum, std::forward<CompletionToken>(token));
     }
 
     // Writing
     void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code)
     {
-        writer_.write(stream_, buffer, seqnum, code);
+        writer_.write(*stream_, buffer, seqnum, code);
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, CompletionToken&& token)
     {
-        return writer_.async_write(stream_, buffer, seqnum, std::forward<CompletionToken>(token));
+        return writer_.async_write(*stream_, buffer, seqnum, std::forward<CompletionToken>(token));
     }
 
     void write(const bytestring& buffer, std::uint8_t& seqnum, error_code& code)
@@ -153,30 +154,16 @@ public:
     }
 
     // SSL
-    bool ssl_active() const noexcept { return stream_.ssl_active(); }
-    void set_ssl_active(bool v) noexcept { stream_.set_ssl_active(v); }
-
-    // Closing (only available for sockets)
-    error_code close()
-    {
-        error_code err;
-        lowest_layer().shutdown(lowest_layer_type::shutdown_both, err);
-        lowest_layer().close(err);
-        return err;
-    }
+    bool ssl_active() const noexcept { return stream_->ssl_active(); }
 
     // Getting the underlying stream
-    using stream_type = disableable_ssl_stream<Stream>;
-    stream_type& stream() noexcept { return stream_; }
-    const stream_type& stream() const noexcept { return stream_; }
-
-    using lowest_layer_type = typename stream_type::lowest_layer_type;
-    lowest_layer_type& lowest_layer() noexcept { return stream_.lowest_layer(); }
+    any_stream& stream() noexcept { return *stream_; }
+    const any_stream& stream() const noexcept { return *stream_; }
 
     void reset()
     {
         channel_base::reset();
-        stream_.reset();
+        stream_->reset();
     }
 };
 

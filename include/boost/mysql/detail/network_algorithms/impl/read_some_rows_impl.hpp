@@ -62,16 +62,15 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows(
     return error_code();
 }
 
-template <class Stream>
 struct read_some_rows_impl_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     diagnostics& diag_;
     execution_processor& proc_;
     output_ref output_;
 
     read_some_rows_impl_op(
-        channel<Stream>& chan,
+        channel& chan,
         diagnostics& diag,
         execution_processor& proc,
         output_ref output
@@ -124,9 +123,8 @@ struct read_some_rows_impl_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
 std::size_t boost::mysql::detail::read_some_rows_impl(
-    channel<Stream>& chan,
+    channel& chan,
     execution_processor& proc,
     const output_ref& output,
     error_code& err,
@@ -156,23 +154,17 @@ std::size_t boost::mysql::detail::read_some_rows_impl(
     return read_rows;
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, std::size_t))
-boost::mysql::detail::async_read_some_rows_impl(
-    channel<Stream>& chan,
+void boost::mysql::detail::async_read_some_rows_impl(
+    channel& chan,
     execution_processor& proc,
     const output_ref& output,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code, std::size_t)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
-        read_some_rows_impl_op<Stream>(chan, diag, proc, output),
-        token,
-        chan
-    );
+    return boost::asio::async_compose<
+        asio::any_completion_handler<void(error_code, std::size_t)>,
+        void(error_code, std::size_t)>(read_some_rows_impl_op(chan, diag, proc, output), handler, chan);
 }
 
 #endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_IPP_ */

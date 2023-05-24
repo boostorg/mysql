@@ -11,36 +11,31 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/db_flavor.hpp>
+#include <boost/mysql/detail/config.hpp>
 
-#include <boost/asio/async_result.hpp>
-#include <boost/asio/buffer.hpp>
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// Exposed for the sake of testing
-inline error_code process_ping_response(
-    boost::asio::const_buffer msg,
-    capabilities caps,
-    db_flavor flavor,
-    diagnostics& diag
+class channel;
+
+BOOST_MYSQL_DECL
+void ping_impl(channel& channel, error_code& err, diagnostics& diag);
+
+BOOST_MYSQL_DECL void async_ping_impl(
+    channel& chan,
+    diagnostics& diag,
+    asio::any_completion_handler<void(error_code)> handler
 );
-
-template <class Stream>
-void ping(channel<Stream>& channel, error_code& err, diagnostics& diag);
-
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_ping(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token);
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/ping.hpp>
+#endif
 
 #endif

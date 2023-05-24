@@ -124,15 +124,15 @@ class handshake_processor
 {
     handshake_params params_;
     diagnostics& diag_;
-    channel_base& channel_;
+    channel& channel_;
     auth_calculator auth_calc_;
     auth_state auth_state_{auth_state::invalid};
 
 public:
-    handshake_processor(const handshake_params& params, diagnostics& diag, channel_base& channel)
+    handshake_processor(const handshake_params& params, diagnostics& diag, channel& channel)
         : params_(params), diag_(diag), channel_(channel){};
     const handshake_params& params() const noexcept { return params_; }
-    channel_base& get_channel() noexcept { return channel_; }
+    channel& get_channel() noexcept { return channel_; }
     void clear_diagnostics() noexcept { diag_.clear(); }
 
     // Once the handshake is processed, the capabilities are stored in the channel
@@ -288,20 +288,16 @@ public:
     bool auth_complete() const noexcept { return auth_state_ == auth_state::complete; }
 };
 
-template <class Stream>
 struct handshake_op : boost::asio::coroutine
 {
     handshake_processor processor_;
 
-    handshake_op(const handshake_params& params, diagnostics& diag, channel<Stream>& channel)
+    handshake_op(const handshake_params& params, diagnostics& diag, channel& channel)
         : processor_(params, diag, channel)
     {
     }
 
-    channel<Stream>& get_channel() noexcept
-    {
-        return static_cast<channel<Stream>&>(processor_.get_channel());
-    }
+    channel& get_channel() noexcept { return processor_.get_channel(); }
 
     template <class Self>
     void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_msg = {})
@@ -328,7 +324,7 @@ struct handshake_op : boost::asio::coroutine
             );
 
             // Process server greeting
-            err = processor_.process_handshake(read_msg, is_ssl_stream<Stream>::value);
+            err = processor_.process_handshake(read_msg, get_channel().stream().supports_ssl());
             if (err)
             {
                 self.complete(err);
@@ -394,9 +390,8 @@ struct handshake_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
-void boost::mysql::detail::handshake(
-    channel<Stream>& channel,
+void boost::mysql::detail::handshake_impl(
+    channel& channel,
     const handshake_params& params,
     error_code& err,
     diagnostics& diag
@@ -413,7 +408,7 @@ void boost::mysql::detail::handshake(
         return;
 
     // Process server greeting (handshake)
-    err = processor.process_handshake(b, is_ssl_stream<Stream>::value);
+    err = processor.process_handshake(b, channel.stream().supports_ssl());
     if (err)
         return;
 
@@ -460,18 +455,16 @@ void boost::mysql::detail::handshake(
     };
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_handshake(
-    channel<Stream>& chan,
+void boost::mysql::detail::async_handshake_impl(
+    channel& chan,
     const handshake_params& params,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        handshake_op<Stream>(params, diag, chan),
-        token,
+    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+        handshake_op(params, diag, chan),
+        handler,
         chan
     );
 }

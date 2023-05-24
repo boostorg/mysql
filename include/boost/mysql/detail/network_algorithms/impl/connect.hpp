@@ -17,22 +17,14 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
 struct connect_op : boost::asio::coroutine
 {
-    using endpoint_type = typename Stream::lowest_layer_type::endpoint_type;
-
-    channel<Stream>& chan_;
+    channel& chan_;
     diagnostics& diag_;
-    endpoint_type ep_;
+    const void* ep_;
     handshake_params params_;
 
-    connect_op(
-        channel<Stream>& chan,
-        diagnostics& diag,
-        const endpoint_type& ep,
-        const handshake_params& params
-    )
+    connect_op(channel& chan, diagnostics& diag, const void* ep, const handshake_params& params)
         : chan_(chan), diag_(diag), ep_(ep), params_(params)
     {
     }
@@ -40,24 +32,25 @@ struct connect_op : boost::asio::coroutine
     template <class Self>
     void operator()(Self& self, error_code code = {})
     {
+        error_code ignored;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             diag_.clear();
 
             // Physical connect
-            BOOST_ASIO_CORO_YIELD chan_.lowest_layer().async_connect(ep_, std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.stream().async_connect(ep_, std::move(self));
             if (code)
             {
-                chan_.close();
+                chan_.stream().close(ignored);
                 self.complete(code);
                 BOOST_ASIO_CORO_YIELD break;
             }
 
             // Handshake
-            BOOST_ASIO_CORO_YIELD async_handshake(chan_, params_, diag_, std::move(self));
+            BOOST_ASIO_CORO_YIELD async_handshake_impl(chan_, params_, diag_, std::move(self));
             if (code)
             {
-                chan_.close();
+                chan_.stream().close(ignored);
             }
             self.complete(code);
         }
@@ -68,41 +61,39 @@ struct connect_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
-void boost::mysql::detail::connect(
-    channel<Stream>& chan,
-    const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+void boost::mysql::detail::connect_impl(
+    channel& chan,
+    const void* endpoint,
     const handshake_params& params,
     error_code& err,
     diagnostics& diag
 )
 {
-    chan.lowest_layer().connect(endpoint, err);
+    error_code ignored;
+    chan.stream().connect(endpoint, err);
     if (err)
     {
-        chan.close();
+        chan.stream().close(ignored);
         return;
     }
-    handshake(chan, params, err, diag);
+    handshake_impl(chan, params, err, diag);
     if (err)
     {
-        chan.close();
+        chan.stream().close(ignored);
     }
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_connect(
-    channel<Stream>& chan,
-    const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+void boost::mysql::detail::async_connect_impl(
+    channel& chan,
+    const void* endpoint,
     const handshake_params& params,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        connect_op<Stream>{chan, diag, endpoint, params},
-        token,
+    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+        connect_op{chan, diag, endpoint, params},
+        handler,
         chan
     );
 }

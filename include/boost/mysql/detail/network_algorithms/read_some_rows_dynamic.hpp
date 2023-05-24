@@ -12,37 +12,38 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
-rows_view read_some_rows_dynamic(
-    channel<Stream>& chan,
+class channel;
+
+BOOST_MYSQL_DECL
+rows_view read_some_rows_dynamic_impl(
+    channel& chan,
     execution_state_impl& st,
     error_code& err,
     diagnostics& diag
 );
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
-        CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
-async_read_some_rows_dynamic(
-    channel<Stream>& chan,
+BOOST_MYSQL_DECL void async_read_some_rows_dynamic_impl(
+    channel& chan,
     execution_state_impl& st,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code, rows_view)> handler
 );
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/read_some_rows_dynamic.hpp>
+#endif
 
 #endif

@@ -24,6 +24,7 @@ BASE_FOLDERS = [
     'doc',
     'example',
     'include',
+    'src',
     'test',
     'tools',
     '.github'

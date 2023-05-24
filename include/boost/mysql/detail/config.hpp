@@ -27,6 +27,20 @@
     #define BOOST_MYSQL_CXX14
 #endif
 
+// Separate build. TODO: support header-only mode, too
+#if defined(BOOST_MYSQL_SOURCE)
+    #define BOOST_MYSQL_DECL BOOST_SYMBOL_EXPORT
+#else
+    #define BOOST_MYSQL_DECL BOOST_SYMBOL_IMPORT
+#endif
+
+// #if (defined(BOOST_MYSQL_DYN_LINK) || defined(BOOST_ALL_DYN_LINK))
+// #else
+//     #define BOOST_MYSQL_DECL inline
+// #endif
+
 // clang-format on
+
+// TODO: autolink
 
 #endif

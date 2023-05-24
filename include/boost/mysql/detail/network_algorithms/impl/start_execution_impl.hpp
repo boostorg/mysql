@@ -19,16 +19,15 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
 struct start_execution_impl_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     resultset_encoding enc_;
     execution_processor& proc_;
     diagnostics& diag_;
 
     start_execution_impl_op(
-        channel<Stream>& chan,
+        channel& chan,
         resultset_encoding enc,
         execution_processor& proc,
         diagnostics& diag
@@ -60,7 +59,7 @@ struct start_execution_impl_op : boost::asio::coroutine
 
             // Read the first resultset's head
             BOOST_ASIO_CORO_YIELD
-            async_read_resultset_head(chan_, proc_, diag_, std::move(self));
+            async_read_resultset_head_impl(chan_, proc_, diag_, std::move(self));
 
             self.complete(error_code());
         }
@@ -71,9 +70,8 @@ struct start_execution_impl_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
 void boost::mysql::detail::start_execution_impl(
-    channel<Stream>& channel,
+    channel& channel,
     resultset_encoding enc,
     execution_processor& proc,
     error_code& err,
@@ -90,24 +88,22 @@ void boost::mysql::detail::start_execution_impl(
         return;
 
     // Read the first resultset's head
-    read_resultset_head(channel, proc, err, diag);
+    read_resultset_head_impl(channel, proc, err, diag);
     if (err)
         return;
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_start_execution_impl(
-    channel<Stream>& channel,
+void boost::mysql::detail::async_start_execution_impl(
+    channel& channel,
     resultset_encoding enc,
     execution_processor& proc,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        start_execution_impl_op<Stream>(channel, enc, proc, diag),
-        token,
+    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+        start_execution_impl_op(channel, enc, proc, diag),
+        handler,
         channel
     );
 }

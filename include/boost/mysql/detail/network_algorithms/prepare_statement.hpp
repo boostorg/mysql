@@ -13,31 +13,32 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
+
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
-statement prepare_statement(channel<Stream>& chan, string_view statement, error_code& err, diagnostics& diag);
+class channel;
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
-        CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
-async_prepare_statement(
-    channel<Stream>& chan,
-    string_view statement,
+BOOST_MYSQL_DECL
+statement prepare_statement_impl(channel& chan, string_view stmt, error_code& err, diagnostics& diag);
+
+BOOST_MYSQL_DECL void async_prepare_statement_impl(
+    channel& chan,
+    string_view stmt,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code, statement)> handler
 );
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/prepare_statement.hpp>
+#endif
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP_ */

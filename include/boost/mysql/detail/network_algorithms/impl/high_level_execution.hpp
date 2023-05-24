@@ -140,8 +140,8 @@ error_code check_client_errors(const bound_statement_iterator_range<FieldViewFwd
     return check_num_params(impl.stmt, std::distance(impl.first, impl.last));
 }
 
-template <class Stream, class Handler>
-void fast_fail(channel<Stream>& chan, Handler&& handler, error_code ec)
+template <class Handler>
+void fast_fail(channel& chan, Handler&& handler, error_code ec)
 {
     boost::asio::post(boost::asio::bind_executor(
         boost::asio::get_associated_executor(handler, chan.get_executor()),
@@ -152,10 +152,10 @@ void fast_fail(channel<Stream>& chan, Handler&& handler, error_code ec)
 // Async initiations
 struct initiate_execute
 {
-    template <class Handler, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class Stream>
+    template <class Handler, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
     void operator()(
         Handler&& handler,
-        std::reference_wrapper<channel<Stream>> chan,
+        std::reference_wrapper<channel> chan,
         const ExecutionRequest& req,
         execution_processor& result,
         diagnostics& diag
@@ -177,10 +177,10 @@ struct initiate_execute
 
 struct initiate_start_execution
 {
-    template <class Handler, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, class Stream>
+    template <class Handler, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
     void operator()(
         Handler&& handler,
-        std::reference_wrapper<channel<Stream>> chan,
+        std::reference_wrapper<channel> chan,
         const ExecutionRequest& req,
         execution_processor& st,
         diagnostics& diag
@@ -210,9 +210,9 @@ struct initiate_start_execution
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void boost::mysql::detail::execute(
-    channel<Stream>& channel,
+    channel& channel,
     const ExecutionRequest& req,
     execution_processor& result,
     error_code& err,
@@ -229,12 +229,11 @@ void boost::mysql::detail::execute(
 }
 
 template <
-    class Stream,
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_execute(
-    channel<Stream>& chan,
+    channel& chan,
     ExecutionRequest&& req,
     execution_processor& result,
     diagnostics& diag,
@@ -251,9 +250,9 @@ boost::mysql::detail::async_execute(
     );
 }
 
-template <class Stream, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
 void boost::mysql::detail::start_execution(
-    channel<Stream>& channel,
+    channel& channel,
     const ExecutionRequest& req,
     execution_processor& st,
     error_code& err,
@@ -270,12 +269,11 @@ void boost::mysql::detail::start_execution(
 }
 
 template <
-    class Stream,
     BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
     BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::async_start_execution(
-    channel<Stream>& chan,
+    channel& chan,
     ExecutionRequest&& req,
     execution_processor& st,
     diagnostics& diag,

@@ -10,14 +10,14 @@
 
 #pragma once
 
+#include <boost/mysql/detail/channel/any_stream.hpp>
 #include <boost/mysql/detail/channel/message_writer.hpp>
 
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 
-template <class Stream>
 void boost::mysql::detail::message_writer::write(
-    Stream& stream,
+    any_stream& stream,
     boost::asio::const_buffer buffer,
     std::uint8_t& seqnum,
     error_code& ec
@@ -27,23 +27,22 @@ void boost::mysql::detail::message_writer::write(
 
     do
     {
-        boost::asio::write(stream, processor_.prepare_next_chunk(), ec);
+        stream.write(processor_.prepare_next_chunk(), ec);
         if (ec)
             break;
         processor_.on_bytes_written();
     } while (!processor_.is_complete());
 }
 
-template <class Stream>
 struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
 {
-    Stream& stream_;
+    any_stream& stream_;
     message_writer_processor& processor_;
     boost::asio::const_buffer buffer_;
     std::uint8_t& seqnum_;
 
     write_op(
-        Stream& stream,
+        any_stream& stream,
         message_writer_processor& processor,
         boost::asio::const_buffer buffer,
         std::uint8_t& seqnum
@@ -71,11 +70,7 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
 
             do
             {
-                BOOST_ASIO_CORO_YIELD boost::asio::async_write(
-                    stream_,
-                    processor_.prepare_next_chunk(),
-                    std::move(self)
-                );
+                BOOST_ASIO_CORO_YIELD stream_.async_write(processor_.prepare_next_chunk(), std::move(self));
                 processor_.on_bytes_written();
             } while (!processor_.is_complete());
 
@@ -84,19 +79,17 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
     }
 };
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
 boost::mysql::detail::message_writer::async_write(
-    Stream& stream,
+    any_stream& stream,
     boost::asio::const_buffer buffer,
     std::uint8_t& seqnum,
     CompletionToken&& token
 )
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        write_op<Stream>(stream, processor_, buffer, seqnum),
+        write_op(stream, processor_, buffer, seqnum),
         token,
         stream
     );

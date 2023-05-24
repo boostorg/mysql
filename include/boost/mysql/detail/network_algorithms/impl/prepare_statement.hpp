@@ -31,15 +31,14 @@ namespace detail {
 
 class prepare_statement_processor
 {
-    channel_base& channel_;
+    channel& channel_;
     string_view stmt_sql_;
     diagnostics& diag_;
     statement res_;
     unsigned remaining_meta_{};
 
 public:
-    template <class Stream>
-    prepare_statement_processor(channel<Stream>& chan, string_view stmt_sql, diagnostics& diag) noexcept
+    prepare_statement_processor(channel& chan, string_view stmt_sql, diagnostics& diag) noexcept
         : channel_(chan), stmt_sql_(stmt_sql), diag_(diag)
     {
     }
@@ -83,23 +82,19 @@ public:
     bool has_remaining_meta() const noexcept { return remaining_meta_ != 0; }
     void on_meta_received() noexcept { --remaining_meta_; }
     const statement& result() const noexcept { return res_; }
-    channel_base& get_channel() noexcept { return channel_; }
+    channel& get_channel() noexcept { return channel_; }
 };
 
-template <class Stream>
 struct prepare_statement_op : boost::asio::coroutine
 {
     prepare_statement_processor processor_;
 
-    prepare_statement_op(channel<Stream>& chan, string_view stmt_sql, diagnostics& diag)
+    prepare_statement_op(channel& chan, string_view stmt_sql, diagnostics& diag)
         : processor_(chan, stmt_sql, diag)
     {
     }
 
-    channel<Stream>& get_channel() noexcept
-    {
-        return static_cast<channel<Stream>&>(processor_.get_channel());
-    }
+    channel& get_channel() noexcept { return processor_.get_channel(); }
 
     template <class Self>
     void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
@@ -172,9 +167,8 @@ struct prepare_statement_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
-boost::mysql::statement boost::mysql::detail::prepare_statement(
-    channel<Stream>& channel,
+boost::mysql::statement boost::mysql::detail::prepare_statement_impl(
+    channel& channel,
     string_view stmt_sql,
     error_code& err,
     diagnostics& diag
@@ -224,23 +218,16 @@ boost::mysql::statement boost::mysql::detail::prepare_statement(
     return processor.result();
 }
 
-template <
-    class Stream,
-    BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
-        CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code, boost::mysql::statement))
-boost::mysql::detail::async_prepare_statement(
-    channel<Stream>& chan,
+void boost::mysql::detail::async_prepare_statement_impl(
+    channel& chan,
     string_view stmt_sql,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code, statement)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, statement)>(
-        prepare_statement_op<Stream>(chan, stmt_sql, diag),
-        token,
-        chan
-    );
+    return boost::asio::async_compose<
+        asio::any_completion_handler<void(error_code, statement)>,
+        void(error_code, statement)>(prepare_statement_op(chan, stmt_sql, diag), handler, chan);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_PREPARE_STATEMENT_HPP_ */

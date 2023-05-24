@@ -65,14 +65,13 @@ inline error_code process_field_definition(channel_base& chan, execution_process
     return proc.on_meta(field_definition, diag);
 }
 
-template <class Stream>
 struct read_resultset_head_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     execution_processor& proc_;
     diagnostics& diag_;
 
-    read_resultset_head_op(channel<Stream>& chan, execution_processor& proc, diagnostics& diag)
+    read_resultset_head_op(channel& chan, execution_processor& proc, diagnostics& diag)
         : chan_(chan), proc_(proc), diag_(diag)
     {
     }
@@ -141,9 +140,8 @@ struct read_resultset_head_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
-void boost::mysql::detail::read_resultset_head(
-    channel<Stream>& chan,
+void boost::mysql::detail::read_resultset_head_impl(
+    channel& chan,
     execution_processor& proc,
     error_code& err,
     diagnostics& diag
@@ -186,18 +184,16 @@ void boost::mysql::detail::read_resultset_head(
     }
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_read_resultset_head(
-    channel<Stream>& channel,
+void boost::mysql::detail::async_read_resultset_head_impl(
+    channel& channel,
     execution_processor& proc,
     diagnostics& diag,
-    CompletionToken&& token
+    asio::any_completion_handler<void(error_code)> handler
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        read_resultset_head_op<Stream>(channel, proc, diag),
-        token,
+    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+        read_resultset_head_op(channel, proc, diag),
+        handler,
         channel
     );
 }

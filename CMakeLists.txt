@@ -91,26 +91,26 @@ endif()
 #
 # Interface library (header-only)
 #
-add_library(boost_mysql INTERFACE)
+add_library(boost_mysql src/src.cpp)
 add_library(Boost::mysql ALIAS boost_mysql)
 
 if (BOOST_SUPERPROJECT_VERSION)
-    target_include_directories(boost_mysql INTERFACE "${PROJECT_SOURCE_DIR}/include")
+    target_include_directories(boost_mysql PUBLIC "${PROJECT_SOURCE_DIR}/include")
 else()
     target_include_directories(
         boost_mysql
         SYSTEM
-        INTERFACE
+        PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
     )
 endif()
 
-target_compile_features(boost_mysql INTERFACE cxx_std_11)
+target_compile_features(boost_mysql PUBLIC cxx_std_11)
 
 target_link_libraries(
     boost_mysql
-    INTERFACE
+    PUBLIC
     ${_BOOST_LINK_LIBRARIES}
     Threads::Threads
     OpenSSL::Crypto

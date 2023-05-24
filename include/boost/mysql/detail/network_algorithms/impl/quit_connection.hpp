@@ -22,19 +22,17 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
-void compose_quit(channel<Stream>& chan)
+inline void compose_quit(channel& chan)
 {
     serialize_message(quit_packet(), chan.current_capabilities(), chan.shared_buffer());
 }
 
-template <class Stream>
 struct quit_connection_op : boost::asio::coroutine
 {
-    channel<Stream>& chan_;
+    channel& chan_;
     diagnostics& diag_;
 
-    quit_connection_op(channel<Stream>& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
+    quit_connection_op(channel& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {})
@@ -68,8 +66,7 @@ struct quit_connection_op : boost::asio::coroutine
 }  // namespace mysql
 }  // namespace boost
 
-template <class Stream>
-void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& err, diagnostics&)
+void boost::mysql::detail::quit_connection_impl(channel& chan, error_code& err, diagnostics&)
 {
     compose_quit(chan);
     chan.write(chan.shared_buffer(), chan.reset_sequence_number(), err);
@@ -84,13 +81,15 @@ void boost::mysql::detail::quit_connection(channel<Stream>& chan, error_code& er
     }
 }
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(boost::mysql::error_code))
-boost::mysql::detail::async_quit_connection(channel<Stream>& chan, diagnostics& diag, CompletionToken&& token)
+void boost::mysql::detail::async_quit_connection_impl(
+    channel& chan,
+    diagnostics& diag,
+    asio::any_completion_handler<void(error_code)> handler
+)
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code)>(
-        quit_connection_op<Stream>(chan, diag),
-        token,
+    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+        quit_connection_op(chan, diag),
+        handler,
         chan
     );
 }

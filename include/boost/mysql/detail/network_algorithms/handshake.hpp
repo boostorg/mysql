@@ -11,30 +11,29 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
+
+#include <boost/asio/any_completion_handler.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Stream>
-void handshake(channel<Stream>& channel, const handshake_params& params, error_code& err, diagnostics& diag);
+class channel;
 
-template <class Stream, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_handshake(
-    channel<Stream>& channel,
-    const handshake_params& params,
-    diagnostics& diag,
-    CompletionToken&& token
-);
+BOOST_MYSQL_DECL
+void handshake_impl(channel& channel, const handshake_params& params, error_code& err, diagnostics& diag);
+
+BOOST_MYSQL_DECL
+void async_handshake_impl(channel& chan, const handshake_params& params, diagnostics& diag, asio::any_completion_handler<void(error_code)>);
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/detail/network_algorithms/impl/handshake.hpp>
+#endif
 
 #endif
