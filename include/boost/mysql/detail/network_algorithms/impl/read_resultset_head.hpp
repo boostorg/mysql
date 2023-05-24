@@ -96,7 +96,7 @@ struct read_resultset_head_op : boost::asio::coroutine
             // If we're not reading head, return
             if (!proc_.is_reading_head())
             {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
                 self.complete(error_code());
                 BOOST_ASIO_CORO_YIELD break;
             }

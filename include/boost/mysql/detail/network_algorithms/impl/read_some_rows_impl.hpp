@@ -99,7 +99,7 @@ struct read_some_rows_impl_op : boost::asio::coroutine
             // If we are not reading rows, return
             if (!proc_.is_reading_rows())
             {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
                 self.complete(error_code(), 0);
                 BOOST_ASIO_CORO_YIELD break;
             }

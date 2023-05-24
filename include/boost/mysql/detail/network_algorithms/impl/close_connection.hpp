@@ -39,7 +39,7 @@ struct close_connection_op : boost::asio::coroutine
 
             if (!chan_.lowest_layer().is_open())
             {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
                 self.complete(error_code());
                 BOOST_ASIO_CORO_YIELD break;
             }

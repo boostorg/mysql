@@ -80,7 +80,7 @@ struct boost::mysql::test::test_stream::read_op : boost::asio::coroutine
         std::size_t bytes_read;
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+            BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
 
             bytes_read = stream_.do_read(buffers_, err);
             self.complete(err, bytes_read);
@@ -119,7 +119,7 @@ struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
         std::size_t bytes_written;
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+            BOOST_ASIO_CORO_YIELD boost::asio::post(chan_, std::move(self));
 
             bytes_written = stream_.do_write(buffers_, err);
             self.complete(err, bytes_written);

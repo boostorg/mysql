@@ -90,7 +90,7 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
             // If we already have a message, complete immediately
             if (reader_.has_message())
             {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(std::move(self));
+                BOOST_ASIO_CORO_YIELD boost::asio::post(stream_.get_executor(), std::move(self));
                 self.complete(error_code());
                 BOOST_ASIO_CORO_YIELD break;
             }
