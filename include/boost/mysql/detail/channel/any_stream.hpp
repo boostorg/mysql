@@ -10,10 +10,13 @@
 
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/config.hpp>
+
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_socket.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/socket_base.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/ssl/stream_base.hpp>
@@ -202,8 +205,8 @@ public:
     {
     }
 
-    Stream& stream() noexcept { return stream_; }
-    const Stream& stream() const noexcept { return stream_; }
+    asio::ssl::stream<Stream>& stream() noexcept { return stream_; }
+    const asio::ssl::stream<Stream>& stream() const noexcept { return stream_; }
 
     executor_type get_executor() noexcept override final { return stream_.get_executor(); }
 
@@ -281,17 +284,23 @@ public:
     }
 
     // Connect and close. TODO: better way?
-    void connect(const void* endpoint, error_code& ec) override
+    void connect(const void* endpoint, error_code& ec) override final
     {
         do_connect(stream_.lowest_layer(), endpoint, ec);
     }
     void async_connect(const void* endpoint, asio::any_completion_handler<void(error_code)> handler)
+        override final
     {
         do_async_connect(stream_.lowest_layer(), endpoint, std::move(handler));
     }
     void close(error_code& ec) override final { do_close(stream_.lowest_layer(), ec); }
     bool is_open() const noexcept override { return do_is_open(stream_.lowest_layer()); }
 };
+
+extern template class any_stream_impl<asio::ssl::stream<asio::ip::tcp::socket>>;
+#ifdef BOOST_MYSQL_SOURCE
+template class any_stream_impl<asio::ssl::stream<asio::ip::tcp::socket>>;
+#endif
 
 }  // namespace detail
 }  // namespace mysql

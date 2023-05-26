@@ -12,8 +12,6 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/system/error_category.hpp>
-
 namespace boost {
 namespace mysql {
 
