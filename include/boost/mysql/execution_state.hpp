@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_EXECUTION_STATE_HPP
 #define BOOST_MYSQL_EXECUTION_STATE_HPP
 
-#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -17,7 +16,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace boost {
 namespace mysql {

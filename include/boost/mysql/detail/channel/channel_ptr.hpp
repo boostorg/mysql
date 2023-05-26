@@ -32,9 +32,9 @@ class channel_ptr
 public:
     BOOST_MYSQL_DECL channel_ptr(std::size_t read_buff_size, std::unique_ptr<any_stream>);
     channel_ptr(const channel_ptr&) = delete;
-    channel_ptr(channel_ptr&&) = default;
+    BOOST_MYSQL_DECL channel_ptr(channel_ptr&&) noexcept;
     channel_ptr& operator=(const channel_ptr&) = delete;
-    channel_ptr& operator=(channel_ptr&&) = default;
+    BOOST_MYSQL_DECL channel_ptr& operator=(channel_ptr&&) noexcept;
     BOOST_MYSQL_DECL ~channel_ptr();
 
     // TODO: handle this better

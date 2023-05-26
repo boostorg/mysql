@@ -12,10 +12,10 @@
 #include <boost/mysql/field_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/config.hpp>
 
 #include <cstddef>
 #include <iosfwd>
-#include <iterator>
 #include <vector>
 
 namespace boost {
@@ -109,7 +109,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    inline field_view at(std::size_t i) const;
+    BOOST_MYSQL_DECL field_view at(std::size_t i) const;
 
     /**
      * \brief Returns the i-th element in the row (unchecked access).
@@ -201,7 +201,7 @@ private:
     std::size_t size_{};
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::row_view_access;
+    friend struct detail::impl_access;
     friend class row;
 #endif
 };
@@ -218,7 +218,7 @@ private:
  * \par Complexity
  * Linear in `lhs.size()` and `rhs.size()`.
  */
-inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
+BOOST_MYSQL_DECL bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
 
 /**
  * \relates row_view
@@ -235,6 +235,8 @@ inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { retu
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/row_view.hpp>
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/impl/row_view.ipp>
+#endif
 
 #endif

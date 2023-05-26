@@ -10,8 +10,13 @@
 
 #pragma once
 
+#include <boost/mysql/rows_view.hpp>
+
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_dynamic.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
+
+#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
@@ -19,7 +24,7 @@ namespace detail {
 
 inline rows_view get_some_rows(const channel_base& ch, const execution_state_impl& st)
 {
-    return rows_view_access::construct(
+    return impl_access::construct<rows_view>(
         ch.shared_fields().data(),
         ch.shared_fields().size(),
         st.meta().size()

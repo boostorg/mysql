@@ -5,15 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_ROWS_VIEW_HPP
-#define BOOST_MYSQL_IMPL_ROWS_VIEW_HPP
+#ifndef BOOST_MYSQL_IMPL_ROWS_VIEW_IPP
+#define BOOST_MYSQL_IMPL_ROWS_VIEW_IPP
 
 #pragma once
 
 #include <boost/mysql/rows_view.hpp>
-
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
@@ -35,7 +32,7 @@ boost::mysql::row_view boost::mysql::rows_view::at(std::size_t i) const
     return detail::row_slice(fields_, num_columns_, i);
 }
 
-inline bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noexcept
+bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noexcept
 {
     if (num_fields_ != rhs.num_fields_ || num_columns_ != rhs.num_columns_)
         return false;
@@ -46,17 +43,5 @@ inline bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noex
     }
     return true;
 }
-
-struct boost::mysql::detail::rows_view_access
-{
-    static rows_view construct(
-        const field_view* fields,
-        std::size_t num_fields,
-        std::size_t num_columns
-    ) noexcept
-    {
-        return rows_view(fields, num_fields, num_columns);
-    }
-};
 
 #endif

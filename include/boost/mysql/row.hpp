@@ -16,7 +16,6 @@
 #include <boost/mysql/detail/auxiliar/row_impl.hpp>
 
 #include <cstddef>
-#include <iosfwd>
 #include <vector>
 
 namespace boost {

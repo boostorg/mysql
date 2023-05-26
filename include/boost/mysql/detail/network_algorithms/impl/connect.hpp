@@ -10,8 +10,11 @@
 
 #pragma once
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/connect.hpp>
 #include <boost/mysql/detail/network_algorithms/handshake.hpp>
+
+#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {

@@ -13,6 +13,7 @@
 #include <boost/mysql/metadata.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 
 namespace boost {
@@ -103,12 +104,7 @@ boost::mysql::metadata::metadata(const detail::column_definition_packet& msg, bo
 
 struct boost::mysql::detail::metadata_access
 {
-    static metadata construct(const detail::column_definition_packet& msg, bool copy_strings)
-    {
-        return metadata(msg, copy_strings);
-    }
-
-    // This is used by the tests
+    // This is used by the tests. TODO
     static void set_type(metadata& obj, column_type v) noexcept { obj.type_ = v; }
 };
 

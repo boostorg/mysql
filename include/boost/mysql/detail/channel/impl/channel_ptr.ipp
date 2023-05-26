@@ -18,6 +18,14 @@ boost::mysql::detail::channel_ptr::channel_ptr(std::size_t read_buff_size, std::
 {
 }
 
+boost::mysql::detail::channel_ptr::channel_ptr(channel_ptr&& rhs) noexcept : chan_(std::move(rhs.chan_)) {}
+
+boost::mysql::detail::channel_ptr& boost::mysql::detail::channel_ptr::operator=(channel_ptr&& rhs) noexcept
+{
+    chan_ = std::move(rhs.chan_);
+    return *this;
+}
+
 boost::mysql::detail::channel_ptr::~channel_ptr() {}
 
 const boost::mysql::detail::any_stream& boost::mysql::detail::channel_ptr::get_stream() const

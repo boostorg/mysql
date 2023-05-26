@@ -12,13 +12,18 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/protocol/column_flags.hpp>
 
 #include <string>
 
 namespace boost {
 namespace mysql {
+
+// Forward decls
+namespace detail {
+struct column_definition_packet;
+}
 
 /**
  * \brief Metadata about a column in a SQL query.
@@ -277,17 +282,20 @@ private:
     std::uint8_t decimals_;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
                                    // dynamic strings, double, float
 
-    inline metadata(const detail::column_definition_packet& msg, bool copy_strings);
+    BOOST_MYSQL_DECL metadata(const detail::column_definition_packet& msg, bool copy_strings);
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::metadata_access;
+    friend struct detail::impl_access;
 #endif
 };
 
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/impl/metadata.hpp>
+#endif
 
 #endif

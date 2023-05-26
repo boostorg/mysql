@@ -199,13 +199,11 @@ private:
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::resultset_view_access;
+    friend struct detail::impl_access;
 #endif
 };
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/resultset_view.hpp>
 
 #endif

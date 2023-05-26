@@ -20,26 +20,22 @@ namespace test {
 
 class statement_builder
 {
-    boost::mysql::detail::com_stmt_prepare_ok_packet pack_{};
+    std::uint32_t id_{};
+    std::uint16_t num_params_{};
 
 public:
     statement_builder() = default;
     statement_builder& id(std::uint32_t v) noexcept
     {
-        pack_.statement_id = v;
+        id_ = v;
         return *this;
     }
     statement_builder& num_params(std::uint16_t v) noexcept
     {
-        pack_.num_params = v;
+        num_params_ = v;
         return *this;
     }
-    statement build()
-    {
-        statement stmt;
-        detail::statement_access::reset(stmt, pack_);
-        return stmt;
-    }
+    statement build() { return detail::impl_access::construct<statement>(id_, num_params_); }
 };
 
 }  // namespace test

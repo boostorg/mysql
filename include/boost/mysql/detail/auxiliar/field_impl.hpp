@@ -15,7 +15,7 @@
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mp11.hpp>
+#include <boost/mp11/algorithm.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
 

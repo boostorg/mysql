@@ -120,25 +120,6 @@ struct all_categories
 }  // namespace mysql
 }  // namespace boost
 
-namespace boost {
-namespace system {
-
-template <>
-struct is_error_code_enum<::boost::mysql::client_errc>
-{
-    static constexpr bool value = true;
-};
-
-template <>
-struct is_error_code_enum<::boost::mysql::common_server_errc>
-{
-    static constexpr bool value = true;
-};
-
-}  // namespace system
-}  // namespace boost
-
-// client
 const boost::system::error_category& boost::mysql::get_client_category() noexcept
 {
     return detail::all_categories::get().client;
@@ -157,16 +138,6 @@ const boost::system::error_category& boost::mysql::get_mysql_server_category() n
 const boost::system::error_category& boost::mysql::get_mariadb_server_category() noexcept
 {
     return detail::all_categories::get().mariadb_server;
-}
-
-boost::mysql::error_code boost::mysql::make_error_code(client_errc error)
-{
-    return error_code(static_cast<int>(error), get_client_category());
-}
-
-boost::mysql::error_code boost::mysql::make_error_code(common_server_errc error)
-{
-    return error_code(static_cast<int>(error), get_common_server_category());
 }
 
 #endif

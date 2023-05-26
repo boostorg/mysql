@@ -11,12 +11,7 @@
 #pragma once
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/row.hpp>
-#include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/error_helpers.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>

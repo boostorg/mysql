@@ -12,9 +12,11 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
+#include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
 
 #include <cstddef>
@@ -46,7 +48,7 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows(
         else if (res.type == row_message::type_t::row)
         {
             output.set_offset(read_rows);
-            err = proc.on_row(res.data.ctx, output, chan.shared_fields());
+            err = proc.on_row(deserialization_context(res.data.ctx), output, chan.shared_fields());
             if (!err)
                 ++read_rows;
         }

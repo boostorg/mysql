@@ -190,8 +190,13 @@ private:
     std::uint32_t id_{0};
     std::uint16_t num_params_{0};
 
+    statement(std::uint32_t id, std::uint16_t num_params) noexcept
+        : valid_(true), id_(id), num_params_(num_params)
+    {
+    }
+
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::statement_access;
+    friend struct detail::impl_access;
 #endif
 };
 

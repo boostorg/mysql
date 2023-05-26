@@ -48,7 +48,7 @@ inline field_view make_svoff_fv(std::size_t offset, std::size_t size, bool is_bl
 
 inline row_view makerowv(const field_view* f, std::size_t size) noexcept
 {
-    return detail::row_view_access::construct(f, size);
+    return detail::impl_access::construct<row_view>(f, size);
 }
 
 template <class... Types>
@@ -60,7 +60,7 @@ row makerow(Types&&... args)
 
 inline rows_view makerowsv(const field_view* fields, std::size_t num_fields, std::size_t num_columns) noexcept
 {
-    return detail::rows_view_access::construct(fields, num_fields, num_columns);
+    return detail::impl_access::construct<rows_view>(fields, num_fields, num_columns);
 }
 
 template <class... Types>

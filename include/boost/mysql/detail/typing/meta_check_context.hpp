@@ -8,8 +8,10 @@
 #ifndef BOOST_MYSQL_DETAIL_TYPING_META_CHECK_CONTEXT_HPP
 #define BOOST_MYSQL_DETAIL_TYPING_META_CHECK_CONTEXT_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>

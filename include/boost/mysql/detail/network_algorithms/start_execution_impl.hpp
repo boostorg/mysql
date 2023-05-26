@@ -29,6 +29,7 @@ class channel;
 BOOST_MYSQL_DECL
 void start_execution_impl(
     channel& channel,
+    error_code fast_fail,
     resultset_encoding encoding,
     execution_processor& proc,
     error_code& err,
@@ -37,6 +38,7 @@ void start_execution_impl(
 
 BOOST_MYSQL_DECL void async_start_execution_impl(
     channel& chan,
+    error_code fast_fail,
     resultset_encoding encoding,
     execution_processor& proc,
     diagnostics& diag,

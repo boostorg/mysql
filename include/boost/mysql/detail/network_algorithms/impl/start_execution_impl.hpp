@@ -10,10 +10,12 @@
 
 #pragma once
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 
 #include <boost/asio/coroutine.hpp>
+#include <boost/asio/post.hpp>
 
 namespace boost {
 namespace mysql {
@@ -22,17 +24,19 @@ namespace detail {
 struct start_execution_impl_op : boost::asio::coroutine
 {
     channel& chan_;
+    error_code fast_fail_;
     resultset_encoding enc_;
     execution_processor& proc_;
     diagnostics& diag_;
 
     start_execution_impl_op(
         channel& chan,
+        error_code fast_fail,
         resultset_encoding enc,
         execution_processor& proc,
         diagnostics& diag
     )
-        : chan_(chan), enc_(enc), proc_(proc), diag_(diag)
+        : chan_(chan), fast_fail_(fast_fail), enc_(enc), proc_(proc), diag_(diag)
     {
     }
 
@@ -49,8 +53,17 @@ struct start_execution_impl_op : boost::asio::coroutine
         // Non-error path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            // Setup
             diag_.clear();
+
+            // Fast fail checking
+            if (fast_fail_)
+            {
+                BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
+                self.complete(fast_fail_);
+                BOOST_ASIO_CORO_YIELD break;
+            }
+
+            // Setup
             proc_.reset(enc_, chan_.meta_mode());
 
             // Send the execution request (already serialized at this point)
@@ -72,14 +85,23 @@ struct start_execution_impl_op : boost::asio::coroutine
 
 void boost::mysql::detail::start_execution_impl(
     channel& channel,
+    error_code fast_fail,
     resultset_encoding enc,
     execution_processor& proc,
     error_code& err,
     diagnostics& diag
 )
 {
-    // Setup
     diag.clear();
+
+    // Fast fail checking
+    if (fast_fail)
+    {
+        err = fast_fail;
+        return;
+    }
+
+    // Setup
     proc.reset(enc, channel.meta_mode());
 
     // Send the execution request (already serialized at this point)
@@ -95,6 +117,7 @@ void boost::mysql::detail::start_execution_impl(
 
 void boost::mysql::detail::async_start_execution_impl(
     channel& channel,
+    error_code fast_fail,
     resultset_encoding enc,
     execution_processor& proc,
     diagnostics& diag,
@@ -102,7 +125,7 @@ void boost::mysql::detail::async_start_execution_impl(
 )
 {
     return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
-        start_execution_impl_op(channel, enc, proc, diag),
+        start_execution_impl_op(channel, fast_fail, enc, proc, diag),
         handler,
         channel
     );

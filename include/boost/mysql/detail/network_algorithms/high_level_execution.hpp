@@ -69,5 +69,8 @@ async_start_execution(
 }  // namespace boost
 
 #include <boost/mysql/detail/network_algorithms/impl/high_level_execution.hpp>
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/detail/network_algorithms/impl/high_level_execution.ipp>
+#endif
 
 #endif

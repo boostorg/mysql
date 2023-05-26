@@ -18,10 +18,10 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/detail/config.hpp>
 
 #include <boost/config.hpp>
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
@@ -544,11 +544,14 @@ private:
  * \relates field_view
  * \brief Streams a `field_view`.
  */
-inline std::ostream& operator<<(std::ostream& os, const field_view& v);
+BOOST_MYSQL_DECL std::ostream& operator<<(std::ostream& os, const field_view& v);
 
 }  // namespace mysql
 }  // namespace boost
 
 #include <boost/mysql/impl/field_view.hpp>
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/impl/field_view.ipp>
+#endif
 
 #endif

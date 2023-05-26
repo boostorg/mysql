@@ -74,7 +74,7 @@ public:
             if (err)
                 return;
 
-            statement_access::reset(res_, response);
+            res_ = impl_access::construct<statement>(response.statement_id, response.num_params);
             remaining_meta_ = response.num_columns + response.num_params;
         }
     }

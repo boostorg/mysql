@@ -45,7 +45,9 @@ COMMON_SERVER_ERRC_TEMPLATE = '''
 
 #include <boost/mysql/error_code.hpp>
 
-#include <ostream>
+#include <boost/mysql/detail/config.hpp>
+
+#include <boost/system/error_category.hpp>
 
 namespace boost {{
 namespace mysql {{
@@ -63,13 +65,31 @@ enum class common_server_errc : int
 {}
 }};
 
+// Foward declaration
+BOOST_MYSQL_DECL const boost::system::error_category& get_common_server_category() noexcept;
+
 /// Creates an \\ref error_code from a \\ref common_server_errc.
-inline error_code make_error_code(common_server_errc error);
+inline error_code make_error_code(common_server_errc error)
+{{
+    return error_code(static_cast<int>(error), get_common_server_category());
+}}
 
 }}  // namespace mysql
+
+namespace system {{
+
+template <>
+struct is_error_code_enum<::boost::mysql::common_server_errc>
+{{
+    static constexpr bool value = true;
+}};
+
+}}  // namespace system
 }}  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/impl/error_categories.hpp>
+#endif
 
 #endif
 '''
@@ -107,7 +127,9 @@ namespace {flavor}_server_errc {{
 }}  // namespace mysql
 }}  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/impl/error_categories.hpp>
+#endif
 
 #endif
 '''

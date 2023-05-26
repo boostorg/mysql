@@ -5,16 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_FIELD_HPP
-#define BOOST_MYSQL_IMPL_FIELD_HPP
+#ifndef BOOST_MYSQL_IMPL_FIELD_IPP
+#define BOOST_MYSQL_IMPL_FIELD_IPP
 
 #pragma once
 
-#include <boost/mysql/bad_field_access.hpp>
 #include <boost/mysql/field.hpp>
 
-#include <cstdint>
-#include <string>
+#include <ostream>
 
 namespace boost {
 namespace mysql {
@@ -43,7 +41,7 @@ void boost::mysql::field::from_view(const field_view& fv)
     }
 }
 
-inline std::ostream& boost::mysql::operator<<(std::ostream& os, const field& value)
+std::ostream& boost::mysql::operator<<(std::ostream& os, const field& value)
 {
     return os << field_view(value);
 }

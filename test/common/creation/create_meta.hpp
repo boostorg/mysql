@@ -13,6 +13,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 
@@ -119,7 +120,7 @@ public:
     }
     metadata build()
     {
-        auto res = detail::metadata_access::construct(b_.build(), true);
+        auto res = detail::impl_access::construct<metadata>(b_.build(), true);
         if (coltype_set_)
             detail::metadata_access::set_type(res, type_);
         return res;

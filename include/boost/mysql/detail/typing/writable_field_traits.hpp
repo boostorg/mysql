@@ -9,12 +9,10 @@
 #define BOOST_MYSQL_DETAIL_TYPING_WRITABLE_FIELD_TRAITS_HPP
 
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/detail/config.hpp>
 
-#include <string>
 #include <type_traits>
 
 namespace boost {

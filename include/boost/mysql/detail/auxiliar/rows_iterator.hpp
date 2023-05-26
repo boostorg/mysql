@@ -24,7 +24,7 @@ namespace detail {
 
 inline row_view row_slice(const field_view* fields, std::size_t num_columns, std::size_t offset) noexcept
 {
-    return row_view_access::construct(fields + num_columns * offset, num_columns);
+    return impl_access::construct<row_view>(fields + num_columns * offset, num_columns);
 }
 
 class rows_iterator

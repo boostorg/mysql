@@ -9,22 +9,26 @@
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_STATIC_HPP
 
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-
-#include <cstddef>
 
 #ifdef BOOST_MYSQL_CXX14
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/static_execution_state.hpp>
 
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
+#include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/asio/async_result.hpp>
 
+#include <cstddef>
+
 namespace boost {
 namespace mysql {
+
+template <class... RowType>
+class static_execution_state;
+
 namespace detail {
 
 template <class SpanRowType, class... RowType>

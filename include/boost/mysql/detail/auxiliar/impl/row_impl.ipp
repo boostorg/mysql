@@ -121,7 +121,7 @@ void boost::mysql::detail::row_impl::assign(const field_view* fields, std::size_
     }
 }
 
-inline void boost::mysql::detail::row_impl::copy_strings()
+void boost::mysql::detail::row_impl::copy_strings()
 {
     // Calculate the required size for the new strings
     std::size_t size = 0;
@@ -147,7 +147,7 @@ inline void boost::mysql::detail::row_impl::copy_strings()
     BOOST_ASSERT(buffer_it == string_buffer_.data() + size);
 }
 
-inline void boost::mysql::detail::row_impl::copy_strings_as_offsets(std::size_t first, std::size_t num_fields)
+void boost::mysql::detail::row_impl::copy_strings_as_offsets(std::size_t first, std::size_t num_fields)
 {
     // Preconditions
     BOOST_ASSERT(first <= fields_.size());

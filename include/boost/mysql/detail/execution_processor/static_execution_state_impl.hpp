@@ -19,18 +19,12 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/deserialize_row.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
-#include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/assert.hpp>
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <vector>
@@ -159,71 +153,28 @@ private:
     std::vector<metadata> meta_;
 
     // Virtual impls
-    void reset_impl() noexcept override final
-    {
-        resultset_index_ = 0;
-        ok_data_ = ok_packet_data();
-        info_.clear();
-        meta_.clear();
-    }
+    BOOST_MYSQL_DECL
+    void reset_impl() noexcept override final;
 
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final
-    {
-        on_new_resultset();
-        auto err = on_ok_packet_impl(pack);
-        if (err)
-            return err;
-        return meta_check(diag);
-    }
+    BOOST_MYSQL_DECL
+    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final;
 
-    void on_num_meta_impl(std::size_t num_columns) override final
-    {
-        on_new_resultset();
-        meta_.reserve(num_columns);
-    }
+    BOOST_MYSQL_DECL
+    void on_num_meta_impl(std::size_t num_columns) override final;
 
+    BOOST_MYSQL_DECL
     error_code on_meta_impl(metadata&& meta, string_view field_name, bool is_last, diagnostics& diag)
-        override final
-    {
-        std::size_t meta_index = meta_.size();
+        override final;
 
-        // Store the object
-        meta_.push_back(std::move(meta));
-
-        // Record its position
-        pos_map_add_field(current_pos_map(), current_name_table(), meta_index, field_name);
-
-        return is_last ? meta_check(diag) : error_code();
-    }
-
+    BOOST_MYSQL_DECL
     error_code on_row_impl(
-        deserialization_context ctx,
+        deserialization_context&& ctx,
         const output_ref& ref,
         std::vector<field_view>& fields
-    ) override final
-    {
-        // check output
-        if (ref.type_index() != ext_.type_index(resultset_index_ - 1))
-            return client_errc::row_type_mismatch;
+    ) override final;
 
-        // Allocate temporary space
-        fields.clear();
-        span<field_view> storage = add_fields(fields, meta_.size());
-
-        // deserialize the row
-        auto err = deserialize_row(encoding(), ctx, meta_, storage);
-        if (err)
-            return err;
-
-        // parse it into the output ref
-        err = ext_.parse_fn(resultset_index_ - 1)(current_pos_map(), storage, ref);
-        if (err)
-            return err;
-
-        return error_code();
-    }
-
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final { return on_ok_packet_impl(pack); }
+    BOOST_MYSQL_DECL
+    error_code on_row_ok_packet_impl(const ok_packet& pack) override final;
 
     void on_row_batch_start_impl() noexcept override final {}
 
@@ -239,27 +190,11 @@ private:
         return ext_.meta_check_fn(resultset_index_ - 1)(current_pos_map(), meta_, diag);
     }
 
-    void on_new_resultset() noexcept
-    {
-        ++resultset_index_;
-        ok_data_ = ok_packet_data{};
-        info_.clear();
-        meta_.clear();
-        pos_map_reset(current_pos_map());
-    }
+    BOOST_MYSQL_DECL
+    void on_new_resultset() noexcept;
 
-    error_code on_ok_packet_impl(const ok_packet& pack)
-    {
-        ok_data_.has_value = true;
-        ok_data_.affected_rows = pack.affected_rows.value;
-        ok_data_.last_insert_id = pack.last_insert_id.value;
-        ok_data_.warnings = pack.warnings;
-        ok_data_.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        info_.assign(pack.info.value.begin(), pack.info.value.end());
-        bool should_be_last = resultset_index_ == ext_.num_resultsets();
-        bool is_last = !(pack.status_flags & SERVER_MORE_RESULTS_EXISTS);
-        return should_be_last == is_last ? error_code() : client_errc::num_resultsets_mismatch;
-    }
+    BOOST_MYSQL_DECL
+    error_code on_ok_packet_impl(const ok_packet& pack);
 };
 
 template <class StaticRow>
@@ -351,6 +286,10 @@ public:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/detail/execution_processor/impl/static_execution_state_impl.ipp>
+#endif
 
 #endif  // BOOST_MYSQL_CXX14
 

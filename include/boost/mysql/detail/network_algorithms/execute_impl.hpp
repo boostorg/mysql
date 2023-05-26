@@ -29,6 +29,7 @@ class channel;
 BOOST_MYSQL_DECL
 void execute_impl(
     channel& channel,
+    error_code fast_fail,
     resultset_encoding enc,
     execution_processor& output,
     error_code& err,
@@ -36,7 +37,7 @@ void execute_impl(
 );
 
 BOOST_MYSQL_DECL void
-async_execute_impl(channel& chan, resultset_encoding enc, execution_processor& output, diagnostics& diag, boost::asio::any_completion_handler<void(error_code)>);
+async_execute_impl(channel& chan, error_code fast_fail, resultset_encoding enc, execution_processor& output, diagnostics& diag, asio::any_completion_handler<void(error_code)>);
 
 }  // namespace detail
 }  // namespace mysql

@@ -12,7 +12,9 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
+#include <boost/mysql/detail/config.hpp>
 
 #include <boost/assert.hpp>
 
@@ -112,7 +114,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    inline row_view at(std::size_t i) const;
+    BOOST_MYSQL_DECL row_view at(std::size_t i) const;
 
     /**
      * \brief Returns the i-th row (unchecked access).
@@ -125,7 +127,7 @@ public:
      * \par Complexity
      * Constant.
      */
-    inline row_view operator[](std::size_t i) const noexcept;
+    BOOST_MYSQL_DECL row_view operator[](std::size_t i) const noexcept;
 
     /**
      * \brief Returns the first row.
@@ -197,7 +199,7 @@ public:
      * \par Complexity
      * Linear on `this->size() * this->num_columns()`.
      */
-    inline bool operator==(const rows_view& rhs) const noexcept;
+    BOOST_MYSQL_DECL bool operator==(const rows_view& rhs) const noexcept;
 
     /**
      * \brief Inequality operator.
@@ -224,7 +226,7 @@ private:
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::rows_view_access;
+    friend struct detail::impl_access;
     friend class rows;
 #endif
 };
@@ -232,6 +234,8 @@ private:
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/rows_view.hpp>
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/impl/rows_view.ipp>
+#endif
 
 #endif

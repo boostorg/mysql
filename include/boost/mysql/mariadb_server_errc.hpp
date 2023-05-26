@@ -1027,6 +1027,8 @@ constexpr int er_storage_engine_disabled = 4182;
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/impl/error_categories.hpp>
+#endif
 
 #endif

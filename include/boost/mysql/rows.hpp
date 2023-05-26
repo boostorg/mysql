@@ -13,9 +13,9 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
+#include <boost/mysql/detail/config.hpp>
 
 namespace boost {
 namespace mysql {
@@ -166,7 +166,12 @@ public:
      * \par Complexity
      * Linear on `r.size() * r.num_columns()`.
      */
-    inline rows& operator=(const rows_view& r);
+    rows& operator=(const rows_view& rhs)
+    {
+        impl_.assign(rhs.fields_, rhs.num_fields_);
+        num_columns_ = rhs.num_columns_;
+        return *this;
+    }
 
     /// \copydoc rows_view::begin
     iterator begin() const noexcept { return iterator(impl_.fields().data(), num_columns_, 0); }
@@ -175,10 +180,14 @@ public:
     iterator end() const noexcept { return iterator(impl_.fields().data(), num_columns_, size()); }
 
     /// \copydoc rows_view::at
-    inline row_view at(std::size_t i) const;
+    BOOST_MYSQL_DECL row_view at(std::size_t i) const;
 
     /// \copydoc rows_view::operator[]
-    inline row_view operator[](std::size_t i) const noexcept;
+    row_view operator[](std::size_t i) const noexcept
+    {
+        BOOST_ASSERT(i < size());
+        return detail::row_slice(impl_.fields().data(), num_columns_, i);
+    }
 
     /// \copydoc rows_view::front
     row_view front() const noexcept { return (*this)[0]; }
@@ -270,6 +279,8 @@ inline bool operator!=(const rows& lhs, const rows_view& rhs) noexcept { return 
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/rows.hpp>
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/impl/rows.ipp>
+#endif
 
 #endif

@@ -2434,6 +2434,8 @@ constexpr int er_warn_async_conn_failover_network_namespace = 4030;
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_SOURCE
 #include <boost/mysql/impl/error_categories.hpp>
+#endif
 
 #endif

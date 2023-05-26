@@ -9,6 +9,7 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/impl/metadata.hpp>
 
@@ -18,8 +19,9 @@
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;
-using boost::mysql::column_type;
 using namespace boost::mysql::test;
+using boost::mysql::column_type;
+using boost::mysql::metadata;
 namespace collations = boost::mysql::mysql_collations;
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
@@ -38,7 +40,7 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
         protocol_field_type::long_,
         column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
         0};
-    auto meta = metadata_access::construct(msg, true);
+    auto meta = impl_access::construct<metadata>(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -73,7 +75,7 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
         protocol_field_type::var_string,
         0,
         0};
-    auto meta = metadata_access::construct(msg, true);
+    auto meta = impl_access::construct<metadata>(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "child");
@@ -108,7 +110,7 @@ BOOST_AUTO_TEST_CASE(float_)
         protocol_field_type::float_,
         0,
         31};
-    auto meta = metadata_access::construct(msg, true);
+    auto meta = impl_access::construct<metadata>(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -143,7 +145,7 @@ BOOST_AUTO_TEST_CASE(dont_copy_strings)
         protocol_field_type::var_string,
         0,
         0};
-    auto meta = metadata_access::construct(msg, false);
+    auto meta = impl_access::construct<metadata>(msg, false);
 
     BOOST_TEST(meta.database() == "");
     BOOST_TEST(meta.table() == "");
@@ -169,7 +171,7 @@ BOOST_AUTO_TEST_CASE(string_ownership)
     // Create the meta object
     std::string colname = "col1";
     auto msg = create_coldef(protocol_field_type::float_, colname);
-    auto meta = metadata_access::construct(msg, true);
+    auto meta = impl_access::construct<metadata>(msg, true);
 
     // Check that we actually copy the data
     colname = "abcd";
@@ -210,7 +212,7 @@ BOOST_AUTO_TEST_CASE(legacy_protocol_field_types)
         BOOST_TEST_CONTEXT(tc.name)
         {
             auto msg = coldef_builder().type(tc.proto_type).collation(tc.collation).build();
-            auto t = metadata_access::construct(msg, false).type();
+            auto t = impl_access::construct<metadata>(msg, false).type();
             BOOST_TEST(t == tc.expected);
         }
     }

@@ -23,10 +23,8 @@
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel/any_stream.hpp>
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/channel/channel_ptr.hpp>
 #include <boost/mysql/detail/execution_processor/concepts.hpp>
-#include <boost/mysql/detail/protocol/protocol_types.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>

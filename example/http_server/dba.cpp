@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 

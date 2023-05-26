@@ -11,6 +11,7 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
 namespace boost {
@@ -75,7 +76,7 @@ public:
     reference operator*() const noexcept { return (*this)[0]; }
     reference operator[](std::ptrdiff_t i) const noexcept
     {
-        return resultset_view_access::construct(*self_, index_ + i);
+        return impl_access::construct<resultset_view>(*self_, index_ + i);
     }
 
     bool operator==(results_iterator rhs) const noexcept { return index_ == rhs.index_; }

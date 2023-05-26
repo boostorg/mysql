@@ -15,9 +15,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/db_flavor.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/assert.hpp>
@@ -31,6 +29,11 @@
 namespace boost {
 namespace mysql {
 namespace detail {
+
+// Forward declarations
+struct column_definition_packet;
+struct ok_packet;
+class deserialization_context;
 
 // A type-erased reference to be used as the output range for static_execution_state
 class output_ref
@@ -100,14 +103,8 @@ public:
         set_state(state_t::reading_metadata);
     }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
-    {
-        return on_meta_helper(
-            metadata_access::construct(pack, mode_ == metadata_mode::full),
-            pack.name.value,
-            diag
-        );
-    }
+    BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
+    on_meta(const column_definition_packet& pack, diagnostics& diag);
 
     // Exposed for the sake of testing
     BOOST_ATTRIBUTE_NODISCARD error_code on_meta(metadata&& meta, diagnostics& diag)
@@ -125,10 +122,10 @@ public:
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
     BOOST_ATTRIBUTE_NODISCARD error_code
-    on_row(deserialization_context ctx, const output_ref& ref, std::vector<field_view>& storage)
+    on_row(deserialization_context&& ctx, const output_ref& ref, std::vector<field_view>& storage)
     {
         BOOST_ASSERT(is_reading_rows());
-        return on_row_impl(ctx, ref, storage);
+        return on_row_impl(std::move(ctx), ref, storage);
     }
 
     BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
@@ -165,7 +162,7 @@ protected:
     ) = 0;
     virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
     virtual error_code on_row_impl(
-        deserialization_context ctx,
+        deserialization_context&& ctx,
         const output_ref& ref,
         std::vector<field_view>& storage
     ) = 0;
@@ -210,21 +207,16 @@ private:
         return err;
     }
 
-    void set_state_for_ok(const ok_packet& pack) noexcept
-    {
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
-        {
-            set_state(state_t::reading_first_subseq);
-        }
-        else
-        {
-            set_state(state_t::complete);
-        }
-    }
+    BOOST_MYSQL_DECL
+    void set_state_for_ok(const ok_packet& pack) noexcept;
 };
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_SOURCE
+#include <boost/mysql/detail/execution_processor/impl/execution_processor.ipp>
+#endif
 
 #endif

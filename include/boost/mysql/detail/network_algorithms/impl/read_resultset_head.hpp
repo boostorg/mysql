@@ -20,6 +20,7 @@
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/coroutine.hpp>
 #include <boost/assert.hpp>
 
 namespace boost {

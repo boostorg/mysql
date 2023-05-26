@@ -11,7 +11,6 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
-#include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -347,7 +346,7 @@ public:
         BOOST_ASSERT(has_value());
         if (i >= size())
             BOOST_THROW_EXCEPTION(std::out_of_range("results::at: out of range"));
-        return detail::resultset_view_access::construct(impl_, i);
+        return detail::impl_access::construct<resultset_view>(impl_, i);
     }
 
     /**
@@ -369,7 +368,7 @@ public:
     {
         BOOST_ASSERT(has_value());
         BOOST_ASSERT(i < size());
-        return detail::resultset_view_access::construct(impl_, i);
+        return detail::impl_access::construct<resultset_view>(impl_, i);
     }
 
     /**

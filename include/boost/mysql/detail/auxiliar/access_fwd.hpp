@@ -20,10 +20,6 @@ struct connection_access;
 struct diagnostics_access;
 struct field_view_access;
 struct metadata_access;
-struct resultset_view_access;
-struct row_view_access;
-struct rows_view_access;
-struct statement_access;
 
 // A generic access struct to enable access to the implementation of any class
 struct impl_access
@@ -32,6 +28,18 @@ struct impl_access
     static decltype(std::declval<T>().impl_)& get_impl(T& obj) noexcept
     {
         return obj.impl_;
+    }
+
+    template <class T>
+    static const decltype(std::declval<T>().impl_)& get_impl(const T& obj) noexcept
+    {
+        return obj.impl_;
+    }
+
+    template <class T, class... Args>
+    static T construct(Args&&... args)
+    {
+        return T(std::forward<Args>(args)...);
     }
 };
 
