@@ -34,6 +34,43 @@
 #include <utility>
 
 // connect
+namespace boost {
+namespace mysql {
+namespace detail {
+
+// Handles casting from the generic EndpointType we've got in the interface to the concrete endpoint type
+template <class Stream>
+void connect(
+    channel& chan,
+    const typename Stream::lowest_layer_type::endpoint_type& ep,
+    const handshake_params& params,
+    error_code& err,
+    diagnostics& diag
+)
+{
+    connect_impl(chan, &ep, params, err, diag);
+}
+
+template <class Stream>
+struct connect_initiation
+{
+    template <class Handler>
+    void operator()(
+        Handler&& handler,
+        channel* chan,
+        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+        handshake_params params,
+        diagnostics* diag
+    )
+    {
+        async_connect_impl(*chan, &endpoint, params, *diag, std::forward<Handler>(handler));
+    }
+};
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
 template <class Stream>
 template <class EndpointType>
 void boost::mysql::connection<Stream>::connect(
@@ -43,49 +80,18 @@ void boost::mysql::connection<Stream>::connect(
     diagnostics& diag
 )
 {
-    static_assert(
-        std::is_same<EndpointType, typename Stream::lowest_layer_type::endpoint_type>::value,
-        "Wrong EndpointType"
-    );
     detail::clear_errors(ec, diag);
-    detail::connect_impl(channel_.get(), &endpoint, params, ec, diag);
+    detail::connect<Stream>(channel_.get(), endpoint, params, ec, diag);
 }
 
 template <class Stream>
 template <class EndpointType>
 void boost::mysql::connection<Stream>::connect(const EndpointType& endpoint, const handshake_params& params)
 {
-    static_assert(
-        std::is_same<EndpointType, typename Stream::lowest_layer_type::endpoint_type>::value,
-        "Wrong EndpointType"
-    );
     detail::error_block blk;
-    detail::connect_impl(channel_.get(), &endpoint, params, blk.err, blk.diag);
+    detail::connect<Stream>(channel_.get(), endpoint, params, blk.err, blk.diag);
     blk.check(BOOST_CURRENT_LOCATION);
 }
-
-namespace boost {
-namespace mysql {
-namespace detail {
-
-struct connect_initiation
-{
-    template <class Handler>
-    void operator()(
-        Handler&& handler,
-        channel* chan,
-        const void* endpoint,
-        handshake_params params,
-        diagnostics* diag
-    )
-    {
-        async_connect_impl(*chan, endpoint, params, *diag, std::forward<Handler>(handler));
-    }
-};
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
 
 template <class Stream>
 template <
@@ -99,15 +105,11 @@ boost::mysql::connection<Stream>::async_connect(
     CompletionToken&& token
 )
 {
-    static_assert(
-        std::is_same<EndpointType, typename Stream::lowest_layer_type::endpoint_type>::value,
-        "Wrong EndpointType"
-    );
     return boost::asio::async_initiate<CompletionToken, void(error_code)>(
-        detail::connect_initiation(),
+        detail::connect_initiation<Stream>(),
         token,
         &channel_.get(),
-        &endpoint,
+        endpoint,
         params,
         &diag
     );
@@ -142,7 +144,7 @@ struct handshake_initiation
     template <class Handler>
     void operator()(Handler&& handler, channel* chan, handshake_params params, diagnostics* diag)
     {
-        async_handshake_impl(*chan, params, *diag, std::forward<handler>(handler));
+        async_handshake_impl(*chan, params, *diag, std::forward<Handler>(handler));
     }
 };
 
