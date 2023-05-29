@@ -62,7 +62,7 @@ struct read_some_rows_static_initiation
         Handler&& handler,
         channel* chan,
         execution_processor* proc,
-        output_ref output,
+        const output_ref& output,
         diagnostics* diag
     )
     {
@@ -95,8 +95,7 @@ async_read_some_rows_static(
         &chan,
         &detail::impl_access::get_impl(st).get_interface(),
         detail::output_ref(output, index),
-        &diag,
-        std::forward<CompletionToken>(token)
+        &diag
     );
 }
 

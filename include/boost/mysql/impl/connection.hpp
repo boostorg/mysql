@@ -743,7 +743,7 @@ boost::mysql::connection<Stream>::async_read_resultset_head(
         detail::read_resultset_head_initiation(),
         token,
         &channel_.get(),
-        detail::impl_access::get_impl(st).get_interface(),
+        &detail::impl_access::get_impl(st).get_interface(),
         &diag
     );
 }
@@ -810,7 +810,7 @@ boost::mysql::connection<Stream>::async_read_some_rows(
         detail::read_some_rows_dynamic_initiation(),
         token,
         &channel_.get(),
-        detail::impl_access::get_impl(st).get_interface(),
+        &detail::impl_access::get_impl(st).get_interface(),
         &diag
     );
 }
