@@ -47,6 +47,8 @@ public:
     using executor_type = boost::asio::any_io_executor;
     using lowest_layer_type = any_stream;
 
+    virtual ~any_stream() {}
+
     virtual executor_type get_executor() noexcept = 0;
 
     // SSL
@@ -86,6 +88,13 @@ void do_connect(asio::basic_socket<Protocol, Executor>& stream, const void* endp
     stream.connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), ec);
 }
 
+template <class Protocol, class Executor>
+void do_connect(asio::basic_stream_socket<Protocol, Executor>& stream, const void* endpoint, error_code& ec)
+{
+    using socket_t = asio::basic_stream_socket<Protocol, Executor>;
+    stream.connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), ec);
+}
+
 template <class Stream>
 void do_async_connect(Stream&, const void*, asio::any_completion_handler<void(error_code)>)
 {
@@ -103,6 +112,17 @@ void do_async_connect(
     stream.async_connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), std::move(handler));
 }
 
+template <class Protocol, class Executor>
+void do_async_connect(
+    asio::basic_stream_socket<Protocol, Executor>& stream,
+    const void* endpoint,
+    asio::any_completion_handler<void(error_code)> handler
+)
+{
+    using socket_t = asio::basic_stream_socket<Protocol, Executor>;
+    stream.async_connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), std::move(handler));
+}
+
 template <class Stream>
 void do_close(Stream&, error_code&)
 {
@@ -116,6 +136,13 @@ void do_close(asio::basic_socket<Protocol, Executor>& stream, error_code& ec)
     stream.close(ec);
 }
 
+template <class Protocol, class Executor>
+void do_close(asio::basic_stream_socket<Protocol, Executor>& stream, error_code& ec)
+{
+    stream.shutdown(asio::socket_base::shutdown_both, ec);
+    stream.close(ec);
+}
+
 template <class Stream>
 bool do_is_open(const Stream&) noexcept
 {
@@ -124,6 +151,12 @@ bool do_is_open(const Stream&) noexcept
 
 template <class Protocol, class Executor>
 bool do_is_open(const asio::basic_socket<Protocol, Executor>& stream) noexcept
+{
+    return stream.is_open();
+}
+
+template <class Protocol, class Executor>
+bool do_is_open(const asio::basic_stream_socket<Protocol, Executor>& stream) noexcept
 {
     return stream.is_open();
 }
@@ -195,7 +228,7 @@ public:
 };
 
 template <class Stream>
-class any_stream_impl<asio::ssl::stream<Stream>> : public any_stream
+class any_stream_impl<asio::ssl::stream<Stream>> final : public any_stream
 {
     asio::ssl::stream<Stream> stream_;
 
@@ -215,14 +248,14 @@ public:
     void handshake(error_code& ec) override final
     {
         set_ssl_active(true);
-        return stream_.handshake(boost::asio::ssl::stream_base::client, ec);
+        stream_.handshake(boost::asio::ssl::stream_base::client, ec);
     }
     void async_handshake(asio::any_completion_handler<void(error_code)> handler) override final
     {
         set_ssl_active(true);
         stream_.async_handshake(boost::asio::ssl::stream_base::client, std::move(handler));
     }
-    void shutdown(error_code& ec) override final { return stream_.shutdown(ec); }
+    void shutdown(error_code& ec) override final { stream_.shutdown(ec); }
     void async_shutdown(asio::any_completion_handler<void(error_code)> handler) override final
     {
         return stream_.async_shutdown(std::move(handler));

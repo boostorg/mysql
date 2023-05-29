@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_TCP_NETWORK_FIXTURE_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_UTILS_INCLUDE_TCP_NETWORK_FIXTURE_HPP
 
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/tcp.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -25,6 +27,18 @@ struct tcp_network_fixture : network_fixture_base
     boost::mysql::tcp_connection conn;
 
     tcp_network_fixture() : conn(ctx.get_executor()) { conn.set_meta_mode(metadata_mode::full); }
+    ~tcp_network_fixture()
+    {
+        try
+        {
+            error_code ec;
+            diagnostics diag;
+            conn.close(ec, diag);
+        }
+        catch (...)
+        {
+        }
+    }
 
     void connect() { conn.connect(get_endpoint<tcp_socket>(), params); }
 
