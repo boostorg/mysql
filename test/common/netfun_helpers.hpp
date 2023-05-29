@@ -14,6 +14,8 @@
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/bind_executor.hpp>
+#include <boost/asio/execution/blocking.hpp>
+#include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 
@@ -63,34 +65,53 @@ public:
         std::size_t total() const noexcept { return num_dispatches + num_posts; }
     };
 
-    tracker_executor(boost::asio::io_context& ctx, tracked_values& tracked)
-        : ex_(ctx.get_executor()), tracked_(&tracked)
+    tracker_executor(boost::asio::io_context::executor_type ex, tracked_values* tracked) noexcept
+        : ex_(ex), tracked_(tracked)
+    {
+    }
+
+    tracker_executor(boost::asio::io_context& ctx, tracked_values& tracked) noexcept
+        : tracker_executor(ctx.get_executor(), &tracked)
     {
     }
 
     boost::asio::io_context& context() const noexcept { return ex_.context(); }
 
-    void on_work_started() const { ex_.on_work_started(); }
-    void on_work_finished() const { ex_.on_work_finished(); }
-
-    template <typename Function, typename OtherAllocator>
-    void dispatch(Function&& f, const OtherAllocator& a) const
+    template <class Property>
+    tracker_executor require(
+        Property p,
+        void_t<decltype(std::declval<boost::asio::io_context::executor_type>().require(p))> = {}
+    ) const
     {
-        ++tracked_->num_dispatches;
-        ex_.dispatch(std::forward<Function>(f), a);
+        return tracker_executor(ex_.require(p), tracked_);
     }
 
-    template <typename Function, typename OtherAllocator>
-    void defer(Function&& f, const OtherAllocator& a) const
+    // TODO: C++11
+    template <class Property>
+    auto query(Property p) const
     {
-        ex_.defer(std::forward<Function>(f), a);
+        return boost::asio::query(ex_, p);
     }
 
-    template <typename Function, typename OtherAllocator>
-    void post(Function&& f, const OtherAllocator& a) const
+    template <typename Function>
+    void execute(Function&& f) const
     {
-        ++tracked_->num_posts;
-        ex_.post(std::forward<Function>(f), a);
+        if (asio::query(ex_, asio::execution::relationship) == asio::execution::relationship.continuation &&
+            asio::query(ex_, asio::execution::blocking) == asio::execution::blocking.never)
+        {
+            // This is a post
+            ++tracked_->num_posts;
+        }
+        else
+        {
+            ++tracked_->num_dispatches;
+        }
+        ex_.execute(std::forward<Function>(f));
+    }
+
+    bool operator==(const tracker_executor& rhs) const noexcept
+    {
+        return ex_ == rhs.ex_ && tracked_ == rhs.tracked_;
     }
 
 private:
