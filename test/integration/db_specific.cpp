@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mariadb_server_errc.hpp>
 #include <boost/mysql/mysql_server_errc.hpp>

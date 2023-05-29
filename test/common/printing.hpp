@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_PRINTING_HPP
 #define BOOST_MYSQL_TEST_COMMON_PRINTING_HPP
 
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -28,11 +30,14 @@
 namespace boost {
 namespace mysql {
 
-inline std::ostream& operator<<(std::ostream& os, client_errc v) { return os << detail::error_to_string(v); }
+inline std::ostream& operator<<(std::ostream& os, client_errc v)
+{
+    return os << get_client_category().message(static_cast<int>(v));
+}
 
 inline std::ostream& operator<<(std::ostream& os, common_server_errc v)
 {
-    return os << detail::error_to_string(v);
+    return os << get_common_server_category().message(static_cast<int>(v));
 }
 
 inline std::ostream& operator<<(std::ostream& os, const diagnostics& diag)
