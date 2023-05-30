@@ -21,76 +21,126 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+class chunk_processor
+{
+    std::size_t first_{};
+    std::size_t last_{};
+
+    std::size_t remaining() const noexcept { return last_ - first_; }
+
+public:
+    chunk_processor() = default;
+    void reset() noexcept { reset(0, 0); }
+    void reset(std::size_t first, std::size_t last) noexcept
+    {
+        BOOST_ASSERT(last >= first);
+        first_ = first;
+        last_ = last;
+    }
+    void on_bytes_written(std::size_t n) noexcept
+    {
+        BOOST_ASSERT(remaining() >= n);
+        first_ += n;
+    }
+    bool done() const noexcept { return first_ == last_; }
+    asio::const_buffer get_chunk(const std::vector<std::uint8_t>& buff) const noexcept
+    {
+        BOOST_ASSERT(buff.size() >= last_);
+        return asio::const_buffer(buff.data() + first_, remaining());
+    }
+};
+
 class message_writer_processor
 {
-    boost::asio::const_buffer buffer_to_write_;
-    std::uint8_t* seqnum_{nullptr};
-    std::size_t bytes_written_{0};
-    std::array<std::uint8_t, HEADER_SIZE> header_buffer_{};
-    bool send_empty_frame_{false};  // Should we send a last, empty frame? (for empty messages or
-                                    // messages of max_frame_size_)
+    std::vector<std::uint8_t> buffer_;
     std::size_t max_frame_size_;
+    std::uint8_t* seqnum_{nullptr};
 
-    inline std::uint32_t compute_size_to_write() const
-    {
-        return static_cast<std::uint32_t>((std::min
-        )(max_frame_size_, buffer_to_write_.size() - bytes_written_));
-    }
+    chunk_processor chunk_;
+    std::size_t total_bytes_{};
+    std::size_t total_bytes_written_{};
+    bool should_send_empty_frame_{};
 
-    inline void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum)
+    void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum, std::size_t buff_offset)
     {
         packet_header header;
         header.packet_size.value = size_to_write;
         header.sequence_number = seqnum;
         serialization_context ctx(
-            capabilities(0),
-            header_buffer_.data()
-        );  // capabilities not relevant here
+            capabilities(0),  // capabilities not relevant here
+            buffer_.data() + buff_offset
+        );
         serialize(ctx, header);
     }
 
-public:
-    // We write two buffers at once: the header and the body part
-    using buffers_type = std::array<boost::asio::const_buffer, 2>;
+    std::uint8_t next_seqnum() noexcept { return (*seqnum_)++; }
 
+    void prepare_next_chunk()
+    {
+        if (should_send_empty_frame_)
+        {
+            process_header_write(0, next_seqnum(), 0);
+            chunk_.reset(0, HEADER_SIZE);
+            should_send_empty_frame_ = false;
+        }
+        else if (total_bytes_written_ < total_bytes_)
+        {
+            std::size_t offset = total_bytes_written_;
+            std::size_t remaining = total_bytes_ - total_bytes_written_;
+            std::size_t size = (std::min)(max_frame_size_, remaining);
+            process_header_write(static_cast<std::uint32_t>(size), next_seqnum(), offset);
+            chunk_.reset(offset, offset + size + HEADER_SIZE);
+            if (remaining == max_frame_size_)
+            {
+                should_send_empty_frame_ = true;
+            }
+            total_bytes_written_ += size;
+        }
+        else
+        {
+            // We're done
+            chunk_.reset();
+        }
+    }
+
+public:
     message_writer_processor(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept
         : max_frame_size_(max_frame_size)
     {
     }
 
-    void reset(boost::asio::const_buffer buffer, std::uint8_t& seqnum)
+    asio::mutable_buffer prepare_buffer(std::size_t msg_size, std::uint8_t& seqnum)
     {
-        buffer_to_write_ = buffer;
+        buffer_.resize(msg_size + HEADER_SIZE);
+        total_bytes_ = msg_size;
+        total_bytes_written_ = 0;
+        should_send_empty_frame_ = msg_size == 0;
         seqnum_ = &seqnum;
-        bytes_written_ = 0;
-        send_empty_frame_ = (buffer.size() == 0);  // If the packet is empty, we should just send
-                                                   // the header
+        prepare_next_chunk();
+        return asio::mutable_buffer(buffer_.data() + HEADER_SIZE, msg_size);
     }
 
-    buffers_type prepare_next_chunk() noexcept
+    bool done() const noexcept { return chunk_.done(); }
+
+    // This function returns an empty buffer to signal that we're done
+    asio::const_buffer next_chunk() const
     {
-        auto first = static_cast<const std::uint8_t*>(buffer_to_write_.data());
-        auto size_to_write = compute_size_to_write();
-        process_header_write(size_to_write, (*seqnum_)++);
-        return {
-            {boost::asio::buffer(header_buffer_),
-             boost::asio::buffer(first + bytes_written_, size_to_write)}
-        };
+        BOOST_ASSERT(!done());
+        return chunk_.get_chunk(buffer_);
     }
 
-    void on_bytes_written() noexcept
+    void on_bytes_written(std::size_t n)
     {
-        std::size_t new_bytes = compute_size_to_write();
-        bytes_written_ += new_bytes;
-        // If we sent all the bytes, but the last frame was just max_frame_size_ bytes, the protocol
-        // requires us to send a last, empty frame
-        send_empty_frame_ =
-            (new_bytes == max_frame_size_ && bytes_written_ == buffer_to_write_.size());
-    }
+        BOOST_ASSERT(!done());
 
-    bool is_complete() const noexcept
-    {
-        return !send_empty_frame_ && bytes_written_ >= buffer_to_write_.size();
+        // Acknowledge the written bytes
+        chunk_.on_bytes_written(n);
+
+        // Prepare the next chunk, if required
+        if (chunk_.done())
+        {
+            prepare_next_chunk();
+        }
     }
 };
 

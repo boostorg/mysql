@@ -14,10 +14,10 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
+#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
 #include <boost/mysql/detail/protocol/serialization.hpp>
 
@@ -47,8 +47,7 @@ public:
 
     void process_request()
     {
-        com_stmt_prepare_packet packet{string_eof(stmt_sql_)};
-        serialize_message(packet, channel_.current_capabilities(), channel_.shared_buffer());
+        channel_.serialize(com_stmt_prepare_packet{string_eof(stmt_sql_)}, channel_.reset_sequence_number());
     }
 
     void process_response(boost::asio::const_buffer message, error_code& err)
@@ -115,11 +114,7 @@ struct prepare_statement_op : boost::asio::coroutine
             processor_.process_request();
 
             // Write message
-            BOOST_ASIO_CORO_YIELD get_channel().async_write(
-                get_channel().shared_buffer(),
-                get_channel().reset_sequence_number(),
-                std::move(self)
-            );
+            BOOST_ASIO_CORO_YIELD get_channel().async_write(std::move(self));
 
             // Read response
             BOOST_ASIO_CORO_YIELD get_channel().async_read_one(
@@ -180,7 +175,7 @@ boost::mysql::statement boost::mysql::detail::prepare_statement_impl(
     processor.process_request();
 
     // Write message
-    channel.write(channel.shared_buffer(), channel.reset_sequence_number(), err);
+    channel.write(err);
     if (err)
         return statement();
 

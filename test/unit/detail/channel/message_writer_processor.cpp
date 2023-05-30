@@ -5,16 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/error_code.hpp>
-
 #include <boost/mysql/detail/channel/message_writer_processor.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -24,25 +19,90 @@
 #include "buffer_concat.hpp"
 #include "creation/create_message.hpp"
 
+using namespace boost::mysql::detail;
+using namespace boost::mysql::test;
 using boost::asio::buffer;
-using boost::mysql::error_code;
-using boost::mysql::detail::message_writer_processor;
-using boost::mysql::test::concat_copy;
+using boost::asio::const_buffer;
 
 namespace {
 
-void check_header(boost::asio::const_buffer buff, std::uint8_t expected_seqnum, std::size_t expected_size)
+BOOST_AUTO_TEST_SUITE(test_message_writer_processor)
+
+void copy(boost::span<const std::uint8_t> from, boost::asio::mutable_buffer to)
 {
-    BOOST_TEST_REQUIRE(buff.size() == 4u);
-    boost::mysql::detail::deserialization_context ctx(buff, boost::mysql::detail::capabilities());
-    boost::mysql::detail::packet_header header;
-    auto err = boost::mysql::detail::deserialize_message(ctx, header);
-    BOOST_TEST(err == error_code());
-    BOOST_TEST(header.sequence_number == expected_seqnum);
-    BOOST_TEST(header.packet_size.value == expected_size);
+    BOOST_TEST_REQUIRE(from.size() == to.size());
+    std::memcpy(to.data(), from.data(), from.size());
 }
 
-BOOST_AUTO_TEST_SUITE(test_message_writer_processor)
+BOOST_AUTO_TEST_SUITE(chunk_processor_)
+BOOST_AUTO_TEST_CASE(reset)
+{
+    chunk_processor chunk_proc;
+    BOOST_TEST(chunk_proc.done());
+}
+
+BOOST_AUTO_TEST_CASE(zero_to_size_steps)
+{
+    chunk_processor chunk_proc;
+    std::vector<std::uint8_t> buff(10, 0);
+
+    chunk_proc.reset(0, 10);
+    BOOST_TEST(!chunk_proc.done());
+    auto chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.data() == buff.data());
+    BOOST_TEST(chunk.size() == 10u);
+
+    chunk_proc.on_bytes_written(3);
+    BOOST_TEST(!chunk_proc.done());
+    chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.data() == buff.data() + 3);
+    BOOST_TEST(chunk.size() == 7u);
+
+    chunk_proc.on_bytes_written(6);
+    BOOST_TEST(!chunk_proc.done());
+    chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.data() == buff.data() + 9);
+    BOOST_TEST(chunk.size() == 1u);
+
+    chunk_proc.on_bytes_written(1);
+    BOOST_TEST(chunk_proc.done());
+    chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.size() == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(nonzero_to_size_steps)
+{
+    chunk_processor chunk_proc;
+    chunk_proc.reset(2, 21);  // simulate a previous op
+    std::vector<std::uint8_t> buff(10, 0);
+
+    chunk_proc.reset(3, 7);
+    BOOST_TEST(!chunk_proc.done());
+    auto chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.data() == buff.data() + 3);
+    BOOST_TEST(chunk.size() == 4u);
+
+    chunk_proc.on_bytes_written(3);
+    BOOST_TEST(!chunk_proc.done());
+    chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.data() == buff.data() + 6);
+    BOOST_TEST(chunk.size() == 1u);
+
+    chunk_proc.on_bytes_written(1);
+    BOOST_TEST(chunk_proc.done());
+    chunk = chunk_proc.get_chunk(buff);
+    BOOST_TEST(chunk.size() == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(reset_to_empty)
+{
+    chunk_processor chunk_proc;
+    chunk_proc.reset(10, 20);
+
+    chunk_proc.reset();
+    BOOST_TEST(chunk_proc.done());
+}
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_CASE(regular_message)
 {
@@ -51,39 +111,98 @@ BOOST_AUTO_TEST_CASE(regular_message)
     std::uint8_t seqnum = 2;
 
     // Operation start
-    processor.reset(buffer(msg_body), seqnum);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(msg_body.size(), seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg_body.size());
 
-    // Prepare chunk
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 2, 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_body));
+    // Simulate serialization
+    copy(msg_body, mutbuf);
+
+    // First (and only) chunk
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful
-    processor.on_bytes_written();
+    processor.on_bytes_written(7);
     BOOST_TEST(seqnum == 3u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
+}
+
+BOOST_AUTO_TEST_CASE(short_writes)
+{
+    message_writer_processor processor(8);
+    std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+    std::uint8_t seqnum = 2;
+
+    // Operation start
+    auto mutbuf = processor.prepare_buffer(msg_body.size(), seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg_body.size());
+
+    // Simulate serialization
+    copy(msg_body, mutbuf);
+
+    // First chunk
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+
+    // Write signals partial write
+    processor.on_bytes_written(3);
+    BOOST_TEST(seqnum == 3u);
+    BOOST_TEST(!processor.done());
+
+    // Remaining of the chunk
+    chunk = processor.next_chunk();
+    auto expected_buff = const_buffer(expected.data() + 3, 7);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected_buff);
+
+    // Another partial write
+    processor.on_bytes_written(2);
+    BOOST_TEST(seqnum == 3u);
+    BOOST_TEST(!processor.done());
+
+    // Remaining of the chunk
+    chunk = processor.next_chunk();
+    expected_buff = const_buffer(expected.data() + 5, 5);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected_buff);
+
+    // Zero bytes partial writes work correctly
+    processor.on_bytes_written(0);
+    BOOST_TEST(seqnum == 3u);
+    BOOST_TEST(!processor.done());
+
+    // Remaining of the chunk
+    chunk = processor.next_chunk();
+    expected_buff = const_buffer(expected.data() + 5, 5);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected_buff);
+
+    // Final bytes
+    processor.on_bytes_written(5);
+    BOOST_TEST(seqnum == 3u);
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_CASE(empty_message)
 {
     message_writer_processor processor(8);
-    std::vector<std::uint8_t> msg_body{};
     std::uint8_t seqnum = 2;
 
     // Operation start
-    processor.reset(buffer(msg_body), seqnum);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(0, seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == 0u);
 
-    // Prepare chunk
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 2, 0);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_body));
+    // Chunk should only contain the header
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, {});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful
-    processor.on_bytes_written();
+    processor.on_bytes_written(4);
     BOOST_TEST(seqnum == 3u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
@@ -93,27 +212,31 @@ BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
     std::uint8_t seqnum = 2;
 
     // Operation start
-    processor.reset(buffer(msg_body), seqnum);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(msg_body.size(), seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg_body.size());
 
-    // Prepare chunk
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 2, 8);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_body));
+    // Simulate serialization
+    copy(msg_body, mutbuf);
 
-    // On write successful
-    processor.on_bytes_written();
-    BOOST_TEST(!processor.is_complete());
-
-    // Prepare next chunk
-    buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 3, 0);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], boost::asio::const_buffer());
+    // Chunk
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful
-    processor.on_bytes_written();
+    processor.on_bytes_written(12);
+    BOOST_TEST(!processor.done());
+
+    // Next chunk is an empty frame
+    chunk = processor.next_chunk();
+    expected = create_message(3, {});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+
+    // On write successful
+    processor.on_bytes_written(4);
     BOOST_TEST(seqnum == 4u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_CASE(multiframe_message)
@@ -126,36 +249,48 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     std::uint8_t seqnum = 2;
 
     // Operation start
-    processor.reset(buffer(msg), seqnum);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(msg.size(), seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg.size());
 
-    // Prepare chunk 1
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 2, 8);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_frame_1));
+    // Simulate serialization
+    copy(msg, mutbuf);
 
-    // On write successful 1
-    processor.on_bytes_written();
-    BOOST_TEST(!processor.is_complete());
+    // Chunk 1
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, msg_frame_1);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
-    // Prepare next chunk 2
-    buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 3, 8);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_frame_2));
+    // On write successful 1 (short write)
+    processor.on_bytes_written(4);
+    BOOST_TEST(!processor.done());
+
+    // Rest of chunk 1
+    chunk = processor.next_chunk();
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, const_buffer(expected.data() + 4, 8));
+
+    // On write rest of chunk 1
+    processor.on_bytes_written(8);
+    BOOST_TEST(!processor.done());
+
+    // Chunk 2
+    chunk = processor.next_chunk();
+    expected = create_message(3, msg_frame_2);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful 2
-    processor.on_bytes_written();
-    BOOST_TEST(!processor.is_complete());
+    processor.on_bytes_written(12);
+    BOOST_TEST(!processor.done());
 
-    // Prepare next chunk 3
-    buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 4, 1);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_frame_3));
+    // Chunk 3
+    chunk = processor.next_chunk();
+    expected = create_message(4, msg_frame_3);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful
-    processor.on_bytes_written();
+    processor.on_bytes_written(5);
     BOOST_TEST(seqnum == 5u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
@@ -167,36 +302,40 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
     std::uint8_t seqnum = 2;
 
     // Operation start
-    processor.reset(buffer(msg), seqnum);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(msg.size(), seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg.size());
 
-    // Prepare chunk 1
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 2, 8);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_frame_1));
+    // Simulate serialization
+    copy(msg, mutbuf);
+
+    // Chunk 1
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, msg_frame_1);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful 1
-    processor.on_bytes_written();
-    BOOST_TEST(!processor.is_complete());
+    processor.on_bytes_written(12);
+    BOOST_TEST(!processor.done());
 
-    // Prepare next chunk 2
-    buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 3, 8);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_frame_2));
+    // Chunk 2
+    chunk = processor.next_chunk();
+    expected = create_message(3, msg_frame_2);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful 2
-    processor.on_bytes_written();
-    BOOST_TEST(!processor.is_complete());
+    processor.on_bytes_written(12);
+    BOOST_TEST(!processor.done());
 
-    // Prepare next chunk 3
-    buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 4, 0);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], boost::asio::const_buffer());
+    // Chunk 3 (empty)
+    chunk = processor.next_chunk();
+    expected = create_message(4, {});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful
-    processor.on_bytes_written();
+    processor.on_bytes_written(4);
     BOOST_TEST(seqnum == 5u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_CASE(seqnum_overflow)
@@ -206,55 +345,81 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
     std::uint8_t seqnum = 0xff;
 
     // Operation start
-    processor.reset(buffer(msg), seqnum);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(msg.size(), seqnum);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg.size());
+
+    // Simulate serialization
+    copy(msg, mutbuf);
 
     // Prepare chunk
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 0xff, 2);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg));
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(0xff, msg);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful
-    processor.on_bytes_written();
+    processor.on_bytes_written(6);
     BOOST_TEST(seqnum == 0);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_CASE(several_messages)
 {
     message_writer_processor processor(8);
-    std::vector<std::uint8_t> msg_1{0x01, 0x02};
-    std::vector<std::uint8_t> msg_2{0x04, 0x05, 0x06};
+    std::vector<std::uint8_t> msg_1{0x01, 0x02, 0x04};
+    std::vector<std::uint8_t> msg_2{0x04, 0x05, 0x06, 0x09, 0xff};
+    std::vector<std::uint8_t> msg_3{0x02, 0xab};
     std::uint8_t seqnum_1 = 2;
     std::uint8_t seqnum_2 = 42;
+    std::uint8_t seqnum_3 = 21;
 
     // Operation start for message 1
-    processor.reset(buffer(msg_1), seqnum_1);
-    BOOST_TEST(!processor.is_complete());
+    auto mutbuf = processor.prepare_buffer(msg_1.size(), seqnum_1);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg_1.size());
+    copy(msg_1, mutbuf);
 
-    // Prepare chunk for message 1
-    auto buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 2, 2);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_1));
+    // Chunk 1
+    auto chunk = processor.next_chunk();
+    auto expected = create_message(2, msg_1);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful message 1
-    processor.on_bytes_written();
+    processor.on_bytes_written(7);
     BOOST_TEST(seqnum_1 == 3u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
 
     // Operation start for message 2
-    processor.reset(buffer(msg_2), seqnum_2);
-    BOOST_TEST(!processor.is_complete());
+    mutbuf = processor.prepare_buffer(msg_2.size(), seqnum_2);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg_2.size());
+    copy(msg_2, mutbuf);
 
-    // Prepare chunk for message 2
-    buffers = processor.prepare_next_chunk();
-    check_header(buffers[0], 42, 3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buffers[1], buffer(msg_2));
+    // Chunk 2
+    chunk = processor.next_chunk();
+    expected = create_message(42, msg_2);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
 
     // On write successful message 2
-    processor.on_bytes_written();
+    processor.on_bytes_written(9);
     BOOST_TEST(seqnum_2 == 43u);
-    BOOST_TEST(processor.is_complete());
+    BOOST_TEST(processor.done());
+
+    // Operation start for message 3
+    mutbuf = processor.prepare_buffer(msg_3.size(), seqnum_3);
+    BOOST_TEST(!processor.done());
+    BOOST_TEST(mutbuf.size() == msg_3.size());
+    copy(msg_3, mutbuf);
+
+    // Chunk 3
+    chunk = processor.next_chunk();
+    expected = create_message(21, msg_3);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+
+    // On write successful message 3
+    processor.on_bytes_written(6);
+    BOOST_TEST(seqnum_3 == 22u);
+    BOOST_TEST(processor.done());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
+#include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 #include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/asio/coroutine.hpp>
@@ -26,19 +27,17 @@ namespace detail {
 struct execute_impl_op : boost::asio::coroutine
 {
     channel& chan_;
-    error_code fast_fail_;
-    resultset_encoding enc_;
+    any_execution_request req_;
     execution_processor& output_;
     diagnostics& diag_;
 
     execute_impl_op(
         channel& chan,
-        error_code fast_fail,
-        resultset_encoding enc,
+        const any_execution_request& req,
         execution_processor& output,
         diagnostics& diag
     ) noexcept
-        : chan_(chan), fast_fail_(fast_fail), enc_(enc), output_(output), diag_(diag)
+        : chan_(chan), req_(req), output_(output), diag_(diag)
     {
     }
 
@@ -55,23 +54,10 @@ struct execute_impl_op : boost::asio::coroutine
         // Normal path
         BOOST_ASIO_CORO_REENTER(*this)
         {
-            diag_.clear();
+            // Send request and read the first response
+            BOOST_ASIO_CORO_YIELD async_start_execution_impl(chan_, req_, output_, diag_, std::move(self));
 
-            // Fast fail checking
-            if (fast_fail_)
-            {
-                BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
-                self.complete(fast_fail_);
-                BOOST_ASIO_CORO_YIELD break;
-            }
-
-            // Setup
-            output_.reset(enc_, chan_.meta_mode());
-
-            // Send the execution request (already serialized at this point)
-            BOOST_ASIO_CORO_YIELD chan_
-                .async_write(chan_.shared_buffer(), output_.sequence_number(), std::move(self));
-
+            // Read anything else
             while (!output_.is_complete())
             {
                 if (output_.is_reading_head())
@@ -97,30 +83,18 @@ struct execute_impl_op : boost::asio::coroutine
 
 void boost::mysql::detail::execute_impl(
     channel& channel,
-    error_code fast_fail,
-    resultset_encoding enc,
+    const any_execution_request& req,
     execution_processor& output,
     error_code& err,
     diagnostics& diag
 )
 {
-    diag.clear();
-
-    // Fast fail checking
-    if (fast_fail)
-    {
-        err = fast_fail;
-        return;
-    }
-
-    // Setup
-    output.reset(enc, channel.meta_mode());
-
-    // Send the execution request (already serialized at this point)
-    channel.write(channel.shared_buffer(), output.sequence_number(), err);
+    // Send request and read the first response
+    start_execution_impl(channel, req, output, err, diag);
     if (err)
         return;
 
+    // Read rows and anything else
     while (!output.is_complete())
     {
         if (output.is_reading_head())
@@ -140,8 +114,7 @@ void boost::mysql::detail::execute_impl(
 
 void boost::mysql::detail::async_execute_impl(
     channel& chan,
-    error_code fast_fail,
-    resultset_encoding enc,
+    const any_execution_request& req,
     execution_processor& output,
     diagnostics& diag,
     boost::asio::any_completion_handler<void(error_code)> handler
@@ -149,7 +122,7 @@ void boost::mysql::detail::async_execute_impl(
 {
     return boost::asio::async_compose<
         boost::asio::any_completion_handler<void(error_code)>,
-        void(boost::mysql::error_code)>(execute_impl_op(chan, fast_fail, enc, output, diag), handler, chan);
+        void(boost::mysql::error_code)>(execute_impl_op(chan, req, output, diag), handler, chan);
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_EXECUTE_QUERY_HPP_ */

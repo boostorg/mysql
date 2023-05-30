@@ -10,27 +10,49 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/statement.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
+#include <boost/core/span.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// The caller function must serialize the execution request into channel's buffer
-// before calling these
+struct any_execution_request
+{
+    union data_t
+    {
+        string_view query;
+        struct
+        {
+            statement stmt;
+            span<const field_view> params;
+        } stmt;
+
+        data_t(string_view q) noexcept : query(q) {}
+        data_t(statement s, span<const field_view> params) noexcept : stmt{s, params} {}
+    } data;
+    bool is_query;
+
+    any_execution_request(string_view q) noexcept : data(q), is_query(true) {}
+    any_execution_request(statement s, span<const field_view> params) noexcept
+        : data(s, params), is_query(false)
+    {
+    }
+};
 
 class channel;
 
 BOOST_MYSQL_DECL
 void start_execution_impl(
     channel& channel,
-    error_code fast_fail,
-    resultset_encoding encoding,
+    const any_execution_request& req,
     execution_processor& proc,
     error_code& err,
     diagnostics& diag
@@ -38,8 +60,7 @@ void start_execution_impl(
 
 BOOST_MYSQL_DECL void async_start_execution_impl(
     channel& chan,
-    error_code fast_fail,
-    resultset_encoding encoding,
+    const any_execution_request& req,
     execution_processor& proc,
     diagnostics& diag,
     asio::any_completion_handler<void(error_code)> handler

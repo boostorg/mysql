@@ -20,10 +20,10 @@ void boost::mysql::detail::
     close_statement_impl(channel& chan, const statement& stmt, error_code& code, diagnostics&)
 {
     // Serialize the close message
-    serialize_message(com_stmt_close_packet{stmt.id()}, chan.current_capabilities(), chan.shared_buffer());
+    chan.serialize(com_stmt_close_packet{stmt.id()}, chan.reset_sequence_number());
 
     // Send it. No response is sent back
-    chan.write(chan.shared_buffer(), chan.reset_sequence_number(), code);
+    chan.write(code);
 }
 
 void boost::mysql::detail::async_close_statement_impl(
@@ -36,10 +36,10 @@ void boost::mysql::detail::async_close_statement_impl(
     diag.clear();
 
     // Serialize the close message
-    serialize_message(com_stmt_close_packet{stmt.id()}, chan.current_capabilities(), chan.shared_buffer());
+    chan.serialize(com_stmt_close_packet{stmt.id()}, chan.reset_sequence_number());
 
     // Send it. No response is sent back
-    return chan.async_write(chan.shared_buffer(), chan.reset_sequence_number(), std::move(handler));
+    return chan.async_write(std::move(handler));
 }
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_STATEMENT_HPP_ */

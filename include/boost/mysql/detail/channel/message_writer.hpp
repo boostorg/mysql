@@ -35,23 +35,18 @@ class message_writer
 public:
     message_writer(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept : processor_(max_frame_size) {}
 
+    asio::mutable_buffer prepare_buffer(std::size_t size, std::uint8_t& seqnum)
+    {
+        return processor_.prepare_buffer(size, seqnum);
+    }
+
     // Writes an entire message to stream; partitions the message into
     // chunks and adds the required headers
-    inline void write(
-        any_stream& stream,
-        boost::asio::const_buffer buffer,
-        std::uint8_t& seqnum,
-        error_code& ec
-    );
+    inline void write(any_stream& stream, error_code& ec);
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_write(
-        any_stream& stream,
-        boost::asio::const_buffer buffer,
-        std::uint8_t& seqnum,
-        CompletionToken&& token
-    );
+    async_write(any_stream& stream, CompletionToken&& token);
 };
 
 }  // namespace detail

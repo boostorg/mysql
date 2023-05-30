@@ -15,6 +15,7 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
@@ -22,10 +23,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void compose_quit(channel& chan)
-{
-    serialize_message(quit_packet(), chan.current_capabilities(), chan.shared_buffer());
-}
+inline void compose_quit(channel& chan) { chan.serialize(quit_packet{}, chan.reset_sequence_number()); }
 
 struct quit_connection_op : boost::asio::coroutine
 {
@@ -43,8 +41,7 @@ struct quit_connection_op : boost::asio::coroutine
 
             // Quit message
             compose_quit(chan_);
-            BOOST_ASIO_CORO_YIELD chan_
-                .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_write(std::move(self));
             if (err)
             {
                 self.complete(err);
@@ -69,7 +66,7 @@ struct quit_connection_op : boost::asio::coroutine
 void boost::mysql::detail::quit_connection_impl(channel& chan, error_code& err, diagnostics&)
 {
     compose_quit(chan);
-    chan.write(chan.shared_buffer(), chan.reset_sequence_number(), err);
+    chan.write(err);
     if (err)
         return;
     if (chan.stream().ssl_active())

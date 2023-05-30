@@ -168,19 +168,18 @@ public:
     }
 
     // Response to that initial greeting
-    void compose_ssl_request(bytestring& buffer)
+    void compose_ssl_request()
     {
         ssl_request sslreq{
             channel_.current_capabilities().get(),
             static_cast<std::uint32_t>(MAX_PACKET_SIZE),
             get_collation_first_byte(params_.connection_collation()),
-            {}};
-
-        // Serialize and send
-        serialize_message(sslreq, channel_.current_capabilities(), buffer);
+            {},
+        };
+        channel_.serialize(sslreq, channel_.shared_sequence_number());
     }
 
-    void compose_handshake_response(bytestring& buffer)
+    void compose_handshake_response()
     {
         // Compose response
         handshake_response_packet response{
@@ -190,17 +189,15 @@ public:
             string_null(params_.username()),
             string_lenenc(auth_calc_.response()),
             string_null(params_.database()),
-            string_null(auth_calc_.plugin_name())};
+            string_null(auth_calc_.plugin_name()),
+        };
 
         // Serialize
-        serialize_message(response, channel_.current_capabilities(), buffer);
+        channel_.serialize(response, channel_.shared_sequence_number());
     }
 
     // Server handshake response
-    error_code process_handshake_server_response(
-        boost::asio::const_buffer server_response,
-        bytestring& write_buffer
-    )
+    error_code process_handshake_server_response(boost::asio::const_buffer server_response)
     {
         deserialization_context ctx(server_response, channel_.current_capabilities());
         std::uint8_t msg_type = 0;
@@ -236,12 +233,10 @@ public:
                 return err;
 
             // Serialize
-            serialize_message(
+            channel_.serialize(
                 auth_switch_response_packet{string_eof(auth_calc_.response())},
-                channel_.current_capabilities(),
-                write_buffer
+                channel_.shared_sequence_number()
             );
-
             auth_state_ = auth_state::send_more_data;
             return error_code();
         }
@@ -264,13 +259,10 @@ public:
             err = auth_calc_.calculate(auth_calc_.plugin_name(), params_.password(), challenge, use_ssl());
             if (err)
                 return err;
-
-            serialize_message(
+            channel_.serialize(
                 auth_switch_response_packet{string_eof(auth_calc_.response())},
-                channel_.current_capabilities(),
-                write_buffer
+                channel_.shared_sequence_number()
             );
-
             auth_state_ = auth_state::send_more_data;
             return error_code();
         }
@@ -335,24 +327,16 @@ struct handshake_op : boost::asio::coroutine
             if (processor_.use_ssl())
             {
                 // Send SSL request
-                processor_.compose_ssl_request(get_channel().shared_buffer());
-                BOOST_ASIO_CORO_YIELD get_channel().async_write(
-                    get_channel().shared_buffer(),
-                    get_channel().shared_sequence_number(),
-                    std::move(self)
-                );
+                processor_.compose_ssl_request();
+                BOOST_ASIO_CORO_YIELD get_channel().async_write(std::move(self));
 
                 // SSL handshake
                 BOOST_ASIO_CORO_YIELD get_channel().stream().async_handshake(std::move(self));
             }
 
             // Compose and send handshake response
-            processor_.compose_handshake_response(get_channel().shared_buffer());
-            BOOST_ASIO_CORO_YIELD get_channel().async_write(
-                get_channel().shared_buffer(),
-                get_channel().shared_sequence_number(),
-                std::move(self)
-            );
+            processor_.compose_handshake_response();
+            BOOST_ASIO_CORO_YIELD get_channel().async_write(std::move(self));
 
             while (!processor_.auth_complete())
             {
@@ -363,7 +347,7 @@ struct handshake_op : boost::asio::coroutine
                 );
 
                 // Process it
-                err = processor_.process_handshake_server_response(read_msg, get_channel().shared_buffer());
+                err = processor_.process_handshake_server_response(read_msg);
                 if (err)
                 {
                     self.complete(err);
@@ -373,11 +357,7 @@ struct handshake_op : boost::asio::coroutine
                 // We received an auth switch response and we have the response ready to be sent
                 if (processor_.should_send_auth_switch_response())
                 {
-                    BOOST_ASIO_CORO_YIELD get_channel().async_write(
-                        get_channel().shared_buffer(),
-                        get_channel().shared_sequence_number(),
-                        std::move(self)
-                    );
+                    BOOST_ASIO_CORO_YIELD get_channel().async_write(std::move(self));
                 }
             }
 
@@ -403,12 +383,12 @@ void boost::mysql::detail::handshake_impl(
     handshake_processor processor(params, diag, channel);
 
     // Read server greeting
-    auto b = channel.read_one(channel.shared_sequence_number(), err);
+    auto read_message = channel.read_one(channel.shared_sequence_number(), err);
     if (err)
         return;
 
     // Process server greeting (handshake)
-    err = processor.process_handshake(b, channel.stream().supports_ssl());
+    err = processor.process_handshake(read_message, channel.stream().supports_ssl());
     if (err)
         return;
 
@@ -416,8 +396,8 @@ void boost::mysql::detail::handshake_impl(
     if (processor.use_ssl())
     {
         // Send SSL request
-        processor.compose_ssl_request(channel.shared_buffer());
-        channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
+        processor.compose_ssl_request();
+        channel.write(err);
         if (err)
             return;
 
@@ -428,27 +408,27 @@ void boost::mysql::detail::handshake_impl(
     }
 
     // Handshake response
-    processor.compose_handshake_response(channel.shared_buffer());
-    channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
+    processor.compose_handshake_response();
+    channel.write(err);
     if (err)
         return;
 
     while (!processor.auth_complete())
     {
         // Receive response
-        b = channel.read_one(channel.shared_sequence_number(), err);
+        read_message = channel.read_one(channel.shared_sequence_number(), err);
         if (err)
             return;
 
         // Process it
-        err = processor.process_handshake_server_response(b, channel.shared_buffer());
+        err = processor.process_handshake_server_response(read_message);
         if (err)
             return;
 
         if (processor.should_send_auth_switch_response())
         {
             // We received an auth switch request and we have the response ready to be sent
-            channel.write(channel.shared_buffer(), channel.shared_sequence_number(), err);
+            channel.write(err);
             if (err)
                 return;
         }

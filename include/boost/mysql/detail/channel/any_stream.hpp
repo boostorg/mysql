@@ -12,15 +12,14 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <boost/asio/any_completion_executor.hpp>
 #include <boost/asio/any_completion_handler.hpp>
-#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_socket.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/socket_base.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/ssl/stream_base.hpp>
-#include <boost/asio/write.hpp>
 
 #include <cstddef>
 #include <type_traits>
@@ -62,10 +61,9 @@ public:
     virtual std::size_t read_some(boost::asio::mutable_buffer, error_code& ec) = 0;
     virtual void async_read_some(boost::asio::mutable_buffer, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
 
-    // Writing (we always write the message header and body with asio::write)
-    // TODO: this is a little bit weird
-    virtual std::size_t write(std::array<boost::asio::const_buffer, 2>, error_code& ec) = 0;
-    virtual void async_write(std::array<boost::asio::const_buffer, 2>, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
+    // Writing
+    virtual std::size_t write_some(boost::asio::const_buffer, error_code& ec) = 0;
+    virtual void async_write_some(boost::asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
 
     // Connect and close (TODO: is there a better way?)
     virtual void connect(const void* endpoint, error_code& ec) = 0;
@@ -203,18 +201,17 @@ public:
         return stream_.async_read_some(buff, std::move(handler));
     }
 
-    // Writing (we always write the message header and body with asio::write)
-    // TODO: this is a little bit weird
-    std::size_t write(std::array<boost::asio::const_buffer, 2> buff, error_code& ec) final override
+    // Writing
+    std::size_t write_some(boost::asio::const_buffer buff, error_code& ec) final override
     {
-        return asio::write(stream_, buff, ec);
+        return stream_.write_some(buff, ec);
     }
-    void async_write(
-        std::array<boost::asio::const_buffer, 2> buff,
+    void async_write_some(
+        boost::asio::const_buffer buff,
         asio::any_completion_handler<void(error_code, std::size_t)> handler
     ) final override
     {
-        return asio::async_write(stream_, buff, std::move(handler));
+        return stream_.async_write_some(buff, std::move(handler));
     }
 
     // Connect and close (TODO: better way?)
@@ -288,31 +285,30 @@ public:
         }
     }
 
-    // Writing (we always write the message header and body with asio::write)
-    // TODO: this is a little bit weird
-    std::size_t write(std::array<boost::asio::const_buffer, 2> buff, error_code& ec) override final
+    // Writing
+    std::size_t write_some(boost::asio::const_buffer buff, error_code& ec) override final
     {
         if (ssl_active())
         {
-            return asio::write(stream_, buff, ec);
+            return stream_.write_some(buff, ec);
         }
         else
         {
-            return asio::write(stream_.next_layer(), buff, ec);
+            return stream_.next_layer().write_some(buff, ec);
         }
     }
-    void async_write(
-        std::array<boost::asio::const_buffer, 2> buff,
+    void async_write_some(
+        boost::asio::const_buffer buff,
         asio::any_completion_handler<void(error_code, std::size_t)> handler
     ) override final
     {
         if (ssl_active())
         {
-            asio::async_write(stream_, buff, std::move(handler));
+            stream_.async_write_some(buff, std::move(handler));
         }
         else
         {
-            return asio::async_write(stream_.next_layer(), buff, std::move(handler));
+            return stream_.next_layer().async_write_some(buff, std::move(handler));
         }
     }
 

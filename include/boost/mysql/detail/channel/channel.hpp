@@ -13,7 +13,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
 #include <boost/mysql/detail/channel/any_stream.hpp>
 #include <boost/mysql/detail/channel/disableable_ssl_stream.hpp>
 #include <boost/mysql/detail/channel/message_reader.hpp>
@@ -39,8 +38,7 @@ class channel_base
 {
     db_flavor flavor_{db_flavor::mysql};
     capabilities current_caps_;
-    std::uint8_t shared_sequence_number_{};  // for async ops
-    bytestring shared_buff_;                 // for async ops
+    std::uint8_t shared_sequence_number_{};
     diagnostics shared_diag_;                // for async ops
     std::vector<field_view> shared_fields_;  // for read_some ops
     metadata_mode meta_mode_{metadata_mode::minimal};
@@ -79,8 +77,6 @@ public:
     }
 
     // Internal buffer, diagnostics and sequence_number to help async ops
-    const bytestring& shared_buffer() const noexcept { return shared_buff_; }
-    bytestring& shared_buffer() noexcept { return shared_buff_; }
     diagnostics& shared_diag() noexcept { return shared_diag_; }
     std::uint8_t& shared_sequence_number() noexcept { return shared_sequence_number_; }
     std::uint8_t& reset_sequence_number() noexcept { return shared_sequence_number_ = 0; }
@@ -128,29 +124,26 @@ public:
         return reader_.async_read_one(*stream_, seqnum, std::forward<CompletionToken>(token));
     }
 
-    // Writing
-    void write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, error_code& code)
+    // Writing. serialize() gets all the required data into the write buffers so it can be written
+    template <class Serializable>
+    void serialize(const Serializable& message, std::uint8_t& sequence_number)
     {
-        writer_.write(*stream_, buffer, seqnum, code);
+        serialization_context ctx(current_capabilities());
+        std::size_t size = get_size(ctx, message);
+        auto buff = writer_.prepare_buffer(size, sequence_number);
+        ctx.set_first(static_cast<std::uint8_t*>(buff.data()));
+        ::boost::mysql::detail::serialize(ctx, message);
+        BOOST_ASSERT(ctx.first() == static_cast<std::uint8_t*>(buff.data()) + buff.size());
     }
+
+    // Writes what has been set up by serialize()
+    void write(error_code& code) { writer_.write(*stream_, code); }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_write(boost::asio::const_buffer buffer, std::uint8_t& seqnum, CompletionToken&& token)
+    async_write(CompletionToken&& token)
     {
-        return writer_.async_write(*stream_, buffer, seqnum, std::forward<CompletionToken>(token));
-    }
-
-    void write(const bytestring& buffer, std::uint8_t& seqnum, error_code& code)
-    {
-        write(boost::asio::buffer(buffer), seqnum, code);
-    }
-
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_write(const bytestring& buffer, std::uint8_t& seqnum, CompletionToken&& token)
-    {
-        return async_write(boost::asio::buffer(buffer), seqnum, std::forward<CompletionToken>(token));
+        return writer_.async_write(*stream_, std::forward<CompletionToken>(token));
     }
 
     // SSL

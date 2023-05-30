@@ -13,7 +13,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 
@@ -21,23 +21,19 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// The caller function must serialize the execution request into channel's buffer
-// before calling these
-
 class channel;
 
 BOOST_MYSQL_DECL
 void execute_impl(
     channel& channel,
-    error_code fast_fail,
-    resultset_encoding enc,
+    const any_execution_request& req,
     execution_processor& output,
     error_code& err,
     diagnostics& diag
 );
 
 BOOST_MYSQL_DECL void
-async_execute_impl(channel& chan, error_code fast_fail, resultset_encoding enc, execution_processor& output, diagnostics& diag, asio::any_completion_handler<void(error_code)>);
+async_execute_impl(channel& chan, const any_execution_request& req, execution_processor& output, diagnostics& diag, asio::any_completion_handler<void(error_code)>);
 
 }  // namespace detail
 }  // namespace mysql

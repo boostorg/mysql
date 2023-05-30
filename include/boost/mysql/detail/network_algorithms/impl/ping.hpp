@@ -30,6 +30,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline void serialize_ping_message(channel& chan)
+{
+    chan.serialize(ping_packet{}, chan.reset_sequence_number());
+}
+
 inline error_code process_ping_response(
     boost::asio::const_buffer buff,
     capabilities caps,
@@ -84,12 +89,11 @@ struct ping_op : boost::asio::coroutine
         {
             diag_.clear();
 
-            // Serialize the close message
-            serialize_message(ping_packet{}, chan_.current_capabilities(), chan_.shared_buffer());
+            // Serialize the message
+            serialize_ping_message(chan_);
 
             // Write message
-            BOOST_ASIO_CORO_YIELD chan_
-                .async_write(chan_.shared_buffer(), chan_.reset_sequence_number(), std::move(self));
+            BOOST_ASIO_CORO_YIELD chan_.async_write(std::move(self));
 
             // Read response
             BOOST_ASIO_CORO_YIELD chan_.async_read_one(chan_.shared_sequence_number(), std::move(self));
@@ -106,11 +110,11 @@ struct ping_op : boost::asio::coroutine
 
 void boost::mysql::detail::ping_impl(channel& chan, error_code& code, diagnostics& diag)
 {
-    // Serialize the ping message
-    serialize_message(ping_packet{}, chan.current_capabilities(), chan.shared_buffer());
+    // Serialize the message
+    serialize_ping_message(chan);
 
     // Send it
-    chan.write(chan.shared_buffer(), chan.reset_sequence_number(), code);
+    chan.write(code);
     if (code)
         return;
 
