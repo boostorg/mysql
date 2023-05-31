@@ -14,9 +14,10 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/network_algorithms/handshake.hpp>
 
 #include <boost/asio/coroutine.hpp>
+
+#include "network_algorithms/handshake.hpp"
 
 namespace boost {
 namespace mysql {

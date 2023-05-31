@@ -1,18 +1,19 @@
 // header
 
 #include <boost/mysql/detail/network_algorithms.hpp>
-#include <boost/mysql/detail/network_algorithms/close_connection.hpp>
-#include <boost/mysql/detail/network_algorithms/close_statement.hpp>
-#include <boost/mysql/detail/network_algorithms/connect.hpp>
-#include <boost/mysql/detail/network_algorithms/execute_impl.hpp>
-#include <boost/mysql/detail/network_algorithms/handshake.hpp>
-#include <boost/mysql/detail/network_algorithms/ping.hpp>
-#include <boost/mysql/detail/network_algorithms/prepare_statement.hpp>
-#include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
-#include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows_dynamic.hpp>
-#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
+
+#include "network_algorithms/close_connection.hpp"
+#include "network_algorithms/close_statement.hpp"
+#include "network_algorithms/connect.hpp"
+#include "network_algorithms/execute_impl.hpp"
+#include "network_algorithms/handshake.hpp"
+#include "network_algorithms/ping.hpp"
+#include "network_algorithms/prepare_statement.hpp"
+#include "network_algorithms/quit_connection.hpp"
+#include "network_algorithms/read_resultset_head.hpp"
+#include "network_algorithms/read_some_rows.hpp"
+#include "network_algorithms/read_some_rows_dynamic.hpp"
+#include "network_algorithms/start_execution.hpp"
 
 void boost::mysql::detail::connect_erased(
     channel& chan,

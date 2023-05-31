@@ -91,7 +91,8 @@ endif()
 #
 # Interface library (header-only)
 #
-add_library(boost_mysql src/src.cpp src/network_algorithms.cpp)
+add_library(boost_mysql src/src.cpp src/network_algorithms/network_algorithms.cpp)
+target_include_directories(boost_mysql PRIVATE src)
 add_library(Boost::mysql ALIAS boost_mysql)
 
 if (BOOST_SUPERPROJECT_VERSION)

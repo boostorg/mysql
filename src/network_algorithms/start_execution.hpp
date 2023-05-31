@@ -19,7 +19,6 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
@@ -27,6 +26,8 @@
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
+
+#include "network_algorithms/read_resultset_head.hpp"
 
 namespace boost {
 namespace mysql {

@@ -13,9 +13,10 @@
 
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 
 #include <boost/asio/post.hpp>
+
+#include "network_algorithms/quit_connection.hpp"
 
 namespace boost {
 namespace mysql {

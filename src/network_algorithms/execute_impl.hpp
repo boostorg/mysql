@@ -14,11 +14,12 @@
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows.hpp>
-#include <boost/mysql/detail/network_algorithms/start_execution.hpp>
 
 #include <boost/asio/coroutine.hpp>
+
+#include "network_algorithms/read_resultset_head.hpp"
+#include "network_algorithms/read_some_rows.hpp"
+#include "network_algorithms/start_execution.hpp"
 
 namespace boost {
 namespace mysql {
