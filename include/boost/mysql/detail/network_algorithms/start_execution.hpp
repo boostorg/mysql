@@ -5,20 +5,26 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_START_EXECUTION_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_START_EXECUTION_IMPL_HPP
-
-#pragma once
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_START_EXECUTION_IMPL_HPP
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/statement.hpp>
+#include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/network_algorithms/read_resultset_head.hpp>
-#include <boost/mysql/detail/network_algorithms/start_execution_impl.hpp>
 #include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 #include <boost/mysql/detail/protocol/query_messages.hpp>
 #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
+#include <boost/asio/async_result.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
 
@@ -128,11 +134,8 @@ struct start_execution_impl_op : boost::asio::coroutine
     }
 };
 
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
-void boost::mysql::detail::start_execution_impl(
+// External interface
+inline void start_execution_impl(
     channel& channel,
     const any_execution_request& req,
     execution_processor& proc,
@@ -161,19 +164,25 @@ void boost::mysql::detail::start_execution_impl(
         return;
 }
 
-void boost::mysql::detail::async_start_execution_impl(
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_start_execution_impl(
     channel& channel,
     const any_execution_request& req,
     execution_processor& proc,
     diagnostics& diag,
-    asio::any_completion_handler<void(error_code)> handler
+    CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
+    return boost::asio::async_compose<CompletionToken, void(error_code)>(
         start_execution_impl_op(channel, req, proc, diag),
-        handler,
+        token,
         channel
     );
 }
 
-#endif
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+#endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_HPP_ */

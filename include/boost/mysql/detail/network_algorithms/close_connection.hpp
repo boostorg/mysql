@@ -11,31 +11,78 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/network_algorithms/quit_connection.hpp>
 
-#include <boost/asio/any_completion_handler.hpp>
+#include <boost/asio/post.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class channel;
+struct close_connection_op : boost::asio::coroutine
+{
+    channel& chan_;
+    diagnostics& diag_;
 
-BOOST_MYSQL_DECL
-void close_connection_impl(channel& chan, error_code& code, diagnostics& diag);
+    close_connection_op(channel& chan, diagnostics& diag) : chan_(chan), diag_(diag) {}
 
-BOOST_MYSQL_DECL void async_close_connection_impl(
-    channel& chan,
-    diagnostics& diag,
-    asio::any_completion_handler<void(error_code)> handler
-);
+    template <class Self>
+    void operator()(Self& self, error_code err = {})
+    {
+        error_code close_err;
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            diag_.clear();
+
+            if (!chan_.stream().is_open())
+            {
+                BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
+                self.complete(error_code());
+                BOOST_ASIO_CORO_YIELD break;
+            }
+
+            BOOST_ASIO_CORO_YIELD async_quit_connection_impl(chan_, diag_, std::move(self));
+
+            // We call close regardless of the quit outcome
+            chan_.stream().close(close_err);
+            self.complete(err ? err : close_err);
+        }
+    }
+};
+
+// Interface
+inline void close_connection_impl(channel& chan, error_code& code, diagnostics& diag)
+{
+    // Close = quit + close stream. We close the stream regardless of the quit failing or not
+    if (chan.stream().is_open())
+    {
+        // MySQL quit notification
+        quit_connection_impl(chan, code, diag);
+
+        error_code close_err;
+        chan.stream().close(close_err);
+        if (!code)
+        {
+            code = close_err;
+        }
+    }
+}
+
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_close_connection_impl(channel& chan, diagnostics& diag, CompletionToken&& token)
+{
+    return asio::async_compose<CompletionToken, void(error_code)>(
+        close_connection_op{chan, diag},
+        token,
+        chan
+    );
+}
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/network_algorithms/impl/close_connection.hpp>
-#endif
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_CONNECTION_HPP_ */

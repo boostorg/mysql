@@ -8,10 +8,13 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_EXECUTION_REQUEST_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_EXECUTION_REQUEST_HPP
 
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+
+#include <boost/core/span.hpp>
 
 #include <type_traits>
 
@@ -60,6 +63,29 @@ concept execution_request = is_execution_request<T>::value;
 #define BOOST_MYSQL_EXECUTION_REQUEST class
 
 #endif  // BOOST_MYSQL_HAS_CONCEPTS
+
+struct any_execution_request
+{
+    union data_t
+    {
+        string_view query;
+        struct
+        {
+            statement stmt;
+            span<const field_view> params;
+        } stmt;
+
+        data_t(string_view q) noexcept : query(q) {}
+        data_t(statement s, span<const field_view> params) noexcept : stmt{s, params} {}
+    } data;
+    bool is_query;
+
+    any_execution_request(string_view q) noexcept : data(q), is_query(true) {}
+    any_execution_request(statement s, span<const field_view> params) noexcept
+        : data(s, params), is_query(false)
+    {
+    }
+};
 
 }  // namespace detail
 }  // namespace mysql

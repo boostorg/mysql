@@ -5,16 +5,19 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_READ_SOME_ROWS_IMPL_HPP
+#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_READ_SOME_ROWS_IMPL_HPP
 
-#pragma once
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/channel/channel.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/protocol/deserialization_context.hpp>
 #include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
+#include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
@@ -121,11 +124,8 @@ struct read_some_rows_impl_op : boost::asio::coroutine
     }
 };
 
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
-std::size_t boost::mysql::detail::read_some_rows_impl(
+// External interface
+inline std::size_t read_some_rows_impl(
     channel& chan,
     execution_processor& proc,
     const output_ref& output,
@@ -156,17 +156,25 @@ std::size_t boost::mysql::detail::read_some_rows_impl(
     return read_rows;
 }
 
-void boost::mysql::detail::async_read_some_rows_impl(
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
+async_read_some_rows_impl(
     channel& chan,
     execution_processor& proc,
     const output_ref& output,
     diagnostics& diag,
-    asio::any_completion_handler<void(error_code, std::size_t)> handler
+    CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<
-        asio::any_completion_handler<void(error_code, std::size_t)>,
-        void(error_code, std::size_t)>(read_some_rows_impl_op(chan, diag, proc, output), handler, chan);
+    return asio::async_compose<CompletionToken, void(error_code, std::size_t)>(
+        read_some_rows_impl_op(chan, diag, proc, output),
+        token,
+        chan
+    );
 }
 
-#endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_TEXT_ROW_IPP_ */
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+#endif

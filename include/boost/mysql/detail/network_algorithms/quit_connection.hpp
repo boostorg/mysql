@@ -11,31 +11,81 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/protocol/common_messages.hpp>
 
-#include <boost/asio/any_completion_handler.hpp>
+#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class channel;
+inline void compose_quit(channel& chan) { chan.serialize(quit_packet{}, chan.reset_sequence_number()); }
 
-BOOST_MYSQL_DECL
-void quit_connection_impl(channel& chan, error_code& code, diagnostics& diag);
+struct quit_connection_op : boost::asio::coroutine
+{
+    channel& chan_;
+    diagnostics& diag_;
 
-BOOST_MYSQL_DECL void async_quit_connection_impl(
-    channel& chan,
-    diagnostics& diag,
-    asio::any_completion_handler<void(error_code)> token
-);
+    quit_connection_op(channel& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
+
+    template <class Self>
+    void operator()(Self& self, error_code err = {})
+    {
+        BOOST_ASIO_CORO_REENTER(*this)
+        {
+            diag_.clear();
+
+            // Quit message
+            compose_quit(chan_);
+            BOOST_ASIO_CORO_YIELD chan_.async_write(std::move(self));
+            if (err)
+            {
+                self.complete(err);
+            }
+
+            // SSL shutdown error ignored, as MySQL doesn't always gracefully
+            // close SSL connections.
+            if (chan_.stream().ssl_active())
+            {
+                BOOST_ASIO_CORO_YIELD chan_.stream().async_shutdown(std::move(self));
+            }
+
+            self.complete(error_code());
+        }
+    }
+};
+
+// Interface
+inline void quit_connection_impl(channel& chan, error_code& err, diagnostics&)
+{
+    compose_quit(chan);
+    chan.write(err);
+    if (err)
+        return;
+    if (chan.stream().ssl_active())
+    {
+        // SSL shutdown. Result ignored as MySQL does not always perform
+        // graceful SSL shutdowns
+        error_code ignored;
+        chan.stream().shutdown(ignored);
+    }
+}
+
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_quit_connection_impl(channel& chan, diagnostics& diag, CompletionToken&& token)
+{
+    return asio::async_compose<CompletionToken, void(error_code)>(
+        quit_connection_op(chan, diag),
+        token,
+        chan
+    );
+}
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/network_algorithms/impl/quit_connection.hpp>
-#endif
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_QUIT_CONNECTION_HPP_ */

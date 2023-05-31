@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/error_categories.hpp>
+
 #include <boost/mysql/detail/auxiliar/server_errc_strings.hpp>
 #include <boost/mysql/detail/protocol/common_messages.hpp>
 #include <boost/mysql/detail/protocol/process_error_packet.hpp>
