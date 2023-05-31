@@ -31,12 +31,6 @@ inline void throw_on_error_loc(
     }
 }
 
-inline void clear_errors(error_code& err, diagnostics& diag) noexcept
-{
-    err.clear();
-    diag.clear();
-}
-
 // Helper to implement sync with exceptions functions
 struct error_block
 {

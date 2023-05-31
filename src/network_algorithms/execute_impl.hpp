@@ -87,6 +87,9 @@ inline void execute_impl(
     diagnostics& diag
 )
 {
+    err.clear();
+    diag.clear();
+
     // Send request and read the first response
     start_execution_impl(channel, req, output, err, diag);
     if (err)

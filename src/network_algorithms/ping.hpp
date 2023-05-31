@@ -104,23 +104,26 @@ struct ping_op : boost::asio::coroutine
 };
 
 // Interface
-inline void ping_impl(channel& chan, error_code& code, diagnostics& diag)
+inline void ping_impl(channel& chan, error_code& err, diagnostics& diag)
 {
+    err.clear();
+    diag.clear();
+
     // Serialize the message
     serialize_ping_message(chan);
 
     // Send it
-    chan.write(code);
-    if (code)
+    chan.write(err);
+    if (err)
         return;
 
     // Read response
-    auto response = chan.read_one(chan.shared_sequence_number(), code);
-    if (code)
+    auto response = chan.read_one(chan.shared_sequence_number(), err);
+    if (err)
         return;
 
     // Verify it's what we expected
-    code = process_ping_response(response, chan.current_capabilities(), chan.flavor(), diag);
+    err = process_ping_response(response, chan.current_capabilities(), chan.flavor(), diag);
 }
 
 template <class CompletionToken>

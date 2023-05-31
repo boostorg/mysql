@@ -144,6 +144,7 @@ inline void start_execution_impl(
     diagnostics& diag
 )
 {
+    err.clear();
     diag.clear();
 
     // Check for errors

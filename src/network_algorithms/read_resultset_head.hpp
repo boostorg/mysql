@@ -144,7 +144,7 @@ inline void read_resultset_head_impl(
 )
 {
     // Setup
-    err = error_code();
+    err.clear();
     diag.clear();
 
     // If we're not reading head, return

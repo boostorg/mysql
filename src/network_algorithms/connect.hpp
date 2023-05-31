@@ -72,6 +72,9 @@ inline void connect_impl(
     diagnostics& diag
 )
 {
+    err.clear();
+    diag.clear();
+
     error_code ignored;
     chan.stream().connect(endpoint, err);
     if (err)

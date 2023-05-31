@@ -165,6 +165,9 @@ inline statement prepare_statement_impl(
     diagnostics& diag
 )
 {
+    err.clear();
+    diag.clear();
+
     prepare_statement_processor processor(channel, stmt_sql, diag);
 
     // Prepare message

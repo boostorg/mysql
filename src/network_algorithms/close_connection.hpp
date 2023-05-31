@@ -54,19 +54,22 @@ struct close_connection_op : boost::asio::coroutine
 };
 
 // Interface
-inline void close_connection_impl(channel& chan, error_code& code, diagnostics& diag)
+inline void close_connection_impl(channel& chan, error_code& err, diagnostics& diag)
 {
+    err.clear();
+    diag.clear();
+
     // Close = quit + close stream. We close the stream regardless of the quit failing or not
     if (chan.stream().is_open())
     {
         // MySQL quit notification
-        quit_connection_impl(chan, code, diag);
+        quit_connection_impl(chan, err, diag);
 
         error_code close_err;
         chan.stream().close(close_err);
-        if (!code)
+        if (!err)
         {
-            code = close_err;
+            err = close_err;
         }
     }
 }

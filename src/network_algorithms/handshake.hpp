@@ -381,6 +381,8 @@ inline void handshake_impl(
     diagnostics& diag
 )
 {
+    err.clear();
+    diag.clear();
     channel.reset();
 
     // Set up processor

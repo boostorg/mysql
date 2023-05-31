@@ -22,13 +22,16 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void close_statement_impl(channel& chan, const statement& stmt, error_code& code, diagnostics&)
+inline void close_statement_impl(channel& chan, const statement& stmt, error_code& err, diagnostics& diag)
 {
+    err.clear();
+    diag.clear();
+
     // Serialize the close message
     chan.serialize(com_stmt_close_packet{stmt.id()}, chan.reset_sequence_number());
 
     // Send it. No response is sent back
-    chan.write(code);
+    chan.write(err);
 }
 
 template <class CompletionToken>
@@ -36,7 +39,6 @@ BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
 async_close_statement_impl(channel& chan, const statement& stmt, diagnostics& diag, CompletionToken&& token)
 {
     // We can do this here because we know no deferred tokens reach this function (thanks to erasing)
-
     diag.clear();
 
     // Serialize the close message

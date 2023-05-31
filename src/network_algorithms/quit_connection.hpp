@@ -58,8 +58,11 @@ struct quit_connection_op : boost::asio::coroutine
 };
 
 // Interface
-inline void quit_connection_impl(channel& chan, error_code& err, diagnostics&)
+inline void quit_connection_impl(channel& chan, error_code& err, diagnostics& diag)
 {
+    err.clear();
+    diag.clear();
+
     compose_quit(chan);
     chan.write(err);
     if (err)

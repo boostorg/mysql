@@ -732,7 +732,7 @@ struct quit_connection_initiation
     template <class Handler>
     void operator()(Handler&& handler, channel* chan, diagnostics* diag)
     {
-        async_quit_connection_interface(*chan, *diag, std::forward<Handler>(handler));
+        async_quit_connection_erased(*chan, *diag, std::forward<Handler>(handler));
     }
 };
 

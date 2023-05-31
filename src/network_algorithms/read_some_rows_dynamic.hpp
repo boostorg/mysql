@@ -73,6 +73,8 @@ inline rows_view read_some_rows_dynamic_impl(
     diagnostics& diag
 )
 {
+    err.clear();
+    diag.clear();
     channel.shared_fields().clear();
     read_some_rows_impl(channel, st, output_ref(), err, diag);
     if (err)
