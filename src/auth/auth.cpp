@@ -11,14 +11,15 @@
 #include <cstring>
 #include <openssl/sha.h>
 
-#include "auth/caching_sha2_password.hpp"
-#include "auth/mysql_native_password.hpp"
-
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using boost::mysql::string_view;
 using boost::mysql::detail::make_string_view;
 
 // mysql_native_password
+// Authorization for this plugin is always challenge (nonce) -> response
+// (hashed password).
+
 static constexpr std::size_t mnp_challenge_length = 20;
 static constexpr std::size_t mnp_response_length = 20;
 
@@ -47,7 +48,7 @@ static void mnp_compute_auth_string(string_view password, const void* challenge,
     }
 }
 
-error_code boost::mysql::detail::mysql_native_password::compute_response(
+static error_code mnp_compute_response(
     string_view password,
     string_view challenge,
     bool,  // use_ssl
@@ -67,6 +68,16 @@ error_code boost::mysql::detail::mysql_native_password::compute_response(
 }
 
 // caching_sha2_password
+// Authorization for this plugin may be cleartext password or challenge/response.
+// The server has a cache that uses when employing challenge/response. When
+// the server sends a challenge of challenge_length bytes, we should send
+// the password hashed with the challenge. The server may send a challenge
+// equals to perform_full_auth, meaning it could not use the cache to
+// complete the auth. In this case, we should just send the cleartext password.
+// Doing the latter requires a SSL connection. It is possible to perform full
+// auth without an SSL connection, but that requires the server public key,
+// and we do not implement that.
+
 static constexpr std::size_t csha2p_challenge_length = 20;
 static constexpr std::size_t csha2p_response_length = 32;
 
@@ -100,7 +111,7 @@ static void csha2p_compute_auth_string(string_view password, const void* challen
 
 static constexpr auto perform_full_auth = make_string_view("\4");
 
-error_code boost::mysql::detail::caching_sha2_password::compute_response(
+static error_code csha2p_compute_response(
     string_view password,
     string_view challenge,
     bool use_ssl,
@@ -153,11 +164,11 @@ struct authentication_plugin
 static constexpr authentication_plugin all_authentication_plugins[] = {
     {
      make_string_view("mysql_native_password"),
-     &boost::mysql::detail::mysql_native_password::compute_response,
+     &mnp_compute_response,
      },
     {
      make_string_view("caching_sha2_password"),
-     &boost::mysql::detail::caching_sha2_password::compute_response,
+     &csha2p_compute_response,
      },
 };
 
