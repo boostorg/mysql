@@ -12,7 +12,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
-#include <boost/mysql/detail/auth/auth_calculator.hpp>
 #include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/protocol/capabilities.hpp>
@@ -24,6 +23,8 @@
 #include <boost/asio/buffer.hpp>
 
 #include <type_traits>
+
+#include "auth/auth.hpp"
 
 namespace boost {
 namespace mysql {
@@ -123,7 +124,7 @@ class handshake_processor
     handshake_params params_;
     diagnostics& diag_;
     channel& channel_;
-    auth_calculator auth_calc_;
+    auth_response auth_resp_;
     auth_state auth_state_{auth_state::invalid};
 
 public:
@@ -157,11 +158,12 @@ public:
         channel_.set_flavor(flavor);
 
         // Compute auth response
-        return auth_calc_.calculate(
+        return compute_auth_response(
             handshake.auth_plugin_name.value,
             params_.password(),
             handshake.auth_plugin_data.value(),
-            use_ssl()
+            use_ssl(),
+            auth_resp_
         );
     }
 
@@ -185,9 +187,9 @@ public:
             static_cast<std::uint32_t>(MAX_PACKET_SIZE),
             get_collation_first_byte(params_.connection_collation()),
             string_null(params_.username()),
-            string_lenenc(auth_calc_.response()),
+            string_lenenc(auth_resp_.response()),
             string_null(params_.database()),
-            string_null(auth_calc_.plugin_name()),
+            string_null(auth_resp_.plugin_name),
         };
 
         // Serialize
@@ -221,18 +223,19 @@ public:
                 return err;
 
             // Compute response
-            err = auth_calc_.calculate(
+            err = compute_auth_response(
                 auth_sw.plugin_name.value,
                 params_.password(),
                 auth_sw.auth_plugin_data.value,
-                use_ssl()
+                use_ssl(),
+                auth_resp_
             );
             if (err)
                 return err;
 
             // Serialize
             channel_.serialize(
-                auth_switch_response_packet{string_eof(auth_calc_.response())},
+                auth_switch_response_packet{string_eof(auth_resp_.response())},
                 channel_.shared_sequence_number()
             );
             auth_state_ = auth_state::send_more_data;
@@ -254,11 +257,17 @@ public:
             }
 
             // Compute response
-            err = auth_calc_.calculate(auth_calc_.plugin_name(), params_.password(), challenge, use_ssl());
+            err = compute_auth_response(
+                auth_resp_.plugin_name,
+                params_.password(),
+                challenge,
+                use_ssl(),
+                auth_resp_
+            );
             if (err)
                 return err;
             channel_.serialize(
-                auth_switch_response_packet{string_eof(auth_calc_.response())},
+                auth_switch_response_packet{string_eof(auth_resp_.response())},
                 channel_.shared_sequence_number()
             );
             auth_state_ = auth_state::send_more_data;

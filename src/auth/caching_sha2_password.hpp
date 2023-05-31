@@ -11,9 +11,8 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
-
 #include <cstddef>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -33,14 +32,12 @@ inline error_code compute_response(
     string_view password,
     string_view challenge,
     bool use_ssl,
-    bytestring& output
+    std::vector<std::uint8_t>& output
 );
 
 }  // namespace caching_sha2_password
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/detail/auth/impl/caching_sha2_password.ipp>
 
 #endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUTH_CACHING_SHA2_PASSWORD_HPP_ */

@@ -11,9 +11,8 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/bytestring.hpp>
-
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -26,14 +25,12 @@ inline error_code compute_response(
     string_view password,
     string_view challenge,
     bool use_ssl,
-    bytestring& output
+    std::vector<std::uint8_t>& output
 );
 
 }  // namespace mysql_native_password
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/detail/auth/impl/mysql_native_password.ipp>
 
 #endif
