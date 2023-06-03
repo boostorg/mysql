@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_PROTOCOL_CONSTANTS_HPP
 #define BOOST_MYSQL_DETAIL_PROTOCOL_CONSTANTS_HPP
 
-#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
-
 #include <cstddef>
 
 #include "protocol/protocol_types.hpp"
